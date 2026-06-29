@@ -53,6 +53,7 @@ internal class LlmMemoryQuestionAnswerer(
             ),
             stageName = "read-question-answer",
             logContext = "conversation=${conversationId.value}",
+            repairAttempts = 2,
             parse = { json.decodeFromString<ReadQuestionAnswerResponse>(it) },
             validate = { answer ->
                 require(answer.answer.isNotBlank()) { "memory question answer must not be blank" }
@@ -61,6 +62,15 @@ internal class LlmMemoryQuestionAnswerer(
                 }
                 validateAnswerMatchesExplicitReasoningConclusion(
                     answer = answer.answer,
+                    reasoning = answer.reasoning,
+                    sufficiency = answer.sufficiency,
+                )
+                validateAnsweredReasoningPreservesNamedQuestionTargets(
+                    question = question,
+                    reasoning = answer.reasoning,
+                    sufficiency = answer.sufficiency,
+                )
+                validateAnsweredReasoningDoesNotAdmitQualifierMismatch(
                     reasoning = answer.reasoning,
                     sufficiency = answer.sufficiency,
                 )
@@ -83,7 +93,9 @@ internal class LlmMemoryQuestionAnswerer(
         Answer the user's direct memory question using only the selected persisted memory context below.
         Do not use hidden knowledge, benchmark labels, expected answers, general defaults, or guesses outside memory_context.
         If selected memory is insufficient or conflicting, say that directly and set sufficiency accordingly.
-        Put the concrete answer in the answer field when memory supports it; put the evidence reasoning in reasoning.
+        The answer field must be non-empty for every sufficiency. Put the concrete answer there when memory supports it.
+        When memory is insufficient, put a short "Memory is insufficient..." sentence in answer. When memory is conflicting,
+        put a short "Memory is conflicting..." sentence in answer. Put the evidence reasoning in reasoning.
         For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.
         For specifically qualified questions, preserve every required qualifier: person, role, date, venue, route, source, owner, medium, item type, component, material, feature, project, artifact, relationship, and scope. If retrieved memory only answers a weaker adjacent target, answer insufficient or conflicting instead of caveating a wrong value.
         ${MemoryReadPromptPolicy.answerDerivationAndConsistencyRules()}
@@ -141,6 +153,39 @@ private fun validateElapsedLeadTimeAnswer(
         "Elapsed-time answer uses a lead-time phrase without deriving it from an anchor. " +
             "For an 'ago' question, do not use N in advance/before/prior to as the final elapsed answer; " +
             "identify the anchor timing and combine offsets, or set sufficiency to insufficient."
+    )
+}
+
+private fun validateAnsweredReasoningDoesNotAdmitQualifierMismatch(
+    reasoning: String,
+    sufficiency: String,
+) {
+    if (sufficiency != "answered") return
+    if (!reasoning.admitsQuestionQualifierMismatch()) return
+
+    error(
+        "Answered memory question admits that selected memory answers a different qualifier than the question. " +
+            "If the selected memory only contains an adjacent target, set sufficiency to insufficient instead of " +
+            "returning the adjacent value."
+    )
+}
+
+private fun validateAnsweredReasoningPreservesNamedQuestionTargets(
+    question: String,
+    reasoning: String,
+    sufficiency: String,
+) {
+    if (sufficiency != "answered") return
+
+    val reasoningNormalized = reasoning.normalizedAnswerForConsistency()
+    val missingTargets = question.namedQuestionTargets()
+        .filterNot { target -> reasoningNormalized.contains(target.normalizedAnswerForConsistency()) }
+    if (missingTargets.isEmpty()) return
+
+    error(
+        "Answered memory question does not preserve named question target qualifiers: ${missingTargets.joinToString()}. " +
+            "For qualified questions, reasoning must explicitly support the same named target. " +
+            "If selected memory only supports a different adjacent target, set sufficiency to insufficient."
     )
 }
 
@@ -203,11 +248,39 @@ private fun String.containsLeadTimeCue(): Boolean =
 private fun String.containsLeadTimeDerivationCue(): Boolean =
     leadTimeDerivationCueRegex.containsMatchIn(this)
 
+private fun String.admitsQuestionQualifierMismatch(): Boolean =
+    qualifierMismatchRegexes.any { it.containsMatchIn(this) }
+
+private fun String.namedQuestionTargets(): List<String> =
+    namedQuestionTargetRegex
+        .findAll(this)
+        .mapNotNull { match -> match.groupValues.getOrNull(1) }
+        .map { target ->
+            target
+                .trim()
+                .trimEnd('.', ',', ';', ':', '?', '!')
+        }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.normalizedAnswerForConsistency() }
+        .toList()
+
 private val elapsedAgoQuestionRegex = Regex("""\b(?:how many|how long|when)\b[\s\S]*\bago\b""", RegexOption.IGNORE_CASE)
 private val leadTimeCueRegex =
     Regex("""\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\s+(?:day|days|week|weeks|month|months|year|years)\s+(?:in advance|ahead of|prior to|before)\b""", RegexOption.IGNORE_CASE)
 private val leadTimeDerivationCueRegex =
     Regex("""(?:\+|\b(?:add|adds|added|adding|plus|sum|sums|summed|combine|combines|combined|total|totals|together|altogether)\b)""", RegexOption.IGNORE_CASE)
+private val namedQuestionTargetRegex =
+    Regex("""\b(?:at|with|for|from|by|in|on)\s+([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z][A-Za-z0-9&.'-]*){0,4})""")
+private val qualifierMismatchRegexes = listOf(
+    Regex(
+        """\b(?:question|user asks?|asked target)\b[\s\S]{0,240}\b(?:names|asks for|asks about|specifies)\b[\s\S]{0,240}\bbut\b[\s\S]{0,240}\b(?:selected memory|selected refs|memory)\b[\s\S]{0,240}\b(?:only contains|only provides|does not contain|does not provide|lacks|is missing)\b""",
+        RegexOption.IGNORE_CASE,
+    ),
+    Regex(
+        """\b(?:selected memory|selected refs|memory)\b[\s\S]{0,240}\b(?:only contains|only provides|does not contain|does not provide|lacks|is missing)\b[\s\S]{0,240}\b(?:question|user asks?|asked target)\b""",
+        RegexOption.IGNORE_CASE,
+    ),
+)
 private val explicitAnswerConclusionRegexes = listOf(
     Regex("""\banswer field must match (?:the )?(?:computed )?conclusion:\s*([^\n.]+)""", RegexOption.IGNORE_CASE),
     Regex("""\b(?:computed|final) conclusion:\s*([^\n.]+)""", RegexOption.IGNORE_CASE),

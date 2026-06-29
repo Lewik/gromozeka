@@ -88,97 +88,52 @@ tasks.register("downloadLongMemEvalData") {
     }
 }
 
+tasks.named("processTestResources") {
+    doNotTrackState("LongMemEval record-missing test runs update LLM cassette test resources while tests execute.")
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
-    if (System.getProperty("gromozeka.longmemeval") == "true") {
-        reports.junitXml.required.set(false)
+
+    fun passSystemProperty(name: String) {
+        System.getProperty(name)?.let { value ->
+            systemProperty(name, value)
+        }
     }
 
-    System.getProperty("gromozeka.memory.e2e")?.let {
-        systemProperty("gromozeka.memory.e2e", it)
-    }
-    System.getProperty("gromozeka.memory.e2e.subscriptionConfig")?.let {
-        systemProperty("gromozeka.memory.e2e.subscriptionConfig", it)
-    }
-    System.getProperty("gromozeka.memory.e2e.caseFilter")?.let {
-        systemProperty("gromozeka.memory.e2e.caseFilter", it)
-    }
-    System.getProperty("gromozeka.memory.e2e.modelName")?.let {
-        systemProperty("gromozeka.memory.e2e.modelName", it)
-    }
-    System.getProperty("gromozeka.memory.e2e.websocketResponseTimeoutMs")?.let {
-        systemProperty("gromozeka.memory.e2e.websocketResponseTimeoutMs", it)
-    }
-    System.getProperty("gromozeka.memory.e2e.websocketTransportTimeoutMs")?.let {
-        systemProperty("gromozeka.memory.e2e.websocketTransportTimeoutMs", it)
-    }
-    System.getProperty("gromozeka.memory.e2e.turnCompletionTimeoutMs")?.let {
-        systemProperty("gromozeka.memory.e2e.turnCompletionTimeoutMs", it)
-    }
-    System.getProperty("gromozeka.memory.e2e.memoryLlmStageTimeoutMs")?.let {
-        systemProperty("gromozeka.memory.e2e.memoryLlmStageTimeoutMs", it)
-    }
-    System.getProperty("gromozeka.longmemeval")?.let {
-        systemProperty("gromozeka.longmemeval", it)
-    }
-    System.getProperty("gromozeka.longmemeval.data")?.let {
-        systemProperty("gromozeka.longmemeval.data", it)
-    }
-    System.getProperty("gromozeka.longmemeval.limit")?.let {
-        systemProperty("gromozeka.longmemeval.limit", it)
-    }
-    System.getProperty("gromozeka.longmemeval.offset")?.let {
-        systemProperty("gromozeka.longmemeval.offset", it)
-    }
-    System.getProperty("gromozeka.longmemeval.caseFilter")?.let {
-        systemProperty("gromozeka.longmemeval.caseFilter", it)
-    }
-    System.getProperty("gromozeka.longmemeval.type")?.let {
-        systemProperty("gromozeka.longmemeval.type", it)
-    }
-    System.getProperty("gromozeka.longmemeval.sample")?.let {
-        systemProperty("gromozeka.longmemeval.sample", it)
-    }
-    System.getProperty("gromozeka.longmemeval.modelName")?.let {
-        systemProperty("gromozeka.longmemeval.modelName", it)
-    }
-    System.getProperty("gromozeka.longmemeval.subscriptionConfig")?.let {
-        systemProperty("gromozeka.longmemeval.subscriptionConfig", it)
-    }
-    System.getProperty("gromozeka.longmemeval.websocketResponseTimeoutMs")?.let {
-        systemProperty("gromozeka.longmemeval.websocketResponseTimeoutMs", it)
-    }
-    System.getProperty("gromozeka.longmemeval.websocketTransportTimeoutMs")?.let {
-        systemProperty("gromozeka.longmemeval.websocketTransportTimeoutMs", it)
-    }
-    System.getProperty("gromozeka.longmemeval.memoryLlmStageTimeoutMs")?.let {
-        systemProperty("gromozeka.longmemeval.memoryLlmStageTimeoutMs", it)
-    }
-    System.getProperty("gromozeka.longmemeval.memoryLlmMaxAttempts")?.let {
-        systemProperty("gromozeka.longmemeval.memoryLlmMaxAttempts", it)
-    }
-    System.getProperty("gromozeka.ai.openai-subscription.websocket-response-timeout-ms")?.let {
-        systemProperty("gromozeka.ai.openai-subscription.websocket-response-timeout-ms", it)
-    }
-    System.getProperty("gromozeka.ai.openai-subscription.websocket-transport-timeout-ms")?.let {
-        systemProperty("gromozeka.ai.openai-subscription.websocket-transport-timeout-ms", it)
-    }
-    System.getProperty("gromozeka.memory.llm.timeoutMs")?.let {
-        systemProperty("gromozeka.memory.llm.timeoutMs", it)
-    }
-    System.getProperty("gromozeka.llm.cassette.mode")?.let {
-        systemProperty("gromozeka.llm.cassette.mode", it)
-    }
-    System.getProperty("gromozeka.llm.cassette.dir")?.let {
-        systemProperty("gromozeka.llm.cassette.dir", it)
-    }
-    System.getProperty("gromozeka.llm.cassette.reportUnused")?.let {
-        systemProperty("gromozeka.llm.cassette.reportUnused", it)
-    }
-    System.getProperty("gromozeka.llm.cassette.deleteUnused")?.let {
-        systemProperty("gromozeka.llm.cassette.deleteUnused", it)
-    }
-    System.getProperty("gromozeka.llm.cassette.writeMissDebug")?.let {
-        systemProperty("gromozeka.llm.cassette.writeMissDebug", it)
-    }
+    passSystemProperty("gromozeka.memory.e2e")
+    passSystemProperty("gromozeka.memory.e2e.subscriptionConfig")
+    passSystemProperty("gromozeka.memory.e2e.caseFilter")
+    passSystemProperty("gromozeka.memory.e2e.modelName")
+    passSystemProperty("gromozeka.memory.e2e.websocketResponseTimeoutMs")
+    passSystemProperty("gromozeka.memory.e2e.websocketTransportTimeoutMs")
+    passSystemProperty("gromozeka.memory.e2e.turnCompletionTimeoutMs")
+    passSystemProperty("gromozeka.memory.e2e.memoryLlmStageTimeoutMs")
+
+    passSystemProperty("gromozeka.longmemeval")
+    passSystemProperty("gromozeka.longmemeval.data")
+    passSystemProperty("gromozeka.longmemeval.limit")
+    passSystemProperty("gromozeka.longmemeval.offset")
+    passSystemProperty("gromozeka.longmemeval.caseFilter")
+    passSystemProperty("gromozeka.longmemeval.type")
+    passSystemProperty("gromozeka.longmemeval.sample")
+    passSystemProperty("gromozeka.longmemeval.modelName")
+    passSystemProperty("gromozeka.longmemeval.subscriptionConfig")
+    passSystemProperty("gromozeka.longmemeval.websocketResponseTimeoutMs")
+    passSystemProperty("gromozeka.longmemeval.websocketTransportTimeoutMs")
+    passSystemProperty("gromozeka.longmemeval.evalLlmTimeoutMs")
+    passSystemProperty("gromozeka.longmemeval.evalLlmMaxAttempts")
+    passSystemProperty("gromozeka.longmemeval.memoryLlmStageTimeoutMs")
+    passSystemProperty("gromozeka.longmemeval.memoryLlmMaxAttempts")
+    passSystemProperty("gromozeka.longmemeval.memoryWriteParallelism")
+
+    passSystemProperty("gromozeka.ai.openai-subscription.websocket-response-timeout-ms")
+    passSystemProperty("gromozeka.ai.openai-subscription.websocket-transport-timeout-ms")
+    passSystemProperty("gromozeka.memory.llm.timeoutMs")
+
+    passSystemProperty("gromozeka.llm.cassette.mode")
+    passSystemProperty("gromozeka.llm.cassette.dir")
+    passSystemProperty("gromozeka.llm.cassette.reportUnused")
+    passSystemProperty("gromozeka.llm.cassette.deleteUnused")
+    passSystemProperty("gromozeka.llm.cassette.writeMissDebug")
 }

@@ -261,7 +261,10 @@ private fun AiRuntimeRequest.withStructuredRepairMessages(
                 Error:
                 ${error.memoryRepairMessage()}
 
+                Return the complete corrected structured JSON object, not a partial patch.
                 Return the same intended result again, fixed to match the schema and validation rules.
+                Do not use blank strings to mean unknown. If validation says a required text field must not be blank,
+                fill it with a concise schema-compatible sentence that matches the status fields.
                 Output only the required JSON. No prose, no markdown fences, no explanations, no extra fields.
                 """.trimIndent()
             )

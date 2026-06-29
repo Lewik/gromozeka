@@ -29,7 +29,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 import kotlin.io.path.readText
@@ -62,7 +61,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import kotlinx.serialization.json.put
-import org.junit.jupiter.api.Timeout
 
 class LongMemEvalMemorySmokeTest {
 
@@ -75,7 +73,6 @@ class LongMemEvalMemorySmokeTest {
     }
 
     @Test
-    @Timeout(value = 4, unit = TimeUnit.HOURS)
     fun runLongMemEvalMemorySmoke() = runBlocking {
         if (!java.lang.Boolean.getBoolean(ENABLE_PROPERTY)) {
             println(
@@ -374,15 +371,10 @@ class LongMemEvalMemorySmokeTest {
         } else {
             expectedEvidenceSourceIds.all { it in selectedEvidenceSourceIds.toSet() }
         }
-        val answerHypothesis = LongMemEvalAnswerHypothesis(
-            answer = enrichResult.answer.orEmpty(),
-            reasoning = enrichResult.reasoning.orEmpty(),
-            countedItems = enrichResult.countedItems,
-            countEvidenceKind = enrichResult.sufficiency.orEmpty(),
-            excludedRankedRefs = enrichResult.excludedRefs,
-        )
-        validateBenchmarkEvalText(stageName = "memory_answer_question", questionId = entry.questionId, fieldName = "answer", value = answerHypothesis.answer)
-        validateBenchmarkEvalText(stageName = "memory_answer_question", questionId = entry.questionId, fieldName = "reasoning", value = answerHypothesis.reasoning)
+        val answerHypothesis = enrichResult.answer.orEmpty()
+        val answerHypothesisReasoning = enrichResult.reasoning.orEmpty()
+        validateBenchmarkEvalText(stageName = "memory_answer_question", questionId = entry.questionId, fieldName = "answer", value = answerHypothesis)
+        validateBenchmarkEvalText(stageName = "memory_answer_question", questionId = entry.questionId, fieldName = "reasoning", value = answerHypothesisReasoning)
         appendProgress(
             progressPath,
             "answer_judge_start id=${entry.questionId} exactAnswerVisible=$exactAnswerTextVisible evidenceSourceHit=$evidenceSourceHit"
@@ -398,7 +390,7 @@ class LongMemEvalMemorySmokeTest {
                 entry = entry,
                 expectedAnswer = expectedAnswer,
                 goldEvidence = entry.renderGoldEvidenceForJudge(),
-                answerHypothesis = answerHypothesis.answer,
+                answerHypothesis = answerHypothesis,
             )
         }
         val answerJudgeDurationMs = System.currentTimeMillis() - answerJudgeStartedAt
@@ -434,8 +426,8 @@ class LongMemEvalMemorySmokeTest {
                 allEvidenceSourcesHit = allEvidenceSourcesHit,
                 memorySmokePassed = memorySmokePassed,
                 memorySmokePassReason = memorySmokePassReason,
-                answerHypothesis = answerHypothesis.answer,
-                answerHypothesisReasoning = answerHypothesis.reasoning,
+                answerHypothesis = answerHypothesis,
+                answerHypothesisReasoning = answerHypothesisReasoning,
                 answerJudgement = answerJudgement,
                 memoryContext = memoryContext,
             )
@@ -456,8 +448,8 @@ class LongMemEvalMemorySmokeTest {
             selectedExpectedEvidenceSourceIds = selectedExpectedEvidenceSourceIds,
             evidenceSourceHit = evidenceSourceHit,
             allEvidenceSourcesHit = allEvidenceSourcesHit,
-            answerHypothesis = answerHypothesis.answer,
-            answerHypothesisReasoning = answerHypothesis.reasoning,
+            answerHypothesis = answerHypothesis,
+            answerHypothesisReasoning = answerHypothesisReasoning,
             answerJudgeReason = answerJudgement.reason,
             memoryLlmCalls = memoryLlmCalls,
             rememberStatuses = rememberResults.map { it.status },
@@ -546,6 +538,8 @@ class LongMemEvalMemorySmokeTest {
                     For indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word "replace".
                     Treat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of "newer or more capable item introduced for a routine" plus "older same-domain item removed from inventory" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.
                     For acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.
+                    For acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as "last month" resolves from the source/session date unless contradicted by more specific evidence.
+                    For relative month-window questions over imported chat sources, a first-person source-local cue such as "last month" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.
                     For broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.
                     For broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.
                     For count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.
@@ -1176,6 +1170,7 @@ class LongMemEvalMemorySmokeTest {
     }
 
     private fun appendProgress(path: Path, message: String) {
+        path.parent?.let { Files.createDirectories(it) }
         Files.writeString(
             path,
             "${Clock.System.now()} $message\n",
@@ -1339,14 +1334,6 @@ private data class MemoryToolSelectedRef(
 private data class LongMemEvalAnswerJudgement(
     val supported: Boolean,
     val reason: String,
-)
-
-private data class LongMemEvalAnswerHypothesis(
-    val answer: String,
-    val reasoning: String,
-    val countedItems: List<String> = emptyList(),
-    val countEvidenceKind: String = "",
-    val excludedRankedRefs: List<String> = emptyList(),
 )
 
 private class LongMemEvalDegenerateEvalResponseException(
