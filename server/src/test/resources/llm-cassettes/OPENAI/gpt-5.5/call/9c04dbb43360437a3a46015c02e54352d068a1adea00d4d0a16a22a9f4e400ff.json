@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "9c04dbb43360437a3a46015c02e54352d068a1adea00d4d0a16a22a9f4e400ff",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm going back to our previous conversation about the children's book on dinosaurs. Can you remind me what color was the scaly body of the Plesiosaur in the image?\n\n                                Question date:\n                                2023/05/24 (Wed) 21:34\n\n                                Noisy expected-answer label:\n                                The Plesiosaur had a blue scaly body.\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 10:20\nTranscript:\nuser: pretend you're an author, write a children's book about dinosaurs. the book will include images of the dinosaurs. Wherever it's appropriate to insert an image, insert the image by writing the image title and an elaborate description of the image in the format \"::title:: == ::description::\"\nassistant: \"The Amazing Adventures of Dinosaurs\"\n\nOnce upon a time, in a land far, far away, there lived a group of incredible creatures called dinosaurs. These fascinating creatures roamed the earth, ruled the skies, and swam in the oceans.\n\nJoin us on a journey to discover the exciting world of dinosaurs and learn about their incredible abilities and traits.\n\nChapter 1: The Mighty T-Rex\n\nThe T-Rex was a giant dinosaur that lived millions of years ago. It was one of the largest carnivorous dinosaurs that ever lived, and it had sharp teeth and strong jaws that could crush anything in its path.\n\n::T-Rex Image:: == A large, fierce-looking T-Rex stands on its hind legs, roaring loudly with its sharp teeth showing. The T-Rex has a green scaly body, with small arms, and a long tail to help it balance. In the background, there is a lush forest with tall trees.\n\nChapter 2: The Flying Pterodactyl\n\nThe Pterodactyl was a flying dinosaur that lived in the skies. It had large wings that helped it soar high above the ground, and a sharp beak to catch its prey.\n\n::Pterodactyl Image:: == A Pterodactyl is shown in mid-flight, with its wings spread wide and its sharp beak open. The Pterodactyl has a green scaly body and long, thin legs. The background is a beautiful blue sky with fluffy clouds.\n\nChapter 3: The Swimming Plesiosaur\n\nThe Plesiosaur was a dinosaur that lived in the oceans. It had a long neck and powerful flippers that helped it swim gracefully through the water.\n\n::Plesiosaur Image:: == A Plesiosaur is shown swimming in the ocean, with its long neck and flippers in motion. The Plesiosaur has a blue scaly body, and its eyes are fixed on something in the distance. In the background, there are colorful fish swimming along with it and the sun shining brightly.\n\nChapter 4: The Cuddly Triceratops\n\nThe Triceratops was a herbivorous dinosaur with a large head and three horns. It was a gentle giant that lived on the land and ate only plants.\n\n::Triceratops Image:: == A Triceratops is shown grazing in a field, surrounded by tall green grasses. The Triceratops has a brown scaly body, with a large head and three horns. Its eyes are closed, and it looks happy and content. In the background, there is a beautiful sunset with orange and pink clouds.\n\nThe end\n\nThis was just the beginning of our journey through the amazing world of dinosaurs. There are many more incredible creatures to discover, and we hope you enjoyed learning about these fascinating creatures.\n                                ```\n\n                                Candidate answer:\n                                The Plesiosaur’s scaly body was blue.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "89527b6b",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as \"last month\" resolves from the source/session date unless contradicted by more specific evidence.\nFor relative month-window questions over imported chat sources, a first-person source-local cue such as \"last month\" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor location-scoped item count/list questions, judge concrete objects as category-fitting when gold evidence explicitly places them in that location or their ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nFor concrete who/from-whom/source/giver expected-answer labels, mark supported=false when the candidate answers that memory is insufficient or unknown without providing the evidence-backed expected giver/source. If the gold evidence contains the expected giver/source for the only target-period received/acquired personal item, noisy or mismatched object wording in the question does not make an insufficiency answer supported; the candidate may caveat the object mismatch, but it must still provide the giver/source.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor remaining-amount questions such as \"how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify\", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as \"last month\" resolves from the source/session date unless contradicted by more specific evidence.\nFor relative month-window questions over imported chat sources, a first-person source-local cue such as \"last month\" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor location-scoped item count/list questions, judge concrete objects as category-fitting when gold evidence explicitly places them in that location or their ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nFor concrete who/from-whom/source/giver expected-answer labels, mark supported=false when the candidate answers that memory is insufficient or unknown without providing the evidence-backed expected giver/source. If the gold evidence contains the expected giver/source for the only target-period received/acquired personal item, noisy or mismatched object wording in the question does not make an insufficiency answer supported; the candidate may caveat the object mismatch, but it must still provide the giver/source.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor remaining-amount questions such as \"how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify\", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm going back to our previous conversation about the children's book on dinosaurs. Can you remind me what color was the scaly body of the Plesiosaur in the image?\n\n                                Question date:\n                                2023/05/24 (Wed) 21:34\n\n                                Noisy expected-answer label:\n                                The Plesiosaur had a blue scaly body.\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 10:20\nTranscript:\nuser: pretend you're an author, write a children's book about dinosaurs. the book will include images of the dinosaurs. Wherever it's appropriate to insert an image, insert the image by writing the image title and an elaborate description of the image in the format \"::title:: == ::description::\"\nassistant: \"The Amazing Adventures of Dinosaurs\"\n\nOnce upon a time, in a land far, far away, there lived a group of incredible creatures called dinosaurs. These fascinating creatures roamed the earth, ruled the skies, and swam in the oceans.\n\nJoin us on a journey to discover the exciting world of dinosaurs and learn about their incredible abilities and traits.\n\nChapter 1: The Mighty T-Rex\n\nThe T-Rex was a giant dinosaur that lived millions of years ago. It was one of the largest carnivorous dinosaurs that ever lived, and it had sharp teeth and strong jaws that could crush anything in its path.\n\n::T-Rex Image:: == A large, fierce-looking T-Rex stands on its hind legs, roaring loudly with its sharp teeth showing. The T-Rex has a green scaly body, with small arms, and a long tail to help it balance. In the background, there is a lush forest with tall trees.\n\nChapter 2: The Flying Pterodactyl\n\nThe Pterodactyl was a flying dinosaur that lived in the skies. It had large wings that helped it soar high above the ground, and a sharp beak to catch its prey.\n\n::Pterodactyl Image:: == A Pterodactyl is shown in mid-flight, with its wings spread wide and its sharp beak open. The Pterodactyl has a green scaly body and long, thin legs. The background is a beautiful blue sky with fluffy clouds.\n\nChapter 3: The Swimming Plesiosaur\n\nThe Plesiosaur was a dinosaur that lived in the oceans. It had a long neck and powerful flippers that helped it swim gracefully through the water.\n\n::Plesiosaur Image:: == A Plesiosaur is shown swimming in the ocean, with its long neck and flippers in motion. The Plesiosaur has a blue scaly body, and its eyes are fixed on something in the distance. In the background, there are colorful fish swimming along with it and the sun shining brightly.\n\nChapter 4: The Cuddly Triceratops\n\nThe Triceratops was a herbivorous dinosaur with a large head and three horns. It was a gentle giant that lived on the land and ate only plants.\n\n::Triceratops Image:: == A Triceratops is shown grazing in a field, surrounded by tall green grasses. The Triceratops has a brown scaly body, with a large head and three horns. Its eyes are closed, and it looks happy and content. In the background, there is a beautiful sunset with orange and pink clouds.\n\nThe end\n\nThis was just the beginning of our journey through the amazing world of dinosaurs. There are many more incredible creatures to discover, and we hope you enjoyed learning about these fascinating creatures.\n                                ```\n\n                                Candidate answer:\n                                The Plesiosaur’s scaly body was blue.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "89527b6b",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The gold evidence explicitly says the Plesiosaur has a blue scaly body.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2123,
+                "completionTokens": 38,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
