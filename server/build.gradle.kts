@@ -100,6 +100,7 @@ tasks.withType<Test> {
         .orElse(false)
         .get()
     if (isLongMemEvalRun) {
+        notCompatibleWithConfigurationCache("LongMemEval smoke tests intentionally consume run-specific system properties and write cassette resources.")
         reports.junitXml.required.set(false)
         reports.html.required.set(false)
         outputs.upToDateWhen { false }

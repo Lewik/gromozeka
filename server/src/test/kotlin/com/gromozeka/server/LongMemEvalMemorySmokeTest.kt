@@ -35,6 +35,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CancellationException
@@ -73,6 +74,38 @@ class LongMemEvalMemorySmokeTest {
     }
 
     @Test
+    fun rejectsUnknownCaseFilterTokens() {
+        val error = assertFailsWith<IllegalArgumentException> {
+            longMemEvalSelectionFixture().selectByProperties(
+                LongMemEvalSelectionProperties(
+                    caseFilterTokens = listOf("known-case", "missing-case"),
+                    typeFilterTokens = emptySet(),
+                    sample = "",
+                    offset = "",
+                    limit = "",
+                )
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("missing-case"))
+    }
+
+    @Test
+    fun acceptsQuestionTypeCaseFilterTokens() {
+        val selected = longMemEvalSelectionFixture().selectByProperties(
+            LongMemEvalSelectionProperties(
+                caseFilterTokens = listOf("known-type"),
+                typeFilterTokens = emptySet(),
+                sample = "",
+                offset = "",
+                limit = "",
+            )
+        )
+
+        assertEquals(listOf("known-case"), selected.map { it.questionId })
+    }
+
+    @Test
     fun runLongMemEvalMemorySmoke() = runBlocking {
         if (!java.lang.Boolean.getBoolean(ENABLE_PROPERTY)) {
             println(
@@ -95,8 +128,9 @@ class LongMemEvalMemorySmokeTest {
                 "Download it from Hugging Face or point -D$DATA_FILE_PROPERTY to a local json file."
         )
 
+        val selectionProperties = LongMemEvalSelectionProperties.fromSystemProperties()
         val entries = loadEntries(dataFile)
-            .selectByProperties()
+            .selectByProperties(selectionProperties)
         assertTrue(entries.isNotEmpty(), "No LongMemEval entries selected from $dataFile")
 
         val cassetteSettings = AiRuntimeCassetteSettings.fromSystemProperties()
@@ -156,7 +190,7 @@ class LongMemEvalMemorySmokeTest {
             llmCallProgressCollector.bind(progressPath)
             appendProgress(
                 progressPath,
-                "suite_start model=$modelName schema=$postgresSchema data=$dataFile cases=${entries.size} namespace=$LONGMEMEVAL_NAMESPACE"
+                "suite_start model=$modelName schema=$postgresSchema data=$dataFile cases=${entries.size} namespace=$LONGMEMEVAL_NAMESPACE selection=${selectionProperties.renderForProgress()}"
             )
 
             val caseResults = entries.mapIndexed { index, entry ->
@@ -764,17 +798,37 @@ class LongMemEvalMemorySmokeTest {
     private fun loadEntries(dataFile: Path): List<LongMemEvalEntry> =
         json.decodeFromString(dataFile.readText())
 
-    private fun List<LongMemEvalEntry>.selectByProperties(): List<LongMemEvalEntry> =
-        filterByCaseProperty()
-            .filterByTypeProperty()
-            .sampleByProperty()
-            .offsetByProperty()
-            .limitByProperty()
+    private fun longMemEvalSelectionFixture(): List<LongMemEvalEntry> =
+        listOf(
+            LongMemEvalEntry(
+                questionId = "known-case",
+                questionType = "known-type",
+                question = "Question?",
+                answer = JsonObject(emptyMap()),
+                questionDate = "2026-01-01",
+                haystackDates = emptyList(),
+                haystackSessions = listOf(listOf(LongMemEvalTurn(role = "user", content = "Content."))),
+            )
+        )
 
-    private fun List<LongMemEvalEntry>.filterByCaseProperty(): List<LongMemEvalEntry> {
-        val filter = System.getProperty(CASE_FILTER_PROPERTY)?.trim().orEmpty()
-        if (filter.isBlank()) return this
-        val tokens = filter.split(",").map { it.trim() }.filter { it.isNotBlank() }
+    private fun List<LongMemEvalEntry>.selectByProperties(properties: LongMemEvalSelectionProperties): List<LongMemEvalEntry> =
+        filterByCaseProperty(properties.caseFilterTokens)
+            .filterByTypeProperty(properties.typeFilterTokens)
+            .sampleByProperty(properties.sample)
+            .offsetByProperty(properties.offset)
+            .limitByProperty(properties.limit)
+
+    private fun List<LongMemEvalEntry>.filterByCaseProperty(tokens: List<String>): List<LongMemEvalEntry> {
+        if (tokens.isEmpty()) return this
+        val unknownTokens = tokens.filterNot { token ->
+            any { entry ->
+                entry.questionId == token ||
+                    entry.questionType.equals(token, ignoreCase = true)
+            }
+        }
+        require(unknownTokens.isEmpty()) {
+            "Unknown LongMemEval caseFilter token(s): ${unknownTokens.joinToString(", ")}"
+        }
         return filter { entry ->
             tokens.any { token ->
                 entry.questionId == token ||
@@ -783,15 +837,12 @@ class LongMemEvalMemorySmokeTest {
         }
     }
 
-    private fun List<LongMemEvalEntry>.filterByTypeProperty(): List<LongMemEvalEntry> {
-        val filter = System.getProperty(TYPE_FILTER_PROPERTY)?.trim().orEmpty()
-        if (filter.isBlank()) return this
-        val types = filter.split(",").map { it.trim() }.filter { it.isNotBlank() }.toSet()
+    private fun List<LongMemEvalEntry>.filterByTypeProperty(types: Set<String>): List<LongMemEvalEntry> {
+        if (types.isEmpty()) return this
         return filter { entry -> types.any { type -> entry.questionType.equals(type, ignoreCase = true) } }
     }
 
-    private fun List<LongMemEvalEntry>.sampleByProperty(): List<LongMemEvalEntry> {
-        val sample = System.getProperty(SAMPLE_PROPERTY)?.trim().orEmpty()
+    private fun List<LongMemEvalEntry>.sampleByProperty(sample: String): List<LongMemEvalEntry> {
         if (sample.isBlank()) return this
         val balancedSample = LongMemEvalBalancedSample.parse(sample)
             ?: throw IllegalArgumentException(
@@ -808,16 +859,14 @@ class LongMemEvalMemorySmokeTest {
             .sortedBy { entry -> originalIndex.getValue(entry.questionId) }
     }
 
-    private fun List<LongMemEvalEntry>.limitByProperty(): List<LongMemEvalEntry> {
-        val limit = System.getProperty(LIMIT_PROPERTY)?.trim().orEmpty()
+    private fun List<LongMemEvalEntry>.limitByProperty(limit: String): List<LongMemEvalEntry> {
         if (limit.isBlank() || limit.equals("all", ignoreCase = true)) return this
         val count = limit.toIntOrNull()?.takeIf { it > 0 }
             ?: throw IllegalArgumentException("Invalid LongMemEval limit '$limit'. Use a positive integer or 'all'.")
         return take(count)
     }
 
-    private fun List<LongMemEvalEntry>.offsetByProperty(): List<LongMemEvalEntry> {
-        val offset = System.getProperty(OFFSET_PROPERTY)?.trim().orEmpty()
+    private fun List<LongMemEvalEntry>.offsetByProperty(offset: String): List<LongMemEvalEntry> {
         if (offset.isBlank()) return this
         val count = offset.toIntOrNull()?.takeIf { it >= 0 }
             ?: throw IllegalArgumentException("Invalid LongMemEval offset '$offset'. Use a non-negative integer.")
@@ -1206,6 +1255,41 @@ class LongMemEvalMemorySmokeTest {
             ?.toIntOrNull()
             ?.coerceAtLeast(1)
             ?: 2
+
+    private data class LongMemEvalSelectionProperties(
+        val caseFilterTokens: List<String>,
+        val typeFilterTokens: Set<String>,
+        val sample: String,
+        val offset: String,
+        val limit: String,
+    ) {
+        fun renderForProgress(): String =
+            listOf(
+                "caseFilter=${caseFilterTokens.joinToString(",").ifBlank { "<none>" }}",
+                "type=${typeFilterTokens.joinToString(",").ifBlank { "<none>" }}",
+                "sample=${sample.ifBlank { "<none>" }}",
+                "offset=${offset.ifBlank { "<none>" }}",
+                "limit=${limit.ifBlank { "<none>" }}",
+            ).joinToString(";")
+
+        companion object {
+            fun fromSystemProperties(): LongMemEvalSelectionProperties =
+                LongMemEvalSelectionProperties(
+                    caseFilterTokens = tokensFromSystemProperty(CASE_FILTER_PROPERTY),
+                    typeFilterTokens = tokensFromSystemProperty(TYPE_FILTER_PROPERTY).toSet(),
+                    sample = System.getProperty(SAMPLE_PROPERTY)?.trim().orEmpty(),
+                    offset = System.getProperty(OFFSET_PROPERTY)?.trim().orEmpty(),
+                    limit = System.getProperty(LIMIT_PROPERTY)?.trim().orEmpty(),
+                )
+
+            private fun tokensFromSystemProperty(name: String): List<String> =
+                System.getProperty(name)
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() }
+                    .orEmpty()
+        }
+    }
 
     private companion object {
         const val ENABLE_PROPERTY = "gromozeka.longmemeval"
