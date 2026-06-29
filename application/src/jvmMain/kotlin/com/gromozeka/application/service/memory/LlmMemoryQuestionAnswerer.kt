@@ -97,6 +97,7 @@ internal class LlmMemoryQuestionAnswerer(
         When memory is insufficient, put a short "Memory is insufficient..." sentence in answer. When memory is conflicting,
         put a short "Memory is conflicting..." sentence in answer. Put the evidence reasoning in reasoning.
         For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.
+        ${MemoryReadPromptPolicy.answerSourceEvidenceRules()}
         For specifically qualified questions, preserve every required qualifier: person, role, date, venue, route, source, owner, medium, item type, component, material, feature, project, artifact, relationship, and scope. If retrieved memory only answers a weaker adjacent target, answer insufficient or conflicting instead of caveating a wrong value.
         ${MemoryReadPromptPolicy.answerDerivationAndConsistencyRules()}
         ${MemoryReadPromptPolicy.answerCountAndCategoryRules()}

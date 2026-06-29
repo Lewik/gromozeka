@@ -56,6 +56,13 @@ internal object MemoryReadPromptPolicy {
             For broad category counts, a missing exact subtype word is not a contradiction. Exclude a selected user-attributed copy/member/carrier/subtype only when retrieved memory gives an explicit conflicting subtype or category, or when the question asks for exact subtype/transaction details.
         """.trimIndent()
 
+    fun answerSourceEvidenceRules(): String =
+        """
+            Treat a selected source transcript or document as a coherent local evidence frame. If selected typed memory identifies the asked event/item but lacks one requested detail, and selected source evidence gives that detail in the same local topic or surrounding exchange, answer from that same-source frame.
+            For source transcripts, preserve local dialogue topic continuity: when the user reports the asked action as an example while the surrounding turns are about a named store, app, service, venue, program, or source, and no competing named frame is introduced before the topic changes, that named frame can supply the missing place/source/medium for the action.
+            Do not use this to stitch together different sources, different named targets, different events/items, or competing anchors/values. If the source only mentions a related topic without preserving the same asked target, answer insufficient.
+        """.trimIndent()
+
     fun answerDerivationAndConsistencyRules(): String =
         """
             For ordering, first/second/latest/earliest, and comparison questions, compare every selected dated or relative-time candidate for the named alternatives before choosing the answer. The final answer must be the item selected by that comparison, not the first lexical match or the most recent evidence block.
