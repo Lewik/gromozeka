@@ -426,13 +426,14 @@ class LongMemEvalMemorySmokeTest {
             stageName = "answer_judge",
             questionId = entry.questionId,
             progressPath = progressPath,
-        ) {
+        ) { attempt ->
             judgeAnswerHypothesis(
                 runtime = judgeRuntime,
                 entry = entry,
                 expectedAnswer = expectedAnswer,
                 goldEvidence = entry.renderGoldEvidenceForJudge(),
                 answerHypothesis = answerHypothesis,
+                attempt = attempt,
             )
         }
         val answerJudgeDurationMs = System.currentTimeMillis() - answerJudgeStartedAt
@@ -512,7 +513,7 @@ class LongMemEvalMemorySmokeTest {
         stageName: String,
         questionId: String,
         progressPath: Path,
-        block: suspend () -> T,
+        block: suspend (attempt: Int) -> T,
     ): T {
         val timeoutMs = benchmarkEvalLlmTimeoutMs()
         val maxAttempts = benchmarkEvalLlmMaxAttempts()
@@ -527,7 +528,7 @@ class LongMemEvalMemorySmokeTest {
             )
 
             try {
-                val result = withTimeout(timeoutMs) { block() }
+                val result = withTimeout(timeoutMs) { block(attempt) }
                 appendProgress(
                     progressPath,
                     "${stageName}_llm_attempt_done id=$questionId attempt=$attempt durationMs=${System.currentTimeMillis() - startedAt}"
@@ -560,11 +561,17 @@ class LongMemEvalMemorySmokeTest {
         expectedAnswer: String,
         goldEvidence: String,
         answerHypothesis: String,
+        attempt: Int,
     ): LongMemEvalAnswerJudgement {
         val conversationId = Conversation.Id("longmemeval-answer-judge:${entry.questionId}")
+        val retryPrompt = if (attempt == 1) {
+            null
+        } else {
+            "Retry attempt $attempt: the previous evaluator response was invalid. Return only compact JSON. Keep reason under 25 words."
+        }
         val response = runtime.call(
             AiRuntimeRequest(
-                systemPrompts = listOf(
+                systemPrompts = listOfNotNull(
                     """
                     You are an objective evaluator for a long-term-memory benchmark.
                     Decide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.
@@ -595,7 +602,8 @@ class LongMemEvalMemorySmokeTest {
                     For remaining-amount questions such as "how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.
                     For knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.
                     Return only the configured JSON object.
-                    """.trimIndent()
+                    """.trimIndent(),
+                    retryPrompt,
                 ),
                 messages = listOf(
                     Conversation.Message(
