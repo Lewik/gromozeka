@@ -370,6 +370,14 @@ class LongMemEvalMemorySmokeTest {
             )
         )
         val answerDurationMs = System.currentTimeMillis() - answerStartedAt
+        if (enrichResult.status != "completed") {
+            appendProgress(
+                progressPath,
+                "answer_from_memory_failed id=${entry.questionId} durationMs=$answerDurationMs status=${enrichResult.status} " +
+                    "retrieved=${enrichResult.retrievedCount ?: 0} sufficiency=${enrichResult.sufficiency.orEmpty()} " +
+                    "reason=${enrichResult.reason.orEmpty().oneLineForArtifact(240)} answer=${enrichResult.answer.orEmpty().oneLineForArtifact(180)}"
+            )
+        }
         assertEquals(
             "completed",
             enrichResult.status,
