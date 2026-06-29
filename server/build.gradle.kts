@@ -95,8 +95,9 @@ tasks.named("processTestResources") {
 tasks.withType<Test> {
     useJUnitPlatform()
 
+    val currentSystemProperties = gradle.startParameter.systemPropertiesArgs
     fun passSystemProperty(name: String) {
-        System.getProperty(name)?.let { value ->
+        currentSystemProperties[name]?.let { value ->
             systemProperty(name, value)
         }
     }
