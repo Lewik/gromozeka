@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryNote
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
 import com.gromozeka.domain.model.memory.MemoryReadPlan
 import com.gromozeka.domain.model.memory.MemoryReadRequest
 import com.gromozeka.domain.model.memory.MemoryReadSelectionRequest
@@ -105,7 +106,7 @@ class LlmMemoryReadSelector(
                 } else {
                     batchResult.selectedHits.take(READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH)
                 }
-                val safetySurvivors = batch.readSelectorSafetySurvivors(request.plan)
+                val safetySurvivors = batch.readSelectorSafetySurvivors(request)
                 val selectedSurvivorRefs = selectedSurvivors.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
                 val safetyAddedSurvivors = safetySurvivors
                     .filterNot { it.toReadSelectorItemRef() in selectedSurvivorRefs }
@@ -319,6 +320,8 @@ class LlmMemoryReadSelector(
         - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.
         - For latest/most-recent questions about when the user started, began, first used, acquired, or got access to something, keep actual lifecycle/use/acquisition candidates separate from later recommendation, preference, choice, or access-path decisions. A later choice is not a later started-using event unless memory explicitly says the user actually started, used, acquired, or got access to that option.
         - For named-date or relative-date questions, compare the target date with candidate event dates and source/session dates. When the question asks which event the user experienced, candidate event dates and local event wording are stronger than a matching source/session date. Keep a source/session-date match only when the candidate text describes the same target event or no event-dated candidate matches.
+        - For date-scoped questions, never choose an explicit out-of-period event as the direct answer when any in-period claim, source, note, or other candidate matches the requested event kind and can contain the missing detail. The out-of-period candidate may be conflict/supporting context, but it must not replace the in-period candidate solely because it has a more literal participant, venue, or action phrase.
+        - For ambiguous date-scoped wording such as "the music event last Saturday", resolve the date/window from the question before choosing the event identity. Do not let an out-of-period candidate define the target event; a same-broad-category in-period event is the target candidate even when an older event has stronger lexical overlap.
         - For completed-experience questions, evidence that the user actually did, attended, took, used, received, or completed something is stronger than same-date planning, booking, reservation, recommendation, or generated artifact evidence. A booking or reservation date is not the event date unless memory explicitly says the booked event happened on that date.
         - For relative month-count questions such as "two months ago", derive the approximate calendar-offset target from the current/question date and prefer candidates closest to that offset. Do not treat any earlier recent event as matching the requested offset; for example, one month ago is not two months ago when another otherwise relevant candidate is near the two-month target.
         - For "past weekend", "last week", "yesterday", or other relative-window questions, derive the target interval from the current/question date. An event with its own local cue such as "today" resolves to the source/session date and is outside the window when that date is outside the target interval.
@@ -537,11 +540,15 @@ private fun String.limitForReadSelectorPrompt(maxChars: Int): String {
 private fun String.oneLineForReadSelectorLog(maxChars: Int): String =
     limitForReadSelectorPrompt(maxChars)
 
-private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: MemoryReadPlan): List<MemoryStore.SearchHit> {
+private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(
+    request: MemoryReadSelectionRequest,
+): List<MemoryStore.SearchHit> {
+    val plan = request.plan
     val scoreLeaders = sortedByReadSelectorStrength(plan).take(plan.readSelectorScoreSafetyLimit())
     val preferredPredicateLeaders = filter { it.matchesPreferredClaimPredicate(plan) }
         .sortedByReadSelectorStrength(plan)
         .take(plan.readSelectorPreferredPredicateSafetyLimit())
+    val temporalLeaders = temporalSafetySurvivors(request)
     val activeTypedLeaders = filter { it.isActiveTypedMemory() }
         .sortedByReadSelectorStrength(plan)
         .take(plan.readSelectorActiveTypedSafetyLimit())
@@ -572,6 +579,7 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: Memory
     return (
         scoreLeaders +
             preferredPredicateLeaders +
+            temporalLeaders +
             evidenceSupportedTypedLeaders +
             activeTypedLeaders +
             profileLeaders +
@@ -579,24 +587,32 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: Memory
             modeLeaders
         )
         .distinctBy { it.toReadSelectorItemRef() }
-        .take(plan.readSelectorSafetySurvivorLimit())
+        .take(request.readSelectorSafetySurvivorLimit())
 }
 
 private fun MemoryReadSelectionRequest.finalSelectionSafetyAddedHits(
     selectedHits: List<MemoryStore.SearchHit>,
     decisions: List<MemoryReadSelectionResult.Decision>,
 ): List<MemoryStore.SearchHit> {
-    if (plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET) return emptyList()
-
     val selectedRefs = selectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+
+    if (plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        return temporalSafetySurvivors()
+            .filterNot { it.toReadSelectorItemRef() in selectedRefs }
+            .take(READ_SELECTOR_TEMPORAL_FINAL_SAFETY_ADD_LIMIT)
+    }
+
     val rejectedRefs = decisions
         .filterNot { it.selected }
         .mapTo(mutableSetOf()) { it.ref }
     return candidateHits
-        .readSelectorSafetySurvivors(plan)
+        .readSelectorSafetySurvivors(this)
         .filterNot { it.toReadSelectorItemRef() in selectedRefs }
         .filterNot { it.toReadSelectorItemRef() in rejectedRefs }
 }
+
+private fun MemoryReadSelectionRequest.temporalSafetySurvivors(): List<MemoryStore.SearchHit> =
+    candidateHits.temporalSafetySurvivors(this)
 
 private fun String.withFinalSafetySummary(safetyAddedHits: List<MemoryStore.SearchHit>): String =
     if (safetyAddedHits.isEmpty()) {
@@ -605,9 +621,11 @@ private fun String.withFinalSafetySummary(safetyAddedHits: List<MemoryStore.Sear
         "$this Final safety added ${safetyAddedHits.size} complete-set survivor(s)."
     }
 
-private fun MemoryReadPlan.readSelectorSafetySurvivorLimit(): Int =
-    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+private fun MemoryReadSelectionRequest.readSelectorSafetySurvivorLimit(): Int =
+    if (plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
         READ_SELECTOR_COMPLETE_SET_SAFETY_SURVIVORS_PER_BATCH
+    } else if (isTemporalSelectorQuery()) {
+        READ_SELECTOR_TEMPORAL_SAFETY_SURVIVORS_PER_BATCH
     } else {
         READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH
     }
@@ -703,6 +721,66 @@ private fun List<MemoryStore.SearchHit>.evidenceSupportedTypedSafetySurvivors(
         .take(READ_SELECTOR_COMPLETE_SET_EVIDENCE_TYPED_SAFETY_PER_BATCH)
 }
 
+private fun List<MemoryStore.SearchHit>.temporalSafetySurvivors(
+    request: MemoryReadSelectionRequest,
+): List<MemoryStore.SearchHit> {
+    if (!request.isTemporalSelectorQuery()) return emptyList()
+
+    val dateTokens = request.selectorQueryDateTokens()
+    if (dateTokens.isEmpty()) return emptyList()
+
+    val temporalClaims = filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
+        .filter { it.isActiveTemporalClaim() }
+        .filter { it.claim.matchesAnySelectorDateToken(dateTokens) }
+        .sortedByReadSelectorStrength(request.plan)
+        .take(READ_SELECTOR_TEMPORAL_CLAIM_SAFETY_PER_BATCH)
+    val temporalSources = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+        .filter { it.source.matchesAnySelectorDateToken(dateTokens) }
+        .sortedByReadSelectorStrength(request.plan)
+        .take(READ_SELECTOR_TEMPORAL_SOURCE_SAFETY_PER_BATCH)
+
+    return (temporalClaims + temporalSources).distinctBy { it.toReadSelectorItemRef() }
+}
+
+private fun MemoryReadSelectionRequest.isTemporalSelectorQuery(): Boolean =
+    sourceCandidateQuery().let { query ->
+        selectorTemporalCueRegex.containsMatchIn(query) || selectorDateRegex.containsMatchIn(query)
+    }
+
+private fun MemoryReadSelectionRequest.selectorQueryDateTokens(): Set<String> =
+    selectorDateRegex.findAll(sourceCandidateQuery())
+        .flatMap { match ->
+            val year = match.groupValues[1]
+            val month = match.groupValues[2].padStart(2, '0')
+            val day = match.groupValues[3].padStart(2, '0')
+            sequenceOf("$year-$month-$day", "$year/$month/$day")
+        }
+        .toSet()
+
+private fun MemoryStore.SearchHit.ClaimHit.isActiveTemporalClaim(): Boolean =
+    claim.status == MemoryClaim.Status.ACTIVE &&
+        claim.archivedAt == null &&
+        (
+            claim.predicatePolicy?.temporalPolicy == MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED ||
+                MemoryPredicateDefinition.SemanticKind.EVENT_PARTICIPATION in claim.predicatePolicy?.semanticKinds.orEmpty()
+            )
+
+private fun MemoryClaim.matchesAnySelectorDateToken(dateTokens: Set<String>): Boolean =
+    sequenceOf(
+        validFrom?.toString(),
+        validTo?.toString(),
+        normalizedText,
+        contextText,
+    )
+        .filterNotNull()
+        .plus(evidenceRefs.asSequence().mapNotNull { it.cachedQuote })
+        .any { text -> dateTokens.any { it in text } }
+
+private fun MemorySource.matchesAnySelectorDateToken(dateTokens: Set<String>): Boolean =
+    sequenceOf(contentText, searchText)
+        .filterNotNull()
+        .any { text -> dateTokens.any { it in text } }
+
 private fun List<MemoryStore.SearchHit>.sortedByReadSelectorStrength(
     plan: MemoryReadPlan,
 ): List<MemoryStore.SearchHit> =
@@ -791,8 +869,18 @@ private const val READ_SELECTOR_COMPLETE_SET_INTERMEDIATE_LLM_SURVIVORS_PER_BATC
 private const val READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH = 4
 private const val READ_SELECTOR_COMPLETE_SET_SAFETY_SURVIVORS_PER_BATCH = 16
 private const val READ_SELECTOR_COMPLETE_SET_EVIDENCE_TYPED_SAFETY_PER_BATCH = 8
+private const val READ_SELECTOR_TEMPORAL_CLAIM_SAFETY_PER_BATCH = 6
+private const val READ_SELECTOR_TEMPORAL_SOURCE_SAFETY_PER_BATCH = 2
+private const val READ_SELECTOR_TEMPORAL_FINAL_SAFETY_ADD_LIMIT = 4
 private const val READ_SELECTOR_SCORE_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_ACTIVE_TYPED_SAFETY_PER_BATCH = 2
+private const val READ_SELECTOR_TEMPORAL_SAFETY_SURVIVORS_PER_BATCH = 8
 private const val READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT = 20
 private const val READ_SELECTOR_COMPLETE_SET_HARD_FINAL_SURVIVOR_LIMIT = 40
 private const val READ_SELECTOR_TRACE_REF_LIMIT = 24
+
+private val selectorDateRegex = Regex("""\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b""")
+private val selectorTemporalCueRegex = Regex(
+    """\b(?:today|tonight|yesterday|tomorrow|last|next|this|past|weekend|week|month|year|morning|afternoon|evening|recently|ago|before|after|earliest|latest|most recent|first|second|third|order)\b""",
+    RegexOption.IGNORE_CASE,
+)

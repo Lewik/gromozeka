@@ -11,12 +11,14 @@ import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEvidenceRef
 import com.gromozeka.domain.model.memory.MemoryNote
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
 import com.gromozeka.domain.model.memory.MemoryReadPlan
 import com.gromozeka.domain.model.memory.MemoryReadRequest
 import com.gromozeka.domain.model.memory.MemoryReadSelectionRequest
 import com.gromozeka.domain.model.memory.MemoryReadSelectorTrace
 import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
 import com.gromozeka.domain.model.memory.MemoryScope
+import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.AiRuntime
@@ -122,6 +124,92 @@ class LlmMemoryReadSelectorTest {
             result.selectorTrace.stages
                 .filter { it.mode == MemoryReadSelectorTrace.Mode.INTERMEDIATE_RECALL }
                 .any { stage -> stage.safetyAddedRefs.any { it.id == "note-01" } }
+        )
+    }
+
+    @Test
+    fun keepsTargetDateTemporalClaimsForFinalSelection() = runBlocking {
+        val notes = (1..18).map { index ->
+            note(
+                id = "note-${index.toString().padStart(2, '0')}",
+                title = "Distractor note $index",
+                summary = "Distractor note $index has lexical overlap with music events.",
+            )
+        }
+        val wrongDate = claim(
+            id = "claim-wrong-date",
+            normalizedText = "The user attended a music festival with friends on 2023-04-01.",
+            predicate = "attended_event",
+            validFrom = Instant.parse("2023-04-01T10:00:00Z"),
+        )
+        val otherDate = claim(
+            id = "claim-other-date",
+            normalizedText = "The user attended a jazz night with coworkers on 2023-04-08.",
+            predicate = "attended_event",
+            validFrom = Instant.parse("2023-04-08T10:00:00Z"),
+        )
+        val targetDate = claim(
+            id = "claim-target-date",
+            normalizedText = "The user attended a rock concert with parents on 2023-04-15.",
+            predicate = "attended_event",
+            validFrom = Instant.parse("2023-04-15T10:00:00Z"),
+        )
+        val laterNotes = (19..23).map { index ->
+            note(
+                id = "note-${index.toString().padStart(2, '0')}",
+                title = "Later distractor note $index",
+                summary = "Later distractor note $index keeps the selector hierarchical.",
+            )
+        }
+        val runtime = SelectingRuntime(
+            intermediateSelectedIds = setOf("note-01", "claim-wrong-date"),
+            finalSelectedIds = setOf("claim-wrong-date"),
+        )
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest(
+                    """
+                    LongMemEval recall target.
+                    Current date: 2023/04/22 (Sat) 11:24
+                    Question: Who did I go with to the music event last Saturday?
+                    """.trimIndent()
+                ),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 3, notes = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            query = "music event last Saturday 2023-04-15 went with accompanied by who",
+                            topK = 3,
+                        )
+                    ),
+                ),
+                candidateHits = (
+                    notes.mapIndexed { index, note -> MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0) } +
+                        listOf(
+                            MemoryStore.SearchHit.ClaimHit(wrongDate, score = 0.95),
+                            MemoryStore.SearchHit.ClaimHit(otherDate, score = 0.94),
+                            MemoryStore.SearchHit.ClaimHit(targetDate, score = 0.01),
+                        ) +
+                        laterNotes.mapIndexed { index, note -> MemoryStore.SearchHit.NoteHit(note, score = 0.5 - index / 100.0) }
+                    ),
+                snapshot = MemoryNamespaceSnapshot(
+                    claims = listOf(wrongDate, otherDate, targetDate),
+                    notes = notes + laterNotes,
+                ),
+            )
+        )
+
+        assertTrue(
+            runtime.finalCandidateIds.single().contains("claim-target-date"),
+            "Temporal safety must carry the target-date claim into final selection.",
         )
     }
 
@@ -956,6 +1044,7 @@ class LlmMemoryReadSelectorTest {
             predicate: String,
             qualifiers: JsonObject = JsonObject(emptyMap()),
             evidenceSourceId: String? = null,
+            validFrom: Instant? = null,
         ): MemoryClaim =
             MemoryClaim(
                 id = MemoryClaim.Id(id),
@@ -963,11 +1052,13 @@ class LlmMemoryReadSelectorTest {
                 subjectEntityId = MemoryEntity.Id("entity-user"),
                 predicate = predicate,
                 predicateFamily = predicate,
+                predicatePolicy = testPredicatePolicy(predicate),
                 normalizedText = normalizedText,
                 scope = MemoryScope.Global("test"),
                 qualifiers = qualifiers,
                 confidence = 0.9,
                 importance = 6,
+                validFrom = validFrom,
                 firstSeenAt = NOW,
                 lastSeenAt = NOW,
                 evidenceRefs = evidenceSourceId?.let {
@@ -982,5 +1073,42 @@ class LlmMemoryReadSelectorTest {
                 createdAt = NOW,
                 updatedAt = NOW,
             )
+
+        private fun testPredicatePolicy(predicate: String): MemoryPredicateDefinition =
+            when (predicate) {
+                "attended_event" -> MemoryPredicateDefinition(
+                    predicate = predicate,
+                    namespace = NAMESPACE,
+                    temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED,
+                    semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.EVENT_PARTICIPATION),
+                )
+
+                "current_metric_value" -> MemoryPredicateDefinition(
+                    predicate = predicate,
+                    namespace = NAMESPACE,
+                    temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.STATUS_LIKE,
+                    semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.AGGREGATE_VALUE),
+                )
+
+                "metric_observation" -> MemoryPredicateDefinition(
+                    predicate = predicate,
+                    namespace = NAMESPACE,
+                    temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED,
+                    semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.AGGREGATE_VALUE),
+                )
+
+                "owns" -> MemoryPredicateDefinition(
+                    predicate = predicate,
+                    namespace = NAMESPACE,
+                    temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.STATUS_LIKE,
+                    semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.POSSESSION),
+                )
+
+                else -> MemoryPredicateDefinition(
+                    predicate = predicate,
+                    namespace = NAMESPACE,
+                    semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.OTHER),
+                )
+            }
     }
 }
