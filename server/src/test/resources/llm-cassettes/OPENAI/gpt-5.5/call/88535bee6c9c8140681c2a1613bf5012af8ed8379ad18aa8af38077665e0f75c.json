@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "88535bee6c9c8140681c2a1613bf5012af8ed8379ad18aa8af38077665e0f75c",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_7a0daae1\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/03/17 (Fri) 13:48\nTranscript:\nuser: I'm looking for some tips on how to improve my tennis serves. I just received my new tennis racket today and I'm excited to try out some new techniques.\nassistant: Congratulations on your new tennis racket! Improving your serve can be a game-changer in tennis. Here are some tips to help you take your serve to the next level:\n\n1. **Grip**: Make sure you're holding your racket correctly. The continental grip (index finger on the second groove of the racket handle) is the most common grip for serving.\n2. **Stance**: Stand with your feet shoulder-width apart, with your body facing the net. Turn your body slightly to the right (for right-handers) and shift your weight onto your back foot.\n3. **Toss**: The toss is crucial for a consistent serve. Aim to toss the ball 6-8 feet in the air, about 6-8 inches in front of your body, and slightly to the right (for right-handers). Use your non-dominant hand to toss the ball.\n4. **Racket position**: Hold your racket at a 90-degree angle to your body, with the face of the racket pointing towards the net.\n5. **Contact**: Make contact with the ball at the peak of the toss, using your wrist and forearm to generate power. Aim to hit the ball at the top of the bounce, with the racket face slightly closed.\n6. **Follow-through**: Follow through with your racket, keeping it close to your body. This will help you maintain control and generate more power.\n7. **Body rotation**: Rotate your body to generate power and momentum. Uncoil your body as you make contact with the ball, transferring your weight from your back foot to your front foot.\n8. **Variation**: Mix up your serves to keep your opponents guessing. Try different types of serves, such as:\n\t* Flat serve: A fast, straight serve with minimal spin.\n\t* Topspin serve: A serve with forward spin, which dips down into the opponent's court.\n\t* Slice serve: A serve with sidespin, which curves away from the opponent.\n9. **Practice**: Practice your serve regularly to develop muscle memory and consistency. Try practicing with different grips, tosses, and contact points to find what works best for you.\n10. **Film yourself**: Record yourself serving and analyze your technique. This will help you identify areas for improvement and track your progress over time.\n\nAdditionally, here are a few tips specific to your new racket:\n\n* **Get familiar with the racket's sweet spot**: Experiment with different contact points on the racket face to find the sweet spot, where the ball responds best.\n* **Adjust to the racket's power level**: If your new racket has more power than your old one, you may need to adjust your technique to compensate.\n* **Experiment with different strings**: If your racket has adjustable strings, try different tensions and types to find the perfect combination for your serve.\n\nRemember, improving your serve takes time and practice. Be patient, persistent, and stay focused on your technique. Good luck, and have fun with your new racket!\nuser: I've been trying to incorporate more stretching into my tennis routine, especially after my lessons on Saturdays. Can you recommend some exercises that can help improve my flexibility and reduce the risk of injury?\nassistant: Incorporating stretching into your tennis routine is a great way to improve flexibility, reduce the risk of injury, and enhance overall performance. Here are some essential stretches to focus on, particularly after your Saturday lessons:\n\n**Warm-up and Pre-Play Stretches (5-10 minutes)**\n\n1. **Neck Stretch**: Slowly tilt your head to the side, bringing your ear towards your shoulder. Hold for 30 seconds and switch sides.\n2. **Shoulder Rolls**: Roll your shoulders forward and backward in a circular motion. Repeat for 30 seconds.\n3. **Chest Stretch**: Stand in a doorway with your hands on the doorframe at shoulder height. Lean forward until you feel a stretch in your chest. Hold for 30 seconds.\n4. **Arm Circles**: Hold your arms straight out to the sides at shoulder height. Make small circles with your hands for 30 seconds.\n\n**Lower Body Stretches (10-15 minutes)**\n\n1. **Calf Stretch**: Stand facing a wall with one hand on the wall for balance. Step one foot back about a foot, keeping your heel on the ground. Bend your front knee and lean forward until you feel a stretch in your calf. Hold for 30 seconds and switch legs.\n2. **Hamstring Stretch**: Sit on the floor with your legs straight out in front of you. Lean forward, reaching for your toes, until you feel a stretch in the back of your legs. Hold for 30 seconds.\n3. **Quad Stretch**: Stand with one hand against a wall for balance. Bend one knee, keeping your foot behind you, and grab your ankle with your hand. Pull your heel towards your buttocks until you feel a stretch in the front of your leg. Hold for 30 seconds and switch legs.\n4. **Hip Flexor Stretch**: Kneel on all fours. Bring one knee forward, keeping your foot flat on the ground, and stretch the front of your hip. Hold for 30 seconds and switch legs.\n\n**Additional Stretches for Tennis Specific Muscles (5-10 minutes)**\n\n1. **Forearm Stretch**: Hold your arm straight out in front of you with your palm facing down. Use your other hand to pull your hand back and up, stretching your forearm. Hold for 30 seconds and switch arms.\n2. **Rotator Cuff Stretch**: Hold your arm straight out to the side at shoulder height. Use your other hand to pull your hand across your body, stretching your shoulder and rotator cuff. Hold for 30 seconds and switch arms.\n3. **Glute Stretch**: Lie on your back with your knees bent and feet flat on the ground. Cross one foot over the other, and lift your hips off the ground, squeezing your glutes. Hold for 30 seconds and switch legs.\n\n**Post-Play Stretching Routine (10-15 minutes)**\n\nAfter your lesson, take the time to stretch your major muscle groups again, focusing on the same stretches as before. This will help reduce muscle soreness and improve recovery.\n\n**Tips**\n\n* Hold each stretch for 30 seconds to allow for maximum relaxation of the muscle.\n* Breathe deeply and naturally while stretching.\n* Don't bounce or force your way into a stretch.\n* Stretch within a comfortable range; if you feel pain, stop the stretch immediately.\n* Make stretching a habit by incorporating it into your daily routine, not just on Saturdays.\n\nRemember to listen to your body and adjust your stretching routine as needed. If you have any underlying injuries or concerns, consult with a medical professional or a certified tennis coach for personalized guidance.\nuser: I've been trying to improve my endurance and stamina for my Saturday tennis lessons. Do you have any advice on how to incorporate cardio exercises into my workout routine?\nassistant: Incorporating cardio exercises into your workout routine can significantly improve your endurance and stamina for tennis. Here are some tips to help you get started:\n\n**Why Cardio is Important for Tennis**\n\nTennis is a high-intensity sport that requires quick bursts of energy, agility, and endurance. A strong cardiovascular system helps you:\n\n* Recover faster between points and games\n* Maintain your energy levels throughout the match\n* Perform at a higher intensity for longer periods\n* Reduce your risk of injury\n\n**Types of Cardio Exercises for Tennis**\n\n1. **High-Intensity Interval Training (HIIT)**: Short bursts of high-intensity exercise followed by brief rest periods. Examples: sprints, burpees, jump squats, etc.\n2. **Aerobic Exercise**: Sustained periods of moderate-intensity exercise. Examples: jogging, cycling, swimming, etc.\n3. **Plyometric Exercises**: Jumping and explosive movements that improve power and speed. Examples: box jumps, depth jumps, etc.\n4. **Agility Drills**: Exercises that improve quickness, agility, and reaction time. Examples: ladder drills, cone drills, etc.\n\n**Incorporating Cardio into Your Workout Routine**\n\n1. **Start with 2-3 times a week**: Begin with 2-3 cardio sessions per week, with at least one day of rest in between.\n2. **Warm up and cool down**: Always warm up with 5-10 minutes of light cardio and stretching before your workout, and cool down with 5-10 minutes of stretching after your workout.\n3. **Mix it up**: Vary your cardio exercises to avoid plateaus and prevent overuse injuries.\n4. **Incorporate tennis-specific drills**: Incorporate tennis-specific drills, such as simulated tennis movements, into your cardio workouts to improve your on-court performance.\n5. **Monitor your progress**: Track your heart rate, distance, or time to monitor your progress and adjust your workouts accordingly.\n\n**Sample Cardio Workout Routine**\n\nMonday (HIIT):\n\n* Warm-up: 5 minutes of jogging\n* 30 seconds of burpees, followed by 30 seconds of rest\n* 30 seconds of jump squats, followed by 30 seconds of rest\n* Repeat for 20-30 minutes\n* Cool-down: 5 minutes of stretching\n\nWednesday (Aerobic):\n\n* Warm-up: 5 minutes of jogging\n* 20-30 minutes of steady-state jogging or cycling\n* Cool-down: 5 minutes of stretching\n\nFriday (Plyometric and Agility):\n\n* Warm-up: 5 minutes of jogging\n* 3 sets of 10 reps of box jumps, followed by 30 seconds of rest\n* 3 sets of 10 reps of ladder drills, followed by 30 seconds of rest\n* Cool-down: 5 minutes of stretching\n\nRemember to listen to your body and adjust your workout routine as needed. It's also essential to incorporate strength training and flexibility exercises to complement your cardio workouts. Good luck, and have fun!\nuser: I've been doing some running and cycling to improve my endurance, but I haven't really incorporated any plyometric exercises into my routine. Can you give me some examples of plyometric exercises that would be beneficial for tennis and how to incorporate them into my workout routine?\nassistant: Plyometric exercises are an excellent way to improve your power, speed, and agility, which are essential for tennis. Here are some examples of plyometric exercises that can benefit your tennis game and how to incorporate them into your workout routine:\n\n**Plyometric Exercises for Tennis**\n\n1. **Box Jumps**: Jumping onto a box or bench, then stepping down and repeating. This exercise improves explosive power and calf strength.\n\t* Start with a lower box (12-18 inches) and gradually increase the height as you build strength and confidence.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n2. **Depth Jumps**: Jumping from a box or bench, then immediately jumping up as high as possible. This exercise improves reactive strength and explosiveness.\n\t* Start with a lower box (12-18 inches) and gradually increase the height as you build strength and confidence.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n3. **Lateral Bounds**: Jumping sideways, focusing on quick turnaround and explosive power. This exercise improves agility and speed.\n\t* Stand with your feet shoulder-width apart, then jump sideways to one side and immediately jump back to the other side.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n4. **Tuck Jumps**: Jumping up, tucking your knees up to your chest, and landing softly on the balls of your feet. This exercise improves explosive power and agility.\n\t* Stand with your feet shoulder-width apart, then jump up and tuck your knees up to your chest.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n5. **Medicine Ball Throws**: Throwing a medicine ball with explosive power, focusing on core strength and rotation. This exercise improves power and speed.\n\t* Hold a medicine ball with both hands, then twist your torso and throw the ball with explosive power.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n\n**Incorporating Plyometric Exercises into Your Workout Routine**\n\n1. **Warm-up**: Always warm up with 5-10 minutes of light cardio and dynamic stretching before starting your plyometric workout.\n2. **Start with lower intensity**: Begin with lower-intensity plyometric exercises and gradually increase the intensity as you build strength and confidence.\n3. **Incorporate plyometrics 2-3 times a week**: Aim to do plyometric exercises 2-3 times a week, with at least one day of rest in between.\n4. **Combine with strength training**: Combine plyometric exercises with strength training exercises, such as squats and lunges, to improve overall power and strength.\n5. **Focus on proper technique**: Focus on proper technique and explosive power, rather than just going through the motions.\n\nHere's an example workout routine that incorporates plyometric exercises:\n\nMonday (Plyometric and Strength Training):\n\n* Warm-up: 5 minutes of jogging and dynamic stretching\n* Box jumps: 3 sets of 10 reps\n* Squats: 3 sets of 10 reps\n* Lateral bounds: 3 sets of 10 reps\n* Cool-down: 5 minutes of stretching\n\nWednesday (Cardio and Agility):\n\n* Warm-up: 5 minutes of jogging and dynamic stretching\n* 20-30 minutes of steady-state jogging or cycling\n* Agility drills: 3 sets of 10 reps\n* Cool-down: 5 minutes of stretching\n\nFriday (Plyometric and Strength Training):\n\n* Warm-up: 5 minutes of jogging and dynamic stretching\n* Depth jumps: 3 sets of 10 reps\n* Lunges: \nuser: Actually, I was thinking of trying out some new strategies on the court, such as coming to the net more often and using my volleys to take advantage of my opponent's weaker returns. Do you have any tips on how to effectively execute this strategy?\nassistant: Coming to the net and using your volleys to take advantage of your opponent's weaker returns is a great strategy, especially if you have a strong volley. Here are some tips to help you execute this strategy effectively:\n\n1. **Read your opponent's returns**: Pay attention to your opponent's return of serve and identify patterns. If they tend to return serves short or with less power, it may be an opportunity to come to the net and take advantage of the weaker return.\n2. **Positioning is key**: Make sure you're positioning yourself at the right angle to cut off the return and get into position to volley. This may mean taking a few steps forward and to the side to get into the optimal position.\n3. **Use your feet**: Don't just stand still and wait for the return. Use your feet to get into position and to adjust to the return. Take small steps forward and backward to get into position and to react to the return.\n4. **Watch the ball**: Keep your eyes on the ball and focus on making contact with the volley. Don't get distracted by your opponent's movements or the crowd.\n5. **Use your racket face**: Make sure you're using the correct racket face to volley the ball. A slightly closed racket face can help you generate more topspin and control on your volleys.\n6. **Be prepared to react**: Be prepared to react to your opponent's shot and adjust your volley accordingly. If they hit a strong return, be prepared to hit a strong volley back.\n7. **Practice, practice, practice**: Practice your volleys and your approach shots to get comfortable with coming to the net and taking advantage of weaker returns.\n\nRemember, coming to the net and using your volleys effectively takes time and practice to develop. Start by practicing in drills and gradually incorporate it into your game play.\n\nAlso, don't forget to mix up your game and not rely too much on one strategy. Keep your opponent guessing and adapt to their game plan as well.\n\nHow do you feel about trying out these tips and incorporating them into your game?\n\n        Candidate notes:\n        [0] type=CONTEXT title=Tennis serve improvement guidance for new racket adaptation summary=The user asked for tips to improve tennis serves after receiving a new tennis racket. Reusable guidance included continental grip, stance, toss consistency, contact/follow-through, body rotation, serve variation, filming technique, and adapting to the racket's sweet spot, power level, and strings. scope=Applies to the user's tennis serve practice and adaptation to the new tennis racket discussed in the 2023-03-17 session. entities=entity:<0>,entity:<1>,entity:<2> keywords=tennis serve,new tennis racket,continental grip,sweet spot,serve variation,filming technique tags=tennis,serve_practice,racket_adaptation evidence=I'm looking for some tips on how to improve my tennis serves. I just received my new tennis racket today\n[1] type=PLAN title=Stretching routine principles after Saturday tennis lessons summary=For post-lesson tennis flexibility and injury prevention, the discussed routine emphasized warm-up/pre-play mobility, lower-body stretches, tennis-specific forearm/rotator cuff/glute stretches, and a 10–15 minute post-play stretching routine. Key execution rules were to hold stretches for 30 seconds, breathe naturally, avoid bouncing or forcing, stay within a comfortable range, and adjust for inju...[truncated 30 chars] scope=Applies to the user's stretching integration around Saturday tennis lessons and tennis routine. entities=entity:<3>,entity:<4>,entity:<5>,entity:<0> keywords=Saturday tennis lessons,stretching,flexibility,injury prevention,rotator cuff,post-play stretching tags=tennis,stretching,injury_prevention evidence=I've been trying to incorporate more stretching into my tennis routine, especially after my lessons on Saturdays.\n[2] type=PLAN title=Cardio integration for Saturday tennis endurance summary=To improve endurance and stamina for Saturday tennis lessons, the discussed cardio approach combined HIIT, aerobic work such as jogging/cycling, plyometrics, agility drills, tennis-specific movements, progress monitoring, and 2–3 weekly cardio sessions with rest days. The sample week used Monday HIIT, Wednesday steady-state jogging or cycling, and Friday plyometric/agility work. scope=Applies to the user's workout routine for improving tennis endurance and stamina. entities=entity:<6>,entity:<7>,entity:<8>,entity:<9>,entity:<10>,entity:<0> keywords=cardio,Saturday tennis lessons,endurance,stamina,HIIT,jogging,cycling,agility drills tags=tennis,cardio,endurance_training evidence=I've been trying to improve my endurance and stamina for my Saturday tennis lessons.\n[3] type=PLAN title=Plyometric progression for tennis power and agility summary=For tennis-specific power, speed, and agility, the discussed plyometric options were box jumps, depth jumps, lateral bounds, tuck jumps, and medicine ball throws, generally using 3 sets of 10–15 reps with 30–60 seconds rest. Integration guidance was to warm up with light cardio and dynamic stretching, start lower-intensity, do plyometrics 2–3 times weekly with rest days, combine with strength exer...[truncated 78 chars] scope=Applies to adding plyometric exercises to the user's existing running/cycling endurance routine for tennis. entities=entity:<11>,entity:<12>,entity:<13>,entity:<9>,entity:<10>,entity:<0> keywords=plyometric exercises,box jumps,depth jumps,lateral bounds,tuck jumps,medicine ball throws,tennis agility tags=tennis,plyometrics,power_training evidence=I haven't really incorporated any plyometric exercises into my routine.\n[4] type=PLAN title=Net-rushing and volley strategy against weaker returns summary=The user considered trying a tennis strategy of coming to the net more often and using volleys against weaker returns. Reusable execution guidance was to read opponent return patterns, position at the right angle, use footwork to adjust, watch the ball, use an appropriate racket face, prepare to react to stronger shots, practice volleys and approach shots in drills, and avoid over-relying on one s...[truncated 8 chars] scope=Applies to the user's tennis strategy practice for coming to the net and using volleys against weaker returns. entities=entity:<2>,entity:<0> keywords=tennis strategy,coming to the net,volleys,weaker returns,approach shots,footwork tags=tennis,strategy,volleys evidence=trying out some new strategies on the court, such as coming to the net more often and using my volleys\n\n        Existing active notes:\n        id=hot-path-b32e8cf7a7e1-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Fitness training approach for tennis, running, and cycling summary=The user is building a cross-training fitness routine around tennis, 30-minute runs, solo cycling, and possible local group cycling, with goals of improving reaction time, hand-eye coordination, cardiovascular endurance, and overall performance. Reusable guidance discussed includes tennis reaction/coordination drills, HIIT and endurance runs, beginner-friendly/no-drop group rides, and safety pract...[truncated 39 chars] scope=Applies to the user's ongoing fitness routine and sport-specific training context from the 2023-03-10 session. keywords=fitness routine,tennis,running,cycling,reaction time,hand-eye coordination,cardiovascular endurance,group cycling,intersections,roundabouts tags=fitness,cross_training,tennis,running,cycling useCount=0\nid=hot-path-b32e8cf7a7e1-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Strength training plan principles for core and legs summary=For strength training to support tennis and running, the user planned to start with lighter weights, progress gradually, prioritize proper form, use compound exercises such as squats and deadlifts, allow recovery between sessions, and balance strength work with running, tennis, stretching, and yoga. scope=Applies to the user's planned strength-training integration for tennis and running performance. keywords=strength training,core,legs,squats,deadlifts,proper form,recovery time,progressive overload,stretching,yoga tags=fitness,strength_training,injury_prevention,plan useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_7a0daae1",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:d29e1344c522bb8056c8f12b91b6037c"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_7a0daae1\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/03/17 (Fri) 13:48\nTranscript:\nuser: I'm looking for some tips on how to improve my tennis serves. I just received my new tennis racket today and I'm excited to try out some new techniques.\nassistant: Congratulations on your new tennis racket! Improving your serve can be a game-changer in tennis. Here are some tips to help you take your serve to the next level:\n\n1. **Grip**: Make sure you're holding your racket correctly. The continental grip (index finger on the second groove of the racket handle) is the most common grip for serving.\n2. **Stance**: Stand with your feet shoulder-width apart, with your body facing the net. Turn your body slightly to the right (for right-handers) and shift your weight onto your back foot.\n3. **Toss**: The toss is crucial for a consistent serve. Aim to toss the ball 6-8 feet in the air, about 6-8 inches in front of your body, and slightly to the right (for right-handers). Use your non-dominant hand to toss the ball.\n4. **Racket position**: Hold your racket at a 90-degree angle to your body, with the face of the racket pointing towards the net.\n5. **Contact**: Make contact with the ball at the peak of the toss, using your wrist and forearm to generate power. Aim to hit the ball at the top of the bounce, with the racket face slightly closed.\n6. **Follow-through**: Follow through with your racket, keeping it close to your body. This will help you maintain control and generate more power.\n7. **Body rotation**: Rotate your body to generate power and momentum. Uncoil your body as you make contact with the ball, transferring your weight from your back foot to your front foot.\n8. **Variation**: Mix up your serves to keep your opponents guessing. Try different types of serves, such as:\n\t* Flat serve: A fast, straight serve with minimal spin.\n\t* Topspin serve: A serve with forward spin, which dips down into the opponent's court.\n\t* Slice serve: A serve with sidespin, which curves away from the opponent.\n9. **Practice**: Practice your serve regularly to develop muscle memory and consistency. Try practicing with different grips, tosses, and contact points to find what works best for you.\n10. **Film yourself**: Record yourself serving and analyze your technique. This will help you identify areas for improvement and track your progress over time.\n\nAdditionally, here are a few tips specific to your new racket:\n\n* **Get familiar with the racket's sweet spot**: Experiment with different contact points on the racket face to find the sweet spot, where the ball responds best.\n* **Adjust to the racket's power level**: If your new racket has more power than your old one, you may need to adjust your technique to compensate.\n* **Experiment with different strings**: If your racket has adjustable strings, try different tensions and types to find the perfect combination for your serve.\n\nRemember, improving your serve takes time and practice. Be patient, persistent, and stay focused on your technique. Good luck, and have fun with your new racket!\nuser: I've been trying to incorporate more stretching into my tennis routine, especially after my lessons on Saturdays. Can you recommend some exercises that can help improve my flexibility and reduce the risk of injury?\nassistant: Incorporating stretching into your tennis routine is a great way to improve flexibility, reduce the risk of injury, and enhance overall performance. Here are some essential stretches to focus on, particularly after your Saturday lessons:\n\n**Warm-up and Pre-Play Stretches (5-10 minutes)**\n\n1. **Neck Stretch**: Slowly tilt your head to the side, bringing your ear towards your shoulder. Hold for 30 seconds and switch sides.\n2. **Shoulder Rolls**: Roll your shoulders forward and backward in a circular motion. Repeat for 30 seconds.\n3. **Chest Stretch**: Stand in a doorway with your hands on the doorframe at shoulder height. Lean forward until you feel a stretch in your chest. Hold for 30 seconds.\n4. **Arm Circles**: Hold your arms straight out to the sides at shoulder height. Make small circles with your hands for 30 seconds.\n\n**Lower Body Stretches (10-15 minutes)**\n\n1. **Calf Stretch**: Stand facing a wall with one hand on the wall for balance. Step one foot back about a foot, keeping your heel on the ground. Bend your front knee and lean forward until you feel a stretch in your calf. Hold for 30 seconds and switch legs.\n2. **Hamstring Stretch**: Sit on the floor with your legs straight out in front of you. Lean forward, reaching for your toes, until you feel a stretch in the back of your legs. Hold for 30 seconds.\n3. **Quad Stretch**: Stand with one hand against a wall for balance. Bend one knee, keeping your foot behind you, and grab your ankle with your hand. Pull your heel towards your buttocks until you feel a stretch in the front of your leg. Hold for 30 seconds and switch legs.\n4. **Hip Flexor Stretch**: Kneel on all fours. Bring one knee forward, keeping your foot flat on the ground, and stretch the front of your hip. Hold for 30 seconds and switch legs.\n\n**Additional Stretches for Tennis Specific Muscles (5-10 minutes)**\n\n1. **Forearm Stretch**: Hold your arm straight out in front of you with your palm facing down. Use your other hand to pull your hand back and up, stretching your forearm. Hold for 30 seconds and switch arms.\n2. **Rotator Cuff Stretch**: Hold your arm straight out to the side at shoulder height. Use your other hand to pull your hand across your body, stretching your shoulder and rotator cuff. Hold for 30 seconds and switch arms.\n3. **Glute Stretch**: Lie on your back with your knees bent and feet flat on the ground. Cross one foot over the other, and lift your hips off the ground, squeezing your glutes. Hold for 30 seconds and switch legs.\n\n**Post-Play Stretching Routine (10-15 minutes)**\n\nAfter your lesson, take the time to stretch your major muscle groups again, focusing on the same stretches as before. This will help reduce muscle soreness and improve recovery.\n\n**Tips**\n\n* Hold each stretch for 30 seconds to allow for maximum relaxation of the muscle.\n* Breathe deeply and naturally while stretching.\n* Don't bounce or force your way into a stretch.\n* Stretch within a comfortable range; if you feel pain, stop the stretch immediately.\n* Make stretching a habit by incorporating it into your daily routine, not just on Saturdays.\n\nRemember to listen to your body and adjust your stretching routine as needed. If you have any underlying injuries or concerns, consult with a medical professional or a certified tennis coach for personalized guidance.\nuser: I've been trying to improve my endurance and stamina for my Saturday tennis lessons. Do you have any advice on how to incorporate cardio exercises into my workout routine?\nassistant: Incorporating cardio exercises into your workout routine can significantly improve your endurance and stamina for tennis. Here are some tips to help you get started:\n\n**Why Cardio is Important for Tennis**\n\nTennis is a high-intensity sport that requires quick bursts of energy, agility, and endurance. A strong cardiovascular system helps you:\n\n* Recover faster between points and games\n* Maintain your energy levels throughout the match\n* Perform at a higher intensity for longer periods\n* Reduce your risk of injury\n\n**Types of Cardio Exercises for Tennis**\n\n1. **High-Intensity Interval Training (HIIT)**: Short bursts of high-intensity exercise followed by brief rest periods. Examples: sprints, burpees, jump squats, etc.\n2. **Aerobic Exercise**: Sustained periods of moderate-intensity exercise. Examples: jogging, cycling, swimming, etc.\n3. **Plyometric Exercises**: Jumping and explosive movements that improve power and speed. Examples: box jumps, depth jumps, etc.\n4. **Agility Drills**: Exercises that improve quickness, agility, and reaction time. Examples: ladder drills, cone drills, etc.\n\n**Incorporating Cardio into Your Workout Routine**\n\n1. **Start with 2-3 times a week**: Begin with 2-3 cardio sessions per week, with at least one day of rest in between.\n2. **Warm up and cool down**: Always warm up with 5-10 minutes of light cardio and stretching before your workout, and cool down with 5-10 minutes of stretching after your workout.\n3. **Mix it up**: Vary your cardio exercises to avoid plateaus and prevent overuse injuries.\n4. **Incorporate tennis-specific drills**: Incorporate tennis-specific drills, such as simulated tennis movements, into your cardio workouts to improve your on-court performance.\n5. **Monitor your progress**: Track your heart rate, distance, or time to monitor your progress and adjust your workouts accordingly.\n\n**Sample Cardio Workout Routine**\n\nMonday (HIIT):\n\n* Warm-up: 5 minutes of jogging\n* 30 seconds of burpees, followed by 30 seconds of rest\n* 30 seconds of jump squats, followed by 30 seconds of rest\n* Repeat for 20-30 minutes\n* Cool-down: 5 minutes of stretching\n\nWednesday (Aerobic):\n\n* Warm-up: 5 minutes of jogging\n* 20-30 minutes of steady-state jogging or cycling\n* Cool-down: 5 minutes of stretching\n\nFriday (Plyometric and Agility):\n\n* Warm-up: 5 minutes of jogging\n* 3 sets of 10 reps of box jumps, followed by 30 seconds of rest\n* 3 sets of 10 reps of ladder drills, followed by 30 seconds of rest\n* Cool-down: 5 minutes of stretching\n\nRemember to listen to your body and adjust your workout routine as needed. It's also essential to incorporate strength training and flexibility exercises to complement your cardio workouts. Good luck, and have fun!\nuser: I've been doing some running and cycling to improve my endurance, but I haven't really incorporated any plyometric exercises into my routine. Can you give me some examples of plyometric exercises that would be beneficial for tennis and how to incorporate them into my workout routine?\nassistant: Plyometric exercises are an excellent way to improve your power, speed, and agility, which are essential for tennis. Here are some examples of plyometric exercises that can benefit your tennis game and how to incorporate them into your workout routine:\n\n**Plyometric Exercises for Tennis**\n\n1. **Box Jumps**: Jumping onto a box or bench, then stepping down and repeating. This exercise improves explosive power and calf strength.\n\t* Start with a lower box (12-18 inches) and gradually increase the height as you build strength and confidence.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n2. **Depth Jumps**: Jumping from a box or bench, then immediately jumping up as high as possible. This exercise improves reactive strength and explosiveness.\n\t* Start with a lower box (12-18 inches) and gradually increase the height as you build strength and confidence.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n3. **Lateral Bounds**: Jumping sideways, focusing on quick turnaround and explosive power. This exercise improves agility and speed.\n\t* Stand with your feet shoulder-width apart, then jump sideways to one side and immediately jump back to the other side.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n4. **Tuck Jumps**: Jumping up, tucking your knees up to your chest, and landing softly on the balls of your feet. This exercise improves explosive power and agility.\n\t* Stand with your feet shoulder-width apart, then jump up and tuck your knees up to your chest.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n5. **Medicine Ball Throws**: Throwing a medicine ball with explosive power, focusing on core strength and rotation. This exercise improves power and speed.\n\t* Hold a medicine ball with both hands, then twist your torso and throw the ball with explosive power.\n\t* Aim for 3 sets of 10-15 reps, with 30-60 seconds of rest between sets.\n\n**Incorporating Plyometric Exercises into Your Workout Routine**\n\n1. **Warm-up**: Always warm up with 5-10 minutes of light cardio and dynamic stretching before starting your plyometric workout.\n2. **Start with lower intensity**: Begin with lower-intensity plyometric exercises and gradually increase the intensity as you build strength and confidence.\n3. **Incorporate plyometrics 2-3 times a week**: Aim to do plyometric exercises 2-3 times a week, with at least one day of rest in between.\n4. **Combine with strength training**: Combine plyometric exercises with strength training exercises, such as squats and lunges, to improve overall power and strength.\n5. **Focus on proper technique**: Focus on proper technique and explosive power, rather than just going through the motions.\n\nHere's an example workout routine that incorporates plyometric exercises:\n\nMonday (Plyometric and Strength Training):\n\n* Warm-up: 5 minutes of jogging and dynamic stretching\n* Box jumps: 3 sets of 10 reps\n* Squats: 3 sets of 10 reps\n* Lateral bounds: 3 sets of 10 reps\n* Cool-down: 5 minutes of stretching\n\nWednesday (Cardio and Agility):\n\n* Warm-up: 5 minutes of jogging and dynamic stretching\n* 20-30 minutes of steady-state jogging or cycling\n* Agility drills: 3 sets of 10 reps\n* Cool-down: 5 minutes of stretching\n\nFriday (Plyometric and Strength Training):\n\n* Warm-up: 5 minutes of jogging and dynamic stretching\n* Depth jumps: 3 sets of 10 reps\n* Lunges: \nuser: Actually, I was thinking of trying out some new strategies on the court, such as coming to the net more often and using my volleys to take advantage of my opponent's weaker returns. Do you have any tips on how to effectively execute this strategy?\nassistant: Coming to the net and using your volleys to take advantage of your opponent's weaker returns is a great strategy, especially if you have a strong volley. Here are some tips to help you execute this strategy effectively:\n\n1. **Read your opponent's returns**: Pay attention to your opponent's return of serve and identify patterns. If they tend to return serves short or with less power, it may be an opportunity to come to the net and take advantage of the weaker return.\n2. **Positioning is key**: Make sure you're positioning yourself at the right angle to cut off the return and get into position to volley. This may mean taking a few steps forward and to the side to get into the optimal position.\n3. **Use your feet**: Don't just stand still and wait for the return. Use your feet to get into position and to adjust to the return. Take small steps forward and backward to get into position and to react to the return.\n4. **Watch the ball**: Keep your eyes on the ball and focus on making contact with the volley. Don't get distracted by your opponent's movements or the crowd.\n5. **Use your racket face**: Make sure you're using the correct racket face to volley the ball. A slightly closed racket face can help you generate more topspin and control on your volleys.\n6. **Be prepared to react**: Be prepared to react to your opponent's shot and adjust your volley accordingly. If they hit a strong return, be prepared to hit a strong volley back.\n7. **Practice, practice, practice**: Practice your volleys and your approach shots to get comfortable with coming to the net and taking advantage of weaker returns.\n\nRemember, coming to the net and using your volleys effectively takes time and practice to develop. Start by practicing in drills and gradually incorporate it into your game play.\n\nAlso, don't forget to mix up your game and not rely too much on one strategy. Keep your opponent guessing and adapt to their game plan as well.\n\nHow do you feel about trying out these tips and incorporating them into your game?\n\n        Candidate notes:\n        [0] type=CONTEXT title=Tennis serve improvement guidance for new racket adaptation summary=The user asked for tips to improve tennis serves after receiving a new tennis racket. Reusable guidance included continental grip, stance, toss consistency, contact/follow-through, body rotation, serve variation, filming technique, and adapting to the racket's sweet spot, power level, and strings. scope=Applies to the user's tennis serve practice and adaptation to the new tennis racket discussed in the 2023-03-17 session. entities=entity:<0>,entity:<1>,entity:<2> keywords=tennis serve,new tennis racket,continental grip,sweet spot,serve variation,filming technique tags=tennis,serve_practice,racket_adaptation evidence=I'm looking for some tips on how to improve my tennis serves. I just received my new tennis racket today\n[1] type=PLAN title=Stretching routine principles after Saturday tennis lessons summary=For post-lesson tennis flexibility and injury prevention, the discussed routine emphasized warm-up/pre-play mobility, lower-body stretches, tennis-specific forearm/rotator cuff/glute stretches, and a 10–15 minute post-play stretching routine. Key execution rules were to hold stretches for 30 seconds, breathe naturally, avoid bouncing or forcing, stay within a comfortable range, and adjust for inju...[truncated 30 chars] scope=Applies to the user's stretching integration around Saturday tennis lessons and tennis routine. entities=entity:<3>,entity:<4>,entity:<5>,entity:<0> keywords=Saturday tennis lessons,stretching,flexibility,injury prevention,rotator cuff,post-play stretching tags=tennis,stretching,injury_prevention evidence=I've been trying to incorporate more stretching into my tennis routine, especially after my lessons on Saturdays.\n[2] type=PLAN title=Cardio integration for Saturday tennis endurance summary=To improve endurance and stamina for Saturday tennis lessons, the discussed cardio approach combined HIIT, aerobic work such as jogging/cycling, plyometrics, agility drills, tennis-specific movements, progress monitoring, and 2–3 weekly cardio sessions with rest days. The sample week used Monday HIIT, Wednesday steady-state jogging or cycling, and Friday plyometric/agility work. scope=Applies to the user's workout routine for improving tennis endurance and stamina. entities=entity:<6>,entity:<7>,entity:<8>,entity:<9>,entity:<10>,entity:<0> keywords=cardio,Saturday tennis lessons,endurance,stamina,HIIT,jogging,cycling,agility drills tags=tennis,cardio,endurance_training evidence=I've been trying to improve my endurance and stamina for my Saturday tennis lessons.\n[3] type=PLAN title=Plyometric progression for tennis power and agility summary=For tennis-specific power, speed, and agility, the discussed plyometric options were box jumps, depth jumps, lateral bounds, tuck jumps, and medicine ball throws, generally using 3 sets of 10–15 reps with 30–60 seconds rest. Integration guidance was to warm up with light cardio and dynamic stretching, start lower-intensity, do plyometrics 2–3 times weekly with rest days, combine with strength exer...[truncated 78 chars] scope=Applies to adding plyometric exercises to the user's existing running/cycling endurance routine for tennis. entities=entity:<11>,entity:<12>,entity:<13>,entity:<9>,entity:<10>,entity:<0> keywords=plyometric exercises,box jumps,depth jumps,lateral bounds,tuck jumps,medicine ball throws,tennis agility tags=tennis,plyometrics,power_training evidence=I haven't really incorporated any plyometric exercises into my routine.\n[4] type=PLAN title=Net-rushing and volley strategy against weaker returns summary=The user considered trying a tennis strategy of coming to the net more often and using volleys against weaker returns. Reusable execution guidance was to read opponent return patterns, position at the right angle, use footwork to adjust, watch the ball, use an appropriate racket face, prepare to react to stronger shots, practice volleys and approach shots in drills, and avoid over-relying on one s...[truncated 8 chars] scope=Applies to the user's tennis strategy practice for coming to the net and using volleys against weaker returns. entities=entity:<2>,entity:<0> keywords=tennis strategy,coming to the net,volleys,weaker returns,approach shots,footwork tags=tennis,strategy,volleys evidence=trying out some new strategies on the court, such as coming to the net more often and using my volleys\n\n        Existing active notes:\n        id=hot-path-b32e8cf7a7e1-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Fitness training approach for tennis, running, and cycling summary=The user is building a cross-training fitness routine around tennis, 30-minute runs, solo cycling, and possible local group cycling, with goals of improving reaction time, hand-eye coordination, cardiovascular endurance, and overall performance. Reusable guidance discussed includes tennis reaction/coordination drills, HIIT and endurance runs, beginner-friendly/no-drop group rides, and safety pract...[truncated 39 chars] scope=Applies to the user's ongoing fitness routine and sport-specific training context from the 2023-03-10 session. keywords=fitness routine,tennis,running,cycling,reaction time,hand-eye coordination,cardiovascular endurance,group cycling,intersections,roundabouts tags=fitness,cross_training,tennis,running,cycling useCount=0\nid=hot-path-b32e8cf7a7e1-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Strength training plan principles for core and legs summary=For strength training to support tennis and running, the user planned to start with lighter weights, progress gradually, prioritize proper form, use compound exercises such as squats and deadlifts, allow recovery between sessions, and balance strength work with running, tennis, stretching, and yoga. scope=Applies to the user's planned strength-training integration for tennis and running performance. keywords=strength training,core,legs,squats,deadlifts,proper form,recovery time,progressive overload,stretching,yoga tags=fitness,strength_training,injury_prevention,plan useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_7a0daae1",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:d29e1344c522bb8056c8f12b91b6037c"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"New distinct context about tennis serve technique and adapting to a new racket; not covered by existing cross-training or strength notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-b32e8cf7a7e1-note-3\"}],\"patch\":null,\"reason\":\"Distinct reusable stretching routine around Saturday tennis lessons; only broadly related to the existing strength note's mention of stretching/yoga.\",\"target_note_id\":null},{\"action\":\"supersede\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Candidate provides a more specific current plan for the same tennis/running/cycling endurance and cardio-training context already captured in the existing cross-training note.\",\"target_note_id\":\"hot-path-b32e8cf7a7e1-note-2\"},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-b32e8cf7a7e1-note-2\"},{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-b32e8cf7a7e1-note-3\"}],\"patch\":null,\"reason\":\"Adds distinct reusable plyometric progression details for tennis power/agility beyond the broader endurance/cross-training and strength-training notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":4,\"links_to_create\":[],\"patch\":null,\"reason\":\"New distinct tennis tactics context about net-rushing and volleys against weaker returns; not covered by existing fitness-oriented notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 8065,
+                "completionTokens": 392,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
