@@ -79,6 +79,11 @@ internal class LlmMemoryQuestionAnswerer(
                     reasoning = answer.reasoning,
                     sufficiency = answer.sufficiency,
                 )
+                validateDistinctCategoryAnswerMembers(
+                    question = question,
+                    answer = answer.answer,
+                    sufficiency = answer.sufficiency,
+                )
             },
         )
 
@@ -190,6 +195,31 @@ private fun validateAnsweredReasoningPreservesNamedQuestionTargets(
     )
 }
 
+private fun validateDistinctCategoryAnswerMembers(
+    question: String,
+    answer: String,
+    sufficiency: String,
+) {
+    if (sufficiency != "answered") return
+    if (!question.asksForDistinctCategoryMembers()) return
+
+    val members = answer.answerListMembers()
+    if (members.size < 2) return
+
+    val duplicate = members
+        .groupingBy { it }
+        .eachCount()
+        .entries
+        .firstOrNull { it.value > 1 }
+        ?: return
+
+    error(
+        "Answered memory question repeats category member '${duplicate.key}' in a distinct category list/order answer. " +
+            "If the user asks for a category list or order, list each distinct category member once unless the question " +
+            "explicitly asks for every occurrence, event, visit, trip, instance, or time."
+    )
+}
+
 private fun validateAnswerMatchesExplicitReasoningConclusion(
     answer: String,
     reasoning: String,
@@ -243,6 +273,23 @@ private fun String.normalizedAnswerForConsistency(): String =
 private fun String.asksForElapsedAgo(): Boolean =
     elapsedAgoQuestionRegex.containsMatchIn(this)
 
+private fun String.asksForDistinctCategoryMembers(): Boolean =
+    distinctCategoryQuestionRegex.containsMatchIn(this) &&
+        !explicitOccurrenceQuestionRegex.containsMatchIn(this)
+
+private fun String.answerListMembers(): List<String> =
+    replace("→", ",")
+        .replace(Regex("""\s+->\s+"""), ",")
+        .split(Regex("""\s*(?:,|;|\n|\bthen\b|\bfinally\b|\bnext\b)\s*""", RegexOption.IGNORE_CASE))
+        .map { item ->
+            item
+                .replace(Regex("""^\s*(?:first|second|third|fourth|fifth|\d+)\s*[:.)-]?\s*""", RegexOption.IGNORE_CASE), "")
+                .trim()
+                .trimEnd('.', ',', ';', ':')
+                .normalizedAnswerForConsistency()
+        }
+        .filter { it.isNotBlank() }
+
 private fun String.containsLeadTimeCue(): Boolean =
     leadTimeCueRegex.containsMatchIn(this)
 
@@ -266,6 +313,10 @@ private fun String.namedQuestionTargets(): List<String> =
         .toList()
 
 private val elapsedAgoQuestionRegex = Regex("""\b(?:how many|how long|when)\b[\s\S]*\bago\b""", RegexOption.IGNORE_CASE)
+private val distinctCategoryQuestionRegex =
+    Regex("""\b(?:what|which)\b[\s\S]{0,80}\b(?:order|list)\s+of\b|\b(?:order|list)\s+of\b""", RegexOption.IGNORE_CASE)
+private val explicitOccurrenceQuestionRegex =
+    Regex("""\b(?:each|every|all)\s+(?:occurrences?|events?|visits?|trips?|flights?|instances?|times?|cases?)\b|\bevery\s+time\b""", RegexOption.IGNORE_CASE)
 private val leadTimeCueRegex =
     Regex("""\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\s+(?:day|days|week|weeks|month|months|year|years)\s+(?:in advance|ahead of|prior to|before)\b""", RegexOption.IGNORE_CASE)
 private val leadTimeDerivationCueRegex =
