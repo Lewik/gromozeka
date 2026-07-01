@@ -659,12 +659,32 @@ class LongMemEvalMemorySmokeTest {
     }
 
     private fun LongMemEvalEntry.renderGoldEvidenceForJudge(): String =
-        haystackSessions
-            .mapIndexed { index, session ->
-                renderSession(session, haystackDates.getOrNull(index))
+        goldEvidenceSessionsForJudge()
+            .map { session ->
+                renderSession(session.turns, haystackDates.getOrNull(session.haystackIndex))
             }
             .joinToString("\n\n---\n\n")
             .truncateForJudgeEvidence(MAX_JUDGE_GOLD_EVIDENCE_CHARS)
+
+    private fun LongMemEvalEntry.goldEvidenceSessionsForJudge(): List<LongMemEvalGoldEvidenceSession> {
+        val answerMarkedSessions = haystackSessions.mapIndexedNotNull { index, session ->
+            val answerTurns = session.filter { it.hasAnswer }
+            if (answerTurns.isEmpty()) null else LongMemEvalGoldEvidenceSession(index, answerTurns)
+        }
+        if (answerMarkedSessions.isNotEmpty()) return answerMarkedSessions
+
+        val byHaystackSessionId = haystackSessionIds.withIndex().associate { it.value to it.index }
+        val sessionsFromAnswerIds = answerSessionIds.mapNotNull { answerSessionId ->
+            byHaystackSessionId[answerSessionId]?.let { index ->
+                LongMemEvalGoldEvidenceSession(index, haystackSessions[index])
+            }
+        }
+        if (sessionsFromAnswerIds.isNotEmpty()) return sessionsFromAnswerIds.distinctBy { it.haystackIndex }
+
+        return haystackSessions.mapIndexed { index, session ->
+            LongMemEvalGoldEvidenceSession(index, session)
+        }
+    }
 
     private fun renderSession(
         session: List<LongMemEvalTurn>,
@@ -692,14 +712,17 @@ class LongMemEvalMemorySmokeTest {
         entry: LongMemEvalEntry,
         rememberedSessions: List<LongMemEvalRememberedSession>,
     ): List<String> {
+        val fromAnswerMarkedSessions = rememberedSessions
+            .filter { it.hasAnswer }
+            .map { it.sourceId }
+            .distinct()
+        if (fromAnswerMarkedSessions.isNotEmpty()) return fromAnswerMarkedSessions
+
         val byHaystackSessionId = rememberedSessions.associateBy { it.haystackSessionId }
         val fromAnswerSessionIds = entry.answerSessionIds
             .mapNotNull { answerSessionId -> byHaystackSessionId[answerSessionId]?.sourceId }
         if (fromAnswerSessionIds.isNotEmpty()) return fromAnswerSessionIds.distinct()
-        return rememberedSessions
-            .filter { it.hasAnswer }
-            .map { it.sourceId }
-            .distinct()
+        return emptyList()
     }
 
     private fun namespaceFor(entry: LongMemEvalEntry): MemoryNamespace =
@@ -1406,6 +1429,11 @@ private data class LongMemEvalRememberedSession(
     val chars: Int,
     val result: MemoryToolJsonResult,
     val writeTrace: MemoryWriteTraceEvent?,
+)
+
+private data class LongMemEvalGoldEvidenceSession(
+    val haystackIndex: Int,
+    val turns: List<LongMemEvalTurn>,
 )
 
 private data class MemoryToolJsonResult(
