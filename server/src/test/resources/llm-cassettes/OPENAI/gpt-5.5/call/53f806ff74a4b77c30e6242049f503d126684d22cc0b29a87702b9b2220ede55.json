@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "53f806ff74a4b77c30e6242049f503d126684d22cc0b29a87702b9b2220ede55",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_7f6b06db\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/04/20 (Thu) 22:38\nTranscript:\nuser: I'm looking for some recommendations on camping gear. I recently got back from a solo camping trip to Yosemite and realized I need to upgrade some of my equipment. By the way, I just got back from a road trip with friends to Big Sur and Monterey today, and it was amazing!\nassistant: Welcome back! It sounds like you've had an amazing time exploring California's beautiful national parks and coastlines! Congratulations on taking the initiative to upgrade your camping gear, and I'd be happy to help you with some recommendations.\n\nSince you've just returned from a solo trip to Yosemite, you likely have a good idea of what worked and what didn't for you. What specific areas of your gear are you looking to upgrade? Are you looking for:\n\n1. A new tent that's more spacious or waterproof?\n2. A better sleeping bag or pad for a more comfortable night's sleep?\n3. A more efficient camping stove or cooking gear?\n4. Improved lighting or headlamp options?\n5. A more comfortable backpack or storage solutions?\n6. Water treatment or filtration systems?\n7. Something else entirely?\n\nSharing your priorities will help me provide more targeted recommendations.\n\nAlso, feel free to share more about your Big Sur and Monterey trip! What were some of the highlights or surprises from your adventure?\nuser: I'm actually looking to upgrade my backpack, it was a bit uncomfortable.\nassistant: Upgrading your backpack can make a huge difference in your overall camping experience. A comfortable backpack can make hiking and carrying your gear a breeze, while an uncomfortable one can be a real pain (literally!).\n\nHere are some factors to consider when shopping for a new backpack:\n\n1. **Fit**: Look for a backpack with a torso length and hip belt that fit you well. A good fit will help distribute the weight of your gear more evenly and reduce discomfort.\n2. **Capacity**: Consider the size of your backpack based on the length of your trips and the type of gear you need to carry. For solo trips, a 40-50L backpack is a good starting point.\n3. **Comfort features**: Look for padded shoulder straps, a padded backpanel, and a hip belt with adequate padding. Some backpacks also feature ventilation systems to help keep you cool.\n4. **Suspension system**: A good suspension system can help transfer the weight of your gear to your hips, making it more comfortable to carry. Look for backpacks with a sturdy frame and a comfortable hip belt.\n5. **Material and durability**: Consider the durability and water resistance of the backpack's material. Nylon or polyester fabrics with a water-resistant coating are good options.\n6. **Features and organization**: Think about the features you need, such as pockets, compartments, and attachment points. Do you want a backpack with a built-in rain cover or a hydration sleeve?\n\nBased on these factors, here are some backpack recommendations:\n\n1. **Osprey Atmos 50L**: A popular choice among backpackers, the Atmos offers a comfortable fit, excellent ventilation, and a 50L capacity.\n2. **Arc'teryx Beta AR 35L**: A more premium option, the Beta AR features a comfortable fit, a durable design, and a 35L capacity.\n3. **Salomon Quest 4D 30L**: A great value option, the Quest 4D offers a comfortable fit, a 30L capacity, and a feature-rich design.\n4. **REI Co-op Trail 40L**: A budget-friendly option from REI, the Trail 40L features a comfortable fit, a 40L capacity, and a durable design.\n\nI hope this helps you get started on your backpack search! Do you have any specific brands or features in mind?\nuser: I didn't think about the torso length and hip belt, thanks for the tips! I've been looking at some Osprey backpacks, do you think the Atmos 50L would be a good fit for a 3-day trip to the Eastern Sierra in July?\nassistant: Osprey is a fantastic brand, known for their comfortable and feature-rich backpacks.\n\nThe Atmos 50L is a great choice for a 3-day trip to the Eastern Sierra in July. Here's why:\n\n1. **Capacity**: 50L is a great size for a 3-day trip, allowing you to carry all your gear without feeling too bulky or too cramped.\n2. **Weight**: The Atmos 50L is a lightweight backpack, weighing in at around 2.9 pounds, which is perfect for a multi-day trip where you'll be carrying your gear for extended periods.\n3. **Ventilation**: The Atmos features Osprey's AirSpeed suspension system, which provides excellent ventilation and helps keep you cool in warm weather. This is especially important for a July trip to the Eastern Sierra, where temperatures can soar.\n4. **Comfort**: The Atmos has a comfortable fit, with padded shoulder straps and a hip belt that will help distribute the weight of your gear evenly.\n5. **Features**: The Atmos has plenty of features to keep you organized, including multiple pockets, compartments, and attachment points.\n\nHowever, keep in mind that the Eastern Sierra can be quite warm in July, so you may not need to carry as much gear as you would on a cooler trip. You might consider packing lighter and more strategically to make the most of the 50L capacity.\n\nTo ensure the Atmos 50L is the right fit for you, I recommend trying it on with a loaded pack to get a sense of how it feels. You can also consider visiting an outdoor gear store or trying on different backpacks at home to find the best fit.\n\nAdditionally, consider the following tips for packing for your Eastern Sierra trip:\n\n* Pack light and prioritize the essentials.\n* Choose gear that's suitable for warm weather, such as a lightweight sleeping bag and a breathable tent.\n* Don't forget to bring sunscreen, a hat, and plenty of water to stay hydrated.\n* Consider packing a water filter or treatment system, as water sources may be scarce in the Eastern Sierra.\n\nI hope this helps, and I'm sure you'll have an amazing time in the Eastern Sierra!\nuser: I was thinking of doing some day hikes in the Eastern Sierra, do you think I should bring a bear canister?\nassistant: The Eastern Sierra is a beautiful region for day hiking.\n\nRegarding bear canisters, it's always better to err on the side of caution when venturing into bear country. While you might not be planning to camp overnight, it's still important to take bear safety precautions, especially if you'll be hiking in areas with known bear activity.\n\nIn the Eastern Sierra, black bears are present, and they can be attracted to food and scented items. Even if you're only planning day hikes, it's possible to encounter bears, especially if you're hiking in areas with berry patches, fish streams, or near campsites.\n\nHere are some factors to consider when deciding whether to bring a bear canister:\n\n1. **Trail and area regulations**: Check with local park rangers, visitor centers, or online resources to see if bear canisters are required or recommended for the specific trails and areas you plan to hike in.\n2. **Food and scented items**: If you plan to carry food, trash, or scented items (e.g., toothpaste, soap, lotion) with you on your day hikes, a bear canister is a good idea. Bears can be attracted to these items, and a canister will help protect them from getting into your stuff.\n3. **Bear activity in the area**: If there have been recent bear sightings or encounters in the area you plan to hike in, it's a good idea to bring a bear canister as a precaution.\n\nIf you decide to bring a bear canister, make sure to follow proper usage and storage guidelines to ensure it's effective. You can also consider using bear-resistant containers or Ursacks, which are lighter and more compact alternatives.\n\nAdditionally, always practice bear safety while hiking:\n\n* Hike in groups whenever possible\n* Make noise while hiking to avoid surprising bears\n* Avoid hiking at dawn, dusk, or night when bears are most active\n* Keep a clean and tidy campsite, and store food and scented items properly\n* Be aware of your surroundings and watch for signs of bears, such as tracks, scat, or digging\n\nRemember, it's always better to be prepared and take bear safety precautions, even on day hikes. Enjoy your time in the Eastern Sierra, and stay safe!\nuser: I was just thinking about bear safety because we saw some signs of bears on our road trip to Big Sur and Monterey, and I'm always a bit more cautious after seeing that.\nassistant: That's completely understandable! Seeing signs of bears in the wild can be a thrilling experience, but it's also a great reminder to be mindful of our presence in their territory.\n\nIt's great that you're taking bear safety seriously, especially since you'll be venturing into the Eastern Sierra, which is known bear country. Being cautious and prepared is key to a safe and enjoyable outdoor experience.\n\nIf you don't mind me asking, what kind of signs of bears did you see on your road trip to Big Sur and Monterey? Were they tracks, scat, or something else?\n\nAnd how was your road trip, by the way? Big Sur and Monterey are both stunning destinations. Did you have a favorite stop or experience along the way?\nuser: We saw some bear tracks near Point Lobos State Natural Reserve, and it was a bit surprising because we didn't expect to see them that close to the coast. We also saw some signs of bears digging near the trailheads, but we didn't actually see any bears. \n\nOur road trip was amazing, though! We loved the scenic drives along Highway 1, and the views of the coastline were just stunning. We also spent some time in Monterey, visiting Cannery Row and the Monterey Bay Aquarium, which were both really interesting. And our Airbnb in Pacific Grove was super cute and cozy.\nassistant: Wow, that's so cool that you saw bear tracks near Point Lobos State Natural Reserve! Yes, it's not uncommon to see bears in coastal areas, especially in California where their habitats overlap. It's great that you were aware of your surroundings and took note of the signs.\n\nI'm glad to hear that you had an amazing road trip, though! The scenery along Highway 1 is truly breathtaking, and Cannery Row is always a fun stop. The Monterey Bay Aquarium is incredible, too - have you ever seen the sea otters or the jellyfish exhibit?\n\nPacific Grove is such a charming town, and I'm sure your Airbnb was a great base for exploring the area. Did you have a favorite meal or restaurant during your trip? California coastal cuisine is amazing, with all the fresh seafood and produce.\n\nBy the way, since you mentioned scenic drives, have you ever considered exploring the Eastern Sierra's scenic byways? There are some incredible routes that take you through stunning mountain landscapes, alpine lakes, and picturesque towns. If you're interested, I can recommend some routes and attractions for your next trip!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Backpack upgrade context after Yosemite solo camping trip summary=After a solo camping trip to Yosemite, the user identified backpack comfort as the gear problem to fix. The discussion framed the upgrade around fit, torso length, hip belt, suspension, ventilation, and 40–50L capacity for solo/multi-day trips rather than just brand choice. scope=User's camping-gear upgrade planning after a Yosemite solo camping trip entities=entity:<0>,entity:<1>,entity:<2> keywords=backpack upgrade,Yosemite,solo camping,torso length,hip belt,suspension,40-50L tags=camping_gear,backpack,fit,comfort evidence=I'm actually looking to upgrade my backpack, it was a bit uncomfortable.\n[1] type=CONTEXT title=Osprey Atmos 50L considered for Eastern Sierra 3-day July trip summary=The Osprey Atmos 50L was discussed as a plausible backpack for the user's 3-day Eastern Sierra trip in July because of 50L capacity, around 2.9 lb weight, AirSpeed ventilation, padded straps/hip belt, and organization features. The key caution was to try it loaded and pack strategically because July in the Eastern Sierra may allow a lighter warm-weather kit. scope=Evaluation of Osprey Atmos 50L for the user's planned Eastern Sierra 3-day July trip entities=entity:<0>,entity:<3>,entity:<4>,entity:<5> keywords=Osprey Atmos 50L,Eastern Sierra,3-day trip,July,AirSpeed,loaded pack tags=backpack,gear_selection,eastern_sierra,osprey evidence=do you think the Atmos 50L would be a good fit for a 3-day trip to the Eastern Sierra in July?\n[2] type=CONTEXT title=Bear-safety reasoning for Eastern Sierra day hikes summary=For the user's Eastern Sierra day hikes, bear-canister guidance was framed as risk- and regulation-dependent: check trail/area rules, consider whether food or scented items will be carried, and adjust for recent bear activity. Bear-resistant containers or Ursacks were mentioned as lighter alternatives, alongside general bear-safety practices such as making noise and avoiding dawn/dusk activity. scope=Bear-safety planning for the user's Eastern Sierra day hikes entities=entity:<0>,entity:<4>,entity:<6>,entity:<7> keywords=bear canister,Eastern Sierra,day hikes,bear safety,Ursack,scented items,regulations tags=bear_safety,day_hiking,eastern_sierra,gear evidence=I was thinking of doing some day hikes in the Eastern Sierra, do you think I should bring a bear canister?\n[3] type=CONTEXT title=Big Sur and Monterey road trip highlights and bear-sign context summary=On the user's road trip with friends to Big Sur and Monterey, notable highlights were scenic drives along Highway 1, coastline views, Cannery Row, Monterey Bay Aquarium, and a cute/cozy Airbnb in Pacific Grove. The trip also influenced the user's bear-safety caution because they saw bear tracks near Point Lobos State Natural Reserve and signs of digging near trailheads, though no bears were seen. scope=User's Big Sur and Monterey road trip experience and its influence on later hiking safety concerns entities=entity:<0>,entity:<8>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14>,entity:<15> keywords=Big Sur,Monterey,Point Lobos,bear tracks,Highway 1,Cannery Row,Monterey Bay Aquarium,Pacific Grove Airbnb tags=travel_experience,bear_safety,california_coast,road_trip evidence=We saw some bear tracks near Point Lobos State Natural Reserve\n\n        Existing active notes:\n        id=hot-path-b41db42fa310-note-6 type=CONTEXT status=ACTIVE maturity=FRESH title=Lightweight backpack options for user's 3-4 day trips summary=For the user's upcoming Eastern Sierra and other 3–4 day trips, lightweight backpack recommendations included Osprey Talon 33, Salomon Quest 4D 30L, REI Co-op Trail 25, ultralight backpacks from Zpacks, Arc'teryx Beta AR 35, Gregory Optic 30L, and earlier Osprey Exos 38L. The recommended selection criteria were generally under 3 lb, about 25–40L capacity, comfortable ventilation/straps, water resi...[truncated 100 chars] scope=User's lightweight backpack shopping context for 3-4 day hiking/backpacking trips keywords=lightweight backpack,3-4 day trips,Eastern Sierra,Osprey Talon 33,Osprey Exos 38L,Salomon Quest 4D 30L,REI Co-op Trail 25,Zpacks,Arc'teryx Beta AR 35,Gregory Optic 30L tags=gear_recommendations,backpack,shopping,backpacking useCount=0\nid=hot-path-b41db42fa310-note-7 type=CONTEXT status=ACTIVE maturity=FRESH title=One-person lightweight waterproof tent options for Eastern Sierra trip summary=For the user's Eastern Sierra trip, one-person lightweight waterproof tent recommendations included Big Agnes Fly Creek HV UL 1, MSR Elixir 1, REI Co-op Quarter Dome SL 1, Zpacks Duplex, Tarptent Moment, and NEMO Dagger 1P. Selection criteria emphasized under 2.5 lb, waterproof rainfly and floor, adequate floor area and peak height, easy setup, and ventilation to reduce condensation. scope=User's lightweight one-person tent shopping context for Eastern Sierra trip keywords=one-person tent,lightweight tent,waterproof tent,Eastern Sierra,Big Agnes Fly Creek HV UL 1,MSR Elixir 1,REI Co-op Quarter Dome SL 1,Zpacks Duplex,Tarptent Moment,NEMO Dagger 1P tags=gear_recommendations,tent,shopping,backpacking useCount=0\nid=hot-path-b41db42fa310-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Eastern Sierra day hikes similar to Dipsea Trail summary=The user sought Eastern Sierra day hikes similar to the Dipsea Trail at Muir Woods, emphasizing great views and some elevation gain. Suggested options were Morgan Pass Trail, Duck Pass Trail, Parker Lake Trail, Garnet Lake Trail, Piute Pass Trail, and Sherwin Lakes Trail, with distances around 4–7 miles and elevation gain roughly 1,000–2,000 feet. scope=User's Eastern Sierra day-hike planning based on prior Dipsea Trail experience keywords=Eastern Sierra,day hikes,Dipsea Trail,Muir Woods,Morgan Pass Trail,Duck Pass Trail,Parker Lake Trail,Garnet Lake Trail,Piute Pass Trail,Sherwin Lakes Trail,elevation gain tags=hiking,travel_planning,eastern_sierra useCount=0\nid=hot-path-b41db42fa310-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Eastern Sierra campground shortlist for summer trip summary=For the user's summer Eastern Sierra trip, previously discussed campground options included Convict Lake Campground near Mammoth Lakes, Pine City Campground in John Muir Wilderness, Twin Lakes Campground near Bridgeport, Big Springs Campground in Toiyabe National Forest, Silver Lake Campground near June Lake, Oh Ridge Campground in Inyo National Forest, and Gull Lake Campground near June Lake, wit...[truncated 66 chars] scope=User's Eastern Sierra summer trip planning context keywords=Eastern Sierra,campsites,Convict Lake Campground,Pine City Campground,Twin Lakes Campground,Big Springs Campground,Silver Lake Campground,Oh Ridge Campground,Gull Lake Campground tags=travel_planning,camping,eastern_sierra useCount=0\nid=hot-path-b41db42fa310-note-4 type=PLAN status=ACTIVE maturity=FRESH title=Recommended 3-4 day JMT section for user's solo backpacking level summary=For a solo hiker with some experience seeking a 3–4 day John Muir Trail section, the discussed recommendation was Agnew Meadows to Red's Meadow, about 43 miles, described as moderate and scenic with forest, meadows, lakes, mountain passes, and resupply/rest options at Red's Meadow Resort. The proposed itinerary was Day 1 Agnew Meadows to Deer Creek, Day 2 Deer Creek to Purple Lake, Day 3 Purple La...[truncated 61 chars] scope=User's possible later-year John Muir Trail section hike planning keywords=John Muir Trail,JMT,Agnew Meadows,Red's Meadow,Deer Creek,Purple Lake,Trinity Lakes,3-4 day section hike,solo hiker tags=backpacking,jmt,itinerary,travel_planning useCount=0\nid=hot-path-b41db42fa310-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=JMT Agnew Meadows to Red's Meadow planning constraints summary=The Agnew Meadows to Red's Meadow JMT section was discussed with planning constraints: obtain a wilderness permit through Inyo National Forest, bring or rent a required bear canister, prepare for mountain weather, carry map/compass/GPS because cell service is limited, and treat Red's Meadow Resort resupply as limited. scope=Planning considerations for the user's possible Agnew Meadows to Red's Meadow JMT section hike keywords=JMT,Agnew Meadows to Red's Meadow,wilderness permit,bear canister,Inyo National Forest,Red's Meadow Resort,resupply,navigation tags=backpacking,permits,gear_constraints,jmt useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_7f6b06db",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:337f560b7902d3e50a2e3cb9680ee89c"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_7f6b06db\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/04/20 (Thu) 22:38\nTranscript:\nuser: I'm looking for some recommendations on camping gear. I recently got back from a solo camping trip to Yosemite and realized I need to upgrade some of my equipment. By the way, I just got back from a road trip with friends to Big Sur and Monterey today, and it was amazing!\nassistant: Welcome back! It sounds like you've had an amazing time exploring California's beautiful national parks and coastlines! Congratulations on taking the initiative to upgrade your camping gear, and I'd be happy to help you with some recommendations.\n\nSince you've just returned from a solo trip to Yosemite, you likely have a good idea of what worked and what didn't for you. What specific areas of your gear are you looking to upgrade? Are you looking for:\n\n1. A new tent that's more spacious or waterproof?\n2. A better sleeping bag or pad for a more comfortable night's sleep?\n3. A more efficient camping stove or cooking gear?\n4. Improved lighting or headlamp options?\n5. A more comfortable backpack or storage solutions?\n6. Water treatment or filtration systems?\n7. Something else entirely?\n\nSharing your priorities will help me provide more targeted recommendations.\n\nAlso, feel free to share more about your Big Sur and Monterey trip! What were some of the highlights or surprises from your adventure?\nuser: I'm actually looking to upgrade my backpack, it was a bit uncomfortable.\nassistant: Upgrading your backpack can make a huge difference in your overall camping experience. A comfortable backpack can make hiking and carrying your gear a breeze, while an uncomfortable one can be a real pain (literally!).\n\nHere are some factors to consider when shopping for a new backpack:\n\n1. **Fit**: Look for a backpack with a torso length and hip belt that fit you well. A good fit will help distribute the weight of your gear more evenly and reduce discomfort.\n2. **Capacity**: Consider the size of your backpack based on the length of your trips and the type of gear you need to carry. For solo trips, a 40-50L backpack is a good starting point.\n3. **Comfort features**: Look for padded shoulder straps, a padded backpanel, and a hip belt with adequate padding. Some backpacks also feature ventilation systems to help keep you cool.\n4. **Suspension system**: A good suspension system can help transfer the weight of your gear to your hips, making it more comfortable to carry. Look for backpacks with a sturdy frame and a comfortable hip belt.\n5. **Material and durability**: Consider the durability and water resistance of the backpack's material. Nylon or polyester fabrics with a water-resistant coating are good options.\n6. **Features and organization**: Think about the features you need, such as pockets, compartments, and attachment points. Do you want a backpack with a built-in rain cover or a hydration sleeve?\n\nBased on these factors, here are some backpack recommendations:\n\n1. **Osprey Atmos 50L**: A popular choice among backpackers, the Atmos offers a comfortable fit, excellent ventilation, and a 50L capacity.\n2. **Arc'teryx Beta AR 35L**: A more premium option, the Beta AR features a comfortable fit, a durable design, and a 35L capacity.\n3. **Salomon Quest 4D 30L**: A great value option, the Quest 4D offers a comfortable fit, a 30L capacity, and a feature-rich design.\n4. **REI Co-op Trail 40L**: A budget-friendly option from REI, the Trail 40L features a comfortable fit, a 40L capacity, and a durable design.\n\nI hope this helps you get started on your backpack search! Do you have any specific brands or features in mind?\nuser: I didn't think about the torso length and hip belt, thanks for the tips! I've been looking at some Osprey backpacks, do you think the Atmos 50L would be a good fit for a 3-day trip to the Eastern Sierra in July?\nassistant: Osprey is a fantastic brand, known for their comfortable and feature-rich backpacks.\n\nThe Atmos 50L is a great choice for a 3-day trip to the Eastern Sierra in July. Here's why:\n\n1. **Capacity**: 50L is a great size for a 3-day trip, allowing you to carry all your gear without feeling too bulky or too cramped.\n2. **Weight**: The Atmos 50L is a lightweight backpack, weighing in at around 2.9 pounds, which is perfect for a multi-day trip where you'll be carrying your gear for extended periods.\n3. **Ventilation**: The Atmos features Osprey's AirSpeed suspension system, which provides excellent ventilation and helps keep you cool in warm weather. This is especially important for a July trip to the Eastern Sierra, where temperatures can soar.\n4. **Comfort**: The Atmos has a comfortable fit, with padded shoulder straps and a hip belt that will help distribute the weight of your gear evenly.\n5. **Features**: The Atmos has plenty of features to keep you organized, including multiple pockets, compartments, and attachment points.\n\nHowever, keep in mind that the Eastern Sierra can be quite warm in July, so you may not need to carry as much gear as you would on a cooler trip. You might consider packing lighter and more strategically to make the most of the 50L capacity.\n\nTo ensure the Atmos 50L is the right fit for you, I recommend trying it on with a loaded pack to get a sense of how it feels. You can also consider visiting an outdoor gear store or trying on different backpacks at home to find the best fit.\n\nAdditionally, consider the following tips for packing for your Eastern Sierra trip:\n\n* Pack light and prioritize the essentials.\n* Choose gear that's suitable for warm weather, such as a lightweight sleeping bag and a breathable tent.\n* Don't forget to bring sunscreen, a hat, and plenty of water to stay hydrated.\n* Consider packing a water filter or treatment system, as water sources may be scarce in the Eastern Sierra.\n\nI hope this helps, and I'm sure you'll have an amazing time in the Eastern Sierra!\nuser: I was thinking of doing some day hikes in the Eastern Sierra, do you think I should bring a bear canister?\nassistant: The Eastern Sierra is a beautiful region for day hiking.\n\nRegarding bear canisters, it's always better to err on the side of caution when venturing into bear country. While you might not be planning to camp overnight, it's still important to take bear safety precautions, especially if you'll be hiking in areas with known bear activity.\n\nIn the Eastern Sierra, black bears are present, and they can be attracted to food and scented items. Even if you're only planning day hikes, it's possible to encounter bears, especially if you're hiking in areas with berry patches, fish streams, or near campsites.\n\nHere are some factors to consider when deciding whether to bring a bear canister:\n\n1. **Trail and area regulations**: Check with local park rangers, visitor centers, or online resources to see if bear canisters are required or recommended for the specific trails and areas you plan to hike in.\n2. **Food and scented items**: If you plan to carry food, trash, or scented items (e.g., toothpaste, soap, lotion) with you on your day hikes, a bear canister is a good idea. Bears can be attracted to these items, and a canister will help protect them from getting into your stuff.\n3. **Bear activity in the area**: If there have been recent bear sightings or encounters in the area you plan to hike in, it's a good idea to bring a bear canister as a precaution.\n\nIf you decide to bring a bear canister, make sure to follow proper usage and storage guidelines to ensure it's effective. You can also consider using bear-resistant containers or Ursacks, which are lighter and more compact alternatives.\n\nAdditionally, always practice bear safety while hiking:\n\n* Hike in groups whenever possible\n* Make noise while hiking to avoid surprising bears\n* Avoid hiking at dawn, dusk, or night when bears are most active\n* Keep a clean and tidy campsite, and store food and scented items properly\n* Be aware of your surroundings and watch for signs of bears, such as tracks, scat, or digging\n\nRemember, it's always better to be prepared and take bear safety precautions, even on day hikes. Enjoy your time in the Eastern Sierra, and stay safe!\nuser: I was just thinking about bear safety because we saw some signs of bears on our road trip to Big Sur and Monterey, and I'm always a bit more cautious after seeing that.\nassistant: That's completely understandable! Seeing signs of bears in the wild can be a thrilling experience, but it's also a great reminder to be mindful of our presence in their territory.\n\nIt's great that you're taking bear safety seriously, especially since you'll be venturing into the Eastern Sierra, which is known bear country. Being cautious and prepared is key to a safe and enjoyable outdoor experience.\n\nIf you don't mind me asking, what kind of signs of bears did you see on your road trip to Big Sur and Monterey? Were they tracks, scat, or something else?\n\nAnd how was your road trip, by the way? Big Sur and Monterey are both stunning destinations. Did you have a favorite stop or experience along the way?\nuser: We saw some bear tracks near Point Lobos State Natural Reserve, and it was a bit surprising because we didn't expect to see them that close to the coast. We also saw some signs of bears digging near the trailheads, but we didn't actually see any bears. \n\nOur road trip was amazing, though! We loved the scenic drives along Highway 1, and the views of the coastline were just stunning. We also spent some time in Monterey, visiting Cannery Row and the Monterey Bay Aquarium, which were both really interesting. And our Airbnb in Pacific Grove was super cute and cozy.\nassistant: Wow, that's so cool that you saw bear tracks near Point Lobos State Natural Reserve! Yes, it's not uncommon to see bears in coastal areas, especially in California where their habitats overlap. It's great that you were aware of your surroundings and took note of the signs.\n\nI'm glad to hear that you had an amazing road trip, though! The scenery along Highway 1 is truly breathtaking, and Cannery Row is always a fun stop. The Monterey Bay Aquarium is incredible, too - have you ever seen the sea otters or the jellyfish exhibit?\n\nPacific Grove is such a charming town, and I'm sure your Airbnb was a great base for exploring the area. Did you have a favorite meal or restaurant during your trip? California coastal cuisine is amazing, with all the fresh seafood and produce.\n\nBy the way, since you mentioned scenic drives, have you ever considered exploring the Eastern Sierra's scenic byways? There are some incredible routes that take you through stunning mountain landscapes, alpine lakes, and picturesque towns. If you're interested, I can recommend some routes and attractions for your next trip!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Backpack upgrade context after Yosemite solo camping trip summary=After a solo camping trip to Yosemite, the user identified backpack comfort as the gear problem to fix. The discussion framed the upgrade around fit, torso length, hip belt, suspension, ventilation, and 40–50L capacity for solo/multi-day trips rather than just brand choice. scope=User's camping-gear upgrade planning after a Yosemite solo camping trip entities=entity:<0>,entity:<1>,entity:<2> keywords=backpack upgrade,Yosemite,solo camping,torso length,hip belt,suspension,40-50L tags=camping_gear,backpack,fit,comfort evidence=I'm actually looking to upgrade my backpack, it was a bit uncomfortable.\n[1] type=CONTEXT title=Osprey Atmos 50L considered for Eastern Sierra 3-day July trip summary=The Osprey Atmos 50L was discussed as a plausible backpack for the user's 3-day Eastern Sierra trip in July because of 50L capacity, around 2.9 lb weight, AirSpeed ventilation, padded straps/hip belt, and organization features. The key caution was to try it loaded and pack strategically because July in the Eastern Sierra may allow a lighter warm-weather kit. scope=Evaluation of Osprey Atmos 50L for the user's planned Eastern Sierra 3-day July trip entities=entity:<0>,entity:<3>,entity:<4>,entity:<5> keywords=Osprey Atmos 50L,Eastern Sierra,3-day trip,July,AirSpeed,loaded pack tags=backpack,gear_selection,eastern_sierra,osprey evidence=do you think the Atmos 50L would be a good fit for a 3-day trip to the Eastern Sierra in July?\n[2] type=CONTEXT title=Bear-safety reasoning for Eastern Sierra day hikes summary=For the user's Eastern Sierra day hikes, bear-canister guidance was framed as risk- and regulation-dependent: check trail/area rules, consider whether food or scented items will be carried, and adjust for recent bear activity. Bear-resistant containers or Ursacks were mentioned as lighter alternatives, alongside general bear-safety practices such as making noise and avoiding dawn/dusk activity. scope=Bear-safety planning for the user's Eastern Sierra day hikes entities=entity:<0>,entity:<4>,entity:<6>,entity:<7> keywords=bear canister,Eastern Sierra,day hikes,bear safety,Ursack,scented items,regulations tags=bear_safety,day_hiking,eastern_sierra,gear evidence=I was thinking of doing some day hikes in the Eastern Sierra, do you think I should bring a bear canister?\n[3] type=CONTEXT title=Big Sur and Monterey road trip highlights and bear-sign context summary=On the user's road trip with friends to Big Sur and Monterey, notable highlights were scenic drives along Highway 1, coastline views, Cannery Row, Monterey Bay Aquarium, and a cute/cozy Airbnb in Pacific Grove. The trip also influenced the user's bear-safety caution because they saw bear tracks near Point Lobos State Natural Reserve and signs of digging near trailheads, though no bears were seen. scope=User's Big Sur and Monterey road trip experience and its influence on later hiking safety concerns entities=entity:<0>,entity:<8>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14>,entity:<15> keywords=Big Sur,Monterey,Point Lobos,bear tracks,Highway 1,Cannery Row,Monterey Bay Aquarium,Pacific Grove Airbnb tags=travel_experience,bear_safety,california_coast,road_trip evidence=We saw some bear tracks near Point Lobos State Natural Reserve\n\n        Existing active notes:\n        id=hot-path-b41db42fa310-note-6 type=CONTEXT status=ACTIVE maturity=FRESH title=Lightweight backpack options for user's 3-4 day trips summary=For the user's upcoming Eastern Sierra and other 3–4 day trips, lightweight backpack recommendations included Osprey Talon 33, Salomon Quest 4D 30L, REI Co-op Trail 25, ultralight backpacks from Zpacks, Arc'teryx Beta AR 35, Gregory Optic 30L, and earlier Osprey Exos 38L. The recommended selection criteria were generally under 3 lb, about 25–40L capacity, comfortable ventilation/straps, water resi...[truncated 100 chars] scope=User's lightweight backpack shopping context for 3-4 day hiking/backpacking trips keywords=lightweight backpack,3-4 day trips,Eastern Sierra,Osprey Talon 33,Osprey Exos 38L,Salomon Quest 4D 30L,REI Co-op Trail 25,Zpacks,Arc'teryx Beta AR 35,Gregory Optic 30L tags=gear_recommendations,backpack,shopping,backpacking useCount=0\nid=hot-path-b41db42fa310-note-7 type=CONTEXT status=ACTIVE maturity=FRESH title=One-person lightweight waterproof tent options for Eastern Sierra trip summary=For the user's Eastern Sierra trip, one-person lightweight waterproof tent recommendations included Big Agnes Fly Creek HV UL 1, MSR Elixir 1, REI Co-op Quarter Dome SL 1, Zpacks Duplex, Tarptent Moment, and NEMO Dagger 1P. Selection criteria emphasized under 2.5 lb, waterproof rainfly and floor, adequate floor area and peak height, easy setup, and ventilation to reduce condensation. scope=User's lightweight one-person tent shopping context for Eastern Sierra trip keywords=one-person tent,lightweight tent,waterproof tent,Eastern Sierra,Big Agnes Fly Creek HV UL 1,MSR Elixir 1,REI Co-op Quarter Dome SL 1,Zpacks Duplex,Tarptent Moment,NEMO Dagger 1P tags=gear_recommendations,tent,shopping,backpacking useCount=0\nid=hot-path-b41db42fa310-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Eastern Sierra day hikes similar to Dipsea Trail summary=The user sought Eastern Sierra day hikes similar to the Dipsea Trail at Muir Woods, emphasizing great views and some elevation gain. Suggested options were Morgan Pass Trail, Duck Pass Trail, Parker Lake Trail, Garnet Lake Trail, Piute Pass Trail, and Sherwin Lakes Trail, with distances around 4–7 miles and elevation gain roughly 1,000–2,000 feet. scope=User's Eastern Sierra day-hike planning based on prior Dipsea Trail experience keywords=Eastern Sierra,day hikes,Dipsea Trail,Muir Woods,Morgan Pass Trail,Duck Pass Trail,Parker Lake Trail,Garnet Lake Trail,Piute Pass Trail,Sherwin Lakes Trail,elevation gain tags=hiking,travel_planning,eastern_sierra useCount=0\nid=hot-path-b41db42fa310-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Eastern Sierra campground shortlist for summer trip summary=For the user's summer Eastern Sierra trip, previously discussed campground options included Convict Lake Campground near Mammoth Lakes, Pine City Campground in John Muir Wilderness, Twin Lakes Campground near Bridgeport, Big Springs Campground in Toiyabe National Forest, Silver Lake Campground near June Lake, Oh Ridge Campground in Inyo National Forest, and Gull Lake Campground near June Lake, wit...[truncated 66 chars] scope=User's Eastern Sierra summer trip planning context keywords=Eastern Sierra,campsites,Convict Lake Campground,Pine City Campground,Twin Lakes Campground,Big Springs Campground,Silver Lake Campground,Oh Ridge Campground,Gull Lake Campground tags=travel_planning,camping,eastern_sierra useCount=0\nid=hot-path-b41db42fa310-note-4 type=PLAN status=ACTIVE maturity=FRESH title=Recommended 3-4 day JMT section for user's solo backpacking level summary=For a solo hiker with some experience seeking a 3–4 day John Muir Trail section, the discussed recommendation was Agnew Meadows to Red's Meadow, about 43 miles, described as moderate and scenic with forest, meadows, lakes, mountain passes, and resupply/rest options at Red's Meadow Resort. The proposed itinerary was Day 1 Agnew Meadows to Deer Creek, Day 2 Deer Creek to Purple Lake, Day 3 Purple La...[truncated 61 chars] scope=User's possible later-year John Muir Trail section hike planning keywords=John Muir Trail,JMT,Agnew Meadows,Red's Meadow,Deer Creek,Purple Lake,Trinity Lakes,3-4 day section hike,solo hiker tags=backpacking,jmt,itinerary,travel_planning useCount=0\nid=hot-path-b41db42fa310-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=JMT Agnew Meadows to Red's Meadow planning constraints summary=The Agnew Meadows to Red's Meadow JMT section was discussed with planning constraints: obtain a wilderness permit through Inyo National Forest, bring or rent a required bear canister, prepare for mountain weather, carry map/compass/GPS because cell service is limited, and treat Red's Meadow Resort resupply as limited. scope=Planning considerations for the user's possible Agnew Meadows to Red's Meadow JMT section hike keywords=JMT,Agnew Meadows to Red's Meadow,wilderness permit,bear canister,Inyo National Forest,Red's Meadow Resort,resupply,navigation tags=backpacking,permits,gear_constraints,jmt useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_7f6b06db",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:337f560b7902d3e50a2e3cb9680ee89c"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-b41db42fa310-note-6\"}],\"patch\":null,\"reason\":\"Captures the origin and fit-focused rationale for the backpack upgrade after Yosemite, distinct from the existing lightweight backpack options list.\",\"target_note_id\":null},{\"action\":\"update\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":{\"maturity\":\"stabilizing\",\"maturity_score\":0.45,\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"User's backpack shopping context for Eastern Sierra and other 3-4 day hiking/backpacking trips\"},\"status\":\"active\",\"summary\":\"For the user's upcoming Eastern Sierra and other 3–4 day trips, backpack planning includes both fit/comfort criteria and lightweight model options. Criteria emphasized proper torso length and hip belt fit, suspension, ventilation, padded straps, water resistance, organization, trying packs loaded, generally under about 3 lb, and roughly 25–50L capacity depending on whether the trip is day hiking or multi-day backpacking. Options discussed included Osprey Atmos 50L as a plausible 3-day Eastern Sierra July backpack if loaded fit is good and packing is strategic, plus Osprey Talon 33, Salomon Quest 4D 30L, REI Co-op Trail 25, ultralight backpacks from Zpacks, Arc'teryx Beta AR 35, Gregory Optic 30L, and earlier Osprey Exos 38L.\",\"title\":\"Backpack options and fit criteria for user's Eastern Sierra 3-4 day trips\"},\"reason\":\"Candidate refines the existing backpack-shopping note with the specific Osprey Atmos 50L evaluation and fit cautions, so updating avoids a duplicate backpack note.\",\"target_note_id\":\"hot-path-b41db42fa310-note-6\"},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-b41db42fa310-note-5\"}],\"patch\":null,\"reason\":\"Adds distinct bear-safety guidance for Eastern Sierra day hikes, whereas the existing bear-canister note is specific to a JMT overnight section and permits.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-b41db42fa310-note-3\"}],\"patch\":null,\"reason\":\"Captures a separate travel experience and the source of the user's later bear-safety caution, not covered by existing Eastern Sierra planning notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5284,
+                "completionTokens": 583,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
