@@ -164,6 +164,8 @@ class LongMemEvalMemorySmokeTest {
                     systemProperty(MEMORY_LLM_MAX_ATTEMPTS_PROPERTY, DIRECT_MEMORY_LLM_MAX_ATTEMPTS_PROPERTY, "3"),
                 "gromozeka.memory.llm.timeoutMs" to
                     systemProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, DIRECT_MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, "1200000"),
+                "gromozeka.ai.openai-subscription.http-response-timeout-ms" to
+                    systemProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, DIRECT_OPENAI_SUBSCRIPTION_HTTP_RESPONSE_TIMEOUT_MS_PROPERTY, "1200000"),
                 "gromozeka.memory.write.parallelism" to
                     System.getProperty(MEMORY_WRITE_PARALLELISM_PROPERTY, "2"),
                 "gromozeka.memory.routing.failFast" to "true",
@@ -1348,6 +1350,8 @@ class LongMemEvalMemorySmokeTest {
         const val MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.memoryLlmStageTimeoutMs"
         const val DIRECT_WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY = "gromozeka.ai.openai-subscription.websocket-response-timeout-ms"
         const val DIRECT_WEBSOCKET_TRANSPORT_TIMEOUT_MS_PROPERTY = "gromozeka.ai.openai-subscription.websocket-transport-timeout-ms"
+        const val DIRECT_OPENAI_SUBSCRIPTION_HTTP_RESPONSE_TIMEOUT_MS_PROPERTY =
+            "gromozeka.ai.openai-subscription.http-response-timeout-ms"
         const val DIRECT_MEMORY_LLM_MAX_ATTEMPTS_PROPERTY = "gromozeka.memory.llm.maxAttempts"
         const val DIRECT_MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY = "gromozeka.memory.llm.timeoutMs"
         const val MEMORY_WRITE_PARALLELISM_PROPERTY = "gromozeka.longmemeval.memoryWriteParallelism"

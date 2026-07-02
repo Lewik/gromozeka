@@ -108,7 +108,7 @@ class OpenAiSubscriptionResponsesClient(
         val requestJson = json.encodeToString(requestBody)
         val requestBuilder = HttpRequest.newBuilder()
             .uri(URI.create(responsesUrl))
-            .timeout(Duration.ofMillis(websocketResponseTimeoutMs.coerceAtLeast(1L)))
+            .timeout(Duration.ofMillis(httpResponseTimeoutMs.coerceAtLeast(1L)))
             .header("Authorization", "Bearer ${session.accessToken}")
             .header("OpenAI-Beta", "responses=experimental")
             .header("originator", "gromozeka")
