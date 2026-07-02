@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "5533c039c085e94019ae06e66b24c3844d3964225a24166eb9326cdc28ef6688",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_2f56ae70\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 14:45\nTranscript:\nuser: I'm looking for some new shows to watch. I've been using Netflix, Hulu, and Amazon Prime for the past 6 months, and I'm open to trying out other services or finding new content on these platforms. Can you recommend something similar to \"Stranger Things\" or \"The Handmaid's Tale\"?\nassistant: Great taste in shows! I'd be happy to recommend some similar shows to \"Stranger Things\" and \"The Handmaid's Tale\" across various streaming platforms. Here are a few suggestions:\n\n**Similar to \"Stranger Things\" (sci-fi, mystery, nostalgia)**\n\n1. **The Haunting of Hill House** (Netflix): A horror series that explores a family's supernatural experiences in a haunted house, with a similar atmospheric and suspenseful tone.\n2. **The OA** (Netflix): A thought-provoking, supernatural thriller that follows a young woman who returns after being missing for seven years, with a mysterious story to tell.\n3. **Dark** (Netflix): A German sci-fi thriller that explores the secrets and mysteries of a small town, with a similar blend of mystery, suspense, and supernatural elements.\n4. **The Twilight Zone** (CBS All Access): A reboot of the classic series, with a modern take on science fiction, horror, and the supernatural.\n5. **Russian Doll** (Netflix): A dark comedy-drama that follows a woman who keeps reliving the same night, as she tries to figure out what's happening to her.\n\n**Similar to \"The Handmaid's Tale\" (dystopian, social commentary, strong female leads)**\n\n1. **The 100** (Netflix): A post-apocalyptic drama that explores a group of teenagers fighting for survival in a corrupt society, with a strong focus on female characters.\n2. **Westworld** (HBO, Amazon Prime): A sci-fi western series set in a theme park where guests can interact with lifelike robots, exploring themes of consciousness, free will, and power.\n3. **The Man in the High Castle** (Amazon Prime): An alternate history series set in a world where the Nazis won World War II, with a strong focus on resistance and rebellion.\n4. **Colony** (Netflix): A family drama set in a dystopian near-future, where an occupied Los Angeles serves as the backdrop for a family's struggle to survive and resist.\n5. **Electric Dreams** (Amazon Prime): An anthology series based on Philip K. Dick's works, exploring themes of science fiction, technology, and humanity.\n\n**Other recommendations**\n\n1. **The Umbrella Academy** (Netflix): A superhero series based on the comic book series, following a dysfunctional family of superheroes with unique powers.\n2. **Killing Eve** (BBC America, Hulu): A spy thriller that follows a cat-and-mouse game between an MI6 agent and a psychopathic assassin.\n3. **The Witcher** (Netflix): A fantasy series based on the popular video game and book series, following a monster hunter with supernatural abilities.\n4. **The Expanse** (Amazon Prime): A science fiction series set in a future where humanity has colonized the solar system, exploring politics, war, and humanity.\n5. **Castle Rock** (Hulu): A psychological horror series set in the Stephen King multiverse, exploring themes of trauma, identity, and the supernatural.\n\nI hope you find some new shows to enjoy!\nuser: I'm intrigued by \"The Haunting of Hill House\" and \"Russian Doll\" as they seem to have a similar atmosphere to \"Stranger Things\". Can you tell me more about the tone and pacing of these shows? Are they more fast-paced like \"Stranger Things\" or slower-burning like \"The Handmaid's Tale\"?\nassistant: **The Haunting of Hill House**:\n\n* Tone: Atmospheric, suspenseful, and introspective, with a mix of psychological horror and family drama. The show explores themes of trauma, grief, and mental health.\n* Pacing: The show is more of a slow burn, building tension and suspense through its atmospheric setting, cinematography, and character development. The pacing is deliberate and measured, with a focus on character-driven storytelling.\n* Episode structure: Each episode focuses on a different character's perspective, jumping back and forth between the past and present. This non-linear storytelling adds to the show's complexity and mystery.\n* Horror elements: While there are some jump scares, the show's horror elements are more psychological and atmospheric, focusing on the emotional trauma and psychological distress of the characters.\n\n**Russian Doll**:\n\n* Tone: Darkly comedic, existential, and introspective, with a touch of absurdity and mystery. The show explores themes of mortality, identity, and personal growth.\n* Pacing: Russian Doll is a more fast-paced show than Hill House, with a quicker pace and a greater emphasis on plot twists and turns. However, it still maintains a thoughtful and introspective tone.\n* Episode structure: Each episode is relatively self-contained, with Natasha Lyonne's character, Nadia, reliving the same night over and over. The show's non-linear structure adds to its complexity and mystery.\n* Comedy elements: Russian Doll has a dark comedic tone, with a focus on Nadia's sarcastic wit and her absurd situation.\n\nBoth shows have a strong focus on character development and psychological exploration, which might appeal to fans of \"Stranger Things\" and its character-driven storytelling. However, they differ in terms of pacing and tone:\n\n* If you prefer a slower-burning, more atmospheric show with a focus on suspense and horror, \"The Haunting of Hill House\" might be the better fit.\n* If you prefer a faster-paced show with a darker comedic tone and a focus on existential themes, \"Russian Doll\" might be more to your liking.\n\nKeep in mind that both shows have received critical acclaim and have been praised for their unique storytelling, complex characters, and thought-provoking themes.\nuser: I'm also interested in \"The Marvelous Mrs. Maisel\" on Amazon Prime, which I've heard great things about. Can you tell me more about the show's tone, pacing, and style? Is it more of a comedy or a drama?\nassistant: \"The Marvelous Mrs. Maisel\" is a fantastic show! It's a period comedy-drama that has received widespread critical acclaim for its writing, acting, and production design. Here's what you can expect:\n\n**Tone:**\n\n* The show has a lighthearted, witty, and humorous tone, with a touch of satire and social commentary.\n* It's a feel-good show that will make you laugh, smile, and maybe even tear up a little.\n* The tone is generally upbeat, but it also tackles some serious themes like sexism, identity, and personal growth.\n\n**Pacing:**\n\n* The pacing is relatively fast, with quick-witted dialogue and a lot of activity happening on screen.\n* The show is well-edited, with a great balance between comedic moments and more emotional, dramatic scenes.\n* Each episode is around 45-60 minutes long, and the show has a strong episodic structure, with each episode featuring a clear story arc.\n\n**Style:**\n\n* The show is set in the late 1950s, and the production design is meticulous in its recreation of the era.\n* The costume design, makeup, and hair are all fantastic, and the show's color palette is vibrant and visually appealing.\n* The cinematography is stylish and dynamic, with a lot of camera movement and clever uses of lighting.\n\n**Comedy vs. Drama:**\n\n* \"The Marvelous Mrs. Maisel\" is primarily a comedy, but it has a lot of heart and tackles some serious themes, so it's not just a straight-up comedy.\n* The show's humor is character-driven, with a lot of witty banter and comedic situations arising from the characters' personalities and relationships.\n* However, the show also has a strong emotional core, and it's not afraid to explore more serious themes like the challenges faced by women in the 1950s, mental health, and personal growth.\n\n**Performance:**\n\n* Rachel Brosnahan shines as the titular character, Miriam \"Midge\" Maisel, a housewife-turned-comedian in the 1950s.\n* The supporting cast is also excellent, with standout performances from Alex Borstein, Tony Shalhoub, and Marin Hinkle.\n\nOverall, \"The Marvelous Mrs. Maisel\" is a delightful, charming, and engaging show that will appeal to fans of comedy, drama, and period pieces. If you enjoy shows with strong female leads, witty dialogue, and a mix of humor and heart, you'll likely love this show!\nuser: I've actually already watched \"The Marvelous Mrs. Maisel\" and loved it! The humor and characters were amazing. I've been keeping up with \"The Grand Tour\" on Amazon Prime as well, it's so entertaining and informative. Anyway, back to new shows... I'm still interested in \"The Haunting of Hill House\" and \"Russian Doll\". Can you recommend which one I should start with?\nassistant: Great taste in shows! I'm glad you enjoyed \"The Marvelous Mrs. Maisel\" and \"The Grand Tour\"!\n\nAs for \"The Haunting of Hill House\" and \"Russian Doll\", both shows are excellent, but they have different tones and styles. Here's a suggestion to help you decide which one to start with:\n\n**If you're in the mood for:**\n\n* A more atmospheric, slow-burning, and suspenseful show with a strong focus on character development and psychological horror, start with \"The Haunting of Hill House\".\n* A faster-paced, darkly comedic, and existential show with a unique premise and a strong lead performance, start with \"Russian Doll\".\n\n**If you prefer:**\n\n* A more traditional, episodic structure with a focus on storytelling and character development, \"The Haunting of Hill House\" might be the better fit.\n* A more experimental, non-linear structure with a focus on themes and ideas, \"Russian Doll\" might be more appealing.\n\n**If you're concerned about:**\n\n* Commitment: Both shows have a similar number of episodes (10-8), but \"The Haunting of Hill House\" has a more traditional, self-contained story arc, while \"Russian Doll\" is more serialized and open-ended.\n* Tone: If you're in the mood for something more intense and suspenseful, \"The Haunting of Hill House\" might be the better choice. If you prefer something darker and more comedic, \"Russian Doll\" is the way to go.\n\nUltimately, both shows are worth watching, and you can't go wrong with either one. But if you're still unsure, I'd recommend starting with \"The Haunting of Hill House\" if you're in the mood for a more atmospheric, suspenseful show, and \"Russian Doll\" if you prefer something more fast-paced and darkly comedic.\nuser: I think I'll start with \"The Haunting of Hill House\". I've been in the mood for something suspenseful and atmospheric lately, and I'm intrigued by the show's slow-burning pace and focus on character development. Plus, I've heard great things about the show's writing and acting.\nassistant: \"The Haunting of Hill House\" is a masterclass in atmospheric storytelling, character development, and suspenseful pacing. The show's slow-burning approach will keep you on the edge of your seat, and the writing and acting are indeed phenomenal.\n\nHere are some tips to enhance your viewing experience:\n\n1. **Pay attention to the details**: The show is full of subtle clues, symbolism, and foreshadowing. Keep an eye out for these details, as they'll add to the overall mystery and suspense.\n2. **Get to know the characters**: The Crain family is complex and multi-dimensional. Take the time to understand their motivations, fears, and relationships with each other.\n3. **Be patient**: The show's pace is deliberate and slow-burning. Don't expect jump scares or fast-paced action. Instead, let the atmosphere and tension build.\n4. **Watch with the lights off (if you dare!)**: The show's use of lighting, sound design, and cinematography creates a truly immersive experience. Watching in a darkened room will add to the suspense and atmosphere.\n5. **Binge wisely**: While you can binge the entire series, I recommend taking your time. The show is best consumed in 2-3 episode chunks, allowing you to process the story and characters.\n\nAs you watch, feel free to come back and discuss the show with me. I'd love to hear your thoughts, theories, and reactions!\n\nEnjoy your journey into the haunted world of Hill House!\nuser: I'm excited to start watching \"The Haunting of Hill House\". I'll definitely keep your tips in mind, especially about paying attention to details and being patient with the slow-burning pace. I'll probably watch 2-3 episodes at a time to process the story and characters.\nassistant: I'm thrilled to hear that! You're all set to embark on a hauntingly good journey. Remember, the show is a slow burn, but it's worth savoring every moment.\n\nAs you watch, keep an eye out for the following:\n\n* The use of mirrors and reflections: They play a significant role in the story and are often used to symbolize the characters' inner struggles.\n* The significance of the house itself: Hill House is a character in its own right, and its layout, design, and history are crucial to the story.\n* The relationships between the Crain family members: Their dynamics, past and present, are essential to understanding the story's unfolding.\n* The show's use of time: The non-linear storytelling can be confusing, but pay attention to the timeline and how it affects the characters' experiences.\n\nIf you have any questions or need clarification on anything, feel free to ask. I'll be here, eagerly waiting to discuss the show with you.\n\nIn the meantime, I have a question for you: What do you think it is about atmospheric, suspenseful shows like \"The Haunting of Hill House\" that draws you in? Is it the thrill of the unknown, the character development, or something else entirely?\n\nHappy watching, and I look forward to hearing your thoughts on the show!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Recommended Shows Similar to Stranger Things and The Handmaid's Tale summary=A past recommendation set for the user's interest in shows like \"Stranger Things\" and \"The Handmaid's Tale\" included: \"The Haunting of Hill House\" (Netflix; atmospheric supernatural family horror), \"The OA\" (Netflix; supernatural mystery), \"Dark\" (Netflix; German sci-fi mystery), \"The Twilight Zone\" (CBS All Access; sci-fi/horror anthology reboot), \"Russian Doll\" (Netflix; time-loop dark comedy), ...[truncated 399 chars] scope=Reusable TV recommendation list derived from the user's interest in Stranger Things and The Handmaid's Tale during the 2023-05-22 session entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7>,entity:<8>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14>,entity:<15>,entity:<16>,entity:<17> keywords=Stranger Things,The Handmaid's Tale,The Haunting of Hill House,Russian Doll,Netflix,Hulu,Amazon Prime,TV recommendations tags=tv_recommendations,entertainment,streaming evidence=Can you recommend something similar to \"Stranger Things\" or \"The Handmaid's Tale\"?\n[1] type=CONTEXT title=The Haunting of Hill House vs Russian Doll Recommendation Rationale summary=When the user compared \"The Haunting of Hill House\" and \"Russian Doll\", the reusable distinction was: choose \"The Haunting of Hill House\" for atmospheric, slow-burning suspense, psychological horror, family drama, character development, and a more traditional self-contained arc; choose \"Russian Doll\" for faster pacing, dark comedy, existential themes, a unique time-loop premise, and more experimen...[truncated 25 chars] scope=Reusable rationale for choosing between The Haunting of Hill House and Russian Doll as next-watch options entities=entity:<0>,entity:<18>,entity:<19> keywords=The Haunting of Hill House,Russian Doll,slow burn,atmospheric,dark comedy,pacing,tone tags=recommendation_rationale,tv_choice,entertainment evidence=both shows are excellent, but they have different tones and styles\n[2] type=DECISION title=Chosen Next Watch: The Haunting of Hill House summary=The user decided to start with \"The Haunting of Hill House\" because they were in the mood for something suspenseful and atmospheric, were intrigued by the slow-burning pace and character development, and had heard strong praise for the writing and acting. They planned to watch in 2-3 episode chunks to process the story and characters. scope=User's selected next show and viewing approach from the 2023-05-22 recommendation session entities=entity:<0>,entity:<18>,entity:<7> keywords=The Haunting of Hill House,selected next watch,suspenseful,atmospheric,slow-burning,2-3 episodes tags=viewing_decision,entertainment,watch_plan evidence=I think I'll start with \"The Haunting of Hill House\".\n[3] type=CONTEXT title=The Haunting of Hill House Viewing Tips and Attention Points summary=Viewing guidance given for \"The Haunting of Hill House\" emphasized patience with its deliberate slow burn; paying attention to subtle clues, symbolism, foreshadowing, mirrors/reflections, the house as a character, Crain family relationships, and the non-linear timeline; and watching in 2-3 episode chunks rather than rushing the full series. scope=Reusable viewing guidance for The Haunting of Hill House entities=entity:<18>,entity:<0> keywords=The Haunting of Hill House,viewing tips,mirrors,Crain family,non-linear timeline,slow burn tags=viewing_guidance,tv_discussion,entertainment evidence=The use of mirrors and reflections: They play a significant role in the story\n\n        Existing active notes:\n        id=hot-path-599991d8af65-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Recommended Shows Similar to The Handmaid's Tale summary=A past recommendation set for shows similar to \"The Handmaid's Tale\" included: \"The Power\" (Amazon Prime Video; women develop electrical power and society's power dynamics shift), \"Westworld\" (HBO; AI, free will, power), \"The 100\" (Netflix; post-apocalyptic moral dilemmas), \"Colony\" (Netflix; dystopian occupied Los Angeles), and \"The Man in the High Castle\" (Amazon Prime Video; alternate Axis-vict...[truncated 13 chars] scope=Reusable TV recommendation list derived from The Handmaid's Tale interest keywords=The Handmaid's Tale,The Power,Westworld,The 100,Colony,The Man in the High Castle,dystopian tags=entertainment,recommendation_list,tv_shows,dystopian useCount=0\nid=hot-path-599991d8af65-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=The Power Watch Rationale summary=\"The Power\" was discussed as a strong fit for the user because it adapts Naomi Alderman's acclaimed novel about women gaining electrical abilities, shifting gendered power dynamics, and exploring power, corruption, resistance, and revolution; it was positioned as timely, character-driven, and appealing to fans of \"The Handmaid's Tale\". scope=Reusable rationale for recommending The Power to the user keywords=The Power,Naomi Alderman,power dynamics,gender,The Handmaid's Tale,Amazon Prime Video tags=entertainment,watch_rationale,tv_shows,dystopian useCount=0\nid=hot-path-599991d8af65-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Recommended Shows Similar to For All Mankind summary=A past recommendation set based on \"For All Mankind\" included: \"Counterpart\" (Starz; parallel-universe spy thriller), \"Electric Dreams\" (Amazon Prime Video; Philip K. Dick anthology), \"Altered Carbon\" (Netflix; consciousness transfer and identity/power), \"Travelers\" (Netflix; future agents preventing catastrophe), and \"3%\" (Netflix; Brazilian dystopian selection-to-utopia premise). scope=Reusable TV recommendation list derived from For All Mankind interest keywords=For All Mankind,Counterpart,Electric Dreams,Altered Carbon,Travelers,3%,sci-fi tags=entertainment,recommendation_list,tv_shows,sci_fi useCount=0\nid=hot-path-599991d8af65-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=TV Recommendation Context: The Handmaid's Tale and For All Mankind summary=The user sought TV recommendations anchored on enjoying \"The Handmaid's Tale\" and having finished and liked \"For All Mankind\"; useful recommendation dimensions include dystopian power dynamics, thought-provoking sci-fi, complex characters, and intricate storytelling. scope=User entertainment recommendation context for future TV suggestions keywords=TV recommendations,The Handmaid's Tale,For All Mankind,dystopian,sci-fi,complex characters tags=entertainment,recommendations,tv_shows,sci_fi useCount=0\nid=hot-path-599991d8af65-note-8 type=DECISION status=ACTIVE maturity=FRESH title=Chosen Access Path: HBO Add-on via Amazon Prime Video summary=The user chose the Amazon Prime Video with HBO add-on route for HBO content because they already had Amazon Prime and preferred the convenience of adding HBO to that subscription. The add-on was described as using Prime Video for access and consolidated billing, with a separate HBO add-on fee and possible availability/content/simultaneous-streaming restrictions. scope=User's selected streaming access path for HBO/Westworld at the time of the session keywords=HBO add-on,Amazon Prime Video,Amazon Prime membership,Westworld,streamlined billing tags=streaming_access,decision,subscription useCount=0\nid=hot-path-599991d8af65-note-7 type=CONTEXT status=ACTIVE maturity=FRESH title=Westworld Access Options Considered summary=For watching \"Westworld\", the options discussed were HBO subscription, HBO Max, Amazon Prime Video with HBO add-on, or purchasing episodes/seasons through Amazon Prime Video, Google Play, iTunes, or Vudu. The important constraint was that \"Westworld\" is not available through base Amazon Prime Video alone; it requires an HBO add-on, separate HBO/HBO Max access, or purchase. scope=Reusable streaming-access decision context for Westworld keywords=Westworld,HBO add-on,Amazon Prime Video,HBO Max,Google Play,iTunes,Vudu tags=streaming_access,entertainment,subscription_options useCount=0\nid=hot-path-599991d8af65-note-6 type=CONTEXT status=ACTIVE maturity=FRESH title=Westworld Watch Rationale and Caveats summary=\"Westworld\" was positioned for the user as thought-provoking sci-fi with AI, consciousness, free will, morality, complex characters, nonlinear/multiple-timeline storytelling, and strong production values; caveats included mature content and needing focused attention. scope=Reusable rationale and caveats for recommending Westworld to the user keywords=Westworld,AI,consciousness,free will,nonlinear storytelling,mature content tags=entertainment,watch_rationale,tv_shows,sci_fi useCount=0\nid=hot-path-599991d8af65-note-9 type=CONTEXT status=ACTIVE maturity=FRESH title=Additional Sci-fi Recommendations Similar to Westworld and For All Mankind summary=A later sci-fi recommendation set for the user's \"Westworld\" and \"For All Mankind\" interests included: for \"Westworld\", \"Black Mirror\", \"Electric Dreams\", \"Altered Carbon\", \"Colony\", and \"Travelers\"; for \"For All Mankind\", \"The Expanse\", \"Farscape\", \"Killjoys\", \"Dark Matter\", and \"Counterpart\". The shared fit was thought-provoking sci-fi with complex characters and intricate storylines. scope=Reusable expanded sci-fi TV recommendation list for the user keywords=Westworld,For All Mankind,Black Mirror,The Expanse,Farscape,Killjoys,Dark Matter,Counterpart tags=entertainment,recommendation_list,tv_shows,sci_fi useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_2f56ae70",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:6854125a517a30a25bc898894a7b852c"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_2f56ae70\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 14:45\nTranscript:\nuser: I'm looking for some new shows to watch. I've been using Netflix, Hulu, and Amazon Prime for the past 6 months, and I'm open to trying out other services or finding new content on these platforms. Can you recommend something similar to \"Stranger Things\" or \"The Handmaid's Tale\"?\nassistant: Great taste in shows! I'd be happy to recommend some similar shows to \"Stranger Things\" and \"The Handmaid's Tale\" across various streaming platforms. Here are a few suggestions:\n\n**Similar to \"Stranger Things\" (sci-fi, mystery, nostalgia)**\n\n1. **The Haunting of Hill House** (Netflix): A horror series that explores a family's supernatural experiences in a haunted house, with a similar atmospheric and suspenseful tone.\n2. **The OA** (Netflix): A thought-provoking, supernatural thriller that follows a young woman who returns after being missing for seven years, with a mysterious story to tell.\n3. **Dark** (Netflix): A German sci-fi thriller that explores the secrets and mysteries of a small town, with a similar blend of mystery, suspense, and supernatural elements.\n4. **The Twilight Zone** (CBS All Access): A reboot of the classic series, with a modern take on science fiction, horror, and the supernatural.\n5. **Russian Doll** (Netflix): A dark comedy-drama that follows a woman who keeps reliving the same night, as she tries to figure out what's happening to her.\n\n**Similar to \"The Handmaid's Tale\" (dystopian, social commentary, strong female leads)**\n\n1. **The 100** (Netflix): A post-apocalyptic drama that explores a group of teenagers fighting for survival in a corrupt society, with a strong focus on female characters.\n2. **Westworld** (HBO, Amazon Prime): A sci-fi western series set in a theme park where guests can interact with lifelike robots, exploring themes of consciousness, free will, and power.\n3. **The Man in the High Castle** (Amazon Prime): An alternate history series set in a world where the Nazis won World War II, with a strong focus on resistance and rebellion.\n4. **Colony** (Netflix): A family drama set in a dystopian near-future, where an occupied Los Angeles serves as the backdrop for a family's struggle to survive and resist.\n5. **Electric Dreams** (Amazon Prime): An anthology series based on Philip K. Dick's works, exploring themes of science fiction, technology, and humanity.\n\n**Other recommendations**\n\n1. **The Umbrella Academy** (Netflix): A superhero series based on the comic book series, following a dysfunctional family of superheroes with unique powers.\n2. **Killing Eve** (BBC America, Hulu): A spy thriller that follows a cat-and-mouse game between an MI6 agent and a psychopathic assassin.\n3. **The Witcher** (Netflix): A fantasy series based on the popular video game and book series, following a monster hunter with supernatural abilities.\n4. **The Expanse** (Amazon Prime): A science fiction series set in a future where humanity has colonized the solar system, exploring politics, war, and humanity.\n5. **Castle Rock** (Hulu): A psychological horror series set in the Stephen King multiverse, exploring themes of trauma, identity, and the supernatural.\n\nI hope you find some new shows to enjoy!\nuser: I'm intrigued by \"The Haunting of Hill House\" and \"Russian Doll\" as they seem to have a similar atmosphere to \"Stranger Things\". Can you tell me more about the tone and pacing of these shows? Are they more fast-paced like \"Stranger Things\" or slower-burning like \"The Handmaid's Tale\"?\nassistant: **The Haunting of Hill House**:\n\n* Tone: Atmospheric, suspenseful, and introspective, with a mix of psychological horror and family drama. The show explores themes of trauma, grief, and mental health.\n* Pacing: The show is more of a slow burn, building tension and suspense through its atmospheric setting, cinematography, and character development. The pacing is deliberate and measured, with a focus on character-driven storytelling.\n* Episode structure: Each episode focuses on a different character's perspective, jumping back and forth between the past and present. This non-linear storytelling adds to the show's complexity and mystery.\n* Horror elements: While there are some jump scares, the show's horror elements are more psychological and atmospheric, focusing on the emotional trauma and psychological distress of the characters.\n\n**Russian Doll**:\n\n* Tone: Darkly comedic, existential, and introspective, with a touch of absurdity and mystery. The show explores themes of mortality, identity, and personal growth.\n* Pacing: Russian Doll is a more fast-paced show than Hill House, with a quicker pace and a greater emphasis on plot twists and turns. However, it still maintains a thoughtful and introspective tone.\n* Episode structure: Each episode is relatively self-contained, with Natasha Lyonne's character, Nadia, reliving the same night over and over. The show's non-linear structure adds to its complexity and mystery.\n* Comedy elements: Russian Doll has a dark comedic tone, with a focus on Nadia's sarcastic wit and her absurd situation.\n\nBoth shows have a strong focus on character development and psychological exploration, which might appeal to fans of \"Stranger Things\" and its character-driven storytelling. However, they differ in terms of pacing and tone:\n\n* If you prefer a slower-burning, more atmospheric show with a focus on suspense and horror, \"The Haunting of Hill House\" might be the better fit.\n* If you prefer a faster-paced show with a darker comedic tone and a focus on existential themes, \"Russian Doll\" might be more to your liking.\n\nKeep in mind that both shows have received critical acclaim and have been praised for their unique storytelling, complex characters, and thought-provoking themes.\nuser: I'm also interested in \"The Marvelous Mrs. Maisel\" on Amazon Prime, which I've heard great things about. Can you tell me more about the show's tone, pacing, and style? Is it more of a comedy or a drama?\nassistant: \"The Marvelous Mrs. Maisel\" is a fantastic show! It's a period comedy-drama that has received widespread critical acclaim for its writing, acting, and production design. Here's what you can expect:\n\n**Tone:**\n\n* The show has a lighthearted, witty, and humorous tone, with a touch of satire and social commentary.\n* It's a feel-good show that will make you laugh, smile, and maybe even tear up a little.\n* The tone is generally upbeat, but it also tackles some serious themes like sexism, identity, and personal growth.\n\n**Pacing:**\n\n* The pacing is relatively fast, with quick-witted dialogue and a lot of activity happening on screen.\n* The show is well-edited, with a great balance between comedic moments and more emotional, dramatic scenes.\n* Each episode is around 45-60 minutes long, and the show has a strong episodic structure, with each episode featuring a clear story arc.\n\n**Style:**\n\n* The show is set in the late 1950s, and the production design is meticulous in its recreation of the era.\n* The costume design, makeup, and hair are all fantastic, and the show's color palette is vibrant and visually appealing.\n* The cinematography is stylish and dynamic, with a lot of camera movement and clever uses of lighting.\n\n**Comedy vs. Drama:**\n\n* \"The Marvelous Mrs. Maisel\" is primarily a comedy, but it has a lot of heart and tackles some serious themes, so it's not just a straight-up comedy.\n* The show's humor is character-driven, with a lot of witty banter and comedic situations arising from the characters' personalities and relationships.\n* However, the show also has a strong emotional core, and it's not afraid to explore more serious themes like the challenges faced by women in the 1950s, mental health, and personal growth.\n\n**Performance:**\n\n* Rachel Brosnahan shines as the titular character, Miriam \"Midge\" Maisel, a housewife-turned-comedian in the 1950s.\n* The supporting cast is also excellent, with standout performances from Alex Borstein, Tony Shalhoub, and Marin Hinkle.\n\nOverall, \"The Marvelous Mrs. Maisel\" is a delightful, charming, and engaging show that will appeal to fans of comedy, drama, and period pieces. If you enjoy shows with strong female leads, witty dialogue, and a mix of humor and heart, you'll likely love this show!\nuser: I've actually already watched \"The Marvelous Mrs. Maisel\" and loved it! The humor and characters were amazing. I've been keeping up with \"The Grand Tour\" on Amazon Prime as well, it's so entertaining and informative. Anyway, back to new shows... I'm still interested in \"The Haunting of Hill House\" and \"Russian Doll\". Can you recommend which one I should start with?\nassistant: Great taste in shows! I'm glad you enjoyed \"The Marvelous Mrs. Maisel\" and \"The Grand Tour\"!\n\nAs for \"The Haunting of Hill House\" and \"Russian Doll\", both shows are excellent, but they have different tones and styles. Here's a suggestion to help you decide which one to start with:\n\n**If you're in the mood for:**\n\n* A more atmospheric, slow-burning, and suspenseful show with a strong focus on character development and psychological horror, start with \"The Haunting of Hill House\".\n* A faster-paced, darkly comedic, and existential show with a unique premise and a strong lead performance, start with \"Russian Doll\".\n\n**If you prefer:**\n\n* A more traditional, episodic structure with a focus on storytelling and character development, \"The Haunting of Hill House\" might be the better fit.\n* A more experimental, non-linear structure with a focus on themes and ideas, \"Russian Doll\" might be more appealing.\n\n**If you're concerned about:**\n\n* Commitment: Both shows have a similar number of episodes (10-8), but \"The Haunting of Hill House\" has a more traditional, self-contained story arc, while \"Russian Doll\" is more serialized and open-ended.\n* Tone: If you're in the mood for something more intense and suspenseful, \"The Haunting of Hill House\" might be the better choice. If you prefer something darker and more comedic, \"Russian Doll\" is the way to go.\n\nUltimately, both shows are worth watching, and you can't go wrong with either one. But if you're still unsure, I'd recommend starting with \"The Haunting of Hill House\" if you're in the mood for a more atmospheric, suspenseful show, and \"Russian Doll\" if you prefer something more fast-paced and darkly comedic.\nuser: I think I'll start with \"The Haunting of Hill House\". I've been in the mood for something suspenseful and atmospheric lately, and I'm intrigued by the show's slow-burning pace and focus on character development. Plus, I've heard great things about the show's writing and acting.\nassistant: \"The Haunting of Hill House\" is a masterclass in atmospheric storytelling, character development, and suspenseful pacing. The show's slow-burning approach will keep you on the edge of your seat, and the writing and acting are indeed phenomenal.\n\nHere are some tips to enhance your viewing experience:\n\n1. **Pay attention to the details**: The show is full of subtle clues, symbolism, and foreshadowing. Keep an eye out for these details, as they'll add to the overall mystery and suspense.\n2. **Get to know the characters**: The Crain family is complex and multi-dimensional. Take the time to understand their motivations, fears, and relationships with each other.\n3. **Be patient**: The show's pace is deliberate and slow-burning. Don't expect jump scares or fast-paced action. Instead, let the atmosphere and tension build.\n4. **Watch with the lights off (if you dare!)**: The show's use of lighting, sound design, and cinematography creates a truly immersive experience. Watching in a darkened room will add to the suspense and atmosphere.\n5. **Binge wisely**: While you can binge the entire series, I recommend taking your time. The show is best consumed in 2-3 episode chunks, allowing you to process the story and characters.\n\nAs you watch, feel free to come back and discuss the show with me. I'd love to hear your thoughts, theories, and reactions!\n\nEnjoy your journey into the haunted world of Hill House!\nuser: I'm excited to start watching \"The Haunting of Hill House\". I'll definitely keep your tips in mind, especially about paying attention to details and being patient with the slow-burning pace. I'll probably watch 2-3 episodes at a time to process the story and characters.\nassistant: I'm thrilled to hear that! You're all set to embark on a hauntingly good journey. Remember, the show is a slow burn, but it's worth savoring every moment.\n\nAs you watch, keep an eye out for the following:\n\n* The use of mirrors and reflections: They play a significant role in the story and are often used to symbolize the characters' inner struggles.\n* The significance of the house itself: Hill House is a character in its own right, and its layout, design, and history are crucial to the story.\n* The relationships between the Crain family members: Their dynamics, past and present, are essential to understanding the story's unfolding.\n* The show's use of time: The non-linear storytelling can be confusing, but pay attention to the timeline and how it affects the characters' experiences.\n\nIf you have any questions or need clarification on anything, feel free to ask. I'll be here, eagerly waiting to discuss the show with you.\n\nIn the meantime, I have a question for you: What do you think it is about atmospheric, suspenseful shows like \"The Haunting of Hill House\" that draws you in? Is it the thrill of the unknown, the character development, or something else entirely?\n\nHappy watching, and I look forward to hearing your thoughts on the show!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Recommended Shows Similar to Stranger Things and The Handmaid's Tale summary=A past recommendation set for the user's interest in shows like \"Stranger Things\" and \"The Handmaid's Tale\" included: \"The Haunting of Hill House\" (Netflix; atmospheric supernatural family horror), \"The OA\" (Netflix; supernatural mystery), \"Dark\" (Netflix; German sci-fi mystery), \"The Twilight Zone\" (CBS All Access; sci-fi/horror anthology reboot), \"Russian Doll\" (Netflix; time-loop dark comedy), ...[truncated 399 chars] scope=Reusable TV recommendation list derived from the user's interest in Stranger Things and The Handmaid's Tale during the 2023-05-22 session entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7>,entity:<8>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14>,entity:<15>,entity:<16>,entity:<17> keywords=Stranger Things,The Handmaid's Tale,The Haunting of Hill House,Russian Doll,Netflix,Hulu,Amazon Prime,TV recommendations tags=tv_recommendations,entertainment,streaming evidence=Can you recommend something similar to \"Stranger Things\" or \"The Handmaid's Tale\"?\n[1] type=CONTEXT title=The Haunting of Hill House vs Russian Doll Recommendation Rationale summary=When the user compared \"The Haunting of Hill House\" and \"Russian Doll\", the reusable distinction was: choose \"The Haunting of Hill House\" for atmospheric, slow-burning suspense, psychological horror, family drama, character development, and a more traditional self-contained arc; choose \"Russian Doll\" for faster pacing, dark comedy, existential themes, a unique time-loop premise, and more experimen...[truncated 25 chars] scope=Reusable rationale for choosing between The Haunting of Hill House and Russian Doll as next-watch options entities=entity:<0>,entity:<18>,entity:<19> keywords=The Haunting of Hill House,Russian Doll,slow burn,atmospheric,dark comedy,pacing,tone tags=recommendation_rationale,tv_choice,entertainment evidence=both shows are excellent, but they have different tones and styles\n[2] type=DECISION title=Chosen Next Watch: The Haunting of Hill House summary=The user decided to start with \"The Haunting of Hill House\" because they were in the mood for something suspenseful and atmospheric, were intrigued by the slow-burning pace and character development, and had heard strong praise for the writing and acting. They planned to watch in 2-3 episode chunks to process the story and characters. scope=User's selected next show and viewing approach from the 2023-05-22 recommendation session entities=entity:<0>,entity:<18>,entity:<7> keywords=The Haunting of Hill House,selected next watch,suspenseful,atmospheric,slow-burning,2-3 episodes tags=viewing_decision,entertainment,watch_plan evidence=I think I'll start with \"The Haunting of Hill House\".\n[3] type=CONTEXT title=The Haunting of Hill House Viewing Tips and Attention Points summary=Viewing guidance given for \"The Haunting of Hill House\" emphasized patience with its deliberate slow burn; paying attention to subtle clues, symbolism, foreshadowing, mirrors/reflections, the house as a character, Crain family relationships, and the non-linear timeline; and watching in 2-3 episode chunks rather than rushing the full series. scope=Reusable viewing guidance for The Haunting of Hill House entities=entity:<18>,entity:<0> keywords=The Haunting of Hill House,viewing tips,mirrors,Crain family,non-linear timeline,slow burn tags=viewing_guidance,tv_discussion,entertainment evidence=The use of mirrors and reflections: They play a significant role in the story\n\n        Existing active notes:\n        id=hot-path-599991d8af65-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Recommended Shows Similar to The Handmaid's Tale summary=A past recommendation set for shows similar to \"The Handmaid's Tale\" included: \"The Power\" (Amazon Prime Video; women develop electrical power and society's power dynamics shift), \"Westworld\" (HBO; AI, free will, power), \"The 100\" (Netflix; post-apocalyptic moral dilemmas), \"Colony\" (Netflix; dystopian occupied Los Angeles), and \"The Man in the High Castle\" (Amazon Prime Video; alternate Axis-vict...[truncated 13 chars] scope=Reusable TV recommendation list derived from The Handmaid's Tale interest keywords=The Handmaid's Tale,The Power,Westworld,The 100,Colony,The Man in the High Castle,dystopian tags=entertainment,recommendation_list,tv_shows,dystopian useCount=0\nid=hot-path-599991d8af65-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=The Power Watch Rationale summary=\"The Power\" was discussed as a strong fit for the user because it adapts Naomi Alderman's acclaimed novel about women gaining electrical abilities, shifting gendered power dynamics, and exploring power, corruption, resistance, and revolution; it was positioned as timely, character-driven, and appealing to fans of \"The Handmaid's Tale\". scope=Reusable rationale for recommending The Power to the user keywords=The Power,Naomi Alderman,power dynamics,gender,The Handmaid's Tale,Amazon Prime Video tags=entertainment,watch_rationale,tv_shows,dystopian useCount=0\nid=hot-path-599991d8af65-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Recommended Shows Similar to For All Mankind summary=A past recommendation set based on \"For All Mankind\" included: \"Counterpart\" (Starz; parallel-universe spy thriller), \"Electric Dreams\" (Amazon Prime Video; Philip K. Dick anthology), \"Altered Carbon\" (Netflix; consciousness transfer and identity/power), \"Travelers\" (Netflix; future agents preventing catastrophe), and \"3%\" (Netflix; Brazilian dystopian selection-to-utopia premise). scope=Reusable TV recommendation list derived from For All Mankind interest keywords=For All Mankind,Counterpart,Electric Dreams,Altered Carbon,Travelers,3%,sci-fi tags=entertainment,recommendation_list,tv_shows,sci_fi useCount=0\nid=hot-path-599991d8af65-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=TV Recommendation Context: The Handmaid's Tale and For All Mankind summary=The user sought TV recommendations anchored on enjoying \"The Handmaid's Tale\" and having finished and liked \"For All Mankind\"; useful recommendation dimensions include dystopian power dynamics, thought-provoking sci-fi, complex characters, and intricate storytelling. scope=User entertainment recommendation context for future TV suggestions keywords=TV recommendations,The Handmaid's Tale,For All Mankind,dystopian,sci-fi,complex characters tags=entertainment,recommendations,tv_shows,sci_fi useCount=0\nid=hot-path-599991d8af65-note-8 type=DECISION status=ACTIVE maturity=FRESH title=Chosen Access Path: HBO Add-on via Amazon Prime Video summary=The user chose the Amazon Prime Video with HBO add-on route for HBO content because they already had Amazon Prime and preferred the convenience of adding HBO to that subscription. The add-on was described as using Prime Video for access and consolidated billing, with a separate HBO add-on fee and possible availability/content/simultaneous-streaming restrictions. scope=User's selected streaming access path for HBO/Westworld at the time of the session keywords=HBO add-on,Amazon Prime Video,Amazon Prime membership,Westworld,streamlined billing tags=streaming_access,decision,subscription useCount=0\nid=hot-path-599991d8af65-note-7 type=CONTEXT status=ACTIVE maturity=FRESH title=Westworld Access Options Considered summary=For watching \"Westworld\", the options discussed were HBO subscription, HBO Max, Amazon Prime Video with HBO add-on, or purchasing episodes/seasons through Amazon Prime Video, Google Play, iTunes, or Vudu. The important constraint was that \"Westworld\" is not available through base Amazon Prime Video alone; it requires an HBO add-on, separate HBO/HBO Max access, or purchase. scope=Reusable streaming-access decision context for Westworld keywords=Westworld,HBO add-on,Amazon Prime Video,HBO Max,Google Play,iTunes,Vudu tags=streaming_access,entertainment,subscription_options useCount=0\nid=hot-path-599991d8af65-note-6 type=CONTEXT status=ACTIVE maturity=FRESH title=Westworld Watch Rationale and Caveats summary=\"Westworld\" was positioned for the user as thought-provoking sci-fi with AI, consciousness, free will, morality, complex characters, nonlinear/multiple-timeline storytelling, and strong production values; caveats included mature content and needing focused attention. scope=Reusable rationale and caveats for recommending Westworld to the user keywords=Westworld,AI,consciousness,free will,nonlinear storytelling,mature content tags=entertainment,watch_rationale,tv_shows,sci_fi useCount=0\nid=hot-path-599991d8af65-note-9 type=CONTEXT status=ACTIVE maturity=FRESH title=Additional Sci-fi Recommendations Similar to Westworld and For All Mankind summary=A later sci-fi recommendation set for the user's \"Westworld\" and \"For All Mankind\" interests included: for \"Westworld\", \"Black Mirror\", \"Electric Dreams\", \"Altered Carbon\", \"Colony\", and \"Travelers\"; for \"For All Mankind\", \"The Expanse\", \"Farscape\", \"Killjoys\", \"Dark Matter\", and \"Counterpart\". The shared fit was thought-provoking sci-fi with complex characters and intricate storylines. scope=Reusable expanded sci-fi TV recommendation list for the user keywords=Westworld,For All Mankind,Black Mirror,The Expanse,Farscape,Killjoys,Dark Matter,Counterpart tags=entertainment,recommendation_list,tv_shows,sci_fi useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_2f56ae70",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:6854125a517a30a25bc898894a7b852c"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-599991d8af65-note-2\"},{\"link_type\":\"related\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-599991d8af65-note-3\"}],\"patch\":null,\"reason\":\"Distinct recommendation set anchored on Stranger Things plus The Handmaid's Tale; overlaps some existing dystopian recommendations but adds the Stranger Things/supernatural-mystery dimension and other titles.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"New reusable rationale comparing The Haunting of Hill House and Russian Doll; no existing active note captures this choice.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-599991d8af65-note-2\"}],\"patch\":null,\"reason\":\"New decision about the user's chosen next watch and viewing approach; not captured by existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[],\"patch\":null,\"reason\":\"New reusable viewing guidance for The Haunting of Hill House; distinct from recommendation context and decision notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 8444,
+                "completionTokens": 309,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
