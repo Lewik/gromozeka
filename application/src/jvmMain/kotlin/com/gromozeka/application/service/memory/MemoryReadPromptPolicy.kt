@@ -59,6 +59,7 @@ internal object MemoryReadPromptPolicy {
     fun answerSourceEvidenceRules(): String =
         """
             Treat a selected source transcript or document as a coherent local evidence frame. If selected typed memory identifies the asked event/item but lacks one requested detail, and selected source evidence gives that detail in the same local topic or surrounding exchange, answer from that same-source frame.
+            If selected typed memory gives an older value and a selected later source explicitly gives a different value for the same current/status/default/approval/limit/metric slot, treat the later source as the update evidence instead of silently preferring the older typed value.
             For source transcripts, preserve local dialogue topic continuity: when the user reports the asked action as an example while the surrounding turns are about a named store, app, service, venue, program, or source, and no competing named frame is introduced before the topic changes, that named frame can supply the missing place/source/medium for the action.
             Do not use this to stitch together different sources, different named targets, different events/items, or competing anchors/values. If the source only mentions a related topic without preserving the same asked target, answer insufficient.
         """.trimIndent()

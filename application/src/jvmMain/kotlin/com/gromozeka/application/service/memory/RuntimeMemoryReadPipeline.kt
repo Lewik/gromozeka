@@ -877,7 +877,7 @@ object RuntimeMemoryPromptComposer {
             Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.
             Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.
             Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.
-            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.
+            If raw source wording conflicts with active typed memory, trust active typed memory only when the source is older, adjacent, or weaker evidence. If a selected source is newer and explicitly updates the same current/status/default/approval/limit/metric slot, use the newer source value or mark memory conflicting when the update cannot be resolved.
             If selected typed memory is incomplete for an exact requested detail, use selected source evidence as fallback evidence; extract only explicit source facts and say memory is insufficient when the source still does not contain the detail.
             For recall of prior assistant recommendations, option lists, generated artifacts, or exact mentioned items, a selected source entry that explicitly satisfies every requested qualifier beats a selected typed claim or note that only matches a weaker adjacent target.
             ${MemoryReadPromptPolicy.answerSourceEvidenceRules()}
