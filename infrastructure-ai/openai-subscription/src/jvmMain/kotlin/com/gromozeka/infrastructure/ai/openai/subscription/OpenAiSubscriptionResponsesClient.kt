@@ -1,8 +1,8 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import klog.KLoggers
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -11,13 +11,13 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import java.io.InputStream
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.http.WebSocket
 import java.net.http.WebSocketHandshakeException
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
@@ -42,6 +42,8 @@ class OpenAiSubscriptionResponsesClient(
     private val websocketResponseTimeoutMs: Long,
     @Value("\${gromozeka.ai.openai-subscription.websocket-transport-timeout-ms:30000}")
     private val websocketTransportTimeoutMs: Long,
+    @Value("\${gromozeka.ai.openai-subscription.http-response-timeout-ms:\${gromozeka.memory.llm.timeoutMs:300000}}")
+    private val httpResponseTimeoutMs: Long,
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json {
@@ -118,23 +120,28 @@ class OpenAiSubscriptionResponsesClient(
 
         session.accountId?.let { requestBuilder.header("ChatGPT-Account-Id", it) }
 
-        val response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream())
+        val response = httpClient
+            .sendAsync(
+                requestBuilder.build(),
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8),
+            )
+            .awaitHttpResponse(httpResponseTimeoutMs.coerceAtLeast(1L))
         if (response.statusCode() == 401) {
-            val body = response.body().use(InputStream::readAllBytes).decodeToString()
+            val body = response.body()
             throw OpenAiSubscriptionUnauthorizedException(
                 "OpenAI subscription request is unauthorized: ${responseMapper.extractErrorMessage(body)}"
             )
         }
 
         if (response.statusCode() !in 200..299) {
-            val body = response.body().use(InputStream::readAllBytes).decodeToString()
+            val body = response.body()
             throw OpenAiSubscriptionRequestException(
                 statusCode = response.statusCode(),
                 message = "OpenAI subscription request failed: ${responseMapper.extractErrorMessage(body)}",
             )
         }
 
-        return response.body().use(::parseEventStream)
+        return parseEventStream(response.body())
     }
 
     private suspend fun createViaWebSocket(
@@ -161,7 +168,7 @@ class OpenAiSubscriptionResponsesClient(
         )
     }
 
-    private fun parseEventStream(inputStream: InputStream): OpenAiSubscriptionParsedResponse {
+    private fun parseEventStream(body: String): OpenAiSubscriptionParsedResponse {
         val collector = OpenAiSubscriptionResponseEventCollector(
             json = json,
             responseMapper = responseMapper,
@@ -181,18 +188,49 @@ class OpenAiSubscriptionResponsesClient(
             collector.accept(payload = payload, eventName = eventName)
         }
 
-        inputStream.bufferedReader().useLines { lines ->
-            lines.forEach { rawLine ->
-                when {
-                    rawLine.isBlank() -> dispatch()
-                    rawLine.startsWith("event:") -> currentEvent = rawLine.removePrefix("event:").trim()
-                    rawLine.startsWith("data:") -> dataLines += rawLine.removePrefix("data:").trimStart()
-                }
+        body.lineSequence().forEach { rawLine ->
+            when {
+                rawLine.isBlank() -> dispatch()
+                rawLine.startsWith("event:") -> currentEvent = rawLine.removePrefix("event:").trim()
+                rawLine.startsWith("data:") -> dataLines += rawLine.removePrefix("data:").trimStart()
             }
         }
 
         dispatch()
         return collector.toParsedResponse()
+    }
+
+    private fun CompletableFuture<HttpResponse<String>>.awaitHttpResponse(timeoutMs: Long): HttpResponse<String> {
+        return try {
+            get(timeoutMs, TimeUnit.MILLISECONDS)
+        } catch (error: TimeoutException) {
+            cancel(true)
+            throw OpenAiSubscriptionTransportException(
+                "Timed out waiting for OpenAI subscription HTTP response",
+                error,
+            )
+        } catch (error: InterruptedException) {
+            cancel(true)
+            Thread.currentThread().interrupt()
+            throw OpenAiSubscriptionTransportException(
+                "Interrupted while waiting for OpenAI subscription HTTP response",
+                error,
+            )
+        } catch (error: ExecutionException) {
+            val cause = error.cause ?: error
+            if (cause is OpenAiSubscriptionApiException) throw cause
+            throw OpenAiSubscriptionTransportException(
+                "OpenAI subscription HTTP transport failed: ${cause.message}",
+                cause,
+            )
+        } catch (error: CompletionException) {
+            val cause = error.cause ?: error
+            if (cause is OpenAiSubscriptionApiException) throw cause
+            throw OpenAiSubscriptionTransportException(
+                "OpenAI subscription HTTP transport failed: ${cause.message}",
+                cause,
+            )
+        }
     }
 
     private fun evictIdleWebSocketSessions() {
