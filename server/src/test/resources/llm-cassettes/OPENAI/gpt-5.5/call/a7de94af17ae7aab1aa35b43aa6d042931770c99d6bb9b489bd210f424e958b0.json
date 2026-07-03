@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "a7de94af17ae7aab1aa35b43aa6d042931770c99d6bb9b489bd210f424e958b0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:1a8a66a6\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/04/01 (Sat) 12:19\nTranscript:\nuser: I'm trying to reduce my carbon footprint and was wondering if you could give me some tips on eco-friendly alternatives to single-use plastics.\nassistant: Congratulations on taking the first step towards making a positive impact on the environment! Reducing single-use plastics is a fantastic place to start. Here are some eco-friendly alternatives to get you started:\n\n1. **Reusable water bottles**: Ditch plastic water bottles and opt for stainless steel or glass bottles like S'well, Klean Kanteen, or Yeti.\n2. **Beeswax wraps**: Replace plastic wrap for food storage with reusable beeswax wraps like Bee's Wrap or Abeego.\n3. **Cloth bags**: Bring reusable bags made of cotton, jute, or recycled plastic for grocery shopping. You can also use them for other purchases.\n4. **Metal or bamboo straws**: Switch to metal or bamboo straws instead of plastic ones. You can find them at most eco-friendly stores or online.\n5. **Menstrual cups or period underwear**: Consider using menstrual cups like DivaCup or period underwear like Thinx to reduce sanitary waste.\n6. **Refuse microbeads**: Opt for soap, toothpaste, and exfoliating products that use natural ingredients instead of microbeads, which harm marine life.\n7. **Compostable bags**: Replace plastic bags for pet waste or food scraps with compostable bags like BioBags or PoopBags.\n8. **Reusable coffee cups**: Use a reusable coffee cup like a KeepCup or a ceramic mug instead of disposable cups.\n9. **Stainless steel or bamboo utensils**: Carry a set of reusable utensils like a stainless steel or bamboo fork, knife, and spoon instead of plastic ones.\n10. **Buy in bulk**: Purchase items like nuts, grains, and dried fruits in bulk to reduce packaging waste. Use reusable containers or bags to store them.\n11. **Avoid microfiber clothing**: Choose clothing made from natural fibers like cotton, linen, or hemp, which produce less microplastic pollution than synthetic fibers.\n12. **Support refill stations**: Look for refill stations for soap, shampoo, and other personal care products to reduce packaging waste.\n\nRemember, every small change counts, and making these swaps will have a significant impact when combined with the efforts of others. Keep in mind that it's also important to properly clean and maintain your reusable items to ensure they last long and remain hygienic.\n\nWhat's the next step you're planning to take in your eco-friendly journey?\nuser: I'm thinking of reducing my plastic usage in the kitchen. Do you have any suggestions for alternatives to plastic containers and ziplock bags for food storage? Oh, and by the way, I remember buying my last National Geographic issue on my way back from the gym on March 15th, and it really got me thinking about my daily habits.\nassistant: Reducing plastic usage in the kitchen is a fantastic step towards a more sustainable lifestyle.\n\nFor alternatives to plastic containers and ziplock bags, here are some eco-friendly options:\n\n**Instead of plastic containers:**\n\n1. **Glass containers**: Glass is a great alternative to plastic for storing food. Look for brands like Pyrex, Anchor Hocking, or Mason Cash. They're non-toxic, easy to clean, and can be used for both hot and cold foods.\n2. **Stainless steel containers**: Stainless steel containers are durable, resistant to rust, and easy to clean. Brands like LunchBots, EcoLunchbox, or S'well offer great options.\n3. **Bamboo or wood containers**: Bamboo or wood containers are biodegradable, compostable, and can add a touch of natural charm to your kitchen. Look for brands like Bambooee or WoodU.\n\n**Instead of ziplock bags:**\n\n1. **Beeswax wraps**: Beeswax wraps are a popular alternative to plastic wrap for food storage. They're reusable, biodegradable, and compostable. Brands like Bee's Wrap, Abeego, or Etee offer great options.\n2. **Reusable silicone bags**: Silicone bags are a great alternative to ziplock bags. They're flexible, easy to clean, and can be used for both hot and cold foods. Look for brands like Stasher Bag or Silipint.\n3. **Glass or stainless steel snack containers**: Instead of using ziplock bags for snacks, consider using small glass or stainless steel containers. They're perfect for storing nuts, fruits, or trail mix.\n4. **Mason jars**: Mason jars are a great alternative to ziplock bags for storing dry goods like flour, sugar, or coffee. They're also perfect for canning and preserving food.\n\n**Additional tips:**\n\n1. **Repurpose old containers**: Before buying new containers, see if you can repurpose old ones. You can use old glass jars, tin cans, or even cardboard containers to store food.\n2. **Choose products with minimal packaging**: When shopping, opt for products with minimal or biodegradable packaging. For example, buy items like nuts or grains in bulk and store them in your reusable containers.\n3. **Clean and maintain your containers**: Regularly clean and maintain your containers to ensure they last long and remain hygienic.\n\nRemember, every small change counts, and making these swaps will have a significant impact on reducing plastic waste in your kitchen!\n\nBy the way, I'm glad you mentioned the National Geographic issue again. It's amazing how one article can inspire us to make a positive change, isn't it?\nuser: I'm also planning to reduce my plastic usage when I'm out and about. Do you have any suggestions for eco-friendly alternatives to plastic water bottles and straws when I'm on-the-go?\nassistant: Reducing plastic usage on-the-go is a fantastic step towards a more sustainable lifestyle.\n\nHere are some eco-friendly alternatives to plastic water bottles and straws:\n\n**Instead of plastic water bottles:**\n\n1. **Reusable stainless steel or glass water bottles**: Invest in a durable, BPA-free water bottle made of stainless steel or glass. Brands like S'well, Klean Kanteen, or Yeti offer great options.\n2. **Collapsible silicone water bottles**: Collapsible silicone bottles are lightweight, compact, and easy to carry. They're perfect for hiking, camping, or daily commutes. Look for brands like Silipint or Platypus.\n3. **Refillable water bottles with filters**: Consider a water bottle with a built-in filter, like a Brita or a Sawyer, which can filter out impurities and make tap water taste great.\n\n**Instead of plastic straws:**\n\n1. **Metal or stainless steel straws**: Switch to metal or stainless steel straws, which are durable and easy to clean. Brands like SipWell or Strawology offer great options.\n2. **Bamboo straws**: Bamboo straws are biodegradable, compostable, and gentle on the environment. Look for brands like Bamboo Straw or EcoStraw.\n3. **Glass straws**: Glass straws are a great alternative to plastic straws. They're non-toxic, easy to clean, and can be used for both hot and cold drinks. Brands like GlassDharma or Strawsome offer great options.\n4. **Silicone straws**: Silicone straws are flexible, soft, and easy to clean. They're perfect for smoothies, milkshakes, or other thick drinks. Look for brands like Silipint or Strawsome.\n\n**Additional tips:**\n\n1. **Carry a reusable coffee cup**: If you're a coffee or tea lover, carry a reusable cup made of ceramic, glass, or stainless steel.\n2. **Refuse single-use plastic cutlery**: When ordering takeout or eating on-the-go, refuse single-use plastic cutlery and opt for reusable utensils instead.\n3. **Choose eco-friendly restaurants and cafes**: Support restaurants and cafes that offer sustainable options, like compostable or biodegradable packaging, and encourage others to follow suit.\n\nRemember, every small change counts, and making these swaps will have a significant impact on reducing plastic waste on-the-go!\n\nHow's your eco-friendly journey going so far? Have you encountered any challenges or successes you'd like to share?\nuser: I'm also planning to reduce my plastic usage when I'm out and about. Do you have any suggestions for eco-friendly alternatives to plastic bags when I'm shopping?\nassistant: Reducing plastic usage while shopping is a fantastic step towards a more sustainable lifestyle.\n\nHere are some eco-friendly alternatives to plastic bags:\n\n**Reusable bags:**\n\n1. **Cotton or canvas bags**: Look for sturdy, washable bags made of cotton or canvas. Brands like Baggu, L.L.Bean, or Cotton Tote offer great options.\n2. **Jute or burlap bags**: Jute or burlap bags are biodegradable, compostable, and have a natural, earthy charm. Brands like Jute Bag Co. or Burlap Bag Co. offer great options.\n3. **Recycled plastic bags**: Some companies, like Patagonia or Reusable Bags, offer bags made from recycled plastic materials. These bags are durable, washable, and reduce plastic waste.\n\n**Other eco-friendly options:**\n\n1. **Mesh produce bags**: Use mesh produce bags to carry fruits and vegetables. These bags are lightweight, breathable, and reduce single-use plastic produce bags.\n2. **Reusable backpacks or totes**: Consider carrying a reusable backpack or tote instead of individual bags. Brands like Fjallraven or Baggu offer great options.\n3. **Foldable bags**: Look for foldable bags that can be easily stowed away in your purse or pocket. Brands like BagPodz or FoldiMate offer great options.\n\n**Tips for using reusable bags:**\n\n1. **Keep them clean**: Regularly wash and dry your reusable bags to prevent bacterial growth.\n2. **Store them properly**: Keep your reusable bags in an easy-to-access spot, like your car or bag, so you remember to use them.\n3. **Pack smart**: Pack your reusable bags with items you need, like a water bottle, snacks, or a book, to make them more convenient.\n\n**Additional tips:**\n\n1. **Refuse single-use plastic bags**: When shopping, always refuse single-use plastic bags and opt for reusable bags instead.\n2. **Choose products with minimal packaging**: Opt for products with minimal or biodegradable packaging to reduce waste.\n3. **Support eco-friendly retailers**: Support retailers that offer reusable bags, biodegradable packaging, or sustainable practices.\n\nRemember, every small change counts, and making these swaps will have a significant impact on reducing plastic waste while shopping!\n\nHow's your eco-friendly journey going so far? Have you encountered any challenges or successes you'd like to share?\nuser: I'm actually thinking of reducing my carbon footprint by using public transport or biking to work. Do you have any suggestions on how I can make this transition smoother?\nassistant: That's a fantastic decision! Using public transport or biking to work is a great way to reduce your carbon footprint and contribute to a more sustainable future.\n\nHere are some suggestions to make your transition smoother:\n\n**Public Transport:**\n\n1. **Plan your route**: Research and plan your public transport route in advance to ensure you know the schedules, routes, and fares.\n2. **Invest in a transit card**: Consider purchasing a transit card or pass that allows you to pay for fares easily and conveniently.\n3. **Leave earlier**: Plan to leave a little earlier to account for any unexpected delays or changes in schedules.\n4. **Pack light**: Pack light to make your commute more comfortable and convenient.\n5. **Take advantage of perks**: Many employers offer benefits like free or discounted public transport passes, so be sure to check with your HR department.\n\n**Biking:**\n\n1. **Invest in a good bike**: Invest in a comfortable, reliable bike that's suitable for your commute.\n2. **Plan your route**: Research and plan your bike route in advance to ensure you know the safest and most efficient routes.\n3. **Wear safety gear**: Always wear a helmet, and consider wearing reflective gear and bright clothing to increase visibility.\n4. **Check the weather**: Check the weather forecast before you leave to ensure you're prepared for any conditions.\n5. **Store your bike safely**: Make sure you have a safe and secure place to store your bike at work or home.\n\n**General Tips:**\n\n1. **Start small**: If you're new to public transport or biking, start with one or two days a week and gradually increase your frequency.\n2. **Be flexible**: Be prepared for unexpected delays or changes in schedules, and have a backup plan in place.\n3. **Combine modes**: Consider combining public transport and biking for part of your commute to make it more efficient.\n4. **Track your progress**: Keep track of your carbon savings and progress to stay motivated and encouraged.\n5. **Advocate for change**: Encourage your employer and local government to support sustainable transportation options and infrastructure.\n\nRemember, every small change counts, and making this transition will have a significant impact on reducing your carbon footprint!\n\nHow's your transition going so far? Have you encountered any challenges or successes you'd like to share?\n\n        Candidate notes:\n        [0] type=CONTEXT title=Eco-friendly single-use plastic alternatives across daily contexts summary=In the 2023-04-01 sustainability discussion, the reusable alternative set expanded across home, kitchen, on-the-go, and shopping contexts: reusable stainless steel/glass water bottles, beeswax wraps, cloth/cotton/canvas/jute bags, metal/bamboo/glass/silicone straws, compostable bags, reusable coffee cups and utensils, bulk buying with reusable containers, glass/stainless steel/bamboo/wood food con...[truncated 284 chars] scope=User's 2023-04-01 transition toward reducing carbon footprint and plastic usage in kitchen, on-the-go, and shopping contexts. entities=entity:<0> keywords=single-use plastics,plastic usage,eco-friendly alternatives,kitchen storage,on-the-go,shopping bags,reusable bottles,beeswax wraps,silicone bags,mesh produce bags tags=sustainability,plastic_reduction,eco_friendly_products evidence=I'm trying to reduce my carbon footprint and was wondering if you could give me some tips on eco-friendly alternatives to single-use plastics.\n[1] type=PLAN title=Smoother transition plan for public transport or biking to work summary=For reducing commute-related carbon footprint, the discussed transition approach was to plan routes in advance, use transit cards or passes, leave earlier for public transport delays, pack light, check employer transit benefits, choose a reliable commute-suitable bike, prioritize safe bike routes and safety gear, check weather, secure bike storage, start with one or two days per week, keep a backu...[truncated 85 chars] scope=User's plan to reduce carbon footprint by transitioning to public transport or biking to work. entities=entity:<0> keywords=public transport,biking to work,commute,carbon footprint,transit card,bike route,safety gear,carbon savings tags=sustainability,commute_transition,transport evidence=I'm actually thinking of reducing my carbon footprint by using public transport or biking to work.\n[2] type=CONTEXT title=National Geographic issue prompted daily-habits reflection summary=The user's last National Geographic issue, bought on the way back from the gym on March 15th, served as a trigger for reflecting on daily habits during their sustainability/plastic-reduction effort. scope=User's March 15 National Geographic issue as contextual motivation for sustainability-related habit changes. entities=entity:<1>,entity:<2> keywords=National Geographic,March 15,gym,daily habits,sustainability motivation tags=media_context,habit_reflection,sustainability evidence=I remember buying my last National Geographic issue on my way back from the gym on March 15th, and it really got me thinking about my daily habits.\n\n        Existing active notes:\n        id=hot-path-8a56d4bda40f-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Eco-friendly alternatives to single-use plastics recommendation set summary=In the 2023-04-01 sustainability discussion, the suggested daily-life alternatives to single-use plastics were reusable water bottles, cloth bags, beeswax wraps, metal/bamboo/glass straws, menstrual cups or cloth pads, reusable cutlery, buying in bulk, using rags instead of paper towels, choosing minimal or biodegradable packaging, and upcycling or repurposing items. scope=User's 2023-04-01 interest in reducing plastic usage and evaluating eco-friendly daily-life alternatives. keywords=single-use plastics,eco-friendly alternatives,reusable water bottles,cloth bags,beeswax wraps,bulk buying,plastic usage tags=sustainability,recommendations,plastic_reduction useCount=0\nid=hot-path-bb1f569e445f-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Reusable water bottle option set and selection rationale summary=In the 2023-04-01 shopping discussion, reusable water bottle options considered included S'well, Klean Kanteen, Hydro Flask, Nalgene, and Larq. The user narrowed toward Hydro Flask or S'well for keeping drinks hot at least 6 hours, preferred a 32 oz matte neutral bottle, and selected a White matte finish because it looked clean/crisp and would match the user's outdoor gear. scope=Reusable water bottle shopping context from the 2023-04-01 session keywords=reusable water bottle,Hydro Flask,S'well,32 oz,matte finish,White matte finish,outdoor gear,hot 6 hours tags=shopping_context,eco_friendly,water_bottle useCount=0\nid=hot-path-bb1f569e445f-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Eco-friendly all-purpose cleaner recommendations summary=For a non-toxic, biodegradable all-purpose cleaner, the recommended option set was Seventh Generation, Dr. Bronner's Sal Suds All-Purpose Cleaner, Ecover All-Purpose Cleaner, and Branch Basics All-Purpose Cleaner. The advice emphasized plant-based or natural ingredients, biodegradable/non-toxic formulas, avoiding harsh chemicals, and checking labels for certifications such as EPA Safer Choice or L...[truncated 13 chars] scope=Eco-friendly all-purpose cleaner recommendation context from the 2023-04-01 session keywords=eco-friendly cleaning products,all-purpose cleaner,non-toxic,biodegradable,Seventh Generation,Dr. Bronner's,Sal Suds,Ecover,Branch Basics,EPA Safer Choice,Leaping Bunny tags=shopping_context,eco_friendly,cleaning_products useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:1a8a66a6",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:e9457014d4c38ccc33c1cb7500b167f3"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:1a8a66a6\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/04/01 (Sat) 12:19\nTranscript:\nuser: I'm trying to reduce my carbon footprint and was wondering if you could give me some tips on eco-friendly alternatives to single-use plastics.\nassistant: Congratulations on taking the first step towards making a positive impact on the environment! Reducing single-use plastics is a fantastic place to start. Here are some eco-friendly alternatives to get you started:\n\n1. **Reusable water bottles**: Ditch plastic water bottles and opt for stainless steel or glass bottles like S'well, Klean Kanteen, or Yeti.\n2. **Beeswax wraps**: Replace plastic wrap for food storage with reusable beeswax wraps like Bee's Wrap or Abeego.\n3. **Cloth bags**: Bring reusable bags made of cotton, jute, or recycled plastic for grocery shopping. You can also use them for other purchases.\n4. **Metal or bamboo straws**: Switch to metal or bamboo straws instead of plastic ones. You can find them at most eco-friendly stores or online.\n5. **Menstrual cups or period underwear**: Consider using menstrual cups like DivaCup or period underwear like Thinx to reduce sanitary waste.\n6. **Refuse microbeads**: Opt for soap, toothpaste, and exfoliating products that use natural ingredients instead of microbeads, which harm marine life.\n7. **Compostable bags**: Replace plastic bags for pet waste or food scraps with compostable bags like BioBags or PoopBags.\n8. **Reusable coffee cups**: Use a reusable coffee cup like a KeepCup or a ceramic mug instead of disposable cups.\n9. **Stainless steel or bamboo utensils**: Carry a set of reusable utensils like a stainless steel or bamboo fork, knife, and spoon instead of plastic ones.\n10. **Buy in bulk**: Purchase items like nuts, grains, and dried fruits in bulk to reduce packaging waste. Use reusable containers or bags to store them.\n11. **Avoid microfiber clothing**: Choose clothing made from natural fibers like cotton, linen, or hemp, which produce less microplastic pollution than synthetic fibers.\n12. **Support refill stations**: Look for refill stations for soap, shampoo, and other personal care products to reduce packaging waste.\n\nRemember, every small change counts, and making these swaps will have a significant impact when combined with the efforts of others. Keep in mind that it's also important to properly clean and maintain your reusable items to ensure they last long and remain hygienic.\n\nWhat's the next step you're planning to take in your eco-friendly journey?\nuser: I'm thinking of reducing my plastic usage in the kitchen. Do you have any suggestions for alternatives to plastic containers and ziplock bags for food storage? Oh, and by the way, I remember buying my last National Geographic issue on my way back from the gym on March 15th, and it really got me thinking about my daily habits.\nassistant: Reducing plastic usage in the kitchen is a fantastic step towards a more sustainable lifestyle.\n\nFor alternatives to plastic containers and ziplock bags, here are some eco-friendly options:\n\n**Instead of plastic containers:**\n\n1. **Glass containers**: Glass is a great alternative to plastic for storing food. Look for brands like Pyrex, Anchor Hocking, or Mason Cash. They're non-toxic, easy to clean, and can be used for both hot and cold foods.\n2. **Stainless steel containers**: Stainless steel containers are durable, resistant to rust, and easy to clean. Brands like LunchBots, EcoLunchbox, or S'well offer great options.\n3. **Bamboo or wood containers**: Bamboo or wood containers are biodegradable, compostable, and can add a touch of natural charm to your kitchen. Look for brands like Bambooee or WoodU.\n\n**Instead of ziplock bags:**\n\n1. **Beeswax wraps**: Beeswax wraps are a popular alternative to plastic wrap for food storage. They're reusable, biodegradable, and compostable. Brands like Bee's Wrap, Abeego, or Etee offer great options.\n2. **Reusable silicone bags**: Silicone bags are a great alternative to ziplock bags. They're flexible, easy to clean, and can be used for both hot and cold foods. Look for brands like Stasher Bag or Silipint.\n3. **Glass or stainless steel snack containers**: Instead of using ziplock bags for snacks, consider using small glass or stainless steel containers. They're perfect for storing nuts, fruits, or trail mix.\n4. **Mason jars**: Mason jars are a great alternative to ziplock bags for storing dry goods like flour, sugar, or coffee. They're also perfect for canning and preserving food.\n\n**Additional tips:**\n\n1. **Repurpose old containers**: Before buying new containers, see if you can repurpose old ones. You can use old glass jars, tin cans, or even cardboard containers to store food.\n2. **Choose products with minimal packaging**: When shopping, opt for products with minimal or biodegradable packaging. For example, buy items like nuts or grains in bulk and store them in your reusable containers.\n3. **Clean and maintain your containers**: Regularly clean and maintain your containers to ensure they last long and remain hygienic.\n\nRemember, every small change counts, and making these swaps will have a significant impact on reducing plastic waste in your kitchen!\n\nBy the way, I'm glad you mentioned the National Geographic issue again. It's amazing how one article can inspire us to make a positive change, isn't it?\nuser: I'm also planning to reduce my plastic usage when I'm out and about. Do you have any suggestions for eco-friendly alternatives to plastic water bottles and straws when I'm on-the-go?\nassistant: Reducing plastic usage on-the-go is a fantastic step towards a more sustainable lifestyle.\n\nHere are some eco-friendly alternatives to plastic water bottles and straws:\n\n**Instead of plastic water bottles:**\n\n1. **Reusable stainless steel or glass water bottles**: Invest in a durable, BPA-free water bottle made of stainless steel or glass. Brands like S'well, Klean Kanteen, or Yeti offer great options.\n2. **Collapsible silicone water bottles**: Collapsible silicone bottles are lightweight, compact, and easy to carry. They're perfect for hiking, camping, or daily commutes. Look for brands like Silipint or Platypus.\n3. **Refillable water bottles with filters**: Consider a water bottle with a built-in filter, like a Brita or a Sawyer, which can filter out impurities and make tap water taste great.\n\n**Instead of plastic straws:**\n\n1. **Metal or stainless steel straws**: Switch to metal or stainless steel straws, which are durable and easy to clean. Brands like SipWell or Strawology offer great options.\n2. **Bamboo straws**: Bamboo straws are biodegradable, compostable, and gentle on the environment. Look for brands like Bamboo Straw or EcoStraw.\n3. **Glass straws**: Glass straws are a great alternative to plastic straws. They're non-toxic, easy to clean, and can be used for both hot and cold drinks. Brands like GlassDharma or Strawsome offer great options.\n4. **Silicone straws**: Silicone straws are flexible, soft, and easy to clean. They're perfect for smoothies, milkshakes, or other thick drinks. Look for brands like Silipint or Strawsome.\n\n**Additional tips:**\n\n1. **Carry a reusable coffee cup**: If you're a coffee or tea lover, carry a reusable cup made of ceramic, glass, or stainless steel.\n2. **Refuse single-use plastic cutlery**: When ordering takeout or eating on-the-go, refuse single-use plastic cutlery and opt for reusable utensils instead.\n3. **Choose eco-friendly restaurants and cafes**: Support restaurants and cafes that offer sustainable options, like compostable or biodegradable packaging, and encourage others to follow suit.\n\nRemember, every small change counts, and making these swaps will have a significant impact on reducing plastic waste on-the-go!\n\nHow's your eco-friendly journey going so far? Have you encountered any challenges or successes you'd like to share?\nuser: I'm also planning to reduce my plastic usage when I'm out and about. Do you have any suggestions for eco-friendly alternatives to plastic bags when I'm shopping?\nassistant: Reducing plastic usage while shopping is a fantastic step towards a more sustainable lifestyle.\n\nHere are some eco-friendly alternatives to plastic bags:\n\n**Reusable bags:**\n\n1. **Cotton or canvas bags**: Look for sturdy, washable bags made of cotton or canvas. Brands like Baggu, L.L.Bean, or Cotton Tote offer great options.\n2. **Jute or burlap bags**: Jute or burlap bags are biodegradable, compostable, and have a natural, earthy charm. Brands like Jute Bag Co. or Burlap Bag Co. offer great options.\n3. **Recycled plastic bags**: Some companies, like Patagonia or Reusable Bags, offer bags made from recycled plastic materials. These bags are durable, washable, and reduce plastic waste.\n\n**Other eco-friendly options:**\n\n1. **Mesh produce bags**: Use mesh produce bags to carry fruits and vegetables. These bags are lightweight, breathable, and reduce single-use plastic produce bags.\n2. **Reusable backpacks or totes**: Consider carrying a reusable backpack or tote instead of individual bags. Brands like Fjallraven or Baggu offer great options.\n3. **Foldable bags**: Look for foldable bags that can be easily stowed away in your purse or pocket. Brands like BagPodz or FoldiMate offer great options.\n\n**Tips for using reusable bags:**\n\n1. **Keep them clean**: Regularly wash and dry your reusable bags to prevent bacterial growth.\n2. **Store them properly**: Keep your reusable bags in an easy-to-access spot, like your car or bag, so you remember to use them.\n3. **Pack smart**: Pack your reusable bags with items you need, like a water bottle, snacks, or a book, to make them more convenient.\n\n**Additional tips:**\n\n1. **Refuse single-use plastic bags**: When shopping, always refuse single-use plastic bags and opt for reusable bags instead.\n2. **Choose products with minimal packaging**: Opt for products with minimal or biodegradable packaging to reduce waste.\n3. **Support eco-friendly retailers**: Support retailers that offer reusable bags, biodegradable packaging, or sustainable practices.\n\nRemember, every small change counts, and making these swaps will have a significant impact on reducing plastic waste while shopping!\n\nHow's your eco-friendly journey going so far? Have you encountered any challenges or successes you'd like to share?\nuser: I'm actually thinking of reducing my carbon footprint by using public transport or biking to work. Do you have any suggestions on how I can make this transition smoother?\nassistant: That's a fantastic decision! Using public transport or biking to work is a great way to reduce your carbon footprint and contribute to a more sustainable future.\n\nHere are some suggestions to make your transition smoother:\n\n**Public Transport:**\n\n1. **Plan your route**: Research and plan your public transport route in advance to ensure you know the schedules, routes, and fares.\n2. **Invest in a transit card**: Consider purchasing a transit card or pass that allows you to pay for fares easily and conveniently.\n3. **Leave earlier**: Plan to leave a little earlier to account for any unexpected delays or changes in schedules.\n4. **Pack light**: Pack light to make your commute more comfortable and convenient.\n5. **Take advantage of perks**: Many employers offer benefits like free or discounted public transport passes, so be sure to check with your HR department.\n\n**Biking:**\n\n1. **Invest in a good bike**: Invest in a comfortable, reliable bike that's suitable for your commute.\n2. **Plan your route**: Research and plan your bike route in advance to ensure you know the safest and most efficient routes.\n3. **Wear safety gear**: Always wear a helmet, and consider wearing reflective gear and bright clothing to increase visibility.\n4. **Check the weather**: Check the weather forecast before you leave to ensure you're prepared for any conditions.\n5. **Store your bike safely**: Make sure you have a safe and secure place to store your bike at work or home.\n\n**General Tips:**\n\n1. **Start small**: If you're new to public transport or biking, start with one or two days a week and gradually increase your frequency.\n2. **Be flexible**: Be prepared for unexpected delays or changes in schedules, and have a backup plan in place.\n3. **Combine modes**: Consider combining public transport and biking for part of your commute to make it more efficient.\n4. **Track your progress**: Keep track of your carbon savings and progress to stay motivated and encouraged.\n5. **Advocate for change**: Encourage your employer and local government to support sustainable transportation options and infrastructure.\n\nRemember, every small change counts, and making this transition will have a significant impact on reducing your carbon footprint!\n\nHow's your transition going so far? Have you encountered any challenges or successes you'd like to share?\n\n        Candidate notes:\n        [0] type=CONTEXT title=Eco-friendly single-use plastic alternatives across daily contexts summary=In the 2023-04-01 sustainability discussion, the reusable alternative set expanded across home, kitchen, on-the-go, and shopping contexts: reusable stainless steel/glass water bottles, beeswax wraps, cloth/cotton/canvas/jute bags, metal/bamboo/glass/silicone straws, compostable bags, reusable coffee cups and utensils, bulk buying with reusable containers, glass/stainless steel/bamboo/wood food con...[truncated 284 chars] scope=User's 2023-04-01 transition toward reducing carbon footprint and plastic usage in kitchen, on-the-go, and shopping contexts. entities=entity:<0> keywords=single-use plastics,plastic usage,eco-friendly alternatives,kitchen storage,on-the-go,shopping bags,reusable bottles,beeswax wraps,silicone bags,mesh produce bags tags=sustainability,plastic_reduction,eco_friendly_products evidence=I'm trying to reduce my carbon footprint and was wondering if you could give me some tips on eco-friendly alternatives to single-use plastics.\n[1] type=PLAN title=Smoother transition plan for public transport or biking to work summary=For reducing commute-related carbon footprint, the discussed transition approach was to plan routes in advance, use transit cards or passes, leave earlier for public transport delays, pack light, check employer transit benefits, choose a reliable commute-suitable bike, prioritize safe bike routes and safety gear, check weather, secure bike storage, start with one or two days per week, keep a backu...[truncated 85 chars] scope=User's plan to reduce carbon footprint by transitioning to public transport or biking to work. entities=entity:<0> keywords=public transport,biking to work,commute,carbon footprint,transit card,bike route,safety gear,carbon savings tags=sustainability,commute_transition,transport evidence=I'm actually thinking of reducing my carbon footprint by using public transport or biking to work.\n[2] type=CONTEXT title=National Geographic issue prompted daily-habits reflection summary=The user's last National Geographic issue, bought on the way back from the gym on March 15th, served as a trigger for reflecting on daily habits during their sustainability/plastic-reduction effort. scope=User's March 15 National Geographic issue as contextual motivation for sustainability-related habit changes. entities=entity:<1>,entity:<2> keywords=National Geographic,March 15,gym,daily habits,sustainability motivation tags=media_context,habit_reflection,sustainability evidence=I remember buying my last National Geographic issue on my way back from the gym on March 15th, and it really got me thinking about my daily habits.\n\n        Existing active notes:\n        id=hot-path-8a56d4bda40f-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Eco-friendly alternatives to single-use plastics recommendation set summary=In the 2023-04-01 sustainability discussion, the suggested daily-life alternatives to single-use plastics were reusable water bottles, cloth bags, beeswax wraps, metal/bamboo/glass straws, menstrual cups or cloth pads, reusable cutlery, buying in bulk, using rags instead of paper towels, choosing minimal or biodegradable packaging, and upcycling or repurposing items. scope=User's 2023-04-01 interest in reducing plastic usage and evaluating eco-friendly daily-life alternatives. keywords=single-use plastics,eco-friendly alternatives,reusable water bottles,cloth bags,beeswax wraps,bulk buying,plastic usage tags=sustainability,recommendations,plastic_reduction useCount=0\nid=hot-path-bb1f569e445f-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Reusable water bottle option set and selection rationale summary=In the 2023-04-01 shopping discussion, reusable water bottle options considered included S'well, Klean Kanteen, Hydro Flask, Nalgene, and Larq. The user narrowed toward Hydro Flask or S'well for keeping drinks hot at least 6 hours, preferred a 32 oz matte neutral bottle, and selected a White matte finish because it looked clean/crisp and would match the user's outdoor gear. scope=Reusable water bottle shopping context from the 2023-04-01 session keywords=reusable water bottle,Hydro Flask,S'well,32 oz,matte finish,White matte finish,outdoor gear,hot 6 hours tags=shopping_context,eco_friendly,water_bottle useCount=0\nid=hot-path-bb1f569e445f-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Eco-friendly all-purpose cleaner recommendations summary=For a non-toxic, biodegradable all-purpose cleaner, the recommended option set was Seventh Generation, Dr. Bronner's Sal Suds All-Purpose Cleaner, Ecover All-Purpose Cleaner, and Branch Basics All-Purpose Cleaner. The advice emphasized plant-based or natural ingredients, biodegradable/non-toxic formulas, avoiding harsh chemicals, and checking labels for certifications such as EPA Safer Choice or L...[truncated 13 chars] scope=Eco-friendly all-purpose cleaner recommendation context from the 2023-04-01 session keywords=eco-friendly cleaning products,all-purpose cleaner,non-toxic,biodegradable,Seventh Generation,Dr. Bronner's,Sal Suds,Ecover,Branch Basics,EPA Safer Choice,Leaping Bunny tags=shopping_context,eco_friendly,cleaning_products useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:1a8a66a6",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:e9457014d4c38ccc33c1cb7500b167f3"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"supersede\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"Candidate covers the same reusable plastic-alternatives recommendation set but is more complete and better scoped across kitchen, on-the-go, and shopping contexts.\",\"target_note_id\":\"hot-path-8a56d4bda40f-note-2\"},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct reusable plan for transitioning commute habits to public transport or biking; not covered by existing plastic-reduction or shopping notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-8a56d4bda40f-note-2\"}],\"patch\":null,\"reason\":\"Distinct personal motivation/context about a National Geographic issue prompting sustainability habit reflection; related to plastic-reduction context but not duplicative.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6952,
+                "completionTokens": 224,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
