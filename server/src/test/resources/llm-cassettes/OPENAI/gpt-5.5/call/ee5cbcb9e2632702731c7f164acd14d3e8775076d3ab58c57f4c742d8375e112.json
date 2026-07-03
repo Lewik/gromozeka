@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "ee5cbcb9e2632702731c7f164acd14d3e8775076d3ab58c57f4c742d8375e112",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_d12ceb0e\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Contains extractable durable personal facts/preferences and fitness/meal-planning goals, plus richer context about the chosen routine and recommendations.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements describe durable user attributes, goals, and preferences; no existing USER entity is available.\n- mention=workout routine; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=User's workout routine; reason=The transcript repeatedly discusses the user's new workout routine as a reusable personal plan object.\n- mention=meal plan; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=User's meal plan; reason=The transcript repeatedly discusses the user's meal plan as a reusable personal plan object.\n- mention=gym; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Gym attendance; reason=The user's gym attendance is likely a durable claim target, but no specific gym location or organization is identified.\n- mention=MyFitnessPal; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=MyFitnessPal; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=Strava; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=Strava; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=Fitbit Coach; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=Fitbit Coach; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=Lose It!; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=Lose It!; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=YAZIO; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=YAZIO; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=current project; action=CREATE_NEW; id=entity:<9>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user\n        text_queries=exercise routine workout routine gym three times a week weight loss meal plan high protein fiber low processed foods added sugars meal prep Sundays|birthday February 12 age 32 fitness goals\n        predicate_hints=has_goal|prefers|avoids|current_metric_value\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:5c578c9745d9ab528610ab52c2164bda] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_d12ceb0e:session:1; title=LongMemEval gpt4_d12ceb0e session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 00:57\nTranscript:\nuser: I'm trying to get back into a regular exercise routine, can you recommend some workouts that are suitable for someone my age? By the way, I just turned 32 on February 12th, so I'm feeling a bit more motivated to take care of myself now.\nassistant: Happy belated birthday! 32 is a great age to focus on your fitness, and I'm more than happy to help you get back into a regular exercise routine.\n\nAs a 32-year-old, you're likely looking for workouts that are effective, efficient, and gentle on your joints. Here are some exercises and routines that are suitable for your age group:\n\n**Cardio:**\n\n1. Brisk Walking: Aim for at least 30 minutes, 3-4 times a week. You can incorporate short bursts of faster walking or incline walking to make it more challenging.\n2. Jogging or Running: If you're new to running, start with short intervals (20-30 minutes, 2-3 times a week) and gradually increase your distance and frequency.\n3. Swimming: A low-impact exercise that's easy on the joints. Aim for 20-30 minutes, 2-3 times a week.\n4. Cycling: Stationary bike or outdoor cycling are great options. Aim for 20-30 minutes, 2-3 times a week.\n\n**Strength Training:**\n\n1. Bodyweight Exercises: Focus on exercises like push-ups, squats, lunges, planks, and rows. Aim for 2-3 sets of 8-12 reps, 2-3 times a week.\n2. Resistance Band Exercises: A great alternative to weights, resistance bands are portable and easy to use. Focus on exercises like banded squats, lunges, and chest presses.\n3. High-Intensity Interval Training (HIIT): Incorporate HIIT workouts 2-3 times a week, focusing on exercises like burpees, jump squats, and mountain climbers.\n\n**Flexibility and Stretching:**\n\n1. Yoga or Pilates: Aim for 2-3 sessions per week, focusing on flexibility, balance, and core strength.\n2. Dynamic Stretching: Incorporate dynamic stretches before your workouts, focusing on leg swings, arm circles, and torso twists.\n\n**Sample Workout Routine:**\n\nHere's a sample workout routine to get you started:\n\nMonday (Cardio Day):\n\n* Warm-up: 5-minute walk or jog\n* Brisk walking or jogging: 20-30 minutes\n* Cool-down: 5-minute stretching\n\nTuesday (Upper Body Strength):\n\n* Warm-up: 5-minute dynamic stretching\n* Bodyweight exercises: push-ups (3 sets of 10 reps), tricep dips (3 sets of 12 reps), bicep curls (3 sets of 12 reps)\n* Cool-down: 5-minute stretching\n\nWednesday (Rest Day)\n\nThursday (Lower Body Strength):\n\n* Warm-up: 5-minute dynamic stretching\n* Bodyweight exercises: squats (3 sets of 10 reps), lunges (3 sets of 10 reps per leg), calf raises (3 sets of 12 reps)\n* Cool-down: 5-minute stretching\n\nFriday (Cardio Day):\n\n* Warm-up: 5-minute walk or jog\n* Swimming or cycling: 20-30 minutes\n* Cool-down: 5-minute stretching\n\nSaturday (Rest Day)\n\nSunday (Yoga or Pilates):\n\n* 30-45 minutes of yoga or Pilates\n\nRemember to:\n\n* Listen to your body and rest when needed.\n* Start slow and gradually increase the intensity and frequency of your workouts.\n* Warm up and cool down properly to prevent injuries.\n* Stay hydrated and fuel your body with a balanced diet.\n\nFeel free to modify this routine based on your preferences and fitness goals. Most importantly, find exercises that you enjoy, and you'll be more likely to stick to your routine!\n\nHow does this sound? Do you have any specific fitness goals or preferences (e.g., weight loss, muscle gain, etc.)?\nuser: I like the variety of workouts you've suggested. I'm actually more interested in focusing on weight loss, so can you give me some tips on how to create a meal plan that would support my fitness goals?\nassistant: Creating a meal plan that supports your weight loss goals is crucial to achieving success. Here are some tips to help you get started:\n\n**1. Caloric Intake:**\nTo lose weight, you need to create a caloric deficit, meaning you consume fewer calories than your body burns. Aim for a daily caloric intake of 15-20% below your maintenance level. For a 32-year-old male, this translates to:\n\t* 2500-2800 calories/day for a sedentary person\n\t* 2800-3100 calories/day for a lightly active person\n\t* 3100-3500 calories/day for a moderately active person\n\t* 3500-3800 calories/day for a very active person\n\n**2. Macronutrient Balance:**\nAim for a balanced diet with the following macronutrient ratios:\n\t* Protein: 1.6-2.2 grams per kilogram of body weight (for muscle growth and maintenance)\n\t* Fat: 0.8-1 gram per kilogram of body weight (for hormone regulation and satiety)\n\t* Carbohydrates: 2-3 grams per kilogram of body weight (for energy)\n\n**3. Hydration:**\nDrink plenty of water throughout the day to stay hydrated and help with weight loss. Aim for at least 8-10 glasses of water per day.\n\n**4. Meal Frequency:**\nAim for 4-6 main meals and 2-3 snacks in between, spaced out every 2-3 hours. This will help keep your metabolism boosted and prevent excessive hunger.\n\n**5. Portion Control:**\nUse a food scale or measuring cups to measure your portions. Eat until you're satisfied, but avoid overeating.\n\n**6. Food Choices:**\nFocus on whole, unprocessed foods like:\n\t* Vegetables: dark leafy greens, bell peppers, carrots, broccoli\n\t* Fruits: apples, bananas, berries, citrus fruits\n\t* Proteins: lean meats (chicken, turkey, fish), eggs, tofu, legumes\n\t* Whole Grains: brown rice, quinoa, whole wheat bread, whole grain pasta\n\t* Healthy Fats: nuts, seeds, avocados, olive oil\n\n**7. Avoid or Limit:**\nTry to minimize or avoid:\n\t* Processed meats (hot dogs, sausages, bacon)\n\t* Refined sugars (soda, candy, baked goods)\n\t* Fried foods\n\t* High-sodium foods\n\t* Foods high in saturated and trans fats\n\n**Sample Meal Plan:**\nHere's a sample meal plan to get you started:\n\n**Breakfast**\n\n* 2 whole eggs\n* 1 cup cooked oatmeal with fruits and nuts\n* 1 cup mixed berries\n\n**Mid-Morning Snack**\n\n* 1 small apple\n* 1 tablespoon almond butter\n\n**Lunch**\n\n* 4 oz grilled chicken breast\n* 1 cup cooked quinoa\n* 1 cup steamed broccoli\n\n**Mid-Afternoon Snack**\n\n* 1 small banana\n* 1 scoop whey protein powder mixed with water\n\n**Dinner**\n\n* 4 oz grilled salmon\n* 1 cup cooked brown rice\n* 1 cup sautéed vegetables (bell peppers, onions, mushrooms)\n\n**Before Bed Snack**\n\n* 1 small pear\n* 1 oz dry-roasted almonds\n\nRemember, this is just a sample meal plan, and you should adjust the portion sizes and food choices based on your personal preferences and dietary needs.\n\n**Tips for Success:**\n\n* Plan your meals in advance to avoid last-minute unhealthy choices.\n* Cook in bulk and prep your meals for the week.\n* Keep healthy snacks on hand to curb cravings.\n* Eat slowly and mindfully, savoring your food.\n* Get enough sleep (\nuser: That's a lot of great information, thank you for providing it. I think I'll focus on creating a meal plan that is high in protein and fiber, and low in processed foods and added sugars. Since I've been going to the gym three times a week, I'll make sure to increase my protein intake to support muscle growth and recovery. I'll also try to cook at home most nights instead of ordering takeout, and prep my meals for the week on Sundays. Can you give me some healthy recipe ideas for protein-rich meals that are easy to make and won't break the bank?\nassistant: You're on the right track! Focusing on high-protein, high-fiber meals with minimal processed foods and added sugars will definitely support your fitness goals. \n\nI'm more than happy to provide you with some delicious and affordable protein-rich recipe ideas that are easy to make and perfect for meal prep. Here are some options:\n\n**Breakfast Recipes:**\n\n1. **Protein-Packed Omelette**: Whisk 2 eggs, 1/4 cup cottage cheese, and 1 tablespoon chopped spinach. Cook in a non-stick pan with 1 tablespoon olive oil. Fold in 1/4 cup sliced bell peppers and onions. ($1.50 per serving)\n2. **Avocado Toast with Scrambled Eggs**: Toast whole grain bread, mash 1/2 avocado, and top with 2 scrambled eggs. Add salt, pepper, and a squeeze of lemon juice. ($2.50 per serving)\n3. **Greek Yogurt Parfait**: Layer 1 cup Greek yogurt, 1/2 cup mixed berries, 1/4 cup granola, and 1 scoop whey protein powder in a jar. ($2.50 per serving)\n\n**Lunch Recipes:**\n\n1. **Grilled Chicken Breast with Quinoa and Veggies**: Marinate 4 oz chicken breast in 1 tablespoon olive oil, 1 tablespoon lemon juice, and 1 clove garlic. Grill and serve with 1/2 cup cooked quinoa and 1 cup steamed broccoli. ($3.50 per serving)\n2. **Lentil Soup**: Cook 1 cup lentils, 1 onion, 2 cloves garlic, and 1 carrot in 4 cups vegetable broth. Add 1 can diced tomatoes and 1 teaspoon cumin. Serve with 1 slice whole grain bread. ($2.50 per serving)\n3. **Turkey and Avocado Wrap**: Spread 1 tablespoon hummus on a whole grain tortilla, layer with 2 oz sliced turkey breast, 1/2 avocado, 1 cup mixed greens, and 1/4 cup sliced cucumber. Roll up and slice in half. ($3.50 per serving)\n\n**Dinner Recipes:**\n\n1. **Baked Salmon with Sweet Potatoes and Green Beans**: Season 4 oz salmon fillet with salt, pepper, and 1 tablespoon olive oil. Bake with 1 medium sweet potato and 1 cup green beans at 400°F (200°C) for 20-25 minutes. ($4.50 per serving)\n2. **Chicken and Veggie Stir-Fry**: Cook 4 oz chicken breast, 1 cup mixed veggies (bell peppers, onions, broccoli), and 2 cloves garlic in 1 tablespoon olive oil. Serve with 1/2 cup cooked brown rice. ($3.50 per serving)\n3. **Black Bean and Chicken Chili**: Cook 1 cup black beans, 4 oz chicken breast, 1 onion, and 2 cloves garlic in 2 cups vegetable broth. Add 1 can diced tomatoes and 1 teaspoon cumin. Serve with 1 slice whole grain bread. ($3.50 per serving)\n\n**Snack Recipes:**\n\n1. **Greek Yogurt with Berries and Nuts**: Mix 1 cup Greek yogurt, 1/2 cup mixed berries, and 1 tablespoon chopped nuts. ($2.50 per serving)\n2. **Hard-Boiled Eggs**: Boil 6 eggs and season with salt and pepper. ($1.50 per serving)\n3. **Cottage Cheese with Cucumber Slices**: Mix 1/2 cup cottage cheese with 1/4 cup sliced cucumber and 1 tablespoon chopped parsley. ($2.50 per serving)\n\nThese recipes are not only delicious but also packed with protein, fiber, and nutrients to support your fitness goals. Plus, they're easy on the wallet!\n\nRemember to adjust the portion\nuser: That's great, thanks for the recipe ideas! I think I'll try the grilled chicken breast with quinoa and veggies for lunch, and the baked salmon with sweet potatoes and green beans for dinner. I'll also prep some hard-boiled eggs and Greek yogurt with berries and nuts for snacks. I'm excited to start cooking and meal prepping this week. By the way, do you have any tips on how to stay motivated and consistent with my workout routine and meal plan?\nassistant: You're making great choices!\n\nStaying motivated and consistent is a crucial part of achieving your fitness goals. Here are some tips to help you stay on track:\n\n**Workout Routine:**\n\n1. **Schedule it in**: Treat your workouts as non-negotiable appointments and schedule them in your calendar.\n2. **Find a workout buddy**: Having someone to hold you accountable and share the experience with can be a great motivator.\n3. **Track your progress**: Take progress photos, measurements, or track your workouts to see how far you've come.\n4. **Mix it up**: Vary your workout routine every 4-6 weeks to avoid plateaus and prevent boredom.\n5. **Reward yourself**: Set small rewards for reaching milestones, like a massage or a new workout outfit.\n\n**Meal Plan:**\n\n1. **Plan ahead**: Meal prep on Sundays or Mondays to set yourself up for success.\n2. **Grocery shop smart**: Buy ingredients in bulk and plan your meals around what's on sale.\n3. **Keep it simple**: Don't feel like you need to make complicated meals. Simple, healthy meals can be just as delicious.\n4. **Stay hydrated**: Drink plenty of water throughout the day to help with hunger and cravings.\n5. **Be kind to yourself**: Don't stress if you slip up. Get back on track as soon as possible and remember that it's a journey.\n\n**General Tips:**\n\n1. **Set realistic goals**: Break down your long-term goals into smaller, achievable milestones.\n2. **Celebrate small wins**: Acknowledge and celebrate your small victories along the way.\n3. **Get enough sleep**: Aim for 7-9 hours of sleep to help with recovery and motivation.\n4. **Stay positive**: Focus on the positive changes you're making and how they're impacting your life.\n5. **Seek support**: Share your goals with friends and family, and consider hiring a personal trainer or nutritionist for guidance.\n\nRemember, consistency is key. Stick to your routine, and you'll start to see results. Don't be too hard on yourself if you slip up – just get back on track and keep moving forward.\n\nYou got this!\nuser: I'm excited to start my new workout routine and meal plan. I think it's going to make a big difference in my overall health and fitness. I'm also feeling more motivated now that I have a plan in place. Thanks for all the tips and advice - it's really helpful to have a guide to follow. One thing I'm still unsure about is how to track my progress. Do you have any recommendations for apps or tools that can help me track my workouts and meals?\nassistant: Tracking your progress is a crucial part of staying motivated and seeing results. There are many great apps and tools available that can help you track your workouts and meals. Here are some popular ones:\n\n**Workout Tracking Apps:**\n\n1. **MyFitnessPal**: A great app for tracking your workouts, including exercises, sets, reps, and weight. It also has a large exercise database and allows you to set goals and track progress.\n2. **Strava**: A popular app for tracking runs, rides, and other cardio activities. It also has a social aspect, allowing you to connect with friends and join challenges.\n3. **Fitbit Coach**: A personalized fitness app that offers customized workouts based on your goals and fitness level. It also tracks your progress and allows you to set reminders.\n\n**Meal Tracking Apps:**\n\n1. **MyFitnessPal**: In addition to workout tracking, MyFitnessPal also allows you to track your daily food intake, including macronutrients and calories. It has a large database of foods and allows you to set daily goals.\n2. **Lose It!**: A calorie tracking app that allows you to set daily goals and track your progress. It also has a large database of foods and allows you to scan barcodes.\n3. **YAZIO**: A nutrition app that allows you to track your daily food intake, including macronutrients and calories. It also has a large database of foods and allows you to set daily goals.\n\n**Other Tools:**\n\n1. **Spreadsheets**: You can create a spreadsheet to track your workouts and meals manually. This can be a great way to customize your tracking to fit your specific needs.\n2. **Progress Photos**: Take progress photos at the beginning of your journey and at regular intervals to track visual changes.\n3. **Body Measurements**: Take body measurements at the beginning of your journey and at regular intervals to track changes in body composition.\n\nRemember, the key is to find a tracking method that works for you and that you enjoy using. Experiment with different apps and tools until you find one that fits your style.\n\nI hope this helps! Let me know if you have any other questions or need further guidance.\nuser: I think that's all for now. I'm excited to start my new workout routine and meal plan, and I feel more motivated now that I have a plan in place. Thanks again for all the tips and advice - it's really helpful to have a guide to follow. I'll definitely be tracking my progress and adjusting my plan as needed.\nassistant: You're welcome! It was my pleasure to help. I'm thrilled to hear that you're feeling more motivated and confident about starting your new workout routine and meal plan. Remember, consistency and patience are key. Stick to your plan, and don't be too hard on yourself if you encounter any setbacks. You got this!\n\nRemember to track your progress, adjust your plan as needed, and celebrate your small wins along the way. And don't hesitate to reach out if you have any more questions or need further guidance.\n\nYou're taking a huge step towards a healthier and happier you, and I'm honored to have been a part of it. Keep me posted on your progress, and I'll be rooting for you all the way!\n\nStay motivated, stay consistent, and crush your fitness goals!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_d12ceb0e",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:5c578c9745d9ab528610ab52c2164bda"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_d12ceb0e\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Contains extractable durable personal facts/preferences and fitness/meal-planning goals, plus richer context about the chosen routine and recommendations.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements describe durable user attributes, goals, and preferences; no existing USER entity is available.\n- mention=workout routine; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=User's workout routine; reason=The transcript repeatedly discusses the user's new workout routine as a reusable personal plan object.\n- mention=meal plan; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=User's meal plan; reason=The transcript repeatedly discusses the user's meal plan as a reusable personal plan object.\n- mention=gym; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Gym attendance; reason=The user's gym attendance is likely a durable claim target, but no specific gym location or organization is identified.\n- mention=MyFitnessPal; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=MyFitnessPal; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=Strava; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=Strava; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=Fitbit Coach; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=Fitbit Coach; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=Lose It!; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=Lose It!; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=YAZIO; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=YAZIO; reason=Mentioned as a reusable app/product recommendation in the transcript.\n- mention=current project; action=CREATE_NEW; id=entity:<9>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user\n        text_queries=exercise routine workout routine gym three times a week weight loss meal plan high protein fiber low processed foods added sugars meal prep Sundays|birthday February 12 age 32 fitness goals\n        predicate_hints=has_goal|prefers|avoids|current_metric_value\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:5c578c9745d9ab528610ab52c2164bda] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_d12ceb0e:session:1; title=LongMemEval gpt4_d12ceb0e session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 00:57\nTranscript:\nuser: I'm trying to get back into a regular exercise routine, can you recommend some workouts that are suitable for someone my age? By the way, I just turned 32 on February 12th, so I'm feeling a bit more motivated to take care of myself now.\nassistant: Happy belated birthday! 32 is a great age to focus on your fitness, and I'm more than happy to help you get back into a regular exercise routine.\n\nAs a 32-year-old, you're likely looking for workouts that are effective, efficient, and gentle on your joints. Here are some exercises and routines that are suitable for your age group:\n\n**Cardio:**\n\n1. Brisk Walking: Aim for at least 30 minutes, 3-4 times a week. You can incorporate short bursts of faster walking or incline walking to make it more challenging.\n2. Jogging or Running: If you're new to running, start with short intervals (20-30 minutes, 2-3 times a week) and gradually increase your distance and frequency.\n3. Swimming: A low-impact exercise that's easy on the joints. Aim for 20-30 minutes, 2-3 times a week.\n4. Cycling: Stationary bike or outdoor cycling are great options. Aim for 20-30 minutes, 2-3 times a week.\n\n**Strength Training:**\n\n1. Bodyweight Exercises: Focus on exercises like push-ups, squats, lunges, planks, and rows. Aim for 2-3 sets of 8-12 reps, 2-3 times a week.\n2. Resistance Band Exercises: A great alternative to weights, resistance bands are portable and easy to use. Focus on exercises like banded squats, lunges, and chest presses.\n3. High-Intensity Interval Training (HIIT): Incorporate HIIT workouts 2-3 times a week, focusing on exercises like burpees, jump squats, and mountain climbers.\n\n**Flexibility and Stretching:**\n\n1. Yoga or Pilates: Aim for 2-3 sessions per week, focusing on flexibility, balance, and core strength.\n2. Dynamic Stretching: Incorporate dynamic stretches before your workouts, focusing on leg swings, arm circles, and torso twists.\n\n**Sample Workout Routine:**\n\nHere's a sample workout routine to get you started:\n\nMonday (Cardio Day):\n\n* Warm-up: 5-minute walk or jog\n* Brisk walking or jogging: 20-30 minutes\n* Cool-down: 5-minute stretching\n\nTuesday (Upper Body Strength):\n\n* Warm-up: 5-minute dynamic stretching\n* Bodyweight exercises: push-ups (3 sets of 10 reps), tricep dips (3 sets of 12 reps), bicep curls (3 sets of 12 reps)\n* Cool-down: 5-minute stretching\n\nWednesday (Rest Day)\n\nThursday (Lower Body Strength):\n\n* Warm-up: 5-minute dynamic stretching\n* Bodyweight exercises: squats (3 sets of 10 reps), lunges (3 sets of 10 reps per leg), calf raises (3 sets of 12 reps)\n* Cool-down: 5-minute stretching\n\nFriday (Cardio Day):\n\n* Warm-up: 5-minute walk or jog\n* Swimming or cycling: 20-30 minutes\n* Cool-down: 5-minute stretching\n\nSaturday (Rest Day)\n\nSunday (Yoga or Pilates):\n\n* 30-45 minutes of yoga or Pilates\n\nRemember to:\n\n* Listen to your body and rest when needed.\n* Start slow and gradually increase the intensity and frequency of your workouts.\n* Warm up and cool down properly to prevent injuries.\n* Stay hydrated and fuel your body with a balanced diet.\n\nFeel free to modify this routine based on your preferences and fitness goals. Most importantly, find exercises that you enjoy, and you'll be more likely to stick to your routine!\n\nHow does this sound? Do you have any specific fitness goals or preferences (e.g., weight loss, muscle gain, etc.)?\nuser: I like the variety of workouts you've suggested. I'm actually more interested in focusing on weight loss, so can you give me some tips on how to create a meal plan that would support my fitness goals?\nassistant: Creating a meal plan that supports your weight loss goals is crucial to achieving success. Here are some tips to help you get started:\n\n**1. Caloric Intake:**\nTo lose weight, you need to create a caloric deficit, meaning you consume fewer calories than your body burns. Aim for a daily caloric intake of 15-20% below your maintenance level. For a 32-year-old male, this translates to:\n\t* 2500-2800 calories/day for a sedentary person\n\t* 2800-3100 calories/day for a lightly active person\n\t* 3100-3500 calories/day for a moderately active person\n\t* 3500-3800 calories/day for a very active person\n\n**2. Macronutrient Balance:**\nAim for a balanced diet with the following macronutrient ratios:\n\t* Protein: 1.6-2.2 grams per kilogram of body weight (for muscle growth and maintenance)\n\t* Fat: 0.8-1 gram per kilogram of body weight (for hormone regulation and satiety)\n\t* Carbohydrates: 2-3 grams per kilogram of body weight (for energy)\n\n**3. Hydration:**\nDrink plenty of water throughout the day to stay hydrated and help with weight loss. Aim for at least 8-10 glasses of water per day.\n\n**4. Meal Frequency:**\nAim for 4-6 main meals and 2-3 snacks in between, spaced out every 2-3 hours. This will help keep your metabolism boosted and prevent excessive hunger.\n\n**5. Portion Control:**\nUse a food scale or measuring cups to measure your portions. Eat until you're satisfied, but avoid overeating.\n\n**6. Food Choices:**\nFocus on whole, unprocessed foods like:\n\t* Vegetables: dark leafy greens, bell peppers, carrots, broccoli\n\t* Fruits: apples, bananas, berries, citrus fruits\n\t* Proteins: lean meats (chicken, turkey, fish), eggs, tofu, legumes\n\t* Whole Grains: brown rice, quinoa, whole wheat bread, whole grain pasta\n\t* Healthy Fats: nuts, seeds, avocados, olive oil\n\n**7. Avoid or Limit:**\nTry to minimize or avoid:\n\t* Processed meats (hot dogs, sausages, bacon)\n\t* Refined sugars (soda, candy, baked goods)\n\t* Fried foods\n\t* High-sodium foods\n\t* Foods high in saturated and trans fats\n\n**Sample Meal Plan:**\nHere's a sample meal plan to get you started:\n\n**Breakfast**\n\n* 2 whole eggs\n* 1 cup cooked oatmeal with fruits and nuts\n* 1 cup mixed berries\n\n**Mid-Morning Snack**\n\n* 1 small apple\n* 1 tablespoon almond butter\n\n**Lunch**\n\n* 4 oz grilled chicken breast\n* 1 cup cooked quinoa\n* 1 cup steamed broccoli\n\n**Mid-Afternoon Snack**\n\n* 1 small banana\n* 1 scoop whey protein powder mixed with water\n\n**Dinner**\n\n* 4 oz grilled salmon\n* 1 cup cooked brown rice\n* 1 cup sautéed vegetables (bell peppers, onions, mushrooms)\n\n**Before Bed Snack**\n\n* 1 small pear\n* 1 oz dry-roasted almonds\n\nRemember, this is just a sample meal plan, and you should adjust the portion sizes and food choices based on your personal preferences and dietary needs.\n\n**Tips for Success:**\n\n* Plan your meals in advance to avoid last-minute unhealthy choices.\n* Cook in bulk and prep your meals for the week.\n* Keep healthy snacks on hand to curb cravings.\n* Eat slowly and mindfully, savoring your food.\n* Get enough sleep (\nuser: That's a lot of great information, thank you for providing it. I think I'll focus on creating a meal plan that is high in protein and fiber, and low in processed foods and added sugars. Since I've been going to the gym three times a week, I'll make sure to increase my protein intake to support muscle growth and recovery. I'll also try to cook at home most nights instead of ordering takeout, and prep my meals for the week on Sundays. Can you give me some healthy recipe ideas for protein-rich meals that are easy to make and won't break the bank?\nassistant: You're on the right track! Focusing on high-protein, high-fiber meals with minimal processed foods and added sugars will definitely support your fitness goals. \n\nI'm more than happy to provide you with some delicious and affordable protein-rich recipe ideas that are easy to make and perfect for meal prep. Here are some options:\n\n**Breakfast Recipes:**\n\n1. **Protein-Packed Omelette**: Whisk 2 eggs, 1/4 cup cottage cheese, and 1 tablespoon chopped spinach. Cook in a non-stick pan with 1 tablespoon olive oil. Fold in 1/4 cup sliced bell peppers and onions. ($1.50 per serving)\n2. **Avocado Toast with Scrambled Eggs**: Toast whole grain bread, mash 1/2 avocado, and top with 2 scrambled eggs. Add salt, pepper, and a squeeze of lemon juice. ($2.50 per serving)\n3. **Greek Yogurt Parfait**: Layer 1 cup Greek yogurt, 1/2 cup mixed berries, 1/4 cup granola, and 1 scoop whey protein powder in a jar. ($2.50 per serving)\n\n**Lunch Recipes:**\n\n1. **Grilled Chicken Breast with Quinoa and Veggies**: Marinate 4 oz chicken breast in 1 tablespoon olive oil, 1 tablespoon lemon juice, and 1 clove garlic. Grill and serve with 1/2 cup cooked quinoa and 1 cup steamed broccoli. ($3.50 per serving)\n2. **Lentil Soup**: Cook 1 cup lentils, 1 onion, 2 cloves garlic, and 1 carrot in 4 cups vegetable broth. Add 1 can diced tomatoes and 1 teaspoon cumin. Serve with 1 slice whole grain bread. ($2.50 per serving)\n3. **Turkey and Avocado Wrap**: Spread 1 tablespoon hummus on a whole grain tortilla, layer with 2 oz sliced turkey breast, 1/2 avocado, 1 cup mixed greens, and 1/4 cup sliced cucumber. Roll up and slice in half. ($3.50 per serving)\n\n**Dinner Recipes:**\n\n1. **Baked Salmon with Sweet Potatoes and Green Beans**: Season 4 oz salmon fillet with salt, pepper, and 1 tablespoon olive oil. Bake with 1 medium sweet potato and 1 cup green beans at 400°F (200°C) for 20-25 minutes. ($4.50 per serving)\n2. **Chicken and Veggie Stir-Fry**: Cook 4 oz chicken breast, 1 cup mixed veggies (bell peppers, onions, broccoli), and 2 cloves garlic in 1 tablespoon olive oil. Serve with 1/2 cup cooked brown rice. ($3.50 per serving)\n3. **Black Bean and Chicken Chili**: Cook 1 cup black beans, 4 oz chicken breast, 1 onion, and 2 cloves garlic in 2 cups vegetable broth. Add 1 can diced tomatoes and 1 teaspoon cumin. Serve with 1 slice whole grain bread. ($3.50 per serving)\n\n**Snack Recipes:**\n\n1. **Greek Yogurt with Berries and Nuts**: Mix 1 cup Greek yogurt, 1/2 cup mixed berries, and 1 tablespoon chopped nuts. ($2.50 per serving)\n2. **Hard-Boiled Eggs**: Boil 6 eggs and season with salt and pepper. ($1.50 per serving)\n3. **Cottage Cheese with Cucumber Slices**: Mix 1/2 cup cottage cheese with 1/4 cup sliced cucumber and 1 tablespoon chopped parsley. ($2.50 per serving)\n\nThese recipes are not only delicious but also packed with protein, fiber, and nutrients to support your fitness goals. Plus, they're easy on the wallet!\n\nRemember to adjust the portion\nuser: That's great, thanks for the recipe ideas! I think I'll try the grilled chicken breast with quinoa and veggies for lunch, and the baked salmon with sweet potatoes and green beans for dinner. I'll also prep some hard-boiled eggs and Greek yogurt with berries and nuts for snacks. I'm excited to start cooking and meal prepping this week. By the way, do you have any tips on how to stay motivated and consistent with my workout routine and meal plan?\nassistant: You're making great choices!\n\nStaying motivated and consistent is a crucial part of achieving your fitness goals. Here are some tips to help you stay on track:\n\n**Workout Routine:**\n\n1. **Schedule it in**: Treat your workouts as non-negotiable appointments and schedule them in your calendar.\n2. **Find a workout buddy**: Having someone to hold you accountable and share the experience with can be a great motivator.\n3. **Track your progress**: Take progress photos, measurements, or track your workouts to see how far you've come.\n4. **Mix it up**: Vary your workout routine every 4-6 weeks to avoid plateaus and prevent boredom.\n5. **Reward yourself**: Set small rewards for reaching milestones, like a massage or a new workout outfit.\n\n**Meal Plan:**\n\n1. **Plan ahead**: Meal prep on Sundays or Mondays to set yourself up for success.\n2. **Grocery shop smart**: Buy ingredients in bulk and plan your meals around what's on sale.\n3. **Keep it simple**: Don't feel like you need to make complicated meals. Simple, healthy meals can be just as delicious.\n4. **Stay hydrated**: Drink plenty of water throughout the day to help with hunger and cravings.\n5. **Be kind to yourself**: Don't stress if you slip up. Get back on track as soon as possible and remember that it's a journey.\n\n**General Tips:**\n\n1. **Set realistic goals**: Break down your long-term goals into smaller, achievable milestones.\n2. **Celebrate small wins**: Acknowledge and celebrate your small victories along the way.\n3. **Get enough sleep**: Aim for 7-9 hours of sleep to help with recovery and motivation.\n4. **Stay positive**: Focus on the positive changes you're making and how they're impacting your life.\n5. **Seek support**: Share your goals with friends and family, and consider hiring a personal trainer or nutritionist for guidance.\n\nRemember, consistency is key. Stick to your routine, and you'll start to see results. Don't be too hard on yourself if you slip up – just get back on track and keep moving forward.\n\nYou got this!\nuser: I'm excited to start my new workout routine and meal plan. I think it's going to make a big difference in my overall health and fitness. I'm also feeling more motivated now that I have a plan in place. Thanks for all the tips and advice - it's really helpful to have a guide to follow. One thing I'm still unsure about is how to track my progress. Do you have any recommendations for apps or tools that can help me track my workouts and meals?\nassistant: Tracking your progress is a crucial part of staying motivated and seeing results. There are many great apps and tools available that can help you track your workouts and meals. Here are some popular ones:\n\n**Workout Tracking Apps:**\n\n1. **MyFitnessPal**: A great app for tracking your workouts, including exercises, sets, reps, and weight. It also has a large exercise database and allows you to set goals and track progress.\n2. **Strava**: A popular app for tracking runs, rides, and other cardio activities. It also has a social aspect, allowing you to connect with friends and join challenges.\n3. **Fitbit Coach**: A personalized fitness app that offers customized workouts based on your goals and fitness level. It also tracks your progress and allows you to set reminders.\n\n**Meal Tracking Apps:**\n\n1. **MyFitnessPal**: In addition to workout tracking, MyFitnessPal also allows you to track your daily food intake, including macronutrients and calories. It has a large database of foods and allows you to set daily goals.\n2. **Lose It!**: A calorie tracking app that allows you to set daily goals and track your progress. It also has a large database of foods and allows you to scan barcodes.\n3. **YAZIO**: A nutrition app that allows you to track your daily food intake, including macronutrients and calories. It also has a large database of foods and allows you to set daily goals.\n\n**Other Tools:**\n\n1. **Spreadsheets**: You can create a spreadsheet to track your workouts and meals manually. This can be a great way to customize your tracking to fit your specific needs.\n2. **Progress Photos**: Take progress photos at the beginning of your journey and at regular intervals to track visual changes.\n3. **Body Measurements**: Take body measurements at the beginning of your journey and at regular intervals to track changes in body composition.\n\nRemember, the key is to find a tracking method that works for you and that you enjoy using. Experiment with different apps and tools until you find one that fits your style.\n\nI hope this helps! Let me know if you have any other questions or need further guidance.\nuser: I think that's all for now. I'm excited to start my new workout routine and meal plan, and I feel more motivated now that I have a plan in place. Thanks again for all the tips and advice - it's really helpful to have a guide to follow. I'll definitely be tracking my progress and adjusting my plan as needed.\nassistant: You're welcome! It was my pleasure to help. I'm thrilled to hear that you're feeling more motivated and confident about starting your new workout routine and meal plan. Remember, consistency and patience are key. Stick to your plan, and don't be too hard on yourself if you encounter any setbacks. You got this!\n\nRemember to track your progress, adjust your plan as needed, and celebrate your small wins along the way. And don't hesitate to reach out if you have any more questions or need further guidance.\n\nYou're taking a huge step towards a healthier and happier you, and I'm honored to have been a part of it. Keep me posted on your progress, and I'll be rooting for you all the way!\n\nStay motivated, stay consistent, and crush your fitness goals!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_d12ceb0e",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:5c578c9745d9ab528610ab52c2164bda"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User focuses meal planning on high protein and fiber\",\"User avoids or limits processed foods and added sugars\",\"User goes to the gym three times a week\",\"User plans to meal-prep on Sundays\",\"User prefers cooking at home most nights\"],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll focus on creating a meal plan that is high in protein and fiber, and low in processed foods and added sugars. Since I've been going to the gym three times a week, I'll make sure to increase my protein intake to support muscle growth and recovery. I'll also try to cook at home most nights instead of ordering takeout, and prep my meals for the week on Sundays.\",\"evidence_reason\":\"The quoted passage explicitly states the user's chosen nutrition constraints, gym frequency, protein rationale, cooking preference, and Sunday meal-prep plan.\",\"importance\":5,\"keywords\":[\"weight loss\",\"workout routine\",\"meal plan\",\"gym three times a week\",\"protein\",\"fiber\",\"meal prep Sundays\",\"processed foods\",\"added sugars\"],\"note_type\":\"plan\",\"rationale\":\"This is a multi-part plan with rationale and routines rather than a single atomic claim; preserving it as a note helps future coaching align with the overall strategy.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's workout routine and meal plan from the 2023-05-20 fitness planning conversation\"},\"summary\":\"The user adopted a weight-loss-oriented fitness approach: gym workouts three times per week, increased protein for muscle growth and recovery, a meal plan high in protein and fiber, low in processed foods and added sugars, cooking at home most nights, and meal-prepping for the week on Sundays.\",\"tags\":[\"fitness\",\"weight_loss\",\"meal_prep\",\"nutrition\"],\"title\":\"Weight-loss fitness and meal-prep plan\",\"valid_from\":\"2023-05-20T00:57:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User chose grilled chicken breast with quinoa and veggies for lunch\",\"User chose baked salmon with sweet potatoes and green beans for dinner\",\"User chose hard-boiled eggs and Greek yogurt with berries and nuts as snacks\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<2>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll try the grilled chicken breast with quinoa and veggies for lunch, and the baked salmon with sweet potatoes and green beans for dinner. I'll also prep some hard-boiled eggs and Greek yogurt with berries and nuts for snacks.\",\"evidence_reason\":\"The quote directly names the recipes and snacks the user decided to try and prep.\",\"importance\":4,\"keywords\":[\"grilled chicken breast\",\"quinoa\",\"veggies\",\"baked salmon\",\"sweet potatoes\",\"green beans\",\"hard-boiled eggs\",\"Greek yogurt\",\"berries\",\"nuts\",\"budget recipes\"],\"note_type\":\"decision\",\"rationale\":\"The selected meal combination is a reusable meal-planning decision and contextual recipe set, more useful as a compact note than separate isolated food claims.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"entity\",\"text\":\"User's meal plan recipe choices from the 2023-05-20 fitness planning conversation\"},\"summary\":\"For the initial meal-prep week, the user selected grilled chicken breast with quinoa and veggies for lunch, baked salmon with sweet potatoes and green beans for dinner, plus hard-boiled eggs and Greek yogurt with berries and nuts for snacks from the recommended protein-rich, affordable recipe options.\",\"tags\":[\"meal_plan\",\"recipes\",\"protein_rich\",\"budget\"],\"title\":\"Chosen budget protein-rich meal-prep recipes\",\"valid_from\":\"2023-05-20T00:57:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User intends to track progress and adjust the plan as needed\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<7>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<8>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'll definitely be tracking my progress and adjusting my plan as needed.\",\"evidence_reason\":\"The quote establishes the user's intent to track and adjust; the surrounding assistant response supplies the reusable list of app/tool options discussed in the same target transcript.\",\"importance\":3,\"keywords\":[\"MyFitnessPal\",\"Strava\",\"Fitbit Coach\",\"Lose It!\",\"YAZIO\",\"spreadsheets\",\"progress photos\",\"body measurements\",\"track workouts\",\"track meals\"],\"note_type\":\"context\",\"rationale\":\"This preserves the contextual set of recommended tools and the user's tracking intent; it is not reducible to a single precise claim because no specific tool was selected.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"conversation\",\"text\":\"Progress-tracking recommendations and user intent from the 2023-05-20 fitness planning conversation\"},\"summary\":\"Recommended tracking options included MyFitnessPal for both workouts and meals, Strava for runs/rides/cardio with social challenges, Fitbit Coach for personalized workouts, Lose It! and YAZIO for calorie/nutrition tracking, plus manual spreadsheets, progress photos, and body measurements. The user said they would track progress and adjust the plan as needed, but did not choose a specific app.\",\"tags\":[\"tracking\",\"fitness_apps\",\"progress\",\"meal_tracking\"],\"title\":\"Workout and meal progress-tracking options\",\"valid_from\":\"2023-05-20T00:57:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 8261,
+                "completionTokens": 1367,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
