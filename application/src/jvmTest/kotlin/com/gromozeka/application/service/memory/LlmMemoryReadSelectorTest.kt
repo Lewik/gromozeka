@@ -633,6 +633,8 @@ class LlmMemoryReadSelectorTest {
         val prompt = runtime.prompts.single()
         assertTrue(prompt.contains("numeric operands as the counted inventory"), prompt)
         assertTrue(prompt.contains("Reject separate singular POSSESSION or owns candidates"), prompt)
+        assertTrue(prompt.contains("routine cadence, intended schedule, reminder plan"), prompt)
+        assertTrue(prompt.contains("Do not turn a \"likely\" inferred date into a hard rejection by itself"), prompt)
     }
 
     @Test

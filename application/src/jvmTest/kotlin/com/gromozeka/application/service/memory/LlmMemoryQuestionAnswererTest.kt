@@ -359,6 +359,8 @@ class LlmMemoryQuestionAnswererTest {
         val prompt = runtime.prompts.single()
         assertTrue(prompt.contains("For use-scoped count/list questions"), prompt)
         assertTrue(prompt.contains("Assistant recommendations, option lists, examples"), prompt)
+        assertTrue(prompt.contains("Do not multiply a routine cadence, intended schedule"), prompt)
+        assertTrue(prompt.contains("do not treat an inferred or likely date from a source-local weekday"), prompt)
     }
 
     @Test

@@ -401,6 +401,8 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(prompt.contains("derive the target interval from the current/question date"), prompt)
         assertTrue(prompt.contains("do not smear one relative date cue"), prompt)
         assertTrue(prompt.contains("missing date evidence is uncertainty"), prompt)
+        assertTrue(prompt.contains("Do not multiply a routine cadence, intended schedule"), prompt)
+        assertTrue(prompt.contains("do not treat an inferred or likely date from a source-local weekday"), prompt)
         assertTrue(prompt.contains("place-visit questions"), prompt)
         assertTrue(prompt.contains("user-attended venue events such as lectures"), prompt)
     }
