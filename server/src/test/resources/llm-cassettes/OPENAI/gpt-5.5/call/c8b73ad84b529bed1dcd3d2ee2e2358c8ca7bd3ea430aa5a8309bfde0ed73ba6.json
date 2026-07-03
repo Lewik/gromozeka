@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "c8b73ad84b529bed1dcd3d2ee2e2358c8ca7bd3ea430aa5a8309bfde0ed73ba6",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:2ce6a0f2\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/03/08 (Wed) 20:44\nTranscript:\nuser: I'm looking for some information on local art events and exhibitions. Can you recommend any upcoming events or exhibitions that might be of interest to me?\nassistant: Unfortunately, I'm a large language model, I don't have have access to real-time information about specific local art events and exhibitions. I don't know your location, and I don't have the ability to browse the internet or access current event listings.\n\nHowever, I can suggest some ways for you to find out about upcoming art events and exhibitions in your area:\n\n1. **Check online event calendars**: Look for websites like Eventbrite, Meetup, or Facebook Events that list local art events, exhibitions, and festivals.\n2. **Museum and gallery websites**: Visit the websites of local art museums, galleries, and cultural institutions to see their upcoming exhibition schedules and event listings.\n3. **Social media**: Follow local art organizations, museums, and galleries on social media platforms like Instagram, Facebook, and Twitter to stay informed about their events and exhibitions.\n4. **Local art organizations and newsletters**: Research local art organizations, such as art councils or art associations, that may have newsletters or email lists that announce upcoming events and exhibitions.\n5. **Local newspapers and art publications**: Check the entertainment or arts sections of local newspapers and art publications for event listings and reviews.\n\nBy exploring these resources, you should be able to find out about upcoming art events and exhibitions in your area that might interest you. Enjoy!\nuser: I didn't know I could find local art events on social media. I'll definitely check that out. I was particularly drawn to the works of local artist, Rachel Lee, at the \"Women in Art\" exhibition which I attended on February 10th. It was amazing. Do you know if there are any online resources that feature local artists and their work?\nassistant: I'm glad I could introduce you to a new way of finding local art events!\n\nAs for your question, yes, there are online resources that feature local artists and their work. Here are a few options:\n\n1. **Artist websites and portfolios**: Many artists have their own websites or online portfolios showcasing their work. You can try searching for Rachel Lee's website or social media profiles to see more of her art.\n2. **Local art blogs and online publications**: Look for online publications or blogs that focus on local art scenes, artists, and exhibitions. They often feature artist interviews, studio visits, and exhibition reviews.\n3. **Online art platforms and marketplaces**: Websites like Saatchi Art, ArtNet, and Etsy feature artworks by local and international artists. You can filter by location to discover local talent.\n4. **Social media groups and communities**: Join local art-focused groups on Facebook or Reddit, where artists often share their work and provide updates on upcoming exhibitions and events.\n5. **Local art directories and registries**: Some cities have online directories or registries that list local artists, their specialties, and contact information. These can be a great resource for discovering new artists and their work.\n6. **Arts and culture websites**: Many cities have websites that promote local arts and culture, featuring artist profiles, exhibition listings, and event calendars.\n\nSome popular online resources that might be helpful:\n\n* Behance: A platform to discover and showcase creative work, including art, design, and photography.\n* DeviantArt: A community-driven platform featuring artwork, illustrations, and digital art.\n* Artsy: An online platform that partners with galleries, museums, and art fairs to showcase artworks and provide editorial content.\n\nBy exploring these resources, you might discover more about Rachel Lee's work and other local artists who resonate with you. Enjoy your art exploration!\nuser: I'll definitely check out those resources to learn more about Rachel Lee's work and other local artists. I remember that the curator, Sarah Johnson, mentioned that the Modern Art Museum might be hosting more events and exhibitions focused on local artists. Do you know if there's a way to get notified about upcoming events at a specific museum or gallery?\nassistant: Many museums and galleries offer ways to stay informed about their upcoming events and exhibitions. Here are a few ways to get notified:\n\n1. **Email newsletters**: Most museums and galleries have email newsletters that you can subscribe to. These newsletters often provide updates on upcoming exhibitions, events, and programs.\n2. **Museum or gallery websites**: Check the museum or gallery's website for a section on \"Upcoming Events\" or \"Exhibitions\" where they usually list their future programs. You can also look for a \"Stay Connected\" or \"Get Updates\" section where you can sign up for their newsletter or follow them on social media.\n3. **Social media**: Follow the museum or gallery on social media platforms like Facebook, Twitter, Instagram, or YouTube. They often post updates about upcoming events, exhibitions, and behind-the-scenes peeks.\n4. **Event calendars**: Look for online event calendars specific to your city or region, which often feature museum and gallery events.\n5. **Membership programs**: Consider becoming a member of the museum or gallery. Members often receive exclusive benefits, including early notification of upcoming events and exhibitions.\n6. **RSS feeds**: If you're tech-savvy, you can subscribe to the museum or gallery's RSS (Really Simple Syndication) feed, which will notify you of new content, including event listings.\n7. **Mobile apps**: Some museums and galleries have mobile apps that provide event listings, exhibition information, and even interactive experiences.\n\nTo get notified about upcoming events at the Modern Art Museum, you can:\n\n* Visit their website and look for a newsletter sign-up form or an \"Upcoming Events\" section.\n* Follow them on social media platforms like Facebook, Twitter, or Instagram.\n* Check their website for a membership program, which might offer exclusive benefits, including early event notification.\n* Search for online event calendars in your area that feature museum and gallery events.\n\nBy staying connected with the Modern Art Museum, you'll be the first to know about their upcoming events and exhibitions, including any future shows featuring Rachel Lee's work or other local artists.\nuser: I'll definitely check out the Modern Art Museum's website and social media to stay updated on their upcoming events and exhibitions.\nassistant: That's a great idea! By following the Modern Art Museum's website and social media, you'll be able to stay up-to-date on their latest events, exhibitions, and programs. You might even get exclusive behind-the-scenes peeks, artist interviews, or sneak previews of upcoming shows.\n\nRemember to also explore the online resources I mentioned earlier to discover more about Rachel Lee's work and other local artists. You might stumble upon new artists, exhibitions, or events that resonate with you.\n\nIf you have any more questions or need further recommendations, feel free to ask. Otherwise, happy art exploring, and I hope you enjoy the next event or exhibition you attend!\nuser: I'm thinking of visiting some local art studios and galleries this weekend. Do you know if there are any online resources that allow you to search for art studios or galleries in a specific area?\nassistant: What a great idea! Visiting local art studios and galleries is a fantastic way to discover new artists, see their work up close, and get a feel for the local art scene.\n\nYes, there are several online resources that allow you to search for art studios and galleries in a specific area. Here are a few options:\n\n1. **Google Maps**: Simply type \"art studios near me\" or \"art galleries near me\" in Google Maps, and it will show you a list of nearby studios and galleries along with their addresses, phone numbers, and reviews.\n2. **Online Directories**: Websites like ArtGuide, ArtSlant, and Artsy feature directories of art galleries, studios, and museums. You can filter by location to find ones in your area.\n3. **Local Arts Councils or Organizations**: Many local arts councils or organizations have online directories of member artists, studios, and galleries. These directories often include information on exhibitions, events, and open studio tours.\n4. **Social Media**: Follow local art organizations, studios, and galleries on social media platforms like Facebook, Instagram, or Twitter. Many of them post updates about upcoming events, exhibitions, and open studio hours.\n5. **Local Tourism Websites**: Visit your local tourism website or visitor's guide, which often feature lists of art galleries, studios, and cultural attractions in the area.\n\nSome popular online resources for finding art studios and galleries include:\n\n* Behance's \"Discover\" feature, which allows you to search for creatives in your area\n* Saatchi Art's \"Galleries\" section, which lists galleries from around the world\n* Artsy's \"Galleries\" section, which features a comprehensive list of galleries and their exhibitions\n\nBefore you head out, make sure to check the studios' and galleries' websites or social media to confirm their hours, exhibitions, and any specific requirements for visiting.\n\nHave a great time exploring the local art scene!\nuser: I'll definitely use those resources to find some local art studios and galleries to visit this weekend. I'm particularly interested in seeing more of Rachel Lee's work, so I hope I can find some studios or galleries that feature her art or similar styles.\nassistant: That's great to hear! I'm glad I could help. Remember to also reach out to the studios and galleries before visiting to confirm their hours, exhibitions, and availability of Rachel Lee's work. You might even want to ask if they have any upcoming exhibitions or events featuring her art.\n\nAdditionally, you could try searching for art studios and galleries that specialize in showcasing local or emerging artists, as they might be more likely to feature Rachel Lee's work or similar styles.\n\nIf you're unable to find studios or galleries featuring Rachel Lee's work, you could try contacting her directly through her website or social media. Many artists have online platforms where they showcase their work, share updates, and sometimes even offer private viewings or studio visits.\n\nLastly, don't be afraid to reach out to the local art community, ask questions, and seek recommendations. Artists, curators, and gallery owners are often passionate about sharing their knowledge and introducing people to new art and artists.\n\nHave a fantastic time exploring the local art scene, and I hope you discover some amazing new art and artists, including more of Rachel Lee's work!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Local artist discovery workflow around Rachel Lee summary=After attending the \"Women in Art\" exhibition on February 10, 2023 and being drawn to Rachel Lee's work, the user planned to use social media, artist portfolios, local art blogs, online art platforms, local art directories, museum/gallery newsletters, and area studio/gallery searches to find more of Rachel Lee's work and similar local artists. scope=User's local art discovery behavior and resources discussed in the 2023-03-08 session after the Women in Art exhibition. entities=entity:<0>,entity:<1>,entity:<2> keywords=Rachel Lee,Women in Art exhibition,local artists,social media,artist portfolios,local art directories,studio visits tags=art_discovery,local_art,rachel_lee evidence=I'm particularly interested in seeing more of Rachel Lee's work, so I hope I can find some studios or galleries that feature her art or similar styles.\n[1] type=PLAN title=Modern Art Museum notification plan for local-artist events summary=Because Sarah Johnson said the Modern Art Museum might host more events and exhibitions focused on local artists, the user intended to monitor the museum's website and social media; recommended notification channels included newsletters, upcoming-events pages, social media, memberships, event calendars, RSS feeds, and mobile apps. scope=User's plan for tracking Modern Art Museum events and exhibitions focused on local artists from the 2023-03-08 session. entities=entity:<0>,entity:<3>,entity:<4> keywords=Modern Art Museum,Sarah Johnson,local artists,museum notifications,newsletters,social media,upcoming events tags=museum_events,local_art,notification_plan evidence=I'll definitely check out the Modern Art Museum's website and social media to stay updated on their upcoming events and exhibitions.\n\n        Existing active notes:\n        id=hot-path-9e3da2c908e2-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=LA street art exploration context and recommendation set summary=In the 2023-03-08 session, the user explored Los Angeles street art after attending the Art Gallery lecture \"The Evolution of Street Art\" on March 3rd, with particular interest in stencil art and in seeing local work in person. Recommended LA exploration anchors included the Arts District, Broadway Theater District, Little Tokyo, The Container Yard, Melrose Avenue, Shepard Fairey-related sites suc...[truncated 225 chars] scope=User's Los Angeles street art interests and local exploration recommendations from the imported 2023-03-08 session. keywords=Los Angeles,street art,stencil art,Arts District,The Container Yard,Melrose Avenue,Shepard Fairey,Retna,Subliminal Projects Gallery,LA murals tags=street_art,los_angeles,museum_art_interests,recommendations useCount=0\nid=hot-path-9e3da2c908e2-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Historical frame for LA street art evolution summary=The LA street art history discussion framed the scene as evolving from 1970s–1980s graffiti/tagging and gang-related graffiti, through 1990s graffiti-skate culture and \"LA Style\", into 2000s street art and murals using stencils and wheatpaste, 2010s mainstreaming via galleries and festivals, and a 2020s scene shaped by diverse muralists, stencil artists, social media, neighborhood revitalization, ...[truncated 100 chars] scope=Reusable historical context for the user's interest in the Los Angeles street art scene from the imported 2023-03-08 session. keywords=LA street art history,graffiti,LA Style,skate culture,murals,stencils,wheatpaste,gentrification,commercialization tags=street_art,los_angeles,history,urban_art useCount=0\nid=hot-path-240154075445-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Met visit plan focused on Greek/Roman galleries, Euphiletos Cup, and Temple of Dendur summary=In the 2023-03-08 chat, the user developed a whole-day plan for The Metropolitan Museum of Art: explore the Greek and Roman Galleries, see the Euphiletos Cup in Gallery 155, then visit the Temple of Dendur. The discussion framed the plan around the user's interest in ancient pottery, Greek/Roman art, and Egyptian mythology, especially Isis symbolism. scope=User's planned museum visit interests and itinerary for The Metropolitan Museum of Art, as discussed in the imported 2023-03-08 session. keywords=Metropolitan Museum of Art,whole day at the Met,Greek and Roman Galleries,Euphiletos Cup,Gallery 155,Temple of Dendur,Isis symbolism tags=museum_plan,art_history,ancient_art,met useCount=0\nid=hot-path-240154075445-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Museum recommendations for ancient history and art interests summary=When the user sought city art museum recommendations after a History Museum guided tour sparked interest in ancient history and art, the suggested options were The Metropolitan Museum of Art for Egyptian, Greek, and Roman art; The Brooklyn Museum for Egyptian, African, and Asian art; The Morgan Library & Museum for rare books, manuscripts, and art; The Cloisters for medieval European art and archi...[truncated 91 chars] scope=Imported recommendation set from the 2023-03-08 museum-planning chat, useful for future museum suggestions aligned with ancient history and art interests. keywords=art museums,ancient history,The Metropolitan Museum of Art,Brooklyn Museum,Morgan Library Museum,The Cloisters,Frick Collection tags=recommendations,museum_options,ancient_history,art useCount=0\nid=hot-path-240154075445-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=Temple of Dendur and Isis symbolism context summary=The Temple of Dendur discussion centered on the user's interest in Isis mythology and symbolism: Isis as mother, wife, queen, and a goddess associated with magic, fertility, and protection; temple reliefs and carvings were described as depicting Isis, Osiris, and other deities, with symbols such as the ankh for eternal life and the was sceptre for power and protection. scope=Reusable context about the user's Temple of Dendur focus and the mythological-symbolic frame used in the imported 2023-03-08 chat. keywords=Temple of Dendur,Isis,Osiris,ankh,was sceptre,Egyptian mythology,Horus,Anubis,Hathor tags=egyptian_art,mythology,symbolism,met useCount=0\nid=hot-path-240154075445-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Euphiletos Cup learning context summary=The Euphiletos Cup was discussed as a red-figure kylix attributed to the Euphiletos Painter around 500–490 BCE, significant as an early red-figure example, a major work of the Euphiletos Painter, a depiction of Dionysos with maenads and satyrs, and a window into Greek symposium culture involving wine, music, and communal gathering. scope=Reusable art-historical context about the Euphiletos Cup from the imported 2023-03-08 museum discussion. keywords=Euphiletos Cup,red-figure kylix,Euphiletos Painter,Dionysos,maenads,satyrs,Greek symposium,500-490 BCE tags=artifact_context,greek_pottery,met,art_history useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:2ce6a0f2",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:5beadb70812087780d54b0888cf343c6"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:2ce6a0f2\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/03/08 (Wed) 20:44\nTranscript:\nuser: I'm looking for some information on local art events and exhibitions. Can you recommend any upcoming events or exhibitions that might be of interest to me?\nassistant: Unfortunately, I'm a large language model, I don't have have access to real-time information about specific local art events and exhibitions. I don't know your location, and I don't have the ability to browse the internet or access current event listings.\n\nHowever, I can suggest some ways for you to find out about upcoming art events and exhibitions in your area:\n\n1. **Check online event calendars**: Look for websites like Eventbrite, Meetup, or Facebook Events that list local art events, exhibitions, and festivals.\n2. **Museum and gallery websites**: Visit the websites of local art museums, galleries, and cultural institutions to see their upcoming exhibition schedules and event listings.\n3. **Social media**: Follow local art organizations, museums, and galleries on social media platforms like Instagram, Facebook, and Twitter to stay informed about their events and exhibitions.\n4. **Local art organizations and newsletters**: Research local art organizations, such as art councils or art associations, that may have newsletters or email lists that announce upcoming events and exhibitions.\n5. **Local newspapers and art publications**: Check the entertainment or arts sections of local newspapers and art publications for event listings and reviews.\n\nBy exploring these resources, you should be able to find out about upcoming art events and exhibitions in your area that might interest you. Enjoy!\nuser: I didn't know I could find local art events on social media. I'll definitely check that out. I was particularly drawn to the works of local artist, Rachel Lee, at the \"Women in Art\" exhibition which I attended on February 10th. It was amazing. Do you know if there are any online resources that feature local artists and their work?\nassistant: I'm glad I could introduce you to a new way of finding local art events!\n\nAs for your question, yes, there are online resources that feature local artists and their work. Here are a few options:\n\n1. **Artist websites and portfolios**: Many artists have their own websites or online portfolios showcasing their work. You can try searching for Rachel Lee's website or social media profiles to see more of her art.\n2. **Local art blogs and online publications**: Look for online publications or blogs that focus on local art scenes, artists, and exhibitions. They often feature artist interviews, studio visits, and exhibition reviews.\n3. **Online art platforms and marketplaces**: Websites like Saatchi Art, ArtNet, and Etsy feature artworks by local and international artists. You can filter by location to discover local talent.\n4. **Social media groups and communities**: Join local art-focused groups on Facebook or Reddit, where artists often share their work and provide updates on upcoming exhibitions and events.\n5. **Local art directories and registries**: Some cities have online directories or registries that list local artists, their specialties, and contact information. These can be a great resource for discovering new artists and their work.\n6. **Arts and culture websites**: Many cities have websites that promote local arts and culture, featuring artist profiles, exhibition listings, and event calendars.\n\nSome popular online resources that might be helpful:\n\n* Behance: A platform to discover and showcase creative work, including art, design, and photography.\n* DeviantArt: A community-driven platform featuring artwork, illustrations, and digital art.\n* Artsy: An online platform that partners with galleries, museums, and art fairs to showcase artworks and provide editorial content.\n\nBy exploring these resources, you might discover more about Rachel Lee's work and other local artists who resonate with you. Enjoy your art exploration!\nuser: I'll definitely check out those resources to learn more about Rachel Lee's work and other local artists. I remember that the curator, Sarah Johnson, mentioned that the Modern Art Museum might be hosting more events and exhibitions focused on local artists. Do you know if there's a way to get notified about upcoming events at a specific museum or gallery?\nassistant: Many museums and galleries offer ways to stay informed about their upcoming events and exhibitions. Here are a few ways to get notified:\n\n1. **Email newsletters**: Most museums and galleries have email newsletters that you can subscribe to. These newsletters often provide updates on upcoming exhibitions, events, and programs.\n2. **Museum or gallery websites**: Check the museum or gallery's website for a section on \"Upcoming Events\" or \"Exhibitions\" where they usually list their future programs. You can also look for a \"Stay Connected\" or \"Get Updates\" section where you can sign up for their newsletter or follow them on social media.\n3. **Social media**: Follow the museum or gallery on social media platforms like Facebook, Twitter, Instagram, or YouTube. They often post updates about upcoming events, exhibitions, and behind-the-scenes peeks.\n4. **Event calendars**: Look for online event calendars specific to your city or region, which often feature museum and gallery events.\n5. **Membership programs**: Consider becoming a member of the museum or gallery. Members often receive exclusive benefits, including early notification of upcoming events and exhibitions.\n6. **RSS feeds**: If you're tech-savvy, you can subscribe to the museum or gallery's RSS (Really Simple Syndication) feed, which will notify you of new content, including event listings.\n7. **Mobile apps**: Some museums and galleries have mobile apps that provide event listings, exhibition information, and even interactive experiences.\n\nTo get notified about upcoming events at the Modern Art Museum, you can:\n\n* Visit their website and look for a newsletter sign-up form or an \"Upcoming Events\" section.\n* Follow them on social media platforms like Facebook, Twitter, or Instagram.\n* Check their website for a membership program, which might offer exclusive benefits, including early event notification.\n* Search for online event calendars in your area that feature museum and gallery events.\n\nBy staying connected with the Modern Art Museum, you'll be the first to know about their upcoming events and exhibitions, including any future shows featuring Rachel Lee's work or other local artists.\nuser: I'll definitely check out the Modern Art Museum's website and social media to stay updated on their upcoming events and exhibitions.\nassistant: That's a great idea! By following the Modern Art Museum's website and social media, you'll be able to stay up-to-date on their latest events, exhibitions, and programs. You might even get exclusive behind-the-scenes peeks, artist interviews, or sneak previews of upcoming shows.\n\nRemember to also explore the online resources I mentioned earlier to discover more about Rachel Lee's work and other local artists. You might stumble upon new artists, exhibitions, or events that resonate with you.\n\nIf you have any more questions or need further recommendations, feel free to ask. Otherwise, happy art exploring, and I hope you enjoy the next event or exhibition you attend!\nuser: I'm thinking of visiting some local art studios and galleries this weekend. Do you know if there are any online resources that allow you to search for art studios or galleries in a specific area?\nassistant: What a great idea! Visiting local art studios and galleries is a fantastic way to discover new artists, see their work up close, and get a feel for the local art scene.\n\nYes, there are several online resources that allow you to search for art studios and galleries in a specific area. Here are a few options:\n\n1. **Google Maps**: Simply type \"art studios near me\" or \"art galleries near me\" in Google Maps, and it will show you a list of nearby studios and galleries along with their addresses, phone numbers, and reviews.\n2. **Online Directories**: Websites like ArtGuide, ArtSlant, and Artsy feature directories of art galleries, studios, and museums. You can filter by location to find ones in your area.\n3. **Local Arts Councils or Organizations**: Many local arts councils or organizations have online directories of member artists, studios, and galleries. These directories often include information on exhibitions, events, and open studio tours.\n4. **Social Media**: Follow local art organizations, studios, and galleries on social media platforms like Facebook, Instagram, or Twitter. Many of them post updates about upcoming events, exhibitions, and open studio hours.\n5. **Local Tourism Websites**: Visit your local tourism website or visitor's guide, which often feature lists of art galleries, studios, and cultural attractions in the area.\n\nSome popular online resources for finding art studios and galleries include:\n\n* Behance's \"Discover\" feature, which allows you to search for creatives in your area\n* Saatchi Art's \"Galleries\" section, which lists galleries from around the world\n* Artsy's \"Galleries\" section, which features a comprehensive list of galleries and their exhibitions\n\nBefore you head out, make sure to check the studios' and galleries' websites or social media to confirm their hours, exhibitions, and any specific requirements for visiting.\n\nHave a great time exploring the local art scene!\nuser: I'll definitely use those resources to find some local art studios and galleries to visit this weekend. I'm particularly interested in seeing more of Rachel Lee's work, so I hope I can find some studios or galleries that feature her art or similar styles.\nassistant: That's great to hear! I'm glad I could help. Remember to also reach out to the studios and galleries before visiting to confirm their hours, exhibitions, and availability of Rachel Lee's work. You might even want to ask if they have any upcoming exhibitions or events featuring her art.\n\nAdditionally, you could try searching for art studios and galleries that specialize in showcasing local or emerging artists, as they might be more likely to feature Rachel Lee's work or similar styles.\n\nIf you're unable to find studios or galleries featuring Rachel Lee's work, you could try contacting her directly through her website or social media. Many artists have online platforms where they showcase their work, share updates, and sometimes even offer private viewings or studio visits.\n\nLastly, don't be afraid to reach out to the local art community, ask questions, and seek recommendations. Artists, curators, and gallery owners are often passionate about sharing their knowledge and introducing people to new art and artists.\n\nHave a fantastic time exploring the local art scene, and I hope you discover some amazing new art and artists, including more of Rachel Lee's work!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Local artist discovery workflow around Rachel Lee summary=After attending the \"Women in Art\" exhibition on February 10, 2023 and being drawn to Rachel Lee's work, the user planned to use social media, artist portfolios, local art blogs, online art platforms, local art directories, museum/gallery newsletters, and area studio/gallery searches to find more of Rachel Lee's work and similar local artists. scope=User's local art discovery behavior and resources discussed in the 2023-03-08 session after the Women in Art exhibition. entities=entity:<0>,entity:<1>,entity:<2> keywords=Rachel Lee,Women in Art exhibition,local artists,social media,artist portfolios,local art directories,studio visits tags=art_discovery,local_art,rachel_lee evidence=I'm particularly interested in seeing more of Rachel Lee's work, so I hope I can find some studios or galleries that feature her art or similar styles.\n[1] type=PLAN title=Modern Art Museum notification plan for local-artist events summary=Because Sarah Johnson said the Modern Art Museum might host more events and exhibitions focused on local artists, the user intended to monitor the museum's website and social media; recommended notification channels included newsletters, upcoming-events pages, social media, memberships, event calendars, RSS feeds, and mobile apps. scope=User's plan for tracking Modern Art Museum events and exhibitions focused on local artists from the 2023-03-08 session. entities=entity:<0>,entity:<3>,entity:<4> keywords=Modern Art Museum,Sarah Johnson,local artists,museum notifications,newsletters,social media,upcoming events tags=museum_events,local_art,notification_plan evidence=I'll definitely check out the Modern Art Museum's website and social media to stay updated on their upcoming events and exhibitions.\n\n        Existing active notes:\n        id=hot-path-9e3da2c908e2-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=LA street art exploration context and recommendation set summary=In the 2023-03-08 session, the user explored Los Angeles street art after attending the Art Gallery lecture \"The Evolution of Street Art\" on March 3rd, with particular interest in stencil art and in seeing local work in person. Recommended LA exploration anchors included the Arts District, Broadway Theater District, Little Tokyo, The Container Yard, Melrose Avenue, Shepard Fairey-related sites suc...[truncated 225 chars] scope=User's Los Angeles street art interests and local exploration recommendations from the imported 2023-03-08 session. keywords=Los Angeles,street art,stencil art,Arts District,The Container Yard,Melrose Avenue,Shepard Fairey,Retna,Subliminal Projects Gallery,LA murals tags=street_art,los_angeles,museum_art_interests,recommendations useCount=0\nid=hot-path-9e3da2c908e2-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Historical frame for LA street art evolution summary=The LA street art history discussion framed the scene as evolving from 1970s–1980s graffiti/tagging and gang-related graffiti, through 1990s graffiti-skate culture and \"LA Style\", into 2000s street art and murals using stencils and wheatpaste, 2010s mainstreaming via galleries and festivals, and a 2020s scene shaped by diverse muralists, stencil artists, social media, neighborhood revitalization, ...[truncated 100 chars] scope=Reusable historical context for the user's interest in the Los Angeles street art scene from the imported 2023-03-08 session. keywords=LA street art history,graffiti,LA Style,skate culture,murals,stencils,wheatpaste,gentrification,commercialization tags=street_art,los_angeles,history,urban_art useCount=0\nid=hot-path-240154075445-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Met visit plan focused on Greek/Roman galleries, Euphiletos Cup, and Temple of Dendur summary=In the 2023-03-08 chat, the user developed a whole-day plan for The Metropolitan Museum of Art: explore the Greek and Roman Galleries, see the Euphiletos Cup in Gallery 155, then visit the Temple of Dendur. The discussion framed the plan around the user's interest in ancient pottery, Greek/Roman art, and Egyptian mythology, especially Isis symbolism. scope=User's planned museum visit interests and itinerary for The Metropolitan Museum of Art, as discussed in the imported 2023-03-08 session. keywords=Metropolitan Museum of Art,whole day at the Met,Greek and Roman Galleries,Euphiletos Cup,Gallery 155,Temple of Dendur,Isis symbolism tags=museum_plan,art_history,ancient_art,met useCount=0\nid=hot-path-240154075445-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Museum recommendations for ancient history and art interests summary=When the user sought city art museum recommendations after a History Museum guided tour sparked interest in ancient history and art, the suggested options were The Metropolitan Museum of Art for Egyptian, Greek, and Roman art; The Brooklyn Museum for Egyptian, African, and Asian art; The Morgan Library & Museum for rare books, manuscripts, and art; The Cloisters for medieval European art and archi...[truncated 91 chars] scope=Imported recommendation set from the 2023-03-08 museum-planning chat, useful for future museum suggestions aligned with ancient history and art interests. keywords=art museums,ancient history,The Metropolitan Museum of Art,Brooklyn Museum,Morgan Library Museum,The Cloisters,Frick Collection tags=recommendations,museum_options,ancient_history,art useCount=0\nid=hot-path-240154075445-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=Temple of Dendur and Isis symbolism context summary=The Temple of Dendur discussion centered on the user's interest in Isis mythology and symbolism: Isis as mother, wife, queen, and a goddess associated with magic, fertility, and protection; temple reliefs and carvings were described as depicting Isis, Osiris, and other deities, with symbols such as the ankh for eternal life and the was sceptre for power and protection. scope=Reusable context about the user's Temple of Dendur focus and the mythological-symbolic frame used in the imported 2023-03-08 chat. keywords=Temple of Dendur,Isis,Osiris,ankh,was sceptre,Egyptian mythology,Horus,Anubis,Hathor tags=egyptian_art,mythology,symbolism,met useCount=0\nid=hot-path-240154075445-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Euphiletos Cup learning context summary=The Euphiletos Cup was discussed as a red-figure kylix attributed to the Euphiletos Painter around 500–490 BCE, significant as an early red-figure example, a major work of the Euphiletos Painter, a depiction of Dionysos with maenads and satyrs, and a window into Greek symposium culture involving wine, music, and communal gathering. scope=Reusable art-historical context about the Euphiletos Cup from the imported 2023-03-08 museum discussion. keywords=Euphiletos Cup,red-figure kylix,Euphiletos Painter,Dionysos,maenads,satyrs,Greek symposium,500-490 BCE tags=artifact_context,greek_pottery,met,art_history useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:2ce6a0f2",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:5beadb70812087780d54b0888cf343c6"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"Captures a distinct reusable context about the user's interest in Rachel Lee and local artist discovery workflows, not covered by existing notes focused on LA street art or museum/ancient art interests.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-9e3da2c908e2-note-2\"}],\"patch\":null,\"reason\":\"Captures a distinct plan for monitoring Modern Art Museum local-artist events; existing notes do not cover this museum or notification plan. It is loosely related to the user's broader local art exploration context.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6854,
+                "completionTokens": 179,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
