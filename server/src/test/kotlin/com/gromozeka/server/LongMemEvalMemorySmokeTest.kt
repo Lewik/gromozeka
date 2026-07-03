@@ -670,12 +670,6 @@ class LongMemEvalMemorySmokeTest {
             .truncateForJudgeEvidence(MAX_JUDGE_GOLD_EVIDENCE_CHARS)
 
     private fun LongMemEvalEntry.goldEvidenceSessionsForJudge(): List<LongMemEvalGoldEvidenceSession> {
-        val answerMarkedSessions = haystackSessions.mapIndexedNotNull { index, session ->
-            val answerTurns = session.filter { it.hasAnswer }
-            if (answerTurns.isEmpty()) null else LongMemEvalGoldEvidenceSession(index, answerTurns)
-        }
-        if (answerMarkedSessions.isNotEmpty()) return answerMarkedSessions
-
         val byHaystackSessionId = haystackSessionIds.withIndex().associate { it.value to it.index }
         val sessionsFromAnswerIds = answerSessionIds.mapNotNull { answerSessionId ->
             byHaystackSessionId[answerSessionId]?.let { index ->
@@ -684,9 +678,31 @@ class LongMemEvalMemorySmokeTest {
         }
         if (sessionsFromAnswerIds.isNotEmpty()) return sessionsFromAnswerIds.distinctBy { it.haystackIndex }
 
+        val answerMarkedSessions = haystackSessions.mapIndexedNotNull { index, session ->
+            val answerTurns = session.prioritizedAnswerEvidenceTurns()
+            if (answerTurns.isEmpty()) null else LongMemEvalGoldEvidenceSession(index, answerTurns)
+        }
+        if (answerMarkedSessions.isNotEmpty()) return answerMarkedSessions
+
         return haystackSessions.mapIndexed { index, session ->
             LongMemEvalGoldEvidenceSession(index, session)
         }
+    }
+
+    private fun List<LongMemEvalTurn>.prioritizedAnswerEvidenceTurns(): List<LongMemEvalTurn> {
+        val answerTurnIndexes = withIndex()
+            .filter { it.value.hasAnswer }
+            .mapTo(mutableSetOf()) { it.index }
+        if (answerTurnIndexes.isEmpty()) return emptyList()
+
+        return withIndex()
+            .filter { (index, turn) ->
+                turn.hasAnswer ||
+                    turn.role.equals("user", ignoreCase = true) ||
+                    index - 1 in answerTurnIndexes ||
+                    index + 1 in answerTurnIndexes
+            }
+            .map { it.value }
     }
 
     private fun renderSession(
