@@ -46,7 +46,7 @@ class LlmMemoryReadSelector(
                 batchLabel = null,
                 passMode = ReadSelectorPassMode.FINAL_SELECTION,
             )
-            val finalSafetyAddedHits = request.finalSelectionSafetyAddedHits(result.selectedHits, result.decisions)
+            val finalSafetyAddedHits = request.finalSelectionSafetyAddedHits(result.selectedHits)
             val finalSelectedHits = (result.selectedHits + finalSafetyAddedHits)
                 .distinctBy { it.toReadSelectorItemRef() }
             return result.copy(
@@ -160,7 +160,7 @@ class LlmMemoryReadSelector(
             passMode = ReadSelectorPassMode.FINAL_SELECTION,
         )
         val finalRequest = request.copy(candidateHits = survivors)
-        val finalSafetyAddedHits = finalRequest.finalSelectionSafetyAddedHits(finalResult.selectedHits, finalResult.decisions)
+        val finalSafetyAddedHits = finalRequest.finalSelectionSafetyAddedHits(finalResult.selectedHits)
         val finalSelectedHits = (finalResult.selectedHits + finalSafetyAddedHits)
             .distinctBy { it.toReadSelectorItemRef() }
         traceStages += readSelectorTraceStage(
@@ -592,7 +592,6 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(
 
 private fun MemoryReadSelectionRequest.finalSelectionSafetyAddedHits(
     selectedHits: List<MemoryStore.SearchHit>,
-    decisions: List<MemoryReadSelectionResult.Decision>,
 ): List<MemoryStore.SearchHit> {
     val selectedRefs = selectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
 
@@ -602,13 +601,9 @@ private fun MemoryReadSelectionRequest.finalSelectionSafetyAddedHits(
             .take(READ_SELECTOR_TEMPORAL_FINAL_SAFETY_ADD_LIMIT)
     }
 
-    val rejectedRefs = decisions
-        .filterNot { it.selected }
-        .mapTo(mutableSetOf()) { it.ref }
     return candidateHits
         .readSelectorSafetySurvivors(this)
         .filterNot { it.toReadSelectorItemRef() in selectedRefs }
-        .filterNot { it.toReadSelectorItemRef() in rejectedRefs }
 }
 
 private fun MemoryReadSelectionRequest.temporalSafetySurvivors(): List<MemoryStore.SearchHit> =

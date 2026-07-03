@@ -231,7 +231,6 @@ class LlmMemoryReadSelectorTest {
         val runtime = SelectingRuntime(
             intermediateSelectedIds = setOf("note-33"),
             finalSelectedIds = setOf("source-01"),
-            emitRejectedItems = false,
         )
         val hits = notes.take(14).mapIndexed { index, note ->
             MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
@@ -298,7 +297,6 @@ class LlmMemoryReadSelectorTest {
         val runtime = SelectingRuntime(
             intermediateSelectedIds = setOf("note-38"),
             finalSelectedIds = setOf("source-personal-copy"),
-            emitRejectedItems = false,
         )
 
         val result = LlmMemoryReadSelector(
