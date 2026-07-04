@@ -286,6 +286,73 @@ class LlmMemoryQuestionAnswererTest {
     }
 
     @Test
+    fun repairsAnsweredRoleIntroducedByAsDroppedFromReasoning() = runBlocking {
+        val runtime = CapturingRuntime(
+            responses = listOf(
+                """
+                {
+                  "answer": "You lead 5 engineers.",
+                  "reasoning": "The selected memory includes an ACTIVE current_metric_value claim stating that the user's current team size in the Senior Software Engineer role is five engineers. Final conclusion: You lead 5 engineers.",
+                  "sufficiency": "answered",
+                  "evidence_refs": ["claim:senior-software-engineer-team-size"],
+                  "counted_items": ["engineer 1", "engineer 2", "engineer 3", "engineer 4", "engineer 5"],
+                  "excluded_refs": []
+                }
+                """.trimIndent(),
+                """
+                {
+                  "answer": "Memory is insufficient to determine how many engineers you lead as Software Engineer Manager.",
+                  "reasoning": "The question asks about the user's role as Software Engineer Manager, but selected memory only supports a different role, Senior Software Engineer. Because the Software Engineer Manager qualifier is not preserved by selected memory, sufficiency is insufficient.",
+                  "sufficiency": "insufficient",
+                  "evidence_refs": ["claim:senior-software-engineer-team-size"],
+                  "counted_items": [],
+                  "excluded_refs": ["claim:senior-software-engineer-team-size"]
+                }
+                """.trimIndent(),
+            )
+        )
+
+        val result = LlmMemoryQuestionAnswerer(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+        ).answer(
+            question = "How many engineers do I lead when I just started my new role as Software Engineer Manager?",
+            readResult = MemoryReadResult(
+                plan = MemoryReadPlan(),
+                retrievedHits = emptyList(),
+                runtimePrompt = "The user's current team size in the Senior Software Engineer role is five engineers.",
+                trace = MemoryReadTrace(
+                    selectedHits = listOf(
+                        MemoryReadTrace.Hit(
+                            ref = MemoryItemRef(MemoryItemRef.Type.CLAIM, "senior-software-engineer-team-size"),
+                            score = 1.0,
+                            summary = "The user's current team size in the Senior Software Engineer role is five engineers.",
+                            predicate = "current_metric_value",
+                            status = "ACTIVE",
+                        ),
+                    ),
+                    selectorDecisions = listOf(
+                        MemoryReadTrace.SelectorDecision(
+                            ref = MemoryItemRef(MemoryItemRef.Type.CLAIM, "senior-software-engineer-team-size"),
+                            selected = true,
+                            rank = 1,
+                            reason = "adjacent role metric",
+                        ),
+                    ),
+                ),
+            ),
+            conversationId = Conversation.Id("conversation"),
+        )
+
+        assertEquals(MemoryQuestionAnswerResult.Sufficiency.INSUFFICIENT, result.sufficiency)
+        assertEquals(2, runtime.prompts.size)
+        assertTrue(
+            runtime.prompts.last().contains("does not preserve named question target qualifiers: Software Engineer Manager"),
+            runtime.prompts.last(),
+        )
+    }
+
+    @Test
     fun repairsBlankAnswerIntroducedByFirstSemanticRepair() = runBlocking {
         val runtime = CapturingRuntime(
             responses = listOf(
@@ -380,6 +447,7 @@ class LlmMemoryQuestionAnswererTest {
         assertTrue(prompt.contains("The answer field must be non-empty for every sufficiency"), prompt)
         assertTrue(prompt.contains("Memory is insufficient"), prompt)
         assertTrue(prompt.contains("Memory is conflicting"), prompt)
+        assertTrue(prompt.contains("Job titles and roles introduced by \"as\" are required qualifiers"), prompt)
     }
 
     private class CapturingRuntime(

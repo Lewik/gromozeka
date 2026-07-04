@@ -103,7 +103,7 @@ internal class LlmMemoryQuestionAnswerer(
         put a short "Memory is conflicting..." sentence in answer. Put the evidence reasoning in reasoning.
         For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.
         ${MemoryReadPromptPolicy.answerSourceEvidenceRules()}
-        For specifically qualified questions, preserve every required qualifier: person, role, date, venue, route, source, owner, medium, item type, component, material, feature, project, artifact, relationship, and scope. If retrieved memory only answers a weaker adjacent target, answer insufficient or conflicting instead of caveating a wrong value.
+        For specifically qualified questions, preserve every required qualifier: person, role, date, venue, route, source, owner, medium, item type, component, material, feature, project, artifact, relationship, and scope. Job titles and roles introduced by "as" are required qualifiers. If retrieved memory only answers a weaker adjacent target, answer insufficient or conflicting instead of caveating a wrong value.
         ${MemoryReadPromptPolicy.answerDerivationAndConsistencyRules()}
         ${MemoryReadPromptPolicy.answerCountAndCategoryRules()}
 
@@ -322,14 +322,14 @@ private val leadTimeCueRegex =
 private val leadTimeDerivationCueRegex =
     Regex("""(?:\+|\b(?:add|adds|added|adding|plus|sum|sums|summed|combine|combines|combined|total|totals|together|altogether)\b)""", RegexOption.IGNORE_CASE)
 private val namedQuestionTargetRegex =
-    Regex("""\b(?:at|with|for|from|by|in|on)\s+([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z][A-Za-z0-9&.'-]*){0,4})""")
+    Regex("""\b(?:at|with|for|from|by|in|on|as)\s+([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z][A-Za-z0-9&.'-]*){0,4})""")
 private val qualifierMismatchRegexes = listOf(
     Regex(
-        """\b(?:question|user asks?|asked target)\b[\s\S]{0,240}\b(?:names|asks for|asks about|specifies)\b[\s\S]{0,240}\bbut\b[\s\S]{0,240}\b(?:selected memory|selected refs|memory)\b[\s\S]{0,240}\b(?:only contains|only provides|does not contain|does not provide|lacks|is missing)\b""",
+        """\b(?:question|user asks?|asked target)\b[\s\S]{0,240}\b(?:names|asks for|asks about|specifies)\b[\s\S]{0,240}\bbut\b[\s\S]{0,240}\b(?:selected memory|selected refs|memory)\b[\s\S]{0,240}\b(?:only contains|only provides|only supports|supports a different|does not contain|does not provide|does not support|lacks|is missing)\b""",
         RegexOption.IGNORE_CASE,
     ),
     Regex(
-        """\b(?:selected memory|selected refs|memory)\b[\s\S]{0,240}\b(?:only contains|only provides|does not contain|does not provide|lacks|is missing)\b[\s\S]{0,240}\b(?:question|user asks?|asked target)\b""",
+        """\b(?:selected memory|selected refs|memory)\b[\s\S]{0,240}\b(?:only contains|only provides|only supports|supports a different|does not contain|does not provide|does not support|lacks|is missing)\b[\s\S]{0,240}\b(?:question|user asks?|asked target)\b""",
         RegexOption.IGNORE_CASE,
     ),
 )
