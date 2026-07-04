@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "d41a30df8f1ab03b151f30ec92ea8d42ac8a2606138dba7a46ca7757fb9f4f25",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:5c40ec5b\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Forced memory write; transcript includes structured durable facts about the user's Berlin trip interests and friend Alex, along with richer recommendation context worth a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path-60325e01017d-note-3: PLAN; Alex meetup framed around indie rock and concerts; The user met Alex from Germany at a music festival, bonded over indie rock, and planned to ask Alex about favorite indie rock bands or musicians to deepen the connection and possibly attend a concert together when Alex is in town. Indie rock recommendation context included Tame Impala, Arctic Monkeys, The Black Keys, Florence + The Machine, Bon Iver, The 1975, Vampire Weekend, St. Vincent, The National, and Local Natives.; scope=User's social plan involving Alex from Germany and indie rock music from the 2023-08-11 session\n- profile benchmark:longmemeval:5c40ec5b:profile:<0> Profile for User (USER).\nStable facts:\n- The user loves indie rock music.\n- The user is more interested in indie fiction than classic novel recommendations.\n- The user planned to meet up with Alex from Germany when he came to the user's city for work.\n- The user is particularly interested in The Particular Sadness of Lemon Cake.\n- The user is interested in magical realism.\n- The user intended to ask Alex from Germany about his favorite indie rock bands or musicians.\n- The user wanted to possibly attend a concert with Alex from Germany when he was in town.\n- claim hot-path-60325e01017d-claim-9: attended_event; The user attended a music festival a few weeks before 2023-08-11 and met Alex from Germany there.; scope=User's personal events mentioned in the imported 2023-08-11 chat session.\n- profile benchmark:longmemeval:5c40ec5b:profile:<1> Profile for Alex from Germany (PERSON).\nStable facts:\n- Alex is from Germany.\n- Alex from Germany loves indie rock music.\n- Alex from Germany was expected to come to the user's city for work soon after 2023-08-11.\n- claim hot-path-60325e01017d-claim-14: has_goal; The user planned to meet up with Alex from Germany when he came to the user's city for work.; scope=User's social plan involving Alex as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-15: has_goal; The user intended to ask Alex from Germany about his favorite indie rock bands or musicians.; scope=User's stated conversation plan involving Alex in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-12: prefers; Alex from Germany loves indie rock music.; scope=Alex's music preference as reported by the user in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-10: current_location; Alex is from Germany.; scope=Alex's origin/location descriptor as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-11: prefers; The user loves indie rock music.; scope=User's music preferences as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-16: has_goal; The user wanted to possibly attend a concert with Alex from Germany when he was in town.; scope=User's possible social plan involving Alex in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-13: has_goal; Alex from Germany was expected to come to the user's city for work soon after 2023-08-11.; scope=Alex's near-term travel plan as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-6: prefers; The user is more interested in indie fiction than classic novel recommendations.; scope=User's reading recommendation preferences as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-7: prefers; The user is particularly interested in The Particular Sadness of Lemon Cake.; scope=User's book interests as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-8: prefers; The user is interested in magical realism.; scope=User's literary genre interests as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-4: attended_event; The user recently attended a book reading by a local author before 2023-08-11 and spoke with John, a retired English teacher, there.; scope=User's personal events mentioned in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-5: believes; John, a retired English teacher, suggested some classic novels that the user had not read yet.; scope=John's book recommendation viewpoint in the imported 2023-08-11 chat session.\n- note hot-path-60325e01017d-note-2: CONTEXT; Indie fiction and magical realism recommendation context; The user shifted from classic novels to indie fiction and showed special interest in The Particular Sadness of Lemon Cake by Aimee Bender as an introduction to magical realism. The recommendation context included adjacent magical realist authors Alice Hoffman, Laura Esquivel, Sarah Addison Allen, and Erin Morgenstern, plus titles such as Practical Magic, Like Water for Chocolate, Garden Spells, The Peach Keeper, and The Night Circus.; scope=User's literary recommendation context around indie fiction and magical realism from the 2023-08-11 session\n\n        Resolved entities:\n        - mention=I / I'm / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / I'm / my; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=Germany; action=CREATE_NEW; id=entity:<1>; type=LOCATION; name=Germany; reason=Germany is a concrete reusable location and no existing Germany entity is available.\n- mention=Berlin; action=CREATE_NEW; id=entity:<2>; type=LOCATION; name=Berlin; reason=Berlin is a concrete reusable location discussed as a trip destination; no existing Berlin entity is available.\n- mention=indie rock music; action=LINK_EXISTING; id=entity:<3>; type=existing; name=indie rock music; reason=Mention exactly matches existing concept Indie rock music.\n- mention=Alex from there / my friend Alex from Germany / him; action=LINK_EXISTING; id=entity:<4>; type=existing; name=Alex from there / my friend Alex from Germany / him; reason=The friend Alex from Germany safely matches the existing person entity.\n- mention=lo-fi; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Lo-fi music; reason=The user states a music-scene preference; lo-fi is a reusable music concept and no candidate exists.\n- mention=garage rock; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Garage rock; reason=Garage rock is a reusable music concept relevant to later preference claims; no candidate exists.\n- mention=Kreuzberg; action=CREATE_NEW; id=entity:<7>; type=LOCATION; name=Kreuzberg; reason=Kreuzberg is a concrete reusable location in Berlin and no existing entity is available.\n- mention=current project; action=CREATE_NEW; id=entity:<8>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Alex|Berlin|Germany|Kreuzberg\n        text_queries=Berlin trip indie rock lo-fi garage rock Kreuzberg venues record stores labels blogs zines|friend Alex from Germany met at a music festival met up twice\n        predicate_hints=has_goal|prefers|attended_event\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:40794e9ba17391397654d77501f13f6e] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:5c40ec5b:session:2; title=LongMemEval 5c40ec5b session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/09/30 (Sat) 09:14\nTranscript:\nuser: I'm planning a trip to Germany soon and was wondering if you could recommend some indie rock music venues in Berlin. By the way, speaking of Germany, I've got a friend Alex from there who I met at a music festival, and we've met up twice already - he's really cool.\nassistant: Berlin is an amazing city for indie rock music! I'd be happy to recommend some great venues for you to check out. Here are a few:\n\n1. **Berghain**: This iconic club is a must-visit for any music lover. While it's primarily known for its techno and house scenes, it also hosts indie rock and alternative concerts. Be prepared for a unique experience!\n2. **Columbiahalle**: This mid-sized venue has an excellent sound system and hosts a wide range of indie rock, alternative, and pop acts. It's a great place to see both up-and-coming and established bands.\n3. **Festsaal Kreuzberg**: This cozy venue has a great atmosphere and is known for its eclectic booking, featuring indie rock, folk, and electronic acts. It's a great spot to discover new talent.\n4. **Kantine am Berghain**: This smaller venue is located next to Berghain and often hosts indie rock and alternative concerts. It's an intimate setting with a great sound system.\n5. ** Musik & Frieden**: This club has been a Berlin institution for over 20 years, featuring a mix of indie rock, alternative, and pop acts. It's a great place to see both local and international bands.\n\nAs for your friend Alex, that's great that you've met up twice already! Germany has a thriving music festival scene, so it's no surprise you met at one. Berlin, in particular, is a hub for alternative culture and music. Maybe you can even catch a show together during your visit?\n\nWhich type of indie rock are you into? I can give you more specific recommendations based on your musical tastes!\nuser: I'm more into the lo-fi and garage rock scene. Do you know any good record stores in Berlin where I can find some local bands' music?\nassistant: Berlin's got a fantastic lo-fi and garage rock scene, and you'll find plenty of awesome record stores to dig through. Here are some recommendations:\n\n**Record Stores:**\n\n1. **Dussmann das KulturKaufhaus**: This iconic department store has an amazing music section with a vast selection of indie, lo-fi, and garage rock records. You can find local Berlin bands, as well as international releases.\n2. ** Bis Aufs Messer**: This small, independent record store in Kreuzberg is a treasure trove for fans of lo-fi, garage, and punk music. They often host in-store performances and have a great selection of local Berlin bands.\n3. **CoreTex Records**: With two locations in Berlin, CoreTex is a staple for punk, hardcore, and alternative music. They also have a great selection of local Berlin bands and often host concerts and events.\n4. **Raum 15**: This small record store in Neukölln specializes in underground and experimental music, including lo-fi and noise rock. They also host concerts and events.\n\n**Local Labels:**\n\n1. **Späti Palace**: This Berlin-based label is known for releasing music from local lo-fi and garage rock bands. They often host concerts and events around the city.\n2. **Kreuzkölln Records**: This small label focuses on releasing music from Berlin-based bands, often in the lo-fi and garage rock spectrum.\n3. **Tape Tektoniks**: This DIY label releases music on cassette tapes and often features local Berlin bands.\n\n**Local Bands:**\n\n1. **Die Nerven**: A Berlin-based post-punk/garage rock band with a great lo-fi sound.\n2. **Gurr**: A Berlin-based garage rock duo with a fuzzy, lo-fi sound.\n3. **Klangstof**: A Berlin-based psychedelic rock band with a great lo-fi vibe.\n\nWhen you're exploring these record stores, don't hesitate to ask the staff for recommendations on local bands and hidden gems. They're usually super knowledgeable and happy to share their expertise.\n\nHave fun digging through the crates, and I hope you discover some amazing new music during your trip to Berlin!\nuser: I'll definitely check out those record stores and labels. Do you know if there are any local music blogs or zines that I can follow to stay up-to-date with the Berlin music scene?\nassistant: Berlin has a thriving music blog and zine scene that's perfect for staying up-to-date with the local music scene. Here are some recommendations:\n\n**Music Blogs:**\n\n1. **Berlin Music Week**: While not exclusively focused on lo-fi and garage rock, Berlin Music Week is a great resource for discovering new music, events, and festivals in Berlin.\n2. **Klangkommando**: This German-language blog focuses on indie, alternative, and underground music, with a strong emphasis on the Berlin scene.\n3. **Nothing But Hope And Passion**: This English-language blog covers a wide range of indie and alternative music, with a focus on emerging artists and the Berlin scene.\n4. **The Quietus**: While not exclusively focused on Berlin, The Quietus is a great resource for underground and experimental music, and they often feature Berlin-based artists and events.\n\n**Zines:**\n\n1. **Zabriskie Point**: A Berlin-based zine that focuses on underground and experimental music, with a strong emphasis on the local scene.\n2. **The Leuchtet**: A DIY zine that covers music, art, and culture in Berlin, with a focus on the indie and alternative scenes.\n3. **Kreuzberg Musik**: A German-language zine that covers music, events, and culture in the Kreuzberg neighborhood, which is a hub for Berlin's indie and alternative scene.\n\n**Social Media:**\n\n1. **Facebook Groups**: Join groups like \"Berlin Indie Music\" or \"Berlin Music Scene\" to connect with locals, find out about upcoming shows, and get recommendations.\n2. **Instagram**: Follow accounts like @berlinmusicweek, @klangkommando, or @nothingbuthopeandpassion to stay up-to-date with the latest music news and events.\n\nThese resources will give you a great taste of the Berlin music scene and help you discover new bands, labels, and venues. Enjoy exploring, and don't hesitate to reach out to the folks behind these blogs and zines – they're usually super friendly and happy to chat about music!\n\nNow, go forth and immerse yourself in the Berlin music scene!\nuser: I'm thinking of checking out some live music venues in Kreuzberg while I'm in Berlin. Do you know of any good ones?\nassistant: Kreuzberg is a fantastic neighborhood for live music, with a high concentration of venues that showcase a wide range of genres. Here are some popular live music venues in Kreuzberg that you should check out:\n\n1. **SO36**: A legendary punk and alternative venue that's been around since the 1970s. They host a mix of local and international acts, from punk to indie rock.\n2. **Schokoladen**: A cozy, intimate venue that's perfect for smaller shows. They feature a range of genres, from indie rock to electronic music.\n3. **Kantine am Berghain**: I mentioned this one earlier, but it's worth repeating. This venue is located next to Berghain and hosts a variety of indie rock, alternative, and electronic acts.\n4. **Lido**: A popular venue that hosts a mix of local and international acts, from indie rock to pop. It's a great spot to see both established and up-and-coming bands.\n5. **Badehaus Szimpla**: A unique venue located in a former bathhouse, featuring a mix of live music, DJ sets, and cultural events.\n6. **Urban Spree**: A creative space that hosts live music, art exhibitions, and cultural events. They feature a range of genres, from indie rock to electronic music.\n7. **Monarch**: A small, intimate venue that's perfect for discovering new bands. They feature a mix of indie rock, folk, and electronic music.\n\nThese are just a few of the many live music venues in Kreuzberg. Be sure to check out the listings for each venue to see what's on during your visit. You might stumble upon a hidden gem or discover a new favorite band!\n\nRemember to also explore the neighborhood's many bars and cafes, which often host live music events or DJ sets. Kreuzberg is a vibrant, creative area that's perfect for music lovers. Enjoy your time exploring the neighborhood!\nuser: I'm also planning to meet up with my friend Alex from Germany while I'm in Berlin, we've met up twice before and it'll be great to catch up with him again. Do you know any good cafes or bars in Kreuzberg where we could grab a drink and chat?\nassistant: That's great that you're meeting up with Alex again! Kreuzberg has plenty of awesome cafes and bars that are perfect for catching up with friends. Here are some recommendations:\n\n**Cafes:**\n\n1. **The Barn**: A popular specialty coffee shop with a cozy atmosphere, perfect for a casual catch-up.\n2. **Five Elephant**: Another great coffee spot with a relaxed vibe, offering delicious coffee and pastries.\n3. **Kaffee Burger**: A Kreuzberg institution with a retro vibe, serving coffee, cakes, and light bites.\n\n**Bars:**\n\n1. **Schleusenkrug**: A laid-back bar with a cozy atmosphere, offering a wide selection of beers and cocktails.\n2. **Das Hotel**: A trendy bar with a relaxed vibe, serving craft beers and creative cocktails.\n3. **Würgeengel**: A popular bar with a retro vibe, offering a wide range of drinks and a great selection of vinyl records.\n\n**Beer Gardens:**\n\n1. **Golgatha**: A classic Kreuzberg beer garden with a lively atmosphere, perfect for a casual meetup.\n2. **Schleusenkrug**: This beer garden is part of the Schleusenkrug bar I mentioned earlier, offering a cozy outdoor space to grab a drink and chat.\n\nThese are just a few of the many great spots in Kreuzberg. You can't go wrong with any of these recommendations, but feel free to explore the neighborhood and find your own hidden gem!\n\nIt's great that you're meeting up with Alex again, and I'm sure you'll have a blast catching up and exploring Kreuzberg together. Prost!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:5c40ec5b",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:40794e9ba17391397654d77501f13f6e"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:5c40ec5b\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Forced memory write; transcript includes structured durable facts about the user's Berlin trip interests and friend Alex, along with richer recommendation context worth a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path-60325e01017d-note-3: PLAN; Alex meetup framed around indie rock and concerts; The user met Alex from Germany at a music festival, bonded over indie rock, and planned to ask Alex about favorite indie rock bands or musicians to deepen the connection and possibly attend a concert together when Alex is in town. Indie rock recommendation context included Tame Impala, Arctic Monkeys, The Black Keys, Florence + The Machine, Bon Iver, The 1975, Vampire Weekend, St. Vincent, The National, and Local Natives.; scope=User's social plan involving Alex from Germany and indie rock music from the 2023-08-11 session\n- profile benchmark:longmemeval:5c40ec5b:profile:<0> Profile for User (USER).\nStable facts:\n- The user loves indie rock music.\n- The user is more interested in indie fiction than classic novel recommendations.\n- The user planned to meet up with Alex from Germany when he came to the user's city for work.\n- The user is particularly interested in The Particular Sadness of Lemon Cake.\n- The user is interested in magical realism.\n- The user intended to ask Alex from Germany about his favorite indie rock bands or musicians.\n- The user wanted to possibly attend a concert with Alex from Germany when he was in town.\n- claim hot-path-60325e01017d-claim-9: attended_event; The user attended a music festival a few weeks before 2023-08-11 and met Alex from Germany there.; scope=User's personal events mentioned in the imported 2023-08-11 chat session.\n- profile benchmark:longmemeval:5c40ec5b:profile:<1> Profile for Alex from Germany (PERSON).\nStable facts:\n- Alex is from Germany.\n- Alex from Germany loves indie rock music.\n- Alex from Germany was expected to come to the user's city for work soon after 2023-08-11.\n- claim hot-path-60325e01017d-claim-14: has_goal; The user planned to meet up with Alex from Germany when he came to the user's city for work.; scope=User's social plan involving Alex as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-15: has_goal; The user intended to ask Alex from Germany about his favorite indie rock bands or musicians.; scope=User's stated conversation plan involving Alex in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-12: prefers; Alex from Germany loves indie rock music.; scope=Alex's music preference as reported by the user in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-10: current_location; Alex is from Germany.; scope=Alex's origin/location descriptor as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-11: prefers; The user loves indie rock music.; scope=User's music preferences as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-16: has_goal; The user wanted to possibly attend a concert with Alex from Germany when he was in town.; scope=User's possible social plan involving Alex in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-13: has_goal; Alex from Germany was expected to come to the user's city for work soon after 2023-08-11.; scope=Alex's near-term travel plan as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-6: prefers; The user is more interested in indie fiction than classic novel recommendations.; scope=User's reading recommendation preferences as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-7: prefers; The user is particularly interested in The Particular Sadness of Lemon Cake.; scope=User's book interests as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-8: prefers; The user is interested in magical realism.; scope=User's literary genre interests as stated in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-4: attended_event; The user recently attended a book reading by a local author before 2023-08-11 and spoke with John, a retired English teacher, there.; scope=User's personal events mentioned in the imported 2023-08-11 chat session.\n- claim hot-path-60325e01017d-claim-5: believes; John, a retired English teacher, suggested some classic novels that the user had not read yet.; scope=John's book recommendation viewpoint in the imported 2023-08-11 chat session.\n- note hot-path-60325e01017d-note-2: CONTEXT; Indie fiction and magical realism recommendation context; The user shifted from classic novels to indie fiction and showed special interest in The Particular Sadness of Lemon Cake by Aimee Bender as an introduction to magical realism. The recommendation context included adjacent magical realist authors Alice Hoffman, Laura Esquivel, Sarah Addison Allen, and Erin Morgenstern, plus titles such as Practical Magic, Like Water for Chocolate, Garden Spells, The Peach Keeper, and The Night Circus.; scope=User's literary recommendation context around indie fiction and magical realism from the 2023-08-11 session\n\n        Resolved entities:\n        - mention=I / I'm / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / I'm / my; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=Germany; action=CREATE_NEW; id=entity:<1>; type=LOCATION; name=Germany; reason=Germany is a concrete reusable location and no existing Germany entity is available.\n- mention=Berlin; action=CREATE_NEW; id=entity:<2>; type=LOCATION; name=Berlin; reason=Berlin is a concrete reusable location discussed as a trip destination; no existing Berlin entity is available.\n- mention=indie rock music; action=LINK_EXISTING; id=entity:<3>; type=existing; name=indie rock music; reason=Mention exactly matches existing concept Indie rock music.\n- mention=Alex from there / my friend Alex from Germany / him; action=LINK_EXISTING; id=entity:<4>; type=existing; name=Alex from there / my friend Alex from Germany / him; reason=The friend Alex from Germany safely matches the existing person entity.\n- mention=lo-fi; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Lo-fi music; reason=The user states a music-scene preference; lo-fi is a reusable music concept and no candidate exists.\n- mention=garage rock; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Garage rock; reason=Garage rock is a reusable music concept relevant to later preference claims; no candidate exists.\n- mention=Kreuzberg; action=CREATE_NEW; id=entity:<7>; type=LOCATION; name=Kreuzberg; reason=Kreuzberg is a concrete reusable location in Berlin and no existing entity is available.\n- mention=current project; action=CREATE_NEW; id=entity:<8>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Alex|Berlin|Germany|Kreuzberg\n        text_queries=Berlin trip indie rock lo-fi garage rock Kreuzberg venues record stores labels blogs zines|friend Alex from Germany met at a music festival met up twice\n        predicate_hints=has_goal|prefers|attended_event\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:40794e9ba17391397654d77501f13f6e] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:5c40ec5b:session:2; title=LongMemEval 5c40ec5b session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/09/30 (Sat) 09:14\nTranscript:\nuser: I'm planning a trip to Germany soon and was wondering if you could recommend some indie rock music venues in Berlin. By the way, speaking of Germany, I've got a friend Alex from there who I met at a music festival, and we've met up twice already - he's really cool.\nassistant: Berlin is an amazing city for indie rock music! I'd be happy to recommend some great venues for you to check out. Here are a few:\n\n1. **Berghain**: This iconic club is a must-visit for any music lover. While it's primarily known for its techno and house scenes, it also hosts indie rock and alternative concerts. Be prepared for a unique experience!\n2. **Columbiahalle**: This mid-sized venue has an excellent sound system and hosts a wide range of indie rock, alternative, and pop acts. It's a great place to see both up-and-coming and established bands.\n3. **Festsaal Kreuzberg**: This cozy venue has a great atmosphere and is known for its eclectic booking, featuring indie rock, folk, and electronic acts. It's a great spot to discover new talent.\n4. **Kantine am Berghain**: This smaller venue is located next to Berghain and often hosts indie rock and alternative concerts. It's an intimate setting with a great sound system.\n5. ** Musik & Frieden**: This club has been a Berlin institution for over 20 years, featuring a mix of indie rock, alternative, and pop acts. It's a great place to see both local and international bands.\n\nAs for your friend Alex, that's great that you've met up twice already! Germany has a thriving music festival scene, so it's no surprise you met at one. Berlin, in particular, is a hub for alternative culture and music. Maybe you can even catch a show together during your visit?\n\nWhich type of indie rock are you into? I can give you more specific recommendations based on your musical tastes!\nuser: I'm more into the lo-fi and garage rock scene. Do you know any good record stores in Berlin where I can find some local bands' music?\nassistant: Berlin's got a fantastic lo-fi and garage rock scene, and you'll find plenty of awesome record stores to dig through. Here are some recommendations:\n\n**Record Stores:**\n\n1. **Dussmann das KulturKaufhaus**: This iconic department store has an amazing music section with a vast selection of indie, lo-fi, and garage rock records. You can find local Berlin bands, as well as international releases.\n2. ** Bis Aufs Messer**: This small, independent record store in Kreuzberg is a treasure trove for fans of lo-fi, garage, and punk music. They often host in-store performances and have a great selection of local Berlin bands.\n3. **CoreTex Records**: With two locations in Berlin, CoreTex is a staple for punk, hardcore, and alternative music. They also have a great selection of local Berlin bands and often host concerts and events.\n4. **Raum 15**: This small record store in Neukölln specializes in underground and experimental music, including lo-fi and noise rock. They also host concerts and events.\n\n**Local Labels:**\n\n1. **Späti Palace**: This Berlin-based label is known for releasing music from local lo-fi and garage rock bands. They often host concerts and events around the city.\n2. **Kreuzkölln Records**: This small label focuses on releasing music from Berlin-based bands, often in the lo-fi and garage rock spectrum.\n3. **Tape Tektoniks**: This DIY label releases music on cassette tapes and often features local Berlin bands.\n\n**Local Bands:**\n\n1. **Die Nerven**: A Berlin-based post-punk/garage rock band with a great lo-fi sound.\n2. **Gurr**: A Berlin-based garage rock duo with a fuzzy, lo-fi sound.\n3. **Klangstof**: A Berlin-based psychedelic rock band with a great lo-fi vibe.\n\nWhen you're exploring these record stores, don't hesitate to ask the staff for recommendations on local bands and hidden gems. They're usually super knowledgeable and happy to share their expertise.\n\nHave fun digging through the crates, and I hope you discover some amazing new music during your trip to Berlin!\nuser: I'll definitely check out those record stores and labels. Do you know if there are any local music blogs or zines that I can follow to stay up-to-date with the Berlin music scene?\nassistant: Berlin has a thriving music blog and zine scene that's perfect for staying up-to-date with the local music scene. Here are some recommendations:\n\n**Music Blogs:**\n\n1. **Berlin Music Week**: While not exclusively focused on lo-fi and garage rock, Berlin Music Week is a great resource for discovering new music, events, and festivals in Berlin.\n2. **Klangkommando**: This German-language blog focuses on indie, alternative, and underground music, with a strong emphasis on the Berlin scene.\n3. **Nothing But Hope And Passion**: This English-language blog covers a wide range of indie and alternative music, with a focus on emerging artists and the Berlin scene.\n4. **The Quietus**: While not exclusively focused on Berlin, The Quietus is a great resource for underground and experimental music, and they often feature Berlin-based artists and events.\n\n**Zines:**\n\n1. **Zabriskie Point**: A Berlin-based zine that focuses on underground and experimental music, with a strong emphasis on the local scene.\n2. **The Leuchtet**: A DIY zine that covers music, art, and culture in Berlin, with a focus on the indie and alternative scenes.\n3. **Kreuzberg Musik**: A German-language zine that covers music, events, and culture in the Kreuzberg neighborhood, which is a hub for Berlin's indie and alternative scene.\n\n**Social Media:**\n\n1. **Facebook Groups**: Join groups like \"Berlin Indie Music\" or \"Berlin Music Scene\" to connect with locals, find out about upcoming shows, and get recommendations.\n2. **Instagram**: Follow accounts like @berlinmusicweek, @klangkommando, or @nothingbuthopeandpassion to stay up-to-date with the latest music news and events.\n\nThese resources will give you a great taste of the Berlin music scene and help you discover new bands, labels, and venues. Enjoy exploring, and don't hesitate to reach out to the folks behind these blogs and zines – they're usually super friendly and happy to chat about music!\n\nNow, go forth and immerse yourself in the Berlin music scene!\nuser: I'm thinking of checking out some live music venues in Kreuzberg while I'm in Berlin. Do you know of any good ones?\nassistant: Kreuzberg is a fantastic neighborhood for live music, with a high concentration of venues that showcase a wide range of genres. Here are some popular live music venues in Kreuzberg that you should check out:\n\n1. **SO36**: A legendary punk and alternative venue that's been around since the 1970s. They host a mix of local and international acts, from punk to indie rock.\n2. **Schokoladen**: A cozy, intimate venue that's perfect for smaller shows. They feature a range of genres, from indie rock to electronic music.\n3. **Kantine am Berghain**: I mentioned this one earlier, but it's worth repeating. This venue is located next to Berghain and hosts a variety of indie rock, alternative, and electronic acts.\n4. **Lido**: A popular venue that hosts a mix of local and international acts, from indie rock to pop. It's a great spot to see both established and up-and-coming bands.\n5. **Badehaus Szimpla**: A unique venue located in a former bathhouse, featuring a mix of live music, DJ sets, and cultural events.\n6. **Urban Spree**: A creative space that hosts live music, art exhibitions, and cultural events. They feature a range of genres, from indie rock to electronic music.\n7. **Monarch**: A small, intimate venue that's perfect for discovering new bands. They feature a mix of indie rock, folk, and electronic music.\n\nThese are just a few of the many live music venues in Kreuzberg. Be sure to check out the listings for each venue to see what's on during your visit. You might stumble upon a hidden gem or discover a new favorite band!\n\nRemember to also explore the neighborhood's many bars and cafes, which often host live music events or DJ sets. Kreuzberg is a vibrant, creative area that's perfect for music lovers. Enjoy your time exploring the neighborhood!\nuser: I'm also planning to meet up with my friend Alex from Germany while I'm in Berlin, we've met up twice before and it'll be great to catch up with him again. Do you know any good cafes or bars in Kreuzberg where we could grab a drink and chat?\nassistant: That's great that you're meeting up with Alex again! Kreuzberg has plenty of awesome cafes and bars that are perfect for catching up with friends. Here are some recommendations:\n\n**Cafes:**\n\n1. **The Barn**: A popular specialty coffee shop with a cozy atmosphere, perfect for a casual catch-up.\n2. **Five Elephant**: Another great coffee spot with a relaxed vibe, offering delicious coffee and pastries.\n3. **Kaffee Burger**: A Kreuzberg institution with a retro vibe, serving coffee, cakes, and light bites.\n\n**Bars:**\n\n1. **Schleusenkrug**: A laid-back bar with a cozy atmosphere, offering a wide selection of beers and cocktails.\n2. **Das Hotel**: A trendy bar with a relaxed vibe, serving craft beers and creative cocktails.\n3. **Würgeengel**: A popular bar with a retro vibe, offering a wide range of drinks and a great selection of vinyl records.\n\n**Beer Gardens:**\n\n1. **Golgatha**: A classic Kreuzberg beer garden with a lively atmosphere, perfect for a casual meetup.\n2. **Schleusenkrug**: This beer garden is part of the Schleusenkrug bar I mentioned earlier, offering a cozy outdoor space to grab a drink and chat.\n\nThese are just a few of the many great spots in Kreuzberg. You can't go wrong with any of these recommendations, but feel free to explore the neighborhood and find your own hidden gem!\n\nIt's great that you're meeting up with Alex again, and I'm sure you'll have a blast catching up and exploring Kreuzberg together. Prost!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:5c40ec5b",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:40794e9ba17391397654d77501f13f6e"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"The user planned a trip to Germany and wanted indie rock music venues in Berlin.\",\"The user is more into lo-fi and garage rock.\",\"The user intended to check out Berlin record stores and labels.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm more into the lo-fi and garage rock scene.\",\"evidence_reason\":\"The target transcript explicitly frames the user's Berlin trip around indie rock venues, then narrows the taste to lo-fi and garage rock and asks for record stores, labels, blogs, and zines.\",\"importance\":4,\"keywords\":[\"Berlin\",\"indie rock\",\"lo-fi\",\"garage rock\",\"record stores\",\"Späti Palace\",\"Klangkommando\",\"Zabriskie Point\"],\"note_type\":\"context\",\"rationale\":\"This is not a single atomic preference: it preserves a reusable recommendation set with named venues, shops, labels, bands, and media resources for later Berlin music planning.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's Berlin music-discovery planning context from the 2023-09-30 session, focused on indie rock, lo-fi, garage rock, record stores, labels, blogs, and zines.\"},\"summary\":\"For the user's Berlin trip, the reusable music-discovery context centered on indie rock with a stronger preference for lo-fi and garage rock. Recommended Berlin options included venues Berghain, Columbiahalle, Festsaal Kreuzberg, Kantine am Berghain, and Musik & Frieden; record stores Dussmann das KulturKaufhaus, Bis Aufs Messer, CoreTex Records, and Raum 15; labels Späti Palace, Kreuzkölln Records, and Tape Tektoniks; local bands Die Nerven, Gurr, and Klangstof; and scene resources Berlin Music Week, Klangkommando, Nothing But Hope And Passion, The Quietus, Zabriskie Point, The Leuchtet, Kreuzberg Musik, Berlin Indie Music, and Berlin Music Scene.\",\"tags\":[\"berlin_trip\",\"music_discovery\",\"indie_rock\",\"lo_fi\",\"garage_rock\"],\"title\":\"Berlin indie rock, lo-fi, and garage rock trip context\",\"valid_from\":\"2023-09-30T09:14:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user planned to check out live music venues in Kreuzberg while in Berlin.\",\"The user planned to meet Alex from Germany while in Berlin.\",\"The user and Alex had met up twice before this session.\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm also planning to meet up with my friend Alex from Germany while I'm in Berlin\",\"evidence_reason\":\"The target transcript explicitly states the Berlin/Kreuzberg meetup plan with Alex and contains assistant-generated ranked option lists for venues, cafes, bars, and beer gardens.\",\"importance\":4,\"keywords\":[\"Kreuzberg\",\"Alex from Germany\",\"SO36\",\"Schokoladen\",\"Lido\",\"Urban Spree\",\"The Barn\",\"Würgeengel\",\"Golgatha\"],\"note_type\":\"plan\",\"rationale\":\"The durable value is the combined planning context and compact option set for Kreuzberg, not just a precise fact that the user will meet Alex.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's Kreuzberg plans during the Berlin trip, including live music exploration and social meetup with Alex from Germany.\"},\"summary\":\"While in Berlin, the user planned to explore Kreuzberg live music and meet Alex from Germany again for a drink and chat. Recommended Kreuzberg live venues included SO36, Schokoladen, Kantine am Berghain, Lido, Badehaus Szimpla, Urban Spree, and Monarch; meetup spots included cafes The Barn, Five Elephant, and Kaffee Burger, bars Schleusenkrug, Das Hotel, and Würgeengel, and beer gardens Golgatha and Schleusenkrug.\",\"tags\":[\"kreuzberg\",\"berlin_trip\",\"live_music\",\"alex_meetup\",\"bars_cafes\"],\"title\":\"Kreuzberg live music and meetup options with Alex\",\"valid_from\":\"2023-09-30T09:14:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7787,
+                "completionTokens": 1074,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
