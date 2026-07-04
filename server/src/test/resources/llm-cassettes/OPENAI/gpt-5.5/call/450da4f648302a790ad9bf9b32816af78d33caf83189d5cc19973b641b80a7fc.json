@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "450da4f648302a790ad9bf9b32816af78d33caf83189d5cc19973b641b80a7fc",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:a2f3aa27\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable facts about the user's Instagram account/status and content practices/interests, plus reusable notes about recommended Instagram strategy and live Q&A planning.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable USER entity as subject; no existing candidates are available.\n- mention=Instagram; action=CREATE_NEW; id=entity:<1>; type=SERVICE; name=Instagram; reason=Concrete reusable service mentioned throughout the target conversation; no existing candidate exists.\n- mention=Instagram Insights; action=CREATE_NEW; id=entity:<2>; type=SERVICE; name=Instagram Insights; reason=Distinct reusable Instagram analytics service/feature discussed as a tool for performance tracking.\n- mention=Instagram account / my Instagram account; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=User's Instagram account; reason=Possessive wording identifies a concrete reusable personal digital item/account for later claims such as follower count.\n- mention=Instagram content strategy / my content strategy; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=User's Instagram content strategy; reason=Reusable referent for the user's Instagram optimization efforts, but not a standalone project under the project-creation rule.\n- mention=Instagram Live; action=CREATE_NEW; id=entity:<5>; type=SERVICE; name=Instagram Live; reason=Concrete reusable Instagram feature discussed for live streams.\n- mention=Q&A session / my next live stream; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=User's Instagram Live Q&A session; reason=Specific reusable planned event/session referenced as the user's next live stream; useful object for later claims.\n- mention=current project; action=CREATE_NEW; id=entity:<7>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Instagram account|Instagram content strategy|Instagram Live|Instagram Insights\n        text_queries=Instagram 1250 followers posting regularly consistent aesthetic|Instagram content strategy engagement audience growth captions Instagram Live Q&A|Instagram Insights post performance follower count\n        predicate_hints=current_metric_value|has_goal|responsible_for|works_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:90266417fe6ac9574465359462d17b55] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:a2f3aa27:session:1; title=LongMemEval a2f3aa27 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 06:23\nTranscript:\nuser: I'm looking to optimize my Instagram content strategy, can you give me some tips on how to increase engagement and grow my audience?\nassistant: Optimizing your Instagram content strategy can make a huge difference in increasing engagement and growing your audience. Here are some tips to help you do just that:\n\n**Content Strategy:**\n\n1. **Define your niche**: Identify your target audience and create content that resonates with them.\n2. **Create high-quality visuals**: Use high-quality images, videos, or stories that are visually appealing and engaging.\n3. **Use a consistent aesthetic**: Develop a consistent visual brand identity to make your content easily recognizable.\n4. **Post regularly**: Maintain a consistent posting schedule to keep your audience engaged and interested.\n5. **Mix up your content types**: Post a mix of photos, videos, IGTV, Reels, and Stories to keep your content fresh and engaging.\n\n**Engagement:**\n\n1. **Ask questions**: Encourage engagement by asking questions in your captions or using Instagram's polling feature.\n2. **Use calls-to-action (CTAs)**: Ask your audience to like, comment, or share your content.\n3. **Host a giveaway or contest**: Collaborate with other accounts or brands to host a giveaway or contest to increase engagement.\n4. **Respond to comments**: Engage with your audience by responding to comments and direct messages.\n5. **Use Instagram Stories**: Share behind-the-scenes content, sneak peeks, and exclusive deals to keep your audience engaged.\n\n**Audience Growth:**\n\n1. **Use hashtags strategically**: Research and use relevant hashtags to increase your content's visibility.\n2. **Collaborate with influencers**: Partner with influencers in your niche to reach new audiences.\n3. **Run Instagram Ads**: Use paid advertising to reach a larger audience and drive traffic to your website or landing page.\n4. **Promote your Instagram account**: Share your Instagram content on other social media platforms and include a link to your Instagram account.\n5. **Optimize your profile**: Ensure your profile is complete, including a profile picture, bio, and contact information.\n\n**Additional Tips:**\n\n1. **Analyze your performance**: Use Instagram Insights to track your performance and adjust your strategy accordingly.\n2. **Be authentic and consistent**: Stay true to your brand voice and aesthetic to build trust with your audience.\n3. **Time your posts strategically**: Post when your audience is most active to increase engagement.\n4. **Use Instagram's features**: Take advantage of Instagram's features, such as IGTV, Reels, and Shopping, to diversify your content.\n5. **Run a Instagram Challenge**: Create a challenge or a theme to encourage user-generated content and increase engagement.\n\nBy implementing these tips, you'll be well on your way to increasing engagement and growing your audience on Instagram. Remember to stay consistent, patient, and adapt to changes in the algorithm to optimize your content strategy.\nuser: I've been doing some of these already, like posting regularly and using a consistent aesthetic. It's great to know I'm on the right track. Speaking of which, I'm curious to know if there's a way to see which posts are performing well and which ones aren't. Do you know if Instagram Insights can help me with that? And by the way, I've got 1250 followers on Instagram now, so it'd be great to get some insights on how to optimize my content for them.\nassistant: Congratulations on reaching 1250 followers! That's a great milestone!\n\nYes, Instagram Insights is a fantastic tool to help you track your performance and understand what's working and what's not. Insights provides you with data on your account's performance, including:\n\n1. **Account metrics**: Follower growth, reach, and engagement rates.\n2. **Content metrics**: Performance of individual posts, including likes, comments, saves, and engagement rates.\n3. **Audience metrics**: Demographics, interests, and behaviors of your followers.\n\nTo access Instagram Insights, make sure your account is set to a Business or Creator profile. Then, follow these steps:\n\n1. Open the Instagram app and navigate to your profile page.\n2. Tap the three horizontal lines ( Settings) on the top-right corner.\n3. Tap \"Insights\" from the menu.\n\nIn Insights, you'll find several sections:\n\n1. **Overview**: A summary of your account's performance over the past 7 days.\n2. **Content**: A detailed view of your individual posts, including metrics like engagement rate, reach, and impressions.\n3. **Audience**: Demographic information about your followers, including age, gender, location, and interests.\n4. **Reach**: A breakdown of how many people saw your posts and how they interacted with them.\n\nTo get the most out of Insights, focus on the following metrics:\n\n1. **Engagement rate**: The percentage of followers who engaged with your post (likes, comments, saves, etc.).\n2. **Reach**: The number of unique users who saw your post.\n3. **Save rate**: The percentage of users who saved your post.\n4. **Top-performing content**: Identify the types of posts that perform well and create more content like that.\n\nNow, to optimize your content for your 1250 followers, consider the following:\n\n1. **Post types**: Analyze which types of posts (photos, videos, IGTV, Reels) perform better with your audience.\n2. **Content themes**: Identify the topics or themes that resonate with your audience and create more content around those.\n3. **Hashtags**: Use relevant hashtags that your audience is interested in to increase visibility.\n4. **Timing**: Experiment with different posting times to see when your audience is most active.\n5. **Captions and CTAs**: Craft engaging captions and use CTAs to encourage interaction.\n\nBy analyzing your Insights and adjusting your content strategy accordingly, you'll be able to:\n\n* Increase engagement and reach\n* Attract new followers\n* Improve your content's overall performance\n\nRemember, Insights is a powerful tool, but it's up to you to interpret the data and make informed decisions about your content strategy.\n\nDo you have any specific questions about using Instagram Insights or optimizing your content for your audience?\nuser: What are some tips for creating engaging captions for my posts?\nassistant: Crafting engaging captions is a crucial part of making your Instagram posts stand out and encouraging interaction with your audience. Here are some tips to help you create captivating captions:\n\n1. **Keep it concise**: Attention spans are short, so keep your captions brief and to the point. Aim for 125-150 characters (about 1-2 short sentences).\n2. **Start with a hook**: Grab attention with an interesting fact, question, or statement that makes users want to read more.\n3. **Be authentic and personal**: Share your story, experiences, and emotions to build a connection with your audience.\n4. **Use humor and wit**: Add a dash of humor or sarcasm to make your captions more entertaining and relatable.\n5. **Ask questions**: Encourage engagement by asking questions that spark conversation or curiosity.\n6. **Use emojis and punctuation**: Add visual interest with relevant emojis and punctuation to break up the text and convey tone.\n7. **Make it scannable**: Use short paragraphs, bullet points, or numbered lists to make your captions easy to scan.\n8. **Include a call-to-action (CTA)**: Encourage users to like, comment, share, or visit your website with a clear CTA.\n9. **Use relevant hashtags**: Add relevant hashtags to increase discoverability and attract new followers.\n10. **Proofread and edit**: Ensure your captions are free of typos, grammatical errors, and formatting issues.\n\nSome popular caption styles include:\n\n1. **The Storyteller**: Share a brief anecdote or story related to the post.\n2. **The Educator**: Share interesting facts, tips, or tutorials related to your niche.\n3. **The Conversationalist**: Write in a friendly, conversational tone, as if you're talking to your audience.\n4. **The Promoter**: Highlight a product, service, or event, and include a clear CTA.\n5. **The Teaser**: Create suspense or curiosity by hinting at something coming soon.\n\nRemember, the key to writing engaging captions is to understand your audience and tailor your tone, style, and content to resonate with them.\n\nDo you have any specific questions about crafting captions or want some feedback on your current caption style? 🤔\nuser: I'm actually thinking of trying out Instagram Live more often. Do you have any tips on how to make my live streams more engaging and interactive?\nassistant: Instagram Live is an excellent way to connect with your audience in real-time, increase engagement, and build a loyal community. Here are some tips to make your live streams more engaging and interactive:\n\n**Pre-Live:**\n\n1. **Promote your live stream**: Announce your live stream in advance on your Instagram feed, stories, and other social media platforms.\n2. **Choose a compelling title**: Craft a title that grabs attention and encourages viewers to tune in.\n3. **Set a consistent schedule**: Decide on a regular schedule for your live streams to build anticipation and expectation from your audience.\n\n**During the Live:**\n\n1. **Start with a hook**: Begin your live stream with an interesting fact, question, or activity to grab viewers' attention.\n2. **Interact with your audience**: Respond to comments, answer questions, and acknowledge viewers in real-time to create a sense of community.\n3. **Use polls and Q&A**: Utilize Instagram's built-in polling feature or ask viewers to ask questions in the comments to increase engagement.\n4. **Share exclusive content**: Offer exclusive tips, behind-the-scenes content, or sneak peeks to keep viewers engaged.\n5. **Make it visually appealing**: Use good lighting, sound, and camera angles to ensure a high-quality stream.\n6. **Keep it concise**: Try to keep your live streams between 10-30 minutes to maintain viewer interest.\n\n**Post-Live:**\n\n1. **Save the live stream**: Save your live stream to your Instagram stories or IGTV to allow viewers to watch it later.\n2. **Encourage replay views**: Share a highlight reel or a clip from the live stream to encourage viewers to watch the full replay.\n3. **Follow up with a post**: Share a follow-up post after the live stream to summarize the key takeaways, answer additional questions, or provide more information.\n\n**Additional Tips:**\n\n1. **Use Instagram's features**: Take advantage of Instagram's features, such as live badges, shopping, and donate stickers, to enhance your live streams.\n2. **Collaborate with guests**: Invite guests or other influencers to join your live stream to bring fresh perspectives and attract new audiences.\n3. **Be authentic and spontaneous**: Don't over-script your live streams. Be yourself, and allow for spontaneity and improvisation.\n4. **Monitor your analytics**: Use Instagram Insights to track your live stream's performance and adjust your strategy accordingly.\n\nBy following these tips, you can create engaging, interactive, and entertaining live streams that will help you build a loyal community on Instagram.\n\nDo you have any specific questions about using Instagram Live or need help with planning your first live stream? 📹\nuser: I'm thinking of doing a Q&A session on my next live stream. Do you have any tips on how to make it more engaging and interactive? For example, how can I encourage viewers to ask questions?\nassistant: A Q&A session is a great idea for a live stream! It's an excellent way to engage with your audience, build trust, and provide value. Here are some tips to make your Q&A session more engaging and interactive:\n\n**Before the Live Stream:**\n\n1. **Promote the Q&A**: Announce the Q&A session in advance on your Instagram feed, stories, and other social media platforms.\n2. **Encourage question submissions**: Ask your audience to submit questions in advance using a specific hashtag or by sending you a direct message.\n3. **Create a question theme**: Focus on a specific topic or theme for the Q&A to help guide the conversation and attract relevant questions.\n\n**During the Live Stream:**\n\n1. **Start with an intro**: Begin the live stream with a brief introduction, explaining the format and encouraging viewers to ask questions.\n2. **Use a question format**: Use a format like \"Ask me anything\" or \"Q&A\" to make it clear that you're open to answering questions.\n3. **Encourage live questions**: Ask viewers to ask questions in the comments section during the live stream.\n4. **Use Instagram's features**: Utilize Instagram's features like polls, quizzes, or question stickers to make the Q&A more engaging.\n5. **Respond to questions**: Answer questions in real-time, providing valuable insights and information.\n\n**Encouraging Viewers to Ask Questions:**\n\n1. **Incentivize questions**: Offer incentives like exclusive content, discounts, or shoutouts to viewers who ask questions.\n2. **Create a safe space**: Make viewers feel comfortable asking questions by being approachable, friendly, and non-judgmental.\n3. **Use humor**: Add a dash of humor to make the Q&A session more enjoyable and relaxed.\n4. **Make it a conversation**: Treat the Q&A as a conversation, responding to questions and engaging with viewers in a natural way.\n5. **Follow up**: After the live stream, follow up with viewers who asked questions, providing additional information or resources.\n\n**Additional Tips:**\n\n1. **Prepare in advance**: Prepare for common questions and have some responses ready to go.\n2. **Keep it concise**: Try to keep your answers concise and to the point, avoiding lengthy responses.\n3. **Use a moderator**: Consider having a moderator help manage the Q&A session, filtering questions and keeping the conversation on track.\n4. **Save the Q&A**: Save the Q&A session to your Instagram stories or IGTV, allowing viewers to watch it later.\n\nBy following these tips, you'll be able to create an engaging and interactive Q&A session that encourages viewers to ask questions and provides value to your audience.\n\nDo you have any specific questions about hosting a Q&A session or need help with preparing for your live stream? 🤔",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:a2f3aa27",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:90266417fe6ac9574465359462d17b55"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:a2f3aa27\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable facts about the user's Instagram account/status and content practices/interests, plus reusable notes about recommended Instagram strategy and live Q&A planning.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable USER entity as subject; no existing candidates are available.\n- mention=Instagram; action=CREATE_NEW; id=entity:<1>; type=SERVICE; name=Instagram; reason=Concrete reusable service mentioned throughout the target conversation; no existing candidate exists.\n- mention=Instagram Insights; action=CREATE_NEW; id=entity:<2>; type=SERVICE; name=Instagram Insights; reason=Distinct reusable Instagram analytics service/feature discussed as a tool for performance tracking.\n- mention=Instagram account / my Instagram account; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=User's Instagram account; reason=Possessive wording identifies a concrete reusable personal digital item/account for later claims such as follower count.\n- mention=Instagram content strategy / my content strategy; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=User's Instagram content strategy; reason=Reusable referent for the user's Instagram optimization efforts, but not a standalone project under the project-creation rule.\n- mention=Instagram Live; action=CREATE_NEW; id=entity:<5>; type=SERVICE; name=Instagram Live; reason=Concrete reusable Instagram feature discussed for live streams.\n- mention=Q&A session / my next live stream; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=User's Instagram Live Q&A session; reason=Specific reusable planned event/session referenced as the user's next live stream; useful object for later claims.\n- mention=current project; action=CREATE_NEW; id=entity:<7>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Instagram account|Instagram content strategy|Instagram Live|Instagram Insights\n        text_queries=Instagram 1250 followers posting regularly consistent aesthetic|Instagram content strategy engagement audience growth captions Instagram Live Q&A|Instagram Insights post performance follower count\n        predicate_hints=current_metric_value|has_goal|responsible_for|works_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:90266417fe6ac9574465359462d17b55] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:a2f3aa27:session:1; title=LongMemEval a2f3aa27 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 06:23\nTranscript:\nuser: I'm looking to optimize my Instagram content strategy, can you give me some tips on how to increase engagement and grow my audience?\nassistant: Optimizing your Instagram content strategy can make a huge difference in increasing engagement and growing your audience. Here are some tips to help you do just that:\n\n**Content Strategy:**\n\n1. **Define your niche**: Identify your target audience and create content that resonates with them.\n2. **Create high-quality visuals**: Use high-quality images, videos, or stories that are visually appealing and engaging.\n3. **Use a consistent aesthetic**: Develop a consistent visual brand identity to make your content easily recognizable.\n4. **Post regularly**: Maintain a consistent posting schedule to keep your audience engaged and interested.\n5. **Mix up your content types**: Post a mix of photos, videos, IGTV, Reels, and Stories to keep your content fresh and engaging.\n\n**Engagement:**\n\n1. **Ask questions**: Encourage engagement by asking questions in your captions or using Instagram's polling feature.\n2. **Use calls-to-action (CTAs)**: Ask your audience to like, comment, or share your content.\n3. **Host a giveaway or contest**: Collaborate with other accounts or brands to host a giveaway or contest to increase engagement.\n4. **Respond to comments**: Engage with your audience by responding to comments and direct messages.\n5. **Use Instagram Stories**: Share behind-the-scenes content, sneak peeks, and exclusive deals to keep your audience engaged.\n\n**Audience Growth:**\n\n1. **Use hashtags strategically**: Research and use relevant hashtags to increase your content's visibility.\n2. **Collaborate with influencers**: Partner with influencers in your niche to reach new audiences.\n3. **Run Instagram Ads**: Use paid advertising to reach a larger audience and drive traffic to your website or landing page.\n4. **Promote your Instagram account**: Share your Instagram content on other social media platforms and include a link to your Instagram account.\n5. **Optimize your profile**: Ensure your profile is complete, including a profile picture, bio, and contact information.\n\n**Additional Tips:**\n\n1. **Analyze your performance**: Use Instagram Insights to track your performance and adjust your strategy accordingly.\n2. **Be authentic and consistent**: Stay true to your brand voice and aesthetic to build trust with your audience.\n3. **Time your posts strategically**: Post when your audience is most active to increase engagement.\n4. **Use Instagram's features**: Take advantage of Instagram's features, such as IGTV, Reels, and Shopping, to diversify your content.\n5. **Run a Instagram Challenge**: Create a challenge or a theme to encourage user-generated content and increase engagement.\n\nBy implementing these tips, you'll be well on your way to increasing engagement and growing your audience on Instagram. Remember to stay consistent, patient, and adapt to changes in the algorithm to optimize your content strategy.\nuser: I've been doing some of these already, like posting regularly and using a consistent aesthetic. It's great to know I'm on the right track. Speaking of which, I'm curious to know if there's a way to see which posts are performing well and which ones aren't. Do you know if Instagram Insights can help me with that? And by the way, I've got 1250 followers on Instagram now, so it'd be great to get some insights on how to optimize my content for them.\nassistant: Congratulations on reaching 1250 followers! That's a great milestone!\n\nYes, Instagram Insights is a fantastic tool to help you track your performance and understand what's working and what's not. Insights provides you with data on your account's performance, including:\n\n1. **Account metrics**: Follower growth, reach, and engagement rates.\n2. **Content metrics**: Performance of individual posts, including likes, comments, saves, and engagement rates.\n3. **Audience metrics**: Demographics, interests, and behaviors of your followers.\n\nTo access Instagram Insights, make sure your account is set to a Business or Creator profile. Then, follow these steps:\n\n1. Open the Instagram app and navigate to your profile page.\n2. Tap the three horizontal lines ( Settings) on the top-right corner.\n3. Tap \"Insights\" from the menu.\n\nIn Insights, you'll find several sections:\n\n1. **Overview**: A summary of your account's performance over the past 7 days.\n2. **Content**: A detailed view of your individual posts, including metrics like engagement rate, reach, and impressions.\n3. **Audience**: Demographic information about your followers, including age, gender, location, and interests.\n4. **Reach**: A breakdown of how many people saw your posts and how they interacted with them.\n\nTo get the most out of Insights, focus on the following metrics:\n\n1. **Engagement rate**: The percentage of followers who engaged with your post (likes, comments, saves, etc.).\n2. **Reach**: The number of unique users who saw your post.\n3. **Save rate**: The percentage of users who saved your post.\n4. **Top-performing content**: Identify the types of posts that perform well and create more content like that.\n\nNow, to optimize your content for your 1250 followers, consider the following:\n\n1. **Post types**: Analyze which types of posts (photos, videos, IGTV, Reels) perform better with your audience.\n2. **Content themes**: Identify the topics or themes that resonate with your audience and create more content around those.\n3. **Hashtags**: Use relevant hashtags that your audience is interested in to increase visibility.\n4. **Timing**: Experiment with different posting times to see when your audience is most active.\n5. **Captions and CTAs**: Craft engaging captions and use CTAs to encourage interaction.\n\nBy analyzing your Insights and adjusting your content strategy accordingly, you'll be able to:\n\n* Increase engagement and reach\n* Attract new followers\n* Improve your content's overall performance\n\nRemember, Insights is a powerful tool, but it's up to you to interpret the data and make informed decisions about your content strategy.\n\nDo you have any specific questions about using Instagram Insights or optimizing your content for your audience?\nuser: What are some tips for creating engaging captions for my posts?\nassistant: Crafting engaging captions is a crucial part of making your Instagram posts stand out and encouraging interaction with your audience. Here are some tips to help you create captivating captions:\n\n1. **Keep it concise**: Attention spans are short, so keep your captions brief and to the point. Aim for 125-150 characters (about 1-2 short sentences).\n2. **Start with a hook**: Grab attention with an interesting fact, question, or statement that makes users want to read more.\n3. **Be authentic and personal**: Share your story, experiences, and emotions to build a connection with your audience.\n4. **Use humor and wit**: Add a dash of humor or sarcasm to make your captions more entertaining and relatable.\n5. **Ask questions**: Encourage engagement by asking questions that spark conversation or curiosity.\n6. **Use emojis and punctuation**: Add visual interest with relevant emojis and punctuation to break up the text and convey tone.\n7. **Make it scannable**: Use short paragraphs, bullet points, or numbered lists to make your captions easy to scan.\n8. **Include a call-to-action (CTA)**: Encourage users to like, comment, share, or visit your website with a clear CTA.\n9. **Use relevant hashtags**: Add relevant hashtags to increase discoverability and attract new followers.\n10. **Proofread and edit**: Ensure your captions are free of typos, grammatical errors, and formatting issues.\n\nSome popular caption styles include:\n\n1. **The Storyteller**: Share a brief anecdote or story related to the post.\n2. **The Educator**: Share interesting facts, tips, or tutorials related to your niche.\n3. **The Conversationalist**: Write in a friendly, conversational tone, as if you're talking to your audience.\n4. **The Promoter**: Highlight a product, service, or event, and include a clear CTA.\n5. **The Teaser**: Create suspense or curiosity by hinting at something coming soon.\n\nRemember, the key to writing engaging captions is to understand your audience and tailor your tone, style, and content to resonate with them.\n\nDo you have any specific questions about crafting captions or want some feedback on your current caption style? 🤔\nuser: I'm actually thinking of trying out Instagram Live more often. Do you have any tips on how to make my live streams more engaging and interactive?\nassistant: Instagram Live is an excellent way to connect with your audience in real-time, increase engagement, and build a loyal community. Here are some tips to make your live streams more engaging and interactive:\n\n**Pre-Live:**\n\n1. **Promote your live stream**: Announce your live stream in advance on your Instagram feed, stories, and other social media platforms.\n2. **Choose a compelling title**: Craft a title that grabs attention and encourages viewers to tune in.\n3. **Set a consistent schedule**: Decide on a regular schedule for your live streams to build anticipation and expectation from your audience.\n\n**During the Live:**\n\n1. **Start with a hook**: Begin your live stream with an interesting fact, question, or activity to grab viewers' attention.\n2. **Interact with your audience**: Respond to comments, answer questions, and acknowledge viewers in real-time to create a sense of community.\n3. **Use polls and Q&A**: Utilize Instagram's built-in polling feature or ask viewers to ask questions in the comments to increase engagement.\n4. **Share exclusive content**: Offer exclusive tips, behind-the-scenes content, or sneak peeks to keep viewers engaged.\n5. **Make it visually appealing**: Use good lighting, sound, and camera angles to ensure a high-quality stream.\n6. **Keep it concise**: Try to keep your live streams between 10-30 minutes to maintain viewer interest.\n\n**Post-Live:**\n\n1. **Save the live stream**: Save your live stream to your Instagram stories or IGTV to allow viewers to watch it later.\n2. **Encourage replay views**: Share a highlight reel or a clip from the live stream to encourage viewers to watch the full replay.\n3. **Follow up with a post**: Share a follow-up post after the live stream to summarize the key takeaways, answer additional questions, or provide more information.\n\n**Additional Tips:**\n\n1. **Use Instagram's features**: Take advantage of Instagram's features, such as live badges, shopping, and donate stickers, to enhance your live streams.\n2. **Collaborate with guests**: Invite guests or other influencers to join your live stream to bring fresh perspectives and attract new audiences.\n3. **Be authentic and spontaneous**: Don't over-script your live streams. Be yourself, and allow for spontaneity and improvisation.\n4. **Monitor your analytics**: Use Instagram Insights to track your live stream's performance and adjust your strategy accordingly.\n\nBy following these tips, you can create engaging, interactive, and entertaining live streams that will help you build a loyal community on Instagram.\n\nDo you have any specific questions about using Instagram Live or need help with planning your first live stream? 📹\nuser: I'm thinking of doing a Q&A session on my next live stream. Do you have any tips on how to make it more engaging and interactive? For example, how can I encourage viewers to ask questions?\nassistant: A Q&A session is a great idea for a live stream! It's an excellent way to engage with your audience, build trust, and provide value. Here are some tips to make your Q&A session more engaging and interactive:\n\n**Before the Live Stream:**\n\n1. **Promote the Q&A**: Announce the Q&A session in advance on your Instagram feed, stories, and other social media platforms.\n2. **Encourage question submissions**: Ask your audience to submit questions in advance using a specific hashtag or by sending you a direct message.\n3. **Create a question theme**: Focus on a specific topic or theme for the Q&A to help guide the conversation and attract relevant questions.\n\n**During the Live Stream:**\n\n1. **Start with an intro**: Begin the live stream with a brief introduction, explaining the format and encouraging viewers to ask questions.\n2. **Use a question format**: Use a format like \"Ask me anything\" or \"Q&A\" to make it clear that you're open to answering questions.\n3. **Encourage live questions**: Ask viewers to ask questions in the comments section during the live stream.\n4. **Use Instagram's features**: Utilize Instagram's features like polls, quizzes, or question stickers to make the Q&A more engaging.\n5. **Respond to questions**: Answer questions in real-time, providing valuable insights and information.\n\n**Encouraging Viewers to Ask Questions:**\n\n1. **Incentivize questions**: Offer incentives like exclusive content, discounts, or shoutouts to viewers who ask questions.\n2. **Create a safe space**: Make viewers feel comfortable asking questions by being approachable, friendly, and non-judgmental.\n3. **Use humor**: Add a dash of humor to make the Q&A session more enjoyable and relaxed.\n4. **Make it a conversation**: Treat the Q&A as a conversation, responding to questions and engaging with viewers in a natural way.\n5. **Follow up**: After the live stream, follow up with viewers who asked questions, providing additional information or resources.\n\n**Additional Tips:**\n\n1. **Prepare in advance**: Prepare for common questions and have some responses ready to go.\n2. **Keep it concise**: Try to keep your answers concise and to the point, avoiding lengthy responses.\n3. **Use a moderator**: Consider having a moderator help manage the Q&A session, filtering questions and keeping the conversation on track.\n4. **Save the Q&A**: Save the Q&A session to your Instagram stories or IGTV, allowing viewers to watch it later.\n\nBy following these tips, you'll be able to create an engaging and interactive Q&A session that encourages viewers to ask questions and provides value to your audience.\n\nDo you have any specific questions about hosting a Q&A session or need help with preparing for your live stream? 🤔",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:a2f3aa27",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:90266417fe6ac9574465359462d17b55"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User is optimizing their Instagram content strategy\",\"User already posts regularly and uses a consistent aesthetic\",\"User's Instagram account had 1250 followers in the 2023-05-28 session\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"c0cc457b7236e2c9\",\"role\":\"primary\"},{\"entity_id\":\"65f5e1a96bd6e8c1\",\"role\":\"secondary\"},{\"entity_id\":\"188d9a467ce6254b\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm looking to optimize my Instagram content strategy\",\"evidence_reason\":\"The transcript begins with the user's Instagram strategy goal and contains a structured recommendation list for engagement and audience growth.\",\"importance\":4,\"keywords\":[\"Instagram content strategy\",\"engagement\",\"audience growth\",\"consistent aesthetic\",\"hashtags\",\"Instagram Insights\"],\"note_type\":\"direction\",\"rationale\":\"This captures a reusable strategic framework and rationale across multiple recommendation categories, not just a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's Instagram content strategy recommendations from the 2023-05-28 session\"},\"summary\":\"Recommended Instagram growth strategy centers on defining a niche, high-quality visuals, a consistent aesthetic, regular posting, varied content formats, active engagement prompts, strategic hashtags, collaborations, ads, profile optimization, Instagram Insights analysis, and adapting to algorithm/audience feedback.\",\"tags\":[\"instagram\",\"content_strategy\",\"growth\"],\"title\":\"Instagram content strategy optimization themes\",\"valid_from\":\"2023-05-28T06:23:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User wanted to see which Instagram posts perform well\",\"Instagram Insights can help track post performance\",\"Instagram account needs Business or Creator profile for Insights\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"787ca84bbba03f59\",\"role\":\"primary\"},{\"entity_id\":\"ea2f3366df752fae\",\"role\":\"secondary\"},{\"entity_id\":\"c0cc457b7236e2c9\",\"role\":\"secondary\"},{\"entity_id\":\"188d9a467ce6254b\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"see which posts are performing well and which ones aren't\",\"evidence_reason\":\"The user asked about post performance, and the assistant provided a detailed Instagram Insights workflow and metrics to track.\",\"importance\":4,\"keywords\":[\"Instagram Insights\",\"engagement rate\",\"reach\",\"save rate\",\"top-performing content\",\"audience metrics\"],\"note_type\":\"lesson\",\"rationale\":\"The note preserves a reusable analytics approach and metric set; it is procedural guidance rather than one precise fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Using Instagram Insights to optimize the user's Instagram account content\"},\"summary\":\"Instagram Insights was recommended as the main tool for identifying top-performing and weak posts by reviewing account metrics, individual content metrics, audience metrics, engagement rate, reach, save rate, post type performance, themes, hashtags, timing, captions, and CTAs.\",\"tags\":[\"instagram\",\"analytics\",\"insights\"],\"title\":\"Instagram Insights metrics for optimizing posts\",\"valid_from\":\"2023-05-28T06:23:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User asked for tips for creating engaging captions\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"c0cc457b7236e2c9\",\"role\":\"primary\"},{\"entity_id\":\"65f5e1a96bd6e8c1\",\"role\":\"secondary\"},{\"entity_id\":\"188d9a467ce6254b\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"What are some tips for creating engaging captions\",\"evidence_reason\":\"The target contains the user's caption question followed by reusable caption techniques and named caption styles.\",\"importance\":3,\"keywords\":[\"Instagram captions\",\"hook\",\"CTA\",\"hashtags\",\"Storyteller\",\"Educator\",\"Conversationalist\",\"Promoter\",\"Teaser\"],\"note_type\":\"direction\",\"rationale\":\"The value is a compact reusable writing framework, not a single clean claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Caption-writing guidance for the user's Instagram content strategy\"},\"summary\":\"Reusable caption guidance included concise copy, a strong hook, authentic/personal tone, humor when appropriate, questions, emojis, scannable formatting, clear CTAs, relevant hashtags, proofreading, and styles such as Storyteller, Educator, Conversationalist, Promoter, and Teaser.\",\"tags\":[\"instagram\",\"captions\",\"engagement\"],\"title\":\"Engaging Instagram caption patterns\",\"valid_from\":\"2023-05-28T06:23:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User was thinking of using Instagram Live more often\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"9f4db7d5e219bab3\",\"role\":\"primary\"},{\"entity_id\":\"c0cc457b7236e2c9\",\"role\":\"secondary\"},{\"entity_id\":\"787ca84bbba03f59\",\"role\":\"secondary\"},{\"entity_id\":\"188d9a467ce6254b\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"trying out Instagram Live more often\",\"evidence_reason\":\"The user expressed intent to use Instagram Live, and the assistant outlined pre-live, during-live, post-live, and analytics practices.\",\"importance\":4,\"keywords\":[\"Instagram Live\",\"live stream\",\"polls\",\"Q&A\",\"replay\",\"10-30 minutes\",\"guests\",\"Instagram Insights\"],\"note_type\":\"plan\",\"rationale\":\"This is a reusable planning workflow for live-stream engagement, not an atomic account fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Planning and execution guidance for the user's Instagram Live streams\"},\"summary\":\"Recommended Instagram Live workflow: promote streams in advance, choose a compelling title, keep a consistent schedule, open with a hook, respond to comments in real time, use polls/Q&A, share exclusive content, maintain good lighting/sound/camera setup, keep streams around 10–30 minutes, save replays, post highlights, collaborate with guests, and review Instagram Insights afterward.\",\"tags\":[\"instagram_live\",\"streaming\",\"engagement\"],\"title\":\"Instagram Live engagement workflow\",\"valid_from\":\"2023-05-28T06:23:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User was thinking of doing a Q&A session on their next live stream\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"63fe1bbcbbce685a\",\"role\":\"primary\"},{\"entity_id\":\"9f4db7d5e219bab3\",\"role\":\"secondary\"},{\"entity_id\":\"c0cc457b7236e2c9\",\"role\":\"secondary\"},{\"entity_id\":\"188d9a467ce6254b\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"doing a Q&A session on my next live stream\",\"evidence_reason\":\"The user named a planned Q&A live stream and asked how to encourage questions; the assistant supplied a reusable session plan.\",\"importance\":4,\"keywords\":[\"Instagram Live Q&A\",\"question submissions\",\"hashtag\",\"DM\",\"question stickers\",\"moderator\",\"replay\"],\"note_type\":\"plan\",\"rationale\":\"This captures an event-planning approach and engagement tactics rather than a single factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Planning guidance for the user's next Instagram Live Q&A session\"},\"summary\":\"For the user's planned Instagram Live Q&A session, recommended tactics were to promote the Q&A ahead of time, collect questions via hashtag or DM, set a question theme, explain the format at the start, prompt live questions in comments, use polls/quizzes/question stickers, answer in real time, incentivize questions with content/discounts/shoutouts, keep answers concise, optionally use a moderator, follow up afterward, and save the Q&A replay.\",\"tags\":[\"instagram_live\",\"q_and_a\",\"engagement_plan\"],\"title\":\"Instagram Live Q&A session engagement plan\",\"valid_from\":\"2023-05-28T06:23:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7317,
+                "completionTokens": 1747,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
