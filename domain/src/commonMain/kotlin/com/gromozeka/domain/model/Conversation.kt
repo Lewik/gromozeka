@@ -360,6 +360,48 @@ data class Conversation(
                 override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem()
 
+            @Serializable
+            @SerialName("ContextCompactionResult")
+            data class ContextCompactionResult(
+                val payload: Payload,
+                val origin: Origin,
+                val sourceMessageIds: List<Id> = emptyList(),
+                val providerScope: ProviderScope? = null,
+                override val state: BlockState = BlockState.COMPLETE,
+            ) : ContentItem() {
+                @Serializable
+                enum class Origin {
+                    USER_REQUESTED,
+                    GROMOZEKA_POLICY,
+                    PROVIDER_AUTO,
+                    RUNTIME_MIGRATION,
+                }
+
+                @Serializable
+                data class ProviderScope(
+                    val provider: String,
+                    val connectionId: String? = null,
+                    val modelConfigurationId: String? = null,
+                    val modelName: String? = null,
+                )
+
+                @Serializable
+                @JsonClassDiscriminator("kind")
+                sealed class Payload {
+                    @Serializable
+                    @SerialName("readable_summary")
+                    data class ReadableSummary(
+                        val text: String,
+                    ) : Payload()
+
+                    @Serializable
+                    @SerialName("opaque_provider_state")
+                    data class OpaqueProviderState(
+                        val state: JsonObject,
+                    ) : Payload()
+                }
+            }
+
             /**
              * Unknown JSON content (fallback for forward compatibility).
              *

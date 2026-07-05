@@ -352,6 +352,7 @@ class ConversationApplicationService(
 
         val targetMessage = messages.find { it.id == messageId }
             ?: throw IllegalArgumentException("Message $messageId not found in thread $currentThreadId")
+        ensureMessagesAreNotCoveredByCompaction(messages, setOf(messageId), "edit")
 
         val editedMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
@@ -425,6 +426,7 @@ class ConversationApplicationService(
         if (targetMessages.size != messageIds.size) {
             throw IllegalArgumentException("Some messages not found in thread $currentThreadId")
         }
+        ensureMessagesAreNotCoveredByCompaction(messages, messageIds.toSet(), "delete")
 
         // Build pairing map to identify paired ToolCalls/ToolResults
         val pairingMap = toolCallPairingService.buildPairingMap(messages)
@@ -525,20 +527,28 @@ class ConversationApplicationService(
         if (targetMessages.size != messageIds.size) {
             throw IllegalArgumentException("Some messages not found in thread $currentThreadId")
         }
+        ensureMessagesAreNotCoveredByCompaction(messages, messageIds.toSet(), "squash")
 
         val lastMessageId = links.last { it.messageId in messageIds }.messageId
 
-        val squashedMessage = Conversation.Message(
+        val compactionMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
-            originalIds = messageIds,
-            role = Conversation.Message.Role.USER,
-            content = squashedContent,
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(
+                Conversation.Message.ContentItem.ContextCompactionResult(
+                    payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary(
+                        text = squashedContent.toReadableCompactionText(),
+                    ),
+                    origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                    sourceMessageIds = messageIds,
+                )
+            ),
             instructions = emptyList(),
             createdAt = Clock.System.now()
         )
 
-        messageRepo.save(squashedMessage)
+        messageRepo.save(compactionMessage)
 
         val newThread = Conversation.Thread(
             id = Conversation.Thread.Id(uuid7()),
@@ -554,7 +564,7 @@ class ConversationApplicationService(
         val newLinks = links.mapNotNull { link ->
             when {
                 link.messageId == lastMessageId -> {
-                    link.copy(threadId = newThread.id, messageId = squashedMessage.id, position = positionCounter++)
+                    link.copy(threadId = newThread.id, messageId = compactionMessage.id, position = positionCounter++)
                 }
                 link.messageId in messageIds -> {
                     null
@@ -573,4 +583,47 @@ class ConversationApplicationService(
 
         return conversationRepo.findById(conversationId)
     }
+
+    private fun ensureMessagesAreNotCoveredByCompaction(
+        messages: List<Conversation.Message>,
+        targetMessageIds: Set<Conversation.Message.Id>,
+        operation: String,
+    ) {
+        val compactionIndex = messages.indexOfLast { message ->
+            message.content.any { it is Conversation.Message.ContentItem.ContextCompactionResult }
+        }
+        if (compactionIndex < 0) return
+
+        val lockedMessageIds = messages.take(compactionIndex + 1).mapTo(mutableSetOf()) { it.id }
+        val lockedTargets = targetMessageIds.intersect(lockedMessageIds)
+        require(lockedTargets.isEmpty()) {
+            "Cannot $operation message(s) covered by context compaction: ${lockedTargets.joinToString { it.value }}"
+        }
+    }
+
+    private fun List<Conversation.Message.ContentItem>.toReadableCompactionText(): String {
+        val text = mapNotNull { content ->
+            when (content) {
+                is Conversation.Message.ContentItem.UserMessage -> content.text
+                is Conversation.Message.ContentItem.AssistantMessage -> content.structured.fullText
+                is Conversation.Message.ContentItem.System -> content.content
+                is Conversation.Message.ContentItem.ContextCompactionResult -> content.toReadableCompactionText()
+                is Conversation.Message.ContentItem.ToolCall -> "[tool_call:${content.call.name}] ${content.call.input}"
+                is Conversation.Message.ContentItem.ToolResult -> "[tool_result:${content.toolName}]"
+                is Conversation.Message.ContentItem.Thinking -> null
+                is Conversation.Message.ContentItem.ImageItem -> "[image:${content.source.type}]"
+                is Conversation.Message.ContentItem.UnknownJson -> content.json.toString()
+            }
+        }.joinToString("\n").trim()
+
+        require(text.isNotBlank()) { "Context compaction result text must not be blank" }
+        return text
+    }
+
+    private fun Conversation.Message.ContentItem.ContextCompactionResult.toReadableCompactionText(): String =
+        when (val payload = payload) {
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+                "[context_compaction:${providerScope?.provider ?: "unknown"}]"
+        }
 }

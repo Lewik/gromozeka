@@ -141,11 +141,13 @@ sealed interface AiConnection {
         override val id: Id,
         override val displayName: String,
         override val enabled: Boolean = true,
+        val executablePath: String = "claude",
     ) : AiConnection {
         override val kind = Kind.CLAUDE_CODE
 
         init {
             validateDisplayName(displayName)
+            require(executablePath.isNotBlank()) { "Claude Code executable path must not be blank" }
         }
     }
 

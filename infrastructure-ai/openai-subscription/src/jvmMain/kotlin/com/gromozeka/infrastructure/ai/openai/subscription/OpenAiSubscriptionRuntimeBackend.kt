@@ -31,6 +31,8 @@ class OpenAiSubscriptionRuntimeBackend(
         projectPath: String?,
     ): AiRuntime {
         return Runtime(
+            connectionId = connection.id.value,
+            modelConfigurationId = modelConfiguration.id.value,
             modelName = modelConfiguration.providerModelId,
             authService = authService,
             responsesClient = responsesClient,
@@ -41,6 +43,8 @@ class OpenAiSubscriptionRuntimeBackend(
 }
 
 private class Runtime(
+    private val connectionId: String,
+    private val modelConfigurationId: String,
     private val modelName: String,
     private val authService: OpenAiSubscriptionAuthService,
     private val responsesClient: OpenAiSubscriptionResponsesClient,
@@ -85,6 +89,9 @@ private class Runtime(
                 outputItems = parsed.outputItems,
                 completed = parsed.completed,
                 conversationKey = conversationKey,
+                connectionId = connectionId,
+                modelConfigurationId = modelConfigurationId,
+                modelName = modelName,
                 assistantResponseFormat = request.options.assistantResponseFormat,
             )
         } catch (error: OpenAiSubscriptionUnauthorizedException) {

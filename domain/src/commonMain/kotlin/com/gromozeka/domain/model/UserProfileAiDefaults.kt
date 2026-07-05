@@ -43,6 +43,10 @@ object UserProfileAiDefaults {
             id = AiConnection.Id("anthropic-bedrock"),
             displayName = "Anthropic via Bedrock",
         ),
+        AiConnection.ClaudeCode(
+            id = AiConnection.Id("claude-code"),
+            displayName = "Claude Code CLI",
+        ),
         AiConnection.OpenAiApi(
             id = AiConnection.Id("openai-api"),
             displayName = "OpenAI API",
@@ -69,6 +73,24 @@ object UserProfileAiDefaults {
             providerModelId = "anthropic.claude-sonnet-4-20250514-v1:0",
             displayName = "Claude Sonnet 4 via Bedrock",
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.XML_INLINE,
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("claude-code-sonnet"),
+            connectionId = AiConnection.Id("claude-code"),
+            providerModelId = "sonnet",
+            displayName = "Claude Code Sonnet",
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("claude-code-opus"),
+            connectionId = AiConnection.Id("claude-code"),
+            providerModelId = "opus",
+            displayName = "Claude Code Opus",
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("claude-code-haiku"),
+            connectionId = AiConnection.Id("claude-code"),
+            providerModelId = "haiku",
+            displayName = "Claude Code Haiku",
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("openai-api-gpt-4o-mini"),
@@ -142,6 +164,9 @@ object UserProfileAiDefaults {
         textGenerationSpec(AiProvider.ANTHROPIC, "claude-sonnet-4-7", contextWindowTokens = 1_000_000),
         textGenerationSpec(AiProvider.ANTHROPIC, "anthropic.claude-sonnet-4-20250514-v1:0", contextWindowTokens = 200_000),
         textGenerationSpec(AiProvider.ANTHROPIC, "claude-sonnet-4-5", contextWindowTokens = 200_000),
+        textGenerationSpec(AiProvider.ANTHROPIC, "sonnet", contextWindowTokens = 1_000_000),
+        textGenerationSpec(AiProvider.ANTHROPIC, "opus", contextWindowTokens = 1_000_000),
+        textGenerationSpec(AiProvider.ANTHROPIC, "haiku", contextWindowTokens = 200_000),
         textGenerationSpec(AiProvider.GOOGLE, "gemini-2.0-flash-exp", contextWindowTokens = 1_000_000),
         textGenerationSpec(AiProvider.OLLAMA, "llama3.2", contextWindowTokens = 4_096),
     )

@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiUsage
@@ -28,9 +29,20 @@ class OpenAiSubscriptionResponseMapper {
         outputItems: List<JsonObject>,
         completed: OpenAiSubscriptionCompletedResponse?,
         conversationKey: String,
+        connectionId: String,
+        modelConfigurationId: String,
+        modelName: String,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): AiRuntimeResponse {
-        val messages = outputItems.mapNotNull { toAssistantMessage(it, assistantResponseFormat) }
+        val messages = outputItems.mapNotNull {
+            toAssistantMessage(
+                item = it,
+                assistantResponseFormat = assistantResponseFormat,
+                connectionId = connectionId,
+                modelConfigurationId = modelConfigurationId,
+                modelName = modelName,
+            )
+        }
 
         return AiRuntimeResponse(
             messages = messages,
@@ -64,11 +76,19 @@ class OpenAiSubscriptionResponseMapper {
     private fun toAssistantMessage(
         item: JsonObject,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        connectionId: String,
+        modelConfigurationId: String,
+        modelName: String,
     ): AiAssistantMessage? {
         return when (item["type"]?.jsonPrimitive?.contentOrNull) {
             "message" -> item.toOutputMessage(assistantResponseFormat)
             "function_call" -> item.toToolCall()
-            "reasoning", "compaction_summary", "compaction" -> item.toReasoningMessage()
+            "reasoning" -> item.toReasoningMessage()
+            "compaction_summary", "compaction" -> item.toCompactionResultMessage(
+                connectionId = connectionId,
+                modelConfigurationId = modelConfigurationId,
+                modelName = modelName,
+            )
             else -> null
         }
     }
@@ -196,6 +216,34 @@ class OpenAiSubscriptionResponseMapper {
                 put("encrypted_content", encryptedContent)
             }
         }
+    }
+
+    private fun JsonObject.toCompactionResultMessage(
+        connectionId: String,
+        modelConfigurationId: String,
+        modelName: String,
+    ): AiAssistantMessage? {
+        val replayItem = toHiddenReasoningItem()
+        if (replayItem["encrypted_content"]?.jsonPrimitive?.contentOrNull.isNullOrBlank()) return null
+
+        return AiAssistantMessage(
+            content = listOf(
+                Conversation.Message.ContentItem.ContextCompactionResult(
+                    payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                        state = buildJsonObject {
+                            put("replay_item", replayItem)
+                        }
+                    ),
+                    origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                    providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                        provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
+                        connectionId = connectionId,
+                        modelConfigurationId = modelConfigurationId,
+                        modelName = modelName,
+                    ),
+                )
+            ),
+        )
     }
 
     private fun assistantBlock(

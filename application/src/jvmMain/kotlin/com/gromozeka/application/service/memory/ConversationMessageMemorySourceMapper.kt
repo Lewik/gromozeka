@@ -45,6 +45,7 @@ class ConversationMessageMemorySourceMapper {
 
                 Conversation.Message.Role.ASSISTANT -> when (item) {
                     is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                    is Conversation.Message.ContentItem.ContextCompactionResult -> item.memorySourceText()
                     else -> null
                 }
 
@@ -54,6 +55,13 @@ class ConversationMessageMemorySourceMapper {
                 }
             }
         }.joinToString("\n").trim()
+
+    private fun Conversation.Message.ContentItem.ContextCompactionResult.memorySourceText(): String =
+        when (val payload = payload) {
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+                "[context_compaction:${providerScope?.provider ?: "unknown"}]"
+        }
 
     private fun Conversation.Message.Role.toMemoryActorRole(): MemorySource.ActorRole =
         when (this) {

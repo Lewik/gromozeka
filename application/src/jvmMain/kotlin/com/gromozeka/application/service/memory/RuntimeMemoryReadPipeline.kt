@@ -951,11 +951,19 @@ private fun MemoryReadRequest.targetQueryText(): String {
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
+            is com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult -> item.readPipelineText()
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.Thinking -> null
         }
     }.joinToString("\n").trim()
 }
+
+private fun com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult.readPipelineText(): String =
+    when (val payload = payload) {
+        is com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
+        is com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+            "[context_compaction:${providerScope?.provider ?: "unknown"}]"
+    }
 
 private fun MemoryReadRequest.entityResolutionText(plan: MemoryReadPlan): String =
     buildList {

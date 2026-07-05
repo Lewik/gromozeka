@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -212,6 +213,25 @@ class OpenAiSubscriptionRequestMapperTest {
         toolCallId: Conversation.Message.ContentItem.ToolCall.Id?,
     ): Conversation.Message {
         val content = buildList {
+            add(
+                Conversation.Message.ContentItem.ContextCompactionResult(
+                    payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                        state = buildJsonObject {
+                            put(
+                                "replay_item",
+                                buildJsonObject {
+                                    put("type", "compaction")
+                                    put("encrypted_content", "encrypted")
+                                }
+                            )
+                        },
+                    ),
+                    origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                    providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                        provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name,
+                    ),
+                )
+            )
             if (toolCallId != null) {
                 add(
                     Conversation.Message.ContentItem.ToolCall(
@@ -230,19 +250,6 @@ class OpenAiSubscriptionRequestMapperTest {
             conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
             content = content,
-            providerMetadata = buildJsonObject {
-                put(
-                    OPENAI_REASONING_ITEMS_METADATA_KEY,
-                    JsonArray(
-                        listOf(
-                            buildJsonObject {
-                                put("type", "compaction")
-                                put("encrypted_content", "encrypted")
-                            }
-                        )
-                    )
-                )
-            },
             createdAt = createdAt,
         )
     }

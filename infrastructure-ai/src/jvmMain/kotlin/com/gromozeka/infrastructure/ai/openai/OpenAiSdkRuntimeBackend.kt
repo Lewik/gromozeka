@@ -225,21 +225,34 @@ private class OpenAiSdkMessageMapper(
     private fun toAssistantMessageParam(message: Conversation.Message): ChatCompletionMessageParam? {
         val text = message.content
             .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
+            .map { it.structured.fullText } +
+            message.content
+                .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
+                .map { it.toOpenAiSdkText() }
+        val textContent = text.joinToString("\n")
             .trim()
         val toolCalls = message.content
             .filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
             .map(::assistantToolCall)
 
-        if (text.isBlank() && toolCalls.isEmpty()) return null
+        if (textContent.isBlank() && toolCalls.isEmpty()) return null
 
         val builder = com.openai.models.chat.completions.ChatCompletionAssistantMessageParam.builder()
-        if (text.isNotBlank()) {
-            builder.content(text)
+        if (textContent.isNotBlank()) {
+            builder.content(textContent)
         }
         toolCalls.forEach(builder::addToolCall)
         return ChatCompletionMessageParam.ofAssistant(builder.build())
     }
+
+    private fun Conversation.Message.ContentItem.ContextCompactionResult.toOpenAiSdkText(): String =
+        when (val payload = payload) {
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ->
+                "Earlier conversation compact:\n${payload.text.trim()}"
+
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+                error("OpenAI SDK runtime cannot replay opaque compaction state for provider=${providerScope?.provider}")
+        }
 
     private fun userText(message: Conversation.Message): String {
         val instructionsPrefix = message.instructions
