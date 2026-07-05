@@ -552,7 +552,9 @@ class ConversationEngine(
                                 assistantResponseFormat = assistantResponseFormat,
                                 toolContext = mapOf(
                                     "projectPath" to project.path,
-                                    "conversationId" to conversationId.value
+                                    "conversationId" to conversationId.value,
+                                    "threadId" to conversation.currentThread.value,
+                                    "projectId" to project.id.value,
                                 )
                             )
                         )

@@ -314,9 +314,13 @@ internal class AnthropicSdkMessageMapper(
 
         val text = message.content
             .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-        if (text.isNotBlank()) {
-            blocks.add(textBlock(text))
+            .map { it.structured.fullText } +
+            message.content
+                .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
+                .map { it.toAnthropicText() }
+        val textContent = text.joinToString("\n")
+        if (textContent.isNotBlank()) {
+            blocks.add(textBlock(textContent))
         }
 
         message.content
@@ -332,6 +336,15 @@ internal class AnthropicSdkMessageMapper(
                 .build()
         }
     }
+
+    private fun Conversation.Message.ContentItem.ContextCompactionResult.toAnthropicText(): String =
+        when (val payload = payload) {
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ->
+                "Earlier conversation compact:\n${payload.text.trim()}"
+
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+                error("Anthropic runtime cannot replay opaque compaction state for provider=${providerScope?.provider}")
+        }
 
     private fun userText(message: Conversation.Message): String {
         val instructionsPrefix = message.instructions

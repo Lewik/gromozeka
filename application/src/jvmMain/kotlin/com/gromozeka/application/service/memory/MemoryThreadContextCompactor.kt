@@ -287,6 +287,7 @@ private fun Conversation.Message.memoryCompactionCharCount(): Int =
                 }
             }
             is Conversation.Message.ContentItem.ImageItem -> 64
+            is Conversation.Message.ContentItem.ContextCompactionResult -> item.compactionTextForMemory().length
             is Conversation.Message.ContentItem.UnknownJson -> item.json.toString().length
         }
     }
@@ -308,12 +309,22 @@ private fun Conversation.Message.renderForMemoryCompaction(maxChars: Int): Strin
                 }
             }
             is Conversation.Message.ContentItem.ImageItem -> "[image]"
+            is Conversation.Message.ContentItem.ContextCompactionResult -> item.compactionTextForMemory()
             is Conversation.Message.ContentItem.UnknownJson -> "[unknown_json] ${item.json}"
         }
     }.joinToString("\n").trim()
 
     return "[${role.name} ${id.value}]\n${body.takeForMemoryCompaction(maxChars)}"
 }
+
+private fun Conversation.Message.ContentItem.ContextCompactionResult.compactionTextForMemory(): String =
+    when (val payload = payload) {
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ->
+            "[context_compaction]\n${payload.text}"
+
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+            "[context_compaction:${providerScope?.provider ?: "unknown"}]"
+    }
 
 private fun String.takeForMemoryCompaction(maxChars: Int): String {
     if (length <= maxChars) return this

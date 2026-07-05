@@ -191,7 +191,7 @@ interface ConversationDomainService {
     ): Conversation?
 
     /**
-     * Creates new thread with squashed message replacing originals.
+     * Creates new thread with explicit context compaction replacing originals.
      *
      * Squash is AI operation (summarization/restructuring), not concatenation.
      * Replaces multiple messages with single summarized message at position of last original.
@@ -200,7 +200,7 @@ interface ConversationDomainService {
      *
      * This is a COMPLEX TRANSACTIONAL operation:
      * 1. Validate at least 2 messages to squash
-     * 2. Create squashed message (originalIds = messageIds, role = USER)
+     * 2. Create assistant message with ContextCompactionResult(sourceMessageIds = messageIds)
      * 3. Create new thread (originalThread = currentThread)
      * 4. Copy thread-message links:
      *    - Replace last original message with squashed

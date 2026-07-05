@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiResponseFormat
@@ -127,7 +128,10 @@ class OpenAiSubscriptionRequestMapper {
         val items = mutableListOf<JsonObject>()
         val textBuffer = mutableListOf<String>()
         val hiddenReplayItems = providerMetadata.toHiddenReplayItems()
-        val compactionItems = hiddenReplayItems.filter { it.isCompactionReplayItem() }
+            .filterNot { it.isCompactionReplayItem() }
+        val compactionItems = content
+            .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
+            .map { it.toOpenAiReplayItem() }
 
         if (replayCompactionOnly && compactionItems.isNotEmpty()) {
             return compactionItems + content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
@@ -179,6 +183,11 @@ class OpenAiSubscriptionRequestMapper {
                     )
                 }
 
+                is Conversation.Message.ContentItem.ContextCompactionResult -> {
+                    flushText()
+                    items += contentItem.toOpenAiReplayItem()
+                }
+
                 else -> Unit
             }
         }
@@ -215,6 +224,27 @@ class OpenAiSubscriptionRequestMapper {
 
             if (!encryptedContent.isNullOrBlank()) {
                 put("encrypted_content", encryptedContent)
+            }
+        }
+    }
+
+    private fun Conversation.Message.ContentItem.ContextCompactionResult.toOpenAiReplayItem(): JsonObject {
+        return when (val currentPayload = payload) {
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> {
+                messageItem(
+                    role = "developer",
+                    content = JsonPrimitive("Earlier conversation compact:\n${currentPayload.text.trim()}"),
+                )
+            }
+
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState -> {
+                val provider = providerScope?.provider
+                require(provider == AiConnection.Kind.OPENAI_SUBSCRIPTION.name) {
+                    "OpenAI subscription cannot replay opaque compaction state for provider=$provider"
+                }
+                val replayItem = currentPayload.state["replay_item"] as? JsonObject
+                    ?: error("OpenAI opaque compaction state missed replay_item")
+                replayItem.normalizeHiddenReasoningItem()
             }
         }
     }
@@ -570,7 +600,7 @@ class OpenAiSubscriptionRequestMapper {
     }
 
     private fun List<Conversation.Message>.toReplayWindow(): ReplayWindow {
-        val compactionAnchorIndex = indexOfLast { it.providerMetadata.containsCompactionReplayItem() }
+        val compactionAnchorIndex = indexOfLast { it.containsOpenAiCompactionReplayItem() }
         if (compactionAnchorIndex < 0) {
             return ReplayWindow(
                 messages = this,
@@ -595,8 +625,13 @@ class OpenAiSubscriptionRequestMapper {
         )
     }
 
-    private fun JsonObject.containsCompactionReplayItem(): Boolean {
-        return toHiddenReplayItems().any { it.isCompactionReplayItem() }
+    private fun Conversation.Message.containsOpenAiCompactionReplayItem(): Boolean {
+        return content
+            .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
+            .any { compaction ->
+                compaction.payload is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ||
+                    compaction.providerScope?.provider == AiConnection.Kind.OPENAI_SUBSCRIPTION.name
+            }
     }
 
     private fun JsonObject.isCompactionReplayItem(): Boolean {

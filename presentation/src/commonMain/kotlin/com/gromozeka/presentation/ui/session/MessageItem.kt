@@ -55,6 +55,7 @@ fun MessageItem(
             is Conversation.Message.ContentItem.System -> content.content.isNotBlank()
             is Conversation.Message.ContentItem.AssistantMessage -> content.structured.fullText.isNotBlank()
             is Conversation.Message.ContentItem.ImageItem -> true
+            is Conversation.Message.ContentItem.ContextCompactionResult -> true
             is Conversation.Message.ContentItem.UnknownJson -> true
         }
     }
@@ -321,6 +322,10 @@ fun MessageItem(
                             }
                         }
 
+                        is Conversation.Message.ContentItem.ContextCompactionResult -> {
+                            ContextCompactionResultItem(content)
+                        }
+
                         is Conversation.Message.ContentItem.UnknownJson -> {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -361,6 +366,51 @@ fun MessageItem(
                 }
             }
         }
+}
+
+@Composable
+private fun ContextCompactionResultItem(
+    content: Conversation.Message.ContentItem.ContextCompactionResult,
+) {
+    val title = when (content.origin) {
+        Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED -> "Context compacted"
+        Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY -> "Context compacted by policy"
+        Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO -> "Provider compacted context"
+        Conversation.Message.ContentItem.ContextCompactionResult.Origin.RUNTIME_MIGRATION -> "Migration compact created"
+    }
+    val details = when (val payload = content.payload) {
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ->
+            payload.text.trim()
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+            "Opaque provider state: ${content.providerScope?.provider ?: "unknown provider"}"
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
+        tonalElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            if (details.isNotBlank()) {
+                Text(
+                    text = details,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        }
+    }
 }
 
 @Composable

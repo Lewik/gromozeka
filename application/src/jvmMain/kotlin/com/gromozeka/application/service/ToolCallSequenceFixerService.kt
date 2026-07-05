@@ -30,9 +30,6 @@ class ToolCallSequenceFixerService(
     private val threadMessageRepository: ThreadMessageRepository
 ) {
     private val log = KLoggers.logger(this)
-    private companion object {
-        const val OPENAI_REASONING_ITEMS_METADATA_KEY = "openaiReasoningItems"
-    }
 
     private data class FixedMessageSequence(
         val messages: List<Conversation.Message>,
@@ -243,7 +240,7 @@ class ToolCallSequenceFixerService(
     )
 
     private fun List<Conversation.Message>.toFixableReplayWindow(): ReplayWindow {
-        val compactionAnchorIndex = indexOfLast { it.providerMetadata.containsCompactionReplayItem() }
+        val compactionAnchorIndex = indexOfLast { it.hasCompactionReplayAnchor() }
         if (compactionAnchorIndex < 0) {
             return ReplayWindow(
                 preservedPrefix = emptyList(),
@@ -261,6 +258,9 @@ class ToolCallSequenceFixerService(
             messages = drop(compactionAnchorIndex),
         )
     }
+
+    private fun Conversation.Message.hasCompactionReplayAnchor(): Boolean =
+        content.any { it is ContentItem.ContextCompactionResult }
 
     private fun List<Conversation.Message>.mergeAdjacentToolCallMessages(): List<Conversation.Message> {
         if (size < 2) return this
@@ -297,19 +297,6 @@ class ToolCallSequenceFixerService(
             content.all { it is ContentItem.ToolCall }
     }
 
-    private fun kotlinx.serialization.json.JsonObject.containsCompactionReplayItem(): Boolean {
-        val reasoningItems = this[OPENAI_REASONING_ITEMS_METADATA_KEY]
-            ?.let { it as? kotlinx.serialization.json.JsonArray }
-            ?: return false
-        return reasoningItems.any { item ->
-            val type = (item as? kotlinx.serialization.json.JsonObject)
-                ?.get("type")
-                ?.toString()
-                ?.trim('"')
-            type == "compaction" || type == "compaction_summary"
-        }
-    }
-    
     private fun createErrorToolResult(
         conversationId: Conversation.Id,
         toolCall: ContentItem.ToolCall

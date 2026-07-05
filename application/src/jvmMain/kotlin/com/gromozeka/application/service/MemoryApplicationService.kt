@@ -247,10 +247,18 @@ class MemoryApplicationService(
                 is Conversation.Message.ContentItem.UserMessage -> item.text
                 is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
                 is Conversation.Message.ContentItem.System -> item.content
+                is Conversation.Message.ContentItem.ContextCompactionResult -> item.memoryText()
                 else -> null
             }
         }.joinToString("\n").trim()
             .ifBlank { id.value }
+
+    private fun Conversation.Message.ContentItem.ContextCompactionResult.memoryText(): String =
+        when (val payload = payload) {
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
+            is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+                "[context_compaction:${providerScope?.provider ?: "unknown"}]"
+        }
 
     suspend fun runNoteConsolidation(
         conversationId: Conversation.Id,

@@ -230,6 +230,8 @@ class ConversationEngineService(
                 toolContext = mapOf(
                     "projectPath" to context.project.path,
                     "conversationId" to conversationId.value,
+                    "threadId" to conversation.currentThread.value,
+                    "projectId" to context.project.id.value,
                     "aiProvider" to context.provider.name,
                     "modelName" to context.modelName
                 )
@@ -352,6 +354,8 @@ class ConversationEngineService(
             mapOf(
                 "projectPath" to context.project.path,
                 "conversationId" to conversationId.value,
+                "threadId" to conversation.currentThread.value,
+                "projectId" to context.project.id.value,
                 "aiProvider" to context.provider.name,
                 "modelName" to context.modelName
             )

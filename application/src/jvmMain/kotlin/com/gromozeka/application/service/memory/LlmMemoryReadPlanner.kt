@@ -579,11 +579,19 @@ private fun MemoryReadRequest.targetMessageText(): String {
             is Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"
             is Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
             is Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
+            is Conversation.Message.ContentItem.ContextCompactionResult -> item.readPlannerText()
             is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
             is Conversation.Message.ContentItem.Thinking -> null
         }
     }.joinToString("\n").trim()
 }
+
+private fun Conversation.Message.ContentItem.ContextCompactionResult.readPlannerText(): String =
+    when (val payload = payload) {
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+            "[context_compaction:${providerScope?.provider ?: "unknown"}]"
+    }
 
 private fun String.requiresCompleteSetCoverage(): Boolean {
     val normalized = lowercase().replace(Regex("\\s+"), " ")
