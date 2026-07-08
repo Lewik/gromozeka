@@ -122,20 +122,20 @@ GROMOZEKA_RUNTIME_WORKER_AFFINITIES="PROJECT=/path/to/project" \
 ./gradlew :server:run
 ```
 
-The current private tailnet endpoint for remote clients is:
+The default remote client endpoint is local:
 
 ```text
-wss://macbook-pro.tail05115b.ts.net/ws
+ws://127.0.0.1:8765/ws
 ```
 
-The server also prints the matching Tailscale Serve command for the configured port.
+Override it with `GROMOZEKA_REMOTE_URL` when connecting through LAN, VPN, or Tailscale.
 
 ### JVM Desktop Client
 
 Run the desktop UI client against the local server:
 
 ```bash
-GROMOZEKA_REMOTE_URL="wss://macbook-pro.tail05115b.ts.net/ws" \
+GROMOZEKA_REMOTE_URL="ws://127.0.0.1:8765/ws" \
 GROMOZEKA_CLIENT_HOME="$PWD/dev-data/client/.gromozeka-remote-client" \
 ./gradlew :presentation:run
 ```
@@ -199,7 +199,7 @@ tailscale serve --bg "http://127.0.0.1:${GROMOZEKA_REMOTE_PORT}"
 Then open:
 
 ```text
-https://macbook-pro.tail05115b.ts.net/
+https://<machine>.<tailnet>.ts.net/
 ```
 
 If you run the server on a non-default port, rerun the `tailscale serve --bg ...` command with the same `GROMOZEKA_REMOTE_PORT`.

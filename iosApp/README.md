@@ -51,8 +51,8 @@ Install/run from Xcode after signing is configured:
 The first version is intentionally native SwiftUI and probes the existing remote server over JSON WebSocket.
 Full typed protocol sharing with Kotlin Multiplatform can be added after the install loop is stable.
 
-The default endpoint is the same secure tailnet endpoint used by the JVM client:
+The default endpoint is local. Override it when using a remote server:
 
 ```text
-wss://macbook-pro.tail05115b.ts.net/ws
+ws://127.0.0.1:8765/ws
 ```

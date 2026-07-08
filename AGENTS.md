@@ -92,17 +92,17 @@ docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postg
 
 ## Tailscale Web Access
 
-Current private web endpoint:
+Optional private web endpoint shape:
 ```text
-https://macbook-pro.tail05115b.ts.net/
+https://<machine>.<tailnet>.ts.net/
 ```
 
-Current remote client WebSocket endpoint:
+Optional remote client WebSocket endpoint shape:
 ```text
-wss://macbook-pro.tail05115b.ts.net/ws
+wss://<machine>.<tailnet>.ts.net/ws
 ```
 
-Use Tailscale Serve for private HTTPS inside the tailnet. Do not add Caddy or Let's Encrypt for this mode unless the user explicitly asks for public internet access.
+Use Tailscale Serve only when private HTTPS access from another device is needed. Do not add Caddy or Let's Encrypt for this mode unless the user explicitly asks for public internet access.
 
 Start/stop commands are available as Codex run actions:
 ```text

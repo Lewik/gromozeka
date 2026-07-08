@@ -107,7 +107,7 @@ android {
 
     defaultConfig {
         val defaultRemoteUrl = providers.gradleProperty("gromozeka.defaultRemoteUrl")
-            .orElse("wss://macbook-pro.tail05115b.ts.net/ws")
+            .orElse("ws://127.0.0.1:8765/ws")
             .get()
 
         applicationId = "com.gromozeka.app"
