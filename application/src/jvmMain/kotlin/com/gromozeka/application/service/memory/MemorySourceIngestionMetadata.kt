@@ -10,10 +10,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 private val documentOrigins = setOf(
-    "provided_document",
-    "provided_document_section",
-    "pasted_document",
-    "pasted_document_section",
+    MemoryWriteOriginKind.PROVIDED_DOCUMENT.wireName,
+    MemoryWriteOriginKind.PROVIDED_DOCUMENT_SECTION.wireName,
+    MemoryWriteOriginKind.PASTED_DOCUMENT.wireName,
+    MemoryWriteOriginKind.PASTED_DOCUMENT_SECTION.wireName,
 )
 
 private val forceModes = setOf(
@@ -45,7 +45,7 @@ internal fun MemorySource.withForceMemoryWrite(): MemorySource {
         buildJsonObject {
             put("forceMemoryWrite", true)
             if (origin.isNullOrBlank()) {
-                put("memoryToolOrigin", "forced_tool_target")
+                put("memoryToolOrigin", MemoryWriteOriginKind.FORCED_TOOL_TARGET.wireName)
             }
         }
     )
@@ -56,6 +56,7 @@ internal fun MemorySource.renderIngestionMetadataForPrompt(): String? {
     val fields = listOfNotNull(
         metadata.stringValue("sourceKind")?.let { "source_kind=$it" },
         metadata.stringValue("memoryToolOrigin")?.let { "origin=$it" },
+        metadata.stringValue("memoryWriteSurface")?.let { "surface=$it" },
         metadata.stringValue("inputKind")?.let { "input_kind=$it" },
         metadata.stringValue("documentType")?.let { "document_type=$it" },
         metadata.stringValue("sourceRef")?.let { "source_ref=$it" },

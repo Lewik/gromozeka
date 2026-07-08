@@ -262,27 +262,22 @@ class MemoryDocumentIngestQueue(
                 sourceRef = sourceRef,
                 importedAt = null,
             ),
-            contentPayload = buildJsonObject {
-                put("memoryToolOrigin", "provided_document_section")
-                put("sourceKind", "document")
-                put("parentSourceId", parentSource.id.value)
-                put("parentRunId", parentRun.id.value)
-                put("documentHash", documentHash)
-                put("inputKind", inputKind.name)
-                put("documentType", documentType.name)
-                put("sourceRef", sourceRef)
-                put("importedAt", now.toString())
-                if (forceWrite) put("forceMemoryWrite", true)
-                title?.let { put("title", it) }
-                put("sectionIndex", section.index)
-                put("heading", section.headingLabel)
-                put("startLine", section.startLine)
-                put("endLine", section.endLine)
-                putJsonArray("headingPath") {
-                    section.headingPath.forEach { add(JsonPrimitive(it)) }
-                }
-                mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
-            },
+            contentPayload = MemoryWriteOrigin(
+                kind = MemoryWriteOriginKind.PROVIDED_DOCUMENT_SECTION,
+                surface = writeSurface,
+                sourceKind = MemoryWriteSourceKind.DOCUMENT,
+                inputKind = inputKind,
+                documentType = documentType,
+                sourceRef = sourceRef,
+                title = title,
+                importedAt = now,
+                forceWrite = forceWrite,
+                mode = mode,
+                parentSourceId = parentSource.id,
+                parentRunId = parentRun.id,
+                documentHash = documentHash,
+                section = section,
+            ).toMetadataJson(),
             contentHash = sectionHash,
             observedAt = now,
             createdAt = now,
@@ -350,6 +345,7 @@ internal data class MemoryDocumentIngestJob(
     val sections: List<MarkdownDocumentSection>,
     val forceWrite: Boolean,
     val mode: String?,
+    val writeSurface: MemoryWriteSurface,
     val agent: AgentDefinition,
     val project: Project,
     val runtimeSystemPrompts: List<String>,

@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_WRITE_SURFACE_CONTEXT_KEY
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -54,6 +55,31 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
 
         assertContains(callback.lastToolInput.orEmpty(), """"target":"provided_text"""")
         assertContains(callback.lastToolInput.orEmpty(), """"user_consent_confirmed":true""")
+        assertEquals("mcp", callback.lastContext?.getString(MEMORY_WRITE_SURFACE_CONTEXT_KEY))
+    }
+
+    @Test
+    fun `memory remember MCP call treats text with document type as provided document`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
+        val callback = CapturingToolCallback()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+
+        runBlocking {
+            val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).handler(
+                CallToolRequest(
+                    name = MEMORY_REMEMBER_TOOL_NAME,
+                    arguments = buildJsonObject {
+                        put("text", "# API Notes")
+                        put("document_type", "markdown")
+                        put("source_ref", "docs/api.md")
+                    },
+                )
+            )
+
+            assertFalse(result.isError == true)
+        }
+
+        assertContains(callback.lastToolInput.orEmpty(), """"target":"provided_document"""")
+        assertContains(callback.lastToolInput.orEmpty(), """"source_ref":"docs/api.md"""")
     }
 
     @Test
@@ -74,6 +100,28 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
 
         assertTrue(result.isError == true)
         assertContains((result.content.single() as TextContent).text.orEmpty(), "Unsupported fields: [target]")
+        assertNull(callback.lastToolInput)
+    }
+
+    @Test
+    fun `memory remember MCP call rejects multiple explicit content inputs before callback`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
+        val callback = CapturingToolCallback()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+
+        val result = runBlocking {
+            server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).handler(
+                CallToolRequest(
+                    name = MEMORY_REMEMBER_TOOL_NAME,
+                    arguments = buildJsonObject {
+                        put("text", "Remember this")
+                        put("raw_url", "https://example.test/memory.md")
+                    },
+                )
+            )
+        }
+
+        assertTrue(result.isError == true)
+        assertContains((result.content.single() as TextContent).text.orEmpty(), "requires exactly one")
         assertNull(callback.lastToolInput)
     }
 
@@ -100,6 +148,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
 
     private class CapturingToolCallback : AiToolCallback {
         var lastToolInput: String? = null
+        var lastContext: ToolExecutionContext? = null
 
         override val definition: AiToolDefinition = AiToolDefinition(
             name = MEMORY_REMEMBER_TOOL_NAME,
@@ -109,6 +158,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
 
         override fun call(toolInput: String, context: ToolExecutionContext?): String {
             lastToolInput = toolInput
+            lastContext = context
             return """{"status":"completed"}"""
         }
     }

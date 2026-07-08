@@ -93,6 +93,7 @@ class MemoryRememberToolCallback(
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = parseInput(toolInput)
+        val writeSurface = MemoryWriteSurface.fromContextValue(context?.getString(MEMORY_WRITE_SURFACE_CONTEXT_KEY))
         val providedText = input.text?.trim().orEmpty()
         val providedFilePath = input.file_path?.trim().orEmpty()
         val providedRawUrl = input.raw_url?.trim().orEmpty()
@@ -119,6 +120,7 @@ class MemoryRememberToolCallback(
                 forceWrite = input.force_write,
                 mode = input.mode,
                 namespaceValue = input.namespace,
+                writeSurface = writeSurface,
             )
         }
 

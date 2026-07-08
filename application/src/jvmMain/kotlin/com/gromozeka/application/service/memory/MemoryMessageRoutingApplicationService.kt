@@ -178,14 +178,15 @@ class MemoryMessageRoutingApplicationService(
                 put("parent_source_id", parentSource.id.value)
                 put("sections_total", sections.size)
             },
-            metadata = buildJsonObject {
-                put("memoryToolOrigin", "pasted_document")
-                put("sourceKind", "document")
-                put("documentType", MemoryDocumentType.MARKDOWN.name)
-                put("sourceRef", document.sourceRef)
-                put("importedAt", now.toString())
-                document.title?.let { put("title", it) }
-            },
+            metadata = MemoryWriteOrigin(
+                kind = MemoryWriteOriginKind.PASTED_DOCUMENT,
+                surface = MemoryWriteSurface.CHAT_TOOL,
+                sourceKind = MemoryWriteSourceKind.DOCUMENT,
+                documentType = MemoryDocumentType.MARKDOWN,
+                sourceRef = document.sourceRef,
+                title = document.title,
+                importedAt = now,
+            ).toMetadataJson(),
             status = MemoryRun.Status.RUNNING,
             createdAt = now,
             startedAt = now,
@@ -579,24 +580,19 @@ class MemoryMessageRoutingApplicationService(
                 sourceRef = document.sourceRef,
                 importedAt = null,
             ),
-            contentPayload = buildJsonObject {
-                put("memoryToolOrigin", "pasted_document_section")
-                put("sourceKind", "document")
-                put("parentSourceId", id.value)
-                put("parentRunId", parentRun.id.value)
-                put("documentHash", documentHash)
-                put("documentType", MemoryDocumentType.MARKDOWN.name)
-                put("sourceRef", document.sourceRef)
-                put("importedAt", now.toString())
-                document.title?.let { put("title", it) }
-                put("sectionIndex", section.index)
-                put("heading", section.headingLabel)
-                put("startLine", section.startLine)
-                put("endLine", section.endLine)
-                putJsonArray("headingPath") {
-                    section.headingPath.forEach { add(JsonPrimitive(it)) }
-                }
-            },
+            contentPayload = MemoryWriteOrigin(
+                kind = MemoryWriteOriginKind.PASTED_DOCUMENT_SECTION,
+                surface = MemoryWriteSurface.CHAT_TOOL,
+                sourceKind = MemoryWriteSourceKind.DOCUMENT,
+                documentType = MemoryDocumentType.MARKDOWN,
+                sourceRef = document.sourceRef,
+                title = document.title,
+                importedAt = now,
+                parentSourceId = id,
+                parentRunId = parentRun.id,
+                documentHash = documentHash,
+                section = section,
+            ).toMetadataJson(),
             contentHash = sectionHash,
             observedAt = observedAt,
             createdAt = now,

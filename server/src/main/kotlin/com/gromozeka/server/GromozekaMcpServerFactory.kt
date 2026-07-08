@@ -9,9 +9,11 @@ import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_WRITE_SURFACE_CONTEXT_KEY
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ToolCancellationSignal
 import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.Implementation
@@ -27,7 +29,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -93,7 +94,10 @@ class GromozekaMcpServerFactory(
                 val arguments = request.arguments
                     .withoutMcpContext()
                     .toMcpToolArguments(definition.name)
-                val context = request.arguments["_context"]?.jsonObject?.let { ToolExecutionContext(it.toContextMap()) }
+                val context = request.arguments["_context"]
+                    ?.jsonObject
+                    ?.let { ToolExecutionContext(it.toContextMap()) }
+                    .toMcpToolContext(definition.name)
                 val result = callback.call(
                     toolInput = json.encodeToString(JsonObject.serializer(), arguments),
                     context = context,
@@ -155,29 +159,25 @@ class GromozekaMcpServerFactory(
 
     private fun JsonObject.toMcpToolArguments(toolName: String): JsonObject =
         if (toolName == MEMORY_REMEMBER_TOOL_NAME) {
-            toMcpMemoryRememberArguments()
+            GromozekaMcpMemoryRememberAdapter.toInternalToolArguments(this)
         } else {
             this
         }
 
-    private fun JsonObject.toMcpMemoryRememberArguments(): JsonObject {
-        val forbiddenFields = setOf("target", "target_message_id", "user_consent_confirmed")
-        val providedForbiddenFields = keys.intersect(forbiddenFields)
-        require(providedForbiddenFields.isEmpty()) {
-            "MCP memory_remember accepts only explicit text/file_path/raw_url content. Unsupported fields: ${providedForbiddenFields.sorted()}."
+    private fun ToolExecutionContext?.toMcpToolContext(toolName: String): ToolExecutionContext? =
+        if (toolName == MEMORY_REMEMBER_TOOL_NAME) {
+            val values = asMapOrEmpty() +
+                (MEMORY_WRITE_SURFACE_CONTEXT_KEY to GromozekaMcpMemoryRememberAdapter.writeSurface.wireName)
+            ToolExecutionContext(
+                values = values,
+                cancellationSignal = this?.cancellationSignal ?: ToolCancellationSignal.None,
+            )
+        } else {
+            this
         }
 
-        val hasDocumentInput = containsKey("file_path") ||
-            containsKey("raw_url") ||
-            this["document_type"]?.jsonPrimitive?.contentOrNull?.isNotBlank() == true
-        val target = if (hasDocumentInput) "provided_document" else "provided_text"
-
-        return JsonObject(buildMap {
-            putAll(this@toMcpMemoryRememberArguments)
-            put("target", JsonPrimitive(target))
-            put("user_consent_confirmed", JsonPrimitive(true))
-        })
-    }
+    private fun ToolExecutionContext?.asMapOrEmpty(): Map<String, Any?> =
+        this?.asMap().orEmpty()
 
     private fun JsonObject.toContextMap(): Map<String, Any> =
         mapValues { (_, value) -> value.toPlainValue() }

@@ -19,6 +19,10 @@ import com.gromozeka.application.service.memory.MemoryRememberContentResolver
 import com.gromozeka.application.service.memory.MemoryRememberDocumentQueuedResult
 import com.gromozeka.application.service.memory.MemoryResolvedRememberContent
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
+import com.gromozeka.application.service.memory.MemoryWriteOrigin
+import com.gromozeka.application.service.memory.MemoryWriteOriginKind
+import com.gromozeka.application.service.memory.MemoryWriteSourceKind
+import com.gromozeka.application.service.memory.MemoryWriteSurface
 import com.gromozeka.application.service.memory.PROJECT_MEMORY_NAMESPACE_PREFIX
 import com.gromozeka.application.service.memory.defaultMemoryNamespace
 import com.gromozeka.application.service.memory.toConfiguredMemoryNamespace
@@ -40,6 +44,7 @@ import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.shared.uuid.uuid7
+import java.io.File
 import java.security.MessageDigest
 import klog.KLoggers
 import kotlinx.datetime.Clock
@@ -47,7 +52,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import java.io.File
 import org.springframework.stereotype.Service
 
 @Service
@@ -99,6 +103,7 @@ class MemoryToolApplicationService(
         forceWrite: Boolean = false,
         mode: String? = null,
         namespaceValue: String? = null,
+        writeSurface: MemoryWriteSurface = MemoryWriteSurface.CHAT_TOOL,
     ): String {
         val resolvedContent = runCatching {
             rememberContentResolver.resolve(
@@ -116,7 +121,7 @@ class MemoryToolApplicationService(
         }
 
         if (resolvedContent.documentType != null) {
-            return rememberResolvedDocument(conversationIdValue, resolvedContent, forceWrite, mode, namespaceValue)
+            return rememberResolvedDocument(conversationIdValue, resolvedContent, forceWrite, mode, namespaceValue, writeSurface)
         }
 
         val normalizedText = resolvedContent.text.trim()
@@ -125,7 +130,7 @@ class MemoryToolApplicationService(
         }
 
         if (conversationIdValue.isNullOrBlank()) {
-            return rememberStandaloneProvidedText(resolvedContent, normalizedText, forceWrite, mode, namespaceValue)
+            return rememberStandaloneProvidedText(resolvedContent, normalizedText, forceWrite, mode, namespaceValue, writeSurface)
         }
 
         return runCatching {
@@ -136,14 +141,17 @@ class MemoryToolApplicationService(
                 conversationId = context.conversation.id,
                 role = Conversation.Message.Role.USER,
                 content = listOf(Conversation.Message.ContentItem.UserMessage(normalizedText)),
-                providerMetadata = buildJsonObject {
-                    put("memoryToolOrigin", "provided_text")
-                    put("userConsentConfirmed", true)
-                    put("inputKind", resolvedContent.kind.name)
-                    put("sourceRef", resolvedContent.sourceRef)
-                    if (forceWrite) put("forceMemoryWrite", true)
-                    mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
-                },
+                providerMetadata = MemoryWriteOrigin(
+                    kind = MemoryWriteOriginKind.PROVIDED_TEXT,
+                    surface = writeSurface,
+                    userConsentConfirmed = true,
+                    standalone = false,
+                    inputKind = resolvedContent.kind,
+                    sourceRef = resolvedContent.sourceRef,
+                    title = resolvedContent.title,
+                    forceWrite = forceWrite,
+                    mode = mode,
+                ).toMetadataJson(),
                 createdAt = Clock.System.now(),
             )
             val result = memoryMessageRoutingApplicationService.routeMessage(
@@ -174,6 +182,7 @@ class MemoryToolApplicationService(
         forceWrite: Boolean,
         mode: String?,
         namespaceValue: String?,
+        writeSurface: MemoryWriteSurface,
     ): String {
         return runCatching {
             val agent = defaultAgentProvider.getDefault()
@@ -195,16 +204,17 @@ class MemoryToolApplicationService(
                 recordRef = recordRef,
                 authorLabel = "user-provided text",
                 contentText = text,
-                contentPayload = buildJsonObject {
-                    put("memoryToolOrigin", "provided_text")
-                    put("userConsentConfirmed", true)
-                    put("standalone", true)
-                    put("inputKind", resolvedContent.kind.name)
-                    put("sourceRef", resolvedContent.sourceRef)
-                    resolvedContent.title?.let { put("title", it) }
-                    if (forceWrite) put("forceMemoryWrite", true)
-                    mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
-                },
+                contentPayload = MemoryWriteOrigin(
+                    kind = MemoryWriteOriginKind.PROVIDED_TEXT,
+                    surface = writeSurface,
+                    userConsentConfirmed = true,
+                    standalone = true,
+                    inputKind = resolvedContent.kind,
+                    sourceRef = resolvedContent.sourceRef,
+                    title = resolvedContent.title,
+                    forceWrite = forceWrite,
+                    mode = mode,
+                ).toMetadataJson(),
                 contentHash = contentHash,
                 observedAt = now,
                 createdAt = now,
@@ -233,6 +243,7 @@ class MemoryToolApplicationService(
         forceWrite: Boolean,
         mode: String?,
         namespaceValue: String?,
+        writeSurface: MemoryWriteSurface,
     ): String =
         runCatching {
             val documentType = requireNotNull(resolvedContent.documentType)
@@ -258,6 +269,19 @@ class MemoryToolApplicationService(
             val now = Clock.System.now()
             val documentHash = resolvedContent.text.sha256()
             val parentRecordRef = "memory_remember:document:${documentHash.take(16)}"
+            val documentOrigin = MemoryWriteOrigin(
+                kind = MemoryWriteOriginKind.PROVIDED_DOCUMENT,
+                surface = writeSurface,
+                sourceKind = MemoryWriteSourceKind.DOCUMENT,
+                userConsentConfirmed = true,
+                inputKind = resolvedContent.kind,
+                documentType = documentType,
+                sourceRef = resolvedContent.sourceRef,
+                title = resolvedContent.title,
+                importedAt = now,
+                forceWrite = forceWrite,
+                mode = mode,
+            )
             val parentSource = MemorySource.ExternalRecord(
                 id = externalRecordSourceId(
                     kind = "document",
@@ -269,18 +293,7 @@ class MemoryToolApplicationService(
                 recordRef = parentRecordRef,
                 authorLabel = "user-provided document",
                 contentText = resolvedContent.text,
-                contentPayload = buildJsonObject {
-                    put("memoryToolOrigin", "provided_document")
-                    put("sourceKind", "document")
-                    put("userConsentConfirmed", true)
-                    put("inputKind", resolvedContent.kind.name)
-                    put("documentType", documentType.name)
-                    put("sourceRef", resolvedContent.sourceRef)
-                    put("importedAt", now.toString())
-                    if (forceWrite) put("forceMemoryWrite", true)
-                    resolvedContent.title?.let { put("title", it) }
-                    mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
-                },
+                contentPayload = documentOrigin.toMetadataJson(),
                 contentHash = documentHash,
                 observedAt = now,
                 createdAt = now,
@@ -311,17 +324,7 @@ class MemoryToolApplicationService(
                     put("parent_source_id", parentSource.id.value)
                     put("sections_total", sections.size)
                 },
-                metadata = buildJsonObject {
-                    put("memoryToolOrigin", "provided_document")
-                    put("sourceKind", "document")
-                    put("inputKind", resolvedContent.kind.name)
-                    put("documentType", documentType.name)
-                    put("sourceRef", resolvedContent.sourceRef)
-                    put("importedAt", now.toString())
-                    if (forceWrite) put("forceMemoryWrite", true)
-                    resolvedContent.title?.let { put("title", it) }
-                    mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
-                },
+                metadata = documentOrigin.toMetadataJson(),
                 status = MemoryRun.Status.QUEUED,
                 createdAt = now,
             )
@@ -353,6 +356,7 @@ class MemoryToolApplicationService(
                     sections = sections,
                     forceWrite = forceWrite,
                     mode = mode,
+                    writeSurface = writeSurface,
                     agent = agent,
                     project = project,
                     runtimeSystemPrompts = runtimeSystemPrompts,

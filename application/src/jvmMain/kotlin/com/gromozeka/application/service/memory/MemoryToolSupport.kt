@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.memory.MemoryReadTrace
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.tool.AiToolCallback
 import kotlinx.serialization.json.JsonObject
@@ -49,6 +50,7 @@ object MemoryToolResultRenderer {
             }.toString()
         }
 
+        val source = result.sourceBatch.sources.firstOrNull()
         return buildJsonObject {
             put("status", "completed")
             put("decision", result.routeDecision.decision.name)
@@ -57,7 +59,11 @@ object MemoryToolResultRenderer {
             }
             put("salience", result.routeDecision.salience)
             put("reason", result.routeDecision.reason)
-            put("source_id", result.sourceBatch.sources.firstOrNull()?.id?.value ?: "")
+            put("source_id", source?.id?.value ?: "")
+            source?.let {
+                put("namespace", it.namespace.value)
+                it.sourceRefForToolResult()?.let { sourceRef -> put("source_ref", sourceRef) }
+            }
             put("counts", result.memoryBatch.toCountsJson())
             putJsonArray("runs") {
                 result.memoryBatch.runs.forEach { run ->
@@ -254,6 +260,14 @@ object MemoryToolResultRenderer {
         val hit: MemoryReadTrace.Hit,
         val decision: MemoryReadTrace.SelectorDecision?,
     )
+
+    private fun MemorySource.sourceRefForToolResult(): String? =
+        when (this) {
+            is MemorySource.ChatTurn -> sourceMessageId?.value ?: threadId?.value ?: conversationId.value
+            is MemorySource.ToolOutput -> toolName ?: sourceMessageId?.value ?: threadId?.value ?: conversationId?.value
+            is MemorySource.ImportedNote -> importRef
+            is MemorySource.ExternalRecord -> recordRef
+        }?.takeIf { it.isNotBlank() }
 
     internal fun rememberDocumentResultJsonString(result: MemoryRememberDocumentResult): String =
         buildJsonObject {
