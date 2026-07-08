@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "611124c4b686cde5bb6df6b9607a28dd98eb96a50887d657d8fff65b131d0ba2",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_68e94287\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Contains durable user preferences, prior experience, social/media context, and reusable meal-planning rationale from a forced past-session ingest.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level user entity as subject.\n- mention=Instagram; action=CREATE_NEW; id=entity:<1>; type=SERVICE; name=Instagram; reason=Concrete reusable service mentioned by name; no existing entity candidates.\n- mention=#MyFitnessJourney; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=#MyFitnessJourney; reason=Reusable hashtag concept mentioned as used on Instagram.\n- mention=#FoodieAdventures; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=#FoodieAdventures; reason=Reusable hashtag concept mentioned as used for a recipe post.\n- mention=vegan chili; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=vegan chili recipe; reason=The user refers to a recipe they shared; later claims may need this reusable recipe concept.\n- mention=quinoa and black bean one; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Quinoa and Black Bean Salad; reason=Refers to the previously suggested quinoa and black bean salad, a reusable dish concept.\n- mention=quinoa; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=quinoa; reason=Concrete food ingredient discussed repeatedly and relevant as object of user experience.\n- mention=seitan; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=seitan; reason=Concrete vegan protein source the user intends to try.\n- mention=tempeh; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=tempeh; reason=Concrete vegan protein source the user intends to try.\n- mention=current project; action=CREATE_NEW; id=entity:<9>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Instagram|MyFitnessJourney|FoodieAdventures|vegan chili|quinoa and black bean salad|seitan|tempeh\n        text_queries=fitness journey Instagram #MyFitnessJourney #FoodieAdventures vegan chili recipe|healthy meal prep high-protein vegan salads low-carb protein sources|vegan salad sauces dressings low sugar unhealthy fats|quinoa mushy perfectly cooked quinoa tips\n        predicate_hints=has_goal|prefers|avoids|has_experience_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:2aba1f28174a9cf763ae01112ad9bc9b] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_68e94287:session:1; title=LongMemEval gpt4_68e94287 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 04:15\nTranscript:\nuser: I'm looking for some healthy meal prep ideas for my fitness journey. I've been posting about my progress on Instagram using #MyFitnessJourney, and I shared a recipe for vegan chili using #FoodieAdventures yesterday that got a lot of attention. Do you have any suggestions for high-protein meals that are easy to prepare?\nassistant: Congratulations on your fitness journey and the success of your vegan chili recipe! I'd be happy to help you with some high-protein meal prep ideas that are easy to prepare and perfect for your fitness goals.\n\nHere are some delicious and nutritious options:\n\n1. **Protein-Packed Salads**:\n\t* Quinoa and Black Bean Salad with roasted chicken or tofu, mixed veggies, and a citrus vinaigrette.\n\t* Spinach and Feta Salad with grilled chicken, cherry tomatoes, and a balsamic vinaigrette.\n2. **Grilled Chicken or Tofu Bowls**:\n\t* Brown rice, roasted veggies, and grilled chicken or tofu, topped with a fried egg or avocado.\n\t* Quinoa, black beans, diced tomatoes, and grilled chicken or tofu, finished with a drizzle of tahini sauce.\n3. **Lentil or Chickpea Soups**:\n\t* Lentil soup with diced veggies and lean ground turkey or vegan sausage.\n\t* Chickpea and Spinach Soup with a swirl of olive oil and crusty bread for dipping.\n4. **High-Protein Wraps**:\n\t* Whole wheat wrap with sliced turkey breast, avocado, mixed greens, and a fried egg.\n\t* Vegan wrap with hummus, roasted veggies, and marinated tofu or tempeh.\n5. **Meal Prep Containers**:\n\t* Brown rice, grilled chicken or tofu, steamed broccoli, and a side of quinoa bites or energy balls.\n\t* Roasted sweet potatoes, black beans, diced chicken or tofu, and a sprinkle of almonds.\n6. **Breakfast Ideas**:\n\t* Greek yogurt with berries, granola, and a scoop of protein powder.\n\t* Overnight oats with almond milk, chia seeds, and sliced banana.\n7. **Snacks**:\n\t* Hard-boiled eggs or energy balls made with oats, nuts, and seeds.\n\t* Apple slices with almond butter or cashew butter.\n\nRemember to stay hydrated by drinking plenty of water throughout the day. You can also experiment with different seasonings and spices to keep your meals interesting and flavorful.\n\nShare your favorite meal prep ideas and tag me on Instagram using #MyFitnessJourney and #FoodieAdventures! I'd love to see what you're cooking up!\nuser: I'm really interested in trying out those protein-packed salads, especially the quinoa and black bean one. Can you give me some tips on how to cook quinoa perfectly? I've had some issues with it being too mushy in the past.\nassistant: Quinoa can be a bit finicky, but with some simple tips, you'll be a pro in no time! \n\n**The Secret to Perfectly Cooked Quinoa:**\n\n1. **Rinse, Rinse, Rinse**: Quinoa has a natural coating called saponin that can give it a bitter taste. Rinsing the quinoa before cooking can help remove some of this coating and give it a milder flavor. Rinse the quinoa in a fine-mesh strainer under cold running water for about 30 seconds.\n2. **Use the Right Ratio**: Use a 2:1 ratio of water to quinoa. This means if you're using 1 cup of quinoa, use 2 cups of water.\n3. **Soak or Not to Soak**: Some people swear by soaking quinoa for 30 minutes to an hour before cooking, but it's not necessary. If you do choose to soak, make sure to drain and rinse the quinoa again before cooking.\n4. **Use a Medium Heat**: Cooking quinoa on high heat can cause it to cook unevenly and become mushy. Medium heat will help the quinoa cook slowly and evenly.\n5. **Don't Overcook**: Quinoa is done when the water is absorbed and the quinoa is tender, but still slightly crunchy in the center. This should take about 15-20 minutes. Overcooking will make the quinoa mushy.\n6. **Fluff with a Fork**: Once the quinoa is cooked, remove it from the heat and fluff it with a fork to separate the grains. This will help it cool down and prevent it from becoming clumpy.\n\n**Additional Tips:**\n\n* Use a pot with a heavy bottom, as it will help distribute the heat evenly.\n* Add a pinch of salt to the water, as it will help bring out the natural flavors of the quinoa.\n* If you're using a quinoa blend, follow the package instructions, as the cooking time may vary.\n\nNow that you know the secrets to perfectly cooked quinoa, go ahead and give it a try! \n\nHere's a simple recipe to get you started:\n\n**Quinoa and Black Bean Salad Recipe:**\n\nIngredients:\n\n* 1 cup quinoa, rinsed and drained\n* 2 cups water\n* 1 can black beans, drained and rinsed\n* 1 red bell pepper, diced\n* 1 small red onion, diced\n* 1/4 cup chopped fresh cilantro\n* 2 tablespoons olive oil\n* 1 tablespoon lime juice\n* Salt and pepper to taste\n\nInstructions:\n\n1. Cook the quinoa according to the instructions above.\n2. In a large bowl, combine the cooked quinoa, black beans, red bell pepper, and red onion.\n3. In a small bowl, whisk together the olive oil and lime juice.\n4. Pour the dressing over the quinoa mixture and toss to combine.\n5. Stir in the chopped cilantro and season with salt and pepper to taste.\n\nEnjoy your delicious and protein-packed quinoa salad!\nuser: That's really helpful, thanks! I'll definitely try out those tips to cook quinoa perfectly. By the way, do you have any recommendations for vegan protein sources that I can add to my salads? I'm looking for something that's high in protein and low in carbs.\nassistant: As a vegan, it's awesome that you're focusing on protein-rich ingredients to support your fitness goals. Here are some high-protein, low-carb vegan options that are perfect for adding to your salads:\n\n1. **Tofu**: A 3-ounce serving of tofu contains about 9-10 grams of protein and only 2-3 grams of carbs. Look for extra-firm or super-firm tofu for the highest protein content.\n2. **Tempeh**: A 3-ounce serving of tempeh contains about 15-16 grams of protein and 6-7 grams of carbs. Tempeh is a fermented soybean product that's rich in probiotics and has a nutty flavor.\n3. **Seitan**: A 3-ounce serving of seitan contains about 21-22 grams of protein and 4-5 grams of carbs. Seitan is made from wheat gluten and has a meat-like texture.\n4. **Lentils**: A 1/2 cup serving of cooked lentils contains about 9-10 grams of protein and 20-22 grams of carbs. While lentils are higher in carbs, they're still a great source of protein and fiber.\n5. **Chickpeas**: A 1/2 cup serving of cooked chickpeas contains about 5-6 grams of protein and 20-22 grams of carbs. Like lentils, chickpeas are higher in carbs, but they're a great source of protein and fiber.\n6. **Vegan Protein Powder**: If you're looking for a convenient way to boost the protein content of your salads, consider adding a scoop of vegan protein powder. Look for a brand that's low in carbs and made from a pea, hemp, or brown rice protein source.\n7. **Mushrooms**: While not as high in protein as the other options, mushrooms are a great source of protein and can add a meaty texture to your salads. A 1-cup serving of mushrooms contains about 2-3 grams of protein and 1-2 grams of carbs.\n8. **Vegan Meat Alternatives**: Some vegan meat alternatives like veggie burgers or vegan sausages can be high in protein and low in carbs. Look for brands that are made from pea protein, rice protein, or soy protein.\n\nWhen adding these protein sources to your salads, be mindful of the portion sizes to keep the carb content in check. You can also experiment with different combinations of protein sources to meet your daily protein goals.\nuser: That's really helpful! I've been looking for some new vegan protein sources to add to my salads. I'll definitely try out seitan and tempeh. By the way, do you have any recommendations for some healthy and tasty vegan sauces or dressings that I can use on my salads? I'm looking for something that's low in sugar and unhealthy fats.\nassistant: Vegan sauces and dressings can make or break a salad, don't you think? I've got some delicious and healthy options that are low in sugar and unhealthy fats. Here are some vegan sauce and dressing recommendations:\n\n1. **Lemon-Tahini Dressing**: Mix together lemon juice, tahini, garlic, and olive oil for a creamy and tangy dressing. This one's low in sugar and rich in healthy fats from the tahini.\n2. **Avocado-Lime Dressing**: Blend together ripe avocado, lime juice, cilantro, and a pinch of salt for a creamy and refreshing dressing. This one's packed with healthy fats from the avocado.\n3. **Ginger-Turmeric Vinaigrette**: Whisk together apple cider vinegar, olive oil, grated ginger, and turmeric powder for a zesty and anti-inflammatory dressing.\n4. **Hummus-Based Dressing**: Mix together hummus, lemon juice, garlic, and water for a creamy and protein-rich dressing. You can also add in some chopped herbs like parsley or cilantro for extra flavor.\n5. **Nutritional Yeast-Based Cheese Sauce**: Yes, you read that right! Nutritional yeast has a nutty, cheesy flavor that's perfect for making a vegan cheese sauce. Blend together nutritional yeast, lemon juice, garlic, and olive oil for a creamy and addictive sauce.\n6. **Miso-Ginger Dressing**: Whisk together miso paste, apple cider vinegar, grated ginger, and olive oil for a savory and umami-rich dressing.\n7. **Citrus-Herb Vinaigrette**: Mix together freshly squeezed orange or grapefruit juice, olive oil, and chopped herbs like parsley, basil, or dill for a light and refreshing dressing.\n\nSome general tips for making healthy and tasty vegan sauces and dressings:\n\n* Use healthy oils like olive oil, avocado oil, or grapeseed oil instead of processed vegetable oils.\n* Opt for natural sweeteners like dates, maple syrup, or coconut sugar instead of refined sugar.\n* Choose vinegars like apple cider vinegar or balsamic vinegar instead of refined white vinegar.\n* Experiment with different spices and herbs to add flavor instead of relying on salt and sugar.\n* Make your own sauces and dressings from scratch to control the ingredients and portion sizes.\n\nFeel free to get creative and experiment with different combinations of ingredients to create your own signature sauces and dressings!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_68e94287",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:2aba1f28174a9cf763ae01112ad9bc9b"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_68e94287\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Contains durable user preferences, prior experience, social/media context, and reusable meal-planning rationale from a forced past-session ingest.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level user entity as subject.\n- mention=Instagram; action=CREATE_NEW; id=entity:<1>; type=SERVICE; name=Instagram; reason=Concrete reusable service mentioned by name; no existing entity candidates.\n- mention=#MyFitnessJourney; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=#MyFitnessJourney; reason=Reusable hashtag concept mentioned as used on Instagram.\n- mention=#FoodieAdventures; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=#FoodieAdventures; reason=Reusable hashtag concept mentioned as used for a recipe post.\n- mention=vegan chili; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=vegan chili recipe; reason=The user refers to a recipe they shared; later claims may need this reusable recipe concept.\n- mention=quinoa and black bean one; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Quinoa and Black Bean Salad; reason=Refers to the previously suggested quinoa and black bean salad, a reusable dish concept.\n- mention=quinoa; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=quinoa; reason=Concrete food ingredient discussed repeatedly and relevant as object of user experience.\n- mention=seitan; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=seitan; reason=Concrete vegan protein source the user intends to try.\n- mention=tempeh; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=tempeh; reason=Concrete vegan protein source the user intends to try.\n- mention=current project; action=CREATE_NEW; id=entity:<9>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Instagram|MyFitnessJourney|FoodieAdventures|vegan chili|quinoa and black bean salad|seitan|tempeh\n        text_queries=fitness journey Instagram #MyFitnessJourney #FoodieAdventures vegan chili recipe|healthy meal prep high-protein vegan salads low-carb protein sources|vegan salad sauces dressings low sugar unhealthy fats|quinoa mushy perfectly cooked quinoa tips\n        predicate_hints=has_goal|prefers|avoids|has_experience_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:2aba1f28174a9cf763ae01112ad9bc9b] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_68e94287:session:1; title=LongMemEval gpt4_68e94287 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 04:15\nTranscript:\nuser: I'm looking for some healthy meal prep ideas for my fitness journey. I've been posting about my progress on Instagram using #MyFitnessJourney, and I shared a recipe for vegan chili using #FoodieAdventures yesterday that got a lot of attention. Do you have any suggestions for high-protein meals that are easy to prepare?\nassistant: Congratulations on your fitness journey and the success of your vegan chili recipe! I'd be happy to help you with some high-protein meal prep ideas that are easy to prepare and perfect for your fitness goals.\n\nHere are some delicious and nutritious options:\n\n1. **Protein-Packed Salads**:\n\t* Quinoa and Black Bean Salad with roasted chicken or tofu, mixed veggies, and a citrus vinaigrette.\n\t* Spinach and Feta Salad with grilled chicken, cherry tomatoes, and a balsamic vinaigrette.\n2. **Grilled Chicken or Tofu Bowls**:\n\t* Brown rice, roasted veggies, and grilled chicken or tofu, topped with a fried egg or avocado.\n\t* Quinoa, black beans, diced tomatoes, and grilled chicken or tofu, finished with a drizzle of tahini sauce.\n3. **Lentil or Chickpea Soups**:\n\t* Lentil soup with diced veggies and lean ground turkey or vegan sausage.\n\t* Chickpea and Spinach Soup with a swirl of olive oil and crusty bread for dipping.\n4. **High-Protein Wraps**:\n\t* Whole wheat wrap with sliced turkey breast, avocado, mixed greens, and a fried egg.\n\t* Vegan wrap with hummus, roasted veggies, and marinated tofu or tempeh.\n5. **Meal Prep Containers**:\n\t* Brown rice, grilled chicken or tofu, steamed broccoli, and a side of quinoa bites or energy balls.\n\t* Roasted sweet potatoes, black beans, diced chicken or tofu, and a sprinkle of almonds.\n6. **Breakfast Ideas**:\n\t* Greek yogurt with berries, granola, and a scoop of protein powder.\n\t* Overnight oats with almond milk, chia seeds, and sliced banana.\n7. **Snacks**:\n\t* Hard-boiled eggs or energy balls made with oats, nuts, and seeds.\n\t* Apple slices with almond butter or cashew butter.\n\nRemember to stay hydrated by drinking plenty of water throughout the day. You can also experiment with different seasonings and spices to keep your meals interesting and flavorful.\n\nShare your favorite meal prep ideas and tag me on Instagram using #MyFitnessJourney and #FoodieAdventures! I'd love to see what you're cooking up!\nuser: I'm really interested in trying out those protein-packed salads, especially the quinoa and black bean one. Can you give me some tips on how to cook quinoa perfectly? I've had some issues with it being too mushy in the past.\nassistant: Quinoa can be a bit finicky, but with some simple tips, you'll be a pro in no time! \n\n**The Secret to Perfectly Cooked Quinoa:**\n\n1. **Rinse, Rinse, Rinse**: Quinoa has a natural coating called saponin that can give it a bitter taste. Rinsing the quinoa before cooking can help remove some of this coating and give it a milder flavor. Rinse the quinoa in a fine-mesh strainer under cold running water for about 30 seconds.\n2. **Use the Right Ratio**: Use a 2:1 ratio of water to quinoa. This means if you're using 1 cup of quinoa, use 2 cups of water.\n3. **Soak or Not to Soak**: Some people swear by soaking quinoa for 30 minutes to an hour before cooking, but it's not necessary. If you do choose to soak, make sure to drain and rinse the quinoa again before cooking.\n4. **Use a Medium Heat**: Cooking quinoa on high heat can cause it to cook unevenly and become mushy. Medium heat will help the quinoa cook slowly and evenly.\n5. **Don't Overcook**: Quinoa is done when the water is absorbed and the quinoa is tender, but still slightly crunchy in the center. This should take about 15-20 minutes. Overcooking will make the quinoa mushy.\n6. **Fluff with a Fork**: Once the quinoa is cooked, remove it from the heat and fluff it with a fork to separate the grains. This will help it cool down and prevent it from becoming clumpy.\n\n**Additional Tips:**\n\n* Use a pot with a heavy bottom, as it will help distribute the heat evenly.\n* Add a pinch of salt to the water, as it will help bring out the natural flavors of the quinoa.\n* If you're using a quinoa blend, follow the package instructions, as the cooking time may vary.\n\nNow that you know the secrets to perfectly cooked quinoa, go ahead and give it a try! \n\nHere's a simple recipe to get you started:\n\n**Quinoa and Black Bean Salad Recipe:**\n\nIngredients:\n\n* 1 cup quinoa, rinsed and drained\n* 2 cups water\n* 1 can black beans, drained and rinsed\n* 1 red bell pepper, diced\n* 1 small red onion, diced\n* 1/4 cup chopped fresh cilantro\n* 2 tablespoons olive oil\n* 1 tablespoon lime juice\n* Salt and pepper to taste\n\nInstructions:\n\n1. Cook the quinoa according to the instructions above.\n2. In a large bowl, combine the cooked quinoa, black beans, red bell pepper, and red onion.\n3. In a small bowl, whisk together the olive oil and lime juice.\n4. Pour the dressing over the quinoa mixture and toss to combine.\n5. Stir in the chopped cilantro and season with salt and pepper to taste.\n\nEnjoy your delicious and protein-packed quinoa salad!\nuser: That's really helpful, thanks! I'll definitely try out those tips to cook quinoa perfectly. By the way, do you have any recommendations for vegan protein sources that I can add to my salads? I'm looking for something that's high in protein and low in carbs.\nassistant: As a vegan, it's awesome that you're focusing on protein-rich ingredients to support your fitness goals. Here are some high-protein, low-carb vegan options that are perfect for adding to your salads:\n\n1. **Tofu**: A 3-ounce serving of tofu contains about 9-10 grams of protein and only 2-3 grams of carbs. Look for extra-firm or super-firm tofu for the highest protein content.\n2. **Tempeh**: A 3-ounce serving of tempeh contains about 15-16 grams of protein and 6-7 grams of carbs. Tempeh is a fermented soybean product that's rich in probiotics and has a nutty flavor.\n3. **Seitan**: A 3-ounce serving of seitan contains about 21-22 grams of protein and 4-5 grams of carbs. Seitan is made from wheat gluten and has a meat-like texture.\n4. **Lentils**: A 1/2 cup serving of cooked lentils contains about 9-10 grams of protein and 20-22 grams of carbs. While lentils are higher in carbs, they're still a great source of protein and fiber.\n5. **Chickpeas**: A 1/2 cup serving of cooked chickpeas contains about 5-6 grams of protein and 20-22 grams of carbs. Like lentils, chickpeas are higher in carbs, but they're a great source of protein and fiber.\n6. **Vegan Protein Powder**: If you're looking for a convenient way to boost the protein content of your salads, consider adding a scoop of vegan protein powder. Look for a brand that's low in carbs and made from a pea, hemp, or brown rice protein source.\n7. **Mushrooms**: While not as high in protein as the other options, mushrooms are a great source of protein and can add a meaty texture to your salads. A 1-cup serving of mushrooms contains about 2-3 grams of protein and 1-2 grams of carbs.\n8. **Vegan Meat Alternatives**: Some vegan meat alternatives like veggie burgers or vegan sausages can be high in protein and low in carbs. Look for brands that are made from pea protein, rice protein, or soy protein.\n\nWhen adding these protein sources to your salads, be mindful of the portion sizes to keep the carb content in check. You can also experiment with different combinations of protein sources to meet your daily protein goals.\nuser: That's really helpful! I've been looking for some new vegan protein sources to add to my salads. I'll definitely try out seitan and tempeh. By the way, do you have any recommendations for some healthy and tasty vegan sauces or dressings that I can use on my salads? I'm looking for something that's low in sugar and unhealthy fats.\nassistant: Vegan sauces and dressings can make or break a salad, don't you think? I've got some delicious and healthy options that are low in sugar and unhealthy fats. Here are some vegan sauce and dressing recommendations:\n\n1. **Lemon-Tahini Dressing**: Mix together lemon juice, tahini, garlic, and olive oil for a creamy and tangy dressing. This one's low in sugar and rich in healthy fats from the tahini.\n2. **Avocado-Lime Dressing**: Blend together ripe avocado, lime juice, cilantro, and a pinch of salt for a creamy and refreshing dressing. This one's packed with healthy fats from the avocado.\n3. **Ginger-Turmeric Vinaigrette**: Whisk together apple cider vinegar, olive oil, grated ginger, and turmeric powder for a zesty and anti-inflammatory dressing.\n4. **Hummus-Based Dressing**: Mix together hummus, lemon juice, garlic, and water for a creamy and protein-rich dressing. You can also add in some chopped herbs like parsley or cilantro for extra flavor.\n5. **Nutritional Yeast-Based Cheese Sauce**: Yes, you read that right! Nutritional yeast has a nutty, cheesy flavor that's perfect for making a vegan cheese sauce. Blend together nutritional yeast, lemon juice, garlic, and olive oil for a creamy and addictive sauce.\n6. **Miso-Ginger Dressing**: Whisk together miso paste, apple cider vinegar, grated ginger, and olive oil for a savory and umami-rich dressing.\n7. **Citrus-Herb Vinaigrette**: Mix together freshly squeezed orange or grapefruit juice, olive oil, and chopped herbs like parsley, basil, or dill for a light and refreshing dressing.\n\nSome general tips for making healthy and tasty vegan sauces and dressings:\n\n* Use healthy oils like olive oil, avocado oil, or grapeseed oil instead of processed vegetable oils.\n* Opt for natural sweeteners like dates, maple syrup, or coconut sugar instead of refined sugar.\n* Choose vinegars like apple cider vinegar or balsamic vinegar instead of refined white vinegar.\n* Experiment with different spices and herbs to add flavor instead of relying on salt and sugar.\n* Make your own sauces and dressings from scratch to control the ingredients and portion sizes.\n\nFeel free to get creative and experiment with different combinations of ingredients to create your own signature sauces and dressings!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_68e94287",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:2aba1f28174a9cf763ae01112ad9bc9b"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User posts fitness progress on Instagram using #MyFitnessJourney.\",\"User shared a vegan chili recipe using #FoodieAdventures.\",\"User is interested in high-protein meal prep and protein-packed salads, especially Quinoa and Black Bean Salad.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<2>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"imported\",\"evidence_quote\":\"I've been posting about my progress on Instagram using #MyFitnessJourney, and I shared a recipe for vegan chili using #FoodieAdventures yesterday\",\"evidence_reason\":\"The quoted past-session text establishes the social-media and fitness-meal context; later turns in the same transcript narrow the meal-planning direction to protein-packed salads.\",\"importance\":4,\"keywords\":[\"fitness journey\",\"Instagram\",\"#MyFitnessJourney\",\"#FoodieAdventures\",\"vegan chili\",\"Quinoa and Black Bean Salad\",\"meal prep\",\"high-protein salads\"],\"note_type\":\"context\",\"rationale\":\"This combines social context, meal-planning direction, and named recipe/salad interests; it is richer than a single atomic claim and useful for future personalized meal suggestions.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"entity\",\"text\":\"User's reusable food, fitness, and social-media meal-planning context from LongMemEval session 1\"},\"summary\":\"In a past meal-planning discussion, the user was preparing high-protein meals for a fitness journey, posting progress on Instagram with #MyFitnessJourney, and had shared a vegan chili recipe with #FoodieAdventures. The reusable meal direction centered on easy protein-packed salads, especially Quinoa and Black Bean Salad, plus vegan protein additions and low-sugar/healthy-fat dressings.\",\"tags\":[\"meal_planning\",\"fitness\",\"instagram\",\"vegan\"],\"title\":\"Meal-prep context: Instagram fitness journey and high-protein vegan salads\",\"valid_from\":\"2023-03-10T04:15:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User has had issues with quinoa being too mushy in the past.\",\"User intended to try tips for cooking quinoa perfectly.\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"}],\"evidence_kind\":\"imported\",\"evidence_quote\":\"I've had some issues with it being too mushy in the past.\",\"evidence_reason\":\"The quote identifies the user's recurring quinoa problem, while the assistant's procedure in the same target message provides the reusable troubleshooting steps.\",\"importance\":3,\"keywords\":[\"quinoa\",\"mushy quinoa\",\"2:1 ratio\",\"rinse quinoa\",\"medium heat\",\"fluff with a fork\",\"Quinoa and Black Bean Salad\"],\"note_type\":\"lesson\",\"rationale\":\"This is a cooking procedure and troubleshooting lesson with multiple steps and rationale, not just an atomic preference or fact.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"entity\",\"text\":\"Reusable cooking guidance for quinoa in the user's Quinoa and Black Bean Salad context\"},\"summary\":\"For the user's prior issue with mushy quinoa, the recommended procedure was to rinse quinoa, cook with a 2:1 water-to-quinoa ratio on medium heat, stop when water is absorbed and the center is still slightly crunchy after about 15–20 minutes, then fluff with a fork. Optional refinements included a heavy-bottom pot, salt, and following package instructions for quinoa blends.\",\"tags\":[\"cooking_tip\",\"troubleshooting\",\"meal_prep\"],\"title\":\"Quinoa troubleshooting procedure to avoid mushiness\",\"valid_from\":\"2023-03-10T04:15:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User is looking for high-protein, low-carb vegan protein sources for salads.\",\"User planned to try seitan and tempeh.\"],\"confidence\":0.91,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<8>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"imported\",\"evidence_quote\":\"I'll definitely try out seitan and tempeh.\",\"evidence_reason\":\"The quote captures the user's selected options; the same target message includes the ranked/described assistant list of vegan protein sources and macros.\",\"importance\":4,\"keywords\":[\"vegan protein\",\"low carb\",\"salad protein\",\"tofu\",\"tempeh\",\"seitan\",\"vegan protein powder\",\"mushrooms\",\"lentils\",\"chickpeas\"],\"note_type\":\"context\",\"rationale\":\"This preserves a reusable option list with distinguishing protein/carb descriptors and the user's selected options, which is more useful as contextual planning memory than as a single claim.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"entity\",\"text\":\"Reusable vegan protein option context for the user's salads and fitness meal prep\"},\"summary\":\"For high-protein, low-carb vegan salad additions, the compact option set was tofu (about 9–10 g protein, 2–3 g carbs per 3 oz), tempeh (15–16 g protein, 6–7 g carbs per 3 oz), seitan (21–22 g protein, 4–5 g carbs per 3 oz), plus vegan protein powder, mushrooms, and selected vegan meat alternatives; lentils and chickpeas were noted as protein/fiber sources but higher-carb. The user specifically planned to try seitan and tempeh.\",\"tags\":[\"vegan\",\"protein\",\"meal_prep\",\"salads\"],\"title\":\"Ranked vegan salad protein options by protein/carbs\",\"valid_from\":\"2023-03-10T04:15:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User wants healthy and tasty vegan sauces or dressings for salads that are low in sugar and unhealthy fats.\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"imported\",\"evidence_quote\":\"I'm looking for something that's low in sugar and unhealthy fats.\",\"evidence_reason\":\"The quote states the user's dressing constraints; the assistant recommendation list in the same target message supplies the named reusable options and ingredient guidance.\",\"importance\":3,\"keywords\":[\"vegan dressing\",\"low sugar\",\"healthy fats\",\"Lemon-Tahini Dressing\",\"Avocado-Lime Dressing\",\"Ginger-Turmeric Vinaigrette\",\"Hummus-Based Dressing\",\"Miso-Ginger Dressing\",\"Citrus-Herb Vinaigrette\"],\"note_type\":\"direction\",\"rationale\":\"This is a reusable recommendation set and dietary direction with constraints and named options, not a single atomic claim.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"entity\",\"text\":\"Reusable dressing and sauce guidance for the user's vegan salad meal prep\"},\"summary\":\"For vegan salads, the recommended low-sugar/healthier-fat dressing set included Lemon-Tahini Dressing, Avocado-Lime Dressing, Ginger-Turmeric Vinaigrette, Hummus-Based Dressing, Nutritional Yeast-Based Cheese Sauce, Miso-Ginger Dressing, and Citrus-Herb Vinaigrette. General constraints were to use oils like olive/avocado/grapeseed, prefer natural sweeteners over refined sugar, use vinegars such as apple cider or balsamic, and rely on herbs/spices instead of salt and sugar.\",\"tags\":[\"vegan\",\"salads\",\"dressings\",\"nutrition\"],\"title\":\"Vegan salad dressing direction: low sugar and healthier fats\",\"valid_from\":\"2023-03-10T04:15:00+02:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6747,
+                "completionTokens": 1740,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

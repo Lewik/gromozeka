@@ -631,10 +631,10 @@ class LlmMemoryReadSelectorTest {
         )
 
         val prompt = runtime.prompts.single()
-        assertTrue(prompt.contains("numeric operands as the counted inventory"), prompt)
-        assertTrue(prompt.contains("Reject separate singular POSSESSION or owns candidates"), prompt)
-        assertTrue(prompt.contains("routine cadence, intended schedule, reminder plan"), prompt)
-        assertTrue(prompt.contains("Do not turn a \"likely\" inferred date into a hard rejection by itself"), prompt)
+        assertTrue(prompt.contains("AGGREGATE_VALUE and AGGREGATE_DELTA claims are numeric operands"), prompt)
+        assertTrue(prompt.contains("POSSESSION and COUNTABLE_ITEM claims are direct evidence"), prompt)
+        assertTrue(prompt.contains("Do not decide by lexical overlap alone"), prompt)
+        assertTrue(prompt.contains("Preserve the uncertainty for the answerer"), prompt)
     }
 
     @Test
@@ -669,8 +669,8 @@ class LlmMemoryReadSelectorTest {
         )
 
         val prompt = runtime.prompts.single()
-        assertTrue(prompt.contains("For broad counts of works or content items"), prompt)
-        assertTrue(prompt.contains("physical or digital carrier, copy, file, license, or collection item"), prompt)
+        assertTrue(prompt.contains("category fit is semantic, not exact-word matching"), prompt)
+        assertTrue(prompt.contains("concrete user-attributed member, copy, carrier, component, or subtype"), prompt)
     }
 
     @Test
@@ -705,8 +705,8 @@ class LlmMemoryReadSelectorTest {
         )
 
         val prompt = runtime.prompts.single()
-        assertTrue(prompt.contains("project leadership, ownership, or responsibility count/list questions"), prompt)
-        assertTrue(prompt.contains("Treat plain works_on_project, generic project association"), prompt)
+        assertTrue(prompt.contains("RESPONSIBILITY and FUNCTIONAL_ROLE claims are direct evidence"), prompt)
+        assertTrue(prompt.contains("PROJECT_ASSOCIATION alone is supporting context"), prompt)
     }
 
     @Test
@@ -868,8 +868,8 @@ class LlmMemoryReadSelectorTest {
         )
 
         val prompt = runtime.prompts.single()
-        assertTrue(prompt.contains("baseline/previous and later/current/final numeric operands"), prompt)
-        assertTrue(prompt.contains("rejecting it can make the arithmetic impossible"), prompt)
+        assertTrue(prompt.contains("AGGREGATE_VALUE and AGGREGATE_DELTA claims are numeric operands"), prompt)
+        assertTrue(prompt.contains("Rejecting a baseline, anchor date, boundary event, or source date can make the answer impossible"), prompt)
     }
 
     @Test

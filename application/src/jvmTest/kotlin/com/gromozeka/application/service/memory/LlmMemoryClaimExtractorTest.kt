@@ -183,7 +183,10 @@ class LlmMemoryClaimExtractorTest {
         assertEquals(tokenRotationEntityId, candidates.single().objectEntityId)
         assertNull(candidates.single().objectValue)
         assertEquals(
-            setOf(MemoryPredicateDefinition.SemanticKind.RESPONSIBILITY),
+            setOf(
+                MemoryPredicateDefinition.SemanticKind.RESPONSIBILITY,
+                MemoryPredicateDefinition.SemanticKind.FUNCTIONAL_ROLE,
+            ),
             candidates.single().predicatePolicy?.semanticKinds,
         )
     }
@@ -252,7 +255,10 @@ class LlmMemoryClaimExtractorTest {
         assertEquals(signedRecordEntityId, candidates.single().objectEntityId)
         assertNull(candidates.single().objectValue)
         assertEquals(
-            setOf(MemoryPredicateDefinition.SemanticKind.POSSESSION),
+            setOf(
+                MemoryPredicateDefinition.SemanticKind.POSSESSION,
+                MemoryPredicateDefinition.SemanticKind.COUNTABLE_ITEM,
+            ),
             candidates.single().predicatePolicy?.semanticKinds,
         )
     }

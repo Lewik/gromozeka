@@ -558,10 +558,10 @@ class OpenAiSubscriptionResponsesClient(
                 )
             }
 
-            val responseStartedAt = System.nanoTime()
+            val responseDeadline = OpenAiSubscriptionResponseDeadline.after(boundedResponseTimeoutMs)
             while (true) {
                 ensureActive()
-                val remainingTimeoutMs = remainingResponseTimeoutMs(responseStartedAt)
+                val remainingTimeoutMs = responseDeadline.remainingMs()
                 if (remainingTimeoutMs <= 0L) {
                     throw OpenAiSubscriptionTransportException(
                         "Timed out waiting for OpenAI subscription websocket response completion"
@@ -594,11 +594,6 @@ class OpenAiSubscriptionResponsesClient(
                     }
                 }
             }
-        }
-
-        private fun remainingResponseTimeoutMs(responseStartedAt: Long): Long {
-            val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - responseStartedAt)
-            return boundedResponseTimeoutMs - elapsedMs
         }
 
         private fun <T> CompletableFuture<T>.awaitTransport(action: String): T {
@@ -675,6 +670,29 @@ class OpenAiSubscriptionResponsesClient(
 }
 
 private const val WEBSOCKET_RESPONSE_POLL_SLICE_MS = 1_000L
+
+internal class OpenAiSubscriptionResponseDeadline private constructor(
+    private val deadlineEpochMs: Long,
+    private val nowEpochMs: () -> Long,
+) {
+    fun remainingMs(): Long = deadlineEpochMs - nowEpochMs()
+
+    companion object {
+        fun after(
+            timeoutMs: Long,
+            nowEpochMs: () -> Long = System::currentTimeMillis,
+        ): OpenAiSubscriptionResponseDeadline {
+            val boundedTimeoutMs = timeoutMs.coerceAtLeast(1L)
+            val startEpochMs = nowEpochMs()
+            val deadlineEpochMs = if (Long.MAX_VALUE - startEpochMs < boundedTimeoutMs) {
+                Long.MAX_VALUE
+            } else {
+                startEpochMs + boundedTimeoutMs
+            }
+            return OpenAiSubscriptionResponseDeadline(deadlineEpochMs, nowEpochMs)
+        }
+    }
+}
 
 data class OpenAiSubscriptionParsedResponse(
     val outputItems: List<JsonObject>,

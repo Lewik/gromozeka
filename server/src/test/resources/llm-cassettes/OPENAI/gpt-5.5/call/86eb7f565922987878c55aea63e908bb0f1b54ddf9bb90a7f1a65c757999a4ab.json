@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "86eb7f565922987878c55aea63e908bb0f1b54ddf9bb90a7f1a65c757999a4ab",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:8fb83627\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/07/15 (Sat) 23:48\nTranscript:\nuser: I'm planning a trip to the Amazon rainforest and I'm interested in learning more about the region's ecosystem and conservation efforts. Can you recommend some articles or books on the topic?\nassistant: What an exciting adventure you're about to embark on! The Amazon rainforest is a fascinating and vital ecosystem that deserves our attention and protection. Here are some article and book recommendations to help you deepen your understanding of the region's ecosystem and conservation efforts:\n\n**Articles:**\n\n1. **National Geographic's Amazon Rainforest Guide**: A comprehensive online guide covering the region's geography, wildlife, indigenous communities, and conservation challenges.\n2. **The Amazon Rainforest: A Very Short Introduction** by Mark Maslin (The Guardian): A concise overview of the Amazon's history, biodiversity, and the impact of human activities on the ecosystem.\n3. **The Amazon Is Burning. Here's What You Need to Know** by Rachel Nuwer (The New York Times): A detailed article on the 2019 Amazon wildfires, their causes, and the consequences for the ecosystem and global climate.\n4. **The Amazon's Last Stand** by Scott Wallace (National Geographic): An in-depth report on the struggles of indigenous communities to protect their lands and the Amazon's future.\n5. **The Amazon Basin's Uncharted Tribes** by Scott Wallace (National Geographic): An article highlighting the region's isolated indigenous communities and the challenges they face in the modern world.\n\n**Books:**\n\n1. **The Sixth Extinction: An Unnatural History** by Elizabeth Kolbert: While not exclusively focused on the Amazon, this Pulitzer Prize-winning book explores the impact of human activity on the natural world, including the Amazon rainforest.\n2. **One River: Explorations and Discoveries in the Amazon Rain Forest** by Wade Davis: A fascinating account of the author's journeys through the Amazon, delving into the region's natural history, indigenous cultures, and the impact of modernization.\n3. **The Uninhabitable Earth: Life After Warming** by David Wallace-Wells: A compelling and well-researched book on the consequences of climate change, including its effects on the Amazon rainforest and global ecosystems.\n4. **Amazon: What Everyone Needs to Know** by Mark J. Plotkin: A concise and accessible guide to the Amazon's ecosystem, indigenous communities, and conservation challenges.\n5. **The Amazon: The Fate of the Forest** by Susanna Hecht and Alexander Cockburn: A comprehensive and thought-provoking book on the Amazon's history, ecology, and the impact of human activities on the region.\n\n**Additional Resources:**\n\n* **WWF Amazon**: The World Wildlife Fund's dedicated webpage on the Amazon rainforest, featuring news, articles, and conservation initiatives.\n* **Amazon Conservation Association (ACA)**: A non-profit organization working to conserve the Amazon rainforest and support indigenous communities.\n* **Amazon Rainforest Conservancy**: A Canadian charity dedicated to protecting the Amazon rainforest and promoting sustainable development.\n\nThese resources will provide you with a solid foundation for understanding the Amazon rainforest's ecosystem and conservation efforts. Enjoy your trip and stay informed!\nuser: That's really helpful, thanks for the suggestions! I've actually been reading a lot about the Amazon rainforest lately, especially in National Geographic - I've finished five issues so far and they've all had great articles on the region. Do you have any recommendations for documentaries or films about the Amazon that I can watch to supplement my reading?\nassistant: National Geographic is an excellent resource for learning about the Amazon rainforest. Now, let's dive into some fantastic documentaries and films that will complement your reading and provide a visual perspective on the region. Here are some recommendations:\n\n**Documentaries:**\n\n1. **Our Planet: Amazon** (Netflix, 2019) - A breathtakingly beautiful and informative episode from the Netflix series, showcasing the Amazon's natural wonders and the impact of human activity.\n2. **Chasing Coral** (Netflix, 2017) - While not exclusively focused on the Amazon, this documentary explores the decline of coral reefs and features a segment on the Amazon River's connection to the ocean.\n3. **The Last Lions** (2011) - A powerful documentary that highlights the decline of lion populations in Africa, with a segment on the Amazon rainforest and its importance in the global ecosystem.\n4. **The Hunt: Amazon** (BBC, 2015) - A thrilling documentary series that explores the strategies predators use to catch their prey in the Amazon rainforest.\n5. **River Monsters** (Animal Planet, 2009-2017) - A popular documentary series that explores the fascinating and often fearsome creatures of the Amazon River and its tributaries.\n6. **The Amazon: What the Future Holds** (BBC, 2019) - A thought-provoking documentary examining the impact of deforestation, climate change, and human activity on the Amazon's ecosystem.\n\n**Films:**\n\n1. **The Emerald Forest** (1985) - A classic adventure drama film set in the Amazon rainforest, exploring the clash between indigenous cultures and modern civilization.\n2. **Fitzcarraldo** (1982) - A critically acclaimed film by Werner Herzog, telling the story of a rubber baron's quest to build an opera house in the Amazon jungle.\n3. **The Motorcycle Diaries** (2004) - A biographical drama film based on Che Guevara's travels across South America, including his journey through the Amazon rainforest.\n4. **Medicine for Melancholy** (2008) - A drama film that explores the relationship between two people from different cultural backgrounds in the Amazon rainforest.\n\n**Series:**\n\n1. **Amazon with David Attenborough** (BBC, 2019) - A six-part series exploring the natural history of the Amazon rainforest, hosted by the renowned Sir David Attenborough.\n2. **Expedition Amazon** (Discovery Channel, 2019) - A documentary series following a team of explorers as they venture into the Amazon rainforest to uncover its secrets.\n\nThese documentaries, films, and series will provide a visually stunning and thought-provoking complement to your reading. Enjoy your journey into the Amazon rainforest!\nuser: I'm interested in learning more about the indigenous communities living in the Amazon rainforest. Can you recommend some resources or articles that focus on their cultures, traditions, and struggles?\nassistant: An excellent topic! The indigenous communities of the Amazon rainforest are incredibly diverse, with over 400 distinct ethnic groups, each with their own languages, traditions, and cultural practices. Here are some resources and articles that will help you learn more about these fascinating communities:\n\n**Articles:**\n\n1. **The Guardian's Indigenous Americas series**: A collection of in-depth articles exploring the struggles, cultures, and traditions of indigenous communities across the Americas, including the Amazon rainforest.\n2. **National Geographic's Indigenous Peoples of the Amazon**: A series of articles and photo essays highlighting the lives, traditions, and challenges faced by indigenous communities in the Amazon.\n3. **Amazon Watch's Indigenous Rights section**: A wealth of information on the struggles and victories of indigenous communities in the Amazon, including articles, videos, and news updates.\n4. **Cultural Survival's Amazon Basin Program**: A collection of articles, reports, and news stories focusing on the cultural, social, and environmental challenges faced by indigenous communities in the Amazon Basin.\n5. **The New York Times' Amazon Coverage**: A series of articles exploring the impact of deforestation, mining, and climate change on indigenous communities in the Amazon, as well as their efforts to protect their lands and way of life.\n\n**Books:**\n\n1. **The Unconquered: In Search of the Amazon's Last Uncontacted Tribes** by Scott Wallace: A gripping narrative that explores the lives of isolated indigenous communities in the Amazon and the efforts to protect them.\n2. **One River: Explorations and Discoveries in the Amazon Rain Forest** by Wade Davis: A classic book that delves into the natural history and indigenous cultures of the Amazon rainforest.\n3. **The Falling Sky: Words of a Yanomami Shaman** by Davi Kopenawa and Bruce Albert: A powerful and poignant book that shares the perspective of a Yanomami shaman from the Amazon rainforest.\n\n**Documentaries:**\n\n1. **The Uncontacted** (2017): A documentary that explores the lives of isolated indigenous communities in the Amazon and the efforts to protect them.\n2. **The Last Shaman** (2016): A documentary that follows the journey of a young shaman from the Amazon rainforest as he seeks to preserve his people's traditions and way of life.\n3. **When Two Worlds Collide** (2016): A documentary that examines the conflict between indigenous communities and the Peruvian government over land rights and resource extraction in the Amazon.\n\n**Organizations:**\n\n1. **Amazon Watch**: A non-profit organization that works to protect the Amazon rainforest and the rights of indigenous communities.\n2. **Cultural Survival**: A non-profit organization that advocates for the rights of indigenous peoples around the world, including those in the Amazon Basin.\n3. **Survival International**: A non-profit organization that campaigns for the rights of indigenous and tribal peoples, including those in the Amazon rainforest.\n\nThese resources will provide you with a deeper understanding of the rich cultural diversity and the struggles faced by indigenous communities in the Amazon rainforest.\nuser: I've been reading about the Amazon rainforest and its indigenous communities in National Geographic, and I just finished my fifth issue. I'm really interested in learning more about their cultures and traditions. Can you recommend some documentaries or films that focus on the daily lives of indigenous communities in the Amazon?\nassistant: National Geographic is an excellent resource for learning about the Amazon rainforest and its indigenous communities. Now, let's dive into some fantastic documentaries and films that will give you a deeper look into the daily lives of indigenous communities in the Amazon:\n\n**Documentaries:**\n\n1. **The Last Shaman** (2016): A documentary that follows the journey of a young shaman from the Amazon rainforest as he seeks to preserve his people's traditions and way of life.\n2. **The Uncontacted** (2017): A documentary that explores the lives of isolated indigenous communities in the Amazon and the efforts to protect them.\n3. **When Two Worlds Collide** (2016): A documentary that examines the conflict between indigenous communities and the Peruvian government over land rights and resource extraction in the Amazon.\n4. **The Forest** (2016): A documentary that follows a group of indigenous people from the Amazon rainforest as they fight to protect their lands from logging and mining.\n5. **The Amazon: What the Future Holds** (BBC, 2019): A thought-provoking documentary that explores the impact of deforestation, climate change, and human activity on indigenous communities in the Amazon.\n\n**Films:**\n\n1. **Embrace of the Serpent** (2015): A critically acclaimed film that tells the story of an Amazonian shaman and his encounters with two Western explorers.\n2. **Iracema: Uma Transa Amazônica** (2013): A Brazilian film that explores the lives of an indigenous community in the Amazon rainforest and their struggles with deforestation and land rights.\n3. **The Yanomami: A Struggle for Survival** (1991): A classic documentary film that follows the lives of the Yanomami people, an indigenous community living in the Amazon rainforest.\n\n**Series:**\n\n1. **Amazon with David Attenborough** (BBC, 2019): A six-part series exploring the natural history of the Amazon rainforest, including the lives of indigenous communities.\n2. **Expedition Amazon** (Discovery Channel, 2019): A documentary series following a team of explorers as they venture into the Amazon rainforest to uncover its secrets and meet its indigenous communities.\n\nThese documentaries, films, and series will provide you with a deeper understanding of the daily lives, cultures, and traditions of indigenous communities in the Amazon rainforest. Enjoy your journey into the heart of the Amazon!\nuser: I'm really interested in learning more about the Yanomami people and their struggles. Can you recommend some books or articles that provide more in-depth information about their culture and way of life?\nassistant: The Yanomami people are an indigenous tribe living in the Amazon rainforest, and their story is both fascinating and heart-wrenching. Here are some book and article recommendations that will provide you with a deeper understanding of their culture, way of life, and struggles:\n\n**Books:**\n\n1. **Shadows of the Forest: India's Way of Life** by Napoleon A. Chagnon: A classic ethnography that provides an in-depth look at Yanomami culture, social structure, and daily life.\n2. **Yanomami: The Fierce Controversy and What We Can Learn from It** by Robert Borofsky: A thought-provoking book that explores the controversies surrounding the Yanomami people, including their interactions with outsiders and the impact of modernization.\n3. **Davi Kopenawa and Bruce Albert's The Falling Sky: Words of a Yanomami Shaman**: A powerful and poignant book that shares the perspective of a Yanomami shaman, offering insights into their spiritual beliefs, traditions, and struggles.\n4. **Yanomami: An Account of the Last Days of an Uncontacted People** by Alcida Rita Ramos: A compelling book that explores the history and culture of the Yanomami people, as well as their struggles with colonization, disease, and modernization.\n\n**Articles:**\n\n1. **National Geographic's Yanomami People**: A comprehensive article that provides an overview of Yanomami culture, history, and struggles, accompanied by stunning photography.\n2. **The New Yorker's The Last of the Yanomami**: A poignant article that explores the struggles of the Yanomami people in the face of disease, deforestation, and modernization.\n3. **The Guardian's Yanomami: The Amazonian Tribe Fighting to Survive**: A powerful article that highlights the Yanomami people's struggles with mining, logging, and other forms of exploitation in their territory.\n4. **Cultural Survival's Yanomami**: A collection of articles and news stories that provide updates on the struggles and victories of the Yanomami people, as well as their efforts to protect their lands and way of life.\n\n**Documentaries:**\n\n1. **The Yanomami: A Struggle for Survival** (1991): A classic documentary film that follows the lives of the Yanomami people and their struggles with disease, colonization, and modernization.\n2. **The Last Shaman** (2016): A documentary that explores the life of a Yanomami shaman and his efforts to preserve his people's traditions and way of life.\n\nThese resources will provide you with a deeper understanding of the Yanomami people's culture, way of life, and struggles. Keep in mind that some of these resources may be more academic or dense, but they offer valuable insights into the lives of this incredible indigenous tribe.\nuser: I've been reading a lot about the Yanomami people and their struggles in National Geographic. I'm really interested in learning more about their culture and way of life. Can you recommend some documentaries or films that focus on their daily lives and struggles?\nassistant: National Geographic is an excellent resource for learning about the Yanomami people and their struggles. Now, let's dive into some fantastic documentaries and films that will give you a deeper look into their daily lives and struggles:\n\n**Documentaries:**\n\n1. **The Yanomami: A Struggle for Survival** (1991): A classic documentary film that follows the lives of the Yanomami people and their struggles with disease, colonization, and modernization.\n2. **The Last Shaman** (2016): A documentary that explores the life of a Yanomami shaman and his efforts to preserve his people's traditions and way of life.\n3. **Yanomami: The Fierce People** (2007): A documentary that provides an intimate look at the daily lives of the Yanomami people, showcasing their culture, traditions, and struggles.\n4. **Amazon: The Yanomami** (2018): A documentary series that explores the lives of the Yanomami people and their struggles with deforestation, mining, and climate change.\n5. **The Uncontacted** (2017): A documentary that explores the lives of isolated indigenous communities in the Amazon, including the Yanomami people.\n\n**Films:**\n\n1. **Embrace of the Serpent** (2015): A critically acclaimed film that tells the story of an Amazonian shaman and his encounters with two Western explorers, inspired by the diaries of Theodor Koch-Grunberg and Amazonian shaman Karamakate.\n2. **Iracema: Uma Transa Amazônica** (2013): A Brazilian film that explores the lives of an indigenous community in the Amazon rainforest, including the Yanomami people, and their struggles with deforestation and land rights.\n\nThese documentaries and films will provide you with a deeper understanding of the Yanomami people's daily lives, culture, and struggles. You'll gain insight into their traditions, way of life, and the challenges they face in the modern world.\n\n        Candidate notes:\n        [0] type=CONTEXT title=Amazon rainforest reading and viewing recommendations summary=In a 2023-07-15 session, the user sought resources for a planned Amazon rainforest trip, focusing on ecosystem, conservation, indigenous communities, and visual supplements to National Geographic reading. Recommended resources included National Geographic's Amazon Rainforest Guide, articles by Mark Maslin, Rachel Nuwer, and Scott Wallace, books by Elizabeth Kolbert, Wade Davis, David Wallace-Wells...[truncated 344 chars] scope=Reusable context for the user's Amazon rainforest research and prior recommendation set from the 2023-07-15 imported session. entities=entity:<0>,entity:<1>,entity:<2> keywords=Amazon rainforest,National Geographic,conservation,ecosystem,WWF Amazon,Our Planet: Amazon,Amazon with David Attenborough,Expedition Amazon tags=amazon_research,recommendations,travel_research,conservation evidence=I'm planning a trip to the Amazon rainforest and I'm interested in learning more about the region's ecosystem and conservation efforts.\n[1] type=CONTEXT title=Indigenous Amazon and Yanomami resource trail summary=The user repeatedly narrowed Amazon research toward indigenous communities and then the Yanomami people, asking for resources on cultures, traditions, daily life, way of life, and struggles. Prior recommendations included The Guardian's Indigenous Americas series, National Geographic's Indigenous Peoples of the Amazon, Amazon Watch, Cultural Survival, Survival International, The Unconquered by Sco...[truncated 253 chars] scope=Reusable context for the user's indigenous Amazon and Yanomami research interests and prior recommendation set from the 2023-07-15 imported session. entities=entity:<0>,entity:<3>,entity:<4>,entity:<2> keywords=Yanomami people,indigenous communities,Amazon Watch,Cultural Survival,Survival International,The Falling Sky,The Yanomami: A Struggle for Survival,The Last Shaman,Yanomami: The Fierce People tags=yanomami,indigenous_peoples,amazon_research,recommendations evidence=I'm really interested in learning more about the Yanomami people and their struggles.\n\n        Existing active notes:\n        id=hot-path-3b461f096a33-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=National Geographic progress setup in Reading Tracker summary=The National Geographic section of the Reading Tracker was set up with four issue rows: Issues 1–3 are treated as finished/read, and Issue 4 is the current in-progress issue. Specific issue dates or titles were left unspecified and can be added later if remembered. scope=Applies to the National Geographic rows in the Reading Tracker Spreadsheet. keywords=National Geographic,Issue 1,Issue 2,Issue 3,Issue 4,in progress,finished issues,Reading Tracker tags=reading_tracker,national_geographic,reading_progress useCount=0\nid=hot-path-3b461f096a33-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Reading Tracker Spreadsheet structure and purpose summary=A Reading Tracker Spreadsheet was proposed to organize the user's reading progress by publication type: Magazines, Online Publications, and Newspapers. Core columns are publication title, issue/date/article, read status, and notes, with optional columns such as rating, favorite articles, and topics for richer tracking. scope=Applies to the Reading Tracker Spreadsheet template created for the user's reading-list organization. keywords=Reading Tracker Spreadsheet,reading progress,Magazines,Online Publications,Newspapers,Read,Notes,Issue/Date,Article/Date tags=reading_tracker,spreadsheet_template useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:8fb83627",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:303a8f7b39bae774b0153295374723d0"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:8fb83627\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/07/15 (Sat) 23:48\nTranscript:\nuser: I'm planning a trip to the Amazon rainforest and I'm interested in learning more about the region's ecosystem and conservation efforts. Can you recommend some articles or books on the topic?\nassistant: What an exciting adventure you're about to embark on! The Amazon rainforest is a fascinating and vital ecosystem that deserves our attention and protection. Here are some article and book recommendations to help you deepen your understanding of the region's ecosystem and conservation efforts:\n\n**Articles:**\n\n1. **National Geographic's Amazon Rainforest Guide**: A comprehensive online guide covering the region's geography, wildlife, indigenous communities, and conservation challenges.\n2. **The Amazon Rainforest: A Very Short Introduction** by Mark Maslin (The Guardian): A concise overview of the Amazon's history, biodiversity, and the impact of human activities on the ecosystem.\n3. **The Amazon Is Burning. Here's What You Need to Know** by Rachel Nuwer (The New York Times): A detailed article on the 2019 Amazon wildfires, their causes, and the consequences for the ecosystem and global climate.\n4. **The Amazon's Last Stand** by Scott Wallace (National Geographic): An in-depth report on the struggles of indigenous communities to protect their lands and the Amazon's future.\n5. **The Amazon Basin's Uncharted Tribes** by Scott Wallace (National Geographic): An article highlighting the region's isolated indigenous communities and the challenges they face in the modern world.\n\n**Books:**\n\n1. **The Sixth Extinction: An Unnatural History** by Elizabeth Kolbert: While not exclusively focused on the Amazon, this Pulitzer Prize-winning book explores the impact of human activity on the natural world, including the Amazon rainforest.\n2. **One River: Explorations and Discoveries in the Amazon Rain Forest** by Wade Davis: A fascinating account of the author's journeys through the Amazon, delving into the region's natural history, indigenous cultures, and the impact of modernization.\n3. **The Uninhabitable Earth: Life After Warming** by David Wallace-Wells: A compelling and well-researched book on the consequences of climate change, including its effects on the Amazon rainforest and global ecosystems.\n4. **Amazon: What Everyone Needs to Know** by Mark J. Plotkin: A concise and accessible guide to the Amazon's ecosystem, indigenous communities, and conservation challenges.\n5. **The Amazon: The Fate of the Forest** by Susanna Hecht and Alexander Cockburn: A comprehensive and thought-provoking book on the Amazon's history, ecology, and the impact of human activities on the region.\n\n**Additional Resources:**\n\n* **WWF Amazon**: The World Wildlife Fund's dedicated webpage on the Amazon rainforest, featuring news, articles, and conservation initiatives.\n* **Amazon Conservation Association (ACA)**: A non-profit organization working to conserve the Amazon rainforest and support indigenous communities.\n* **Amazon Rainforest Conservancy**: A Canadian charity dedicated to protecting the Amazon rainforest and promoting sustainable development.\n\nThese resources will provide you with a solid foundation for understanding the Amazon rainforest's ecosystem and conservation efforts. Enjoy your trip and stay informed!\nuser: That's really helpful, thanks for the suggestions! I've actually been reading a lot about the Amazon rainforest lately, especially in National Geographic - I've finished five issues so far and they've all had great articles on the region. Do you have any recommendations for documentaries or films about the Amazon that I can watch to supplement my reading?\nassistant: National Geographic is an excellent resource for learning about the Amazon rainforest. Now, let's dive into some fantastic documentaries and films that will complement your reading and provide a visual perspective on the region. Here are some recommendations:\n\n**Documentaries:**\n\n1. **Our Planet: Amazon** (Netflix, 2019) - A breathtakingly beautiful and informative episode from the Netflix series, showcasing the Amazon's natural wonders and the impact of human activity.\n2. **Chasing Coral** (Netflix, 2017) - While not exclusively focused on the Amazon, this documentary explores the decline of coral reefs and features a segment on the Amazon River's connection to the ocean.\n3. **The Last Lions** (2011) - A powerful documentary that highlights the decline of lion populations in Africa, with a segment on the Amazon rainforest and its importance in the global ecosystem.\n4. **The Hunt: Amazon** (BBC, 2015) - A thrilling documentary series that explores the strategies predators use to catch their prey in the Amazon rainforest.\n5. **River Monsters** (Animal Planet, 2009-2017) - A popular documentary series that explores the fascinating and often fearsome creatures of the Amazon River and its tributaries.\n6. **The Amazon: What the Future Holds** (BBC, 2019) - A thought-provoking documentary examining the impact of deforestation, climate change, and human activity on the Amazon's ecosystem.\n\n**Films:**\n\n1. **The Emerald Forest** (1985) - A classic adventure drama film set in the Amazon rainforest, exploring the clash between indigenous cultures and modern civilization.\n2. **Fitzcarraldo** (1982) - A critically acclaimed film by Werner Herzog, telling the story of a rubber baron's quest to build an opera house in the Amazon jungle.\n3. **The Motorcycle Diaries** (2004) - A biographical drama film based on Che Guevara's travels across South America, including his journey through the Amazon rainforest.\n4. **Medicine for Melancholy** (2008) - A drama film that explores the relationship between two people from different cultural backgrounds in the Amazon rainforest.\n\n**Series:**\n\n1. **Amazon with David Attenborough** (BBC, 2019) - A six-part series exploring the natural history of the Amazon rainforest, hosted by the renowned Sir David Attenborough.\n2. **Expedition Amazon** (Discovery Channel, 2019) - A documentary series following a team of explorers as they venture into the Amazon rainforest to uncover its secrets.\n\nThese documentaries, films, and series will provide a visually stunning and thought-provoking complement to your reading. Enjoy your journey into the Amazon rainforest!\nuser: I'm interested in learning more about the indigenous communities living in the Amazon rainforest. Can you recommend some resources or articles that focus on their cultures, traditions, and struggles?\nassistant: An excellent topic! The indigenous communities of the Amazon rainforest are incredibly diverse, with over 400 distinct ethnic groups, each with their own languages, traditions, and cultural practices. Here are some resources and articles that will help you learn more about these fascinating communities:\n\n**Articles:**\n\n1. **The Guardian's Indigenous Americas series**: A collection of in-depth articles exploring the struggles, cultures, and traditions of indigenous communities across the Americas, including the Amazon rainforest.\n2. **National Geographic's Indigenous Peoples of the Amazon**: A series of articles and photo essays highlighting the lives, traditions, and challenges faced by indigenous communities in the Amazon.\n3. **Amazon Watch's Indigenous Rights section**: A wealth of information on the struggles and victories of indigenous communities in the Amazon, including articles, videos, and news updates.\n4. **Cultural Survival's Amazon Basin Program**: A collection of articles, reports, and news stories focusing on the cultural, social, and environmental challenges faced by indigenous communities in the Amazon Basin.\n5. **The New York Times' Amazon Coverage**: A series of articles exploring the impact of deforestation, mining, and climate change on indigenous communities in the Amazon, as well as their efforts to protect their lands and way of life.\n\n**Books:**\n\n1. **The Unconquered: In Search of the Amazon's Last Uncontacted Tribes** by Scott Wallace: A gripping narrative that explores the lives of isolated indigenous communities in the Amazon and the efforts to protect them.\n2. **One River: Explorations and Discoveries in the Amazon Rain Forest** by Wade Davis: A classic book that delves into the natural history and indigenous cultures of the Amazon rainforest.\n3. **The Falling Sky: Words of a Yanomami Shaman** by Davi Kopenawa and Bruce Albert: A powerful and poignant book that shares the perspective of a Yanomami shaman from the Amazon rainforest.\n\n**Documentaries:**\n\n1. **The Uncontacted** (2017): A documentary that explores the lives of isolated indigenous communities in the Amazon and the efforts to protect them.\n2. **The Last Shaman** (2016): A documentary that follows the journey of a young shaman from the Amazon rainforest as he seeks to preserve his people's traditions and way of life.\n3. **When Two Worlds Collide** (2016): A documentary that examines the conflict between indigenous communities and the Peruvian government over land rights and resource extraction in the Amazon.\n\n**Organizations:**\n\n1. **Amazon Watch**: A non-profit organization that works to protect the Amazon rainforest and the rights of indigenous communities.\n2. **Cultural Survival**: A non-profit organization that advocates for the rights of indigenous peoples around the world, including those in the Amazon Basin.\n3. **Survival International**: A non-profit organization that campaigns for the rights of indigenous and tribal peoples, including those in the Amazon rainforest.\n\nThese resources will provide you with a deeper understanding of the rich cultural diversity and the struggles faced by indigenous communities in the Amazon rainforest.\nuser: I've been reading about the Amazon rainforest and its indigenous communities in National Geographic, and I just finished my fifth issue. I'm really interested in learning more about their cultures and traditions. Can you recommend some documentaries or films that focus on the daily lives of indigenous communities in the Amazon?\nassistant: National Geographic is an excellent resource for learning about the Amazon rainforest and its indigenous communities. Now, let's dive into some fantastic documentaries and films that will give you a deeper look into the daily lives of indigenous communities in the Amazon:\n\n**Documentaries:**\n\n1. **The Last Shaman** (2016): A documentary that follows the journey of a young shaman from the Amazon rainforest as he seeks to preserve his people's traditions and way of life.\n2. **The Uncontacted** (2017): A documentary that explores the lives of isolated indigenous communities in the Amazon and the efforts to protect them.\n3. **When Two Worlds Collide** (2016): A documentary that examines the conflict between indigenous communities and the Peruvian government over land rights and resource extraction in the Amazon.\n4. **The Forest** (2016): A documentary that follows a group of indigenous people from the Amazon rainforest as they fight to protect their lands from logging and mining.\n5. **The Amazon: What the Future Holds** (BBC, 2019): A thought-provoking documentary that explores the impact of deforestation, climate change, and human activity on indigenous communities in the Amazon.\n\n**Films:**\n\n1. **Embrace of the Serpent** (2015): A critically acclaimed film that tells the story of an Amazonian shaman and his encounters with two Western explorers.\n2. **Iracema: Uma Transa Amazônica** (2013): A Brazilian film that explores the lives of an indigenous community in the Amazon rainforest and their struggles with deforestation and land rights.\n3. **The Yanomami: A Struggle for Survival** (1991): A classic documentary film that follows the lives of the Yanomami people, an indigenous community living in the Amazon rainforest.\n\n**Series:**\n\n1. **Amazon with David Attenborough** (BBC, 2019): A six-part series exploring the natural history of the Amazon rainforest, including the lives of indigenous communities.\n2. **Expedition Amazon** (Discovery Channel, 2019): A documentary series following a team of explorers as they venture into the Amazon rainforest to uncover its secrets and meet its indigenous communities.\n\nThese documentaries, films, and series will provide you with a deeper understanding of the daily lives, cultures, and traditions of indigenous communities in the Amazon rainforest. Enjoy your journey into the heart of the Amazon!\nuser: I'm really interested in learning more about the Yanomami people and their struggles. Can you recommend some books or articles that provide more in-depth information about their culture and way of life?\nassistant: The Yanomami people are an indigenous tribe living in the Amazon rainforest, and their story is both fascinating and heart-wrenching. Here are some book and article recommendations that will provide you with a deeper understanding of their culture, way of life, and struggles:\n\n**Books:**\n\n1. **Shadows of the Forest: India's Way of Life** by Napoleon A. Chagnon: A classic ethnography that provides an in-depth look at Yanomami culture, social structure, and daily life.\n2. **Yanomami: The Fierce Controversy and What We Can Learn from It** by Robert Borofsky: A thought-provoking book that explores the controversies surrounding the Yanomami people, including their interactions with outsiders and the impact of modernization.\n3. **Davi Kopenawa and Bruce Albert's The Falling Sky: Words of a Yanomami Shaman**: A powerful and poignant book that shares the perspective of a Yanomami shaman, offering insights into their spiritual beliefs, traditions, and struggles.\n4. **Yanomami: An Account of the Last Days of an Uncontacted People** by Alcida Rita Ramos: A compelling book that explores the history and culture of the Yanomami people, as well as their struggles with colonization, disease, and modernization.\n\n**Articles:**\n\n1. **National Geographic's Yanomami People**: A comprehensive article that provides an overview of Yanomami culture, history, and struggles, accompanied by stunning photography.\n2. **The New Yorker's The Last of the Yanomami**: A poignant article that explores the struggles of the Yanomami people in the face of disease, deforestation, and modernization.\n3. **The Guardian's Yanomami: The Amazonian Tribe Fighting to Survive**: A powerful article that highlights the Yanomami people's struggles with mining, logging, and other forms of exploitation in their territory.\n4. **Cultural Survival's Yanomami**: A collection of articles and news stories that provide updates on the struggles and victories of the Yanomami people, as well as their efforts to protect their lands and way of life.\n\n**Documentaries:**\n\n1. **The Yanomami: A Struggle for Survival** (1991): A classic documentary film that follows the lives of the Yanomami people and their struggles with disease, colonization, and modernization.\n2. **The Last Shaman** (2016): A documentary that explores the life of a Yanomami shaman and his efforts to preserve his people's traditions and way of life.\n\nThese resources will provide you with a deeper understanding of the Yanomami people's culture, way of life, and struggles. Keep in mind that some of these resources may be more academic or dense, but they offer valuable insights into the lives of this incredible indigenous tribe.\nuser: I've been reading a lot about the Yanomami people and their struggles in National Geographic. I'm really interested in learning more about their culture and way of life. Can you recommend some documentaries or films that focus on their daily lives and struggles?\nassistant: National Geographic is an excellent resource for learning about the Yanomami people and their struggles. Now, let's dive into some fantastic documentaries and films that will give you a deeper look into their daily lives and struggles:\n\n**Documentaries:**\n\n1. **The Yanomami: A Struggle for Survival** (1991): A classic documentary film that follows the lives of the Yanomami people and their struggles with disease, colonization, and modernization.\n2. **The Last Shaman** (2016): A documentary that explores the life of a Yanomami shaman and his efforts to preserve his people's traditions and way of life.\n3. **Yanomami: The Fierce People** (2007): A documentary that provides an intimate look at the daily lives of the Yanomami people, showcasing their culture, traditions, and struggles.\n4. **Amazon: The Yanomami** (2018): A documentary series that explores the lives of the Yanomami people and their struggles with deforestation, mining, and climate change.\n5. **The Uncontacted** (2017): A documentary that explores the lives of isolated indigenous communities in the Amazon, including the Yanomami people.\n\n**Films:**\n\n1. **Embrace of the Serpent** (2015): A critically acclaimed film that tells the story of an Amazonian shaman and his encounters with two Western explorers, inspired by the diaries of Theodor Koch-Grunberg and Amazonian shaman Karamakate.\n2. **Iracema: Uma Transa Amazônica** (2013): A Brazilian film that explores the lives of an indigenous community in the Amazon rainforest, including the Yanomami people, and their struggles with deforestation and land rights.\n\nThese documentaries and films will provide you with a deeper understanding of the Yanomami people's daily lives, culture, and struggles. You'll gain insight into their traditions, way of life, and the challenges they face in the modern world.\n\n        Candidate notes:\n        [0] type=CONTEXT title=Amazon rainforest reading and viewing recommendations summary=In a 2023-07-15 session, the user sought resources for a planned Amazon rainforest trip, focusing on ecosystem, conservation, indigenous communities, and visual supplements to National Geographic reading. Recommended resources included National Geographic's Amazon Rainforest Guide, articles by Mark Maslin, Rachel Nuwer, and Scott Wallace, books by Elizabeth Kolbert, Wade Davis, David Wallace-Wells...[truncated 344 chars] scope=Reusable context for the user's Amazon rainforest research and prior recommendation set from the 2023-07-15 imported session. entities=entity:<0>,entity:<1>,entity:<2> keywords=Amazon rainforest,National Geographic,conservation,ecosystem,WWF Amazon,Our Planet: Amazon,Amazon with David Attenborough,Expedition Amazon tags=amazon_research,recommendations,travel_research,conservation evidence=I'm planning a trip to the Amazon rainforest and I'm interested in learning more about the region's ecosystem and conservation efforts.\n[1] type=CONTEXT title=Indigenous Amazon and Yanomami resource trail summary=The user repeatedly narrowed Amazon research toward indigenous communities and then the Yanomami people, asking for resources on cultures, traditions, daily life, way of life, and struggles. Prior recommendations included The Guardian's Indigenous Americas series, National Geographic's Indigenous Peoples of the Amazon, Amazon Watch, Cultural Survival, Survival International, The Unconquered by Sco...[truncated 253 chars] scope=Reusable context for the user's indigenous Amazon and Yanomami research interests and prior recommendation set from the 2023-07-15 imported session. entities=entity:<0>,entity:<3>,entity:<4>,entity:<2> keywords=Yanomami people,indigenous communities,Amazon Watch,Cultural Survival,Survival International,The Falling Sky,The Yanomami: A Struggle for Survival,The Last Shaman,Yanomami: The Fierce People tags=yanomami,indigenous_peoples,amazon_research,recommendations evidence=I'm really interested in learning more about the Yanomami people and their struggles.\n\n        Existing active notes:\n        id=hot-path-3b461f096a33-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=National Geographic progress setup in Reading Tracker summary=The National Geographic section of the Reading Tracker was set up with four issue rows: Issues 1–3 are treated as finished/read, and Issue 4 is the current in-progress issue. Specific issue dates or titles were left unspecified and can be added later if remembered. scope=Applies to the National Geographic rows in the Reading Tracker Spreadsheet. keywords=National Geographic,Issue 1,Issue 2,Issue 3,Issue 4,in progress,finished issues,Reading Tracker tags=reading_tracker,national_geographic,reading_progress useCount=0\nid=hot-path-3b461f096a33-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Reading Tracker Spreadsheet structure and purpose summary=A Reading Tracker Spreadsheet was proposed to organize the user's reading progress by publication type: Magazines, Online Publications, and Newspapers. Core columns are publication title, issue/date/article, read status, and notes, with optional columns such as rating, favorite articles, and topics for richer tracking. scope=Applies to the Reading Tracker Spreadsheet template created for the user's reading-list organization. keywords=Reading Tracker Spreadsheet,reading progress,Magazines,Online Publications,Newspapers,Read,Notes,Issue/Date,Article/Date tags=reading_tracker,spreadsheet_template useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:8fb83627",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:303a8f7b39bae774b0153295374723d0"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-3b461f096a33-note-3\"}],\"patch\":null,\"reason\":\"New reusable context about the user's Amazon rainforest trip research and prior ecosystem/conservation recommendation set; distinct from existing Reading Tracker structure/progress notes, though related through National Geographic reading.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-3b461f096a33-note-3\"}],\"patch\":null,\"reason\":\"New reusable context capturing the user's narrowed interest in indigenous Amazon communities and Yanomami resources; not covered by existing Reading Tracker notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5100,
+                "completionTokens": 193,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

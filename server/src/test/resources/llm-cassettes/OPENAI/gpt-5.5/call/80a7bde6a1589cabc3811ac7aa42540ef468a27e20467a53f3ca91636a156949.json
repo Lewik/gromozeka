@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "80a7bde6a1589cabc3811ac7aa42540ef468a27e20467a53f3ca91636a156949",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:72e3ee87\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript is forced memory input and contains durable structured facts about the user's routine, media/reading progress, learning interests, and broader recommendation context.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require resolving the stable user entity; no existing candidate is available.\n- mention=Crash Course; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=Crash Course; reason=Reusable educational media/product mentioned as something the user watches.\n- mention=Science series; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=Crash Course Science; reason=The phrase refers to a specific Crash Course series and later claims may track progress in it.\n- mention=Sapiens; action=CREATE_NEW; id=entity:<3>; type=DOCUMENT; name=Sapiens; reason=Book title mentioned as a reusable object of reading history.\n- mention=The Power of Habit; action=CREATE_NEW; id=entity:<4>; type=DOCUMENT; name=The Power of Habit; reason=Book title mentioned as a reusable object of current reading.\n- mention=A Short History of Nearly Everything; action=CREATE_NEW; id=entity:<5>; type=DOCUMENT; name=A Short History of Nearly Everything; reason=Specific book the user expressed interest in and asked about.\n- mention=Bill Bryson; action=CREATE_NEW; id=entity:<6>; type=PERSON; name=Bill Bryson; reason=Person named as the author of the selected book.\n- mention=Adobe Photoshop; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=Adobe Photoshop; reason=Reusable software product the user wants to improve skills in.\n- mention=Adobe Illustrator; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=Adobe Illustrator; reason=Reusable software product the user wants to improve skills in.\n- mention=LinkedIn Learning; action=CREATE_NEW; id=entity:<9>; type=SERVICE; name=LinkedIn Learning; reason=Specific online learning service the user has been using.\n- mention=Data Science with Python; action=CREATE_NEW; id=entity:<10>; type=CONCEPT; name=Data Science with Python; reason=Mentioned as an online course topic and skill area rather than a specific named course.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Crash Course Science|Sapiens|The Power of Habit|A Short History of Nearly Everything|Bill Bryson|Adobe Photoshop|Adobe Illustrator|LinkedIn Learning|Data Science with Python\n        text_queries=daily routine wake up 7:30 AM bedtime 11:30 PM work hours 9:00 AM to 5:30 PM lunch break 1 hour Crash Course episode daily reading exercise|Crash Course Science episode 10|finished Sapiens currently reading The Power of Habit interested in science history self-improvement books|Photoshop Illustrator LinkedIn Learning tutorials online courses|Data Science with Python online course interest\n        predicate_hints=current_metric_value|has_goal|prefers|has_experience_with|works_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:4636ced217632eff7be339faab1a65ab] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:72e3ee87:session:1; title=LongMemEval 72e3ee87 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 08:00\nTranscript:\nuser: I'm trying to plan out my daily schedule to make the most of my time. Can you help me create a daily routine that incorporates my lunch break and before-bed time for watching Crash Course episodes? Oh, and by the way, I'm currently on episode 10 of the Science series!\nassistant: A fellow Crash Course fan! I'd be happy to help you create a daily routine that fits in your love for Crash Course episodes.\n\nTo get started, I'll need to know a bit more about your schedule and preferences. Please answer the following questions:\n\n1. What time do you wake up and go to bed on a typical day?\n2. What are your work/school hours? (If you're a student, assume a standard 8-hour school day)\n3. How long is your lunch break?\n4. How many Crash Course episodes do you want to watch daily? (Assuming 10-15 minute episodes)\n5. Are there any other activities you want to prioritize in your daily routine, such as exercise, reading, or hobbies?\n6. Do you have any fixed appointments or commitments that you need to schedule around (e.g., classes, meetings, family time)?\n\nOnce I have this information, I can help you create a daily routine that incorporates your Crash Course episodes, lunch break, and other important activities.\n\nAnd, by the way, you're doing great on the Science series! Episode 10 is a big milestone. Keep it up, and you'll be a science whiz in no time!\nuser: I wake up at 7:30 AM and go to bed at 11:30 PM. My work hours are from 9:00 AM to 5:30 PM. My lunch break is 1 hour. I want to watch 1 Crash Course episode daily. I'd also like to prioritize reading and exercise in my daily routine. I don't have any fixed appointments or commitments that I need to schedule around.\nassistant: With that information, I've created a daily routine that incorporates your Crash Course episodes, lunch break, and other activities. Feel free to adjust it as needed to suit your personal preferences.\n\n**Daily Routine:**\n\n**Morning (7:30 AM - 9:00 AM)**\n\n* 7:30 AM - Wake up, have a glass of water\n* 7:45 AM - 30-minute exercise routine (you can choose any activity, such as yoga, jogging, weightlifting, or a quick home workout)\n* 8:15 AM - Shower and get ready for work\n* 8:30 AM - Have a healthy breakfast\n* 8:50 AM - Get ready to head out the door\n\n**Work (9:00 AM - 5:30 PM)**\n\n* 9:00 AM - Start work\n* 12:00 PM - 1:00 PM - Lunch break! Watch 1 Crash Course episode during this time\n* 1:00 PM - Resume work\n* 5:30 PM - Finish work\n\n**Evening (5:30 PM - 11:30 PM)**\n\n* 5:30 PM - Commute back home\n* 6:00 PM - 30-minute reading time (choose a book you enjoy, whether it's fiction, non-fiction, or a magazine)\n* 6:30 PM - Prepare a healthy dinner\n* 7:00 PM - Eat dinner and relax for a bit\n* 7:30 PM - Free time (you can use this time to catch up with family/friends, pursue a hobby, or simply unwind)\n* 9:00 PM - Begin winding down for the night (you can take a warm bath, practice gentle stretches, or listen to soothing music)\n* 10:30 PM - Get ready for bed\n* 11:30 PM - Sleep\n\nThis routine allows you to:\n\n* Watch 1 Crash Course episode during your lunch break\n* Fit in 30 minutes of exercise and 30 minutes of reading\n* Have some free time in the evening to relax or pursue other activities\n* Get a good night's sleep to recharge for the next day\n\nRemember, feel free to adjust this routine to suit your needs and preferences. If you need more time for a particular activity, you can always adjust the schedule accordingly.\n\nHappy watching, reading, and exercising!\nuser: Can you suggest some books that I can read for my daily 30-minute reading time? I've finished \"Sapiens\" and I'm currently reading \"The Power of Habit\". I'd like to focus on books that are related to science, history, or self-improvement.\nassistant: Great choices! \"Sapiens\" and \"The Power of Habit\" are both thought-provoking books. Here are some book recommendations that fit your interests in science, history, and self-improvement:\n\n**Science:**\n\n1. **\"A Short History of Nearly Everything\" by Bill Bryson**: A fascinating overview of various scientific fields, from the Big Bang to modern biology.\n2. **\"The Selfish Gene\" by Richard Dawkins**: A classic introduction to evolutionary biology and the concept of memes.\n3. **\"Cosmos\" by Carl Sagan**: A beautifully written exploration of the universe and our place in it.\n4. **\"The Emperor of All Maladies: A Biography of Cancer\" by Siddhartha Mukherjee**: A comprehensive and accessible history of cancer research and treatment.\n5. **\"The Uninhabitable Earth: Life After Warming\" by David Wallace-Wells**: A compelling and well-researched exploration of climate change and its consequences.\n\n**History:**\n\n1. **\"Guns, Germs, and Steel\" by Jared Diamond**: A Pulitzer Prize-winning book that explores how geography and biology shaped human history.\n2. **\"The Sixth Extinction: An Unnatural History\" by Elizabeth Kolbert**: A gripping account of the current mass extinction event caused by human activity.\n3. **\"A History of the World in 100 Objects\" by Neil MacGregor**: A unique and engaging history of human civilization told through 100 objects from the British Museum.\n4. **\"The Silk Roads: A New History of the World\" by Peter Frankopan**: A fresh perspective on world history, focusing on the connections and trade routes between East and West.\n5. **\"Salt: A World History\" by Mark Kurlansky**: A captivating history of salt and its impact on human societies throughout time.\n\n**Self-Improvement:**\n\n1. **\"Mindset: The New Psychology of Success\" by Carol S. Dweck**: A groundbreaking book on the power of growth mindset and how it can be developed.\n2. **\"The 7 Habits of Highly Effective People\" by Stephen Covey**: A classic self-help book that provides practical advice for personal and professional development.\n3. **\"Flow: The Psychology of Optimal Experience\" by Mihaly Csikszentmihalyi**: A fascinating exploration of the concept of flow and how to cultivate it in daily life.\n4. **\"The Happiness Project\" by Gretchen Rubin**: A relatable and engaging account of one person's year-long experiment in finding happiness.\n5. **\"Deep Work: Rules for Focused Success in a Distracted World\" by Cal Newport**: A timely and practical guide to developing the ability to focus without distraction.\n\nThese books should provide a great starting point for your daily reading routine. Enjoy!\nuser: I'm interested in \"A Short History of Nearly Everything\" by Bill Bryson. Can you tell me more about the book and how it's structured?\nassistant: \"A Short History of Nearly Everything\" is a fascinating book that covers a vast range of scientific topics in an engaging and accessible way. Here's what you can expect:\n\n**Overview:**\nThe book is a comprehensive and entertaining survey of the sciences, covering topics from the Big Bang to the rise of civilization. Bill Bryson's goal is to make science accessible and interesting to non-experts, and he succeeds admirably.\n\n**Structure:**\nThe book is divided into six parts, each focusing on a broad area of science:\n\n1. **The Origins of the Universe**: The Big Bang, the formation of the universe, and the origins of life on Earth.\n2. **The Size of the Earth**: Geology, plate tectonics, and the discovery of the Earth's structure.\n3. **A New Age Dawns**: The rise of life on Earth, from single-celled organisms to complex ecosystems.\n4. **The Road to Us**: The evolution of humans, from early hominids to modern humans.\n5. **The Stuff of Life**: Chemistry, physics, and the building blocks of matter.\n6. **The Earth and Its Inhabitants**: The natural world, including weather, oceans, and the diversity of life on Earth.\n\n**Writing style:**\nBill Bryson's writing is engaging, witty, and concise. He uses anecdotes, historical examples, and vivid descriptions to make complex scientific concepts accessible and interesting. He also includes fascinating stories about the scientists themselves, which adds a human touch to the narrative.\n\n**Tone:**\nThe book is written in a conversational tone, making it feel like you're having a discussion with a knowledgeable friend. Bryson is enthusiastic and passionate about the subjects he covers, and his excitement is infectious.\n\n**Level of complexity:**\nWhile the book covers complex scientific topics, Bryson's explanations are clear and easy to follow. You don't need a background in science to enjoy the book, but you will likely learn something new and interesting along the way.\n\n**Awards and recognition:**\n\"A Short History of Nearly Everything\" won the Aventis Prize for Science Books in 2004 and was shortlisted for the Samuel Johnson Prize.\n\nOverall, \"A Short History of Nearly Everything\" is a delightful and informative book that will appeal to anyone curious about the natural world and the wonders of science.\nuser: I've been meaning to ask, do you know of any online courses or resources that can help me improve my skills in Adobe Photoshop and Illustrator? I've been watching tutorials on LinkedIn Learning, but I'd like to explore more options.\nassistant: There are many online courses and resources available to help you improve your skills in Adobe Photoshop and Illustrator. Here are a few options you might find helpful:\n\n**Online Courses:**\n\n1. **Udemy**: Udemy offers a wide range of courses on Photoshop and Illustrator, from beginner to advanced levels. You can filter courses by rating, price, and duration.\n2. **Skillshare**: Skillshare offers a variety of courses and workshops on Photoshop and Illustrator, with a focus on creative projects and practical skills.\n3. **Coursera**: Coursera partners with top universities to offer courses on graphic design, digital art, and visual design, which often include Photoshop and Illustrator skills.\n4. **Pluralsight**: Pluralsight is an online learning platform that offers courses and tutorials on Photoshop, Illustrator, and other creative tools.\n\n**Tutorials and Resources:**\n\n1. **Adobe Creative Cloud tutorials**: Adobe offers free tutorials and resources on their website, including video tutorials, blog posts, and interactive guides.\n2. **Phlearn**: Phlearn is a popular online tutorial platform that offers in-depth tutorials on Photoshop and Illustrator, as well as other creative tools.\n3. **Tutvid**: Tutvid offers a wide range of free and paid tutorials on Photoshop, Illustrator, and other design tools.\n4. **Creative Bloq**: Creative Bloq is a design blog that offers tutorials, news, and inspiration for designers, including Photoshop and Illustrator users.\n5. **YouTube Channels**:\n\t* **Tutvid**: Tutvid's YouTube channel offers a wide range of free tutorials on Photoshop and Illustrator.\n\t* **Phlearn**: Phlearn's YouTube channel offers free tutorials and tips on Photoshop and Illustrator.\n\t* **Nathaniel Dodson**: Nathaniel Dodson's YouTube channel offers in-depth tutorials on Photoshop and Illustrator.\n\n**Practice and Projects:**\n\n1. **Design challenges**: Websites like Dribbble, Behance, and Reddit's r/design offer design challenges and prompts to help you practice your skills.\n2. **Personal projects**: Set aside time to work on personal projects that challenge you to try new skills and techniques in Photoshop and Illustrator.\n3. **Design communities**: Join online design communities like Reddit's r/photoshop and r/illustrator to connect with other designers, get feedback on your work, and learn from others.\n\nRemember, the key to improving your skills is to practice consistently and challenge yourself to try new things. Good luck!\nuser: I'm thinking of taking an online course on Data Science with Python. Do you think it's a good idea?\nassistant: What a great idea! Learning Data Science with Python is an excellent skill to acquire, and online courses are a fantastic way to get started. Here's why:\n\n**Why Data Science with Python?**\n\n1. **High demand**: Data Science is a rapidly growing field, and the demand for skilled professionals is increasing.\n2. **Versatility**: Python is a versatile language that's widely used in Data Science, Machine Learning, and Artificial Intelligence.\n3. **Easy to learn**: Python is considered an accessible language for beginners, and its syntax is easy to understand.\n4. **Career opportunities**: Having Data Science with Python skills can open up a wide range of career opportunities, from data analyst to data scientist, machine learning engineer, and more.\n\n**Why online courses?**\n\n1. **Flexibility**: Online courses offer flexibility in terms of pacing, schedule, and location. You can learn at your own pace, whenever and wherever you want.\n2. **Accessibility**: Online courses are often more affordable than traditional classroom-based courses.\n3. **Self-paced learning**: Online courses allow you to learn at your own pace, which is ideal for those who need to review material or accelerate their learning.\n4. **Access to resources**: Online courses often provide access to resources, such as video lectures, readings, and assignments, which can be helpful for learning.\n\n**What to look for in an online course?**\n\n1. **Reputation**: Look for courses from reputable institutions, universities, or organizations with a strong track record in Data Science and Python.\n2. **Content**: Ensure the course covers the topics you want to learn, such as data preprocessing, visualization, machine learning, and deep learning.\n3. **Instructors**: Check the instructors' credentials and experience in Data Science and Python.\n4. **Assignments and projects**: Look for courses with practical assignments and projects that help you apply what you learn.\n5. **Support**: Check if the course offers support, such as discussion forums, office hours, or mentorship.\n\nSome popular online courses and resources for Data Science with Python include:\n\n1. **Coursera**: Offers a variety of Data Science with Python courses from top universities like Stanford and University of Michigan.\n2. **edX**: Offers a range of Data Science with Python courses, including those from Microsoft and IBM.\n3. **DataCamp**: A popular online learning platform that offers interactive Data Science with Python courses and tutorials.\n4. **Python for Data Science Handbook**: A free online book that covers the basics of Python for Data Science.\n\nRemember, learning Data Science with Python requires dedication, persistence, and practice. Stay motivated, and you'll be well on your way to becoming a skilled Data Scientist!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:72e3ee87",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:4636ced217632eff7be339faab1a65ab"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:72e3ee87\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript is forced memory input and contains durable structured facts about the user's routine, media/reading progress, learning interests, and broader recommendation context.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require resolving the stable user entity; no existing candidate is available.\n- mention=Crash Course; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=Crash Course; reason=Reusable educational media/product mentioned as something the user watches.\n- mention=Science series; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=Crash Course Science; reason=The phrase refers to a specific Crash Course series and later claims may track progress in it.\n- mention=Sapiens; action=CREATE_NEW; id=entity:<3>; type=DOCUMENT; name=Sapiens; reason=Book title mentioned as a reusable object of reading history.\n- mention=The Power of Habit; action=CREATE_NEW; id=entity:<4>; type=DOCUMENT; name=The Power of Habit; reason=Book title mentioned as a reusable object of current reading.\n- mention=A Short History of Nearly Everything; action=CREATE_NEW; id=entity:<5>; type=DOCUMENT; name=A Short History of Nearly Everything; reason=Specific book the user expressed interest in and asked about.\n- mention=Bill Bryson; action=CREATE_NEW; id=entity:<6>; type=PERSON; name=Bill Bryson; reason=Person named as the author of the selected book.\n- mention=Adobe Photoshop; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=Adobe Photoshop; reason=Reusable software product the user wants to improve skills in.\n- mention=Adobe Illustrator; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=Adobe Illustrator; reason=Reusable software product the user wants to improve skills in.\n- mention=LinkedIn Learning; action=CREATE_NEW; id=entity:<9>; type=SERVICE; name=LinkedIn Learning; reason=Specific online learning service the user has been using.\n- mention=Data Science with Python; action=CREATE_NEW; id=entity:<10>; type=CONCEPT; name=Data Science with Python; reason=Mentioned as an online course topic and skill area rather than a specific named course.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Crash Course Science|Sapiens|The Power of Habit|A Short History of Nearly Everything|Bill Bryson|Adobe Photoshop|Adobe Illustrator|LinkedIn Learning|Data Science with Python\n        text_queries=daily routine wake up 7:30 AM bedtime 11:30 PM work hours 9:00 AM to 5:30 PM lunch break 1 hour Crash Course episode daily reading exercise|Crash Course Science episode 10|finished Sapiens currently reading The Power of Habit interested in science history self-improvement books|Photoshop Illustrator LinkedIn Learning tutorials online courses|Data Science with Python online course interest\n        predicate_hints=current_metric_value|has_goal|prefers|has_experience_with|works_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:4636ced217632eff7be339faab1a65ab] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:72e3ee87:session:1; title=LongMemEval 72e3ee87 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 08:00\nTranscript:\nuser: I'm trying to plan out my daily schedule to make the most of my time. Can you help me create a daily routine that incorporates my lunch break and before-bed time for watching Crash Course episodes? Oh, and by the way, I'm currently on episode 10 of the Science series!\nassistant: A fellow Crash Course fan! I'd be happy to help you create a daily routine that fits in your love for Crash Course episodes.\n\nTo get started, I'll need to know a bit more about your schedule and preferences. Please answer the following questions:\n\n1. What time do you wake up and go to bed on a typical day?\n2. What are your work/school hours? (If you're a student, assume a standard 8-hour school day)\n3. How long is your lunch break?\n4. How many Crash Course episodes do you want to watch daily? (Assuming 10-15 minute episodes)\n5. Are there any other activities you want to prioritize in your daily routine, such as exercise, reading, or hobbies?\n6. Do you have any fixed appointments or commitments that you need to schedule around (e.g., classes, meetings, family time)?\n\nOnce I have this information, I can help you create a daily routine that incorporates your Crash Course episodes, lunch break, and other important activities.\n\nAnd, by the way, you're doing great on the Science series! Episode 10 is a big milestone. Keep it up, and you'll be a science whiz in no time!\nuser: I wake up at 7:30 AM and go to bed at 11:30 PM. My work hours are from 9:00 AM to 5:30 PM. My lunch break is 1 hour. I want to watch 1 Crash Course episode daily. I'd also like to prioritize reading and exercise in my daily routine. I don't have any fixed appointments or commitments that I need to schedule around.\nassistant: With that information, I've created a daily routine that incorporates your Crash Course episodes, lunch break, and other activities. Feel free to adjust it as needed to suit your personal preferences.\n\n**Daily Routine:**\n\n**Morning (7:30 AM - 9:00 AM)**\n\n* 7:30 AM - Wake up, have a glass of water\n* 7:45 AM - 30-minute exercise routine (you can choose any activity, such as yoga, jogging, weightlifting, or a quick home workout)\n* 8:15 AM - Shower and get ready for work\n* 8:30 AM - Have a healthy breakfast\n* 8:50 AM - Get ready to head out the door\n\n**Work (9:00 AM - 5:30 PM)**\n\n* 9:00 AM - Start work\n* 12:00 PM - 1:00 PM - Lunch break! Watch 1 Crash Course episode during this time\n* 1:00 PM - Resume work\n* 5:30 PM - Finish work\n\n**Evening (5:30 PM - 11:30 PM)**\n\n* 5:30 PM - Commute back home\n* 6:00 PM - 30-minute reading time (choose a book you enjoy, whether it's fiction, non-fiction, or a magazine)\n* 6:30 PM - Prepare a healthy dinner\n* 7:00 PM - Eat dinner and relax for a bit\n* 7:30 PM - Free time (you can use this time to catch up with family/friends, pursue a hobby, or simply unwind)\n* 9:00 PM - Begin winding down for the night (you can take a warm bath, practice gentle stretches, or listen to soothing music)\n* 10:30 PM - Get ready for bed\n* 11:30 PM - Sleep\n\nThis routine allows you to:\n\n* Watch 1 Crash Course episode during your lunch break\n* Fit in 30 minutes of exercise and 30 minutes of reading\n* Have some free time in the evening to relax or pursue other activities\n* Get a good night's sleep to recharge for the next day\n\nRemember, feel free to adjust this routine to suit your needs and preferences. If you need more time for a particular activity, you can always adjust the schedule accordingly.\n\nHappy watching, reading, and exercising!\nuser: Can you suggest some books that I can read for my daily 30-minute reading time? I've finished \"Sapiens\" and I'm currently reading \"The Power of Habit\". I'd like to focus on books that are related to science, history, or self-improvement.\nassistant: Great choices! \"Sapiens\" and \"The Power of Habit\" are both thought-provoking books. Here are some book recommendations that fit your interests in science, history, and self-improvement:\n\n**Science:**\n\n1. **\"A Short History of Nearly Everything\" by Bill Bryson**: A fascinating overview of various scientific fields, from the Big Bang to modern biology.\n2. **\"The Selfish Gene\" by Richard Dawkins**: A classic introduction to evolutionary biology and the concept of memes.\n3. **\"Cosmos\" by Carl Sagan**: A beautifully written exploration of the universe and our place in it.\n4. **\"The Emperor of All Maladies: A Biography of Cancer\" by Siddhartha Mukherjee**: A comprehensive and accessible history of cancer research and treatment.\n5. **\"The Uninhabitable Earth: Life After Warming\" by David Wallace-Wells**: A compelling and well-researched exploration of climate change and its consequences.\n\n**History:**\n\n1. **\"Guns, Germs, and Steel\" by Jared Diamond**: A Pulitzer Prize-winning book that explores how geography and biology shaped human history.\n2. **\"The Sixth Extinction: An Unnatural History\" by Elizabeth Kolbert**: A gripping account of the current mass extinction event caused by human activity.\n3. **\"A History of the World in 100 Objects\" by Neil MacGregor**: A unique and engaging history of human civilization told through 100 objects from the British Museum.\n4. **\"The Silk Roads: A New History of the World\" by Peter Frankopan**: A fresh perspective on world history, focusing on the connections and trade routes between East and West.\n5. **\"Salt: A World History\" by Mark Kurlansky**: A captivating history of salt and its impact on human societies throughout time.\n\n**Self-Improvement:**\n\n1. **\"Mindset: The New Psychology of Success\" by Carol S. Dweck**: A groundbreaking book on the power of growth mindset and how it can be developed.\n2. **\"The 7 Habits of Highly Effective People\" by Stephen Covey**: A classic self-help book that provides practical advice for personal and professional development.\n3. **\"Flow: The Psychology of Optimal Experience\" by Mihaly Csikszentmihalyi**: A fascinating exploration of the concept of flow and how to cultivate it in daily life.\n4. **\"The Happiness Project\" by Gretchen Rubin**: A relatable and engaging account of one person's year-long experiment in finding happiness.\n5. **\"Deep Work: Rules for Focused Success in a Distracted World\" by Cal Newport**: A timely and practical guide to developing the ability to focus without distraction.\n\nThese books should provide a great starting point for your daily reading routine. Enjoy!\nuser: I'm interested in \"A Short History of Nearly Everything\" by Bill Bryson. Can you tell me more about the book and how it's structured?\nassistant: \"A Short History of Nearly Everything\" is a fascinating book that covers a vast range of scientific topics in an engaging and accessible way. Here's what you can expect:\n\n**Overview:**\nThe book is a comprehensive and entertaining survey of the sciences, covering topics from the Big Bang to the rise of civilization. Bill Bryson's goal is to make science accessible and interesting to non-experts, and he succeeds admirably.\n\n**Structure:**\nThe book is divided into six parts, each focusing on a broad area of science:\n\n1. **The Origins of the Universe**: The Big Bang, the formation of the universe, and the origins of life on Earth.\n2. **The Size of the Earth**: Geology, plate tectonics, and the discovery of the Earth's structure.\n3. **A New Age Dawns**: The rise of life on Earth, from single-celled organisms to complex ecosystems.\n4. **The Road to Us**: The evolution of humans, from early hominids to modern humans.\n5. **The Stuff of Life**: Chemistry, physics, and the building blocks of matter.\n6. **The Earth and Its Inhabitants**: The natural world, including weather, oceans, and the diversity of life on Earth.\n\n**Writing style:**\nBill Bryson's writing is engaging, witty, and concise. He uses anecdotes, historical examples, and vivid descriptions to make complex scientific concepts accessible and interesting. He also includes fascinating stories about the scientists themselves, which adds a human touch to the narrative.\n\n**Tone:**\nThe book is written in a conversational tone, making it feel like you're having a discussion with a knowledgeable friend. Bryson is enthusiastic and passionate about the subjects he covers, and his excitement is infectious.\n\n**Level of complexity:**\nWhile the book covers complex scientific topics, Bryson's explanations are clear and easy to follow. You don't need a background in science to enjoy the book, but you will likely learn something new and interesting along the way.\n\n**Awards and recognition:**\n\"A Short History of Nearly Everything\" won the Aventis Prize for Science Books in 2004 and was shortlisted for the Samuel Johnson Prize.\n\nOverall, \"A Short History of Nearly Everything\" is a delightful and informative book that will appeal to anyone curious about the natural world and the wonders of science.\nuser: I've been meaning to ask, do you know of any online courses or resources that can help me improve my skills in Adobe Photoshop and Illustrator? I've been watching tutorials on LinkedIn Learning, but I'd like to explore more options.\nassistant: There are many online courses and resources available to help you improve your skills in Adobe Photoshop and Illustrator. Here are a few options you might find helpful:\n\n**Online Courses:**\n\n1. **Udemy**: Udemy offers a wide range of courses on Photoshop and Illustrator, from beginner to advanced levels. You can filter courses by rating, price, and duration.\n2. **Skillshare**: Skillshare offers a variety of courses and workshops on Photoshop and Illustrator, with a focus on creative projects and practical skills.\n3. **Coursera**: Coursera partners with top universities to offer courses on graphic design, digital art, and visual design, which often include Photoshop and Illustrator skills.\n4. **Pluralsight**: Pluralsight is an online learning platform that offers courses and tutorials on Photoshop, Illustrator, and other creative tools.\n\n**Tutorials and Resources:**\n\n1. **Adobe Creative Cloud tutorials**: Adobe offers free tutorials and resources on their website, including video tutorials, blog posts, and interactive guides.\n2. **Phlearn**: Phlearn is a popular online tutorial platform that offers in-depth tutorials on Photoshop and Illustrator, as well as other creative tools.\n3. **Tutvid**: Tutvid offers a wide range of free and paid tutorials on Photoshop, Illustrator, and other design tools.\n4. **Creative Bloq**: Creative Bloq is a design blog that offers tutorials, news, and inspiration for designers, including Photoshop and Illustrator users.\n5. **YouTube Channels**:\n\t* **Tutvid**: Tutvid's YouTube channel offers a wide range of free tutorials on Photoshop and Illustrator.\n\t* **Phlearn**: Phlearn's YouTube channel offers free tutorials and tips on Photoshop and Illustrator.\n\t* **Nathaniel Dodson**: Nathaniel Dodson's YouTube channel offers in-depth tutorials on Photoshop and Illustrator.\n\n**Practice and Projects:**\n\n1. **Design challenges**: Websites like Dribbble, Behance, and Reddit's r/design offer design challenges and prompts to help you practice your skills.\n2. **Personal projects**: Set aside time to work on personal projects that challenge you to try new skills and techniques in Photoshop and Illustrator.\n3. **Design communities**: Join online design communities like Reddit's r/photoshop and r/illustrator to connect with other designers, get feedback on your work, and learn from others.\n\nRemember, the key to improving your skills is to practice consistently and challenge yourself to try new things. Good luck!\nuser: I'm thinking of taking an online course on Data Science with Python. Do you think it's a good idea?\nassistant: What a great idea! Learning Data Science with Python is an excellent skill to acquire, and online courses are a fantastic way to get started. Here's why:\n\n**Why Data Science with Python?**\n\n1. **High demand**: Data Science is a rapidly growing field, and the demand for skilled professionals is increasing.\n2. **Versatility**: Python is a versatile language that's widely used in Data Science, Machine Learning, and Artificial Intelligence.\n3. **Easy to learn**: Python is considered an accessible language for beginners, and its syntax is easy to understand.\n4. **Career opportunities**: Having Data Science with Python skills can open up a wide range of career opportunities, from data analyst to data scientist, machine learning engineer, and more.\n\n**Why online courses?**\n\n1. **Flexibility**: Online courses offer flexibility in terms of pacing, schedule, and location. You can learn at your own pace, whenever and wherever you want.\n2. **Accessibility**: Online courses are often more affordable than traditional classroom-based courses.\n3. **Self-paced learning**: Online courses allow you to learn at your own pace, which is ideal for those who need to review material or accelerate their learning.\n4. **Access to resources**: Online courses often provide access to resources, such as video lectures, readings, and assignments, which can be helpful for learning.\n\n**What to look for in an online course?**\n\n1. **Reputation**: Look for courses from reputable institutions, universities, or organizations with a strong track record in Data Science and Python.\n2. **Content**: Ensure the course covers the topics you want to learn, such as data preprocessing, visualization, machine learning, and deep learning.\n3. **Instructors**: Check the instructors' credentials and experience in Data Science and Python.\n4. **Assignments and projects**: Look for courses with practical assignments and projects that help you apply what you learn.\n5. **Support**: Check if the course offers support, such as discussion forums, office hours, or mentorship.\n\nSome popular online courses and resources for Data Science with Python include:\n\n1. **Coursera**: Offers a variety of Data Science with Python courses from top universities like Stanford and University of Michigan.\n2. **edX**: Offers a range of Data Science with Python courses, including those from Microsoft and IBM.\n3. **DataCamp**: A popular online learning platform that offers interactive Data Science with Python courses and tutorials.\n4. **Python for Data Science Handbook**: A free online book that covers the basics of Python for Data Science.\n\nRemember, learning Data Science with Python requires dedication, persistence, and practice. Stay motivated, and you'll be well on your way to becoming a skilled Data Scientist!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:72e3ee87",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:4636ced217632eff7be339faab1a65ab"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"wakes at 7:30 AM\",\"bedtime 11:30 PM\",\"work hours 9:00 AM to 5:30 PM\",\"lunch break 1 hour\",\"wants 1 Crash Course episode daily\",\"prioritizes reading and exercise\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"This routine allows you to:\\n\\n* Watch 1 Crash Course episode during your lunch break\\n* Fit in 30 minutes of exercise and 30 minutes of reading\",\"evidence_reason\":\"The transcript includes a concrete assistant-generated routine based on the user's stated schedule and priorities.\",\"importance\":4,\"keywords\":[\"daily routine\",\"Crash Course\",\"lunch break\",\"reading\",\"exercise\",\"work schedule\"],\"note_type\":\"plan\",\"rationale\":\"This is a reusable schedule design with timing and trade-offs, not just one atomic preference claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's reusable daily scheduling context for balancing work, Crash Course, reading, and exercise\"},\"summary\":\"A proposed routine fits the user's 7:30 AM–11:30 PM day and 9:00 AM–5:30 PM work schedule: 30 minutes of exercise in the morning, one Crash Course episode during a 12:00–1:00 PM lunch break, 30 minutes of reading after work, then dinner, free time, wind-down, and sleep.\",\"tags\":[\"routine\",\"schedule\",\"learning\",\"wellness\"],\"title\":\"Draft daily routine integrating Crash Course, reading, and exercise\",\"valid_from\":\"2023-05-20T08:00:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"finished Sapiens\",\"currently reading The Power of Habit\",\"interested in science, history, or self-improvement books\",\"interested in A Short History of Nearly Everything by Bill Bryson\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Here are some book recommendations that fit your interests in science, history, and self-improvement:\",\"evidence_reason\":\"The assistant supplied a categorized recommendation list in response to the user's reading goals and current/finished books.\",\"importance\":4,\"keywords\":[\"book recommendations\",\"science books\",\"history books\",\"self-improvement\",\"A Short History of Nearly Everything\",\"Sapiens\",\"The Power of Habit\"],\"note_type\":\"context\",\"rationale\":\"The reusable value is the compact recommendation set and categories, which is broader than any single claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable recommendation context for the user's science, history, and self-improvement reading list\"},\"summary\":\"For the user's daily reading interest, recommended options included science books such as \\\"A Short History of Nearly Everything\\\", \\\"The Selfish Gene\\\", \\\"Cosmos\\\", \\\"The Emperor of All Maladies\\\", and \\\"The Uninhabitable Earth\\\"; history books such as \\\"Guns, Germs, and Steel\\\", \\\"The Sixth Extinction\\\", \\\"A History of the World in 100 Objects\\\", \\\"The Silk Roads\\\", and \\\"Salt\\\"; and self-improvement books such as \\\"Mindset\\\", \\\"The 7 Habits of Highly Effective People\\\", \\\"Flow\\\", \\\"The Happiness Project\\\", and \\\"Deep Work\\\".\",\"tags\":[\"reading\",\"recommendations\",\"books\"],\"title\":\"Book recommendations for science, history, and self-improvement reading\",\"valid_from\":\"2023-05-20T08:00:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"book by Bill Bryson\",\"won the Aventis Prize for Science Books in 2004\",\"shortlisted for the Samuel Johnson Prize\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"The book is divided into six parts, each focusing on a broad area of science:\",\"evidence_reason\":\"The transcript contains a structured explanation of the book's scope, style, complexity, recognition, and six-part organization.\",\"importance\":3,\"keywords\":[\"A Short History of Nearly Everything\",\"Bill Bryson\",\"book structure\",\"science survey\",\"Big Bang\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is a compact document digest of a book's structure and suitability, not a single factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Reusable digest of the book description and structure for A Short History of Nearly Everything\"},\"summary\":\"\\\"A Short History of Nearly Everything\\\" by Bill Bryson was described as an accessible, conversational science survey from the Big Bang to civilization, structured into six broad parts: origins of the universe, size of the Earth, a new age dawns, road to us, stuff of life, and Earth and its inhabitants.\",\"tags\":[\"book_digest\",\"science\",\"reading\"],\"title\":\"A Short History of Nearly Everything overview and structure\",\"valid_from\":\"2023-05-20T08:00:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"has been watching tutorials on LinkedIn Learning\",\"wants to improve Photoshop skills\",\"wants to improve Illustrator skills\",\"wants more resource options\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I've been watching tutorials on LinkedIn Learning, but I'd like to explore more options.\",\"evidence_reason\":\"The user's request and assistant response establish a reusable list of alternative resources and practice channels for Photoshop and Illustrator.\",\"importance\":4,\"keywords\":[\"Adobe Photoshop\",\"Adobe Illustrator\",\"LinkedIn Learning\",\"Udemy\",\"Skillshare\",\"Phlearn\",\"Tutvid\",\"design communities\"],\"note_type\":\"context\",\"rationale\":\"This preserves an option set and learning context; individual facts like 'uses LinkedIn Learning' would be claims, but the resource landscape is note-worthy.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable learning-resource context for the user's Adobe Photoshop and Illustrator skill development\"},\"summary\":\"Suggested resources for improving Adobe Photoshop and Illustrator skills included online course platforms Udemy, Skillshare, Coursera, and Pluralsight; tutorials/resources from Adobe Creative Cloud tutorials, Phlearn, Tutvid, Creative Bloq, and YouTube channels Tutvid, Phlearn, and Nathaniel Dodson; plus practice through Dribbble, Behance, Reddit r/design, r/photoshop, and r/illustrator, and personal projects.\",\"tags\":[\"learning_resources\",\"design_tools\",\"courses\"],\"title\":\"Photoshop and Illustrator learning resource options beyond LinkedIn Learning\",\"valid_from\":\"2023-05-20T08:00:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"interested in taking an online course on Data Science with Python\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"What to look for in an online course?\",\"evidence_reason\":\"The assistant response gives reusable rationale, criteria, and specific learning resources for evaluating Data Science with Python courses.\",\"importance\":4,\"keywords\":[\"Data Science with Python\",\"online course\",\"Coursera\",\"edX\",\"DataCamp\",\"Python for Data Science Handbook\",\"course criteria\"],\"note_type\":\"direction\",\"rationale\":\"This is durable course-selection guidance with criteria and options, not just the user's interest as an atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable guidance for the user's possible Data Science with Python online-course choice\"},\"summary\":\"Taking an online Data Science with Python course was framed as a good idea because of high demand, Python's versatility and accessibility, and career opportunities. Suggested evaluation criteria were reputation, content coverage such as preprocessing, visualization, machine learning, and deep learning, instructor credentials, practical assignments/projects, and support; example resources included Coursera, edX, DataCamp, and the free \\\"Python for Data Science Handbook\\\".\",\"tags\":[\"learning\",\"data_science\",\"course_selection\"],\"title\":\"Data Science with Python course evaluation criteria and resource options\",\"valid_from\":\"2023-05-20T08:00:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5453,
+                "completionTokens": 2014,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

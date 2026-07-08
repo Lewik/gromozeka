@@ -1936,7 +1936,6 @@ private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
         sourceIds = replacementSourceIds,
         candidateHits = candidateHits,
     )
-        .filterNot { it.toItemRef() in rejectedRefs }
     val missingReplacementHits = replacementHits.filterNot { it.toItemRef() in existingRefs }
     val suppressRawSources =
         plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET && !includeHistoricalTypedMemory

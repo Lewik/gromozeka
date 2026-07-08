@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "6c25e3910e2c58fa9bee9aa1fac7b5f47749114e69fed55e55eee6fc64af48c8",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:e6041065\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 21:00\nTranscript:\nuser: I'm planning a 5-day trip to the city and I'm trying to pack lightly. Can you help me decide how many tops to bring? I tend to overpack, but I also want to make sure I have enough options. \nassistant: I'm happy to help!\n\nPacking lightly can be a challenge, especially when it comes to tops. Here's a simple formula to help you decide how many tops to bring:\n\n**The 3-2-1 Rule**\n\n* 3 tops for every 5 days (so, 3 tops for your 5-day trip)\n* 2 of those tops should be versatile enough to be dressed up or down\n* 1 top should be a special occasion or \"wow\" piece (if you have plans for a nicer dinner or event)\n\nThis rule assumes you'll be wearing each top once or twice, depending on your activities and preferences. You can always do a quick wash or spot clean if needed.\n\nConsidering your tendency to overpack, let's stick to the 3-top rule. Here's a breakdown:\n\n* 1-2 tops for casual days (e.g., a lightweight t-shirt or blouse)\n* 1 top for a slightly dressier occasion (e.g., a button-down shirt or a nicer blouse)\n\nRemember, you can always mix and match with the bottoms you bring to create multiple outfits. Do you have any other packing concerns or questions?\nuser: I'm also worried about packing enough undergarments and socks. I always seem to forget to pack enough, especially when I'm doing outdoor activities. Can you give me some tips on how to estimate how many I'll need?\nassistant: Don't worry, I've got you covered!\n\nPacking enough undergarments and socks can be a challenge, especially when you're planning outdoor activities. Here are some tips to help you estimate how many you'll need:\n\n**Undergarments:**\n\n* Plan for 1-2 pairs of undergarments per day, depending on your activity level and personal preference.\n* If you're planning outdoor activities like hiking, biking, or swimming, consider packing an extra pair or two for unexpected situations.\n* Consider packing a few quick-dry or moisture-wicking undergarments for high-activity days.\n* Don't forget to pack a few extra for unexpected delays or changes in plans.\n\nFor a 5-day trip, aim to pack:\n\n* 7-10 pairs of undergarments (1-2 pairs per day, plus a few extras)\n\n**Socks:**\n\n* Plan for 1-2 pairs of socks per day, depending on your activity level and the type of activities you have planned.\n* If you're planning outdoor activities that involve wet or dirty conditions (e.g., hiking, water sports), consider packing an extra pair or two.\n* Consider packing a few quick-dry or moisture-wicking socks for high-activity days.\n* Don't forget to pack a few extra for unexpected delays or changes in plans.\n\nFor a 5-day trip, aim to pack:\n\n* 10-14 pairs of socks (1-2 pairs per day, plus a few extras)\n\n**Additional Tips:**\n\n* Pack a few spare undergarments and socks in your carry-on or daypack in case your checked luggage is delayed.\n* Consider packing clothing that can be easily mixed and matched to create multiple outfits.\n* Roll your undergarments and socks to save space in your luggage and reduce wrinkles.\n* If you're planning to do laundry during your trip, you can pack fewer undergarments and socks.\n\nBy following these guidelines, you should have a comfortable and adequate supply of undergarments and socks for your 5-day trip. Remember, it's always better to err on the side of caution and pack a few extras, just in case!\n\nDo you have any other packing concerns or questions?\nuser: I think I'll prioritize packing versatile clothing items that can be dressed up or down. I've also been trying to pack more scarves and jackets that can add some variety to my outfits. Do you have any suggestions on how to choose the right toiletries to pack, considering I tend to overpack them as well?\nassistant: Excellent approach on prioritizing versatile clothing items! Scarves and jackets are great additions to add variety to your outfits.\n\nNow, let's tackle the toiletries. Overpacking toiletries is a common pitfall, but with a few simple strategies, you can streamline your packing list.\n\n**Toiletry Packing Tips:**\n\n1. **Multi-tasking products:** Look for products that serve multiple purposes, such as:\n\t* A facial moisturizer with SPF\n\t* A shampoo and conditioner combo\n\t* A lip balm with SPF\n2. **Travel-sized essentials:** Opt for travel-sized toiletries (decant your regular products into smaller containers or purchase travel-sized versions) to save space and weight.\n3. **Prioritize the essentials:** Focus on the must-haves, such as:\n\t* Toothbrush, toothpaste, and dental floss\n\t* Deodorant and anti-perspirant\n\t* Shampoo, conditioner, and body wash\n\t* Razor and shaving cream (if applicable)\n\t* Makeup and makeup remover (if applicable)\n4. **Limit the \"nice-to-haves\":** Be realistic about what you'll actually use during your trip. Consider leaving behind:\n\t* Hair styling products (unless you have specific hair needs)\n\t* Exfoliating scrubs or masks\n\t* Fragrances or perfumes (you can always purchase travel-sized versions or use hotel samples)\n5. **Pack a toiletry bag with a purpose:** Use a toiletry bag with separate compartments to keep items organized and easy to find. This will also help you avoid overpacking.\n6. **Check the TSA's 3-1-1 liquids rule:** If you're flying, make sure to follow the TSA's guidelines for liquids, gels, and aerosols in your carry-on.\n\n**Toiletry Packing List:**\n\nFor a 5-day trip, consider packing:\n\n* Toothbrush, toothpaste, and dental floss\n* Deodorant and anti-perspirant\n* Travel-sized shampoo, conditioner, and body wash\n* Razor and shaving cream (if applicable)\n* Makeup and makeup remover (if applicable)\n* Hairbrush or comb\n* Contact lenses and solution (if applicable)\n* Prescription medication and any necessary documentation\n\n**Additional Tips:**\n\n* Pack a small bottle of hand sanitizer for convenience.\n* Consider packing a few hotel samples or travel-sized toiletries to supplement your own products.\n* If you have specific skin or hair needs, be sure to pack the necessary products.\n* Don't forget to check the expiration dates of your toiletries before packing.\n\nBy following these guidelines, you should be able to pack a well-stocked toiletry bag without overdoing it.\n\nDo you have any other questions or concerns about packing toiletries?\nuser: I'm trying to avoid overpacking, so I think I'll stick to the essentials. I did learn my lesson on my last trip when I packed an entire bag of skincare products and hair care products, but I only ended up using half of them. I'm also thinking of packing some snacks, like nuts and energy bars, so I don't have to rely on airport or bus station food. Do you have any recommendations for healthy snack options that are easy to pack?\nassistant: The skincare and haircare product overload is a common mistake many of us make! It's great that you're being more mindful of your packing list this time around.\n\nNow, let's talk about healthy snack options that are easy to pack and won't spoil easily. Here are some great choices:\n\n**Healthy Snack Options:**\n\n1. **Nuts and seeds:** Almonds, cashews, pumpkin seeds, and sunflower seeds are all nutritious and filling.\n2. **Dried fruits:** Dried apricots, cranberries, raisins, and dates are sweet and chewy.\n3. **Energy bars:** Look for bars with wholesome ingredients like nuts, seeds, and dried fruits. Some good options include RXBAR, Clif Bar, and LaraBar.\n4. **Jerky:** Beef, turkey, or chicken jerky is a protein-rich snack that's easy to pack.\n5. **Granola:** A small bag of homemade or store-bought granola can be a satisfying snack.\n6. **Trail mix:** A mix of nuts, seeds, and dried fruit is a classic snack that's easy to prepare or buy.\n7. **Energy chews:** Energy chews like Clif Shot Bloks or Gu Chomps provide a quick energy boost.\n8. **Fresh fruit:** Apples, oranges, bananas, or avocados are all easy to pack and provide a refreshing snack.\n9. **Sandwiches or wraps:** Consider packing small sandwiches or wraps with healthy fillings like peanut butter, hummus, or turkey.\n10. **Dark chocolate:** A small bar of dark chocolate (70% cocoa or higher) can be a sweet treat.\n\n**Tips for Packing Snacks:**\n\n1. **Pack in small portions:** Divide your snacks into small bags or containers to avoid overeating.\n2. **Choose snacks with a long shelf life:** Opt for snacks that won't spoil easily, like nuts, dried fruits, and energy bars.\n3. **Consider your dietary needs:** If you have specific dietary restrictions or preferences, be sure to pack snacks that fit your needs.\n4. **Pack snacks in your carry-on:** This way, you can access them easily during your trip.\n\nBy packing these healthy snack options, you'll be prepared for any hunger pangs that strike during your trip. Remember to stay hydrated by drinking plenty of water, too!\n\nDo you have any other questions about packing snacks or preparing for your trip?\nuser: I'm glad you're considering packing healthy snack options. On my last trip, I packed a bunch of snacks, including nuts and energy bars, and it really helped me save money and stay energized during my travels. Since I packed 5 pairs of shoes, I had to make sure I had enough space in my luggage for my snacks, too! Anyway, I was wondering if you could recommend some good ways to stay organized while packing. I've started using packing cubes, and they've been a game-changer, but I'm always looking for more tips and tricks.\nassistant: I'm glad you're a believer in the power of packing healthy snacks! And I can only imagine the struggle of fitting 5 pairs of shoes and snacks into your luggage!\n\nNow, let's talk about staying organized while packing. Packing cubes are an excellent start, but here are some additional tips to help you pack like a pro:\n\n**Packing Organization Tips:**\n\n1. **Make a packing list:** Write down everything you need to pack, and check items off as you go. This helps ensure you don't forget anything essential.\n2. **Categorize and group similar items:** Pack similar items together, like all toiletries in one bag or all electronics in another.\n3. **Use a packing template:** Create a mental or physical template for your luggage, dividing it into sections for different types of items. This helps you visualize your packing space and make the most of it.\n4. **Roll your clothes:** Rolling your clothes instead of folding them can help reduce wrinkles and save space in your luggage.\n5. **Pack multipurpose items:** Choose items that serve multiple purposes, like a sarong that can be used as a blanket, towel, or dress.\n6. **Keep essentials accessible:** Pack essentials like your passport, phone charger, and medication in an easily accessible place, like a separate bag or pocket.\n7. **Use every available space:** Make the most of your luggage's pockets, compartments, and straps. Use packing cubes or small bags to fill any empty spaces.\n8. **Pack a 'first night' bag:** Pack a small bag with essentials like a change of clothes, toiletries, and medications in case your luggage is delayed or lost.\n9. **Keep cords and cables organized:** Use cable organizers or small bags to keep your cords and cables tidy and easy to find.\n10. **Weigh and measure your luggage:** Make sure you're within the airline's weight and size limits to avoid any issues at check-in.\n\n**Packing Cube Tips:**\n\n1. **Use different colored cubes for different categories:** Use different colored cubes for clothes, toiletries, electronics, etc. to help you quickly identify what's inside.\n2. **Pack cubes within cubes:** Use smaller cubes within larger ones to create a nested system and maximize space.\n3. **Fill cubes to the brim:** Make the most of your cube space by filling them to the brim.\n4. **Use cube straps or clips:** Use straps or clips to keep your cubes closed and secure during transit.\n\nBy following these tips, you'll be well on your way to becoming a packing pro! Remember to stay flexible and adjust your packing strategy based on your specific needs and the type of trip you're taking.\n\nDo you have any other questions about packing or staying organized during your trip?\nuser: I think I've got a good handle on packing snacks and staying organized. One thing I've been trying to do is make a packing list a week before I travel to help me plan and prepare. It's really helped me avoid forgetting essential items and prioritize what I really need to pack. Do you have any tips on how to make the most of my packing list?\n(Note: Please respond as the assistant)\nassistant: You're a planner, and I love it! Creating a packing list a week before your trip is an excellent strategy to ensure you're well-prepared. Here are some tips to help you make the most of your packing list:\n\n**Packing List Tips:**\n\n1. **Review and revise:** Review your list daily or every other day to revise and refine it. This will help you remember anything you might have forgotten initially.\n2. **Categorize and prioritize:** Organize your list into categories (e.g., clothing, toiletries, electronics) and prioritize items based on importance and frequency of use.\n3. **Check the weather:** Check the weather forecast for your destination and adjust your packing list accordingly.\n4. **Pack multipurpose items:** Identify items that can serve multiple purposes and pack those instead of separate items.\n5. **Consider your activities:** Think about the activities you'll be doing during your trip and pack accordingly. For example, if you'll be hiking, you'll need sturdy shoes and comfortable clothing.\n6. **Pack essentials in carry-on:** Make sure to pack essential items like your passport, phone charger, and medication in your carry-on luggage in case your checked luggage is delayed.\n7. **Use a 'maybe' list:** Create a separate list for items you're unsure about packing. Review this list daily and remove items that you realize you don't need.\n8. **Check with your airline:** Check with your airline for any specific baggage restrictions or requirements, such as lithium battery restrictions.\n9. **Pack a 'first night' bag:** Pack a small bag with essentials like a change of clothes, toiletries, and medications in case your luggage is delayed or lost.\n10. **Digital backup:** Take a photo of your packing list or save it to your phone in case you need to reference it during your trip.\n\nBy following these tips, you'll be able to create a comprehensive and practical packing list that will help you stay organized and prepared for your trip.\n\nDo you have any other questions about creating a packing list or preparing for your trip?\n\n        Candidate notes:\n        [0] type=PLAN title=Packing list workflow for user's travel preparation summary=The user benefits from creating a packing list about a week before travel, then reviewing and refining it by categories, priorities, weather, activities, multipurpose items, carry-on essentials, a separate 'maybe' list, airline restrictions, a 'first night' bag, and a digital backup/photo. scope=User's reusable travel packing-list workflow for planning trips and avoiding forgotten essentials entities=entity:<0>,entity:<1> keywords=packing list,week before travel,maybe list,first night bag,carry-on essentials,travel organization tags=travel,packing,organization,planning evidence=make a packing list a week before I travel to help me plan and prepare\n[1] type=LESSON title=User's travel overpacking lessons and countermeasures summary=For short city trips, the user's reusable anti-overpacking approach is to prioritize versatile clothing that can be dressed up or down, add variety with scarves and jackets, stick to essential toiletries after a past skincare/haircare overpack, use packing cubes for organization, and preserve luggage space for snacks. scope=User's learned travel-packing strategy for avoiding overpacking on short trips entities=entity:<0>,entity:<2>,entity:<3>,entity:<4> keywords=overpacking,versatile clothing,scarves,jackets,essential toiletries,packing cubes,snacks tags=travel,packing,lesson,light_packing evidence=I did learn my lesson on my last trip when I packed an entire bag of skincare products and hair care products, but I only ended up using half of them\n[2] type=CONTEXT title=Recommended 5-day city trip packing heuristics summary=For the user's 5-day city trip, the recommended heuristics included the '3-2-1 Rule' for tops (3 tops, 2 versatile, 1 special/wow), 7–10 undergarments, 10–14 socks with quick-dry/moisture-wicking extras for outdoor activities, essential/multi-tasking travel-sized toiletries, and organization via packing cubes, grouped categories, accessible essentials, and luggage limit checks. scope=Reusable assistant-generated packing heuristics from the user's 5-day city trip planning session entities=entity:<0>,entity:<5>,entity:<3> keywords=3-2-1 Rule,5-day city trip,tops,undergarments,socks,toiletries,packing cubes,packing organization tags=travel,packing,heuristics,city_trip evidence=The 3-2-1 Rule\n\n        Existing active notes:\n        id=hot-path-747f8fbf00b5-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Light packing approach for 5-day trip summary=For a 5-day trip, the user settled on a light packing strategy built around favorite, versatile pieces: 2 bottoms, 3 tops, no extra shoes, a small laundry detergent pack, a small toiletry bag with essentials and sample-sized add-ons, and self-packed snacks. scope=User's reusable travel packing approach for short trips, especially around 5 days keywords=5-day trip,pack light,no extra shoes,laundry detergent,toiletry bag,snacks,favorite pieces tags=travel,packing,light_packing useCount=0\nid=hot-path-747f8fbf00b5-note-3 type=LESSON status=ACTIVE maturity=FRESH title=Toiletry minimization strategy for user travel summary=Because the user tends to overpack toiletries and use only a few basics, the agreed travel toiletry strategy is to use a small toiletry bag, prioritize daily essentials such as toothbrush, toothpaste, deodorant, and prescription medications, and add only a few sample-sized items like face wash and moisturizer. scope=User's reusable strategy for avoiding toiletry overpacking while traveling keywords=toiletries,overpack,small toiletry bag,toothbrush,toothpaste,deodorant,prescription medications,sample-sized toiletries,face wash,moisturizer tags=travel,toiletries,packing_strategy useCount=0\nid=hot-path-747f8fbf00b5-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Snack options recommended for user's travel packing summary=For travel snacks, recommended compact and low-spoilage options included nuts and seeds, dried fruits, energy bars, jerky, granola or energy balls, crackers or pretzels, fresh fruit, trail mix, dark chocolate, and instant coffee or tea; snacks should be checked for expiration dates and packed in airtight containers. scope=Reusable travel snack recommendation set for the user when packing their own snacks keywords=travel snacks,nuts and seeds,dried fruits,energy bars,jerky,granola,crackers,pretzels,fresh fruit,trail mix,dark chocolate,instant coffee tags=travel,snacks,recommendations useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:e6041065",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:68250914b460fbc675f58e574b0dc047"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:e6041065\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 21:00\nTranscript:\nuser: I'm planning a 5-day trip to the city and I'm trying to pack lightly. Can you help me decide how many tops to bring? I tend to overpack, but I also want to make sure I have enough options. \nassistant: I'm happy to help!\n\nPacking lightly can be a challenge, especially when it comes to tops. Here's a simple formula to help you decide how many tops to bring:\n\n**The 3-2-1 Rule**\n\n* 3 tops for every 5 days (so, 3 tops for your 5-day trip)\n* 2 of those tops should be versatile enough to be dressed up or down\n* 1 top should be a special occasion or \"wow\" piece (if you have plans for a nicer dinner or event)\n\nThis rule assumes you'll be wearing each top once or twice, depending on your activities and preferences. You can always do a quick wash or spot clean if needed.\n\nConsidering your tendency to overpack, let's stick to the 3-top rule. Here's a breakdown:\n\n* 1-2 tops for casual days (e.g., a lightweight t-shirt or blouse)\n* 1 top for a slightly dressier occasion (e.g., a button-down shirt or a nicer blouse)\n\nRemember, you can always mix and match with the bottoms you bring to create multiple outfits. Do you have any other packing concerns or questions?\nuser: I'm also worried about packing enough undergarments and socks. I always seem to forget to pack enough, especially when I'm doing outdoor activities. Can you give me some tips on how to estimate how many I'll need?\nassistant: Don't worry, I've got you covered!\n\nPacking enough undergarments and socks can be a challenge, especially when you're planning outdoor activities. Here are some tips to help you estimate how many you'll need:\n\n**Undergarments:**\n\n* Plan for 1-2 pairs of undergarments per day, depending on your activity level and personal preference.\n* If you're planning outdoor activities like hiking, biking, or swimming, consider packing an extra pair or two for unexpected situations.\n* Consider packing a few quick-dry or moisture-wicking undergarments for high-activity days.\n* Don't forget to pack a few extra for unexpected delays or changes in plans.\n\nFor a 5-day trip, aim to pack:\n\n* 7-10 pairs of undergarments (1-2 pairs per day, plus a few extras)\n\n**Socks:**\n\n* Plan for 1-2 pairs of socks per day, depending on your activity level and the type of activities you have planned.\n* If you're planning outdoor activities that involve wet or dirty conditions (e.g., hiking, water sports), consider packing an extra pair or two.\n* Consider packing a few quick-dry or moisture-wicking socks for high-activity days.\n* Don't forget to pack a few extra for unexpected delays or changes in plans.\n\nFor a 5-day trip, aim to pack:\n\n* 10-14 pairs of socks (1-2 pairs per day, plus a few extras)\n\n**Additional Tips:**\n\n* Pack a few spare undergarments and socks in your carry-on or daypack in case your checked luggage is delayed.\n* Consider packing clothing that can be easily mixed and matched to create multiple outfits.\n* Roll your undergarments and socks to save space in your luggage and reduce wrinkles.\n* If you're planning to do laundry during your trip, you can pack fewer undergarments and socks.\n\nBy following these guidelines, you should have a comfortable and adequate supply of undergarments and socks for your 5-day trip. Remember, it's always better to err on the side of caution and pack a few extras, just in case!\n\nDo you have any other packing concerns or questions?\nuser: I think I'll prioritize packing versatile clothing items that can be dressed up or down. I've also been trying to pack more scarves and jackets that can add some variety to my outfits. Do you have any suggestions on how to choose the right toiletries to pack, considering I tend to overpack them as well?\nassistant: Excellent approach on prioritizing versatile clothing items! Scarves and jackets are great additions to add variety to your outfits.\n\nNow, let's tackle the toiletries. Overpacking toiletries is a common pitfall, but with a few simple strategies, you can streamline your packing list.\n\n**Toiletry Packing Tips:**\n\n1. **Multi-tasking products:** Look for products that serve multiple purposes, such as:\n\t* A facial moisturizer with SPF\n\t* A shampoo and conditioner combo\n\t* A lip balm with SPF\n2. **Travel-sized essentials:** Opt for travel-sized toiletries (decant your regular products into smaller containers or purchase travel-sized versions) to save space and weight.\n3. **Prioritize the essentials:** Focus on the must-haves, such as:\n\t* Toothbrush, toothpaste, and dental floss\n\t* Deodorant and anti-perspirant\n\t* Shampoo, conditioner, and body wash\n\t* Razor and shaving cream (if applicable)\n\t* Makeup and makeup remover (if applicable)\n4. **Limit the \"nice-to-haves\":** Be realistic about what you'll actually use during your trip. Consider leaving behind:\n\t* Hair styling products (unless you have specific hair needs)\n\t* Exfoliating scrubs or masks\n\t* Fragrances or perfumes (you can always purchase travel-sized versions or use hotel samples)\n5. **Pack a toiletry bag with a purpose:** Use a toiletry bag with separate compartments to keep items organized and easy to find. This will also help you avoid overpacking.\n6. **Check the TSA's 3-1-1 liquids rule:** If you're flying, make sure to follow the TSA's guidelines for liquids, gels, and aerosols in your carry-on.\n\n**Toiletry Packing List:**\n\nFor a 5-day trip, consider packing:\n\n* Toothbrush, toothpaste, and dental floss\n* Deodorant and anti-perspirant\n* Travel-sized shampoo, conditioner, and body wash\n* Razor and shaving cream (if applicable)\n* Makeup and makeup remover (if applicable)\n* Hairbrush or comb\n* Contact lenses and solution (if applicable)\n* Prescription medication and any necessary documentation\n\n**Additional Tips:**\n\n* Pack a small bottle of hand sanitizer for convenience.\n* Consider packing a few hotel samples or travel-sized toiletries to supplement your own products.\n* If you have specific skin or hair needs, be sure to pack the necessary products.\n* Don't forget to check the expiration dates of your toiletries before packing.\n\nBy following these guidelines, you should be able to pack a well-stocked toiletry bag without overdoing it.\n\nDo you have any other questions or concerns about packing toiletries?\nuser: I'm trying to avoid overpacking, so I think I'll stick to the essentials. I did learn my lesson on my last trip when I packed an entire bag of skincare products and hair care products, but I only ended up using half of them. I'm also thinking of packing some snacks, like nuts and energy bars, so I don't have to rely on airport or bus station food. Do you have any recommendations for healthy snack options that are easy to pack?\nassistant: The skincare and haircare product overload is a common mistake many of us make! It's great that you're being more mindful of your packing list this time around.\n\nNow, let's talk about healthy snack options that are easy to pack and won't spoil easily. Here are some great choices:\n\n**Healthy Snack Options:**\n\n1. **Nuts and seeds:** Almonds, cashews, pumpkin seeds, and sunflower seeds are all nutritious and filling.\n2. **Dried fruits:** Dried apricots, cranberries, raisins, and dates are sweet and chewy.\n3. **Energy bars:** Look for bars with wholesome ingredients like nuts, seeds, and dried fruits. Some good options include RXBAR, Clif Bar, and LaraBar.\n4. **Jerky:** Beef, turkey, or chicken jerky is a protein-rich snack that's easy to pack.\n5. **Granola:** A small bag of homemade or store-bought granola can be a satisfying snack.\n6. **Trail mix:** A mix of nuts, seeds, and dried fruit is a classic snack that's easy to prepare or buy.\n7. **Energy chews:** Energy chews like Clif Shot Bloks or Gu Chomps provide a quick energy boost.\n8. **Fresh fruit:** Apples, oranges, bananas, or avocados are all easy to pack and provide a refreshing snack.\n9. **Sandwiches or wraps:** Consider packing small sandwiches or wraps with healthy fillings like peanut butter, hummus, or turkey.\n10. **Dark chocolate:** A small bar of dark chocolate (70% cocoa or higher) can be a sweet treat.\n\n**Tips for Packing Snacks:**\n\n1. **Pack in small portions:** Divide your snacks into small bags or containers to avoid overeating.\n2. **Choose snacks with a long shelf life:** Opt for snacks that won't spoil easily, like nuts, dried fruits, and energy bars.\n3. **Consider your dietary needs:** If you have specific dietary restrictions or preferences, be sure to pack snacks that fit your needs.\n4. **Pack snacks in your carry-on:** This way, you can access them easily during your trip.\n\nBy packing these healthy snack options, you'll be prepared for any hunger pangs that strike during your trip. Remember to stay hydrated by drinking plenty of water, too!\n\nDo you have any other questions about packing snacks or preparing for your trip?\nuser: I'm glad you're considering packing healthy snack options. On my last trip, I packed a bunch of snacks, including nuts and energy bars, and it really helped me save money and stay energized during my travels. Since I packed 5 pairs of shoes, I had to make sure I had enough space in my luggage for my snacks, too! Anyway, I was wondering if you could recommend some good ways to stay organized while packing. I've started using packing cubes, and they've been a game-changer, but I'm always looking for more tips and tricks.\nassistant: I'm glad you're a believer in the power of packing healthy snacks! And I can only imagine the struggle of fitting 5 pairs of shoes and snacks into your luggage!\n\nNow, let's talk about staying organized while packing. Packing cubes are an excellent start, but here are some additional tips to help you pack like a pro:\n\n**Packing Organization Tips:**\n\n1. **Make a packing list:** Write down everything you need to pack, and check items off as you go. This helps ensure you don't forget anything essential.\n2. **Categorize and group similar items:** Pack similar items together, like all toiletries in one bag or all electronics in another.\n3. **Use a packing template:** Create a mental or physical template for your luggage, dividing it into sections for different types of items. This helps you visualize your packing space and make the most of it.\n4. **Roll your clothes:** Rolling your clothes instead of folding them can help reduce wrinkles and save space in your luggage.\n5. **Pack multipurpose items:** Choose items that serve multiple purposes, like a sarong that can be used as a blanket, towel, or dress.\n6. **Keep essentials accessible:** Pack essentials like your passport, phone charger, and medication in an easily accessible place, like a separate bag or pocket.\n7. **Use every available space:** Make the most of your luggage's pockets, compartments, and straps. Use packing cubes or small bags to fill any empty spaces.\n8. **Pack a 'first night' bag:** Pack a small bag with essentials like a change of clothes, toiletries, and medications in case your luggage is delayed or lost.\n9. **Keep cords and cables organized:** Use cable organizers or small bags to keep your cords and cables tidy and easy to find.\n10. **Weigh and measure your luggage:** Make sure you're within the airline's weight and size limits to avoid any issues at check-in.\n\n**Packing Cube Tips:**\n\n1. **Use different colored cubes for different categories:** Use different colored cubes for clothes, toiletries, electronics, etc. to help you quickly identify what's inside.\n2. **Pack cubes within cubes:** Use smaller cubes within larger ones to create a nested system and maximize space.\n3. **Fill cubes to the brim:** Make the most of your cube space by filling them to the brim.\n4. **Use cube straps or clips:** Use straps or clips to keep your cubes closed and secure during transit.\n\nBy following these tips, you'll be well on your way to becoming a packing pro! Remember to stay flexible and adjust your packing strategy based on your specific needs and the type of trip you're taking.\n\nDo you have any other questions about packing or staying organized during your trip?\nuser: I think I've got a good handle on packing snacks and staying organized. One thing I've been trying to do is make a packing list a week before I travel to help me plan and prepare. It's really helped me avoid forgetting essential items and prioritize what I really need to pack. Do you have any tips on how to make the most of my packing list?\n(Note: Please respond as the assistant)\nassistant: You're a planner, and I love it! Creating a packing list a week before your trip is an excellent strategy to ensure you're well-prepared. Here are some tips to help you make the most of your packing list:\n\n**Packing List Tips:**\n\n1. **Review and revise:** Review your list daily or every other day to revise and refine it. This will help you remember anything you might have forgotten initially.\n2. **Categorize and prioritize:** Organize your list into categories (e.g., clothing, toiletries, electronics) and prioritize items based on importance and frequency of use.\n3. **Check the weather:** Check the weather forecast for your destination and adjust your packing list accordingly.\n4. **Pack multipurpose items:** Identify items that can serve multiple purposes and pack those instead of separate items.\n5. **Consider your activities:** Think about the activities you'll be doing during your trip and pack accordingly. For example, if you'll be hiking, you'll need sturdy shoes and comfortable clothing.\n6. **Pack essentials in carry-on:** Make sure to pack essential items like your passport, phone charger, and medication in your carry-on luggage in case your checked luggage is delayed.\n7. **Use a 'maybe' list:** Create a separate list for items you're unsure about packing. Review this list daily and remove items that you realize you don't need.\n8. **Check with your airline:** Check with your airline for any specific baggage restrictions or requirements, such as lithium battery restrictions.\n9. **Pack a 'first night' bag:** Pack a small bag with essentials like a change of clothes, toiletries, and medications in case your luggage is delayed or lost.\n10. **Digital backup:** Take a photo of your packing list or save it to your phone in case you need to reference it during your trip.\n\nBy following these tips, you'll be able to create a comprehensive and practical packing list that will help you stay organized and prepared for your trip.\n\nDo you have any other questions about creating a packing list or preparing for your trip?\n\n        Candidate notes:\n        [0] type=PLAN title=Packing list workflow for user's travel preparation summary=The user benefits from creating a packing list about a week before travel, then reviewing and refining it by categories, priorities, weather, activities, multipurpose items, carry-on essentials, a separate 'maybe' list, airline restrictions, a 'first night' bag, and a digital backup/photo. scope=User's reusable travel packing-list workflow for planning trips and avoiding forgotten essentials entities=entity:<0>,entity:<1> keywords=packing list,week before travel,maybe list,first night bag,carry-on essentials,travel organization tags=travel,packing,organization,planning evidence=make a packing list a week before I travel to help me plan and prepare\n[1] type=LESSON title=User's travel overpacking lessons and countermeasures summary=For short city trips, the user's reusable anti-overpacking approach is to prioritize versatile clothing that can be dressed up or down, add variety with scarves and jackets, stick to essential toiletries after a past skincare/haircare overpack, use packing cubes for organization, and preserve luggage space for snacks. scope=User's learned travel-packing strategy for avoiding overpacking on short trips entities=entity:<0>,entity:<2>,entity:<3>,entity:<4> keywords=overpacking,versatile clothing,scarves,jackets,essential toiletries,packing cubes,snacks tags=travel,packing,lesson,light_packing evidence=I did learn my lesson on my last trip when I packed an entire bag of skincare products and hair care products, but I only ended up using half of them\n[2] type=CONTEXT title=Recommended 5-day city trip packing heuristics summary=For the user's 5-day city trip, the recommended heuristics included the '3-2-1 Rule' for tops (3 tops, 2 versatile, 1 special/wow), 7–10 undergarments, 10–14 socks with quick-dry/moisture-wicking extras for outdoor activities, essential/multi-tasking travel-sized toiletries, and organization via packing cubes, grouped categories, accessible essentials, and luggage limit checks. scope=Reusable assistant-generated packing heuristics from the user's 5-day city trip planning session entities=entity:<0>,entity:<5>,entity:<3> keywords=3-2-1 Rule,5-day city trip,tops,undergarments,socks,toiletries,packing cubes,packing organization tags=travel,packing,heuristics,city_trip evidence=The 3-2-1 Rule\n\n        Existing active notes:\n        id=hot-path-747f8fbf00b5-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Light packing approach for 5-day trip summary=For a 5-day trip, the user settled on a light packing strategy built around favorite, versatile pieces: 2 bottoms, 3 tops, no extra shoes, a small laundry detergent pack, a small toiletry bag with essentials and sample-sized add-ons, and self-packed snacks. scope=User's reusable travel packing approach for short trips, especially around 5 days keywords=5-day trip,pack light,no extra shoes,laundry detergent,toiletry bag,snacks,favorite pieces tags=travel,packing,light_packing useCount=0\nid=hot-path-747f8fbf00b5-note-3 type=LESSON status=ACTIVE maturity=FRESH title=Toiletry minimization strategy for user travel summary=Because the user tends to overpack toiletries and use only a few basics, the agreed travel toiletry strategy is to use a small toiletry bag, prioritize daily essentials such as toothbrush, toothpaste, deodorant, and prescription medications, and add only a few sample-sized items like face wash and moisturizer. scope=User's reusable strategy for avoiding toiletry overpacking while traveling keywords=toiletries,overpack,small toiletry bag,toothbrush,toothpaste,deodorant,prescription medications,sample-sized toiletries,face wash,moisturizer tags=travel,toiletries,packing_strategy useCount=0\nid=hot-path-747f8fbf00b5-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Snack options recommended for user's travel packing summary=For travel snacks, recommended compact and low-spoilage options included nuts and seeds, dried fruits, energy bars, jerky, granola or energy balls, crackers or pretzels, fresh fruit, trail mix, dark chocolate, and instant coffee or tea; snacks should be checked for expiration dates and packed in airtight containers. scope=Reusable travel snack recommendation set for the user when packing their own snacks keywords=travel snacks,nuts and seeds,dried fruits,energy bars,jerky,granola,crackers,pretzels,fresh fruit,trail mix,dark chocolate,instant coffee tags=travel,snacks,recommendations useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:e6041065",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:68250914b460fbc675f58e574b0dc047"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-747f8fbf00b5-note-2\"}],\"patch\":null,\"reason\":\"Captures a distinct reusable packing-list workflow not already covered by the existing light packing strategy.\",\"target_note_id\":null},{\"action\":\"supersede\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"supports\",\"link_weight\":0.9,\"to_note_id\":\"hot-path-747f8fbf00b5-note-3\"},{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-747f8fbf00b5-note-4\"}],\"patch\":null,\"reason\":\"Candidate is a broader and more current synthesis of the user's anti-overpacking lessons, including versatile clothing, scarves/jackets, essential toiletries, packing cubes, and snacks; it subsumes the existing light packing approach.\",\"target_note_id\":\"hot-path-747f8fbf00b5-note-2\"},{\"action\":\"noop\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Mostly assistant-generated trip-specific heuristics and partially duplicates existing light-packing and toiletry/snack notes; lower reusable value than the user-centered strategy notes.\",\"target_note_id\":\"hot-path-747f8fbf00b5-note-2\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7302,
+                "completionTokens": 312,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

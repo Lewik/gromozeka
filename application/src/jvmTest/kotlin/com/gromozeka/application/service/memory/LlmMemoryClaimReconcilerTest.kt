@@ -206,6 +206,138 @@ class LlmMemoryClaimReconcilerTest {
     }
 
     @Test
+    fun insertsInsteadOfSupersedingCurrentMetricWhenSubjectDiffers() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    operationJson(
+                        action = "supersede",
+                        targetClaimId = "claim-existing",
+                        canonicalPredicate = "current_metric_value",
+                        conflictPolicy = "replace",
+                        semanticKinds = listOf("aggregate_value"),
+                    )
+                )
+            )
+        )
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("On Tuesdays and Thursdays I wake 15 minutes earlier for meditation."),
+            ),
+            claimCandidates = listOf(
+                currentMetricCandidate(
+                    subjectEntityId = MEDITATION_ENTITY_ID,
+                    objectValue = "Tuesdays and Thursdays after waking 15 minutes earlier",
+                    normalizedText = "The user's meditation practice currently occurs on Tuesdays and Thursdays after waking 15 minutes earlier than usual.",
+                    scopeText = "Meditation routine schedule",
+                )
+            ),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingWakeTimeClaim(), score = 0.9)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.INSERT, ops.single().action)
+        assertEquals(null, ops.single().targetClaimId)
+    }
+
+    @Test
+    fun insertsInsteadOfSupersedingDifferentCurrentMetricSlotForSameSubject() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    operationJson(
+                        action = "supersede",
+                        targetClaimId = "claim-existing",
+                        canonicalPredicate = "current_metric_value",
+                        conflictPolicy = "replace",
+                        semanticKinds = listOf("aggregate_value"),
+                    )
+                )
+            )
+        )
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("My current team size is five engineers."),
+            ),
+            claimCandidates = listOf(
+                currentMetricCandidate(
+                    subjectEntityId = USER_ENTITY_ID,
+                    objectValue = "five engineers",
+                    normalizedText = "The user's current team size is five engineers.",
+                    scopeText = "Current team size",
+                )
+            ),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingWakeTimeClaim(), score = 0.9)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.INSERT, ops.single().action)
+        assertEquals(null, ops.single().targetClaimId)
+    }
+
+    @Test
+    fun supersedesSameCurrentMetricSlotForSameSubject() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    operationJson(
+                        action = "supersede",
+                        targetClaimId = "claim-existing",
+                        canonicalPredicate = "current_metric_value",
+                        conflictPolicy = "replace",
+                        semanticKinds = listOf("aggregate_value"),
+                    )
+                )
+            )
+        )
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("My current wake-up time is 6:45 AM now."),
+            ),
+            claimCandidates = listOf(
+                currentMetricCandidate(
+                    subjectEntityId = USER_ENTITY_ID,
+                    objectValue = "6:45 AM",
+                    normalizedText = "The user's current wake-up time is 6:45 AM.",
+                    scopeText = "Current wake-up time",
+                )
+            ),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingWakeTimeClaim(), score = 0.9)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.SUPERSEDE, ops.single().action)
+        assertEquals(MemoryClaim.Status.SUPERSEDED, ops.single().updatedClaim?.status)
+    }
+
+    @Test
     fun supersedesAmbiguousEventWhenLlmNoopsMorePreciseDatedDuplicate() = runBlocking {
         val runtime = SequencedJsonRuntime(
             responses = ArrayDeque(
@@ -310,6 +442,7 @@ class LlmMemoryClaimReconcilerTest {
     private companion object {
         val TEST_NAMESPACE = com.gromozeka.domain.model.memory.MemoryNamespace("claim-reconciler-test")
         val USER_ENTITY_ID = MemoryEntity.Id("entity-user")
+        val MEDITATION_ENTITY_ID = MemoryEntity.Id("entity-meditation-practice")
         val NOW: Instant = Instant.parse("2026-01-02T03:04:05Z")
 
         fun conciseAnswersCandidate(): MemoryClaimCandidate =
@@ -351,6 +484,29 @@ class LlmMemoryClaimReconcilerTest {
                 reason = "This is a historical metric observation.",
             )
 
+        fun currentMetricCandidate(
+            subjectEntityId: MemoryEntity.Id,
+            objectValue: String,
+            normalizedText: String,
+            scopeText: String,
+        ): MemoryClaimCandidate =
+            MemoryClaimCandidate(
+                subjectEntityId = subjectEntityId,
+                predicate = "current_metric_value",
+                objectValue = JsonPrimitive(objectValue),
+                normalizedText = normalizedText,
+                scope = MemoryScope.Global(
+                    text = scopeText,
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                qualifiers = JsonObject(emptyMap()),
+                confidence = 0.96,
+                importance = 8,
+                evidenceQuote = normalizedText,
+                evidenceReason = "The target explicitly states the current metric value.",
+                reason = "This is a current metric value.",
+            )
+
         fun existingClaim(): MemoryClaim =
             MemoryClaim(
                 id = MemoryClaim.Id("claim-existing"),
@@ -384,13 +540,36 @@ class LlmMemoryClaimReconcilerTest {
                 predicatePolicy = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE)
                     .first { it.predicate == "metric_observation" },
                 objectValue = JsonPrimitive("25 hours"),
-                normalizedText = "The user's normal-mode run took 25 hours.",
+                normalizedText = "The user's hard-mode run took 25 hours.",
                 scope = MemoryScope.Global(
-                    text = "Normal-mode run duration",
+                    text = "Hard-mode run duration",
                     basis = MemoryScope.Basis.EXPLICIT,
                 ),
                 confidence = 0.99,
                 importance = 7,
+                firstSeenAt = NOW,
+                lastSeenAt = NOW,
+                createdAt = NOW,
+                updatedAt = NOW,
+            )
+
+        fun existingWakeTimeClaim(): MemoryClaim =
+            MemoryClaim(
+                id = MemoryClaim.Id("claim-existing"),
+                namespace = TEST_NAMESPACE,
+                subjectEntityId = USER_ENTITY_ID,
+                predicate = "current_metric_value",
+                predicateFamily = "current_metric_value",
+                predicatePolicy = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE)
+                    .first { it.predicate == "current_metric_value" },
+                objectValue = JsonPrimitive("7:00 AM"),
+                normalizedText = "The user's current wake-up time is 7:00 AM.",
+                scope = MemoryScope.Global(
+                    text = "Current wake-up time",
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                confidence = 0.99,
+                importance = 8,
                 firstSeenAt = NOW,
                 lastSeenAt = NOW,
                 createdAt = NOW,

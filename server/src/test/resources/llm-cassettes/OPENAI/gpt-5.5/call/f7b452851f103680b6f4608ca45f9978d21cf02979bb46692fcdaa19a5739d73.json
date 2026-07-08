@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "f7b452851f103680b6f4608ca45f9978d21cf02979bb46692fcdaa19a5739d73",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:1cea1afa\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 22:45\nTranscript:\nuser: I'm trying to increase my social media presence. Can you help me come up with some ideas for more engaging promotional content on Instagram? By the way, I just checked and I'm now at 600 followers, which is a nice milestone!\nassistant: Congratulations on reaching 600 followers! That's a great milestone! I'd be happy to help you come up with some ideas for more engaging promotional content on Instagram. Here are a few suggestions to get you started:\n\n1. **Behind-the-Scenes (BTS) Content**: Give your followers a sneak peek into your creative process, workspace, or daily routine. This can be a photo or video of you preparing for a shoot, a boomerang of your design process, or even a time-lapse of a project coming together.\n2. **User-Generated Content (UGC) Campaign**: Encourage your followers to share their own experiences, photos, or videos using your product or service. You can create a branded hashtag and re-share or feature some of the best content on your page.\n3. **Q&A Sessions**: Host a weekly or monthly Q&A session where you answer questions from your followers. You can use the \"Question Sticker\" feature in Instagram Stories or create a post asking followers to submit their questions in the comments.\n4. **Exclusive Offers and Discounts**: Create limited-time offers or special discounts for your Instagram followers to incentivize engagement and drive sales. Use Instagram's \"Swipe-Up\" feature to direct followers to your website or a landing page.\n5. **Instagram Stories and IGTV**: Use Instagram Stories to share behind-the-scenes content, sneak peeks, or exclusive deals. You can also create IGTV content, such as tutorials, product demos, or interviews, to provide more in-depth information to your followers.\n6. **Collaborate with Influencers**: Partner with influencers in your niche to reach new audiences and create engaging content. Choose influencers who align with your brand values and have a similar target audience.\n7. **Instagram Live**: Host live sessions, webinars, or workshops to connect with your followers in real-time. You can use Instagram Live to answer questions, provide tutorials, or showcase new products.\n8. **Before-and-After Content**: Share dramatic transformations or results that showcase the benefits of your product or service. This can be a powerful way to demonstrate your value proposition.\n9. **Customer Testimonials**: Share user reviews, ratings, or testimonials to build social proof and credibility. You can create a series of posts or a dedicated Instagram Story highlight featuring customer feedback.\n10. **Instagram Carousel Posts**: Use the carousel feature to share multiple images or videos in a single post. This can be a great way to showcase different products, features, or benefits in a visually appealing way.\n11. **Polls and Surveys**: Engage your followers by asking for their opinions or feedback through polls or surveys. This can help you understand your audience better and create content that resonates with them.\n12. **Seasonal or Timely Content**: Create content that's relevant to current events, holidays, or trends. This can help you stay topical and attract new followers.\n13. **Educational Content**: Share tips, tutorials, or industry insights to establish your brand as a thought leader in your niche.\n14. **Sneak Peeks and Pre-Launches**: Build anticipation by sharing exclusive previews of upcoming products, services, or launches.\n15. **Instagram's Features**: Experiment with Instagram's features like Reels, IGTV, Shopping, and more to create diverse and engaging content.\n\nRemember to keep your content visually appealing, engaging, and aligned with your brand's tone and aesthetic. Mix and match these ideas to find what works best for your audience and adjust your strategy accordingly. Good luck, and congratulations again on reaching 600 followers!\nuser: I want to try out the Q&A session idea. Do you think I should use the \"Question Sticker\" feature in Instagram Stories or create a post asking followers to submit their questions in the comments?\nassistant: Both options are great, and it ultimately depends on your personal preference and the type of engagement you're looking for. Here are some pros and cons of each approach to help you decide:\n\n**Using the \"Question Sticker\" feature in Instagram Stories:**\n\nPros:\n\n1. **Easy to use**: The \"Question Sticker\" is a built-in feature in Instagram Stories, making it easy to add to your story and manage responses.\n2. **Interactive**: Followers can respond directly to the sticker, and you can see their questions in real-time.\n3. **Encourages quick responses**: The ephemeral nature of Instagram Stories can encourage followers to respond quickly, which can lead to more engagement.\n\nCons:\n\n1. **Limited visibility**: Instagram Stories are only visible for 24 hours, which means that followers who miss your story might not be able to participate.\n2. **Limited space**: The \"Question Sticker\" has a character limit, so followers may not be able to ask complex or lengthy questions.\n\n**Creating a post asking followers to submit their questions in the comments:**\n\nPros:\n\n1. **Permanent visibility**: A post remains on your feed indefinitely, allowing followers to participate at their convenience.\n2. **More space for questions**: Followers can ask longer, more detailed questions in the comments, which can lead to more in-depth discussions.\n3. **Easier to track**: You can more easily keep track of questions and responses in the comments section.\n\nCons:\n\n1. **Less interactive**: Followers need to take an extra step to type out their question in the comments, which might reduce engagement.\n2. **More manual effort**: You'll need to manually review and respond to comments, which can be time-consuming.\n\nConsider the following factors to help you decide:\n\n* **Time-sensitive topics**: If you're discussing a timely or trending topic, the \"Question Sticker\" in Instagram Stories might be a better fit.\n* **In-depth discussions**: If you want to encourage more in-depth questions and discussions, a post with comments might be a better choice.\n* **Follower engagement**: If you have a highly engaged audience that's active in the comments, a post might be a better option. If you want to encourage more casual, quick responses, the \"Question Sticker\" might be better.\n\nYou could also experiment with a hybrid approach: Use the \"Question Sticker\" in Instagram Stories to gather questions, and then create a follow-up post with the answers and additional discussion in the comments. This way, you can leverage the benefits of both approaches!\nuser: I think I'll try using the \"Question Sticker\" feature in Instagram Stories first, since it seems like a quick and easy way to get started. Do you have any tips on how to promote my Q&A session to get more followers to participate?\nassistant: The \"Question Sticker\" feature in Instagram Stories is a fantastic way to get started with Q&A sessions. Here are some tips to promote your Q&A session and encourage more followers to participate:\n\n1. **Announce it in advance**: Post a teaser story or feed post a few days before the Q&A session to let your followers know it's coming. This will build anticipation and give them time to think about their questions.\n2. **Use attention-grabbing visuals**: Create an eye-catching graphic or video to promote your Q&A session. Use bright colors, bold text, and emojis to make it stand out.\n3. **Pin a reminder**: Pin a reminder to your Instagram Story highlights or create a separate highlight for your Q&A sessions. This will make it easy for followers to find and remember.\n4. **Encourage followers to ask questions**: Use a call-to-action (CTA) in your promotional post, such as \"Ask me anything about [topic]! 🤔\" or \"Got a question about [topic]? Ask away in my next story! 💬\"\n5. **Specify the topic or theme**: Give your followers an idea of what they can expect from the Q&A session. This will help them prepare questions and make the session more focused.\n6. **Create a branded hashtag**: Develop a branded hashtag for your Q&A sessions, such as #Ask[YourName] or #QandAwith[YourName]. This will help you track engagement and create a consistent brand identity.\n7. **Collaborate with other accounts**: Partner with other accounts in your niche to co-host a Q&A session. This can expand your reach and attract new followers.\n8. **Offer incentives**: Consider offering a small incentive, such as a discount code or a free resource, to followers who participate in the Q&A session.\n9. **Promote across platforms**: Share your Q&A session on other social media platforms, like Twitter or Facebook, to reach a broader audience.\n10. **Follow up**: After the Q&A session, follow up with a post or story thanking participants and encouraging them to share their takeaways. This will help create a sense of community and encourage more followers to participate in future sessions.\n\nExample promotional post:\n\"🤔 Got questions about [topic]? 🤓 I'm hosting a Q&A session in my Instagram Stories tomorrow! 💬 Ask me anything about [topic] and I'll do my best to answer. Use the \"Question Sticker\" in my story to submit your questions. 📝 Don't forget to follow me for updates and behind-the-scenes peeks! 👉 @[YourHandle] #Ask[YourName] #QandAwith[YourName]\"\n\nBy promoting your Q&A session effectively, you'll encourage more followers to participate, increase engagement, and build a stronger connection with your audience. Good luck! 🤞\nuser: I'll definitely use some of these tips to promote my Q&A session. I'm thinking of announcing it in advance and creating a branded hashtag. I'll also specify the topic or theme, which will be my writing process and experiences as a freelancer. Do you think I should answer all the questions I receive, or is it okay to only answer a few?\nassistant: Excellent choices! Announcing in advance, creating a branded hashtag, and specifying the topic will help generate interest and attract the right audience.\n\nRegarding answering questions, it's completely up to you how many questions you want to answer. Here are some pros and cons of answering all questions versus answering a selection:\n\n**Answering all questions:**\n\nPros:\n\n1. **Inclusive**: You're giving equal attention to every follower who takes the time to ask a question.\n2. **Transparency**: You're showing your followers that you value their curiosity and are willing to be open and honest.\n\nCons:\n\n1. **Time-consuming**: Answering every question can be overwhelming, especially if you receive a large number of questions.\n2. **Lengthy responses**: You might need to write lengthy responses to fully address each question, which can be challenging in the Instagram Story format.\n\n**Answering a selection of questions:**\n\nPros:\n\n1. **Time-efficient**: You can focus on answering a manageable number of questions that are most relevant or interesting.\n2. **Quality over quantity**: You can provide more in-depth responses to a smaller number of questions, making the Q&A session more valuable for your followers.\n\nCons:\n\n1. **Disappointment**: Some followers might be disappointed if their question isn't answered.\n2. **Perception of bias**: You might unintentionally create the impression that you're favoring certain followers or questions over others.\n\nHere's a compromise:\n\n1. **Answer a selection of questions**: Choose a mix of questions that are most relevant, interesting, or representative of common topics.\n2. **Address common themes**: If you receive multiple questions on the same topic, address the common theme in a single response.\n3. **Provide additional resources**: If you can't answer every question, offer additional resources or point followers in the direction of where they can find more information.\n4. **Follow up**: Consider hosting a follow-up Q&A session or creating a blog post/video that answers more questions and provides additional insights.\n\nRemember to communicate with your followers and set expectations. You can say something like:\n\n\"Thank you for all the amazing questions! I'll do my best to answer as many as I can, but I might not be able to get to every single one. If I don't answer your question, don't worry – I might address it in a future post or Q&A session. 🙏\"\n\nBy being transparent and considerate of your followers' time, you can create a successful and engaging Q&A session that builds trust and fosters a strong community.\nuser: I think I'll answer a selection of questions and address common themes. I'll also provide additional resources if I can't answer every question. I'll make sure to communicate with my followers and set expectations. Thanks for the advice!\nassistant: You're welcome! I'm glad I could help. 😊\n\nThat's a great approach to take. By answering a selection of questions, addressing common themes, and providing additional resources, you'll be able to provide value to your followers while also managing your time and energy.\n\nRemember to keep your answers concise and engaging, and don't hesitate to ask for clarification if you need it. And if you do happen to miss a question or two, don't worry – it's not the end of the world! You can always follow up in a future post or Q&A session.\n\nMost importantly, have fun with it! A Q&A session is a great way to connect with your followers and build a stronger community. Be yourself, be authentic, and show your followers that you care about their questions and concerns.\n\nIf you have any more questions or need further guidance, feel free to ask. Otherwise, good luck with your Q&A session, and I hope it's a huge success! 🤞\nuser: I'm going to post a quick update on my Instagram Story to remind my followers about the Q&A session tomorrow. Here's what I'll say:\n\n\"Hey everyone! 🙋‍♀️ Just a quick reminder that I'll be hosting a Q&A session in my Instagram Story tomorrow! 🤔 Ask me anything about my writing process, freelancing, or anything else you're curious about. 📝 Use the \"Question Sticker\" to submit your questions, and I'll do my best to answer as many as I can. 🙏 Thanks for participating, and I'm looking forward to chatting with you all tomorrow! 😊 #QandAwith[YourName] #WritingCommunity #FreelanceLife\"\nassistant: That's perfect! 😊 Your reminder post is clear, concise, and engaging. You've included all the necessary details, such as the topic, the format, and the hashtag. You've also added a personal touch by expressing your excitement and gratitude, which will help build anticipation and encourage followers to participate.\n\nHere are a few minor suggestions to make it even better:\n\n* Consider adding a visual element, like an emoji or a GIF, to make the post more eye-catching.\n* You might want to specify the time of the Q&A session, so followers know exactly when to tune in.\n* If you have a particular theme or focus for the Q&A session, you could mention it briefly to give followers an idea of what to expect.\n\nBut overall, your post is great, and I'm sure it will effectively remind your followers about the Q&A session and generate excitement for tomorrow! 🎉\n\nHere's your post with a few minor tweaks:\n\n\"Hey everyone! 🙋‍♀️ Just a quick reminder that I'll be hosting a Q&A session in my Instagram Story tomorrow at 10am EST! 🕰️ Ask me anything about my writing process, freelancing, or anything else you're curious about. 📝 Use the \"Question Sticker\" to submit your questions, and I'll do my best to answer as many as I can. 🙏 Thanks for participating, and I'm looking forward to chatting with you all tomorrow! 😊 #QandAwith[YourName] #WritingCommunity #FreelanceLife\"\n\nFeel free to use it as-is or make any further adjustments as you see fit! 😊\n\n        Candidate notes:\n        [0] type=PLAN title=Instagram Q&A promotion plan using Question Sticker summary=The user chose to try an Instagram Q&A session using the \"Question Sticker\" in Instagram Stories, promote it with an advance announcement and a branded hashtag, and focus the theme on their writing process and experiences as a freelancer. scope=User's Instagram Q&A session planning and promotion strategy from LongMemEval session 2 entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5> keywords=Instagram Q&A,Question Sticker,Instagram Stories,branded hashtag,writing process,freelancing tags=instagram,q&a,content_strategy,writing,freelancing evidence=I'm thinking of announcing it in advance and creating a branded hashtag. I'll also specify the topic or theme, which will be my writing process and experiences as a freelancer.\n[1] type=DECISION title=Q&A answering policy: selected questions and common themes summary=For the Instagram Q&A, the user decided to answer a selection of questions, address common themes, provide additional resources when they cannot answer every question, and set expectations transparently with followers. scope=User's response-management policy for the planned Instagram Q&A session entities=entity:<0>,entity:<1> keywords=Instagram Q&A,answer selection,common themes,additional resources,set expectations tags=instagram,q&a,engagement_policy,content_strategy evidence=I think I'll answer a selection of questions and address common themes. I'll also provide additional resources if I can't answer every question. I'll make sure to communicate with my followers and set expectations.\n[2] type=CONTEXT title=Draft reminder Story for tomorrow's Instagram Q&A summary=The user drafted an Instagram Story reminder for a Q&A happening tomorrow, inviting questions about their writing process, freelancing, or other curiosities via the \"Question Sticker\", promising to answer as many as possible, and using #QandAwith[YourName], #WritingCommunity, and #FreelanceLife. scope=Draft copy and content details for the user's Instagram Story reminder before the planned Q&A entities=entity:<0>,entity:<1>,entity:<3>,entity:<2>,entity:<4>,entity:<5> keywords=Instagram Story reminder,Q&A tomorrow,Question Sticker,#QandAwith[YourName],#WritingCommunity,#FreelanceLife tags=instagram,story_copy,q&a,hashtags evidence=\"Hey everyone! 🙋‍♀️ Just a quick reminder that I'll be hosting a Q&A session in my Instagram Story tomorrow!\n\n        Existing active notes:\n        id=hot-path-0d8ce3c47147-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Instagram writing-content strategy using Stories, polls, and UGC summary=The user is developing an Instagram content strategy around writing: BTS content featuring Luna, Instagram Stories with manuscript snippets and research/writing-process material, UGC prompts for a writing-focused audience, and feedback loops using polls and follow-up result stories. scope=User's Instagram writing/content-creation strategy discussed in LongMemEval session 1 keywords=Instagram,writing process,Instagram Stories,Luna,manuscript snippets,UGC,poll,behind-the-scenes tags=instagram_strategy,writing_content,audience_engagement useCount=0\nid=hot-path-0d8ce3c47147-note-3 type=DECISION status=ACTIVE maturity=FRESH title=Hybrid posting approach for manuscript snippets summary=The user chose a hybrid Instagram Stories cadence for manuscript snippets: post snippets as new sections are completed while maintaining a consistent frequency, and ask followers for preferences to tune the schedule/content mix. scope=Posting cadence decision for User's manuscript snippets on Instagram Stories keywords=hybrid approach,manuscript snippets,Instagram Stories,posting frequency,writing process tags=content_cadence,instagram_stories,manuscript useCount=0\nid=hot-path-0d8ce3c47147-note-4 type=PLAN status=ACTIVE maturity=FRESH title=Instagram Poll plan and follow-up result story summary=The user planned an Instagram Story poll with three options—\"More writing tips and advice\", \"More behind-the-scenes content\", and \"More sneak peeks of my manuscript\"—plus a comment prompt; after the poll, they planned a follow-up story with a graphic or screenshot of results, context/insights, thanks to participants, and the winning option highlighted. scope=Specific Instagram Poll and follow-up engagement plan for the user's writing-content audience keywords=Instagram Poll,poll results,follow-up story,writing tips,behind-the-scenes,sneak peeks,manuscript tags=poll_plan,audience_feedback,instagram_engagement useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:1cea1afa",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:89c82239443eaf57de7779c3f5045ae6"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:1cea1afa\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 22:45\nTranscript:\nuser: I'm trying to increase my social media presence. Can you help me come up with some ideas for more engaging promotional content on Instagram? By the way, I just checked and I'm now at 600 followers, which is a nice milestone!\nassistant: Congratulations on reaching 600 followers! That's a great milestone! I'd be happy to help you come up with some ideas for more engaging promotional content on Instagram. Here are a few suggestions to get you started:\n\n1. **Behind-the-Scenes (BTS) Content**: Give your followers a sneak peek into your creative process, workspace, or daily routine. This can be a photo or video of you preparing for a shoot, a boomerang of your design process, or even a time-lapse of a project coming together.\n2. **User-Generated Content (UGC) Campaign**: Encourage your followers to share their own experiences, photos, or videos using your product or service. You can create a branded hashtag and re-share or feature some of the best content on your page.\n3. **Q&A Sessions**: Host a weekly or monthly Q&A session where you answer questions from your followers. You can use the \"Question Sticker\" feature in Instagram Stories or create a post asking followers to submit their questions in the comments.\n4. **Exclusive Offers and Discounts**: Create limited-time offers or special discounts for your Instagram followers to incentivize engagement and drive sales. Use Instagram's \"Swipe-Up\" feature to direct followers to your website or a landing page.\n5. **Instagram Stories and IGTV**: Use Instagram Stories to share behind-the-scenes content, sneak peeks, or exclusive deals. You can also create IGTV content, such as tutorials, product demos, or interviews, to provide more in-depth information to your followers.\n6. **Collaborate with Influencers**: Partner with influencers in your niche to reach new audiences and create engaging content. Choose influencers who align with your brand values and have a similar target audience.\n7. **Instagram Live**: Host live sessions, webinars, or workshops to connect with your followers in real-time. You can use Instagram Live to answer questions, provide tutorials, or showcase new products.\n8. **Before-and-After Content**: Share dramatic transformations or results that showcase the benefits of your product or service. This can be a powerful way to demonstrate your value proposition.\n9. **Customer Testimonials**: Share user reviews, ratings, or testimonials to build social proof and credibility. You can create a series of posts or a dedicated Instagram Story highlight featuring customer feedback.\n10. **Instagram Carousel Posts**: Use the carousel feature to share multiple images or videos in a single post. This can be a great way to showcase different products, features, or benefits in a visually appealing way.\n11. **Polls and Surveys**: Engage your followers by asking for their opinions or feedback through polls or surveys. This can help you understand your audience better and create content that resonates with them.\n12. **Seasonal or Timely Content**: Create content that's relevant to current events, holidays, or trends. This can help you stay topical and attract new followers.\n13. **Educational Content**: Share tips, tutorials, or industry insights to establish your brand as a thought leader in your niche.\n14. **Sneak Peeks and Pre-Launches**: Build anticipation by sharing exclusive previews of upcoming products, services, or launches.\n15. **Instagram's Features**: Experiment with Instagram's features like Reels, IGTV, Shopping, and more to create diverse and engaging content.\n\nRemember to keep your content visually appealing, engaging, and aligned with your brand's tone and aesthetic. Mix and match these ideas to find what works best for your audience and adjust your strategy accordingly. Good luck, and congratulations again on reaching 600 followers!\nuser: I want to try out the Q&A session idea. Do you think I should use the \"Question Sticker\" feature in Instagram Stories or create a post asking followers to submit their questions in the comments?\nassistant: Both options are great, and it ultimately depends on your personal preference and the type of engagement you're looking for. Here are some pros and cons of each approach to help you decide:\n\n**Using the \"Question Sticker\" feature in Instagram Stories:**\n\nPros:\n\n1. **Easy to use**: The \"Question Sticker\" is a built-in feature in Instagram Stories, making it easy to add to your story and manage responses.\n2. **Interactive**: Followers can respond directly to the sticker, and you can see their questions in real-time.\n3. **Encourages quick responses**: The ephemeral nature of Instagram Stories can encourage followers to respond quickly, which can lead to more engagement.\n\nCons:\n\n1. **Limited visibility**: Instagram Stories are only visible for 24 hours, which means that followers who miss your story might not be able to participate.\n2. **Limited space**: The \"Question Sticker\" has a character limit, so followers may not be able to ask complex or lengthy questions.\n\n**Creating a post asking followers to submit their questions in the comments:**\n\nPros:\n\n1. **Permanent visibility**: A post remains on your feed indefinitely, allowing followers to participate at their convenience.\n2. **More space for questions**: Followers can ask longer, more detailed questions in the comments, which can lead to more in-depth discussions.\n3. **Easier to track**: You can more easily keep track of questions and responses in the comments section.\n\nCons:\n\n1. **Less interactive**: Followers need to take an extra step to type out their question in the comments, which might reduce engagement.\n2. **More manual effort**: You'll need to manually review and respond to comments, which can be time-consuming.\n\nConsider the following factors to help you decide:\n\n* **Time-sensitive topics**: If you're discussing a timely or trending topic, the \"Question Sticker\" in Instagram Stories might be a better fit.\n* **In-depth discussions**: If you want to encourage more in-depth questions and discussions, a post with comments might be a better choice.\n* **Follower engagement**: If you have a highly engaged audience that's active in the comments, a post might be a better option. If you want to encourage more casual, quick responses, the \"Question Sticker\" might be better.\n\nYou could also experiment with a hybrid approach: Use the \"Question Sticker\" in Instagram Stories to gather questions, and then create a follow-up post with the answers and additional discussion in the comments. This way, you can leverage the benefits of both approaches!\nuser: I think I'll try using the \"Question Sticker\" feature in Instagram Stories first, since it seems like a quick and easy way to get started. Do you have any tips on how to promote my Q&A session to get more followers to participate?\nassistant: The \"Question Sticker\" feature in Instagram Stories is a fantastic way to get started with Q&A sessions. Here are some tips to promote your Q&A session and encourage more followers to participate:\n\n1. **Announce it in advance**: Post a teaser story or feed post a few days before the Q&A session to let your followers know it's coming. This will build anticipation and give them time to think about their questions.\n2. **Use attention-grabbing visuals**: Create an eye-catching graphic or video to promote your Q&A session. Use bright colors, bold text, and emojis to make it stand out.\n3. **Pin a reminder**: Pin a reminder to your Instagram Story highlights or create a separate highlight for your Q&A sessions. This will make it easy for followers to find and remember.\n4. **Encourage followers to ask questions**: Use a call-to-action (CTA) in your promotional post, such as \"Ask me anything about [topic]! 🤔\" or \"Got a question about [topic]? Ask away in my next story! 💬\"\n5. **Specify the topic or theme**: Give your followers an idea of what they can expect from the Q&A session. This will help them prepare questions and make the session more focused.\n6. **Create a branded hashtag**: Develop a branded hashtag for your Q&A sessions, such as #Ask[YourName] or #QandAwith[YourName]. This will help you track engagement and create a consistent brand identity.\n7. **Collaborate with other accounts**: Partner with other accounts in your niche to co-host a Q&A session. This can expand your reach and attract new followers.\n8. **Offer incentives**: Consider offering a small incentive, such as a discount code or a free resource, to followers who participate in the Q&A session.\n9. **Promote across platforms**: Share your Q&A session on other social media platforms, like Twitter or Facebook, to reach a broader audience.\n10. **Follow up**: After the Q&A session, follow up with a post or story thanking participants and encouraging them to share their takeaways. This will help create a sense of community and encourage more followers to participate in future sessions.\n\nExample promotional post:\n\"🤔 Got questions about [topic]? 🤓 I'm hosting a Q&A session in my Instagram Stories tomorrow! 💬 Ask me anything about [topic] and I'll do my best to answer. Use the \"Question Sticker\" in my story to submit your questions. 📝 Don't forget to follow me for updates and behind-the-scenes peeks! 👉 @[YourHandle] #Ask[YourName] #QandAwith[YourName]\"\n\nBy promoting your Q&A session effectively, you'll encourage more followers to participate, increase engagement, and build a stronger connection with your audience. Good luck! 🤞\nuser: I'll definitely use some of these tips to promote my Q&A session. I'm thinking of announcing it in advance and creating a branded hashtag. I'll also specify the topic or theme, which will be my writing process and experiences as a freelancer. Do you think I should answer all the questions I receive, or is it okay to only answer a few?\nassistant: Excellent choices! Announcing in advance, creating a branded hashtag, and specifying the topic will help generate interest and attract the right audience.\n\nRegarding answering questions, it's completely up to you how many questions you want to answer. Here are some pros and cons of answering all questions versus answering a selection:\n\n**Answering all questions:**\n\nPros:\n\n1. **Inclusive**: You're giving equal attention to every follower who takes the time to ask a question.\n2. **Transparency**: You're showing your followers that you value their curiosity and are willing to be open and honest.\n\nCons:\n\n1. **Time-consuming**: Answering every question can be overwhelming, especially if you receive a large number of questions.\n2. **Lengthy responses**: You might need to write lengthy responses to fully address each question, which can be challenging in the Instagram Story format.\n\n**Answering a selection of questions:**\n\nPros:\n\n1. **Time-efficient**: You can focus on answering a manageable number of questions that are most relevant or interesting.\n2. **Quality over quantity**: You can provide more in-depth responses to a smaller number of questions, making the Q&A session more valuable for your followers.\n\nCons:\n\n1. **Disappointment**: Some followers might be disappointed if their question isn't answered.\n2. **Perception of bias**: You might unintentionally create the impression that you're favoring certain followers or questions over others.\n\nHere's a compromise:\n\n1. **Answer a selection of questions**: Choose a mix of questions that are most relevant, interesting, or representative of common topics.\n2. **Address common themes**: If you receive multiple questions on the same topic, address the common theme in a single response.\n3. **Provide additional resources**: If you can't answer every question, offer additional resources or point followers in the direction of where they can find more information.\n4. **Follow up**: Consider hosting a follow-up Q&A session or creating a blog post/video that answers more questions and provides additional insights.\n\nRemember to communicate with your followers and set expectations. You can say something like:\n\n\"Thank you for all the amazing questions! I'll do my best to answer as many as I can, but I might not be able to get to every single one. If I don't answer your question, don't worry – I might address it in a future post or Q&A session. 🙏\"\n\nBy being transparent and considerate of your followers' time, you can create a successful and engaging Q&A session that builds trust and fosters a strong community.\nuser: I think I'll answer a selection of questions and address common themes. I'll also provide additional resources if I can't answer every question. I'll make sure to communicate with my followers and set expectations. Thanks for the advice!\nassistant: You're welcome! I'm glad I could help. 😊\n\nThat's a great approach to take. By answering a selection of questions, addressing common themes, and providing additional resources, you'll be able to provide value to your followers while also managing your time and energy.\n\nRemember to keep your answers concise and engaging, and don't hesitate to ask for clarification if you need it. And if you do happen to miss a question or two, don't worry – it's not the end of the world! You can always follow up in a future post or Q&A session.\n\nMost importantly, have fun with it! A Q&A session is a great way to connect with your followers and build a stronger community. Be yourself, be authentic, and show your followers that you care about their questions and concerns.\n\nIf you have any more questions or need further guidance, feel free to ask. Otherwise, good luck with your Q&A session, and I hope it's a huge success! 🤞\nuser: I'm going to post a quick update on my Instagram Story to remind my followers about the Q&A session tomorrow. Here's what I'll say:\n\n\"Hey everyone! 🙋‍♀️ Just a quick reminder that I'll be hosting a Q&A session in my Instagram Story tomorrow! 🤔 Ask me anything about my writing process, freelancing, or anything else you're curious about. 📝 Use the \"Question Sticker\" to submit your questions, and I'll do my best to answer as many as I can. 🙏 Thanks for participating, and I'm looking forward to chatting with you all tomorrow! 😊 #QandAwith[YourName] #WritingCommunity #FreelanceLife\"\nassistant: That's perfect! 😊 Your reminder post is clear, concise, and engaging. You've included all the necessary details, such as the topic, the format, and the hashtag. You've also added a personal touch by expressing your excitement and gratitude, which will help build anticipation and encourage followers to participate.\n\nHere are a few minor suggestions to make it even better:\n\n* Consider adding a visual element, like an emoji or a GIF, to make the post more eye-catching.\n* You might want to specify the time of the Q&A session, so followers know exactly when to tune in.\n* If you have a particular theme or focus for the Q&A session, you could mention it briefly to give followers an idea of what to expect.\n\nBut overall, your post is great, and I'm sure it will effectively remind your followers about the Q&A session and generate excitement for tomorrow! 🎉\n\nHere's your post with a few minor tweaks:\n\n\"Hey everyone! 🙋‍♀️ Just a quick reminder that I'll be hosting a Q&A session in my Instagram Story tomorrow at 10am EST! 🕰️ Ask me anything about my writing process, freelancing, or anything else you're curious about. 📝 Use the \"Question Sticker\" to submit your questions, and I'll do my best to answer as many as I can. 🙏 Thanks for participating, and I'm looking forward to chatting with you all tomorrow! 😊 #QandAwith[YourName] #WritingCommunity #FreelanceLife\"\n\nFeel free to use it as-is or make any further adjustments as you see fit! 😊\n\n        Candidate notes:\n        [0] type=PLAN title=Instagram Q&A promotion plan using Question Sticker summary=The user chose to try an Instagram Q&A session using the \"Question Sticker\" in Instagram Stories, promote it with an advance announcement and a branded hashtag, and focus the theme on their writing process and experiences as a freelancer. scope=User's Instagram Q&A session planning and promotion strategy from LongMemEval session 2 entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5> keywords=Instagram Q&A,Question Sticker,Instagram Stories,branded hashtag,writing process,freelancing tags=instagram,q&a,content_strategy,writing,freelancing evidence=I'm thinking of announcing it in advance and creating a branded hashtag. I'll also specify the topic or theme, which will be my writing process and experiences as a freelancer.\n[1] type=DECISION title=Q&A answering policy: selected questions and common themes summary=For the Instagram Q&A, the user decided to answer a selection of questions, address common themes, provide additional resources when they cannot answer every question, and set expectations transparently with followers. scope=User's response-management policy for the planned Instagram Q&A session entities=entity:<0>,entity:<1> keywords=Instagram Q&A,answer selection,common themes,additional resources,set expectations tags=instagram,q&a,engagement_policy,content_strategy evidence=I think I'll answer a selection of questions and address common themes. I'll also provide additional resources if I can't answer every question. I'll make sure to communicate with my followers and set expectations.\n[2] type=CONTEXT title=Draft reminder Story for tomorrow's Instagram Q&A summary=The user drafted an Instagram Story reminder for a Q&A happening tomorrow, inviting questions about their writing process, freelancing, or other curiosities via the \"Question Sticker\", promising to answer as many as possible, and using #QandAwith[YourName], #WritingCommunity, and #FreelanceLife. scope=Draft copy and content details for the user's Instagram Story reminder before the planned Q&A entities=entity:<0>,entity:<1>,entity:<3>,entity:<2>,entity:<4>,entity:<5> keywords=Instagram Story reminder,Q&A tomorrow,Question Sticker,#QandAwith[YourName],#WritingCommunity,#FreelanceLife tags=instagram,story_copy,q&a,hashtags evidence=\"Hey everyone! 🙋‍♀️ Just a quick reminder that I'll be hosting a Q&A session in my Instagram Story tomorrow!\n\n        Existing active notes:\n        id=hot-path-0d8ce3c47147-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Instagram writing-content strategy using Stories, polls, and UGC summary=The user is developing an Instagram content strategy around writing: BTS content featuring Luna, Instagram Stories with manuscript snippets and research/writing-process material, UGC prompts for a writing-focused audience, and feedback loops using polls and follow-up result stories. scope=User's Instagram writing/content-creation strategy discussed in LongMemEval session 1 keywords=Instagram,writing process,Instagram Stories,Luna,manuscript snippets,UGC,poll,behind-the-scenes tags=instagram_strategy,writing_content,audience_engagement useCount=0\nid=hot-path-0d8ce3c47147-note-3 type=DECISION status=ACTIVE maturity=FRESH title=Hybrid posting approach for manuscript snippets summary=The user chose a hybrid Instagram Stories cadence for manuscript snippets: post snippets as new sections are completed while maintaining a consistent frequency, and ask followers for preferences to tune the schedule/content mix. scope=Posting cadence decision for User's manuscript snippets on Instagram Stories keywords=hybrid approach,manuscript snippets,Instagram Stories,posting frequency,writing process tags=content_cadence,instagram_stories,manuscript useCount=0\nid=hot-path-0d8ce3c47147-note-4 type=PLAN status=ACTIVE maturity=FRESH title=Instagram Poll plan and follow-up result story summary=The user planned an Instagram Story poll with three options—\"More writing tips and advice\", \"More behind-the-scenes content\", and \"More sneak peeks of my manuscript\"—plus a comment prompt; after the poll, they planned a follow-up story with a graphic or screenshot of results, context/insights, thanks to participants, and the winning option highlighted. scope=Specific Instagram Poll and follow-up engagement plan for the user's writing-content audience keywords=Instagram Poll,poll results,follow-up story,writing tips,behind-the-scenes,sneak peeks,manuscript tags=poll_plan,audience_feedback,instagram_engagement useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:1cea1afa",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:89c82239443eaf57de7779c3f5045ae6"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-0d8ce3c47147-note-2\"}],\"patch\":null,\"reason\":\"New distinct plan for an Instagram Q&A using Question Sticker, branded hashtag, and freelancer/writing-process theme; related to but not duplicate of the broader Instagram writing-content strategy.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-0d8ce3c47147-note-2\"},{\"link_type\":\"refines\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-0d8ce3c47147-note-2\"}],\"patch\":null,\"reason\":\"Captures a distinct response-management decision for the Q&A that is not present in existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-0d8ce3c47147-note-2\"}],\"patch\":null,\"reason\":\"Stores specific reusable draft copy and hashtag details for the planned Q&A reminder; not duplicated by existing strategy notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5154,
+                "completionTokens": 302,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

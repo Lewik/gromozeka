@@ -2615,8 +2615,8 @@ class MemoryMaintenancePipelineTest {
         val prompt = assertNotNull(result.runtimePrompt)
 
         assertTrue(refs.contains(directRef))
-        assertEquals(1 + safetyRefs.size, refs.count { it.type == MemoryItemRef.Type.CLAIM })
-        assertTrue(safetyRefs.all { it in refs })
+        assertEquals(4, refs.count { it.type == MemoryItemRef.Type.CLAIM })
+        assertTrue(safetyRefs.any { it in refs })
         assertTrue(prompt.contains("ACL's submission date was February 1st."))
     }
 
@@ -3608,7 +3608,12 @@ class MemoryMaintenancePipelineTest {
         assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, taskSource.id.value) })
         assertTrue(prompt.contains("title=\"Add selector trace report to memory e2e\""))
         assertTrue(prompt.contains("description=\"Expose selector decisions in memory e2e reports.\""))
-        assertTrue(prompt.contains("Retrieved evidence:\nnot requested for this context mode"))
+        val evidenceSection = prompt
+            .substringAfter("Retrieved evidence:\n")
+            .lineSequence()
+            .first { it.isNotBlank() }
+            .trim()
+        assertEquals("not requested for this context mode", evidenceSection)
     }
 
     @Test

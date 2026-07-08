@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "5c043d3d12b9d5fa8a1d71c5028f0341c2db246dbd66d7de88f616e54dcf92c7",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was looking back at our previous conversation about buying unique engagement rings directly from designers. Can you remind me of the Instagram handle of the UK-based designer who works with unusual gemstones?\n\n                                Question date:\n                                2023/05/29 (Mon) 20:24\n\n                                Noisy expected-answer label:\n                                @jessica_poole_jewellery\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 19:16\nTranscript:\nuser: Write a blog post about guidance on how to buy a unique engagement rings direct from the designer, include examples of relevant designers and their instagram account\nassistant: Are you in the market for a unique engagement ring that truly stands out? One way to ensure that your ring is truly one-of-a-kind is to buy it directly from the designer. By going directly to the source, you can work with the designer to create a custom piece that reflects your personal style and the style of your partner. Plus, buying directly from the designer often means that you'll be able to get a better price and a higher quality ring.\n\nOne of the benefits of buying a ring directly from the designer is that you'll have the opportunity to work closely with them to create a custom piece. This allows you to incorporate your own personal style and preferences into the design of the ring. For example, if you love antique or vintage-inspired jewelry, you can work with the designer to create a ring that incorporates these elements. Or, if you and your partner both love nature, you could choose a ring with a natural or organic design.\n\nWhen it comes to finding a designer to work with, there are many talented individuals who create beautiful, unique engagement rings. Here are a few examples of designers who are worth considering:\n\n1. Jessica Poole (@jessica\\_poole\\_jewellery): Jessica is a UK-based jewelry designer who creates stunning, unique engagement rings using a combination of traditional and contemporary techniques. She has a passion for working with unusual gemstones and creates rings that are both modern and timeless.\n2. Rachel Boston (@rachelbostonjewellery): Rachel is a London-based jewelry designer who creates beautiful, handcrafted engagement rings. She uses a combination of precious metals and diamonds to create rings that are both elegant and unique. Rachel is also passionate about sustainability and only uses ethically sourced materials in her designs.\n3. Lauren Hunt (@laurenhuntjewellery): Lauren is a New York-based jewelry designer who creates modern, geometric engagement rings. She uses a combination of diamonds, gold, and other precious materials to create rings that are both sophisticated and edgy. Lauren's designs are perfect for couples who want a ring that truly stands out.\n\nWhen it comes to buying an engagement ring, there are many different options to consider. But, if you want a truly unique and special piece, consider buying directly from the designer. By working with a designer to create a custom ring, you can ensure that your engagement ring is truly one-of-a-kind and reflects your personal style. Plus, buying directly from the designer often means that you'll be able to get a better price and a higher quality ring.\n                                ```\n\n                                Candidate answer:\n                                @jessica_poole_jewellery",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "b759caee",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor relative-window aggregate/count questions over imported chat sources, do not treat an inferred or likely date from a source-local weekday or recency cue as a hard exclusion when gold evidence otherwise gives a completed first-person event with an explicit numeric operand and the source/session date is close to or inside the requested window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as \"last month\" resolves from the source/session date unless contradicted by more specific evidence.\nFor relative month-window questions over imported chat sources, a first-person source-local cue such as \"last month\" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor location-scoped item count/list questions, judge concrete objects as category-fitting when gold evidence explicitly places them in that location or their ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nFor concrete who/from-whom/source/giver expected-answer labels, mark supported=false when the candidate answers that memory is insufficient or unknown without providing the evidence-backed expected giver/source. If the gold evidence contains the expected giver/source for the only target-period received/acquired personal item, noisy or mismatched object wording in the question does not make an insufficiency answer supported; the candidate may caveat the object mismatch, but it must still provide the giver/source.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nWhen the expected-answer label gives a zero count because the requested thing is not mentioned, candidate insufficiency/not-mentioned answers are supported if the gold evidence contains no qualifying items for the requested scope.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor remaining-amount questions such as \"how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify\", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor relative-window aggregate/count questions over imported chat sources, do not treat an inferred or likely date from a source-local weekday or recency cue as a hard exclusion when gold evidence otherwise gives a completed first-person event with an explicit numeric operand and the source/session date is close to or inside the requested window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as \"last month\" resolves from the source/session date unless contradicted by more specific evidence.\nFor relative month-window questions over imported chat sources, a first-person source-local cue such as \"last month\" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor location-scoped item count/list questions, judge concrete objects as category-fitting when gold evidence explicitly places them in that location or their ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nFor concrete who/from-whom/source/giver expected-answer labels, mark supported=false when the candidate answers that memory is insufficient or unknown without providing the evidence-backed expected giver/source. If the gold evidence contains the expected giver/source for the only target-period received/acquired personal item, noisy or mismatched object wording in the question does not make an insufficiency answer supported; the candidate may caveat the object mismatch, but it must still provide the giver/source.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nWhen the expected-answer label gives a zero count because the requested thing is not mentioned, candidate insufficiency/not-mentioned answers are supported if the gold evidence contains no qualifying items for the requested scope.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor remaining-amount questions such as \"how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify\", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was looking back at our previous conversation about buying unique engagement rings directly from designers. Can you remind me of the Instagram handle of the UK-based designer who works with unusual gemstones?\n\n                                Question date:\n                                2023/05/29 (Mon) 20:24\n\n                                Noisy expected-answer label:\n                                @jessica_poole_jewellery\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 19:16\nTranscript:\nuser: Write a blog post about guidance on how to buy a unique engagement rings direct from the designer, include examples of relevant designers and their instagram account\nassistant: Are you in the market for a unique engagement ring that truly stands out? One way to ensure that your ring is truly one-of-a-kind is to buy it directly from the designer. By going directly to the source, you can work with the designer to create a custom piece that reflects your personal style and the style of your partner. Plus, buying directly from the designer often means that you'll be able to get a better price and a higher quality ring.\n\nOne of the benefits of buying a ring directly from the designer is that you'll have the opportunity to work closely with them to create a custom piece. This allows you to incorporate your own personal style and preferences into the design of the ring. For example, if you love antique or vintage-inspired jewelry, you can work with the designer to create a ring that incorporates these elements. Or, if you and your partner both love nature, you could choose a ring with a natural or organic design.\n\nWhen it comes to finding a designer to work with, there are many talented individuals who create beautiful, unique engagement rings. Here are a few examples of designers who are worth considering:\n\n1. Jessica Poole (@jessica\\_poole\\_jewellery): Jessica is a UK-based jewelry designer who creates stunning, unique engagement rings using a combination of traditional and contemporary techniques. She has a passion for working with unusual gemstones and creates rings that are both modern and timeless.\n2. Rachel Boston (@rachelbostonjewellery): Rachel is a London-based jewelry designer who creates beautiful, handcrafted engagement rings. She uses a combination of precious metals and diamonds to create rings that are both elegant and unique. Rachel is also passionate about sustainability and only uses ethically sourced materials in her designs.\n3. Lauren Hunt (@laurenhuntjewellery): Lauren is a New York-based jewelry designer who creates modern, geometric engagement rings. She uses a combination of diamonds, gold, and other precious materials to create rings that are both sophisticated and edgy. Lauren's designs are perfect for couples who want a ring that truly stands out.\n\nWhen it comes to buying an engagement ring, there are many different options to consider. But, if you want a truly unique and special piece, consider buying directly from the designer. By working with a designer to create a custom ring, you can ensure that your engagement ring is truly one-of-a-kind and reflects your personal style. Plus, buying directly from the designer often means that you'll be able to get a better price and a higher quality ring.\n                                ```\n\n                                Candidate answer:\n                                @jessica_poole_jewellery",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "b759caee",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The candidate gives the Instagram handle for Jessica Poole, the UK-based designer described as working with unusual gemstones.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2120,
+                "completionTokens": 43,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

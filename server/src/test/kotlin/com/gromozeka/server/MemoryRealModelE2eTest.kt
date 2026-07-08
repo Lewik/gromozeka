@@ -129,6 +129,7 @@ class MemoryRealModelE2eTest {
         ServerTestHarness(
             settings = settings,
             subscriptionSession = subscriptionSession,
+            subscriptionConfigMirrorPath = subscriptionPath,
             systemProperties = mapOf(
                 "gromozeka.postgres.schema" to postgresSchema,
                 "gromozeka.ai.openai-subscription.websocket-response-timeout-ms" to

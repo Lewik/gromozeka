@@ -281,6 +281,10 @@ data class MemoryPredicateDefinition(
         PROJECT_ASSOCIATION,
         TECHNICAL_CONFIGURATION,
         POSSESSION,
+        USAGE,
+        COUNTABLE_ITEM,
+        LIFECYCLE_EVENT,
+        FUNCTIONAL_ROLE,
         OTHER,
     }
 

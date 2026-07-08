@@ -1,0 +1,543 @@
+{
+    "version": 1,
+    "hash": "d4cf2430b236c98b76c639a472136c09be94e97d8575b923881c74590f606cdc",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:60036106\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 16:19\nTranscript:\nuser: I'm looking to run another Facebook ad campaign soon and I want to make sure I'm targeting the right audience. Can you help me identify the most effective targeting options for my business? By the way, my previous ad campaign, which ran for five days, reached around 2,000 people.\nassistant: I'd be happy to help you optimize your Facebook ad targeting options.\n\nTo better understand your business and provide more tailored advice, could you please share some more information about your business and the previous campaign? Here are some questions to consider:\n\n1. **What industry or niche does your business operate in?** (e.g., e-commerce, services, software, etc.)\n2. **What products or services do you offer?**\n3. **Who is your ideal customer?** (e.g., demographics, interests, behaviors, etc.)\n4. **What was the goal of your previous campaign?** (e.g., website traffic, lead generation, conversions, etc.)\n5. **What was the content of your previous ads?** (e.g., image, video, copy, etc.)\n6. **What was the budget for your previous campaign?**\n7. **What were the results of your previous campaign?** (e.g., click-through rate, conversion rate, cost per conversion, etc.)\n\nWith this information, I can provide more specific guidance on the most effective targeting options for your business.\n\nIn general, here are some popular targeting options on Facebook that you might consider:\n\n1. **Demographic targeting**: Target people based on age, gender, location, language, and more.\n2. **Interest targeting**: Target people who have shown interest in specific topics, hobbies, or brands.\n3. **Behavioral targeting**: Target people based on their behaviors, such as purchase history, job title, or device usage.\n4. **Lookalike targeting**: Target people who are similar to your existing customers or fans.\n5. **Custom audiences**: Target people who have interacted with your business, such as website visitors, email subscribers, or customers.\n6. **Retargeting**: Target people who have abandoned their shopping carts or haven't converted yet.\n\nLet me know if you have any specific questions about these targeting options or if there's anything else you'd like to know!\nuser: My business operates in the e-commerce niche, and I offer handmade home decor products. My ideal customer is a female between 25-45 years old who values unique, eco-friendly products. The goal of my previous campaign was to drive website traffic and increase brand awareness. My ad content was a high-quality image of one of my products with a brief description and a call-to-action to visit my website. The budget for my previous campaign was around $100, and the results were 50 clicks to my website, which I'm pretty happy with.\nassistant: Thank you for sharing more about your business and previous campaign!\n\nBased on your feedback, here are some targeting options that might be effective for your handmade home decor business:\n\n1. **Demographic targeting**:\n\t* Target females between 25-45 years old, as per your ideal customer profile.\n\t* Consider targeting people with a higher income (e.g., $50,000+) who are more likely to appreciate unique, eco-friendly products.\n2. **Interest targeting**:\n\t* Target people who have shown interest in:\n\t\t+ Home decor and interior design\n\t\t+ Eco-friendly and sustainable living\n\t\t+ Handmade or artisanal products\n\t\t+ Green living and environmentalism\n\t\t+ DIY and crafting\n\t* You can also target people who have liked pages or followed accounts related to these topics.\n3. **Behavioral targeting**:\n\t* Target people who have shown an interest in shopping online or have made purchases online in the past.\n\t* Consider targeting people who have purchased home decor or eco-friendly products online in the past.\n4. **Lookalike targeting**:\n\t* Create a lookalike audience based on your existing customers or website visitors who have shown interest in your products.\n\t* This can help you reach new people who are similar to your existing audience and are more likely to be interested in your products.\n5. **Custom audiences**:\n\t* Target people who have visited your website but haven't converted yet.\n\t* Consider targeting people who have abandoned their shopping carts or have viewed specific products on your website.\n6. **Interest-based targeting with a twist**:\n\t* Target people who have shown interest in related but slightly broader topics, such as:\n\t\t+ Wellness and self-care (people who value natural and eco-friendly products)\n\t\t+ Travel and adventure (people who appreciate unique, handmade products)\n\t\t+ Food and cooking (people who value sustainable living)\n\nFor your ad content, you might consider:\n\n1. **High-quality visuals**: Continue using high-quality images of your products to showcase their unique features and eco-friendly materials.\n2. **Emphasize the benefits**: Highlight the benefits of your products, such as their eco-friendliness, uniqueness, and the story behind each handmade piece.\n3. **Clear call-to-action**: Make sure your call-to-action is clear and prominent, encouraging people to visit your website or learn more about your products.\n\nBased on your previous campaign's results, it seems like you're on the right track! Consider increasing your budget to reach a larger audience and drive more traffic to your website.\n\nDo you have any questions about these targeting options or would you like more specific advice on how to implement them?\nuser: I see your suggestions are really helpful. I'm particularly interested in the lookalike targeting option. Can you tell me more about how to create a lookalike audience and how it works?\nassistant: Lookalike targeting is a powerful feature in Facebook Ads that allows you to target people who are similar to your existing customers, website visitors, or fans. Here's a step-by-step guide on how to create a lookalike audience:\n\n**Creating a Lookalike Audience:**\n\n1. **Go to your Facebook Ads Manager**: Navigate to your Facebook Ads Manager account and click on \"Audiences\" in the top navigation menu.\n2. **Click on \"Create Audience\"**: Click on the \"Create Audience\" button and select \"Lookalike Audience\" from the dropdown menu.\n3. **Choose your source audience**: Select the audience you want to base your lookalike audience on. This can be:\n\t* A custom audience (e.g., website visitors, email subscribers, customers)\n\t* A Facebook page (e.g., your business page)\n\t* A Facebook event\n\t* A list of phone numbers or email addresses\n4. **Select the country and audience size**: Choose the country where you want to target your lookalike audience and select the audience size. You can choose from 1% to 10% of the total population in your selected country.\n5. **Set the lookalike audience options**: You can choose to create a lookalike audience based on:\n\t* Similarity: Facebook will find people who are most similar to your source audience.\n\t* Reach: Facebook will find people who are similar to your source audience, but also prioritize reach and try to find more people.\n6. **Name your lookalike audience**: Give your lookalike audience a name and click \"Create Audience\".\n\n**How Lookalike Targeting Works:**\n\nWhen you create a lookalike audience, Facebook uses its algorithm to find people who are similar to your source audience based on various factors, including:\n\n1. **Demographics**: Age, gender, location, language, and more.\n2. **Interests**: Pages liked, interests, and behaviors.\n3. **Behaviors**: Online behaviors, such as purchases, sign-ups, and more.\n4. **Device usage**: Device type, operating system, and browser type.\n\nFacebook then creates a new audience that is similar to your source audience, but is not identical. This new audience is called a lookalike audience.\n\n**Benefits of Lookalike Targeting:**\n\n1. **Increased reach**: Lookalike targeting allows you to reach a larger audience that is similar to your existing customers or fans.\n2. **Improved targeting**: By targeting people who are similar to your existing audience, you can increase the likelihood of reaching people who are interested in your products or services.\n3. **Cost-effective**: Lookalike targeting can be more cost-effective than targeting a broad audience, as you're targeting people who are more likely to be interested in your business.\n\n**Tips and Best Practices:**\n\n1. **Use a large source audience**: The larger your source audience, the more accurate your lookalike audience will be.\n2. **Use a specific source audience**: Use a specific audience, such as website visitors or customers, to create a more targeted lookalike audience.\n3. **Test different lookalike audiences**: Create multiple lookalike audiences with different settings and test which one performs best.\n\nI hope this helps! Let me know if you have any more questions about lookalike targeting or Facebook Ads in general.\nuser: Can you tell me more about the custom audience option? How do I create a custom audience and what are the benefits of using it?\nassistant: Custom audiences are a powerful feature in Facebook Ads that allows you to target specific groups of people who have already interacted with your business, whether it's through your website, email list, or other online channels.\n\n**Creating a Custom Audience:**\n\nTo create a custom audience, follow these steps:\n\n1. **Go to your Facebook Ads Manager**: Navigate to your Facebook Ads Manager account and click on \"Audiences\" in the top navigation menu.\n2. **Click on \"Create Audience\"**: Click on the \"Create Audience\" button and select \"Custom Audience\" from the dropdown menu.\n3. **Choose your custom audience type**: Select the type of custom audience you want to create, such as:\n\t* **Website traffic**: Target people who have visited your website.\n\t* **Customer list**: Target people who have purchased from you or are in your email list.\n\t* **App activity**: Target people who have taken specific actions within your app.\n\t* **Offline activity**: Target people who have taken specific offline actions, such as making a purchase in-store.\n4. **Upload your data**: Depending on the custom audience type, you'll need to upload your data, such as:\n\t* Website traffic: Facebook Pixel data or a URL list.\n\t* Customer list: CSV file with email addresses, phone numbers, or other identifiable information.\n\t* App activity: App event data.\n\t* Offline activity: Offline event data.\n5. **Name your custom audience**: Give your custom audience a name and click \"Create Audience\".\n\n**Benefits of Using Custom Audiences:**\n\n1. **Targeted advertising**: Custom audiences allow you to target people who have already shown interest in your business, increasing the likelihood of conversions.\n2. **Increased ROI**: By targeting people who are already familiar with your brand, you can increase your return on investment (ROI).\n3. **Improved customer retention**: Custom audiences help you re-engage with existing customers, increasing customer retention and loyalty.\n4. **Better segmentation**: Custom audiences allow you to segment your audience based on specific behaviors or actions, enabling more targeted marketing.\n5. **Competitive advantage**: By targeting people who have already interacted with your business, you can gain a competitive advantage over other advertisers.\n\n**Types of Custom Audiences:**\n\n1. **Website custom audience**: Target people who have visited your website, including specific pages or sections.\n2. **Customer list custom audience**: Target people who have purchased from you, are in your email list, or have taken other specific actions.\n3. **App custom audience**: Target people who have taken specific actions within your app, such as installing, launching, or making in-app purchases.\n4. **Offline custom audience**: Target people who have taken specific offline actions, such as making a purchase in-store or attending an event.\n5. **Lookalike custom audience**: Target people who are similar to your custom audience, but are not identical.\n\n**Best Practices:**\n\n1. **Use high-quality data**: Ensure your data is accurate and up-to-date to get the most out of your custom audience.\n2. **Segment your audience**: Segment your custom audience based on specific behaviors or actions to create more targeted ads.\n3. **Use custom audiences in combination with other targeting options**: Combine custom audiences with other targeting options, such as interests or behaviors, to create more targeted ads.\n4. **Monitor and optimize**: Continuously monitor your custom audience's performance and optimize your ads accordingly.\n\nI hope this helps! Let me know if you have any more questions about custom audiences or Facebook Ads in general.\nuser: I'd like to create a custom audience based on my website traffic. Can you walk me through the process of setting up Facebook Pixel and creating a custom audience from my website traffic?\nassistant: Setting up Facebook Pixel and creating a custom audience from your website traffic is a great way to target people who have already shown interest in your business. Here's a step-by-step guide to help you through the process:\n\n**Step 1: Create a Facebook Pixel**\n\n1. **Go to your Facebook Ads Manager**: Navigate to your Facebook Ads Manager account and click on \"Pixels\" in the top navigation menu.\n2. **Click on \"Create a Pixel\"**: Click on the \"Create a Pixel\" button and follow the prompts to create a new pixel.\n3. **Name your pixel**: Give your pixel a name, such as \"My Website Pixel\".\n4. **Get your pixel code**: Facebook will generate a unique pixel code for you. You'll need to install this code on your website.\n\n**Step 2: Install Facebook Pixel on Your Website**\n\n1. **Copy the pixel code**: Copy the pixel code provided by Facebook.\n2. **Install the code on your website**: You can install the code in one of two ways:\n\t* **Manual installation**: Add the code to the header or footer of your website's HTML.\n\t* **Using a plugin or tag manager**: If you're using a website builder or CMS like WordPress, Shopify, or Wix, you can use a plugin or tag manager to install the pixel code.\n3. **Verify your pixel installation**: Go back to your Facebook Ads Manager and click on \"Pixels\" to verify that your pixel is installed correctly.\n\n**Step 3: Create a Custom Audience from Website Traffic**\n\n1. **Go to your Facebook Ads Manager**: Navigate to your Facebook Ads Manager account and click on \"Audiences\" in the top navigation menu.\n2. **Click on \"Create Audience\"**: Click on the \"Create Audience\" button and select \"Custom Audience\" from the dropdown menu.\n3. **Choose \"Website Traffic\"**: Select \"Website Traffic\" as the source of your custom audience.\n4. **Select your pixel**: Choose the pixel you created earlier as the source of your website traffic data.\n5. **Set your audience criteria**: Set the criteria for your custom audience, such as:\n\t* **Website visitors**: Target people who have visited your website in the past 30 days.\n\t* **Specific pages**: Target people who have visited specific pages on your website.\n\t* **Duration**: Target people who have spent a certain amount of time on your website.\n6. **Name your custom audience**: Give your custom audience a name, such as \"Website Visitors - 30 Days\".\n7. **Create your custom audience**: Click \"Create Audience\" to create your custom audience.\n\n**Step 4: Use Your Custom Audience in Your Ads**\n\n1. **Create a new ad campaign**: Create a new ad campaign in your Facebook Ads Manager.\n2. **Select your custom audience**: Select your custom audience as the target audience for your ad campaign.\n3. **Set your ad budget and schedule**: Set your ad budget and schedule as desired.\n4. **Launch your ad campaign**: Launch your ad campaign and start targeting people who have visited your website.\n\nThat's it! You've successfully set up Facebook Pixel and created a custom audience from your website traffic. You can now target people who have shown interest in your business and increase the effectiveness of your ad campaigns.\n\nIf you have any questions or need further assistance, feel free to ask!\nuser: I'd like to know more about how I can use my custom audience in my ad campaigns. Can you give me some tips on how to effectively target my custom audience and maximize my ad spend?\nassistant: Using a custom audience can be a game-changer for your ad campaigns, as it allows you to target people who have already shown interest in your business. Here are some tips on how to effectively target your custom audience and maximize your ad spend:\n\n**Tip 1: Segment Your Custom Audience**\n\nSegment your custom audience based on specific behaviors or actions, such as:\n\n* Website visitors who abandoned their carts\n* People who have purchased from you in the past\n* Those who have engaged with your content on social media\n* Visitors who have spent a certain amount of time on your website\n\nThis will allow you to create more targeted ads that resonate with each segment.\n\n**Tip 2: Use Lookalike Audiences**\n\nCreate lookalike audiences based on your custom audience to target people who are similar to your existing customers. This can help you expand your reach and target new audiences who are likely to be interested in your business.\n\n**Tip 3: Use Retargeting Ads**\n\nUse retargeting ads to target people who have visited your website but haven't converted yet. This can help you re-engage with potential customers and encourage them to complete a purchase.\n\n**Tip 4: Use Personalization**\n\nUse personalization to tailor your ads to your custom audience. For example, you can use the person's name, location, or interests to create more targeted and relevant ads.\n\n**Tip 5: Optimize for Conversions**\n\nOptimize your ad campaigns for conversions, such as purchases, sign-ups, or downloads. This will help you maximize your ad spend and drive more revenue.\n\n**Tip 6: Use A/B Testing**\n\nUse A/B testing to test different ad creatives, targeting options, and bidding strategies to see what performs best for your custom audience.\n\n**Tip 7: Set Up Frequency Capping**\n\nSet up frequency capping to limit the number of times your ads are shown to each person in your custom audience. This will help prevent ad fatigue and ensure that your ads remain effective.\n\n**Tip 8: Use Custom Audience Exclusions**\n\nUse custom audience exclusions to exclude people who have already converted or are not a good fit for your business. This will help you avoid wasting ad spend on people who are not likely to convert.\n\n**Tip 9: Monitor and Optimize**\n\nMonitor your ad campaigns regularly and optimize them based on performance. This will help you identify areas for improvement and maximize your ad spend.\n\n**Tip 10: Use Facebook's Automation Features**\n\nUse Facebook's automation features, such as automated bidding and ad scheduling, to streamline your ad campaigns and save time.\n\nBy following these tips, you can effectively target your custom audience and maximize your ad spend. Remember to always monitor and optimize your ad campaigns to ensure the best possible results.\n\n        Candidate notes:\n        [0] type=PLAN title=Facebook custom audience setup and optimization plan for handmade home decor ads summary=For the user's e-commerce business selling handmade home decor products, the reusable Facebook Ads approach is to install Facebook Pixel, create a website-traffic custom audience such as \"Website Visitors - 30 Days\", segment it by behaviors such as cart abandonment, purchase history, social engagement, time on site, or specific pages, then use retargeting, exclusions, frequency capping, conversion...[truncated 73 chars] scope=Facebook ad campaign strategy for the user's handmade home decor e-commerce business entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5> keywords=Facebook Pixel,custom audience,website traffic,Website Visitors - 30 Days,retargeting,lookalike audiences,handmade home decor tags=facebook_ads,custom_audience,website_traffic,retargeting,home_decor evidence=I'd like to create a custom audience based on my website traffic. Can you walk me through the process of setting up Facebook Pixel and creating a custom audience from my website traffic?\n[1] type=DIRECTION title=Recommended Facebook targeting options for handmade home decor audience expansion summary=The recommended targeting mix for the user's handmade home decor business includes demographic targeting for females 25-45, interests around home decor, interior design, eco-friendly living, handmade/artisanal products, green living, environmentalism, DIY/crafting, online-shopping behaviors, lookalike audiences from customers or website visitors, custom audiences for website visitors/cart abandone...[truncated 94 chars] scope=Targeting option selection for Facebook ads promoting the user's handmade home decor products entities=entity:<0>,entity:<6>,entity:<7>,entity:<8>,entity:<4>,entity:<5> keywords=home decor,interior design,eco-friendly living,handmade products,lookalike targeting,custom audiences,wellness,travel,DIY tags=facebook_ads,targeting_strategy,home_decor,audience_expansion evidence=Based on your feedback, here are some targeting options that might be effective for your handmade home decor business:\n\n        Existing active notes:\n        id=hot-path-e1ff20f5545c-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Facebook ad retargeting direction after 2,000 reach and 50 clicks summary=For the next Facebook ad campaign, the user plans to repeat interest-based targeting toward people interested in similar products, building on a previous campaign that reached about 2,000 people and generated 50 website clicks. The reusable optimization direction is to refine that audience/creative/landing page rather than abandon the targeting approach, because it previously produced measurable t...[truncated 7 chars] scope=Facebook ad campaign strategy for User's handmade jewelry keywords=Facebook ad campaign,interest targeting,similar products,2,000 people,50 website clicks,handmade jewelry tags=facebook_ads,ad_targeting,marketing_strategy,website_clicks useCount=0\nid=hot-path-e1ff20f5545c-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Handmade jewelry social marketing context summary=The user markets handmade jewelry to young adults interested in unique accessories and indie fashion; prior channels include Instagram hashtag/content strategy, influencer promotion, Instagram Stories, and Facebook ads. The product context anchors future marketing recommendations around keywords such as \"handmade jewelry\", \"unique accessories\", and \"indie fashion\". scope=Marketing context for User's handmade jewelry keywords=handmade jewelry,unique accessories,indie fashion,young adults,influencer,Instagram,Facebook tags=marketing_context,audience,handmade_jewelry,social_media useCount=0\nid=hot-path-e1ff20f5545c-note-2 type=LESSON status=ACTIVE maturity=FRESH title=Instagram content strategy for handmade jewelry engagement summary=The user’s Instagram engagement strategy for handmade jewelry emphasizes behind-the-scenes production-process Stories, product feedback requests, and interactive polls; one recent product-design poll received around 50 votes, indicating this format works well for follower engagement and design feedback. scope=Instagram Stories engagement strategy for User's handmade jewelry keywords=Instagram Stories,handmade jewelry,production process,polls,product feedback,50 votes tags=instagram_strategy,engagement,handmade_jewelry,polls useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:60036106",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:249aaf793d6c859253d21c0310ef3d7d"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:60036106\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 16:19\nTranscript:\nuser: I'm looking to run another Facebook ad campaign soon and I want to make sure I'm targeting the right audience. Can you help me identify the most effective targeting options for my business? By the way, my previous ad campaign, which ran for five days, reached around 2,000 people.\nassistant: I'd be happy to help you optimize your Facebook ad targeting options.\n\nTo better understand your business and provide more tailored advice, could you please share some more information about your business and the previous campaign? Here are some questions to consider:\n\n1. **What industry or niche does your business operate in?** (e.g., e-commerce, services, software, etc.)\n2. **What products or services do you offer?**\n3. **Who is your ideal customer?** (e.g., demographics, interests, behaviors, etc.)\n4. **What was the goal of your previous campaign?** (e.g., website traffic, lead generation, conversions, etc.)\n5. **What was the content of your previous ads?** (e.g., image, video, copy, etc.)\n6. **What was the budget for your previous campaign?**\n7. **What were the results of your previous campaign?** (e.g., click-through rate, conversion rate, cost per conversion, etc.)\n\nWith this information, I can provide more specific guidance on the most effective targeting options for your business.\n\nIn general, here are some popular targeting options on Facebook that you might consider:\n\n1. **Demographic targeting**: Target people based on age, gender, location, language, and more.\n2. **Interest targeting**: Target people who have shown interest in specific topics, hobbies, or brands.\n3. **Behavioral targeting**: Target people based on their behaviors, such as purchase history, job title, or device usage.\n4. **Lookalike targeting**: Target people who are similar to your existing customers or fans.\n5. **Custom audiences**: Target people who have interacted with your business, such as website visitors, email subscribers, or customers.\n6. **Retargeting**: Target people who have abandoned their shopping carts or haven't converted yet.\n\nLet me know if you have any specific questions about these targeting options or if there's anything else you'd like to know!\nuser: My business operates in the e-commerce niche, and I offer handmade home decor products. My ideal customer is a female between 25-45 years old who values unique, eco-friendly products. The goal of my previous campaign was to drive website traffic and increase brand awareness. My ad content was a high-quality image of one of my products with a brief description and a call-to-action to visit my website. The budget for my previous campaign was around $100, and the results were 50 clicks to my website, which I'm pretty happy with.\nassistant: Thank you for sharing more about your business and previous campaign!\n\nBased on your feedback, here are some targeting options that might be effective for your handmade home decor business:\n\n1. **Demographic targeting**:\n\t* Target females between 25-45 years old, as per your ideal customer profile.\n\t* Consider targeting people with a higher income (e.g., $50,000+) who are more likely to appreciate unique, eco-friendly products.\n2. **Interest targeting**:\n\t* Target people who have shown interest in:\n\t\t+ Home decor and interior design\n\t\t+ Eco-friendly and sustainable living\n\t\t+ Handmade or artisanal products\n\t\t+ Green living and environmentalism\n\t\t+ DIY and crafting\n\t* You can also target people who have liked pages or followed accounts related to these topics.\n3. **Behavioral targeting**:\n\t* Target people who have shown an interest in shopping online or have made purchases online in the past.\n\t* Consider targeting people who have purchased home decor or eco-friendly products online in the past.\n4. **Lookalike targeting**:\n\t* Create a lookalike audience based on your existing customers or website visitors who have shown interest in your products.\n\t* This can help you reach new people who are similar to your existing audience and are more likely to be interested in your products.\n5. **Custom audiences**:\n\t* Target people who have visited your website but haven't converted yet.\n\t* Consider targeting people who have abandoned their shopping carts or have viewed specific products on your website.\n6. **Interest-based targeting with a twist**:\n\t* Target people who have shown interest in related but slightly broader topics, such as:\n\t\t+ Wellness and self-care (people who value natural and eco-friendly products)\n\t\t+ Travel and adventure (people who appreciate unique, handmade products)\n\t\t+ Food and cooking (people who value sustainable living)\n\nFor your ad content, you might consider:\n\n1. **High-quality visuals**: Continue using high-quality images of your products to showcase their unique features and eco-friendly materials.\n2. **Emphasize the benefits**: Highlight the benefits of your products, such as their eco-friendliness, uniqueness, and the story behind each handmade piece.\n3. **Clear call-to-action**: Make sure your call-to-action is clear and prominent, encouraging people to visit your website or learn more about your products.\n\nBased on your previous campaign's results, it seems like you're on the right track! Consider increasing your budget to reach a larger audience and drive more traffic to your website.\n\nDo you have any questions about these targeting options or would you like more specific advice on how to implement them?\nuser: I see your suggestions are really helpful. I'm particularly interested in the lookalike targeting option. Can you tell me more about how to create a lookalike audience and how it works?\nassistant: Lookalike targeting is a powerful feature in Facebook Ads that allows you to target people who are similar to your existing customers, website visitors, or fans. Here's a step-by-step guide on how to create a lookalike audience:\n\n**Creating a Lookalike Audience:**\n\n1. **Go to your Facebook Ads Manager**: Navigate to your Facebook Ads Manager account and click on \"Audiences\" in the top navigation menu.\n2. **Click on \"Create Audience\"**: Click on the \"Create Audience\" button and select \"Lookalike Audience\" from the dropdown menu.\n3. **Choose your source audience**: Select the audience you want to base your lookalike audience on. This can be:\n\t* A custom audience (e.g., website visitors, email subscribers, customers)\n\t* A Facebook page (e.g., your business page)\n\t* A Facebook event\n\t* A list of phone numbers or email addresses\n4. **Select the country and audience size**: Choose the country where you want to target your lookalike audience and select the audience size. You can choose from 1% to 10% of the total population in your selected country.\n5. **Set the lookalike audience options**: You can choose to create a lookalike audience based on:\n\t* Similarity: Facebook will find people who are most similar to your source audience.\n\t* Reach: Facebook will find people who are similar to your source audience, but also prioritize reach and try to find more people.\n6. **Name your lookalike audience**: Give your lookalike audience a name and click \"Create Audience\".\n\n**How Lookalike Targeting Works:**\n\nWhen you create a lookalike audience, Facebook uses its algorithm to find people who are similar to your source audience based on various factors, including:\n\n1. **Demographics**: Age, gender, location, language, and more.\n2. **Interests**: Pages liked, interests, and behaviors.\n3. **Behaviors**: Online behaviors, such as purchases, sign-ups, and more.\n4. **Device usage**: Device type, operating system, and browser type.\n\nFacebook then creates a new audience that is similar to your source audience, but is not identical. This new audience is called a lookalike audience.\n\n**Benefits of Lookalike Targeting:**\n\n1. **Increased reach**: Lookalike targeting allows you to reach a larger audience that is similar to your existing customers or fans.\n2. **Improved targeting**: By targeting people who are similar to your existing audience, you can increase the likelihood of reaching people who are interested in your products or services.\n3. **Cost-effective**: Lookalike targeting can be more cost-effective than targeting a broad audience, as you're targeting people who are more likely to be interested in your business.\n\n**Tips and Best Practices:**\n\n1. **Use a large source audience**: The larger your source audience, the more accurate your lookalike audience will be.\n2. **Use a specific source audience**: Use a specific audience, such as website visitors or customers, to create a more targeted lookalike audience.\n3. **Test different lookalike audiences**: Create multiple lookalike audiences with different settings and test which one performs best.\n\nI hope this helps! Let me know if you have any more questions about lookalike targeting or Facebook Ads in general.\nuser: Can you tell me more about the custom audience option? How do I create a custom audience and what are the benefits of using it?\nassistant: Custom audiences are a powerful feature in Facebook Ads that allows you to target specific groups of people who have already interacted with your business, whether it's through your website, email list, or other online channels.\n\n**Creating a Custom Audience:**\n\nTo create a custom audience, follow these steps:\n\n1. **Go to your Facebook Ads Manager**: Navigate to your Facebook Ads Manager account and click on \"Audiences\" in the top navigation menu.\n2. **Click on \"Create Audience\"**: Click on the \"Create Audience\" button and select \"Custom Audience\" from the dropdown menu.\n3. **Choose your custom audience type**: Select the type of custom audience you want to create, such as:\n\t* **Website traffic**: Target people who have visited your website.\n\t* **Customer list**: Target people who have purchased from you or are in your email list.\n\t* **App activity**: Target people who have taken specific actions within your app.\n\t* **Offline activity**: Target people who have taken specific offline actions, such as making a purchase in-store.\n4. **Upload your data**: Depending on the custom audience type, you'll need to upload your data, such as:\n\t* Website traffic: Facebook Pixel data or a URL list.\n\t* Customer list: CSV file with email addresses, phone numbers, or other identifiable information.\n\t* App activity: App event data.\n\t* Offline activity: Offline event data.\n5. **Name your custom audience**: Give your custom audience a name and click \"Create Audience\".\n\n**Benefits of Using Custom Audiences:**\n\n1. **Targeted advertising**: Custom audiences allow you to target people who have already shown interest in your business, increasing the likelihood of conversions.\n2. **Increased ROI**: By targeting people who are already familiar with your brand, you can increase your return on investment (ROI).\n3. **Improved customer retention**: Custom audiences help you re-engage with existing customers, increasing customer retention and loyalty.\n4. **Better segmentation**: Custom audiences allow you to segment your audience based on specific behaviors or actions, enabling more targeted marketing.\n5. **Competitive advantage**: By targeting people who have already interacted with your business, you can gain a competitive advantage over other advertisers.\n\n**Types of Custom Audiences:**\n\n1. **Website custom audience**: Target people who have visited your website, including specific pages or sections.\n2. **Customer list custom audience**: Target people who have purchased from you, are in your email list, or have taken other specific actions.\n3. **App custom audience**: Target people who have taken specific actions within your app, such as installing, launching, or making in-app purchases.\n4. **Offline custom audience**: Target people who have taken specific offline actions, such as making a purchase in-store or attending an event.\n5. **Lookalike custom audience**: Target people who are similar to your custom audience, but are not identical.\n\n**Best Practices:**\n\n1. **Use high-quality data**: Ensure your data is accurate and up-to-date to get the most out of your custom audience.\n2. **Segment your audience**: Segment your custom audience based on specific behaviors or actions to create more targeted ads.\n3. **Use custom audiences in combination with other targeting options**: Combine custom audiences with other targeting options, such as interests or behaviors, to create more targeted ads.\n4. **Monitor and optimize**: Continuously monitor your custom audience's performance and optimize your ads accordingly.\n\nI hope this helps! Let me know if you have any more questions about custom audiences or Facebook Ads in general.\nuser: I'd like to create a custom audience based on my website traffic. Can you walk me through the process of setting up Facebook Pixel and creating a custom audience from my website traffic?\nassistant: Setting up Facebook Pixel and creating a custom audience from your website traffic is a great way to target people who have already shown interest in your business. Here's a step-by-step guide to help you through the process:\n\n**Step 1: Create a Facebook Pixel**\n\n1. **Go to your Facebook Ads Manager**: Navigate to your Facebook Ads Manager account and click on \"Pixels\" in the top navigation menu.\n2. **Click on \"Create a Pixel\"**: Click on the \"Create a Pixel\" button and follow the prompts to create a new pixel.\n3. **Name your pixel**: Give your pixel a name, such as \"My Website Pixel\".\n4. **Get your pixel code**: Facebook will generate a unique pixel code for you. You'll need to install this code on your website.\n\n**Step 2: Install Facebook Pixel on Your Website**\n\n1. **Copy the pixel code**: Copy the pixel code provided by Facebook.\n2. **Install the code on your website**: You can install the code in one of two ways:\n\t* **Manual installation**: Add the code to the header or footer of your website's HTML.\n\t* **Using a plugin or tag manager**: If you're using a website builder or CMS like WordPress, Shopify, or Wix, you can use a plugin or tag manager to install the pixel code.\n3. **Verify your pixel installation**: Go back to your Facebook Ads Manager and click on \"Pixels\" to verify that your pixel is installed correctly.\n\n**Step 3: Create a Custom Audience from Website Traffic**\n\n1. **Go to your Facebook Ads Manager**: Navigate to your Facebook Ads Manager account and click on \"Audiences\" in the top navigation menu.\n2. **Click on \"Create Audience\"**: Click on the \"Create Audience\" button and select \"Custom Audience\" from the dropdown menu.\n3. **Choose \"Website Traffic\"**: Select \"Website Traffic\" as the source of your custom audience.\n4. **Select your pixel**: Choose the pixel you created earlier as the source of your website traffic data.\n5. **Set your audience criteria**: Set the criteria for your custom audience, such as:\n\t* **Website visitors**: Target people who have visited your website in the past 30 days.\n\t* **Specific pages**: Target people who have visited specific pages on your website.\n\t* **Duration**: Target people who have spent a certain amount of time on your website.\n6. **Name your custom audience**: Give your custom audience a name, such as \"Website Visitors - 30 Days\".\n7. **Create your custom audience**: Click \"Create Audience\" to create your custom audience.\n\n**Step 4: Use Your Custom Audience in Your Ads**\n\n1. **Create a new ad campaign**: Create a new ad campaign in your Facebook Ads Manager.\n2. **Select your custom audience**: Select your custom audience as the target audience for your ad campaign.\n3. **Set your ad budget and schedule**: Set your ad budget and schedule as desired.\n4. **Launch your ad campaign**: Launch your ad campaign and start targeting people who have visited your website.\n\nThat's it! You've successfully set up Facebook Pixel and created a custom audience from your website traffic. You can now target people who have shown interest in your business and increase the effectiveness of your ad campaigns.\n\nIf you have any questions or need further assistance, feel free to ask!\nuser: I'd like to know more about how I can use my custom audience in my ad campaigns. Can you give me some tips on how to effectively target my custom audience and maximize my ad spend?\nassistant: Using a custom audience can be a game-changer for your ad campaigns, as it allows you to target people who have already shown interest in your business. Here are some tips on how to effectively target your custom audience and maximize your ad spend:\n\n**Tip 1: Segment Your Custom Audience**\n\nSegment your custom audience based on specific behaviors or actions, such as:\n\n* Website visitors who abandoned their carts\n* People who have purchased from you in the past\n* Those who have engaged with your content on social media\n* Visitors who have spent a certain amount of time on your website\n\nThis will allow you to create more targeted ads that resonate with each segment.\n\n**Tip 2: Use Lookalike Audiences**\n\nCreate lookalike audiences based on your custom audience to target people who are similar to your existing customers. This can help you expand your reach and target new audiences who are likely to be interested in your business.\n\n**Tip 3: Use Retargeting Ads**\n\nUse retargeting ads to target people who have visited your website but haven't converted yet. This can help you re-engage with potential customers and encourage them to complete a purchase.\n\n**Tip 4: Use Personalization**\n\nUse personalization to tailor your ads to your custom audience. For example, you can use the person's name, location, or interests to create more targeted and relevant ads.\n\n**Tip 5: Optimize for Conversions**\n\nOptimize your ad campaigns for conversions, such as purchases, sign-ups, or downloads. This will help you maximize your ad spend and drive more revenue.\n\n**Tip 6: Use A/B Testing**\n\nUse A/B testing to test different ad creatives, targeting options, and bidding strategies to see what performs best for your custom audience.\n\n**Tip 7: Set Up Frequency Capping**\n\nSet up frequency capping to limit the number of times your ads are shown to each person in your custom audience. This will help prevent ad fatigue and ensure that your ads remain effective.\n\n**Tip 8: Use Custom Audience Exclusions**\n\nUse custom audience exclusions to exclude people who have already converted or are not a good fit for your business. This will help you avoid wasting ad spend on people who are not likely to convert.\n\n**Tip 9: Monitor and Optimize**\n\nMonitor your ad campaigns regularly and optimize them based on performance. This will help you identify areas for improvement and maximize your ad spend.\n\n**Tip 10: Use Facebook's Automation Features**\n\nUse Facebook's automation features, such as automated bidding and ad scheduling, to streamline your ad campaigns and save time.\n\nBy following these tips, you can effectively target your custom audience and maximize your ad spend. Remember to always monitor and optimize your ad campaigns to ensure the best possible results.\n\n        Candidate notes:\n        [0] type=PLAN title=Facebook custom audience setup and optimization plan for handmade home decor ads summary=For the user's e-commerce business selling handmade home decor products, the reusable Facebook Ads approach is to install Facebook Pixel, create a website-traffic custom audience such as \"Website Visitors - 30 Days\", segment it by behaviors such as cart abandonment, purchase history, social engagement, time on site, or specific pages, then use retargeting, exclusions, frequency capping, conversion...[truncated 73 chars] scope=Facebook ad campaign strategy for the user's handmade home decor e-commerce business entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5> keywords=Facebook Pixel,custom audience,website traffic,Website Visitors - 30 Days,retargeting,lookalike audiences,handmade home decor tags=facebook_ads,custom_audience,website_traffic,retargeting,home_decor evidence=I'd like to create a custom audience based on my website traffic. Can you walk me through the process of setting up Facebook Pixel and creating a custom audience from my website traffic?\n[1] type=DIRECTION title=Recommended Facebook targeting options for handmade home decor audience expansion summary=The recommended targeting mix for the user's handmade home decor business includes demographic targeting for females 25-45, interests around home decor, interior design, eco-friendly living, handmade/artisanal products, green living, environmentalism, DIY/crafting, online-shopping behaviors, lookalike audiences from customers or website visitors, custom audiences for website visitors/cart abandone...[truncated 94 chars] scope=Targeting option selection for Facebook ads promoting the user's handmade home decor products entities=entity:<0>,entity:<6>,entity:<7>,entity:<8>,entity:<4>,entity:<5> keywords=home decor,interior design,eco-friendly living,handmade products,lookalike targeting,custom audiences,wellness,travel,DIY tags=facebook_ads,targeting_strategy,home_decor,audience_expansion evidence=Based on your feedback, here are some targeting options that might be effective for your handmade home decor business:\n\n        Existing active notes:\n        id=hot-path-e1ff20f5545c-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Facebook ad retargeting direction after 2,000 reach and 50 clicks summary=For the next Facebook ad campaign, the user plans to repeat interest-based targeting toward people interested in similar products, building on a previous campaign that reached about 2,000 people and generated 50 website clicks. The reusable optimization direction is to refine that audience/creative/landing page rather than abandon the targeting approach, because it previously produced measurable t...[truncated 7 chars] scope=Facebook ad campaign strategy for User's handmade jewelry keywords=Facebook ad campaign,interest targeting,similar products,2,000 people,50 website clicks,handmade jewelry tags=facebook_ads,ad_targeting,marketing_strategy,website_clicks useCount=0\nid=hot-path-e1ff20f5545c-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Handmade jewelry social marketing context summary=The user markets handmade jewelry to young adults interested in unique accessories and indie fashion; prior channels include Instagram hashtag/content strategy, influencer promotion, Instagram Stories, and Facebook ads. The product context anchors future marketing recommendations around keywords such as \"handmade jewelry\", \"unique accessories\", and \"indie fashion\". scope=Marketing context for User's handmade jewelry keywords=handmade jewelry,unique accessories,indie fashion,young adults,influencer,Instagram,Facebook tags=marketing_context,audience,handmade_jewelry,social_media useCount=0\nid=hot-path-e1ff20f5545c-note-2 type=LESSON status=ACTIVE maturity=FRESH title=Instagram content strategy for handmade jewelry engagement summary=The user’s Instagram engagement strategy for handmade jewelry emphasizes behind-the-scenes production-process Stories, product feedback requests, and interactive polls; one recent product-design poll received around 50 votes, indicating this format works well for follower engagement and design feedback. scope=Instagram Stories engagement strategy for User's handmade jewelry keywords=Instagram Stories,handmade jewelry,production process,polls,product feedback,50 votes tags=instagram_strategy,engagement,handmade_jewelry,polls useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:60036106",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:249aaf793d6c859253d21c0310ef3d7d"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-e1ff20f5545c-note-3\"}],\"patch\":null,\"reason\":\"Candidate captures a distinct reusable implementation plan for website-traffic custom audiences, Facebook Pixel setup, retargeting, segmentation, exclusions, and optimization; existing notes only contain broader Facebook/marketing context.\",\"target_note_id\":null},{\"action\":\"supersede\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Candidate is a better and more specific version of the existing Facebook targeting direction tied to the same prior campaign metrics, correcting/expanding the business context to handmade home decor and adding demographic, interest, behavioral, lookalike, and custom-audience targeting guidance.\",\"target_note_id\":\"hot-path-e1ff20f5545c-note-3\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5804,
+                "completionTokens": 725,
+                "thinkingTokens": 516,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

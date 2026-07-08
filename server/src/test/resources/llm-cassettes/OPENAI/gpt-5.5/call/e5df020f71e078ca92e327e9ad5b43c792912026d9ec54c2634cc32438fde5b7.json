@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "e5df020f71e078ca92e327e9ad5b43c792912026d9ec54c2634cc32438fde5b7",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_f2262a51\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and the transcript contains durable user health context, named doctors, a dated benign biopsy result, ongoing chronic sinusitis symptoms, and reusable colonoscopy consultation/recovery discussion.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person health facts and goals need the stable namespace-level user entity; no candidate entities exist.\n- mention=Dr. Patel; action=CREATE_NEW; id=entity:<1>; type=PERSON; name=Dr. Patel; reason=Named doctor associated with the user's nasal spray prescription; no existing candidate.\n- mention=Dr. Lee; action=CREATE_NEW; id=entity:<2>; type=PERSON; name=Dr. Lee; reason=Named dermatologist who handled the user's follow-up appointment and biopsy; no existing candidate.\n- mention=nasal spray prescription; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=User's nasal spray prescription; reason=A concrete personal prescribed medical item that later claims may reference; first-person possessive wording indicates a reusable item entity.\n- mention=chronic sinusitis; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Chronic sinusitis; reason=A medical condition discussed as the object of advice and likely later claims.\n- mention=colonoscopy; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Colonoscopy; reason=A medical procedure the user discussed and may plan to undergo; no existing candidate.\n- mention=suspicious mole on my back; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=User's suspicious mole on back; reason=A personal health finding repeatedly referenced as biopsy target; useful object for later health-event claims.\n- mention=current project; action=CREATE_NEW; id=entity:<7>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Dr. Patel|Dr. Lee|chronic sinusitis|nasal spray prescription|colonoscopy|suspicious mole on back\n        text_queries=nasal spray prescription Dr. Patel chronic sinusitis congestion fatigue|Dr. Lee dermatologist biopsy suspicious mole back benign|colonoscopy consultation questions recovery dietary restrictions activities to avoid\n        predicate_hints=has_experience_with|attended_event|has_goal|has_constraint\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:8f8fff5137da9c00209b25ca175ff08b] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_f2262a51:session:1; title=LongMemEval gpt4_f2262a51 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 08:31\nTranscript:\nuser: I'm having some issues with my nasal spray prescription from Dr. Patel. Can you help me with some tips on how to use it more effectively? By the way, I just got back from a follow-up appointment with my dermatologist, Dr. Lee, to get a biopsy on a suspicious mole on my back, and thankfully it was benign.\nassistant: I'm happy to help you with tips on using your nasal spray prescription! However, I have to clarify that I'm a large language model, I don't have access to your personal medical information or interactions with Dr. Patel or Dr. Lee. I'm not a medical professional, and it's essential to consult with your healthcare provider for personalized advice.\n\nThat being said, I can offer some general tips on using nasal sprays effectively:\n\n1. **Follow the instructions**: Read and follow the label instructions and any specific guidance provided by your healthcare provider.\n2. **Prime the pump**: If your nasal spray has a pump, prime it by spraying a few times into the air before using it in your nose.\n3. **Tilt your head**: Tilt your head slightly forward and to one side to help the spray reach the nasal passages more effectively.\n4. **Insert the nozzle**: Gently insert the nozzle into your nostril, aiming towards the back of your nose.\n5. **Spray and breathe**: Spray the recommended dose into your nostril while breathing in gently through your nose.\n6. **Repeat on the other side**: Repeat the process on the other nostril if instructed to do so.\n7. **Avoid blowing your nose**: Try to avoid blowing your nose for a few minutes after using the nasal spray to allow the medication to be absorbed properly.\n8. **Clean the nozzle**: Clean the nozzle regularly to prevent the buildup of bacteria and germs.\n\nRegarding your dermatologist appointment, it's great to hear that the biopsy results came back benign! It's always a relief to receive good news about your health.\n\nRemember, if you have any specific questions or concerns about your nasal spray prescription or any other medical issues, it's best to consult with your healthcare provider, Dr. Patel, or Dr. Lee, for personalized guidance.\nuser: I was also wondering, can you give me some general advice on how to manage chronic sinusitis? I've been experiencing a lot of congestion and fatigue lately, and I'm trying to figure out ways to feel better.\nassistant: I'd be happy to provide some general advice on managing chronic sinusitis! While I'm not a medical professional, I can offer some tips that may help alleviate symptoms. Please keep in mind that it's essential to consult with your healthcare provider for personalized guidance.\n\n**General Tips for Managing Chronic Sinusitis:**\n\n1. **Stay hydrated**: Drink plenty of fluids, such as water, herbal tea, or warm soup, to help thin out mucus and promote drainage.\n2. **Use saline nasal sprays**: Saline sprays can help moisturize the nasal passages, reduce congestion, and flush out allergens and irritants. You can buy over-the-counter saline sprays or make your own by mixing salt and water.\n3. **Use a humidifier**: Dry air can exacerbate sinusitis. A humidifier can add moisture to the air, helping to loosen mucus and reduce congestion.\n4. **Practice good nasal hygiene**: Regularly clean your nasal passages with a neti pot or a squeeze bottle with a saline solution to remove allergens, bacteria, and mucus.\n5. **Avoid irritants**: Stay away from tobacco smoke, strong odors, pollution, and other environmental irritants that can aggravate sinusitis.\n6. **Get enough rest**: Fatigue can worsen sinusitis symptoms. Aim for 7-8 hours of sleep per night and take breaks during the day to rest.\n7. **Elevate your head**: When sleeping, elevate your head using extra pillows to help reduce congestion by allowing mucus to drain out of your sinuses more easily.\n8. **Try steam inhalation**: Breathe in warm, moist air from a bowl of hot water or a steam inhaler to help loosen mucus and reduce congestion. You can add eucalyptus oil or menthol to the water for added benefits.\n9. **Exercise regularly**: Regular exercise can help improve overall health and reduce sinusitis symptoms. However, avoid intense exercise that can trigger nasal congestion.\n10. **Consider immunotherapy**: If you have allergies, consider talking to your healthcare provider about immunotherapy (allergy shots) to help desensitize you to specific allergens.\n11. **Manage stress**: Stress can exacerbate sinusitis symptoms. Practice stress-reducing techniques like meditation, yoga, or deep breathing exercises.\n12. **Keep your environment clean**: Regularly clean and dust your home, especially areas where allergens like dust mites, mold, and pet dander accumulate.\n\n**Additional Tips for Fatigue:**\n\n1. **Prioritize self-care**: Make time for activities that bring you joy and help you relax.\n2. **Take breaks**: Break tasks into smaller, manageable chunks, and take regular breaks to rest.\n3. **Get some morning sunlight**: Exposure to natural light in the morning helps regulate your circadian rhythms, which can help with energy levels.\n4. **Avoid caffeine and sugar**: While they may provide temporary energy boosts, they can lead to energy crashes and worsen fatigue in the long run.\n5. **Consider supplements**: Certain supplements like vitamin D, B12, or iron may help with energy levels. Consult with your healthcare provider before adding any supplements to your routine.\n\nRemember, it's essential to work with your healthcare provider to develop a personalized plan for managing your chronic sinusitis and fatigue. They can help you identify underlying causes and recommend targeted treatments.\nuser: I've been thinking about getting a colonoscopy, which I've been putting off for a while. Can you give me some general information about the procedure and what to expect?\nassistant: Colonoscopies are an important part of preventive care, and I'm happy to provide you with general information to help you prepare.\n\n**What is a colonoscopy?**\n\nA colonoscopy is a medical procedure that allows a doctor to visually examine the inside of your colon (large intestine) and rectum. During the procedure, a flexible tube with a camera and light on the end (colonoscope) is inserted through the anus to inspect the inside of your colon and rectum.\n\n**Why is a colonoscopy necessary?**\n\nColonoscopies are recommended for several reasons:\n\n1. **Cancer screening**: Colon cancer is a leading cause of cancer deaths, but it's highly treatable when caught early. Colonoscopies can detect polyps (abnormal growths) that can develop into cancer.\n2. **Polyp removal**: If polyps are found, they can be removed during the procedure, reducing the risk of cancer.\n3. **Diagnose symptoms**: Colonoscopies can help diagnose symptoms like blood in the stool, changes in bowel habits, or abdominal pain.\n4. **Screening for other conditions**: Colonoscopies can also detect other conditions, such as diverticulosis, inflammatory bowel disease, or ulcers.\n\n**What to expect during the procedure:**\n\n1. **Preparation**: You'll be asked to follow a special diet and bowel prep instructions to clean out your colon. This usually involves a liquid diet, laxatives, and enemas.\n2. **Procedure**: You'll lie on your side or back, and the colonoscope will be inserted through your anus. Air or carbon dioxide may be used to inflate the colon for better visibility.\n3. **Sedation**: You may be given sedation to help you relax, but you'll likely be awake and able to communicate with the doctor.\n4. **Exam**: The doctor will examine the inside of your colon and rectum, looking for polyps, abnormalities, or other issues.\n5. **Removal of polyps**: If polyps are found, the doctor may remove them during the procedure.\n6. **Biopsy**: If any abnormalities are detected, a biopsy may be taken for further examination.\n\n**After the procedure:**\n\n1. **Recovery**: You'll rest for about an hour after the procedure, and then you can go home.\n2. **Side effects**: You may experience bloating, gas, or discomfort, but these symptoms are usually mild and temporary.\n3. **Results**: The doctor will discuss the results with you, including any findings, biopsies, or polyp removals.\n\n**Tips and reminders:**\n\n1. **Don't delay**: Don't put off your colonoscopy; it's an important step in maintaining your health.\n2. **Follow prep instructions**: Carefully follow the bowel prep instructions to ensure the procedure is successful.\n3. **Bring a driver**: Arrange for someone to drive you home after the procedure, as you may be drowsy from sedation.\n4. **Ask questions**: Don't hesitate to ask your doctor any questions or concerns you may have about the procedure.\n\nRemember to consult with your healthcare provider to schedule a colonoscopy and discuss any specific questions or concerns you may have.\nuser: That's really helpful, thanks! Speaking of scheduling medical appointments, I recently had to take care of some other health issues, like the follow-up with Dr. Lee for the biopsy on that suspicious mole on my back. Anyway, back to the colonoscopy - what are some things I should ask my doctor during the consultation before the procedure?\nassistant: I'm glad you found the information helpful!\n\n**Excellent question** about asking your doctor questions during the consultation before the colonoscopy! It's essential to be prepared and informed about the procedure. Here are some questions you may want to consider asking your doctor:\n\n1. **Why do I need a colonoscopy?** Understand the reasons behind the recommendation, especially if you're asymptomatic.\n2. **What are the risks and complications?** Discuss potential risks, such as bleeding, infection, or perforation, and how they'll be managed.\n3. **How will the procedure be performed?** Ask about the type of sedation, the colonoscope used, and the overall process.\n4. **What's the bowel prep like?** Get detailed instructions on the prep process, including diet, medications, and any necessary supplies.\n5. **What can I expect during the procedure?** Ask about the duration, discomfort, and what you'll experience during the exam.\n6. **Will I be sedated?** If so, what type of sedation will be used, and what are the potential side effects?\n7. **How long will the procedure take?** Understand the estimated time for the procedure, including prep and recovery.\n8. **Will I need someone to drive me home?** Confirm whether you'll need a driver or can drive yourself home after the procedure.\n9. **What are the signs of complications?** Know the symptoms to watch for after the procedure, such as bleeding, severe abdominal pain, or fever.\n10. **What's the follow-up plan?** Ask about the plan for follow-up appointments, test results, and any further procedures.\n11. **Can I continue my medications?** Discuss any medications you're currently taking and whether you should continue or stop them before the procedure.\n12. **Are there any alternatives?** If you have concerns or anxiety about the procedure, ask about alternative screening options, such as a virtual colonoscopy or stool tests.\n13. **What's the cost and insurance coverage?** Clarify the cost of the procedure and what's covered by your insurance.\n14. **What's the doctor's experience and success rate?** Ask about the doctor's experience performing colonoscopies and their success rate in detecting polyps or cancer.\n\nRemember, it's essential to ask questions and express any concerns you may have during the consultation. This will help you feel more comfortable and prepared for the procedure.\n\n(And, by the way, I'm glad to hear that your biopsy results came back benign!)\nuser: That's a great list of questions to ask my doctor. I think I'll also ask about any specific dietary restrictions or changes I need to make after the procedure. And, I was wondering, are there any specific exercises or activities I should avoid after the colonoscopy?\nassistant: **Excellent point** about asking about dietary restrictions and changes after the procedure!\n\n**Dietary restrictions:**\n\nAfter a colonoscopy, your doctor may recommend a light diet for a day or two to help your body recover. This may include:\n\n* Avoiding heavy meals or greasy foods\n* Sticking to bland, easy-to-digest foods like bananas, rice, applesauce, and toast (BRAT diet)\n* Avoiding spicy, fatty, or high-fiber foods\n* Drinking plenty of fluids to stay hydrated\n\nIt's essential to follow your doctor's specific dietary instructions to ensure a smooth recovery.\n\n**Exercises and activities to avoid:**\n\nAfter a colonoscopy, you may need to avoid certain exercises or activities for a short period to minimize discomfort and promote healing. Your doctor may recommend:\n\n* Avoiding heavy lifting, bending, or straining for a few days\n* Avoiding strenuous exercises, such as running, jumping, or heavy weightlifting, for 1-2 days\n* Avoiding driving for a few hours after the procedure, especially if you received sedation\n* Avoiding intense physical activities, such as horseback riding or contact sports, for a few days\n\nHowever, it's generally recommended to:\n\n* Take it easy and rest for the remainder of the day after the procedure\n* Gradually resume your normal activities over the next few days\n* Listen to your body and stop if you experience any discomfort or pain\n\nRemember to follow your doctor's specific instructions and advice regarding exercise and activities after the procedure. They may have specific guidance based on your individual situation and health status.\n\nBy asking about dietary restrictions and exercise limitations, you'll be better prepared for a smooth and comfortable recovery after your colonoscopy.\nuser: I think I've got a good understanding of what to expect from the colonoscopy procedure and what questions to ask my doctor. Thanks for the helpful tips and advice!\nassistant: You're welcome! I'm glad I could help you feel more informed and prepared for your colonoscopy. Remember, it's essential to prioritize your health and take proactive steps to stay on top of your wellness.\n\nDon't hesitate to reach out to your doctor or healthcare provider if you have any more questions or concerns. They're there to support you throughout the process.\n\nTake care of yourself, and I hope everything goes smoothly with your procedure!\n\n(And, by the way, I'm glad we could have a chat about your dermatologist appointment and biopsy results too. It's always a relief to get good news about our health!)",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_f2262a51",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:8f8fff5137da9c00209b25ca175ff08b"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_f2262a51\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and the transcript contains durable user health context, named doctors, a dated benign biopsy result, ongoing chronic sinusitis symptoms, and reusable colonoscopy consultation/recovery discussion.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person health facts and goals need the stable namespace-level user entity; no candidate entities exist.\n- mention=Dr. Patel; action=CREATE_NEW; id=entity:<1>; type=PERSON; name=Dr. Patel; reason=Named doctor associated with the user's nasal spray prescription; no existing candidate.\n- mention=Dr. Lee; action=CREATE_NEW; id=entity:<2>; type=PERSON; name=Dr. Lee; reason=Named dermatologist who handled the user's follow-up appointment and biopsy; no existing candidate.\n- mention=nasal spray prescription; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=User's nasal spray prescription; reason=A concrete personal prescribed medical item that later claims may reference; first-person possessive wording indicates a reusable item entity.\n- mention=chronic sinusitis; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Chronic sinusitis; reason=A medical condition discussed as the object of advice and likely later claims.\n- mention=colonoscopy; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Colonoscopy; reason=A medical procedure the user discussed and may plan to undergo; no existing candidate.\n- mention=suspicious mole on my back; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=User's suspicious mole on back; reason=A personal health finding repeatedly referenced as biopsy target; useful object for later health-event claims.\n- mention=current project; action=CREATE_NEW; id=entity:<7>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Dr. Patel|Dr. Lee|chronic sinusitis|nasal spray prescription|colonoscopy|suspicious mole on back\n        text_queries=nasal spray prescription Dr. Patel chronic sinusitis congestion fatigue|Dr. Lee dermatologist biopsy suspicious mole back benign|colonoscopy consultation questions recovery dietary restrictions activities to avoid\n        predicate_hints=has_experience_with|attended_event|has_goal|has_constraint\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:8f8fff5137da9c00209b25ca175ff08b] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_f2262a51:session:1; title=LongMemEval gpt4_f2262a51 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 08:31\nTranscript:\nuser: I'm having some issues with my nasal spray prescription from Dr. Patel. Can you help me with some tips on how to use it more effectively? By the way, I just got back from a follow-up appointment with my dermatologist, Dr. Lee, to get a biopsy on a suspicious mole on my back, and thankfully it was benign.\nassistant: I'm happy to help you with tips on using your nasal spray prescription! However, I have to clarify that I'm a large language model, I don't have access to your personal medical information or interactions with Dr. Patel or Dr. Lee. I'm not a medical professional, and it's essential to consult with your healthcare provider for personalized advice.\n\nThat being said, I can offer some general tips on using nasal sprays effectively:\n\n1. **Follow the instructions**: Read and follow the label instructions and any specific guidance provided by your healthcare provider.\n2. **Prime the pump**: If your nasal spray has a pump, prime it by spraying a few times into the air before using it in your nose.\n3. **Tilt your head**: Tilt your head slightly forward and to one side to help the spray reach the nasal passages more effectively.\n4. **Insert the nozzle**: Gently insert the nozzle into your nostril, aiming towards the back of your nose.\n5. **Spray and breathe**: Spray the recommended dose into your nostril while breathing in gently through your nose.\n6. **Repeat on the other side**: Repeat the process on the other nostril if instructed to do so.\n7. **Avoid blowing your nose**: Try to avoid blowing your nose for a few minutes after using the nasal spray to allow the medication to be absorbed properly.\n8. **Clean the nozzle**: Clean the nozzle regularly to prevent the buildup of bacteria and germs.\n\nRegarding your dermatologist appointment, it's great to hear that the biopsy results came back benign! It's always a relief to receive good news about your health.\n\nRemember, if you have any specific questions or concerns about your nasal spray prescription or any other medical issues, it's best to consult with your healthcare provider, Dr. Patel, or Dr. Lee, for personalized guidance.\nuser: I was also wondering, can you give me some general advice on how to manage chronic sinusitis? I've been experiencing a lot of congestion and fatigue lately, and I'm trying to figure out ways to feel better.\nassistant: I'd be happy to provide some general advice on managing chronic sinusitis! While I'm not a medical professional, I can offer some tips that may help alleviate symptoms. Please keep in mind that it's essential to consult with your healthcare provider for personalized guidance.\n\n**General Tips for Managing Chronic Sinusitis:**\n\n1. **Stay hydrated**: Drink plenty of fluids, such as water, herbal tea, or warm soup, to help thin out mucus and promote drainage.\n2. **Use saline nasal sprays**: Saline sprays can help moisturize the nasal passages, reduce congestion, and flush out allergens and irritants. You can buy over-the-counter saline sprays or make your own by mixing salt and water.\n3. **Use a humidifier**: Dry air can exacerbate sinusitis. A humidifier can add moisture to the air, helping to loosen mucus and reduce congestion.\n4. **Practice good nasal hygiene**: Regularly clean your nasal passages with a neti pot or a squeeze bottle with a saline solution to remove allergens, bacteria, and mucus.\n5. **Avoid irritants**: Stay away from tobacco smoke, strong odors, pollution, and other environmental irritants that can aggravate sinusitis.\n6. **Get enough rest**: Fatigue can worsen sinusitis symptoms. Aim for 7-8 hours of sleep per night and take breaks during the day to rest.\n7. **Elevate your head**: When sleeping, elevate your head using extra pillows to help reduce congestion by allowing mucus to drain out of your sinuses more easily.\n8. **Try steam inhalation**: Breathe in warm, moist air from a bowl of hot water or a steam inhaler to help loosen mucus and reduce congestion. You can add eucalyptus oil or menthol to the water for added benefits.\n9. **Exercise regularly**: Regular exercise can help improve overall health and reduce sinusitis symptoms. However, avoid intense exercise that can trigger nasal congestion.\n10. **Consider immunotherapy**: If you have allergies, consider talking to your healthcare provider about immunotherapy (allergy shots) to help desensitize you to specific allergens.\n11. **Manage stress**: Stress can exacerbate sinusitis symptoms. Practice stress-reducing techniques like meditation, yoga, or deep breathing exercises.\n12. **Keep your environment clean**: Regularly clean and dust your home, especially areas where allergens like dust mites, mold, and pet dander accumulate.\n\n**Additional Tips for Fatigue:**\n\n1. **Prioritize self-care**: Make time for activities that bring you joy and help you relax.\n2. **Take breaks**: Break tasks into smaller, manageable chunks, and take regular breaks to rest.\n3. **Get some morning sunlight**: Exposure to natural light in the morning helps regulate your circadian rhythms, which can help with energy levels.\n4. **Avoid caffeine and sugar**: While they may provide temporary energy boosts, they can lead to energy crashes and worsen fatigue in the long run.\n5. **Consider supplements**: Certain supplements like vitamin D, B12, or iron may help with energy levels. Consult with your healthcare provider before adding any supplements to your routine.\n\nRemember, it's essential to work with your healthcare provider to develop a personalized plan for managing your chronic sinusitis and fatigue. They can help you identify underlying causes and recommend targeted treatments.\nuser: I've been thinking about getting a colonoscopy, which I've been putting off for a while. Can you give me some general information about the procedure and what to expect?\nassistant: Colonoscopies are an important part of preventive care, and I'm happy to provide you with general information to help you prepare.\n\n**What is a colonoscopy?**\n\nA colonoscopy is a medical procedure that allows a doctor to visually examine the inside of your colon (large intestine) and rectum. During the procedure, a flexible tube with a camera and light on the end (colonoscope) is inserted through the anus to inspect the inside of your colon and rectum.\n\n**Why is a colonoscopy necessary?**\n\nColonoscopies are recommended for several reasons:\n\n1. **Cancer screening**: Colon cancer is a leading cause of cancer deaths, but it's highly treatable when caught early. Colonoscopies can detect polyps (abnormal growths) that can develop into cancer.\n2. **Polyp removal**: If polyps are found, they can be removed during the procedure, reducing the risk of cancer.\n3. **Diagnose symptoms**: Colonoscopies can help diagnose symptoms like blood in the stool, changes in bowel habits, or abdominal pain.\n4. **Screening for other conditions**: Colonoscopies can also detect other conditions, such as diverticulosis, inflammatory bowel disease, or ulcers.\n\n**What to expect during the procedure:**\n\n1. **Preparation**: You'll be asked to follow a special diet and bowel prep instructions to clean out your colon. This usually involves a liquid diet, laxatives, and enemas.\n2. **Procedure**: You'll lie on your side or back, and the colonoscope will be inserted through your anus. Air or carbon dioxide may be used to inflate the colon for better visibility.\n3. **Sedation**: You may be given sedation to help you relax, but you'll likely be awake and able to communicate with the doctor.\n4. **Exam**: The doctor will examine the inside of your colon and rectum, looking for polyps, abnormalities, or other issues.\n5. **Removal of polyps**: If polyps are found, the doctor may remove them during the procedure.\n6. **Biopsy**: If any abnormalities are detected, a biopsy may be taken for further examination.\n\n**After the procedure:**\n\n1. **Recovery**: You'll rest for about an hour after the procedure, and then you can go home.\n2. **Side effects**: You may experience bloating, gas, or discomfort, but these symptoms are usually mild and temporary.\n3. **Results**: The doctor will discuss the results with you, including any findings, biopsies, or polyp removals.\n\n**Tips and reminders:**\n\n1. **Don't delay**: Don't put off your colonoscopy; it's an important step in maintaining your health.\n2. **Follow prep instructions**: Carefully follow the bowel prep instructions to ensure the procedure is successful.\n3. **Bring a driver**: Arrange for someone to drive you home after the procedure, as you may be drowsy from sedation.\n4. **Ask questions**: Don't hesitate to ask your doctor any questions or concerns you may have about the procedure.\n\nRemember to consult with your healthcare provider to schedule a colonoscopy and discuss any specific questions or concerns you may have.\nuser: That's really helpful, thanks! Speaking of scheduling medical appointments, I recently had to take care of some other health issues, like the follow-up with Dr. Lee for the biopsy on that suspicious mole on my back. Anyway, back to the colonoscopy - what are some things I should ask my doctor during the consultation before the procedure?\nassistant: I'm glad you found the information helpful!\n\n**Excellent question** about asking your doctor questions during the consultation before the colonoscopy! It's essential to be prepared and informed about the procedure. Here are some questions you may want to consider asking your doctor:\n\n1. **Why do I need a colonoscopy?** Understand the reasons behind the recommendation, especially if you're asymptomatic.\n2. **What are the risks and complications?** Discuss potential risks, such as bleeding, infection, or perforation, and how they'll be managed.\n3. **How will the procedure be performed?** Ask about the type of sedation, the colonoscope used, and the overall process.\n4. **What's the bowel prep like?** Get detailed instructions on the prep process, including diet, medications, and any necessary supplies.\n5. **What can I expect during the procedure?** Ask about the duration, discomfort, and what you'll experience during the exam.\n6. **Will I be sedated?** If so, what type of sedation will be used, and what are the potential side effects?\n7. **How long will the procedure take?** Understand the estimated time for the procedure, including prep and recovery.\n8. **Will I need someone to drive me home?** Confirm whether you'll need a driver or can drive yourself home after the procedure.\n9. **What are the signs of complications?** Know the symptoms to watch for after the procedure, such as bleeding, severe abdominal pain, or fever.\n10. **What's the follow-up plan?** Ask about the plan for follow-up appointments, test results, and any further procedures.\n11. **Can I continue my medications?** Discuss any medications you're currently taking and whether you should continue or stop them before the procedure.\n12. **Are there any alternatives?** If you have concerns or anxiety about the procedure, ask about alternative screening options, such as a virtual colonoscopy or stool tests.\n13. **What's the cost and insurance coverage?** Clarify the cost of the procedure and what's covered by your insurance.\n14. **What's the doctor's experience and success rate?** Ask about the doctor's experience performing colonoscopies and their success rate in detecting polyps or cancer.\n\nRemember, it's essential to ask questions and express any concerns you may have during the consultation. This will help you feel more comfortable and prepared for the procedure.\n\n(And, by the way, I'm glad to hear that your biopsy results came back benign!)\nuser: That's a great list of questions to ask my doctor. I think I'll also ask about any specific dietary restrictions or changes I need to make after the procedure. And, I was wondering, are there any specific exercises or activities I should avoid after the colonoscopy?\nassistant: **Excellent point** about asking about dietary restrictions and changes after the procedure!\n\n**Dietary restrictions:**\n\nAfter a colonoscopy, your doctor may recommend a light diet for a day or two to help your body recover. This may include:\n\n* Avoiding heavy meals or greasy foods\n* Sticking to bland, easy-to-digest foods like bananas, rice, applesauce, and toast (BRAT diet)\n* Avoiding spicy, fatty, or high-fiber foods\n* Drinking plenty of fluids to stay hydrated\n\nIt's essential to follow your doctor's specific dietary instructions to ensure a smooth recovery.\n\n**Exercises and activities to avoid:**\n\nAfter a colonoscopy, you may need to avoid certain exercises or activities for a short period to minimize discomfort and promote healing. Your doctor may recommend:\n\n* Avoiding heavy lifting, bending, or straining for a few days\n* Avoiding strenuous exercises, such as running, jumping, or heavy weightlifting, for 1-2 days\n* Avoiding driving for a few hours after the procedure, especially if you received sedation\n* Avoiding intense physical activities, such as horseback riding or contact sports, for a few days\n\nHowever, it's generally recommended to:\n\n* Take it easy and rest for the remainder of the day after the procedure\n* Gradually resume your normal activities over the next few days\n* Listen to your body and stop if you experience any discomfort or pain\n\nRemember to follow your doctor's specific instructions and advice regarding exercise and activities after the procedure. They may have specific guidance based on your individual situation and health status.\n\nBy asking about dietary restrictions and exercise limitations, you'll be better prepared for a smooth and comfortable recovery after your colonoscopy.\nuser: I think I've got a good understanding of what to expect from the colonoscopy procedure and what questions to ask my doctor. Thanks for the helpful tips and advice!\nassistant: You're welcome! I'm glad I could help you feel more informed and prepared for your colonoscopy. Remember, it's essential to prioritize your health and take proactive steps to stay on top of your wellness.\n\nDon't hesitate to reach out to your doctor or healthcare provider if you have any more questions or concerns. They're there to support you throughout the process.\n\nTake care of yourself, and I hope everything goes smoothly with your procedure!\n\n(And, by the way, I'm glad we could have a chat about your dermatologist appointment and biopsy results too. It's always a relief to get good news about our health!)",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_f2262a51",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:8f8fff5137da9c00209b25ca175ff08b"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User has been thinking about getting a colonoscopy and had been putting it off.\",\"User plans to ask about dietary restrictions or changes after a colonoscopy.\",\"User asked about exercises or activities to avoid after a colonoscopy.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<5>\",\"role\":\"subject\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"what are some things I should ask my doctor during the consultation before the procedure?\",\"evidence_reason\":\"The transcript contains a detailed colonoscopy consultation discussion followed by recovery diet and activity questions, making the compact set of topics reusable for future health-planning context.\",\"importance\":4,\"keywords\":[\"colonoscopy\",\"consultation questions\",\"bowel prep\",\"sedation\",\"dietary restrictions\",\"activity restrictions\",\"recovery\",\"driver\"],\"note_type\":\"context\",\"rationale\":\"This is not a single atomic fact; it preserves a reusable planning frame and checklist context for a medical procedure consultation and recovery discussion.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable context for the user's colonoscopy planning and future medical appointment preparation discussions.\"},\"summary\":\"The user was preparing for a colonoscopy they had been putting off and identified consultation topics to ask their doctor about: why it is needed, risks/complications, procedure and sedation details, bowel prep, expected duration and recovery, need for a driver, signs of complications, follow-up plan, medication management, alternatives, cost/insurance, doctor experience, plus post-procedure dietary restrictions and activity/exercise limits.\",\"tags\":[\"health\",\"colonoscopy\",\"appointment_prep\"],\"title\":\"Colonoscopy consultation and recovery questions\",\"valid_from\":\"2023-05-20T08:31:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User has chronic sinusitis symptoms including congestion and fatigue.\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"subject\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I've been experiencing a lot of congestion and fatigue lately\",\"evidence_reason\":\"The user's symptom statement anchors the subsequent general management discussion, which is reusable context rather than one precise fact.\",\"importance\":4,\"keywords\":[\"chronic sinusitis\",\"congestion\",\"fatigue\",\"saline spray\",\"humidifier\",\"nasal hygiene\",\"steam inhalation\",\"irritants\"],\"note_type\":\"context\",\"rationale\":\"The note captures a symptom-management context and option set; the exact symptom report can be a claim, but the broader advice/trade-space is better stored as a note.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable context for future discussions about the user's chronic sinusitis symptoms and general self-management options.\"},\"summary\":\"The user reported chronic sinusitis with significant congestion and fatigue and was exploring general ways to feel better. Advice discussed included hydration, saline sprays or rinses, humidifier use, avoiding irritants, rest, head elevation during sleep, steam inhalation, exercise moderation, allergy/immunotherapy discussion, stress management, environmental cleaning, and fatigue-specific pacing and sunlight strategies.\",\"tags\":[\"health\",\"sinusitis\",\"symptom_management\"],\"title\":\"Chronic sinusitis self-management context\",\"valid_from\":\"2023-05-20T08:31:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User had issues with a nasal spray prescription from Dr. Patel.\"],\"confidence\":0.88,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<1>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"issues with my nasal spray prescription from Dr. Patel\",\"evidence_reason\":\"The user's reported prescription issue led to a reusable technique/troubleshooting discussion for nasal spray use.\",\"importance\":3,\"keywords\":[\"nasal spray\",\"Dr. Patel\",\"prescription\",\"prime pump\",\"nozzle\",\"nasal spray technique\"],\"note_type\":\"context\",\"rationale\":\"The doctor-prescription relationship is claim-like, but the useful reusable content is a procedural technique checklist, which fits a contextual/procedure note.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable context for future discussions about the user's nasal spray prescription technique and troubleshooting.\"},\"summary\":\"The user had issues with a nasal spray prescription from Dr. Patel and discussed general technique improvements: follow label/provider instructions, prime the pump if needed, tilt head slightly forward/to one side, aim the nozzle toward the back of the nose, spray while gently inhaling, repeat in the other nostril if instructed, avoid blowing the nose briefly afterward, and clean the nozzle regularly.\",\"tags\":[\"health\",\"medication_use\",\"nasal_spray\"],\"title\":\"Nasal spray use guidance from Dr. Patel prescription discussion\",\"valid_from\":\"2023-05-20T08:31:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5057,
+                "completionTokens": 1121,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

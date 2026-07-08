@@ -257,8 +257,8 @@ class RuntimeMemoryReadPipelineTest {
         val result = pipeline.read(readRequest("How many creative works or content items have I acquired?"))
         val prompt = result.runtimePrompt.orEmpty()
 
-        assertTrue(prompt.contains("For broad counts of works or content items"), prompt)
-        assertTrue(prompt.contains("physical or digital carrier, copy, file, license, or collection item"), prompt)
+        assertTrue(prompt.contains("category fit is semantic, not exact-word matching"), prompt)
+        assertTrue(prompt.contains("concrete user-attributed member, copy, carrier, component, or subtype"), prompt)
     }
 
     @Test
@@ -297,8 +297,8 @@ class RuntimeMemoryReadPipelineTest {
         val result = pipeline.read(readRequest("How many rare items do I have in total?"))
         val prompt = result.runtimePrompt.orEmpty()
 
-        assertTrue(prompt.contains("define the counted inventory"), prompt)
-        assertTrue(prompt.contains("do not add separate singular possession or ownership claims as +1"), prompt)
+        assertTrue(prompt.contains("AGGREGATE_VALUE and AGGREGATE_DELTA claims are numeric operands"), prompt)
+        assertTrue(prompt.contains("POSSESSION and COUNTABLE_ITEM claims are direct evidence"), prompt)
     }
 
     @Test
@@ -343,10 +343,8 @@ class RuntimeMemoryReadPipelineTest {
         val result = pipeline.read(readRequest("What was the increase in newsletter subscribers after two weeks?"))
         val prompt = result.runtimePrompt.orEmpty()
 
-        assertTrue(prompt.contains("compute from compatible explicit numeric operands"), prompt)
-        assertTrue(prompt.contains("baseline/previous value"), prompt)
-        assertTrue(prompt.contains("later/current/final value"), prompt)
-        assertTrue(prompt.contains("Do not answer \"insufficient\" solely because the baseline is phrased as an initial/start value"), prompt)
+        assertTrue(prompt.contains("For derived numeric answers, use compatible explicit operands from retrieved memory"), prompt)
+        assertTrue(prompt.contains("Include baselines, later values, aggregate deltas, anchor dates, source dates, and boundary events"), prompt)
     }
 
     @Test
@@ -401,8 +399,8 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(prompt.contains("derive the target interval from the current/question date"), prompt)
         assertTrue(prompt.contains("do not smear one relative date cue"), prompt)
         assertTrue(prompt.contains("missing date evidence is uncertainty"), prompt)
-        assertTrue(prompt.contains("Do not multiply a routine cadence, intended schedule"), prompt)
-        assertTrue(prompt.contains("do not treat an inferred or likely date from a source-local weekday"), prompt)
+        assertTrue(prompt.contains("For derived numeric answers, use compatible explicit operands from retrieved memory"), prompt)
+        assertTrue(prompt.contains("For imported-source date uncertainty"), prompt)
         assertTrue(prompt.contains("place-visit questions"), prompt)
         assertTrue(prompt.contains("user-attended venue events such as lectures"), prompt)
     }
@@ -556,8 +554,8 @@ class RuntimeMemoryReadPipelineTest {
         val result = pipeline.read(readRequest("How many projects have I led or am currently leading?"))
         val prompt = result.runtimePrompt.orEmpty()
 
-        assertTrue(prompt.contains("a plain works_on_project or generic project association claim is not enough"), prompt)
-        assertTrue(prompt.contains("solo or user-owned project evidence"), prompt)
+        assertTrue(prompt.contains("RESPONSIBILITY and FUNCTIONAL_ROLE claims are direct evidence"), prompt)
+        assertTrue(prompt.contains("PROJECT_ASSOCIATION alone is supporting context"), prompt)
     }
 
     @Test

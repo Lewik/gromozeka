@@ -18,6 +18,7 @@ import org.springframework.context.ConfigurableApplicationContext
 import java.io.Closeable
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
 import kotlin.io.path.readText
@@ -26,6 +27,7 @@ import kotlin.io.path.writeText
 class ServerTestHarness(
     private val settings: Settings = defaultSettings(),
     private val subscriptionSession: OpenAiSubscriptionSession? = defaultSubscriptionSession(),
+    private val subscriptionConfigMirrorPath: Path? = null,
     private val systemProperties: Map<String, String> = emptyMap(),
     private val additionalSources: List<Class<*>> = emptyList(),
     private val customizeHome: (Path) -> Unit = {},
@@ -57,6 +59,7 @@ class ServerTestHarness(
 
     override fun close() {
         runCatching { context.close() }
+        runCatching { mirrorSubscriptionConfigBack() }
         restoreSystemProperties()
         runCatching { homeDirectory.toFile().deleteRecursively() }
     }
@@ -114,6 +117,15 @@ class ServerTestHarness(
                 System.setProperty(key, value)
             }
         }
+    }
+
+    private fun mirrorSubscriptionConfigBack() {
+        val targetPath = subscriptionConfigMirrorPath ?: return
+        val sourcePath = homeDirectory.resolve("openai-subscription.json")
+        if (!sourcePath.exists()) return
+
+        Files.createDirectories(targetPath.parent)
+        Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING)
     }
 
     companion object {

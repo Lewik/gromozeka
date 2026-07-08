@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "e04017c0c08f231c48e8c754e9917bad8b3cc579ea020f7e51f4df9e7369106f",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:e56a43b9\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript has extractable durable user/project facts and preferences plus richer reusable context about grocery planning, meal ideas, and breakfast routine; force_memory_write requires non-noop.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:e56a43b9:profile:<0> Profile for User (USER).\nStable facts:\n- The user wanted to buy a new office chair and use an OfficeDepot silver tier discount to get a good deal.\n- The user wanted to buy a new coffee maker and use accumulated BedBath&Beyond points toward it.\n- The user regularly bought office supplies and printer ink from OfficeDepot as of 2023-05-26.\n- The user wanted recommendations for comfortable yet stylish shoes for daily wear at StyleHub.\n- The user was considering canceling their Petco loyalty program membership because they had not been shopping there as much as before.\n- The user was considering getting a new toy or bed for their pet.\n- The user's Petco loyalty program membership did not seem worth it to them anymore as of 2023-05-26.\n- The user wanted recipe ideas that use eggs and spinach for grocery shopping during the week of 2023-05-26.\n- claim hot-path-69cb598f5832-claim-8: current_metric_value; As of 2023-05-26, the user had reached 500 FreshMart points, the minimum required for a discount.; scope=User's FreshMart loyalty points status as stated in the 2023-05-26 imported chat.\n- note hot-path-69cb598f5832-note-2: CONTEXT; Loyalty-linked shopping recommendation context; The user is considering several purchases while trying to use or evaluate retailer loyalty benefits: eggs/spinach groceries with a FreshMart discount, a coffee maker using BedBath&Beyond points, an office chair using OfficeDepot \"silver\" tier discount, daily-wear shoes while nearing 500 StyleHub points, pet accessories, and possibly canceling Petco due to reduced shopping there and only around 200 points accumulated.; scope=User shopping plans and loyalty-program context from LongMemEval session 1\n- claim hot-path-69cb598f5832-claim-7: has_goal; The user wanted recipe ideas that use eggs and spinach for grocery shopping during the week of 2023-05-26.; scope=LongMemEval past chat session dated 2023-05-26 about grocery shopping and retail recommendations.\n- claim hot-path-69cb598f5832-claim-17: has_goal; The user was considering canceling their Petco loyalty program membership because they had not been shopping there as much as before.; scope=LongMemEval past chat session dated 2023-05-26 about Petco loyalty membership cancellation consideration.\n- claim hot-path-69cb598f5832-claim-10: has_goal; The user wanted to buy a new office chair and use an OfficeDepot silver tier discount to get a good deal.; scope=LongMemEval past chat session dated 2023-05-26 about retail recommendations and loyalty benefits.\n- claim hot-path-69cb598f5832-claim-18: has_constraint; The user's Petco loyalty program membership did not seem worth it to them anymore as of 2023-05-26.; scope=User's evaluation of Petco loyalty membership in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-16: current_metric_value; As of 2023-05-26, the user had around 200 Petco points accumulated.; scope=User's Petco loyalty points status as stated in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-9: has_goal; The user wanted to buy a new coffee maker and use accumulated BedBath&Beyond points toward it.; scope=LongMemEval past chat session dated 2023-05-26 about retail recommendations and loyalty points.\n- claim hot-path-69cb598f5832-claim-12: current_metric_value; As of 2023-05-26, the user had an OfficeDepot silver tier discount.; scope=User's OfficeDepot loyalty tier status as stated in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-14: current_metric_value; As of 2023-05-26, the user was close to reaching 500 StyleHub points.; scope=User's StyleHub loyalty points status as stated in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-13: has_goal; The user wanted recommendations for comfortable yet stylish shoes for daily wear at StyleHub.; scope=LongMemEval past chat session dated 2023-05-26 about retail recommendations and loyalty points.\n- claim hot-path-69cb598f5832-claim-11: has_experience_with; The user regularly bought office supplies and printer ink from OfficeDepot as of 2023-05-26.; scope=User's retail shopping history with OfficeDepot as stated in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-15: has_goal; The user was considering getting a new toy or bed for their pet.; scope=LongMemEval past chat session dated 2023-05-26 about pet accessory recommendations.\n- note hot-path-69cb598f5832-note-5: CONTEXT; Comfortable daily-wear shoe options for StyleHub points; Shoe recommendations for comfortable yet stylish daily wear included sneakers New Balance 574, Converse Chuck Taylor All Star, and Adidas Superstar; loafers Clarks Cloud Steppers, Vionic Tide, and Sperry Original Boat Shoe; and boots UGG Ansley, The North Face Hedgehog Fastpack, and Dr. Martens 1460. Selection criteria were comfort, personal style, quality, and versatility.; scope=Shoe recommendation context for the user's possible StyleHub points redemption\n- note hot-path-69cb598f5832-note-3: CONTEXT; Coffee maker options recommended for BedBath&Beyond points; Coffee maker suggestions were grouped by brewing style: drip options Cuisinart DCC-3200 and Bonavita BV1900TS; single-serve Keurig K-Elite and Nespresso Inissia; French press Bodum Chambord and Espro P1; pour-over Chemex Classic Series and Hario V60; espresso Nespresso Expert and De'Longhi BCO130T. Selection criteria included coffee strength preference, brewing method, counter space/design, budget, and desired features such as timers, grinders, or milk frothing.; scope=Coffee maker recommendation context for the user's possible BedBath&Beyond purchase\n- note hot-path-69cb598f5832-note-4: CONTEXT; Office chair options for OfficeDepot silver discount; Office chair recommendations were organized by price tier: budget under $200 included Flash Furniture Mid-Back Office Chair and Essentials by OFM ESS-3005; mid-range $200-$400 included Herman Miller Sayl Chair and Ergohuman High-Back Executive Chair; premium over $400 included Herman Miller Aeron Chair and Steelcase Leap Chair. Decision factors were ergonomics, comfort, durability, and style, with a suggestion to try chairs in person at OfficeDepot.; scope=Office chair recommendation context for the user's OfficeDepot silver-tier purchase\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person user statements refer to the stable namespace User entity.\n- mention=FreshMart; action=LINK_EXISTING; id=entity:<1>; type=existing; name=FreshMart; reason=FreshMart safely matches the existing organization entity.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|FreshMart\n        text_queries=FreshMart grocery store loyalty points discount shopping habits staples rice pasta canned goods cooking for 2|healthy snacks meal ideas one-pot pasta Monday breakfast morning routine\n        predicate_hints=prefers|has_constraint|current_metric_value|has_goal\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:a2d19a00f4aef03c6c23f407d7d68f4e] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:e56a43b9:session:2; title=LongMemEval e56a43b9 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 15:18\nTranscript:\nuser: I'm planning a big grocery shopping trip to FreshMart this weekend. Can you help me make a list of some essentials I might need to pick up?\nassistant: I'd be happy to help you with that! However, I have to clarify that FreshMart is not a real grocery store chain. It's possible that you might be thinking of a different store, or perhaps it's a fictional store?\n\nIf you meant to say a different store, please let me know and I'd be happy to help you with your grocery list. Alternatively, I can provide you with a general list of common grocery essentials that you might find useful:\n\n* Fresh produce (fruits and vegetables)\n* Meat and poultry (beef, chicken, pork, fish, etc.)\n* Dairy products (milk, eggs, cheese, yogurt, etc.)\n* Bread and baked goods (bread, pasta, rice, etc.)\n* Pantry items (canned goods, oils, spices, etc.)\n* Snacks (nuts, dried fruits, crackers, etc.)\n* Beverages (juice, soda, coffee, tea, etc.)\n* Cleaning supplies (dish soap, laundry detergent, etc.)\n* Personal care items (toothpaste, toilet paper, shampoo, etc.)\n\nLet me know if you need help with anything specific or if you'd like me to add anything to this list!\nuser: I meant FreshMart, it's my local grocery store. I have some points there and every 100 points translate to a $1 discount on my next purchase. Thanks for the list, but I was thinking of something more personalized. Can you help me make a list based on my shopping habits?\nassistant: As a digital AI assistant, I don't have access to your personal shopping habits or preferences, and I don't have the ability to know about your local store FreshMart (since it's not a real chain).\n\nHowever, I can ask you some questions to help me get a better understanding of your shopping needs. Please feel free to provide me with some information, and I can help you create a personalized list:\n\n1. Do you have any dietary restrictions or preferences (e.g., vegetarian, gluten-free, dairy-free)?\n2. What type of meals do you typically cook at home (e.g., Italian, Mexican, Indian, comfort food)?\n3. How many people are you shopping for?\n4. What's your budget for this shopping trip?\n5. Are there any specific products or categories you need to restock (e.g., pet food, baby supplies, household essentials)?\n6. Do you have a favorite brand or product that you always buy?\n\nOnce I have a better understanding of your needs, I can help you create a more personalized shopping list.\nuser: I usually cook for 2 people, and we eat a bit of everything. I'm not too particular about brands, but I do like to stock up on staples like rice, pasta, and canned goods. Also, I've been trying to shop at FreshMart more often since, you know, 500 points gets me a $5 discount on my next purchase.\nassistant: I think there might be some confusion again. As I mentioned earlier, FreshMart is not a real grocery store chain, so it's unlikely that you've been shopping there or earning points towards a discount.\n\nHowever, I can still help you with your shopping list! Based on your preferences, here are some staple items you might want to consider:\n\n* Grains:\n\t+ Rice (white and brown)\n\t+ Pasta (dried)\n\t+ Bread (loaf or buns)\n* Canned Goods:\n\t+ Beans (black, kidney, cannellini)\n\t+ Tomatoes (crushed, diced, and sauce)\n\t+ Tuna (in water and oil)\n\t+ Soups (vegetable, tomato, black bean)\n\t+ Fruits (peaches, pineapple, mandarin oranges)\n* Proteins:\n\t+ Chicken breast or thighs\n\t+ Ground beef or turkey\n\t+ Fish (frozen or canned)\n\t+ Eggs\n* Dairy or Alternatives:\n\t+ Milk (dairy or non-dairy)\n\t+ Yogurt (plain and flavored)\n\t+ Cheese (shredded mozzarella, block cheddar)\n* Pantry:\n\t+ Olive oil\n\t+ Salt\n\t+ Sugar\n\t+ Spices (e.g., basil, oregano, cumin)\n\t+ Baking supplies (flour, baking powder, baking soda)\n\nFeel free to add or remove items based on your personal preferences and dietary needs. If you have any specific meals in mind, I can also help you plan those out and add the necessary ingredients to your list.\n\nRemember, since FreshMart isn't a real store, you might want to consider shopping at a local grocery store in your area. They might have their own loyalty program or rewards system, so be sure to ask about those when you shop!\nuser: I'm pretty sure it's a real store to me. Anyway, that's a good start for my list. What are some good snacks to get? I'm looking for something healthy-ish.\nassistant: I apologize if my earlier clarification came across as confusing. As a digital AI assistant, I can only provide information based on my training data, and FreshMart is not a recognized grocery store chain.\n\nMoving on to snacks, I'd be happy to suggest some healthy-ish options! Here are a few ideas:\n\n1. Fresh Fruits:\n\t* Apples\n\t* Bananas\n\t* Oranges\n\t* Grapes\n\t* Berries (strawberries, blueberries, raspberries)\n2. Nuts and Seeds:\n\t* Almonds\n\t* Walnuts\n\t* Pecans\n\t* Pumpkin seeds\n\t* Chia seeds\n3. Veggie-based Snacks:\n\t* Carrot sticks with hummus\n\t* Cucumber slices\n\t* Cherry tomatoes\n\t* Roasted chickpeas\n4. Whole Grain Crackers:\n\t* Look for crackers made with whole grains like oats, quinoa, or brown rice\n5. Protein-rich Snacks:\n\t* Hard-boiled eggs\n\t* Greek yogurt\n\t* Cottage cheese\n\t* Edamame\n6. Healthy Granola:\n\t* Look for homemade or store-bought granola with minimal added sugars and artificial ingredients\n7. Trail Mix:\n\t* A mix of nuts, seeds, and dried fruits\n\nRemember, even healthy snacks should be consumed in moderation as part of a balanced diet. Be mindful of portion sizes and ingredients to ensure you're making the best choices for your health goals.\n\nFeel free to add or modify these suggestions based on your personal preferences and dietary needs!\nuser: Can you also help me with some meal ideas for the week? Maybe some simple recipes or one-pot dishes that are easy to make?\nassistant: I'd be happy to help you with some meal ideas and simple recipes.\n\nHere are a few one-pot dishes and easy meal ideas that you might enjoy:\n\n**Monday:**\n\n* One-Pot Pasta: Cook pasta, tomato sauce, ground beef or turkey, and veggies (like bell peppers, onions, and mushrooms) in one pot.\n\n**Tuesday:**\n\n* Chicken and Rice Bowl: Cook chicken breast, white rice, and frozen peas in a pot with some olive oil and chicken broth. Season with salt, pepper, and your favorite herbs.\n\n**Wednesday:**\n\n* Lentil Soup: Saute onions, carrots, and celery in olive oil, then add lentils, diced tomatoes, and vegetable broth. Simmer until the lentils are tender. Season with salt, pepper, and your favorite spices.\n\n**Thursday:**\n\n* Tacos: Cook ground beef or chicken in a pan with taco seasoning. Serve with tortillas, shredded cheese, lettuce, and your favorite toppings.\n\n**Friday:**\n\n* Baked Chicken and Veggies: Season chicken breast with salt, pepper, and your favorite herbs. Bake in the oven with sliced veggies (like zucchini, bell peppers, and onions) and a drizzle of olive oil.\n\n**Saturday:**\n\n* Omelette and Veggies: Whisk eggs with salt and pepper, then add diced veggies (like bell peppers, onions, and mushrooms). Cook in a pan until the eggs are set. Fold in half and serve with toast or hash browns.\n\n**Sunday:**\n\n* Chicken and Veggie Stir-Fry: Cook diced chicken and veggies (like broccoli, carrots, and bell peppers) in a wok or large pan with some oil and soy sauce. Serve with steamed rice or noodles.\n\nThese meals are all relatively quick and easy to make, and you can customize them to your taste preferences and dietary needs. Feel free to swap out ingredients or add your own favorite veggies or spices!\n\nI hope this helps, and happy cooking!\nuser: That's a great list of meal ideas. I think I'll start with the one-pot pasta on Monday. Do you have any suggestions for some easy and healthy breakfast ideas? I'm trying to get into a morning routine and would love some inspiration!\nassistant: One-pot pasta is a great way to start the week!\n\nAnd yes, I'd be happy to help with some easy and healthy breakfast ideas! \n\nHere are some quick and nutritious breakfast options to get you started:\n\n1. **Overnight Oats**: Mix rolled oats, milk, and your choice of nuts, seeds, or fruit in a jar or container. Refrigerate overnight and enjoy in the morning.\n2. **Avocado Toast**: Toast whole grain bread, mash an avocado, and spread on top. Add a fried egg, salt, and pepper to taste.\n3. **Yogurt Parfait**: Layer Greek yogurt, granola, and your favorite berries (fresh or frozen) in a bowl.\n4. **Smoothie**: Blend your favorite fruits, yogurt, and milk (dairy or non-dairy) together for a quick and nutritious breakfast on-the-go.\n5. **Peanut Butter Banana Toast**: Toast whole grain bread, spread with peanut butter, and top with sliced banana.\n6. **Hard-Boiled Eggs**: Boil eggs the night before and keep in the fridge for a quick protein-packed breakfast.\n7. **Muesli**: Mix rolled oats, nuts, and dried fruits in a bowl, then add milk or yogurt.\n8. **Cottage Cheese and Fruit**: Mix cottage cheese with fruit like berries or sliced peaches for a high-protein breakfast.\n9. **Green Smoothie**: Blend spinach, avocado, banana, and milk for a nutrient-packed breakfast smoothie.\n10. **Breakfast Burrito**: Scramble eggs, add black beans, cheese, and salsa, then wrap in a whole grain tortilla.\n\nThese breakfast ideas are easy to prepare, healthy, and can be customized to your dietary preferences and ingredient availability.\n\nRemember, the key to establishing a morning routine is to start small and be consistent. Begin with one or two breakfast ideas and see what works best for you!\n\nHope this helps, and happy breakfasting!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:e56a43b9",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:a2d19a00f4aef03c6c23f407d7d68f4e"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:e56a43b9\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript has extractable durable user/project facts and preferences plus richer reusable context about grocery planning, meal ideas, and breakfast routine; force_memory_write requires non-noop.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:e56a43b9:profile:<0> Profile for User (USER).\nStable facts:\n- The user wanted to buy a new office chair and use an OfficeDepot silver tier discount to get a good deal.\n- The user wanted to buy a new coffee maker and use accumulated BedBath&Beyond points toward it.\n- The user regularly bought office supplies and printer ink from OfficeDepot as of 2023-05-26.\n- The user wanted recommendations for comfortable yet stylish shoes for daily wear at StyleHub.\n- The user was considering canceling their Petco loyalty program membership because they had not been shopping there as much as before.\n- The user was considering getting a new toy or bed for their pet.\n- The user's Petco loyalty program membership did not seem worth it to them anymore as of 2023-05-26.\n- The user wanted recipe ideas that use eggs and spinach for grocery shopping during the week of 2023-05-26.\n- claim hot-path-69cb598f5832-claim-8: current_metric_value; As of 2023-05-26, the user had reached 500 FreshMart points, the minimum required for a discount.; scope=User's FreshMart loyalty points status as stated in the 2023-05-26 imported chat.\n- note hot-path-69cb598f5832-note-2: CONTEXT; Loyalty-linked shopping recommendation context; The user is considering several purchases while trying to use or evaluate retailer loyalty benefits: eggs/spinach groceries with a FreshMart discount, a coffee maker using BedBath&Beyond points, an office chair using OfficeDepot \"silver\" tier discount, daily-wear shoes while nearing 500 StyleHub points, pet accessories, and possibly canceling Petco due to reduced shopping there and only around 200 points accumulated.; scope=User shopping plans and loyalty-program context from LongMemEval session 1\n- claim hot-path-69cb598f5832-claim-7: has_goal; The user wanted recipe ideas that use eggs and spinach for grocery shopping during the week of 2023-05-26.; scope=LongMemEval past chat session dated 2023-05-26 about grocery shopping and retail recommendations.\n- claim hot-path-69cb598f5832-claim-17: has_goal; The user was considering canceling their Petco loyalty program membership because they had not been shopping there as much as before.; scope=LongMemEval past chat session dated 2023-05-26 about Petco loyalty membership cancellation consideration.\n- claim hot-path-69cb598f5832-claim-10: has_goal; The user wanted to buy a new office chair and use an OfficeDepot silver tier discount to get a good deal.; scope=LongMemEval past chat session dated 2023-05-26 about retail recommendations and loyalty benefits.\n- claim hot-path-69cb598f5832-claim-18: has_constraint; The user's Petco loyalty program membership did not seem worth it to them anymore as of 2023-05-26.; scope=User's evaluation of Petco loyalty membership in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-16: current_metric_value; As of 2023-05-26, the user had around 200 Petco points accumulated.; scope=User's Petco loyalty points status as stated in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-9: has_goal; The user wanted to buy a new coffee maker and use accumulated BedBath&Beyond points toward it.; scope=LongMemEval past chat session dated 2023-05-26 about retail recommendations and loyalty points.\n- claim hot-path-69cb598f5832-claim-12: current_metric_value; As of 2023-05-26, the user had an OfficeDepot silver tier discount.; scope=User's OfficeDepot loyalty tier status as stated in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-14: current_metric_value; As of 2023-05-26, the user was close to reaching 500 StyleHub points.; scope=User's StyleHub loyalty points status as stated in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-13: has_goal; The user wanted recommendations for comfortable yet stylish shoes for daily wear at StyleHub.; scope=LongMemEval past chat session dated 2023-05-26 about retail recommendations and loyalty points.\n- claim hot-path-69cb598f5832-claim-11: has_experience_with; The user regularly bought office supplies and printer ink from OfficeDepot as of 2023-05-26.; scope=User's retail shopping history with OfficeDepot as stated in the 2023-05-26 imported chat.\n- claim hot-path-69cb598f5832-claim-15: has_goal; The user was considering getting a new toy or bed for their pet.; scope=LongMemEval past chat session dated 2023-05-26 about pet accessory recommendations.\n- note hot-path-69cb598f5832-note-5: CONTEXT; Comfortable daily-wear shoe options for StyleHub points; Shoe recommendations for comfortable yet stylish daily wear included sneakers New Balance 574, Converse Chuck Taylor All Star, and Adidas Superstar; loafers Clarks Cloud Steppers, Vionic Tide, and Sperry Original Boat Shoe; and boots UGG Ansley, The North Face Hedgehog Fastpack, and Dr. Martens 1460. Selection criteria were comfort, personal style, quality, and versatility.; scope=Shoe recommendation context for the user's possible StyleHub points redemption\n- note hot-path-69cb598f5832-note-3: CONTEXT; Coffee maker options recommended for BedBath&Beyond points; Coffee maker suggestions were grouped by brewing style: drip options Cuisinart DCC-3200 and Bonavita BV1900TS; single-serve Keurig K-Elite and Nespresso Inissia; French press Bodum Chambord and Espro P1; pour-over Chemex Classic Series and Hario V60; espresso Nespresso Expert and De'Longhi BCO130T. Selection criteria included coffee strength preference, brewing method, counter space/design, budget, and desired features such as timers, grinders, or milk frothing.; scope=Coffee maker recommendation context for the user's possible BedBath&Beyond purchase\n- note hot-path-69cb598f5832-note-4: CONTEXT; Office chair options for OfficeDepot silver discount; Office chair recommendations were organized by price tier: budget under $200 included Flash Furniture Mid-Back Office Chair and Essentials by OFM ESS-3005; mid-range $200-$400 included Herman Miller Sayl Chair and Ergohuman High-Back Executive Chair; premium over $400 included Herman Miller Aeron Chair and Steelcase Leap Chair. Decision factors were ergonomics, comfort, durability, and style, with a suggestion to try chairs in person at OfficeDepot.; scope=Office chair recommendation context for the user's OfficeDepot silver-tier purchase\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person user statements refer to the stable namespace User entity.\n- mention=FreshMart; action=LINK_EXISTING; id=entity:<1>; type=existing; name=FreshMart; reason=FreshMart safely matches the existing organization entity.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|FreshMart\n        text_queries=FreshMart grocery store loyalty points discount shopping habits staples rice pasta canned goods cooking for 2|healthy snacks meal ideas one-pot pasta Monday breakfast morning routine\n        predicate_hints=prefers|has_constraint|current_metric_value|has_goal\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:a2d19a00f4aef03c6c23f407d7d68f4e] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:e56a43b9:session:2; title=LongMemEval e56a43b9 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 15:18\nTranscript:\nuser: I'm planning a big grocery shopping trip to FreshMart this weekend. Can you help me make a list of some essentials I might need to pick up?\nassistant: I'd be happy to help you with that! However, I have to clarify that FreshMart is not a real grocery store chain. It's possible that you might be thinking of a different store, or perhaps it's a fictional store?\n\nIf you meant to say a different store, please let me know and I'd be happy to help you with your grocery list. Alternatively, I can provide you with a general list of common grocery essentials that you might find useful:\n\n* Fresh produce (fruits and vegetables)\n* Meat and poultry (beef, chicken, pork, fish, etc.)\n* Dairy products (milk, eggs, cheese, yogurt, etc.)\n* Bread and baked goods (bread, pasta, rice, etc.)\n* Pantry items (canned goods, oils, spices, etc.)\n* Snacks (nuts, dried fruits, crackers, etc.)\n* Beverages (juice, soda, coffee, tea, etc.)\n* Cleaning supplies (dish soap, laundry detergent, etc.)\n* Personal care items (toothpaste, toilet paper, shampoo, etc.)\n\nLet me know if you need help with anything specific or if you'd like me to add anything to this list!\nuser: I meant FreshMart, it's my local grocery store. I have some points there and every 100 points translate to a $1 discount on my next purchase. Thanks for the list, but I was thinking of something more personalized. Can you help me make a list based on my shopping habits?\nassistant: As a digital AI assistant, I don't have access to your personal shopping habits or preferences, and I don't have the ability to know about your local store FreshMart (since it's not a real chain).\n\nHowever, I can ask you some questions to help me get a better understanding of your shopping needs. Please feel free to provide me with some information, and I can help you create a personalized list:\n\n1. Do you have any dietary restrictions or preferences (e.g., vegetarian, gluten-free, dairy-free)?\n2. What type of meals do you typically cook at home (e.g., Italian, Mexican, Indian, comfort food)?\n3. How many people are you shopping for?\n4. What's your budget for this shopping trip?\n5. Are there any specific products or categories you need to restock (e.g., pet food, baby supplies, household essentials)?\n6. Do you have a favorite brand or product that you always buy?\n\nOnce I have a better understanding of your needs, I can help you create a more personalized shopping list.\nuser: I usually cook for 2 people, and we eat a bit of everything. I'm not too particular about brands, but I do like to stock up on staples like rice, pasta, and canned goods. Also, I've been trying to shop at FreshMart more often since, you know, 500 points gets me a $5 discount on my next purchase.\nassistant: I think there might be some confusion again. As I mentioned earlier, FreshMart is not a real grocery store chain, so it's unlikely that you've been shopping there or earning points towards a discount.\n\nHowever, I can still help you with your shopping list! Based on your preferences, here are some staple items you might want to consider:\n\n* Grains:\n\t+ Rice (white and brown)\n\t+ Pasta (dried)\n\t+ Bread (loaf or buns)\n* Canned Goods:\n\t+ Beans (black, kidney, cannellini)\n\t+ Tomatoes (crushed, diced, and sauce)\n\t+ Tuna (in water and oil)\n\t+ Soups (vegetable, tomato, black bean)\n\t+ Fruits (peaches, pineapple, mandarin oranges)\n* Proteins:\n\t+ Chicken breast or thighs\n\t+ Ground beef or turkey\n\t+ Fish (frozen or canned)\n\t+ Eggs\n* Dairy or Alternatives:\n\t+ Milk (dairy or non-dairy)\n\t+ Yogurt (plain and flavored)\n\t+ Cheese (shredded mozzarella, block cheddar)\n* Pantry:\n\t+ Olive oil\n\t+ Salt\n\t+ Sugar\n\t+ Spices (e.g., basil, oregano, cumin)\n\t+ Baking supplies (flour, baking powder, baking soda)\n\nFeel free to add or remove items based on your personal preferences and dietary needs. If you have any specific meals in mind, I can also help you plan those out and add the necessary ingredients to your list.\n\nRemember, since FreshMart isn't a real store, you might want to consider shopping at a local grocery store in your area. They might have their own loyalty program or rewards system, so be sure to ask about those when you shop!\nuser: I'm pretty sure it's a real store to me. Anyway, that's a good start for my list. What are some good snacks to get? I'm looking for something healthy-ish.\nassistant: I apologize if my earlier clarification came across as confusing. As a digital AI assistant, I can only provide information based on my training data, and FreshMart is not a recognized grocery store chain.\n\nMoving on to snacks, I'd be happy to suggest some healthy-ish options! Here are a few ideas:\n\n1. Fresh Fruits:\n\t* Apples\n\t* Bananas\n\t* Oranges\n\t* Grapes\n\t* Berries (strawberries, blueberries, raspberries)\n2. Nuts and Seeds:\n\t* Almonds\n\t* Walnuts\n\t* Pecans\n\t* Pumpkin seeds\n\t* Chia seeds\n3. Veggie-based Snacks:\n\t* Carrot sticks with hummus\n\t* Cucumber slices\n\t* Cherry tomatoes\n\t* Roasted chickpeas\n4. Whole Grain Crackers:\n\t* Look for crackers made with whole grains like oats, quinoa, or brown rice\n5. Protein-rich Snacks:\n\t* Hard-boiled eggs\n\t* Greek yogurt\n\t* Cottage cheese\n\t* Edamame\n6. Healthy Granola:\n\t* Look for homemade or store-bought granola with minimal added sugars and artificial ingredients\n7. Trail Mix:\n\t* A mix of nuts, seeds, and dried fruits\n\nRemember, even healthy snacks should be consumed in moderation as part of a balanced diet. Be mindful of portion sizes and ingredients to ensure you're making the best choices for your health goals.\n\nFeel free to add or modify these suggestions based on your personal preferences and dietary needs!\nuser: Can you also help me with some meal ideas for the week? Maybe some simple recipes or one-pot dishes that are easy to make?\nassistant: I'd be happy to help you with some meal ideas and simple recipes.\n\nHere are a few one-pot dishes and easy meal ideas that you might enjoy:\n\n**Monday:**\n\n* One-Pot Pasta: Cook pasta, tomato sauce, ground beef or turkey, and veggies (like bell peppers, onions, and mushrooms) in one pot.\n\n**Tuesday:**\n\n* Chicken and Rice Bowl: Cook chicken breast, white rice, and frozen peas in a pot with some olive oil and chicken broth. Season with salt, pepper, and your favorite herbs.\n\n**Wednesday:**\n\n* Lentil Soup: Saute onions, carrots, and celery in olive oil, then add lentils, diced tomatoes, and vegetable broth. Simmer until the lentils are tender. Season with salt, pepper, and your favorite spices.\n\n**Thursday:**\n\n* Tacos: Cook ground beef or chicken in a pan with taco seasoning. Serve with tortillas, shredded cheese, lettuce, and your favorite toppings.\n\n**Friday:**\n\n* Baked Chicken and Veggies: Season chicken breast with salt, pepper, and your favorite herbs. Bake in the oven with sliced veggies (like zucchini, bell peppers, and onions) and a drizzle of olive oil.\n\n**Saturday:**\n\n* Omelette and Veggies: Whisk eggs with salt and pepper, then add diced veggies (like bell peppers, onions, and mushrooms). Cook in a pan until the eggs are set. Fold in half and serve with toast or hash browns.\n\n**Sunday:**\n\n* Chicken and Veggie Stir-Fry: Cook diced chicken and veggies (like broccoli, carrots, and bell peppers) in a wok or large pan with some oil and soy sauce. Serve with steamed rice or noodles.\n\nThese meals are all relatively quick and easy to make, and you can customize them to your taste preferences and dietary needs. Feel free to swap out ingredients or add your own favorite veggies or spices!\n\nI hope this helps, and happy cooking!\nuser: That's a great list of meal ideas. I think I'll start with the one-pot pasta on Monday. Do you have any suggestions for some easy and healthy breakfast ideas? I'm trying to get into a morning routine and would love some inspiration!\nassistant: One-pot pasta is a great way to start the week!\n\nAnd yes, I'd be happy to help with some easy and healthy breakfast ideas! \n\nHere are some quick and nutritious breakfast options to get you started:\n\n1. **Overnight Oats**: Mix rolled oats, milk, and your choice of nuts, seeds, or fruit in a jar or container. Refrigerate overnight and enjoy in the morning.\n2. **Avocado Toast**: Toast whole grain bread, mash an avocado, and spread on top. Add a fried egg, salt, and pepper to taste.\n3. **Yogurt Parfait**: Layer Greek yogurt, granola, and your favorite berries (fresh or frozen) in a bowl.\n4. **Smoothie**: Blend your favorite fruits, yogurt, and milk (dairy or non-dairy) together for a quick and nutritious breakfast on-the-go.\n5. **Peanut Butter Banana Toast**: Toast whole grain bread, spread with peanut butter, and top with sliced banana.\n6. **Hard-Boiled Eggs**: Boil eggs the night before and keep in the fridge for a quick protein-packed breakfast.\n7. **Muesli**: Mix rolled oats, nuts, and dried fruits in a bowl, then add milk or yogurt.\n8. **Cottage Cheese and Fruit**: Mix cottage cheese with fruit like berries or sliced peaches for a high-protein breakfast.\n9. **Green Smoothie**: Blend spinach, avocado, banana, and milk for a nutrient-packed breakfast smoothie.\n10. **Breakfast Burrito**: Scramble eggs, add black beans, cheese, and salsa, then wrap in a whole grain tortilla.\n\nThese breakfast ideas are easy to prepare, healthy, and can be customized to your dietary preferences and ingredient availability.\n\nRemember, the key to establishing a morning routine is to start small and be consistent. Begin with one or two breakfast ideas and see what works best for you!\n\nHope this helps, and happy breakfasting!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:e56a43b9",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:a2d19a00f4aef03c6c23f407d7d68f4e"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"FreshMart is the user's local grocery store\",\"The user usually cooks for 2 people\",\"The user is not too particular about brands\",\"The user likes stocking up on staples like rice, pasta, and canned goods\",\"At FreshMart, every 100 points translates to a $1 discount\"],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I usually cook for 2 people, and we eat a bit of everything. I'm not too particular about brands, but I do like to stock up on staples like rice, pasta, and canned goods.\",\"evidence_reason\":\"The quoted user statement directly gives household size, food variety, brand flexibility, and staple preferences; surrounding target text directly states FreshMart is local and describes the points-to-discount conversion.\",\"importance\":4,\"keywords\":[\"FreshMart\",\"grocery shopping\",\"500 points\",\"$5 discount\",\"rice\",\"pasta\",\"canned goods\",\"shopping for 2\"],\"note_type\":\"context\",\"rationale\":\"This combines several related grocery-planning constraints and loyalty context into a reusable planning note rather than storing only isolated facts.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's FreshMart grocery shopping and loyalty-program planning context from LongMemEval session 2\"},\"summary\":\"For a FreshMart grocery trip, the user shops for 2 people, eats a variety of foods, is not brand-particular, and likes stocking staples such as rice, pasta, and canned goods. FreshMart is the user's local grocery store, and the loyalty program gives a $1 discount per 100 points, making 500 points worth a $5 discount.\",\"tags\":[\"grocery_planning\",\"loyalty_points\",\"freshmart\"],\"title\":\"FreshMart grocery planning context\",\"valid_from\":\"2023-05-29T15:18:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user wanted healthy-ish snack ideas for a grocery trip\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm looking for something healthy-ish.\",\"evidence_reason\":\"The user requested healthy-ish snack ideas, and the assistant's response in the target message provided the listed snack categories and examples.\",\"importance\":3,\"keywords\":[\"healthy snacks\",\"FreshMart\",\"fruit\",\"nuts\",\"hummus\",\"roasted chickpeas\",\"whole grain crackers\",\"Greek yogurt\",\"trail mix\"],\"note_type\":\"context\",\"rationale\":\"The reusable value is the compact set of snack categories and examples generated for future grocery planning, not a single atomic user fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable snack recommendation context for the user's FreshMart grocery planning\"},\"summary\":\"Healthy-ish snack suggestions for the user's grocery list included fresh fruits, nuts and seeds, veggie-based snacks such as carrot sticks with hummus or roasted chickpeas, whole grain crackers, protein-rich snacks like hard-boiled eggs or Greek yogurt, low-sugar granola, and trail mix with nuts, seeds, and dried fruits.\",\"tags\":[\"grocery_planning\",\"snacks\",\"healthyish\"],\"title\":\"Healthy-ish snack options for FreshMart grocery list\",\"valid_from\":\"2023-05-29T15:18:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user planned to start with one-pot pasta on Monday\",\"The user wanted simple recipes or one-pot dishes that are easy to make\"],\"confidence\":0.94,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll start with the one-pot pasta on Monday.\",\"evidence_reason\":\"The quote directly confirms the user's selected meal from the assistant-proposed weekly plan; the target message contains the full named weekly meal list.\",\"importance\":4,\"keywords\":[\"weekly meal plan\",\"one-pot pasta\",\"Monday\",\"chicken and rice bowl\",\"lentil soup\",\"tacos\",\"stir-fry\"],\"note_type\":\"plan\",\"rationale\":\"This is a reusable meal-planning context and selected option, preserving the ordered list and choice rather than only an atomic preference.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's simple weekly meal planning context from LongMemEval session 2\"},\"summary\":\"The weeknight meal ideas were Monday One-Pot Pasta, Tuesday Chicken and Rice Bowl, Wednesday Lentil Soup, Thursday Tacos, Friday Baked Chicken and Veggies, Saturday Omelette and Veggies, and Sunday Chicken and Veggie Stir-Fry. The user specifically chose to start with the One-Pot Pasta on Monday.\",\"tags\":[\"meal_planning\",\"simple_recipes\",\"one_pot\"],\"title\":\"Weekly simple meal plan with Monday one-pot pasta selected\",\"valid_from\":\"2023-05-29T15:18:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user was trying to get into a morning routine and wanted easy healthy breakfast ideas\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm trying to get into a morning routine and would love some inspiration!\",\"evidence_reason\":\"The user requested breakfast inspiration for a morning routine, and the assistant supplied a compact list of named easy healthy breakfast options plus routine advice.\",\"importance\":3,\"keywords\":[\"breakfast ideas\",\"morning routine\",\"overnight oats\",\"avocado toast\",\"yogurt parfait\",\"smoothie\",\"hard-boiled eggs\",\"breakfast burrito\"],\"note_type\":\"context\",\"rationale\":\"The note captures a reusable recommendation list and routine strategy, which is richer than a single clean claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Breakfast inspiration for the user's effort to establish a morning routine\"},\"summary\":\"Breakfast ideas suggested for the user's new morning routine included Overnight Oats, Avocado Toast, Yogurt Parfait, Smoothie, Peanut Butter Banana Toast, Hard-Boiled Eggs, Muesli, Cottage Cheese and Fruit, Green Smoothie, and Breakfast Burrito. The recommendation emphasized starting small and consistently trying one or two options first.\",\"tags\":[\"breakfast\",\"morning_routine\",\"healthy_meals\"],\"title\":\"Easy healthy breakfast ideas for morning routine\",\"valid_from\":\"2023-05-29T15:18:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7786,
+                "completionTokens": 1455,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

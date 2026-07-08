@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "fd48d9910a8b67303b14fad400997883cad5a84198fd408189927b9ef074e657",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning my trip to Amsterdam again and I was wondering, what was the name of that hostel near the Red Light District that you recommended last time?\n\n                                Question date:\n                                2023/05/30 (Tue) 07:46\n\n                                Noisy expected-answer label:\n                                International Budget Hostel\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 01:45\nTranscript:\nuser: Can you suggest a budget-friendly hostel in Amsterdam?\nassistant: Yes, there are several budget-friendly hostels in Amsterdam. Some options include:\n\n1. Stayokay Amsterdam Vondelpark: Located in the heart of Amsterdam, next to the famous Vondelpark, this hostel offers dormitory-style rooms and private rooms at an affordable price.\n\n2. ClinkNOORD Hostel: Situated in a former laboratory in Amsterdam Noord, this hostel offers a unique and budget-friendly accommodation option. The hostel has a bar, a restaurant, and bike rental services.\n\n3. The Bulldog Hostel Amsterdam: This hostel is located in the city center and offers shared dorms and private rooms at a reasonable price. The hostel has a bar and a smoking lounge.\n\n4. International Budget Hostel: This hostel is situated near the famous Red Light District and offers affordable dormitory-style rooms and private rooms. The hostel has a fully equipped kitchen and a lounge area.\n\n5. Amsterdam Hostel Centre: Located in the heart of Amsterdam, this hostel offers budget-friendly dormitory-style rooms and private rooms. The hostel has a communal kitchen, a bar, and a lounge area.\nuser: Wow, these are all great options! Do you have any personal recommendations or favorites among these hostels?\nassistant: I don't have personal preferences or experiences in staying in hostels. however, i have thoroughly researched and provided you with some of the best budget-friendly hostels in amsterdam based on customer reviews, locations, and amenities. you can check the reviews and ratings of these hostels online before booking to ensure that they match your preferences and expectations.\nuser: Can you also suggest some fun things to do in Amsterdam?\nassistant: Sure, there are many fun things to do in Amsterdam. Here are some of the top things you can do:\n\n1. Visit the Van Gogh Museum: This museum houses the largest collection of Vincent Van Gogh's artwork in the world. 2. Explore the Anne Frank House: Visit the house where Anne Frank and her family hid from the Nazis during World War II. You can learn about their experience and see the secret annex where they lived. 3. Take a Bike Tour: Amsterdam is known for its bike culture, and there are many bike tours available that offer a unique and fun way to explore the city. 4. Visit the Rijksmuseum: The Rijksmuseum is one of the most renowned art museums in the world and features an impressive collection of Dutch art, including works by Rembrandt and Vermeer. 5. Cruise the Canals: Amsterdam is known as the \"Venice of the North,\" and taking a canal cruise is one of the best ways to see the city from a unique perspective. 6. Visit the Jordaan neighborhood: This charming neighborhood is known for its small streets, quaint boutiques, and trendy restaurants and bars. 7. Try traditional Dutch food: Sample some traditional Dutch dishes like bitterballen, stroopwafels, and herring to get a taste of the local cuisine. 8. Visit the Flower Market: The flower market in Amsterdam is the only floating flower market in the world and offers a colorful and fragrant experience. 9. Visit the Heineken Experience: Learn about the history and brewing process of one of the most famous beers in the world. 10. Visit the Red Light District: The Red Light District is one of Amsterdam's most famous attractions, known for its adult entertainment establishments and vibrant nightlife.\n                                ```\n\n                                Candidate answer:\n                                International Budget Hostel.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "7e00a6cb",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor relative-window aggregate/count questions over imported chat sources, do not treat an inferred or likely date from a source-local weekday or recency cue as a hard exclusion when gold evidence otherwise gives a completed first-person event with an explicit numeric operand and the source/session date is close to or inside the requested window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as \"last month\" resolves from the source/session date unless contradicted by more specific evidence.\nFor relative month-window questions over imported chat sources, a first-person source-local cue such as \"last month\" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor location-scoped item count/list questions, judge concrete objects as category-fitting when gold evidence explicitly places them in that location or their ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nFor concrete who/from-whom/source/giver expected-answer labels, mark supported=false when the candidate answers that memory is insufficient or unknown without providing the evidence-backed expected giver/source. If the gold evidence contains the expected giver/source for the only target-period received/acquired personal item, noisy or mismatched object wording in the question does not make an insufficiency answer supported; the candidate may caveat the object mismatch, but it must still provide the giver/source.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nWhen the expected-answer label gives a zero count because the requested thing is not mentioned, candidate insufficiency/not-mentioned answers are supported if the gold evidence contains no qualifying items for the requested scope.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor remaining-amount questions such as \"how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify\", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor relative-window aggregate/count questions over imported chat sources, do not treat an inferred or likely date from a source-local weekday or recency cue as a hard exclusion when gold evidence otherwise gives a completed first-person event with an explicit numeric operand and the source/session date is close to or inside the requested window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as \"last month\" resolves from the source/session date unless contradicted by more specific evidence.\nFor relative month-window questions over imported chat sources, a first-person source-local cue such as \"last month\" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor location-scoped item count/list questions, judge concrete objects as category-fitting when gold evidence explicitly places them in that location or their ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nFor concrete who/from-whom/source/giver expected-answer labels, mark supported=false when the candidate answers that memory is insufficient or unknown without providing the evidence-backed expected giver/source. If the gold evidence contains the expected giver/source for the only target-period received/acquired personal item, noisy or mismatched object wording in the question does not make an insufficiency answer supported; the candidate may caveat the object mismatch, but it must still provide the giver/source.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nWhen the expected-answer label gives a zero count because the requested thing is not mentioned, candidate insufficiency/not-mentioned answers are supported if the gold evidence contains no qualifying items for the requested scope.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor remaining-amount questions such as \"how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify\", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning my trip to Amsterdam again and I was wondering, what was the name of that hostel near the Red Light District that you recommended last time?\n\n                                Question date:\n                                2023/05/30 (Tue) 07:46\n\n                                Noisy expected-answer label:\n                                International Budget Hostel\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 01:45\nTranscript:\nuser: Can you suggest a budget-friendly hostel in Amsterdam?\nassistant: Yes, there are several budget-friendly hostels in Amsterdam. Some options include:\n\n1. Stayokay Amsterdam Vondelpark: Located in the heart of Amsterdam, next to the famous Vondelpark, this hostel offers dormitory-style rooms and private rooms at an affordable price.\n\n2. ClinkNOORD Hostel: Situated in a former laboratory in Amsterdam Noord, this hostel offers a unique and budget-friendly accommodation option. The hostel has a bar, a restaurant, and bike rental services.\n\n3. The Bulldog Hostel Amsterdam: This hostel is located in the city center and offers shared dorms and private rooms at a reasonable price. The hostel has a bar and a smoking lounge.\n\n4. International Budget Hostel: This hostel is situated near the famous Red Light District and offers affordable dormitory-style rooms and private rooms. The hostel has a fully equipped kitchen and a lounge area.\n\n5. Amsterdam Hostel Centre: Located in the heart of Amsterdam, this hostel offers budget-friendly dormitory-style rooms and private rooms. The hostel has a communal kitchen, a bar, and a lounge area.\nuser: Wow, these are all great options! Do you have any personal recommendations or favorites among these hostels?\nassistant: I don't have personal preferences or experiences in staying in hostels. however, i have thoroughly researched and provided you with some of the best budget-friendly hostels in amsterdam based on customer reviews, locations, and amenities. you can check the reviews and ratings of these hostels online before booking to ensure that they match your preferences and expectations.\nuser: Can you also suggest some fun things to do in Amsterdam?\nassistant: Sure, there are many fun things to do in Amsterdam. Here are some of the top things you can do:\n\n1. Visit the Van Gogh Museum: This museum houses the largest collection of Vincent Van Gogh's artwork in the world. 2. Explore the Anne Frank House: Visit the house where Anne Frank and her family hid from the Nazis during World War II. You can learn about their experience and see the secret annex where they lived. 3. Take a Bike Tour: Amsterdam is known for its bike culture, and there are many bike tours available that offer a unique and fun way to explore the city. 4. Visit the Rijksmuseum: The Rijksmuseum is one of the most renowned art museums in the world and features an impressive collection of Dutch art, including works by Rembrandt and Vermeer. 5. Cruise the Canals: Amsterdam is known as the \"Venice of the North,\" and taking a canal cruise is one of the best ways to see the city from a unique perspective. 6. Visit the Jordaan neighborhood: This charming neighborhood is known for its small streets, quaint boutiques, and trendy restaurants and bars. 7. Try traditional Dutch food: Sample some traditional Dutch dishes like bitterballen, stroopwafels, and herring to get a taste of the local cuisine. 8. Visit the Flower Market: The flower market in Amsterdam is the only floating flower market in the world and offers a colorful and fragrant experience. 9. Visit the Heineken Experience: Learn about the history and brewing process of one of the most famous beers in the world. 10. Visit the Red Light District: The Red Light District is one of Amsterdam's most famous attractions, known for its adult entertainment establishments and vibrant nightlife.\n                                ```\n\n                                Candidate answer:\n                                International Budget Hostel.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "7e00a6cb",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The gold evidence lists International Budget Hostel as the hostel situated near the Red Light District.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2263,
+                "completionTokens": 38,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -936,10 +936,28 @@ private fun Conversation.Message.ContentItem.extractCassetteRuntimeText(): Strin
             toolUseId?.value?.let(::appendLine)
         }
         is Conversation.Message.ContentItem.AssistantMessage -> structured.fullText
+        is Conversation.Message.ContentItem.ContextCompactionResult -> buildString {
+            appendLine(origin.name)
+            providerScope?.let { scope ->
+                appendLine(scope.provider)
+                scope.connectionId?.let(::appendLine)
+                scope.modelConfigurationId?.let(::appendLine)
+                scope.modelName?.let(::appendLine)
+            }
+            sourceMessageIds.forEach { appendLine(it.value) }
+            appendLine(payload.extractCassetteRuntimeText())
+        }
         is Conversation.Message.ContentItem.ImageItem -> source.extractCassetteRuntimeText()
         is Conversation.Message.ContentItem.UnknownJson -> compactCassetteJson.encodeToString(json)
     }
 }
+
+private fun Conversation.Message.ContentItem.ContextCompactionResult.Payload.extractCassetteRuntimeText(): String =
+    when (this) {
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> text
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+            compactCassetteJson.encodeToString(state)
+    }
 
 private fun Conversation.Message.ContentItem.ToolResult.Data.extractCassetteRuntimeText(): String {
     return when (this) {
@@ -1003,10 +1021,35 @@ private fun Conversation.Message.ContentItem.toStableCassetteContentItem(
         is Conversation.Message.ContentItem.AssistantMessage -> copy(
             structured = structured.toStableCassetteStructuredText(runtimeBindings),
         )
+        is Conversation.Message.ContentItem.ContextCompactionResult -> copy(
+            payload = payload.toStableCassetteContextCompactionPayload(runtimeBindings),
+            providerScope = providerScope?.toStableCassetteProviderScope(runtimeBindings),
+        )
         is Conversation.Message.ContentItem.ImageItem -> copy(source = source.toStableCassetteImageSource(runtimeBindings))
         is Conversation.Message.ContentItem.UnknownJson -> copy(json = normalizeJsonElement(json, runtimeBindings))
     }
 }
+
+private fun Conversation.Message.ContentItem.ContextCompactionResult.Payload.toStableCassetteContextCompactionPayload(
+    runtimeBindings: AiRuntimeCassetteRuntimeBindings,
+): Conversation.Message.ContentItem.ContextCompactionResult.Payload =
+    when (this) {
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ->
+            copy(text = normalizeRuntimeText(text, runtimeBindings))
+
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+            copy(state = normalizeJsonElement(state, runtimeBindings) as JsonObject)
+    }
+
+private fun Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope.toStableCassetteProviderScope(
+    runtimeBindings: AiRuntimeCassetteRuntimeBindings,
+): Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope =
+    copy(
+        provider = normalizeRuntimeText(provider, runtimeBindings),
+        connectionId = connectionId?.let { normalizeRuntimeText(it, runtimeBindings) },
+        modelConfigurationId = modelConfigurationId?.let { normalizeRuntimeText(it, runtimeBindings) },
+        modelName = modelName?.let { normalizeRuntimeText(it, runtimeBindings) },
+    )
 
 private fun Conversation.Message.ContentItem.ToolResult.Data.toStableCassetteToolResultData(
     runtimeBindings: AiRuntimeCassetteRuntimeBindings,
@@ -1069,10 +1112,35 @@ private fun Conversation.Message.ContentItem.rehydrateDynamicContentItem(
         is Conversation.Message.ContentItem.AssistantMessage -> copy(
             structured = structured.rehydrateDynamicStructuredText(context),
         )
+        is Conversation.Message.ContentItem.ContextCompactionResult -> copy(
+            payload = payload.rehydrateDynamicContextCompactionPayload(context),
+            providerScope = providerScope?.rehydrateDynamicProviderScope(context),
+        )
         is Conversation.Message.ContentItem.ImageItem -> copy(source = source.rehydrateDynamicImageSource(context))
         is Conversation.Message.ContentItem.UnknownJson -> copy(json = rehydrateJsonElement(json, context))
     }
 }
+
+private fun Conversation.Message.ContentItem.ContextCompactionResult.Payload.rehydrateDynamicContextCompactionPayload(
+    context: AiRuntimeCassetteReplayContext,
+): Conversation.Message.ContentItem.ContextCompactionResult.Payload =
+    when (this) {
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ->
+            copy(text = context.runtimeBindings.rehydrateText(text))
+
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+            copy(state = rehydrateJsonElement(state, context) as JsonObject)
+    }
+
+private fun Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope.rehydrateDynamicProviderScope(
+    context: AiRuntimeCassetteReplayContext,
+): Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope =
+    copy(
+        provider = context.runtimeBindings.rehydrateText(provider),
+        connectionId = connectionId?.let { context.runtimeBindings.rehydrateText(it) },
+        modelConfigurationId = modelConfigurationId?.let { context.runtimeBindings.rehydrateText(it) },
+        modelName = modelName?.let { context.runtimeBindings.rehydrateText(it) },
+    )
 
 private fun Conversation.Message.StructuredText.rehydrateDynamicStructuredText(
     context: AiRuntimeCassetteReplayContext,

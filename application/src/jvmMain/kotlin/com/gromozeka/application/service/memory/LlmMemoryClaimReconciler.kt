@@ -333,6 +333,13 @@ class LlmMemoryClaimReconciler(
                             reason = reason.trim().ifBlank { "Temporal candidate coexists with historical target" },
                         )
                     }
+                    if (!candidate.canSafelySupersedeTargetForMemoryReconciliation(targetClaim)) {
+                        return MemoryClaimReconciliationOp(
+                            action = MemoryReconciliationAction.INSERT,
+                            candidate = candidate,
+                            reason = reason.trim().ifBlank { "Supersede target is not the same semantic slot" },
+                        )
+                    }
                     MemoryClaimReconciliationOp(
                         action = MemoryReconciliationAction.SUPERSEDE,
                         targetClaimId = target,
@@ -542,6 +549,42 @@ internal fun MemoryClaimCandidate.shouldSupersedeTemporalRefinementOf(target: Me
     return temporalSignalText().temporalCueStrength() > target.temporalSignalText().temporalCueStrength()
 }
 
+internal fun MemoryClaimCandidate.canSafelySupersedeTargetForMemoryReconciliation(target: MemoryClaim): Boolean {
+    val candidatePolicy = predicatePolicy ?: return false
+    val targetPolicy = target.predicatePolicy ?: return false
+    if (subjectEntityId != target.subjectEntityId) return false
+    if (candidatePolicy.conflictPolicy == MemoryPredicateDefinition.ConflictPolicy.COEXIST ||
+        targetPolicy.conflictPolicy == MemoryPredicateDefinition.ConflictPolicy.COEXIST
+    ) {
+        return (explicitlyReplacesPrevious() || hasExplicitReplacementSignal()) &&
+            hasCompatibleReplacementFamily(target) &&
+            hasCompatibleReplacementSlot(target)
+    }
+    if (!hasCompatibleReplacementFamily(target)) return false
+    if (explicitlyReplacesPrevious() || hasExplicitReplacementSignal()) return hasCompatibleReplacementSlot(target)
+    return hasCompatibleReplacementSlot(target)
+}
+
+private fun MemoryClaimCandidate.hasCompatibleReplacementFamily(target: MemoryClaim): Boolean {
+    val candidateFamily = predicateFamily ?: predicate
+    val targetFamily = target.predicateFamily ?: target.predicate
+    if (candidateFamily.normalizedClaimKey() == targetFamily.normalizedClaimKey()) return true
+
+    val candidatePolicy = predicatePolicy ?: return false
+    val targetPolicy = target.predicatePolicy ?: return false
+    return SemanticKind.AGGREGATE_VALUE in candidatePolicy.semanticKinds &&
+        SemanticKind.AGGREGATE_VALUE in targetPolicy.semanticKinds
+}
+
+private fun MemoryClaimCandidate.hasCompatibleReplacementSlot(target: MemoryClaim): Boolean {
+    if (objectEntityId != null && objectEntityId == target.objectEntityId) return true
+    val candidateTokens = replacementSlotTokens()
+    val targetTokens = target.replacementSlotTokens()
+    if (candidateTokens.isEmpty() || targetTokens.isEmpty()) return false
+    val overlap = candidateTokens.intersect(targetTokens).size.toDouble() / minOf(candidateTokens.size, targetTokens.size).toDouble()
+    return overlap >= 0.55
+}
+
 private fun MemoryClaimCandidate.explicitlyReplacesPrevious(): Boolean =
     qualifiers["replaces_previous"]?.jsonPrimitive?.booleanOrNull == true
 
@@ -571,6 +614,30 @@ private fun MemoryClaim.temporalSignalText(): String =
         contextText,
         evidenceRefs.mapNotNull { it.cachedQuote }.joinToString(" ").takeIf { it.isNotBlank() },
     ).joinToString(" ")
+
+private fun MemoryClaimCandidate.replacementSlotTokens(): Set<String> =
+    listOfNotNull(normalizedText, contextText, scope.text, qualifiers.toString())
+        .joinToString(" ")
+        .replacementSlotTokens()
+
+private fun MemoryClaim.replacementSlotTokens(): Set<String> =
+    listOfNotNull(normalizedText, contextText, scope.text)
+        .joinToString(" ")
+        .replacementSlotTokens()
+
+private fun String.replacementSlotTokens(): Set<String> =
+    semanticTokens()
+        .map { it.normalizedReplacementSlotToken() }
+        .filter { it.length >= 3 }
+        .filterNot { it in replacementSlotStopWords }
+        .filterNot { it.all(Char::isDigit) }
+        .toSet()
+
+private fun String.normalizedReplacementSlotToken(): String =
+    when (this) {
+        "waking" -> "wake"
+        else -> removeSuffix("'s")
+    }
 
 private fun String.containsExplicitCalendarDate(): Boolean =
     explicitIsoDateRegex.containsMatchIn(this) || explicitMonthDateRegex.containsMatchIn(this)
@@ -629,6 +696,25 @@ private val temporalRefinementStopWords = setOf(
     "was",
     "were",
     "with",
+)
+
+private val replacementSlotStopWords = temporalRefinementStopWords + setOf(
+    "am",
+    "current",
+    "currently",
+    "default",
+    "existing",
+    "latest",
+    "metric",
+    "new",
+    "old",
+    "older",
+    "pm",
+    "previous",
+    "recent",
+    "recently",
+    "usual",
+    "value",
 )
 
 private val strongTemporalCueRegex = Regex(

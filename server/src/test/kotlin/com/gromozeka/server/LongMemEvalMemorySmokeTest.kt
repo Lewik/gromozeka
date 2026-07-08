@@ -154,6 +154,7 @@ class LongMemEvalMemorySmokeTest {
         ServerTestHarness(
             settings = settings,
             subscriptionSession = subscriptionSession,
+            subscriptionConfigMirrorPath = subscriptionPath,
             systemProperties = mapOf(
                 "gromozeka.postgres.schema" to postgresSchema,
                 "gromozeka.ai.openai-subscription.websocket-response-timeout-ms" to
@@ -202,16 +203,34 @@ class LongMemEvalMemorySmokeTest {
                     "case_start index=${index + 1}/${entries.size} id=${entry.questionId} type=${entry.questionType} sessions=${entry.haystackSessions.size} namespace=${namespace.value}"
                 )
                 val startedAt = System.currentTimeMillis()
-                val result = runCase(
-                    memoryTools = memoryTools,
-                    judgeRuntime = judgeRuntime,
-                    readTraceCollector = readTraceCollector,
-                    writeTraceCollector = writeTraceCollector,
-                    entry = entry,
-                    namespace = namespace,
-                    progressPath = progressPath,
-                    caseArtifactDirectory = caseArtifactDirectory,
-                )
+                val result = try {
+                    runCase(
+                        memoryTools = memoryTools,
+                        judgeRuntime = judgeRuntime,
+                        readTraceCollector = readTraceCollector,
+                        writeTraceCollector = writeTraceCollector,
+                        entry = entry,
+                        namespace = namespace,
+                        progressPath = progressPath,
+                        caseArtifactDirectory = caseArtifactDirectory,
+                    )
+                } catch (error: Throwable) {
+                    if (error is CancellationException && error !is TimeoutCancellationException) {
+                        throw error
+                    }
+                    val failureResult = renderCaseFailure(
+                        entry = entry,
+                        namespace = namespace,
+                        caseArtifactDirectory = caseArtifactDirectory,
+                        startedAt = startedAt,
+                        error = error,
+                    )
+                    appendProgress(
+                        progressPath,
+                        "case_failed index=${index + 1}/${entries.size} id=${entry.questionId} durationMs=${failureResult.durationMs} error=${error.shortErrorForProgress()}"
+                    )
+                    failureResult
+                }
                 Files.writeString(
                     resultsPath,
                     jsonLines.encodeToString(result) + "\n",
@@ -253,6 +272,17 @@ class LongMemEvalMemorySmokeTest {
             val failedRememberCases = caseResults.filter { result ->
                 result.rememberStatuses.any { status -> status != "completed" }
             }
+            val failedErrorCases = caseResults.filter { result ->
+                result.caseFailureClass != null
+            }
+            assertTrue(
+                failedErrorCases.isEmpty(),
+                "Expected all LongMemEval cases to run without harness/runtime errors, but ${failedErrorCases.size}/${caseResults.size} cases failed. " +
+                    failedErrorCases.take(20).joinToString(separator = "; ") { result ->
+                        "${result.questionId} ${result.caseFailureClass}: ${result.caseFailureMessage}"
+                    } +
+                    ". Artifact: $summaryPath"
+            )
             assertTrue(
                 failedRememberCases.isEmpty(),
                 "Expected all LongMemEval memory ingests to complete, but ${failedRememberCases.size}/${caseResults.size} cases had failed sessions. " +
@@ -508,6 +538,74 @@ class LongMemEvalMemorySmokeTest {
             answerDurationMs = answerDurationMs,
             answerJudgeDurationMs = answerJudgeDurationMs,
             durationMs = System.currentTimeMillis() - caseStartedAt,
+        )
+    }
+
+    private fun renderCaseFailure(
+        entry: LongMemEvalEntry,
+        namespace: MemoryNamespace,
+        caseArtifactDirectory: Path,
+        startedAt: Long,
+        error: Throwable,
+    ): LongMemEvalSmokeCaseResult {
+        val expectedAnswer = entry.answerText()
+        val caseDossierPath = caseArtifactDirectory.resolve("${entry.questionId.sanitizePathSegment()}.failure.md")
+        val failureClass = error::class.qualifiedName ?: error::class.simpleName.orEmpty().ifBlank { "Throwable" }
+        val failureMessage = error.message.orEmpty()
+        val failureStack = error.stackTraceToString()
+        caseDossierPath.writeText(
+            buildString {
+                appendLine("# LongMemEval Case Failure")
+                appendLine()
+                appendLine("questionId | ${entry.questionId}")
+                appendLine("questionType | ${entry.questionType}")
+                appendLine("namespace | ${namespace.value}")
+                appendLine("questionDate | ${entry.questionDate}")
+                appendLine("question | ${entry.question}")
+                appendLine("expectedAnswer | $expectedAnswer")
+                appendLine("failureClass | $failureClass")
+                appendLine("failureMessage | $failureMessage")
+                appendLine()
+                appendLine("## Stack Trace")
+                appendLine()
+                appendLine("```text")
+                appendLine(failureStack)
+                appendLine("```")
+            }
+        )
+        return LongMemEvalSmokeCaseResult(
+            questionId = entry.questionId,
+            questionType = entry.questionType,
+            namespace = namespace.value,
+            question = entry.question,
+            expectedAnswer = expectedAnswer,
+            retrievedCount = 0,
+            exactAnswerTextVisible = false,
+            answerSupportedByMemory = false,
+            memorySmokePassed = false,
+            memorySmokePassReason = "case_error",
+            expectedEvidenceSourceIds = emptyList(),
+            selectedEvidenceSourceIds = emptyList(),
+            selectedExpectedEvidenceSourceIds = emptyList(),
+            evidenceSourceHit = null,
+            allEvidenceSourcesHit = null,
+            answerHypothesis = "",
+            answerHypothesisReasoning = "",
+            answerJudgeReason = "",
+            memoryLlmCalls = emptyList(),
+            rememberStatuses = emptyList(),
+            rememberDecisions = emptyList(),
+            rememberReasons = emptyList(),
+            selectedRefs = "[]",
+            memoryContextPreview = "",
+            caseDossierPath = caseDossierPath.toAbsolutePath().normalize().toString(),
+            rememberDurationMs = 0L,
+            enrichDurationMs = 0L,
+            answerDurationMs = 0L,
+            answerJudgeDurationMs = 0L,
+            durationMs = System.currentTimeMillis() - startedAt,
+            caseFailureClass = failureClass,
+            caseFailureMessage = failureMessage,
         )
     }
 
@@ -963,6 +1061,7 @@ class LongMemEvalMemorySmokeTest {
         appendLine("- namespace prefix: `$LONGMEMEVAL_NAMESPACE`")
         appendLine("- official hypotheses: `$officialHypothesesPath`")
         appendLine("- cases: ${results.size}")
+        appendLine("- case runtime errors: ${results.count { it.caseFailureClass != null }}/${results.size}")
         appendLine("- memory writes completed: $completedRememberSessions/$allRememberSessions")
         appendLine("- memory smoke pass: ${results.count { it.memorySmokePassed }}/${results.size}")
         appendLine("- answer supported by memory: ${results.count { it.answerSupportedByMemory }}/${results.size}")
@@ -996,6 +1095,9 @@ class LongMemEvalMemorySmokeTest {
             appendLine("- answer hypothesis: ${result.answerHypothesis}")
             appendLine("- answer hypothesis reasoning: ${result.answerHypothesisReasoning}")
             appendLine("- answer judge reason: ${result.answerJudgeReason}")
+            if (result.caseFailureClass != null) {
+                appendLine("- case failure: ${result.caseFailureClass}: ${result.caseFailureMessage}")
+            }
             appendLine("- memory llm calls: ${result.memoryLlmCalls.renderLlmCallsForSummary()}")
             appendLine("- remember statuses: ${result.rememberStatuses.joinToString()}")
             appendLine("- remember decisions: ${result.rememberDecisions.joinToString()}")
@@ -1607,6 +1709,8 @@ private data class LongMemEvalSmokeCaseResult(
     val answerDurationMs: Long,
     val answerJudgeDurationMs: Long,
     val durationMs: Long,
+    val caseFailureClass: String? = null,
+    val caseFailureMessage: String? = null,
 )
 
 @Serializable

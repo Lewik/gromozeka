@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "aa83f8421b824dd6a5285b4a8da16a377e9e1f48bd6d8d69a8097e67a9daad04",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_2ba83207\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 11:52\nTranscript:\nuser: I'm trying to plan my meals for the week and was wondering if you could help me come up with some recipe ideas using chicken breast and ground beef, which I just bought last week. By the way, I've been trying to shop more sustainably, which is why I placed an online order with Thrive Market last month and spent around $150 on organic and sustainable products.\nassistant: Great job on taking steps towards sustainable shopping! Thrive Market is an excellent platform for finding eco-friendly and organic products.\n\nNow, let's get to planning some delicious meals using chicken breast and ground beef! Here are some recipe ideas to get you started:\n\n**Chicken Breast Recipes**\n\n1. **Lemon Garlic Chicken**: Marinate chicken breast in a mixture of lemon juice, garlic, olive oil, and herbs like thyme and rosemary. Grill or bake until cooked through. Serve with roasted veggies and quinoa.\n2. **Chicken Fajitas**: Slice chicken breast into strips and sauté with bell peppers, onions, and fajita seasoning. Serve with whole-grain tortillas, avocado, and salsa.\n3. **Chicken Caesar Salad**: Grill or bake chicken breast, then chop and toss with romaine lettuce, croutons, parmesan cheese, and a homemade Caesar dressing.\n4. **Chicken Tikka Masala**: Marinate chicken breast in yogurt and spices, then grill or bake. Serve with a creamy tomato sauce and basmati rice.\n5. **Chicken and Veggie Kabobs**: Skewer chicken breast, cherry tomatoes, mushrooms, and bell peppers. Brush with olive oil and grill or bake until cooked through.\n\n**Ground Beef Recipes**\n\n1. **Spaghetti Bolognese**: Cook ground beef with onions, garlic, and tomato sauce. Serve with whole-grain spaghetti and a side of steamed broccoli.\n2. **Tacos**: Season ground beef with taco seasoning and cook in a skillet. Serve with whole-grain tortillas, shredded lettuce, diced tomatoes, and avocado.\n3. **Meatball Subs**: Mix ground beef with breadcrumbs, egg, and seasonings. Form into meatballs and bake or fry until cooked through. Serve on whole-grain subs with marinara sauce and melted mozzarella cheese.\n4. **Shepherd's Pie**: Brown ground beef with vegetables and seasonings, then top with mashed potatoes and bake until golden brown.\n5. **Stuffed Bell Peppers**: Fill bell peppers with a mixture of cooked ground beef, cooked rice, and seasonings. Bake until the peppers are tender.\n\nThese recipes should give you a great starting point for planning your meals for the week. You can also experiment with different spices and seasonings to add more flavor and variety to your dishes.\n\nRemember to pair your meals with some of the sustainable products you purchased from Thrive Market to make the most of your online order!\nuser: That's a great list of recipes, thank you! I'm especially excited to try the Chicken Fajitas and Spaghetti Bolognese. Speaking of sustainable products, I was thinking of ordering some reusable containers and bags from Thrive Market to reduce my household waste even further. Do you have any recommendations on what types of containers and bags would be most useful for grocery shopping and storing food?\nassistant: Excellent choices on the recipes!\n\nAnd kudos to you for taking the next step in reducing waste by exploring reusable containers and bags! Thrive Market has a great selection of eco-friendly options. Here are some recommendations for containers and bags that would be super useful for grocery shopping and storing food:\n\n**Reusable Containers:**\n\n1. **Glass Containers with Lids**: Perfect for storing leftovers, meal prep, and taking lunches on-the-go. Look for containers with airtight lids to keep food fresh.\n2. **Stainless Steel Containers**: Great for storing dry goods like grains, nuts, and seeds. They're also excellent for packing snacks or taking soups to work.\n3. **Collapsible Silicone Containers**: Lightweight, compact, and easy to clean. Ideal for storing fruits, veggies, or takeout.\n\n**Reusable Bags:**\n\n1. **Cotton or Jute Produce Bags**: Replace single-use plastic bags for fruits and veggies with these breathable, washable bags.\n2. **Reusable Grocery Bags**: Sturdy, washable bags with sturdy straps for carrying heavy groceries.\n3. **Insulated Bags**: Perfect for keeping items hot or cold during transportation, such as lunch boxes or grocery items.\n4. **Snack Bags**: Small, reusable bags for storing snacks like nuts, crackers, or dried fruits.\n\n**Other Essentials:**\n\n1. **Beeswax Wraps**: A natural, reusable alternative to plastic wrap for covering bowls and wrapping snacks.\n2. **Reusable Water Bottles**: Stay hydrated while reducing single-use plastic bottles.\n3. **Silicone Baking Mats**: Reusable, non-stick mats for baking and roasting.\n\nWhen shopping on Thrive Market, look for products made from sustainable materials, such as recycled plastic, stainless steel, or natural fibers like cotton and jute. Also, consider the durability and ease of cleaning when choosing your reusable containers and bags.\n\nRemember, every small change you make can add up to make a significant impact on reducing waste and promoting sustainability!\nuser: I'm planning to start meal prepping and was wondering if you could give me some tips on how to store my prepped meals in a way that keeps them fresh for a long time. By the way, I've been using reusable containers I got from my last online order with Thrive Market, which has been really helpful in reducing my household waste.\nassistant: Meal prepping is a game-changer for saving time and staying healthy! I'm glad to hear you're already using reusable containers from Thrive Market – that's a great step towards reducing waste.\n\nNow, let's dive into some tips on how to store your prepped meals to keep them fresh for a long time:\n\n**Cooling and Refrigeration:**\n\n1. **Cool meals quickly**: After cooking, cool your meals to room temperature within 2 hours to prevent bacterial growth.\n2. **Refrigerate promptly**: Refrigerate your cooled meals within 30 minutes of cooking. This will help prevent bacterial growth and keep your meals fresh.\n3. **Label and date containers**: Clearly label each container with the meal name, date, and any reheating instructions.\n\n**Container Tips:**\n\n1. **Airtight containers**: Use airtight, leak-proof containers to prevent air from entering and spoiling your meals.\n2. **Portion control**: Divide your meals into individual portions to maintain freshness and prevent cross-contamination.\n3. **Container size**: Choose containers that fit the portion size you're preparing to minimize empty space and prevent moisture buildup.\n\n**Storage and Organization:**\n\n1. **Store in the correct zone**: Place containers in the coldest part of the refrigerator, usually the bottom shelf, to maintain a consistent temperature.\n2. **Organize by meal type**: Group similar meals together (e.g., all lunches or all dinners) to make it easy to grab-and-go.\n3. **Freezer storage**: If you're meal prepping for an extended period, consider freezing meals in airtight containers or freezer bags. Label and date them, and store in the freezer for up to 3-4 months.\n\n**Reheating and Safety:**\n\n1. **Reheat safely**: Reheat meals to an internal temperature of 165°F (74°C) to ensure food safety.\n2. **Use within 3-5 days**: Consume refrigerated meals within 3-5 days of cooking. If you're unsure, it's always better to err on the side of caution and discard the meal.\n\nBy following these tips, you'll be able to keep your meal preps fresh, safe, and ready to enjoy throughout the week!\n\nRemember to always check the specific storage instructions for the ingredients you're using, as some may have special requirements. Happy meal prepping!\nuser: I'm also thinking of planning my grocery shopping trip and was wondering if you could help me make a grocery list based on the recipes we discussed earlier.\nassistant: I'd be happy to help you with that. Based on the recipes we discussed earlier, here's a list of ingredients you may need to pick up on your grocery shopping trip:\n\n**Produce:**\n\n* Bell peppers (2-3)\n* Onions (2-3)\n* Mushrooms (1 pint)\n* Cherry tomatoes (1 pint)\n* Broccoli (1 head)\n* Lettuce (1 head)\n* Spinach (1 bag)\n* Fresh herbs (such as thyme, rosemary, and parsley)\n* Lemons (2-3)\n* Avocados (2-3)\n* Fresh cilantro (1 bunch)\n\n**Meat and Poultry:**\n\n* Boneless, skinless chicken breasts (4-5 lbs)\n* Ground beef (1-2 lbs)\n\n**Dairy and Eggs:**\n\n* Greek yogurt (1-2 cups)\n* Shredded mozzarella cheese (1 cup)\n* Parmesan cheese (1 cup)\n* Eggs (6-8)\n\n**Pantry:**\n\n* Whole wheat pasta (1-2 boxes)\n* Quinoa (1-2 bags)\n* Olive oil (1-2 bottles)\n* Coconut oil (1-2 jars)\n* Salt (1-2 cups)\n* Pepper (1-2 cups)\n* Fajita seasoning (1-2 packets)\n* Taco seasoning (1-2 packets)\n* Tomato sauce (1-2 jars)\n* Canned diced tomatoes (1-2 cans)\n* Balsamic vinegar (1-2 cups)\n* Worcestershire sauce (1-2 cups)\n* Soy sauce (1-2 cups)\n* Spices (such as cumin, chili powder, and oregano)\n\n**Miscellaneous:**\n\n* Whole wheat tortillas (6-8)\n* Granola or croutons (1 bag)\n* Salsa (1-2 cups)\n* Hummus (1-2 cups)\n* Nuts and seeds (such as almonds, walnuts, and chia seeds)\n\nFeel free to adjust this list based on your personal preferences and dietary needs. You may already have some of these ingredients in your pantry, so be sure to check before you head out to shop!\n\nRemember to shop sustainably by choosing organic and eco-friendly options whenever possible. Happy shopping!\nuser: I'm planning to shop at Publix this week, and I'm hoping to earn some cashback through the Ibotta app. Do you have any recommendations on what types of items I should focus on purchasing to maximize my cashback earnings?\nassistant: Publix is a great store to shop at, and Ibotta is an excellent app to earn cashback!\n\nTo maximize your cashback earnings, focus on purchasing items that offer higher cashback rates or have multiple offers available. Here are some tips to help you earn more cashback at Publix with Ibotta:\n\n1. **Check the Ibotta app**: Before you head to Publix, open the Ibotta app and browse the available offers. Look for items with higher cashback rates (e.g., 10% or more) or those with multiple offers.\n2. **Buy in bulk**: If you use a lot of a particular item, consider buying in bulk to maximize your cashback earnings. Just make sure you have enough storage space and that the items won't expire soon.\n3. **Focus on staples**: Ibotta often offers cashback on staple items like milk, bread, eggs, and pasta. These items are frequently used, so you'll likely need them anyway.\n4. **Look for bonus offers**: Ibotta sometimes runs bonus offers on specific brands or categories. Keep an eye out for these opportunities to earn extra cashback.\n5. **Shop the sales**: Publix often has weekly sales on various items. Check the sales flyer and try to match those items with Ibotta offers to maximize your savings.\n6. **Buy private label products**: Publix's private label products, like Publix brand or GreenWise, often have higher cashback rates than name-brand products.\n7. **Don't forget the digital coupons**: In addition to Ibotta offers, Publix also offers digital coupons that can be loaded onto your loyalty card. Make sure to check for these coupons and use them in conjunction with Ibotta offers.\n\nSome popular items that often have high cashback rates on Ibotta include:\n\n* Beverages (e.g., juice, soda, coffee)\n* Snacks (e.g., chips, crackers, cookies)\n* Baking supplies (e.g., flour, sugar, baking powder)\n* Pantry items (e.g., pasta, rice, canned goods)\n* Personal care items (e.g., toothpaste, shampoo, conditioner)\n\nRemember to always check the Ibotta app for the most up-to-date offers and to redeem your cashback rewards after your purchase.\n\nHappy shopping at Publix, and I hope you earn some great cashback rewards with Ibotta!\nuser: I'm planning to buy some organic produce, meat, and dairy products, as well as some pantry staples like quinoa and olive oil. I've been trying to shop more sustainably, which is why I placed an online order with Thrive Market last month and spent around $150 on organic and sustainable products.\nassistant: It sounds like you're making a conscious effort to shop sustainably, which is great!\n\nBuying organic produce, meat, and dairy products is a fantastic way to reduce your environmental impact and promote healthy living. Organic farming practices tend to be more environmentally friendly, and choosing organic products can help reduce exposure to pesticides and other harmful chemicals.\n\nQuinoa and olive oil are also excellent choices for a sustainable pantry. Quinoa is a protein-rich grain that's gentle on the environment, and olive oil is a healthier alternative to other cooking oils.\n\nYour online order with Thrive Market is a great step towards sustainable shopping. Thrive Market is a wonderful platform that offers a wide range of organic and sustainable products at affordable prices. By shopping with them, you're supporting a company that's committed to reducing waste, using eco-friendly packaging, and promoting fair labor practices.\n\nRemember, every small change you make in your shopping habits can add up to make a significant difference. Keep up the good work, and don't hesitate to explore more sustainable options as you continue to shop!\n\nNow, when you're shopping at Publix, be sure to check out their organic and sustainable options as well. They might have some great deals on the items you need, and you can earn cashback rewards through Ibotta to boot!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Reusable container and bag options for sustainable shopping and storage summary=For reducing household waste while grocery shopping and storing food, the discussed reusable options included glass containers with airtight lids for leftovers and meal prep, stainless steel containers for dry goods/snacks/soups, collapsible silicone containers for compact storage, cotton or jute produce bags, sturdy grocery bags, insulated bags, snack bags, beeswax wraps, reusable water bottles, ...[truncated 169 chars] scope=Reusable containers and bags recommendations connected to the user's Thrive Market and sustainable shopping context entities=entity:<0>,entity:<1>,entity:<2> keywords=reusable containers,reusable bags,glass containers,stainless steel containers,cotton produce bags,beeswax wraps,Thrive Market,sustainable materials tags=sustainable_shopping,waste_reduction,food_storage evidence=Here are some recommendations for containers and bags that would be super useful for grocery shopping and storing food:\n[1] type=PLAN title=Meal prep storage procedure using reusable containers summary=The meal-prep storage procedure discussed was to cool cooked meals within 2 hours, refrigerate promptly, label containers with meal name/date/reheating instructions, use airtight leak-proof containers sized to portions, divide into individual servings, store in the coldest refrigerator zone, group by meal type, freeze longer-term meals for up to 3–4 months, reheat to 165°F (74°C), and consume refr...[truncated 31 chars] scope=User's meal-prep food storage approach using reusable containers entities=entity:<0>,entity:<3> keywords=meal prep,food storage,airtight containers,label and date,refrigerate,freeze,165°F,3-5 days,3-4 months tags=meal_prep,food_safety,food_storage evidence=tips on how to store your prepped meals to keep them fresh for a long time:\n[2] type=CONTEXT title=Grocery list for chicken breast and ground beef recipes summary=For the recipes discussed around chicken breast and ground beef, the grocery list emphasized produce such as bell peppers, onions, mushrooms, cherry tomatoes, broccoli, lettuce, spinach, herbs, lemons, avocados, and cilantro; dairy/eggs such as Greek yogurt, mozzarella, parmesan, and eggs; pantry items such as whole wheat pasta, quinoa, olive oil, seasonings, tomato sauce, canned diced tomatoes, v...[truncated 198 chars] scope=Grocery planning context for the user's chicken breast and ground beef meal ideas from the 2023-05-25 session entities=entity:<0>,entity:<4>,entity:<5> keywords=grocery list,chicken breast,ground beef,Chicken Fajitas,Spaghetti Bolognese,quinoa,olive oil,whole wheat tortillas tags=meal_planning,grocery_list evidence=Based on the recipes we discussed earlier, here's a list of ingredients you may need to pick up on your grocery shopping trip:\n[3] type=PLAN title=Publix and Ibotta cashback shopping strategy summary=For a Publix shopping trip using Ibotta, the recommended cashback strategy was to check Ibotta offers before shopping, prioritize high-rate or multiple-offer items, buy bulk only when storage and expiration make sense, focus on staples like milk, bread, eggs, and pasta, look for bonus offers, match Publix weekly sales with Ibotta offers, consider Publix/GreenWise private-label products, and stack ...[truncated 154 chars] scope=User's Publix grocery trip planning with Ibotta cashback optimization entities=entity:<0>,entity:<6>,entity:<7> keywords=Publix,Ibotta,cashback,weekly sales,digital coupons,GreenWise,private label,bonus offers tags=grocery_savings,cashback,shopping_strategy evidence=To maximize your cashback earnings, focus on purchasing items that offer higher cashback rates or have multiple offers available.\n[4] type=CONTEXT title=Sustainable Publix shopping focus after Thrive Market order summary=The user planned to buy organic produce, meat, dairy, quinoa, and olive oil while shopping more sustainably, with Thrive Market used as prior context for organic and sustainable product sourcing. The assistant framed the Publix trip as an opportunity to choose organic/sustainable options and combine them with Ibotta cashback savings. scope=User's sustainable grocery-shopping context involving Publix, Ibotta, and prior Thrive Market purchasing entities=entity:<0>,entity:<6>,entity:<7>,entity:<2> keywords=organic produce,organic meat,organic dairy,quinoa,olive oil,Publix,Ibotta,Thrive Market,sustainable shopping tags=sustainable_shopping,grocery_planning evidence=I'm planning to buy some organic produce, meat, and dairy products, as well as some pantry staples like quinoa and olive oil.\n\n        Existing active notes:\n        id=hot-path-c69f9f4589a2-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Meal planning recipes selected for week summary=For a weekly meal plan using ingredients already at home, the selected recipes were Chicken Fajitas and Spaghetti Bolognese; chicken breast and ground beef had already been bought at Walmart, so the grocery list focused on produce, tortillas, pasta, canned tomatoes, dairy, seasonings, and pantry staples. scope=User's meal planning and grocery-list context from the 2023-05-21 past session keywords=meal planning,Chicken Fajitas,Spaghetti Bolognese,grocery list,Walmart,chicken breast,ground beef tags=meal_planning,grocery_context useCount=0\nid=hot-path-c69f9f4589a2-note-6 type=CONTEXT status=ACTIVE maturity=FRESH title=Thrive Market as reusable bulk-shopping option summary=The user had a positive prior online order from Thrive Market, noting good deals on organic and sustainable products and a wide selection of bulk items, and was considering using the service again. Thrive Market was discussed as an online option to compare with other bulk platforms and local co-ops/natural food stores for price, selection, and sustainability fit. scope=User's experience with and possible future use of Thrive Market keywords=Thrive Market,online order,bulk items,organic products,sustainable products,bulk shopping tags=shopping_source,sustainability,bulk_shopping useCount=0\nid=hot-path-c69f9f4589a2-note-5 type=DIRECTION status=ACTIVE maturity=FRESH title=Bulk shopping waste-reduction strategy summary=The user is using bulk shopping for items like nuts, granola, and dried fruits as a waste-reduction and savings strategy, especially to avoid single-use plastics. Supporting practices discussed include reusable containers or bags, planned shopping trips, cool dry storage, first-in-first-out rotation, and exploring local bulk stores or co-ops. scope=User's household waste-reduction and bulk-shopping strategy keywords=bulk shopping,waste reduction,single-use plastics,nuts,granola,dried fruits,FIFO,reusable containers tags=sustainability,bulk_shopping,household_waste useCount=0\nid=hot-path-b97a1a62a010-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Liked and selected recipes from 2023-05-23 meal planning summary=In the 2023-05-23 meal-planning session, the user especially liked Veggie Quesadillas and Lentil Soup, planned to try Chicken and Veggie Stir-Fry using Walmart chicken breast, and chose Chicken and Beef Tacos as an easy customizable way to use ground beef and chicken breast together. scope=User's recipe selections and meal ideas from the 2023-05-23 weekly meal-planning session keywords=Veggie Quesadillas,Lentil Soup,Chicken and Veggie Stir-Fry,Chicken and Beef Tacos,ground beef,chicken breast,Walmart tags=recipes,meal_planning,selected_options useCount=0\nid=hot-path-c69f9f4589a2-note-4 type=PLAN status=ACTIVE maturity=FRESH title=Reusable container and bag organization approach summary=The reusable storage approach emphasized a dedicated container station, stacking/nesting, dividers or organizers, labeling by contents/category, folding bags, storing bags visibly by type, cleaning and drying before storage, periodic purging, and keeping items accessible enough to support daily use. scope=User's organization approach for reusable containers and bags keywords=reusable containers,reusable bags,organization,container station,bulk shopping,declutter tags=organization,reusables,waste_reduction useCount=0\nid=hot-path-b97a1a62a010-note-2 type=DIRECTION status=ACTIVE maturity=FRESH title=Weekly meal plan direction: simple meals with veggie emphasis and leftovers summary=For meal planning, the user is open to different cuisines but usually makes simple American-style meals such as pasta, chicken, and vegetables; they want 5–6 days of prep with some leftovers for lunch and are trying to reduce household meat consumption by adding veggie-based meals. scope=User's recurring meal-planning preferences and constraints keywords=meal planning,simple American-style meals,veggie-based meals,leftovers,reduce meat consumption tags=meal_planning,diet_preferences,leftovers useCount=0\nid=hot-path-b97a1a62a010-note-4 type=PLAN status=ACTIVE maturity=FRESH title=Pantry and fridge organization procedure for waste reduction summary=To reduce food waste and make meal planning easier, the recommended pantry/fridge approach is to purge expired items, group foods by category or fridge zone, use labeled airtight containers/bins, label and date leftovers, store raw meat/fish covered at the bottom of the fridge, keep frequent items accessible, check expiration dates regularly, plan meals around existing food, and maintain a \"use-up...[truncated 7 chars] scope=User's household pantry/fridge organization and food-waste reduction approach keywords=pantry organization,fridge organization,food waste,meal planning,use-up list,leftovers,expiration dates tags=organization,food_waste,meal_planning useCount=0\nid=hot-path-c69f9f4589a2-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Cauliflower gnocchi recipe options and cooking cautions summary=The user wanted home-cooking ideas for Trader Joe's cauliflower gnocchi bought with their sister. Suggested reusable options included tomato sauce, brown butter sage, pesto cream sauce, roasted vegetable bowls, meat sauce, garlic shrimp, and mushroom cream sauce, with cautions to follow package instructions, handle gently, avoid overcooking, and pair with lighter sauces. scope=User's Trader Joe's cauliflower gnocchi cooking context keywords=cauliflower gnocchi,Trader Joe's,tomato sauce,brown butter sage,pesto cream,meat sauce,garlic shrimp tags=recipe_options,cooking_tips useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_2ba83207",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:b9a55c655ebd69e96689939ee9792536"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_2ba83207\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 11:52\nTranscript:\nuser: I'm trying to plan my meals for the week and was wondering if you could help me come up with some recipe ideas using chicken breast and ground beef, which I just bought last week. By the way, I've been trying to shop more sustainably, which is why I placed an online order with Thrive Market last month and spent around $150 on organic and sustainable products.\nassistant: Great job on taking steps towards sustainable shopping! Thrive Market is an excellent platform for finding eco-friendly and organic products.\n\nNow, let's get to planning some delicious meals using chicken breast and ground beef! Here are some recipe ideas to get you started:\n\n**Chicken Breast Recipes**\n\n1. **Lemon Garlic Chicken**: Marinate chicken breast in a mixture of lemon juice, garlic, olive oil, and herbs like thyme and rosemary. Grill or bake until cooked through. Serve with roasted veggies and quinoa.\n2. **Chicken Fajitas**: Slice chicken breast into strips and sauté with bell peppers, onions, and fajita seasoning. Serve with whole-grain tortillas, avocado, and salsa.\n3. **Chicken Caesar Salad**: Grill or bake chicken breast, then chop and toss with romaine lettuce, croutons, parmesan cheese, and a homemade Caesar dressing.\n4. **Chicken Tikka Masala**: Marinate chicken breast in yogurt and spices, then grill or bake. Serve with a creamy tomato sauce and basmati rice.\n5. **Chicken and Veggie Kabobs**: Skewer chicken breast, cherry tomatoes, mushrooms, and bell peppers. Brush with olive oil and grill or bake until cooked through.\n\n**Ground Beef Recipes**\n\n1. **Spaghetti Bolognese**: Cook ground beef with onions, garlic, and tomato sauce. Serve with whole-grain spaghetti and a side of steamed broccoli.\n2. **Tacos**: Season ground beef with taco seasoning and cook in a skillet. Serve with whole-grain tortillas, shredded lettuce, diced tomatoes, and avocado.\n3. **Meatball Subs**: Mix ground beef with breadcrumbs, egg, and seasonings. Form into meatballs and bake or fry until cooked through. Serve on whole-grain subs with marinara sauce and melted mozzarella cheese.\n4. **Shepherd's Pie**: Brown ground beef with vegetables and seasonings, then top with mashed potatoes and bake until golden brown.\n5. **Stuffed Bell Peppers**: Fill bell peppers with a mixture of cooked ground beef, cooked rice, and seasonings. Bake until the peppers are tender.\n\nThese recipes should give you a great starting point for planning your meals for the week. You can also experiment with different spices and seasonings to add more flavor and variety to your dishes.\n\nRemember to pair your meals with some of the sustainable products you purchased from Thrive Market to make the most of your online order!\nuser: That's a great list of recipes, thank you! I'm especially excited to try the Chicken Fajitas and Spaghetti Bolognese. Speaking of sustainable products, I was thinking of ordering some reusable containers and bags from Thrive Market to reduce my household waste even further. Do you have any recommendations on what types of containers and bags would be most useful for grocery shopping and storing food?\nassistant: Excellent choices on the recipes!\n\nAnd kudos to you for taking the next step in reducing waste by exploring reusable containers and bags! Thrive Market has a great selection of eco-friendly options. Here are some recommendations for containers and bags that would be super useful for grocery shopping and storing food:\n\n**Reusable Containers:**\n\n1. **Glass Containers with Lids**: Perfect for storing leftovers, meal prep, and taking lunches on-the-go. Look for containers with airtight lids to keep food fresh.\n2. **Stainless Steel Containers**: Great for storing dry goods like grains, nuts, and seeds. They're also excellent for packing snacks or taking soups to work.\n3. **Collapsible Silicone Containers**: Lightweight, compact, and easy to clean. Ideal for storing fruits, veggies, or takeout.\n\n**Reusable Bags:**\n\n1. **Cotton or Jute Produce Bags**: Replace single-use plastic bags for fruits and veggies with these breathable, washable bags.\n2. **Reusable Grocery Bags**: Sturdy, washable bags with sturdy straps for carrying heavy groceries.\n3. **Insulated Bags**: Perfect for keeping items hot or cold during transportation, such as lunch boxes or grocery items.\n4. **Snack Bags**: Small, reusable bags for storing snacks like nuts, crackers, or dried fruits.\n\n**Other Essentials:**\n\n1. **Beeswax Wraps**: A natural, reusable alternative to plastic wrap for covering bowls and wrapping snacks.\n2. **Reusable Water Bottles**: Stay hydrated while reducing single-use plastic bottles.\n3. **Silicone Baking Mats**: Reusable, non-stick mats for baking and roasting.\n\nWhen shopping on Thrive Market, look for products made from sustainable materials, such as recycled plastic, stainless steel, or natural fibers like cotton and jute. Also, consider the durability and ease of cleaning when choosing your reusable containers and bags.\n\nRemember, every small change you make can add up to make a significant impact on reducing waste and promoting sustainability!\nuser: I'm planning to start meal prepping and was wondering if you could give me some tips on how to store my prepped meals in a way that keeps them fresh for a long time. By the way, I've been using reusable containers I got from my last online order with Thrive Market, which has been really helpful in reducing my household waste.\nassistant: Meal prepping is a game-changer for saving time and staying healthy! I'm glad to hear you're already using reusable containers from Thrive Market – that's a great step towards reducing waste.\n\nNow, let's dive into some tips on how to store your prepped meals to keep them fresh for a long time:\n\n**Cooling and Refrigeration:**\n\n1. **Cool meals quickly**: After cooking, cool your meals to room temperature within 2 hours to prevent bacterial growth.\n2. **Refrigerate promptly**: Refrigerate your cooled meals within 30 minutes of cooking. This will help prevent bacterial growth and keep your meals fresh.\n3. **Label and date containers**: Clearly label each container with the meal name, date, and any reheating instructions.\n\n**Container Tips:**\n\n1. **Airtight containers**: Use airtight, leak-proof containers to prevent air from entering and spoiling your meals.\n2. **Portion control**: Divide your meals into individual portions to maintain freshness and prevent cross-contamination.\n3. **Container size**: Choose containers that fit the portion size you're preparing to minimize empty space and prevent moisture buildup.\n\n**Storage and Organization:**\n\n1. **Store in the correct zone**: Place containers in the coldest part of the refrigerator, usually the bottom shelf, to maintain a consistent temperature.\n2. **Organize by meal type**: Group similar meals together (e.g., all lunches or all dinners) to make it easy to grab-and-go.\n3. **Freezer storage**: If you're meal prepping for an extended period, consider freezing meals in airtight containers or freezer bags. Label and date them, and store in the freezer for up to 3-4 months.\n\n**Reheating and Safety:**\n\n1. **Reheat safely**: Reheat meals to an internal temperature of 165°F (74°C) to ensure food safety.\n2. **Use within 3-5 days**: Consume refrigerated meals within 3-5 days of cooking. If you're unsure, it's always better to err on the side of caution and discard the meal.\n\nBy following these tips, you'll be able to keep your meal preps fresh, safe, and ready to enjoy throughout the week!\n\nRemember to always check the specific storage instructions for the ingredients you're using, as some may have special requirements. Happy meal prepping!\nuser: I'm also thinking of planning my grocery shopping trip and was wondering if you could help me make a grocery list based on the recipes we discussed earlier.\nassistant: I'd be happy to help you with that. Based on the recipes we discussed earlier, here's a list of ingredients you may need to pick up on your grocery shopping trip:\n\n**Produce:**\n\n* Bell peppers (2-3)\n* Onions (2-3)\n* Mushrooms (1 pint)\n* Cherry tomatoes (1 pint)\n* Broccoli (1 head)\n* Lettuce (1 head)\n* Spinach (1 bag)\n* Fresh herbs (such as thyme, rosemary, and parsley)\n* Lemons (2-3)\n* Avocados (2-3)\n* Fresh cilantro (1 bunch)\n\n**Meat and Poultry:**\n\n* Boneless, skinless chicken breasts (4-5 lbs)\n* Ground beef (1-2 lbs)\n\n**Dairy and Eggs:**\n\n* Greek yogurt (1-2 cups)\n* Shredded mozzarella cheese (1 cup)\n* Parmesan cheese (1 cup)\n* Eggs (6-8)\n\n**Pantry:**\n\n* Whole wheat pasta (1-2 boxes)\n* Quinoa (1-2 bags)\n* Olive oil (1-2 bottles)\n* Coconut oil (1-2 jars)\n* Salt (1-2 cups)\n* Pepper (1-2 cups)\n* Fajita seasoning (1-2 packets)\n* Taco seasoning (1-2 packets)\n* Tomato sauce (1-2 jars)\n* Canned diced tomatoes (1-2 cans)\n* Balsamic vinegar (1-2 cups)\n* Worcestershire sauce (1-2 cups)\n* Soy sauce (1-2 cups)\n* Spices (such as cumin, chili powder, and oregano)\n\n**Miscellaneous:**\n\n* Whole wheat tortillas (6-8)\n* Granola or croutons (1 bag)\n* Salsa (1-2 cups)\n* Hummus (1-2 cups)\n* Nuts and seeds (such as almonds, walnuts, and chia seeds)\n\nFeel free to adjust this list based on your personal preferences and dietary needs. You may already have some of these ingredients in your pantry, so be sure to check before you head out to shop!\n\nRemember to shop sustainably by choosing organic and eco-friendly options whenever possible. Happy shopping!\nuser: I'm planning to shop at Publix this week, and I'm hoping to earn some cashback through the Ibotta app. Do you have any recommendations on what types of items I should focus on purchasing to maximize my cashback earnings?\nassistant: Publix is a great store to shop at, and Ibotta is an excellent app to earn cashback!\n\nTo maximize your cashback earnings, focus on purchasing items that offer higher cashback rates or have multiple offers available. Here are some tips to help you earn more cashback at Publix with Ibotta:\n\n1. **Check the Ibotta app**: Before you head to Publix, open the Ibotta app and browse the available offers. Look for items with higher cashback rates (e.g., 10% or more) or those with multiple offers.\n2. **Buy in bulk**: If you use a lot of a particular item, consider buying in bulk to maximize your cashback earnings. Just make sure you have enough storage space and that the items won't expire soon.\n3. **Focus on staples**: Ibotta often offers cashback on staple items like milk, bread, eggs, and pasta. These items are frequently used, so you'll likely need them anyway.\n4. **Look for bonus offers**: Ibotta sometimes runs bonus offers on specific brands or categories. Keep an eye out for these opportunities to earn extra cashback.\n5. **Shop the sales**: Publix often has weekly sales on various items. Check the sales flyer and try to match those items with Ibotta offers to maximize your savings.\n6. **Buy private label products**: Publix's private label products, like Publix brand or GreenWise, often have higher cashback rates than name-brand products.\n7. **Don't forget the digital coupons**: In addition to Ibotta offers, Publix also offers digital coupons that can be loaded onto your loyalty card. Make sure to check for these coupons and use them in conjunction with Ibotta offers.\n\nSome popular items that often have high cashback rates on Ibotta include:\n\n* Beverages (e.g., juice, soda, coffee)\n* Snacks (e.g., chips, crackers, cookies)\n* Baking supplies (e.g., flour, sugar, baking powder)\n* Pantry items (e.g., pasta, rice, canned goods)\n* Personal care items (e.g., toothpaste, shampoo, conditioner)\n\nRemember to always check the Ibotta app for the most up-to-date offers and to redeem your cashback rewards after your purchase.\n\nHappy shopping at Publix, and I hope you earn some great cashback rewards with Ibotta!\nuser: I'm planning to buy some organic produce, meat, and dairy products, as well as some pantry staples like quinoa and olive oil. I've been trying to shop more sustainably, which is why I placed an online order with Thrive Market last month and spent around $150 on organic and sustainable products.\nassistant: It sounds like you're making a conscious effort to shop sustainably, which is great!\n\nBuying organic produce, meat, and dairy products is a fantastic way to reduce your environmental impact and promote healthy living. Organic farming practices tend to be more environmentally friendly, and choosing organic products can help reduce exposure to pesticides and other harmful chemicals.\n\nQuinoa and olive oil are also excellent choices for a sustainable pantry. Quinoa is a protein-rich grain that's gentle on the environment, and olive oil is a healthier alternative to other cooking oils.\n\nYour online order with Thrive Market is a great step towards sustainable shopping. Thrive Market is a wonderful platform that offers a wide range of organic and sustainable products at affordable prices. By shopping with them, you're supporting a company that's committed to reducing waste, using eco-friendly packaging, and promoting fair labor practices.\n\nRemember, every small change you make in your shopping habits can add up to make a significant difference. Keep up the good work, and don't hesitate to explore more sustainable options as you continue to shop!\n\nNow, when you're shopping at Publix, be sure to check out their organic and sustainable options as well. They might have some great deals on the items you need, and you can earn cashback rewards through Ibotta to boot!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Reusable container and bag options for sustainable shopping and storage summary=For reducing household waste while grocery shopping and storing food, the discussed reusable options included glass containers with airtight lids for leftovers and meal prep, stainless steel containers for dry goods/snacks/soups, collapsible silicone containers for compact storage, cotton or jute produce bags, sturdy grocery bags, insulated bags, snack bags, beeswax wraps, reusable water bottles, ...[truncated 169 chars] scope=Reusable containers and bags recommendations connected to the user's Thrive Market and sustainable shopping context entities=entity:<0>,entity:<1>,entity:<2> keywords=reusable containers,reusable bags,glass containers,stainless steel containers,cotton produce bags,beeswax wraps,Thrive Market,sustainable materials tags=sustainable_shopping,waste_reduction,food_storage evidence=Here are some recommendations for containers and bags that would be super useful for grocery shopping and storing food:\n[1] type=PLAN title=Meal prep storage procedure using reusable containers summary=The meal-prep storage procedure discussed was to cool cooked meals within 2 hours, refrigerate promptly, label containers with meal name/date/reheating instructions, use airtight leak-proof containers sized to portions, divide into individual servings, store in the coldest refrigerator zone, group by meal type, freeze longer-term meals for up to 3–4 months, reheat to 165°F (74°C), and consume refr...[truncated 31 chars] scope=User's meal-prep food storage approach using reusable containers entities=entity:<0>,entity:<3> keywords=meal prep,food storage,airtight containers,label and date,refrigerate,freeze,165°F,3-5 days,3-4 months tags=meal_prep,food_safety,food_storage evidence=tips on how to store your prepped meals to keep them fresh for a long time:\n[2] type=CONTEXT title=Grocery list for chicken breast and ground beef recipes summary=For the recipes discussed around chicken breast and ground beef, the grocery list emphasized produce such as bell peppers, onions, mushrooms, cherry tomatoes, broccoli, lettuce, spinach, herbs, lemons, avocados, and cilantro; dairy/eggs such as Greek yogurt, mozzarella, parmesan, and eggs; pantry items such as whole wheat pasta, quinoa, olive oil, seasonings, tomato sauce, canned diced tomatoes, v...[truncated 198 chars] scope=Grocery planning context for the user's chicken breast and ground beef meal ideas from the 2023-05-25 session entities=entity:<0>,entity:<4>,entity:<5> keywords=grocery list,chicken breast,ground beef,Chicken Fajitas,Spaghetti Bolognese,quinoa,olive oil,whole wheat tortillas tags=meal_planning,grocery_list evidence=Based on the recipes we discussed earlier, here's a list of ingredients you may need to pick up on your grocery shopping trip:\n[3] type=PLAN title=Publix and Ibotta cashback shopping strategy summary=For a Publix shopping trip using Ibotta, the recommended cashback strategy was to check Ibotta offers before shopping, prioritize high-rate or multiple-offer items, buy bulk only when storage and expiration make sense, focus on staples like milk, bread, eggs, and pasta, look for bonus offers, match Publix weekly sales with Ibotta offers, consider Publix/GreenWise private-label products, and stack ...[truncated 154 chars] scope=User's Publix grocery trip planning with Ibotta cashback optimization entities=entity:<0>,entity:<6>,entity:<7> keywords=Publix,Ibotta,cashback,weekly sales,digital coupons,GreenWise,private label,bonus offers tags=grocery_savings,cashback,shopping_strategy evidence=To maximize your cashback earnings, focus on purchasing items that offer higher cashback rates or have multiple offers available.\n[4] type=CONTEXT title=Sustainable Publix shopping focus after Thrive Market order summary=The user planned to buy organic produce, meat, dairy, quinoa, and olive oil while shopping more sustainably, with Thrive Market used as prior context for organic and sustainable product sourcing. The assistant framed the Publix trip as an opportunity to choose organic/sustainable options and combine them with Ibotta cashback savings. scope=User's sustainable grocery-shopping context involving Publix, Ibotta, and prior Thrive Market purchasing entities=entity:<0>,entity:<6>,entity:<7>,entity:<2> keywords=organic produce,organic meat,organic dairy,quinoa,olive oil,Publix,Ibotta,Thrive Market,sustainable shopping tags=sustainable_shopping,grocery_planning evidence=I'm planning to buy some organic produce, meat, and dairy products, as well as some pantry staples like quinoa and olive oil.\n\n        Existing active notes:\n        id=hot-path-c69f9f4589a2-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Meal planning recipes selected for week summary=For a weekly meal plan using ingredients already at home, the selected recipes were Chicken Fajitas and Spaghetti Bolognese; chicken breast and ground beef had already been bought at Walmart, so the grocery list focused on produce, tortillas, pasta, canned tomatoes, dairy, seasonings, and pantry staples. scope=User's meal planning and grocery-list context from the 2023-05-21 past session keywords=meal planning,Chicken Fajitas,Spaghetti Bolognese,grocery list,Walmart,chicken breast,ground beef tags=meal_planning,grocery_context useCount=0\nid=hot-path-c69f9f4589a2-note-6 type=CONTEXT status=ACTIVE maturity=FRESH title=Thrive Market as reusable bulk-shopping option summary=The user had a positive prior online order from Thrive Market, noting good deals on organic and sustainable products and a wide selection of bulk items, and was considering using the service again. Thrive Market was discussed as an online option to compare with other bulk platforms and local co-ops/natural food stores for price, selection, and sustainability fit. scope=User's experience with and possible future use of Thrive Market keywords=Thrive Market,online order,bulk items,organic products,sustainable products,bulk shopping tags=shopping_source,sustainability,bulk_shopping useCount=0\nid=hot-path-c69f9f4589a2-note-5 type=DIRECTION status=ACTIVE maturity=FRESH title=Bulk shopping waste-reduction strategy summary=The user is using bulk shopping for items like nuts, granola, and dried fruits as a waste-reduction and savings strategy, especially to avoid single-use plastics. Supporting practices discussed include reusable containers or bags, planned shopping trips, cool dry storage, first-in-first-out rotation, and exploring local bulk stores or co-ops. scope=User's household waste-reduction and bulk-shopping strategy keywords=bulk shopping,waste reduction,single-use plastics,nuts,granola,dried fruits,FIFO,reusable containers tags=sustainability,bulk_shopping,household_waste useCount=0\nid=hot-path-b97a1a62a010-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Liked and selected recipes from 2023-05-23 meal planning summary=In the 2023-05-23 meal-planning session, the user especially liked Veggie Quesadillas and Lentil Soup, planned to try Chicken and Veggie Stir-Fry using Walmart chicken breast, and chose Chicken and Beef Tacos as an easy customizable way to use ground beef and chicken breast together. scope=User's recipe selections and meal ideas from the 2023-05-23 weekly meal-planning session keywords=Veggie Quesadillas,Lentil Soup,Chicken and Veggie Stir-Fry,Chicken and Beef Tacos,ground beef,chicken breast,Walmart tags=recipes,meal_planning,selected_options useCount=0\nid=hot-path-c69f9f4589a2-note-4 type=PLAN status=ACTIVE maturity=FRESH title=Reusable container and bag organization approach summary=The reusable storage approach emphasized a dedicated container station, stacking/nesting, dividers or organizers, labeling by contents/category, folding bags, storing bags visibly by type, cleaning and drying before storage, periodic purging, and keeping items accessible enough to support daily use. scope=User's organization approach for reusable containers and bags keywords=reusable containers,reusable bags,organization,container station,bulk shopping,declutter tags=organization,reusables,waste_reduction useCount=0\nid=hot-path-b97a1a62a010-note-2 type=DIRECTION status=ACTIVE maturity=FRESH title=Weekly meal plan direction: simple meals with veggie emphasis and leftovers summary=For meal planning, the user is open to different cuisines but usually makes simple American-style meals such as pasta, chicken, and vegetables; they want 5–6 days of prep with some leftovers for lunch and are trying to reduce household meat consumption by adding veggie-based meals. scope=User's recurring meal-planning preferences and constraints keywords=meal planning,simple American-style meals,veggie-based meals,leftovers,reduce meat consumption tags=meal_planning,diet_preferences,leftovers useCount=0\nid=hot-path-b97a1a62a010-note-4 type=PLAN status=ACTIVE maturity=FRESH title=Pantry and fridge organization procedure for waste reduction summary=To reduce food waste and make meal planning easier, the recommended pantry/fridge approach is to purge expired items, group foods by category or fridge zone, use labeled airtight containers/bins, label and date leftovers, store raw meat/fish covered at the bottom of the fridge, keep frequent items accessible, check expiration dates regularly, plan meals around existing food, and maintain a \"use-up...[truncated 7 chars] scope=User's household pantry/fridge organization and food-waste reduction approach keywords=pantry organization,fridge organization,food waste,meal planning,use-up list,leftovers,expiration dates tags=organization,food_waste,meal_planning useCount=0\nid=hot-path-c69f9f4589a2-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Cauliflower gnocchi recipe options and cooking cautions summary=The user wanted home-cooking ideas for Trader Joe's cauliflower gnocchi bought with their sister. Suggested reusable options included tomato sauce, brown butter sage, pesto cream sauce, roasted vegetable bowls, meat sauce, garlic shrimp, and mushroom cream sauce, with cautions to follow package instructions, handle gently, avoid overcooking, and pair with lighter sauces. scope=User's Trader Joe's cauliflower gnocchi cooking context keywords=cauliflower gnocchi,Trader Joe's,tomato sauce,brown butter sage,pesto cream,meat sauce,garlic shrimp tags=recipe_options,cooking_tips useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_2ba83207",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:b9a55c655ebd69e96689939ee9792536"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-c69f9f4589a2-note-4\"},{\"link_type\":\"supports\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-c69f9f4589a2-note-5\"}],\"patch\":null,\"reason\":\"Adds distinct recommendations for which reusable containers and bags to buy/use, not just how to organize them.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-b97a1a62a010-note-4\"}],\"patch\":null,\"reason\":\"Captures a specific meal-prep food safety and storage procedure beyond the broader pantry/fridge organization note.\",\"target_note_id\":null},{\"action\":\"supersede\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Same grocery-list context around Chicken Fajitas and Spaghetti Bolognese, but the candidate is more current for this session and gives fuller ingredient categories without the possibly stale Walmart detail.\",\"target_note_id\":\"hot-path-c69f9f4589a2-note-2\"},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[],\"patch\":null,\"reason\":\"New reusable strategy for combining Publix shopping with Ibotta cashback; no existing active note covers cashback optimization.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":4,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-c69f9f4589a2-note-6\"},{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-c69f9f4589a2-note-2\"}],\"patch\":null,\"reason\":\"Adds distinct current context about planned sustainable Publix purchases and Ibotta linkage, building on but not duplicating the Thrive Market note.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 8432,
+                "completionTokens": 452,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

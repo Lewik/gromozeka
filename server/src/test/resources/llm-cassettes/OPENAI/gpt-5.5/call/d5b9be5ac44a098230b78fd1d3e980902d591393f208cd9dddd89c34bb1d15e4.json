@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "d5b9be5ac44a098230b78fd1d3e980902d591393f208cd9dddd89c34bb1d15e4",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_2f91af09\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 02:41\nTranscript:\nuser: I'm trying to organize my writing files and I was wondering if you could suggest some ways to categorize and store them. I've been writing a lot lately, including short stories and poetry, and I'd like to keep track of my progress. By the way, I've also just started participating in a writing challenge on a social media platform, where we're given a prompt every week and have to write a short piece in response. Last week's prompt was \"forgotten memories\", and I wrote a piece titled \"The Smell of Old Books\".\nassistant: Congratulations on your writing progress and participation in the writing challenge! Organizing your files can help you track your progress, easily locate specific pieces, and even inspire new ideas. Here are some suggestions for categorizing and storing your writing files:\n\n**Categorization Ideas:**\n\n1. **Genre**: Create folders or labels for different genres, such as Short Stories, Poetry, Flash Fiction, Non-Fiction, etc.\n2. **Project-based**: Organize files by specific projects, like individual short stories or poetry collections. This can help you keep all related files and drafts together.\n3. **Theme or Topic**: Categorize files by theme, like \"Memory and Nostalgia\" (perfect for your \"The Smell of Old Books\" piece!), \"Fantasy\", \"Romance\", etc.\n4. **Chronological**: Organize files by date, with folders or labels for each year, month, or quarter. This can help you track your progress over time.\n5. **Writing Challenge**: Create a folder or label specifically for your writing challenge submissions, with subfolders for each prompt (e.g., \"Forgotten Memories\", \"Future Prompts\", etc.).\n\n**Storage Options:**\n\n1. **Digital Folders**: Create a hierarchical folder structure on your computer or cloud storage service (e.g., Google Drive, Dropbox, OneDrive). This allows easy access and organization of your files.\n2. **Cloud-based Note-taking Apps**: Consider using apps like Evernote, Simplenote, or Bear to store and organize your writing files. These apps often have tagging and searching features to help you quickly find specific pieces.\n3. **Physical Binders or Folders**: If you prefer a more tactile approach, use physical binders or folders to store printed copies of your work. This can be helpful for reviewing and editing your work offline.\n4. **Hybrid Approach**: Combine digital and physical storage by keeping digital copies of your files and printing out select pieces for a physical archive.\n\n**Additional Tips:**\n\n1. **Use clear and descriptive file names**: Include the title, date, and any relevant keywords in your file names to make them easy to find.\n2. **Keep multiple drafts and versions**: Store different versions of your work to track changes and progress.\n3. **Add metadata or tags**: Use keywords, tags, or metadata to add context to your files, making them easier to search and categorize.\n4. **Regularly back up your files**: Ensure your files are safe by regularly backing them up to an external hard drive, cloud storage, or both.\n\nI hope these suggestions help you organize your writing files and keep track of your progress!\nuser: I like the idea of categorizing by genre and project-based. I think I'll set up folders for short stories, poetry, and writing challenge submissions. For the writing challenge submissions, I can have subfolders for each prompt, like \"Forgotten Memories\" and \"Future Prompts\". Do you have any suggestions for a note-taking app that can help me brainstorm and outline my stories?\nassistant: Categorizing by genre and project-based is a great approach.\n\nFor note-taking and outlining, there are many excellent apps available. Here are some popular options that can help you brainstorm and organize your story ideas:\n\n1. **Scrivener**: A powerful writing software that offers a free trial, with a focus on novel-writing and screenwriting. It has a corkboard feature for outlining, character and setting development tools, and a manuscript mode for drafting.\n2. **Evernote**: A popular note-taking app with a web clipper, tagging system, and organization features. You can create notebooks for each project, and use tags to connect related notes. Evernote has a free version, as well as premium features with a subscription.\n3. **Trello**: A visual project management tool that uses boards, lists, and cards to organize tasks and ideas. You can create boards for each project, and use lists for characters, plotlines, world-building, and more.\n4. **MindMeister**: A mind mapping and brainstorming tool that allows you to create diagrams and connect ideas visually. It has a free version, as well as premium features with a subscription.\n5. **Simplenote**: A minimalistic, distraction-free note-taking app that syncs across devices. It has a tagging system and a pin feature to keep important notes at the top.\n6. **Bear**: A note-taking app that combines the simplicity of Simplenote with the power of Evernote. It has a tagging system, focus mode, and a beautiful interface.\n7. **Workflowy**: A note-taking app that uses a hierarchical system to organize ideas. You can create lists, sublists, and tags to break down complex ideas into manageable chunks.\n\nAll of these apps have their strengths, and you may find that one or more work best for your writing process. You can try out a few to see which one resonates with you.\n\nSome features to consider when choosing a note-taking app:\n\n* **Organization system**: Do you prefer a hierarchical system, tags, or a visual board?\n* **Collaboration**: Do you need to share your notes with others, or is it just for personal use?\n* **Accessibility**: Do you need an app that syncs across devices, or are you comfortable with a desktop-only solution?\n* **Distraction-free writing**: Do you prefer a minimalistic interface, or do you need features like formatting options and images?\n* **Export options**: Can you easily export your notes into a format that works for you, such as Word, PDF, or Markdown?\n\nI hope this helps you find the perfect note-taking app to help you brainstorm and outline your stories!\nuser: I think I'll try out Evernote and Trello to see which one works better for me. I've heard great things about both of them. Do you have any tips on how to use them effectively for writing?\nassistant: Evernote and Trello are both powerful tools that can help you stay organized and focused as a writer. Here are some tips to help you get the most out of them:\n\n**Evernote:**\n\n1. **Create a Notebook for each project**: Set up a separate notebook for each writing project, including your writing challenge submissions. This will help you keep all related notes, research, and drafts in one place.\n2. **Use Tags and Stacks**: Tags are like keywords that help you quickly find related notes across notebooks. Stacks are like folders that help you organize notebooks into categories. Use them to create a hierarchical system that makes sense for your writing projects.\n3. **Create a \"Someday\" Notebook**: Designate a notebook for ideas that aren't yet developed, but might be interesting to explore in the future. This will help you capture fleeting ideas and keep them organized.\n4. **Use the Web Clipper**: The Evernote Web Clipper is a browser extension that lets you clip articles, quotes, or images into your notebooks. This is great for research, inspiration, or saving resources for future reference.\n5. **Make use of Templates**: Evernote offers pre-made templates for writing projects, including novel outlines, character profiles, and more. You can also create your own custom templates to suit your writing style.\n\n**Trello:**\n\n1. **Create a Board for each project**: Set up a separate board for each writing project, including your writing challenge submissions. This will give you a visual representation of your project's progress.\n2. **Use Lists and Cards**: Lists represent different stages or categories within your project, while cards represent individual tasks or ideas. Use lists to break down your project into manageable chunks, and cards to flesh out each task or idea.\n3. **Add Labels and Due Dates**: Labels help you categorize cards across lists, while due dates help you stay on track with deadlines. Use labels to identify character arcs, plot twists, or research tasks, and due dates to schedule writing sessions or submission deadlines.\n4. **Use the Calendar Power-Up**: The Calendar Power-Up lets you view your cards on a calendar, making it easier to plan and schedule your writing sessions.\n5. **Make it Visual**: Trello is a visual tool, so use images, colors, and emojis to make your boards and cards engaging and easy to understand.\n\n**General Tips:**\n\n1. **Start small**: Don't feel overwhelmed by trying to set up a complex system from the start. Begin with a simple structure and gradually add more complexity as you become more comfortable with the tools.\n2. **Be consistent**: Choose a system that works for you and stick to it. Consistency is key to making the most of these tools.\n3. **Experiment and adapt**: Don't be afraid to try new features or workflows. As you use Evernote and Trello, you'll find what works best for your writing style and adapt your system accordingly.\n\nBy following these tips, you'll be well on your way to using Evernote and Trello to boost your writing productivity and stay organized. Good luck, and have fun exploring these tools! 😊\nuser: I think I'll start by setting up notebooks in Evernote for each of my short stories and poetry collections, and then create boards in Trello for each project. I'll also use the web clipper to save research articles and inspiration for my stories. For my writing challenge submissions, I'll create a separate notebook in Evernote and a board in Trello, with lists for each prompt and cards for my ideas and drafts. Do you have any suggestions for how to brainstorm and develop characters for my stories?\nassistant: You're off to a great start! 🎉\n\nBrainstorming and developing characters is a crucial part of the writing process. Here are some suggestions to help you get started:\n\n**Character Development in Evernote:**\n\n1. **Create a Character Template**: Design a custom template in Evernote with fields for character traits, backstory, motivations, goals, conflicts, and relationships. This will help you consistently develop characters across your stories.\n2. **Character Profiles**: Create a separate note for each character, using your template as a starting point. Add details as you develop your character, and link related notes, research, or inspiration to the profile.\n3. **Character Arcs**: Create a note or table to track your character's growth and development throughout the story. This will help you visualize their emotional journey and ensure a satisfying character arc.\n\n**Character Development in Trello:**\n\n1. **Character Board**: Create a separate board for character development, with lists for different character groups (e.g., main characters, supporting characters, antagonists).\n2. **Character Cards**: Create cards for each character, with details like name, role, motivations, and goals. Use labels to categorize characters by trait, relationship, or role in the story.\n3. **Character Relationships**: Create cards to represent relationships between characters, tracking their interactions, conflicts, and dynamics.\n\n**Brainstorming Techniques:**\n\n1. **Character Interviews**: Imagine interviewing your characters, asking them questions about their past, motivations, and desires. This can help you get into their mindset and develop their personalities.\n2. **Character Profiles from Research**: Research people, occupations, or cultures that inspire your characters. Take notes on their traits, habits, and characteristics, and use these to inform your character development.\n3. **Character Mapping**: Create a mind map or diagram to visualize your characters' relationships, connections, and conflicts. This can help you identify patterns and opportunities for character growth.\n4. **Scenario Brainstorming**: Imagine scenarios or situations that challenge your characters, and think about how they would react. This can help you develop their personalities, motivations, and conflicts.\n\n**Additional Tips:**\n\n1. **Keep it Consistent**: Establish a consistent naming convention and formatting style for your character profiles and notes.\n2. **Make it Visual**: Use images, colors, and icons to make your character profiles and boards visually appealing and easy to understand.\n3. **Link it Up**: Link related notes, research, and inspiration to your character profiles and boards, making it easy to access relevant information.\n4. **Evolve and Refine**: Character development is an ongoing process. Be open to changes and refinements as you continue to develop your story and characters.\n\nBy using these techniques, you'll be able to create rich, well-rounded characters that will bring your stories to life. Good luck, and have fun developing your characters! 😊\nuser: I think I'll start by creating character profiles in Evernote and character cards in Trello. I'll also use the web clipper to save research articles and inspiration for my characters. For my writing challenge submissions, I can create a separate notebook in Evernote and a board in Trello, with lists for each prompt and cards for my ideas and drafts. Do you have any suggestions for how to develop plot and structure for my stories?\nassistant: You're making great progress! 🎉\n\nDeveloping plot and structure is a crucial part of the writing process. Here are some suggestions to help you get started:\n\n**Plot Development in Evernote:**\n\n1. **Create a Plot Template**: Design a custom template in Evernote with fields for plot points, character arcs, conflicts, themes, and setting. This will help you consistently develop plots across your stories.\n2. **Plot Outlines**: Create a separate note for each story, using your template as a starting point. Add details as you develop your plot, and link related notes, research, or inspiration to the outline.\n3. **Scene Lists**: Create a table or list to break down your story into individual scenes, including setting, characters involved, and plot points.\n\n**Plot Development in Trello:**\n\n1. **Plot Board**: Create a separate board for plot development, with lists for different stages of the story (e.g., exposition, rising action, climax, resolution).\n2. **Plot Cards**: Create cards for each plot point, scene, or chapter, with details like setting, characters involved, and plot developments. Use labels to categorize cards by theme, character arc, or plot twist.\n3. **Plot Twists and Turns**: Create cards to represent plot twists, surprises, or reveals, and use labels to track how they fit into the overall story.\n\n**Structuring Your Story:**\n\n1. **Three-Act Structure**: Divide your story into three acts, with clear goals and conflicts for each act. This will help you create a clear narrative arc.\n2. **Character-Driven Plot**: Focus on how your characters' goals, motivations, and conflicts drive the plot forward.\n3. **Scene and Chapter Structure**: Use a consistent structure for your scenes and chapters, including a clear purpose, conflict, and resolution.\n4. **Pacing and Tension**: Use cards or notes to track the pacing and tension in your story, ensuring that it ebbs and flows to keep the reader engaged.\n\n**Brainstorming Techniques:**\n\n1. **Mind Mapping**: Create a mind map or diagram to visualize your story's plot, characters, and themes. This can help you identify connections and opportunities for plot development.\n2. **What-If Questions**: Ask yourself \"what-if\" questions about your story, characters, and plot, and use the answers to develop new ideas and twists.\n3. **Scene Brainstorming**: Imagine different scenarios or scenes that could occur in your story, and think about how they would affect the plot and characters.\n4. **Reverse Outlining**: Write a brief summary of your story, then break it down into individual scenes and plot points. This can help you identify gaps and opportunities for development.\n\n**Additional Tips:**\n\n1. **Keep it Flexible**: Be open to changes and refinements as you continue to develop your plot and structure.\n2. **Make it Visual**: Use images, colors, and icons to make your plot boards and notes visually appealing and easy to understand.\n3. **Link it Up**: Link related notes, research, and inspiration to your plot outlines and boards, making it easy to access relevant information.\n4. **Evolve and Refine**: Plot and structure development is an ongoing process. Be open to feedback and revisions as you continue to refine your story.\n\nBy using these techniques, you'll be able to develop a compelling plot and structure for your stories. Good luck, and have fun building your narrative! 😊\nuser: I think I'll start by creating a plot template in Evernote and a plot board in Trello. I'll also use the web clipper to save research articles and inspiration for my plot. For my writing challenge submissions, I can create a separate notebook in Evernote and a board in Trello, with lists for each prompt and cards for my ideas and drafts. Do you have any suggestions for how to revise and edit my stories?\nassistant: You're making great progress! 🎉\n\nRevising and editing are crucial steps in the writing process. Here are some suggestions to help you refine your stories:\n\n**Revision and Editing in Evernote:**\n\n1. **Revision Template**: Create a custom template in Evernote with fields for revision goals, changes, and feedback. This will help you track your revisions and stay organized.\n2. **Revision Notes**: Create a separate note for each revision, using your template as a starting point. Add details as you revise, and link related notes, research, or inspiration to the revision note.\n3. **Revision Tracking**: Use tags or labels to track changes, such as \"added scene,\" \"changed character motivation,\" or \"rewrote dialogue.\"\n\n**Revision and Editing in Trello:**\n\n1. **Revision Board**: Create a separate board for revision and editing, with lists for different stages of the process (e.g., revision, editing, proofreading).\n2. **Revision Cards**: Create cards for each revision or edit, with details like changes made, feedback, and next steps. Use labels to categorize cards by type of revision (e.g., character development, plot twist, grammar correction).\n3. **Revision Progress**: Use a progress bar or checklist to track your revision progress, ensuring that you're completing each stage of the process.\n\n**Revision and Editing Techniques:**\n\n1. **Take a Break**: Set your manuscript aside for a few weeks to gain fresh perspective and approach your revisions with a clear mind.\n2. **Get Feedback**: Share your work with beta readers or writing groups to receive feedback and constructive criticism.\n3. **Revise in Layers**: Focus on one aspect of your story at a time, such as character development, plot, or pacing, to ensure that you're making targeted revisions.\n4. **Edit in Passes**: Divide your editing process into passes, focusing on specific elements like grammar, punctuation, or dialogue in each pass.\n\n**Additional Tips:**\n\n1. **Be Patient**: Revision and editing can be time-consuming, so be patient and don't rush the process.\n2. **Stay Organized**: Keep track of your revisions and edits using your templates, notes, and boards.\n3. **Seek Help**: Don't be afraid to seek help from writing communities, editors, or mentors if you need guidance or feedback.\n4. **Celebrate Progress**: Celebrate your progress and accomplishments along the way to stay motivated and encouraged.\n\nBy using these techniques, you'll be able to refine your stories and create a polished, publishable manuscript. Good luck, and have fun revising and editing! 😊\n\n        Candidate notes:\n        [0] type=PLAN title=Evernote and Trello writing organization workflow summary=The user is designing a combined Evernote/Trello workflow for writing: Evernote notebooks for short stories, poetry collections, and writing challenge submissions; Trello boards for each project; Web Clipper for research and inspiration; writing challenge submissions organized with prompt-based lists/subfolders and cards for ideas and drafts. scope=User's writing file organization and project tracking workflow using Evernote and Trello entities=entity:<0>,entity:<1>,entity:<2>,entity:<3> keywords=Evernote,Trello,writing files,writing challenge submissions,Web Clipper,short stories,poetry tags=writing_workflow,organization,evernote,trello evidence=I'll start by setting up notebooks in Evernote for each of my short stories and poetry collections, and then create boards in Trello for each project. I'll also use the web clipper to save research articles and inspirati...[truncated 18 chars]\n[1] type=CONTEXT title=Writing challenge submissions organized by prompt summary=For the social-media writing challenge, the user wants a separate organization area with prompt-based categories such as \"Forgotten Memories\" and \"Future Prompts\"; the prior prompt \"forgotten memories\" produced the piece \"The Smell of Old Books\". scope=User's social-media writing challenge archive and prompt-based submission structure entities=entity:<0>,entity:<4>,entity:<3>,entity:<5>,entity:<6>,entity:<7> keywords=writing challenge,Forgotten Memories,Future Prompts,The Smell of Old Books,prompt,submissions tags=writing_challenge,prompt_archive,writing_context evidence=Last week's prompt was \"forgotten memories\", and I wrote a piece titled \"The Smell of Old Books\".\n[2] type=PLAN title=Character, plot, and revision development system in Evernote and Trello summary=The evolving writing workflow extends Evernote/Trello beyond file storage: Evernote should hold character profiles, character research, plot templates, and revision templates, while Trello should hold character cards, plot boards, and revision/editing boards or cards for ideas, drafts, plot points, and revision stages. scope=User's story-development workflow for characters, plot, and revision using Evernote and Trello entities=entity:<0>,entity:<1>,entity:<2>,entity:<8>,entity:<9>,entity:<10>,entity:<11> keywords=character profiles,character cards,plot template,plot board,revision template,revision board,Evernote,Trello tags=story_development,character_development,plotting,revision,evernote,trello evidence=I'll start by creating character profiles in Evernote and character cards in Trello. I'll also use the web clipper to save research articles and inspiration for my characters.\n\n        Existing active notes:\n        id=hot-path-c4f4fadcb6c7-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Writing organization tools discussed in LongMemEval session 1 summary=For organizing writing projects and deadlines, the session discussed Trello, Asana, Scrivener, Google Calendar, Pomodoro timers such as Tomato Timer, Focus Booster and Pomofocus, habit trackers such as Habitica, HabitBull and Loop Habit Tracker, note/writing apps such as Evernote and Ulysses, RescueTime, and poetry-specific apps such as Poet's Pad, Poetry Editor and HaikuJAM. scope=LongMemEval gpt4_2f91af09 session 1 writing productivity recommendations keywords=Trello,Asana,Scrivener,Google Calendar,Pomodoro timers,Pomofocus,Focus Booster,writing habit trackers,poetry apps tags=tool_recommendations,writing_projects,productivity_tools useCount=0\nid=hot-path-c4f4fadcb6c7-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Pomodoro-based writing workflow for creative projects summary=The user is developing a Pomodoro-based writing workflow: start with Pomofocus, set creative task goals for each session instead of word/line counts, use brief writing prompts or exercises as warm-ups, then transition into the main writing project and review progress after each session to adjust prompts, exercises, or session duration. scope=User's writing projects and poetry writing sessions keywords=Pomodoro writing workflow,Pomofocus,writing prompts,creative task goals,progress review,poetry sessions tags=writing_workflow,pomodoro,poetry,productivity useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_2f91af09",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:b644cbfb468e9172153cf6b32f43d21d"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_2f91af09\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 02:41\nTranscript:\nuser: I'm trying to organize my writing files and I was wondering if you could suggest some ways to categorize and store them. I've been writing a lot lately, including short stories and poetry, and I'd like to keep track of my progress. By the way, I've also just started participating in a writing challenge on a social media platform, where we're given a prompt every week and have to write a short piece in response. Last week's prompt was \"forgotten memories\", and I wrote a piece titled \"The Smell of Old Books\".\nassistant: Congratulations on your writing progress and participation in the writing challenge! Organizing your files can help you track your progress, easily locate specific pieces, and even inspire new ideas. Here are some suggestions for categorizing and storing your writing files:\n\n**Categorization Ideas:**\n\n1. **Genre**: Create folders or labels for different genres, such as Short Stories, Poetry, Flash Fiction, Non-Fiction, etc.\n2. **Project-based**: Organize files by specific projects, like individual short stories or poetry collections. This can help you keep all related files and drafts together.\n3. **Theme or Topic**: Categorize files by theme, like \"Memory and Nostalgia\" (perfect for your \"The Smell of Old Books\" piece!), \"Fantasy\", \"Romance\", etc.\n4. **Chronological**: Organize files by date, with folders or labels for each year, month, or quarter. This can help you track your progress over time.\n5. **Writing Challenge**: Create a folder or label specifically for your writing challenge submissions, with subfolders for each prompt (e.g., \"Forgotten Memories\", \"Future Prompts\", etc.).\n\n**Storage Options:**\n\n1. **Digital Folders**: Create a hierarchical folder structure on your computer or cloud storage service (e.g., Google Drive, Dropbox, OneDrive). This allows easy access and organization of your files.\n2. **Cloud-based Note-taking Apps**: Consider using apps like Evernote, Simplenote, or Bear to store and organize your writing files. These apps often have tagging and searching features to help you quickly find specific pieces.\n3. **Physical Binders or Folders**: If you prefer a more tactile approach, use physical binders or folders to store printed copies of your work. This can be helpful for reviewing and editing your work offline.\n4. **Hybrid Approach**: Combine digital and physical storage by keeping digital copies of your files and printing out select pieces for a physical archive.\n\n**Additional Tips:**\n\n1. **Use clear and descriptive file names**: Include the title, date, and any relevant keywords in your file names to make them easy to find.\n2. **Keep multiple drafts and versions**: Store different versions of your work to track changes and progress.\n3. **Add metadata or tags**: Use keywords, tags, or metadata to add context to your files, making them easier to search and categorize.\n4. **Regularly back up your files**: Ensure your files are safe by regularly backing them up to an external hard drive, cloud storage, or both.\n\nI hope these suggestions help you organize your writing files and keep track of your progress!\nuser: I like the idea of categorizing by genre and project-based. I think I'll set up folders for short stories, poetry, and writing challenge submissions. For the writing challenge submissions, I can have subfolders for each prompt, like \"Forgotten Memories\" and \"Future Prompts\". Do you have any suggestions for a note-taking app that can help me brainstorm and outline my stories?\nassistant: Categorizing by genre and project-based is a great approach.\n\nFor note-taking and outlining, there are many excellent apps available. Here are some popular options that can help you brainstorm and organize your story ideas:\n\n1. **Scrivener**: A powerful writing software that offers a free trial, with a focus on novel-writing and screenwriting. It has a corkboard feature for outlining, character and setting development tools, and a manuscript mode for drafting.\n2. **Evernote**: A popular note-taking app with a web clipper, tagging system, and organization features. You can create notebooks for each project, and use tags to connect related notes. Evernote has a free version, as well as premium features with a subscription.\n3. **Trello**: A visual project management tool that uses boards, lists, and cards to organize tasks and ideas. You can create boards for each project, and use lists for characters, plotlines, world-building, and more.\n4. **MindMeister**: A mind mapping and brainstorming tool that allows you to create diagrams and connect ideas visually. It has a free version, as well as premium features with a subscription.\n5. **Simplenote**: A minimalistic, distraction-free note-taking app that syncs across devices. It has a tagging system and a pin feature to keep important notes at the top.\n6. **Bear**: A note-taking app that combines the simplicity of Simplenote with the power of Evernote. It has a tagging system, focus mode, and a beautiful interface.\n7. **Workflowy**: A note-taking app that uses a hierarchical system to organize ideas. You can create lists, sublists, and tags to break down complex ideas into manageable chunks.\n\nAll of these apps have their strengths, and you may find that one or more work best for your writing process. You can try out a few to see which one resonates with you.\n\nSome features to consider when choosing a note-taking app:\n\n* **Organization system**: Do you prefer a hierarchical system, tags, or a visual board?\n* **Collaboration**: Do you need to share your notes with others, or is it just for personal use?\n* **Accessibility**: Do you need an app that syncs across devices, or are you comfortable with a desktop-only solution?\n* **Distraction-free writing**: Do you prefer a minimalistic interface, or do you need features like formatting options and images?\n* **Export options**: Can you easily export your notes into a format that works for you, such as Word, PDF, or Markdown?\n\nI hope this helps you find the perfect note-taking app to help you brainstorm and outline your stories!\nuser: I think I'll try out Evernote and Trello to see which one works better for me. I've heard great things about both of them. Do you have any tips on how to use them effectively for writing?\nassistant: Evernote and Trello are both powerful tools that can help you stay organized and focused as a writer. Here are some tips to help you get the most out of them:\n\n**Evernote:**\n\n1. **Create a Notebook for each project**: Set up a separate notebook for each writing project, including your writing challenge submissions. This will help you keep all related notes, research, and drafts in one place.\n2. **Use Tags and Stacks**: Tags are like keywords that help you quickly find related notes across notebooks. Stacks are like folders that help you organize notebooks into categories. Use them to create a hierarchical system that makes sense for your writing projects.\n3. **Create a \"Someday\" Notebook**: Designate a notebook for ideas that aren't yet developed, but might be interesting to explore in the future. This will help you capture fleeting ideas and keep them organized.\n4. **Use the Web Clipper**: The Evernote Web Clipper is a browser extension that lets you clip articles, quotes, or images into your notebooks. This is great for research, inspiration, or saving resources for future reference.\n5. **Make use of Templates**: Evernote offers pre-made templates for writing projects, including novel outlines, character profiles, and more. You can also create your own custom templates to suit your writing style.\n\n**Trello:**\n\n1. **Create a Board for each project**: Set up a separate board for each writing project, including your writing challenge submissions. This will give you a visual representation of your project's progress.\n2. **Use Lists and Cards**: Lists represent different stages or categories within your project, while cards represent individual tasks or ideas. Use lists to break down your project into manageable chunks, and cards to flesh out each task or idea.\n3. **Add Labels and Due Dates**: Labels help you categorize cards across lists, while due dates help you stay on track with deadlines. Use labels to identify character arcs, plot twists, or research tasks, and due dates to schedule writing sessions or submission deadlines.\n4. **Use the Calendar Power-Up**: The Calendar Power-Up lets you view your cards on a calendar, making it easier to plan and schedule your writing sessions.\n5. **Make it Visual**: Trello is a visual tool, so use images, colors, and emojis to make your boards and cards engaging and easy to understand.\n\n**General Tips:**\n\n1. **Start small**: Don't feel overwhelmed by trying to set up a complex system from the start. Begin with a simple structure and gradually add more complexity as you become more comfortable with the tools.\n2. **Be consistent**: Choose a system that works for you and stick to it. Consistency is key to making the most of these tools.\n3. **Experiment and adapt**: Don't be afraid to try new features or workflows. As you use Evernote and Trello, you'll find what works best for your writing style and adapt your system accordingly.\n\nBy following these tips, you'll be well on your way to using Evernote and Trello to boost your writing productivity and stay organized. Good luck, and have fun exploring these tools! 😊\nuser: I think I'll start by setting up notebooks in Evernote for each of my short stories and poetry collections, and then create boards in Trello for each project. I'll also use the web clipper to save research articles and inspiration for my stories. For my writing challenge submissions, I'll create a separate notebook in Evernote and a board in Trello, with lists for each prompt and cards for my ideas and drafts. Do you have any suggestions for how to brainstorm and develop characters for my stories?\nassistant: You're off to a great start! 🎉\n\nBrainstorming and developing characters is a crucial part of the writing process. Here are some suggestions to help you get started:\n\n**Character Development in Evernote:**\n\n1. **Create a Character Template**: Design a custom template in Evernote with fields for character traits, backstory, motivations, goals, conflicts, and relationships. This will help you consistently develop characters across your stories.\n2. **Character Profiles**: Create a separate note for each character, using your template as a starting point. Add details as you develop your character, and link related notes, research, or inspiration to the profile.\n3. **Character Arcs**: Create a note or table to track your character's growth and development throughout the story. This will help you visualize their emotional journey and ensure a satisfying character arc.\n\n**Character Development in Trello:**\n\n1. **Character Board**: Create a separate board for character development, with lists for different character groups (e.g., main characters, supporting characters, antagonists).\n2. **Character Cards**: Create cards for each character, with details like name, role, motivations, and goals. Use labels to categorize characters by trait, relationship, or role in the story.\n3. **Character Relationships**: Create cards to represent relationships between characters, tracking their interactions, conflicts, and dynamics.\n\n**Brainstorming Techniques:**\n\n1. **Character Interviews**: Imagine interviewing your characters, asking them questions about their past, motivations, and desires. This can help you get into their mindset and develop their personalities.\n2. **Character Profiles from Research**: Research people, occupations, or cultures that inspire your characters. Take notes on their traits, habits, and characteristics, and use these to inform your character development.\n3. **Character Mapping**: Create a mind map or diagram to visualize your characters' relationships, connections, and conflicts. This can help you identify patterns and opportunities for character growth.\n4. **Scenario Brainstorming**: Imagine scenarios or situations that challenge your characters, and think about how they would react. This can help you develop their personalities, motivations, and conflicts.\n\n**Additional Tips:**\n\n1. **Keep it Consistent**: Establish a consistent naming convention and formatting style for your character profiles and notes.\n2. **Make it Visual**: Use images, colors, and icons to make your character profiles and boards visually appealing and easy to understand.\n3. **Link it Up**: Link related notes, research, and inspiration to your character profiles and boards, making it easy to access relevant information.\n4. **Evolve and Refine**: Character development is an ongoing process. Be open to changes and refinements as you continue to develop your story and characters.\n\nBy using these techniques, you'll be able to create rich, well-rounded characters that will bring your stories to life. Good luck, and have fun developing your characters! 😊\nuser: I think I'll start by creating character profiles in Evernote and character cards in Trello. I'll also use the web clipper to save research articles and inspiration for my characters. For my writing challenge submissions, I can create a separate notebook in Evernote and a board in Trello, with lists for each prompt and cards for my ideas and drafts. Do you have any suggestions for how to develop plot and structure for my stories?\nassistant: You're making great progress! 🎉\n\nDeveloping plot and structure is a crucial part of the writing process. Here are some suggestions to help you get started:\n\n**Plot Development in Evernote:**\n\n1. **Create a Plot Template**: Design a custom template in Evernote with fields for plot points, character arcs, conflicts, themes, and setting. This will help you consistently develop plots across your stories.\n2. **Plot Outlines**: Create a separate note for each story, using your template as a starting point. Add details as you develop your plot, and link related notes, research, or inspiration to the outline.\n3. **Scene Lists**: Create a table or list to break down your story into individual scenes, including setting, characters involved, and plot points.\n\n**Plot Development in Trello:**\n\n1. **Plot Board**: Create a separate board for plot development, with lists for different stages of the story (e.g., exposition, rising action, climax, resolution).\n2. **Plot Cards**: Create cards for each plot point, scene, or chapter, with details like setting, characters involved, and plot developments. Use labels to categorize cards by theme, character arc, or plot twist.\n3. **Plot Twists and Turns**: Create cards to represent plot twists, surprises, or reveals, and use labels to track how they fit into the overall story.\n\n**Structuring Your Story:**\n\n1. **Three-Act Structure**: Divide your story into three acts, with clear goals and conflicts for each act. This will help you create a clear narrative arc.\n2. **Character-Driven Plot**: Focus on how your characters' goals, motivations, and conflicts drive the plot forward.\n3. **Scene and Chapter Structure**: Use a consistent structure for your scenes and chapters, including a clear purpose, conflict, and resolution.\n4. **Pacing and Tension**: Use cards or notes to track the pacing and tension in your story, ensuring that it ebbs and flows to keep the reader engaged.\n\n**Brainstorming Techniques:**\n\n1. **Mind Mapping**: Create a mind map or diagram to visualize your story's plot, characters, and themes. This can help you identify connections and opportunities for plot development.\n2. **What-If Questions**: Ask yourself \"what-if\" questions about your story, characters, and plot, and use the answers to develop new ideas and twists.\n3. **Scene Brainstorming**: Imagine different scenarios or scenes that could occur in your story, and think about how they would affect the plot and characters.\n4. **Reverse Outlining**: Write a brief summary of your story, then break it down into individual scenes and plot points. This can help you identify gaps and opportunities for development.\n\n**Additional Tips:**\n\n1. **Keep it Flexible**: Be open to changes and refinements as you continue to develop your plot and structure.\n2. **Make it Visual**: Use images, colors, and icons to make your plot boards and notes visually appealing and easy to understand.\n3. **Link it Up**: Link related notes, research, and inspiration to your plot outlines and boards, making it easy to access relevant information.\n4. **Evolve and Refine**: Plot and structure development is an ongoing process. Be open to feedback and revisions as you continue to refine your story.\n\nBy using these techniques, you'll be able to develop a compelling plot and structure for your stories. Good luck, and have fun building your narrative! 😊\nuser: I think I'll start by creating a plot template in Evernote and a plot board in Trello. I'll also use the web clipper to save research articles and inspiration for my plot. For my writing challenge submissions, I can create a separate notebook in Evernote and a board in Trello, with lists for each prompt and cards for my ideas and drafts. Do you have any suggestions for how to revise and edit my stories?\nassistant: You're making great progress! 🎉\n\nRevising and editing are crucial steps in the writing process. Here are some suggestions to help you refine your stories:\n\n**Revision and Editing in Evernote:**\n\n1. **Revision Template**: Create a custom template in Evernote with fields for revision goals, changes, and feedback. This will help you track your revisions and stay organized.\n2. **Revision Notes**: Create a separate note for each revision, using your template as a starting point. Add details as you revise, and link related notes, research, or inspiration to the revision note.\n3. **Revision Tracking**: Use tags or labels to track changes, such as \"added scene,\" \"changed character motivation,\" or \"rewrote dialogue.\"\n\n**Revision and Editing in Trello:**\n\n1. **Revision Board**: Create a separate board for revision and editing, with lists for different stages of the process (e.g., revision, editing, proofreading).\n2. **Revision Cards**: Create cards for each revision or edit, with details like changes made, feedback, and next steps. Use labels to categorize cards by type of revision (e.g., character development, plot twist, grammar correction).\n3. **Revision Progress**: Use a progress bar or checklist to track your revision progress, ensuring that you're completing each stage of the process.\n\n**Revision and Editing Techniques:**\n\n1. **Take a Break**: Set your manuscript aside for a few weeks to gain fresh perspective and approach your revisions with a clear mind.\n2. **Get Feedback**: Share your work with beta readers or writing groups to receive feedback and constructive criticism.\n3. **Revise in Layers**: Focus on one aspect of your story at a time, such as character development, plot, or pacing, to ensure that you're making targeted revisions.\n4. **Edit in Passes**: Divide your editing process into passes, focusing on specific elements like grammar, punctuation, or dialogue in each pass.\n\n**Additional Tips:**\n\n1. **Be Patient**: Revision and editing can be time-consuming, so be patient and don't rush the process.\n2. **Stay Organized**: Keep track of your revisions and edits using your templates, notes, and boards.\n3. **Seek Help**: Don't be afraid to seek help from writing communities, editors, or mentors if you need guidance or feedback.\n4. **Celebrate Progress**: Celebrate your progress and accomplishments along the way to stay motivated and encouraged.\n\nBy using these techniques, you'll be able to refine your stories and create a polished, publishable manuscript. Good luck, and have fun revising and editing! 😊\n\n        Candidate notes:\n        [0] type=PLAN title=Evernote and Trello writing organization workflow summary=The user is designing a combined Evernote/Trello workflow for writing: Evernote notebooks for short stories, poetry collections, and writing challenge submissions; Trello boards for each project; Web Clipper for research and inspiration; writing challenge submissions organized with prompt-based lists/subfolders and cards for ideas and drafts. scope=User's writing file organization and project tracking workflow using Evernote and Trello entities=entity:<0>,entity:<1>,entity:<2>,entity:<3> keywords=Evernote,Trello,writing files,writing challenge submissions,Web Clipper,short stories,poetry tags=writing_workflow,organization,evernote,trello evidence=I'll start by setting up notebooks in Evernote for each of my short stories and poetry collections, and then create boards in Trello for each project. I'll also use the web clipper to save research articles and inspirati...[truncated 18 chars]\n[1] type=CONTEXT title=Writing challenge submissions organized by prompt summary=For the social-media writing challenge, the user wants a separate organization area with prompt-based categories such as \"Forgotten Memories\" and \"Future Prompts\"; the prior prompt \"forgotten memories\" produced the piece \"The Smell of Old Books\". scope=User's social-media writing challenge archive and prompt-based submission structure entities=entity:<0>,entity:<4>,entity:<3>,entity:<5>,entity:<6>,entity:<7> keywords=writing challenge,Forgotten Memories,Future Prompts,The Smell of Old Books,prompt,submissions tags=writing_challenge,prompt_archive,writing_context evidence=Last week's prompt was \"forgotten memories\", and I wrote a piece titled \"The Smell of Old Books\".\n[2] type=PLAN title=Character, plot, and revision development system in Evernote and Trello summary=The evolving writing workflow extends Evernote/Trello beyond file storage: Evernote should hold character profiles, character research, plot templates, and revision templates, while Trello should hold character cards, plot boards, and revision/editing boards or cards for ideas, drafts, plot points, and revision stages. scope=User's story-development workflow for characters, plot, and revision using Evernote and Trello entities=entity:<0>,entity:<1>,entity:<2>,entity:<8>,entity:<9>,entity:<10>,entity:<11> keywords=character profiles,character cards,plot template,plot board,revision template,revision board,Evernote,Trello tags=story_development,character_development,plotting,revision,evernote,trello evidence=I'll start by creating character profiles in Evernote and character cards in Trello. I'll also use the web clipper to save research articles and inspiration for my characters.\n\n        Existing active notes:\n        id=hot-path-c4f4fadcb6c7-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Writing organization tools discussed in LongMemEval session 1 summary=For organizing writing projects and deadlines, the session discussed Trello, Asana, Scrivener, Google Calendar, Pomodoro timers such as Tomato Timer, Focus Booster and Pomofocus, habit trackers such as Habitica, HabitBull and Loop Habit Tracker, note/writing apps such as Evernote and Ulysses, RescueTime, and poetry-specific apps such as Poet's Pad, Poetry Editor and HaikuJAM. scope=LongMemEval gpt4_2f91af09 session 1 writing productivity recommendations keywords=Trello,Asana,Scrivener,Google Calendar,Pomodoro timers,Pomofocus,Focus Booster,writing habit trackers,poetry apps tags=tool_recommendations,writing_projects,productivity_tools useCount=0\nid=hot-path-c4f4fadcb6c7-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Pomodoro-based writing workflow for creative projects summary=The user is developing a Pomodoro-based writing workflow: start with Pomofocus, set creative task goals for each session instead of word/line counts, use brief writing prompts or exercises as warm-ups, then transition into the main writing project and review progress after each session to adjust prompts, exercises, or session duration. scope=User's writing projects and poetry writing sessions keywords=Pomodoro writing workflow,Pomofocus,writing prompts,creative task goals,progress review,poetry sessions tags=writing_workflow,pomodoro,poetry,productivity useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_2f91af09",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:b644cbfb468e9172153cf6b32f43d21d"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-c4f4fadcb6c7-note-3\"}],\"patch\":null,\"reason\":\"New reusable user-specific Evernote/Trello organization plan; existing note only lists tools discussed, not the selected workflow.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-c4f4fadcb6c7-note-3\"}],\"patch\":null,\"reason\":\"Captures distinct writing challenge context, prompt archive structure, and the specific piece title not present in existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-c4f4fadcb6c7-note-3\"}],\"patch\":null,\"reason\":\"Adds distinct story-development workflow details for characters, plot, and revision using Evernote/Trello; not covered by existing active notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6024,
+                "completionTokens": 266,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

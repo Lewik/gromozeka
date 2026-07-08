@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "f0caa01124a14bb172a3f622426dfd94eaa35580e4312f007f1a67d549f745b0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:603deb26\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Past transcript contains durable personal preferences and experience details plus reusable cocktail exploration context and recipes/recommendations.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable user entity as subject; no existing candidates were provided.\n- mention=Hendrick's gin; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=Hendrick's Gin; reason=Concrete reusable product repeatedly discussed and used by the user.\n- mention=Negroni; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Negroni; reason=Reusable cocktail concept central to later claims about experimentation.\n- mention=Carpano Antica vermouth; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=Carpano Antica Vermouth; reason=Concrete reusable product used in the user's Negroni recipe.\n- mention=Emma; action=CREATE_NEW; id=entity:<4>; type=PERSON; name=Emma; reason=Named person mentioned as teaching the user; no existing candidates.\n- mention=lavender syrup recipe; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Lavender syrup recipe; reason=Reusable recipe/concept the user intends to try; later claims may refer to it.\n- mention=White Negroni; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=White Negroni; reason=Reusable cocktail concept the user wants to experiment with.\n- mention=Suze; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=Suze; reason=Concrete reusable product recommended for Negroni variations.\n- mention=Dolin Dry Vermouth; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=Dolin Dry Vermouth; reason=Concrete reusable product in the White Negroni recipe.\n- mention=Campari; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=Campari; reason=Concrete bitter liqueur mentioned as the standard ingredient being substituted.\n- mention=Aperol; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=Aperol; reason=Concrete bitter liqueur recommended as an alternative.\n- mention=Cynar; action=CREATE_NEW; id=entity:<11>; type=PRODUCT; name=Cynar; reason=Concrete bitter liqueur recommended as an alternative.\n- mention=Luxardo Bitter; action=CREATE_NEW; id=entity:<12>; type=PRODUCT; name=Luxardo Bitter; reason=Concrete bitter liqueur recommended for Negroni variations.\n- mention=Meletti; action=CREATE_NEW; id=entity:<13>; type=PRODUCT; name=Meletti; reason=Concrete bitter liqueur recommended as an alternative.\n- mention=current project; action=CREATE_NEW; id=entity:<14>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Hendrick's gin|Negroni|Carpano Antica vermouth|Emma|lavender syrup|White Negroni|Suze|Dolin Dry Vermouth\n        text_queries=cocktail exploration gin Hendrick's lavender Negroni Carpano Antica Emma|fresh herbs from garden summer cocktails Hendrick's gin|White Negroni recipe Suze Dolin Dry Vermouth|citrus fruits pair well with gin and lavender\n        predicate_hints=prefers|has_experience_with|owns|metric_observation|generated_artifact_detail\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:f960474b35ad3e6d32c66af348718342] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:603deb26:session:1; title=LongMemEval 603deb26 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/08/11 (Fri) 11:16\nTranscript:\nuser: I'm looking for some inspiration for new cocktails to try. Do you have any recommendations for summer drinks that incorporate fresh herbs from my garden? By the way, I've been experimenting with different gin brands, and I've really been enjoying the Hendrick's gin I picked up last week.\nassistant: What a wonderful combination - fresh herbs from your garden and Hendrick's gin! You're in for a treat. Hendrick's is a great choice, with its unique blend of botanicals that pair beautifully with fresh herbs. Here are some refreshing summer cocktail ideas that incorporate fresh herbs from your garden and feature Hendrick's gin as the star:\n\n1. **Cucumber-Basil Refresher**: Muddle fresh basil leaves, cucumber slices, and a lime wedge in a shaker. Add 1 1/2 oz Hendrick's gin, 1/2 oz lime juice, and 1/2 oz simple syrup. Shake, strain into a Collins glass, and top with soda water. Garnish with a basil leaf and cucumber slice.\n2. **Garden Gimlet**: Combine 2 oz Hendrick's gin, 1 oz fresh lime juice, and 1/2 oz simple syrup in a shaker. Add a handful of fresh mint leaves and muddle gently. Strain into a chilled coupe glass and garnish with a mint sprig.\n3. **Rose Petal Spritz**: Infuse Hendrick's gin with dried rose petals (you can also use rose syrup or rose-flavored liqueur) and let it sit for a few hours. Mix 1 1/2 oz infused gin with 1 oz Prosecco, 1 oz lemon-lime soda, and a splash of lemon juice in a wine glass filled with ice. Garnish with a rose petal or a lemon wheel.\n4. **Lemon-Thyme Fizz**: Muddle fresh thyme sprigs and a lemon wedge in a shaker. Add 2 oz Hendrick's gin, 1 oz lemon juice, and 1/2 oz simple syrup. Shake, strain into a Collins glass, and top with soda water. Garnish with a thyme sprig and lemon wheel.\n5. **Elderflower Collins**: Combine 2 oz Hendrick's gin, 1 oz elderflower liqueur, 1 oz lemon juice, and 1/2 oz simple syrup in a shaker. Add a few fresh mint leaves and muddle gently. Strain into a Collins glass filled with ice and top with soda water. Garnish with a mint sprig and an elderflower, if available.\n6. **Mint to Be**: Muddle fresh mint leaves and a lime wedge in a shaker. Add 2 oz Hendrick's gin, 1 oz lime juice, and 1/2 oz simple syrup. Shake, strain into a rocks glass filled with ice, and top with ginger beer. Garnish with a mint sprig and lime wheel.\n\nThese cocktails should give you a great starting point for experimenting with fresh herbs and Hendrick's gin. Enjoy your garden-to-glass creations!\nuser: What do you think about using lavender in a cocktail? I've been thinking of experimenting with it, and I'm curious if you have any recommendations for a good lavender syrup recipe or a cocktail that pairs well with it. By the way, speaking of gin, I've been experimenting with different Negroni recipes at home, and I've found that the Hendrick's gin really brings out the flavors.\nassistant: Lavender in a cocktail is a fantastic idea! Lavender can add a unique, floral, and subtly sweet flavor profile to your drinks. It pairs beautifully with gin, and Hendrick's, in particular, with its rose and cucumber notes, can complement lavender nicely.\n\n**Lavender Syrup Recipe:**\n\nHere's a simple recipe for lavender syrup:\n\nIngredients:\n\n* 1 cup granulated sugar\n* 1 cup water\n* 1/4 cup dried lavender buds\n\nInstructions:\n\n1. Combine the sugar and water in a saucepan and heat, stirring until the sugar dissolves.\n2. Add the dried lavender buds to the syrup and remove from heat.\n3. Let it steep for 10-15 minutes, or until the mixture has cooled to room temperature.\n4. Strain the syrup through a fine-mesh sieve into a clean glass bottle. Discard the lavender buds.\n5. Store the syrup in the refrigerator for up to 2 weeks.\n\n**Lavender Cocktails:**\n\nHere are a few cocktail recipes that feature lavender syrup:\n\n1. **Lavender Gin Fizz**: Combine 2 oz Hendrick's gin, 1 oz lavender syrup, 1 oz lemon juice, and 1/2 oz simple syrup in a shaker. Shake, strain into a Collins glass, and top with soda water. Garnish with a lemon wheel and a sprig of lavender.\n2. **Lavender Dream**: Mix 2 oz Hendrick's gin, 1 oz lavender syrup, 1 oz lemon juice, and 1/2 oz honey syrup (1:1 honey and water, dissolved) in a shaker. Shake, strain into a coupe glass, and garnish with a lavender sprig.\n3. **Lavender Bee's Knees**: Combine 2 oz Hendrick's gin, 1 oz lavender syrup, and 1 oz honey syrup in a shaker. Shake, strain into a rocks glass filled with ice, and garnish with a lemon wheel and a sprig of lavender.\n\nAs for your Negroni experiments, Hendrick's gin is an excellent choice! The rose and cucumber notes in Hendrick's can add a unique twist to the classic Negroni recipe. You might also consider experimenting with different sweet vermouths and bitters to find your perfect combination.\n\nSome tips for working with lavender in cocktails:\n\n* Start with a small amount of lavender syrup and adjust to taste, as lavender can quickly overpower other flavors.\n* Pair lavender with citrus, like lemon or grapefruit, to balance its floral flavor.\n* Experiment with different types of lavender, like English or French, for varying flavor profiles.\n* Consider using lavender bitters or lavender-infused spirits for added depth and complexity.\n\nI hope this helps you get started with your lavender cocktail adventures!\nuser: That's really helpful, thanks! I'll definitely try out that lavender syrup recipe and experiment with the cocktails you suggested. By the way, speaking of experimenting with cocktails, I've been trying to perfect my Negroni recipe and I've found that using Hendrick's gin and Carpano Antica vermouth really brings out the flavors. I've tried making it at home for 5 times now since Emma teached me how to make it, and I'm getting closer to getting it just right. Do you have any recommendations for other bitter liqueurs I could try in place of Campari?\nassistant: You're really dialing in your Negroni game! Hendrick's and Carpano Antica are a great combination.\n\nAs for experimenting with other bitter liqueurs, you're in for a treat! There are many excellent alternatives to Campari that can add unique twists to your Negroni. Here are a few recommendations:\n\n1. **Cynar**: An Italian bitter liqueur made from artichokes, Cynar adds a vegetal, slightly sweet flavor to the Negroni. Try using 1/2 oz Cynar and 1/2 oz Carpano Antica for a nice balance.\n2. **Aperol**: Another Italian bitter liqueur, Aperol has a slightly sweeter and more orange-forward flavor profile compared to Campari. Use 1 oz Aperol and 1 oz Carpano Antica for a Negroni with a lighter, more citrusy tone.\n3. **Luxardo Bitter**: This Italian bitter liqueur has a more intense, herbal flavor profile compared to Campari. Use 1/2 oz Luxardo Bitter and 1/2 oz Carpano Antica for a bold, complex Negroni.\n4. **Suze**: A French gentian-based bitter liqueur, Suze adds a crisp, earthy flavor to the Negroni. Try using 1 oz Suze and 1 oz Carpano Antica for a dry, herbaceous take.\n5. **Meletti**: An Italian bitter liqueur with a slightly sweeter and more citrus-forward flavor profile, Meletti can add a nice balance to the Negroni. Use 1 oz Meletti and 1 oz Carpano Antica for a smooth, refreshing take.\n\nWhen experimenting with these bitter liqueurs, keep in mind that you may need to adjust the ratio of bitter to sweet vermouth to find your perfect balance. Some bitter liqueurs are more intense than others, so start with a smaller amount and adjust to taste.\n\nRemember, the beauty of the Negroni lies in its versatility, so don't be afraid to experiment and find your own unique flavor profile!\n\nWhat do you think about trying a White Negroni? You could substitute the sweet vermouth with a dry vermouth, like Dolin, and use a bitter liqueur like Suze or Luxardo Bitter. The result would be a crisp, dry, and herbaceous Negroni with a unique flavor profile.\nuser: That's really interesting, I'll definitely try out some of those bitter liqueurs and see how they change the flavor profile of my Negroni. I've been meaning to experiment with a White Negroni, actually. I've heard it's a great way to showcase the gin and bitter liqueur. Do you have a good recipe for a White Negroni, or any tips on how to balance the flavors?\nassistant: Excellent! The White Negroni is a fantastic variation that can really highlight the gin and bitter liqueur. Here's a recipe to get you started:\n\n**White Negroni Recipe:**\n\n* 1 1/2 oz Hendrick's gin (or your preferred gin)\n* 1/2 oz Suze (or other dry bitter liqueur, like Luxardo Bitter)\n* 1/2 oz Dolin Dry Vermouth\n* Orange twist or lemon twist, for garnish\n\nInstructions:\n\n1. Fill a mixing glass with ice.\n2. Add the gin, Suze, and Dolin Dry Vermouth.\n3. Stir for about 20-30 seconds to chill and dilute the ingredients.\n4. Strain into a chilled coupe or cocktail glass.\n5. Garnish with an orange or lemon twist.\n\nTips for balancing the flavors:\n\n* **Start with a dry bitter liqueur**: Suze, Luxardo Bitter, or other dry bitter liqueurs will provide a crisp, herbaceous flavor that won't add sweetness to the drink.\n* **Choose a dry vermouth**: Dolin Dry Vermouth is a great choice, as it won't add sweetness and will help to dry out the drink.\n* **Adjust the ratio**: You may need to adjust the ratio of gin to bitter liqueur to vermouth to find your perfect balance. Some people prefer a 2:1:1 ratio, while others like a 3:1:1 ratio. Experiment to find what works for you.\n* **Consider the gin**: Hendrick's gin, with its floral and herbal notes, pairs well with the dry, herbaceous flavor of Suze. If you're using a different gin, you may need to adjust the ratio or choice of bitter liqueur to find a harmonious balance.\n* **Don't over-dilute**: Stir the drink just long enough to chill and dilute the ingredients. You want to preserve the flavors and avoid a watered-down drink.\n\nThe White Negroni is a great way to showcase the gin and bitter liqueur, and it's a fantastic drink for warm weather or anytime you want a crisp, refreshing cocktail. I hope you enjoy experimenting with this recipe and finding your perfect balance!\nuser: I'm also curious about using different types of citrus in my cocktails. I've been experimenting with grapefruit and lemon, but I want to try out some other options. Do you have any recommendations for citrus fruits that pair well with gin and lavender?\nassistant: Citrus is a great way to add brightness and depth to your cocktails! Gin and lavender are a lovely combination, and the right citrus can elevate the flavors even further. Here are some citrus fruits that pair well with gin and lavender:\n\n1. **Orange**: Orange and lavender are a classic combination. The sweetness of the orange complements the floral notes of the lavender, while the bitterness of the gin provides a nice balance. Try using blood oranges for a deeper, more complex flavor.\n2. **Yuzu**: Yuzu is a Japanese citrus fruit that's a cross between a grapefruit and an orange. Its tartness and subtle sweetness pair beautifully with gin and lavender. Yuzu adds a unique, exotic flavor that will set your cocktails apart.\n3. **Kumquat**: Kumquats are small, sweet citrus fruits that add a lovely flavor to gin-based cocktails. They're particularly well-suited to pairing with lavender, as their sweetness complements the floral notes. Try using kumquat syrup or muddling fresh kumquats in your cocktail.\n4. **Satsuma**: Satsumas are a type of mandarin orange that's sweet and tart, with a loose, easy-to-peel skin. They're perfect for adding a burst of citrus flavor to your cocktails. Satsumas pair nicely with gin and lavender, and their sweetness helps balance the bitterness of the gin.\n5. **Bergamot**: Bergamot is a citrus fruit that's often used in tea and perfumery. Its citrus flavor is more subtle than other citrus fruits, but it adds a lovely complexity to gin-based cocktails. Bergamot pairs nicely with lavender, and its citrus flavor helps cut through the richness of the gin.\n\nWhen working with citrus, remember to:\n\n* **Use fresh citrus**: Fresh citrus fruits will always provide a brighter, more vibrant flavor than bottled or frozen juice.\n* **Experiment with different citrus varieties**: Each citrus fruit has its unique flavor profile, so don't be afraid to try new ones to find the perfect fit for your cocktail.\n* **Balance the citrus**: Citrus can quickly overpower other flavors, so start with a small amount and adjust to taste.\n* **Consider the citrus peel**: Citrus peels can add a lovely aroma and flavor to your cocktails. Try using citrus twists or peels in your cocktails for added depth.\n\nI hope this helps you explore the world of citrus and gin! Do you have a favorite citrus fruit or cocktail recipe you'd like to share?",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:603deb26",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:f960474b35ad3e6d32c66af348718342"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:603deb26\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Past transcript contains durable personal preferences and experience details plus reusable cocktail exploration context and recipes/recommendations.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable user entity as subject; no existing candidates were provided.\n- mention=Hendrick's gin; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=Hendrick's Gin; reason=Concrete reusable product repeatedly discussed and used by the user.\n- mention=Negroni; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Negroni; reason=Reusable cocktail concept central to later claims about experimentation.\n- mention=Carpano Antica vermouth; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=Carpano Antica Vermouth; reason=Concrete reusable product used in the user's Negroni recipe.\n- mention=Emma; action=CREATE_NEW; id=entity:<4>; type=PERSON; name=Emma; reason=Named person mentioned as teaching the user; no existing candidates.\n- mention=lavender syrup recipe; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Lavender syrup recipe; reason=Reusable recipe/concept the user intends to try; later claims may refer to it.\n- mention=White Negroni; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=White Negroni; reason=Reusable cocktail concept the user wants to experiment with.\n- mention=Suze; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=Suze; reason=Concrete reusable product recommended for Negroni variations.\n- mention=Dolin Dry Vermouth; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=Dolin Dry Vermouth; reason=Concrete reusable product in the White Negroni recipe.\n- mention=Campari; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=Campari; reason=Concrete bitter liqueur mentioned as the standard ingredient being substituted.\n- mention=Aperol; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=Aperol; reason=Concrete bitter liqueur recommended as an alternative.\n- mention=Cynar; action=CREATE_NEW; id=entity:<11>; type=PRODUCT; name=Cynar; reason=Concrete bitter liqueur recommended as an alternative.\n- mention=Luxardo Bitter; action=CREATE_NEW; id=entity:<12>; type=PRODUCT; name=Luxardo Bitter; reason=Concrete bitter liqueur recommended for Negroni variations.\n- mention=Meletti; action=CREATE_NEW; id=entity:<13>; type=PRODUCT; name=Meletti; reason=Concrete bitter liqueur recommended as an alternative.\n- mention=current project; action=CREATE_NEW; id=entity:<14>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Hendrick's gin|Negroni|Carpano Antica vermouth|Emma|lavender syrup|White Negroni|Suze|Dolin Dry Vermouth\n        text_queries=cocktail exploration gin Hendrick's lavender Negroni Carpano Antica Emma|fresh herbs from garden summer cocktails Hendrick's gin|White Negroni recipe Suze Dolin Dry Vermouth|citrus fruits pair well with gin and lavender\n        predicate_hints=prefers|has_experience_with|owns|metric_observation|generated_artifact_detail\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:f960474b35ad3e6d32c66af348718342] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:603deb26:session:1; title=LongMemEval 603deb26 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/08/11 (Fri) 11:16\nTranscript:\nuser: I'm looking for some inspiration for new cocktails to try. Do you have any recommendations for summer drinks that incorporate fresh herbs from my garden? By the way, I've been experimenting with different gin brands, and I've really been enjoying the Hendrick's gin I picked up last week.\nassistant: What a wonderful combination - fresh herbs from your garden and Hendrick's gin! You're in for a treat. Hendrick's is a great choice, with its unique blend of botanicals that pair beautifully with fresh herbs. Here are some refreshing summer cocktail ideas that incorporate fresh herbs from your garden and feature Hendrick's gin as the star:\n\n1. **Cucumber-Basil Refresher**: Muddle fresh basil leaves, cucumber slices, and a lime wedge in a shaker. Add 1 1/2 oz Hendrick's gin, 1/2 oz lime juice, and 1/2 oz simple syrup. Shake, strain into a Collins glass, and top with soda water. Garnish with a basil leaf and cucumber slice.\n2. **Garden Gimlet**: Combine 2 oz Hendrick's gin, 1 oz fresh lime juice, and 1/2 oz simple syrup in a shaker. Add a handful of fresh mint leaves and muddle gently. Strain into a chilled coupe glass and garnish with a mint sprig.\n3. **Rose Petal Spritz**: Infuse Hendrick's gin with dried rose petals (you can also use rose syrup or rose-flavored liqueur) and let it sit for a few hours. Mix 1 1/2 oz infused gin with 1 oz Prosecco, 1 oz lemon-lime soda, and a splash of lemon juice in a wine glass filled with ice. Garnish with a rose petal or a lemon wheel.\n4. **Lemon-Thyme Fizz**: Muddle fresh thyme sprigs and a lemon wedge in a shaker. Add 2 oz Hendrick's gin, 1 oz lemon juice, and 1/2 oz simple syrup. Shake, strain into a Collins glass, and top with soda water. Garnish with a thyme sprig and lemon wheel.\n5. **Elderflower Collins**: Combine 2 oz Hendrick's gin, 1 oz elderflower liqueur, 1 oz lemon juice, and 1/2 oz simple syrup in a shaker. Add a few fresh mint leaves and muddle gently. Strain into a Collins glass filled with ice and top with soda water. Garnish with a mint sprig and an elderflower, if available.\n6. **Mint to Be**: Muddle fresh mint leaves and a lime wedge in a shaker. Add 2 oz Hendrick's gin, 1 oz lime juice, and 1/2 oz simple syrup. Shake, strain into a rocks glass filled with ice, and top with ginger beer. Garnish with a mint sprig and lime wheel.\n\nThese cocktails should give you a great starting point for experimenting with fresh herbs and Hendrick's gin. Enjoy your garden-to-glass creations!\nuser: What do you think about using lavender in a cocktail? I've been thinking of experimenting with it, and I'm curious if you have any recommendations for a good lavender syrup recipe or a cocktail that pairs well with it. By the way, speaking of gin, I've been experimenting with different Negroni recipes at home, and I've found that the Hendrick's gin really brings out the flavors.\nassistant: Lavender in a cocktail is a fantastic idea! Lavender can add a unique, floral, and subtly sweet flavor profile to your drinks. It pairs beautifully with gin, and Hendrick's, in particular, with its rose and cucumber notes, can complement lavender nicely.\n\n**Lavender Syrup Recipe:**\n\nHere's a simple recipe for lavender syrup:\n\nIngredients:\n\n* 1 cup granulated sugar\n* 1 cup water\n* 1/4 cup dried lavender buds\n\nInstructions:\n\n1. Combine the sugar and water in a saucepan and heat, stirring until the sugar dissolves.\n2. Add the dried lavender buds to the syrup and remove from heat.\n3. Let it steep for 10-15 minutes, or until the mixture has cooled to room temperature.\n4. Strain the syrup through a fine-mesh sieve into a clean glass bottle. Discard the lavender buds.\n5. Store the syrup in the refrigerator for up to 2 weeks.\n\n**Lavender Cocktails:**\n\nHere are a few cocktail recipes that feature lavender syrup:\n\n1. **Lavender Gin Fizz**: Combine 2 oz Hendrick's gin, 1 oz lavender syrup, 1 oz lemon juice, and 1/2 oz simple syrup in a shaker. Shake, strain into a Collins glass, and top with soda water. Garnish with a lemon wheel and a sprig of lavender.\n2. **Lavender Dream**: Mix 2 oz Hendrick's gin, 1 oz lavender syrup, 1 oz lemon juice, and 1/2 oz honey syrup (1:1 honey and water, dissolved) in a shaker. Shake, strain into a coupe glass, and garnish with a lavender sprig.\n3. **Lavender Bee's Knees**: Combine 2 oz Hendrick's gin, 1 oz lavender syrup, and 1 oz honey syrup in a shaker. Shake, strain into a rocks glass filled with ice, and garnish with a lemon wheel and a sprig of lavender.\n\nAs for your Negroni experiments, Hendrick's gin is an excellent choice! The rose and cucumber notes in Hendrick's can add a unique twist to the classic Negroni recipe. You might also consider experimenting with different sweet vermouths and bitters to find your perfect combination.\n\nSome tips for working with lavender in cocktails:\n\n* Start with a small amount of lavender syrup and adjust to taste, as lavender can quickly overpower other flavors.\n* Pair lavender with citrus, like lemon or grapefruit, to balance its floral flavor.\n* Experiment with different types of lavender, like English or French, for varying flavor profiles.\n* Consider using lavender bitters or lavender-infused spirits for added depth and complexity.\n\nI hope this helps you get started with your lavender cocktail adventures!\nuser: That's really helpful, thanks! I'll definitely try out that lavender syrup recipe and experiment with the cocktails you suggested. By the way, speaking of experimenting with cocktails, I've been trying to perfect my Negroni recipe and I've found that using Hendrick's gin and Carpano Antica vermouth really brings out the flavors. I've tried making it at home for 5 times now since Emma teached me how to make it, and I'm getting closer to getting it just right. Do you have any recommendations for other bitter liqueurs I could try in place of Campari?\nassistant: You're really dialing in your Negroni game! Hendrick's and Carpano Antica are a great combination.\n\nAs for experimenting with other bitter liqueurs, you're in for a treat! There are many excellent alternatives to Campari that can add unique twists to your Negroni. Here are a few recommendations:\n\n1. **Cynar**: An Italian bitter liqueur made from artichokes, Cynar adds a vegetal, slightly sweet flavor to the Negroni. Try using 1/2 oz Cynar and 1/2 oz Carpano Antica for a nice balance.\n2. **Aperol**: Another Italian bitter liqueur, Aperol has a slightly sweeter and more orange-forward flavor profile compared to Campari. Use 1 oz Aperol and 1 oz Carpano Antica for a Negroni with a lighter, more citrusy tone.\n3. **Luxardo Bitter**: This Italian bitter liqueur has a more intense, herbal flavor profile compared to Campari. Use 1/2 oz Luxardo Bitter and 1/2 oz Carpano Antica for a bold, complex Negroni.\n4. **Suze**: A French gentian-based bitter liqueur, Suze adds a crisp, earthy flavor to the Negroni. Try using 1 oz Suze and 1 oz Carpano Antica for a dry, herbaceous take.\n5. **Meletti**: An Italian bitter liqueur with a slightly sweeter and more citrus-forward flavor profile, Meletti can add a nice balance to the Negroni. Use 1 oz Meletti and 1 oz Carpano Antica for a smooth, refreshing take.\n\nWhen experimenting with these bitter liqueurs, keep in mind that you may need to adjust the ratio of bitter to sweet vermouth to find your perfect balance. Some bitter liqueurs are more intense than others, so start with a smaller amount and adjust to taste.\n\nRemember, the beauty of the Negroni lies in its versatility, so don't be afraid to experiment and find your own unique flavor profile!\n\nWhat do you think about trying a White Negroni? You could substitute the sweet vermouth with a dry vermouth, like Dolin, and use a bitter liqueur like Suze or Luxardo Bitter. The result would be a crisp, dry, and herbaceous Negroni with a unique flavor profile.\nuser: That's really interesting, I'll definitely try out some of those bitter liqueurs and see how they change the flavor profile of my Negroni. I've been meaning to experiment with a White Negroni, actually. I've heard it's a great way to showcase the gin and bitter liqueur. Do you have a good recipe for a White Negroni, or any tips on how to balance the flavors?\nassistant: Excellent! The White Negroni is a fantastic variation that can really highlight the gin and bitter liqueur. Here's a recipe to get you started:\n\n**White Negroni Recipe:**\n\n* 1 1/2 oz Hendrick's gin (or your preferred gin)\n* 1/2 oz Suze (or other dry bitter liqueur, like Luxardo Bitter)\n* 1/2 oz Dolin Dry Vermouth\n* Orange twist or lemon twist, for garnish\n\nInstructions:\n\n1. Fill a mixing glass with ice.\n2. Add the gin, Suze, and Dolin Dry Vermouth.\n3. Stir for about 20-30 seconds to chill and dilute the ingredients.\n4. Strain into a chilled coupe or cocktail glass.\n5. Garnish with an orange or lemon twist.\n\nTips for balancing the flavors:\n\n* **Start with a dry bitter liqueur**: Suze, Luxardo Bitter, or other dry bitter liqueurs will provide a crisp, herbaceous flavor that won't add sweetness to the drink.\n* **Choose a dry vermouth**: Dolin Dry Vermouth is a great choice, as it won't add sweetness and will help to dry out the drink.\n* **Adjust the ratio**: You may need to adjust the ratio of gin to bitter liqueur to vermouth to find your perfect balance. Some people prefer a 2:1:1 ratio, while others like a 3:1:1 ratio. Experiment to find what works for you.\n* **Consider the gin**: Hendrick's gin, with its floral and herbal notes, pairs well with the dry, herbaceous flavor of Suze. If you're using a different gin, you may need to adjust the ratio or choice of bitter liqueur to find a harmonious balance.\n* **Don't over-dilute**: Stir the drink just long enough to chill and dilute the ingredients. You want to preserve the flavors and avoid a watered-down drink.\n\nThe White Negroni is a great way to showcase the gin and bitter liqueur, and it's a fantastic drink for warm weather or anytime you want a crisp, refreshing cocktail. I hope you enjoy experimenting with this recipe and finding your perfect balance!\nuser: I'm also curious about using different types of citrus in my cocktails. I've been experimenting with grapefruit and lemon, but I want to try out some other options. Do you have any recommendations for citrus fruits that pair well with gin and lavender?\nassistant: Citrus is a great way to add brightness and depth to your cocktails! Gin and lavender are a lovely combination, and the right citrus can elevate the flavors even further. Here are some citrus fruits that pair well with gin and lavender:\n\n1. **Orange**: Orange and lavender are a classic combination. The sweetness of the orange complements the floral notes of the lavender, while the bitterness of the gin provides a nice balance. Try using blood oranges for a deeper, more complex flavor.\n2. **Yuzu**: Yuzu is a Japanese citrus fruit that's a cross between a grapefruit and an orange. Its tartness and subtle sweetness pair beautifully with gin and lavender. Yuzu adds a unique, exotic flavor that will set your cocktails apart.\n3. **Kumquat**: Kumquats are small, sweet citrus fruits that add a lovely flavor to gin-based cocktails. They're particularly well-suited to pairing with lavender, as their sweetness complements the floral notes. Try using kumquat syrup or muddling fresh kumquats in your cocktail.\n4. **Satsuma**: Satsumas are a type of mandarin orange that's sweet and tart, with a loose, easy-to-peel skin. They're perfect for adding a burst of citrus flavor to your cocktails. Satsumas pair nicely with gin and lavender, and their sweetness helps balance the bitterness of the gin.\n5. **Bergamot**: Bergamot is a citrus fruit that's often used in tea and perfumery. Its citrus flavor is more subtle than other citrus fruits, but it adds a lovely complexity to gin-based cocktails. Bergamot pairs nicely with lavender, and its citrus flavor helps cut through the richness of the gin.\n\nWhen working with citrus, remember to:\n\n* **Use fresh citrus**: Fresh citrus fruits will always provide a brighter, more vibrant flavor than bottled or frozen juice.\n* **Experiment with different citrus varieties**: Each citrus fruit has its unique flavor profile, so don't be afraid to try new ones to find the perfect fit for your cocktail.\n* **Balance the citrus**: Citrus can quickly overpower other flavors, so start with a small amount and adjust to taste.\n* **Consider the citrus peel**: Citrus peels can add a lovely aroma and flavor to your cocktails. Try using citrus twists or peels in your cocktails for added depth.\n\nI hope this helps you explore the world of citrus and gin! Do you have a favorite citrus fruit or cocktail recipe you'd like to share?",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:603deb26",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:f960474b35ad3e6d32c66af348718342"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[],\"confidence\":0.91,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Here are some refreshing summer cocktail ideas that incorporate fresh herbs from your garden and feature Hendrick's gin as the star\",\"evidence_reason\":\"The transcript contains a named recommendation list for summer herb cocktails using Hendrick's Gin.\",\"importance\":3,\"keywords\":[\"Hendrick's Gin\",\"fresh herbs\",\"summer cocktails\",\"Cucumber-Basil Refresher\",\"Garden Gimlet\",\"Lemon-Thyme Fizz\",\"Elderflower Collins\"],\"note_type\":\"context\",\"rationale\":\"This is reusable cocktail exploration context: the value is the compact set of suggested drink options and their theme, not a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Cocktail exploration context for the user's Hendrick's Gin and fresh garden herb summer drinks.\"},\"summary\":\"For summer cocktails using fresh herbs from the garden and Hendrick's Gin, the recommended starting set was Cucumber-Basil Refresher, Garden Gimlet, Rose Petal Spritz, Lemon-Thyme Fizz, Elderflower Collins, and Mint to Be, each built around herbs, citrus, soda/Prosecco/ginger beer, and Hendrick's as the gin base.\",\"tags\":[\"cocktails\",\"gin\",\"summer_drinks\",\"herbs\"],\"title\":\"Summer Hendrick's gin herb cocktail recommendations\",\"valid_from\":\"2023-08-11T11:16:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.94,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Here's a simple recipe for lavender syrup\",\"evidence_reason\":\"The target message includes a lavender syrup recipe, lavender cocktail list, and practical balancing tips.\",\"importance\":4,\"keywords\":[\"lavender syrup\",\"Hendrick's Gin\",\"Lavender Gin Fizz\",\"Lavender Dream\",\"Lavender Bee's Knees\",\"lemon\",\"grapefruit\"],\"note_type\":\"context\",\"rationale\":\"This captures a reusable recipe and technique context with ratios and cautions, which is richer than a single claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Lavender cocktail recipe and pairing context for the user's gin experimentation.\"},\"summary\":\"Lavender was recommended as a gin-friendly cocktail flavor, especially with Hendrick's rose and cucumber notes. The reusable syrup formula was 1 cup sugar, 1 cup water, and 1/4 cup dried lavender buds steeped 10–15 minutes, with suggested cocktails Lavender Gin Fizz, Lavender Dream, and Lavender Bee's Knees; start with a small amount because lavender can overpower, and balance it with citrus such as lemon or grapefruit.\",\"tags\":[\"cocktails\",\"lavender\",\"gin\",\"recipe\"],\"title\":\"Lavender syrup and Hendrick's gin cocktail exploration\",\"valid_from\":\"2023-08-11T11:16:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<2>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<11>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<12>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<13>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"There are many excellent alternatives to Campari that can add unique twists to your Negroni\",\"evidence_reason\":\"The transcript provides a named list of bitter liqueur alternatives with flavor descriptors and ratio advice.\",\"importance\":4,\"keywords\":[\"Negroni\",\"Campari substitutes\",\"Cynar\",\"Aperol\",\"Luxardo Bitter\",\"Suze\",\"Meletti\",\"Carpano Antica\"],\"note_type\":\"context\",\"rationale\":\"The useful memory is the recommendation set and trade-off descriptors for future cocktail advice, not a clean atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Bitter liqueur option set for the user's Negroni experimentation.\"},\"summary\":\"For the user's Hendrick's Gin and Carpano Antica Negroni experiments, suggested Campari substitutions were Cynar for vegetal slightly sweet notes, Aperol for sweeter orange-forward lighter citrus tone, Luxardo Bitter for intense herbal complexity, Suze for crisp earthy dry herbaceousness, and Meletti for smoother sweeter citrus-forward balance. The practical guidance was to adjust bitter-to-vermouth ratios because intensity varies, starting smaller for stronger liqueurs.\",\"tags\":[\"cocktails\",\"negroni\",\"bitter_liqueur\",\"experimentation\"],\"title\":\"Negroni bitter liqueur substitutions to try\",\"valid_from\":\"2023-08-11T11:16:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<6>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<12>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"White Negroni Recipe:\",\"evidence_reason\":\"The target message includes a concrete White Negroni recipe plus balancing tips and ratio variants.\",\"importance\":5,\"keywords\":[\"White Negroni\",\"Hendrick's Gin\",\"Suze\",\"Dolin Dry Vermouth\",\"Luxardo Bitter\",\"2:1:1\",\"3:1:1\"],\"note_type\":\"context\",\"rationale\":\"This is a reusable recipe/procedure note with ratios, ingredient choices, and balancing rationale rather than a single fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"White Negroni recipe context for the user's gin and bitter liqueur experimentation.\"},\"summary\":\"The recommended White Negroni baseline was 1 1/2 oz Hendrick's Gin, 1/2 oz Suze or another dry bitter liqueur such as Luxardo Bitter, and 1/2 oz Dolin Dry Vermouth, stirred 20–30 seconds and garnished with orange or lemon twist. Balancing guidance: use dry bitter liqueur and dry vermouth, try ratios such as 2:1:1 or 3:1:1, account for Hendrick's floral/herbal profile with Suze, and avoid over-dilution.\",\"tags\":[\"cocktails\",\"white_negroni\",\"recipe\",\"gin\"],\"title\":\"White Negroni recipe and balancing guidance\",\"valid_from\":\"2023-08-11T11:16:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.94,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Here are some citrus fruits that pair well with gin and lavender\",\"evidence_reason\":\"The transcript lists specific citrus fruits with pairing descriptors and technique advice for gin-lavender cocktails.\",\"importance\":4,\"keywords\":[\"gin and lavender\",\"orange\",\"blood orange\",\"yuzu\",\"kumquat\",\"satsuma\",\"bergamot\",\"citrus peel\"],\"note_type\":\"context\",\"rationale\":\"This preserves a reusable option list with flavor roles and practical technique, which is broader than a single atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Citrus pairing context for the user's gin and lavender cocktail experimentation.\"},\"summary\":\"For gin and lavender cocktails, recommended citrus options beyond grapefruit and lemon were orange or blood orange for sweet floral balance, yuzu for tart subtle sweetness, kumquat for sweet syrup or muddled fruit, satsuma for sweet-tart mandarin brightness, and bergamot for subtle aromatic complexity. General technique: use fresh citrus, experiment by variety, start small because citrus can overpower, and consider twists or peels for aroma and depth.\",\"tags\":[\"cocktails\",\"citrus\",\"lavender\",\"gin\"],\"title\":\"Citrus pairings for gin and lavender cocktails\",\"valid_from\":\"2023-08-11T11:16:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7662,
+                "completionTokens": 2047,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
