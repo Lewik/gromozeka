@@ -103,7 +103,7 @@ kotlin {
 
 android {
     namespace = "com.gromozeka.presentation"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         val defaultRemoteUrl = providers.gradleProperty("gromozeka.defaultRemoteUrl")
