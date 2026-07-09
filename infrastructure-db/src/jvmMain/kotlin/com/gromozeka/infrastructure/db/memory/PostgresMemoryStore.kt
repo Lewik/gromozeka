@@ -36,6 +36,11 @@ import javax.sql.DataSource
 
 private const val SEARCH_PROJECTION_MAX_CHARS = 12_000
 private const val SOURCE_CONTENT_SEARCH_PREVIEW_CHARS = 4_000
+private val MEMORY_EMBEDDING_VECTOR_COLUMNS = mapOf(
+    1_536 to "embedding_1536",
+    2_560 to "embedding_2560",
+    3_072 to "embedding_3072",
+)
 
 private val memorySearchHitComparator =
     compareByDescending<MemoryStore.SearchHit> { it.score }
@@ -640,18 +645,20 @@ class PostgresMemoryStore(
         )
 
     private fun Connection.upsertEmbedding(item: MemoryEmbeddingRecord) {
-        val vectorColumn = when (item.dimensions) {
-            1_536 -> "embedding_1536"
-            3_072 -> "embedding_3072"
-            else -> error("Unsupported memory embedding dimensions: ${item.dimensions}")
-        }
-        val otherVectorColumn = if (vectorColumn == "embedding_1536") "embedding_3072" else "embedding_1536"
+        val vectorColumn = memoryEmbeddingVectorColumn(item.dimensions)
+        val nullVectorColumns = MEMORY_EMBEDDING_VECTOR_COLUMNS.values
+            .filterNot { it == vectorColumn }
+        val vectorColumnNames = (listOf(vectorColumn) + nullVectorColumns).joinToString(", ")
+        val vectorValuePlaceholders = listOf("?::halfvec")
+            .plus(nullVectorColumns.map { "NULL" })
+            .joinToString(", ")
+        val nullVectorUpdates = nullVectorColumns.joinToString(",\n                ") { "$it = NULL" }
         val sql = """
             INSERT INTO memory_embeddings (
                 id, namespace, memory_type, memory_id, embedding_kind, model_configuration_id, provider_model_id,
-                dimensions, content_hash, $vectorColumn, $otherVectorColumn, created_at, updated_at
+                dimensions, content_hash, $vectorColumnNames, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::halfvec, NULL, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, $vectorValuePlaceholders, ?, ?)
             ON CONFLICT (id) DO UPDATE SET
                 namespace = EXCLUDED.namespace,
                 memory_type = EXCLUDED.memory_type,
@@ -662,7 +669,7 @@ class PostgresMemoryStore(
                 dimensions = EXCLUDED.dimensions,
                 content_hash = EXCLUDED.content_hash,
                 $vectorColumn = EXCLUDED.$vectorColumn,
-                $otherVectorColumn = NULL,
+                $nullVectorUpdates,
                 updated_at = EXCLUDED.updated_at
         """.trimIndent()
 
@@ -686,11 +693,7 @@ class PostgresMemoryStore(
     private fun MemoryStore.SearchRequest.vectorScores(): Map<MemoryItemRef, Double> {
         val searchEmbedding = embedding ?: return emptyMap()
         if (query.isBlank()) return emptyMap()
-        val vectorColumn = when (searchEmbedding.dimensions) {
-            1_536 -> "embedding_1536"
-            3_072 -> "embedding_3072"
-            else -> return emptyMap()
-        }
+        val vectorColumn = MEMORY_EMBEDDING_VECTOR_COLUMNS[searchEmbedding.dimensions] ?: return emptyMap()
         val memoryTypes = scopes.toEmbeddableMemoryTypes()
         if (memoryTypes.isEmpty()) return emptyMap()
 
@@ -736,6 +739,10 @@ class PostgresMemoryStore(
             }
         }
     }
+
+    private fun memoryEmbeddingVectorColumn(dimensions: Int): String =
+        MEMORY_EMBEDDING_VECTOR_COLUMNS[dimensions]
+            ?: error("Unsupported memory embedding dimensions: $dimensions")
 
     private fun Connection.selectSearchPayloads(
         request: MemoryStore.SearchRequest,
