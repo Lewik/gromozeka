@@ -3,9 +3,9 @@
 
 [versions]
 java = "21"
-kotlin = "2.2.0"
+kotlin = "2.3.21"
 agp = "8.10.1"
-ktor = "3.2.3"
+ktor = "3.4.3"
 spring-boot = "3.5.4"
 spring-dependency-management = "1.1.7"
 jetbrains-compose = "1.8.2"
@@ -20,10 +20,9 @@ pdfbox = "3.0.3"
 filekit = "0.8.2"
 multiplatform-markdown-renderer = "0.30.0"
 constraintlayout-compose = "1.1.0"
-mcp-kotlin-sdk = "0.6.0"
-mcp-java-sdk = "0.15.0"
+mcp-kotlin-sdk = "0.14.0"
 klog = "v2.1.1"
-kotlinx-coroutines = "1.10.2"
+kotlinx-coroutines = "1.11.0"
 kotlinx-io = "0.6.0"
 reactor-kotlin = "1.2.3"
 xmlutil = "0.91.2"
@@ -123,7 +122,6 @@ constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayou
 
 # MCP (Model Context Protocol)
 mcp-kotlin-sdk = { module = "io.modelcontextprotocol:kotlin-sdk", version.ref = "mcp-kotlin-sdk" }
-mcp-java-sdk-core = { module = "io.modelcontextprotocol.sdk:mcp-core", version.ref = "mcp-java-sdk" }
 
 # Logging
 klog = { module = "com.github.lewik.klog:klog-jvm", version.ref = "klog" }

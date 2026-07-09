@@ -10,10 +10,11 @@ import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.SettingsProvider
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.TextContent
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -46,7 +47,7 @@ class CreateAgentTool(
     override val definition = Tool(
         name = "create_agent",
         description = "Create a new agent colleague to work on specified project. The agent will appear in a new tab for conversation.",
-        inputSchema = Tool.Input(
+        inputSchema = ToolSchema(
             properties = buildJsonObject {
                 put("project_path", buildJsonObject {
                     put("type", "string")
@@ -94,7 +95,7 @@ class CreateAgentTool(
     )
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        val input = Json.decodeFromJsonElement<Input>(request.arguments)
+        val input = Json.decodeFromJsonElement<Input>(request.argumentsOrEmpty())
 
         val agent = if (input.agent_prompt != null) {
             val inlinePrompt = promptService.createEnvironmentPrompt(

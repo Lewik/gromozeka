@@ -22,9 +22,6 @@ kotlin {
                 implementation(libs.anthropic.java.bedrock)
                 implementation(libs.aws.sdk.sso)
                 implementation(libs.aws.sdk.ssooidc)
-                // Reactor Kotlin extensions for Flux/Flow conversion
-                implementation(libs.reactor.kotlin.extensions)
-                
                 // Spring Boot
                 implementation(libs.spring.boot.starter)
                 
@@ -32,7 +29,6 @@ kotlin {
                 implementation(libs.klog)
                 
                 implementation(libs.kotlin.reflect)
-                implementation(libs.kotlinx.coroutines.reactor)
                 implementation(libs.kotlinx.datetime)
                 
                 // Ktor Client for MCP
@@ -51,9 +47,8 @@ kotlin {
                 implementation(libs.xmlutil.serialization)
                 implementation(libs.jackson.module.kotlin)
 
-                // MCP SDK for Gromozeka MCP tools (coexists with Java MCP SDK from Spring AI)
+                // MCP SDK for Gromozeka MCP tools
                 implementation(libs.mcp.kotlin.sdk)
-                implementation(libs.mcp.java.sdk.core)
                 
                 // Tree-sitter for code analysis
                 implementation(libs.ktreesitter)

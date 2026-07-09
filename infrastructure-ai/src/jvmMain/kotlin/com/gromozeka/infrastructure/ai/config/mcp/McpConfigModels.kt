@@ -20,9 +20,6 @@ data class ServerConfig(
     @JsonProperty("url")
     val url: String? = null,
 
-    @JsonProperty("sseEndpoint")
-    val sseEndpoint: String? = null,
-
     @JsonProperty("headers")
     val headers: Map<String, String>? = null,
 
@@ -41,13 +38,13 @@ data class ServerConfig(
     val transportType: TransportType
         get() = when {
             command != null -> TransportType.STDIO
-            url != null -> TransportType.SSE
+            url != null -> TransportType.STREAMABLE_HTTP
             else -> TransportType.UNKNOWN
         }
 }
 
 enum class TransportType {
     STDIO,
-    SSE,
+    STREAMABLE_HTTP,
     UNKNOWN
 }

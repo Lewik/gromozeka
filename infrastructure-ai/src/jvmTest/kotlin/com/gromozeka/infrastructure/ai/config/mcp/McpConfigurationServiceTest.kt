@@ -1,7 +1,8 @@
 package com.gromozeka.infrastructure.ai.config.mcp
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlin.test.Test
@@ -85,7 +86,7 @@ class McpConfigurationServiceTest {
             Tool(
                 name = name,
                 description = null,
-                inputSchema = Tool.Input(),
+                inputSchema = ToolSchema(),
                 outputSchema = null,
                 annotations = null,
             )

@@ -15,13 +15,14 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ToolCancellationSignal
 import com.gromozeka.domain.tool.ToolExecutionContext
-import io.modelcontextprotocol.kotlin.sdk.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.Implementation
-import io.modelcontextprotocol.kotlin.sdk.ServerCapabilities
-import io.modelcontextprotocol.kotlin.sdk.TextContent
-import io.modelcontextprotocol.kotlin.sdk.Tool
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.Implementation
+import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import klog.KLoggers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -91,10 +92,11 @@ class GromozekaMcpServerFactory(
             inputSchema = definition.toMcpInputSchema(),
         ) { request ->
             runCatching {
-                val arguments = request.arguments
+                val rawArguments = request.arguments ?: JsonObject(emptyMap())
+                val arguments = rawArguments
                     .withoutMcpContext()
                     .toMcpToolArguments(definition.name)
-                val context = request.arguments["_context"]
+                val context = rawArguments["_context"]
                     ?.jsonObject
                     ?.let { ToolExecutionContext(it.toContextMap()) }
                     .toMcpToolContext(definition.name)
@@ -120,7 +122,7 @@ class GromozekaMcpServerFactory(
         addTool(
             name = MCP_MEMORY_HELP_TOOL_NAME,
             description = "Read the Gromozeka typed-memory MCP guide: memory concepts, namespaces, write/read workflows, and when to use each memory tool.",
-            inputSchema = Tool.Input(),
+            inputSchema = ToolSchema(),
         ) {
             CallToolResult(
                 content = listOf(TextContent(MCP_MEMORY_HELP_CONTENT)),
@@ -146,12 +148,12 @@ class GromozekaMcpServerFactory(
             else -> this
         }
 
-    private fun com.gromozeka.domain.tool.AiToolDefinition.toMcpInputSchema(): Tool.Input =
+    private fun com.gromozeka.domain.tool.AiToolDefinition.toMcpInputSchema(): ToolSchema =
         runCatching {
-            json.decodeFromString(Tool.Input.serializer(), inputSchema)
+            json.decodeFromString(ToolSchema.serializer(), inputSchema)
         }.getOrElse { error ->
             log.warn(error) { "Failed to parse input schema for MCP tool $name: ${error.message}" }
-            Tool.Input()
+            ToolSchema()
         }
 
     private fun JsonObject.withoutMcpContext(): JsonObject =

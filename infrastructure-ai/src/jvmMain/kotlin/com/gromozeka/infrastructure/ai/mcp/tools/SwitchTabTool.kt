@@ -2,10 +2,11 @@ package com.gromozeka.infrastructure.ai.mcp.tools
 
 import com.gromozeka.domain.repository.TabManager
 import com.gromozeka.domain.model.Tab
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.TextContent
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -26,7 +27,7 @@ class SwitchTabTool(
     override val definition = Tool(
         name = "switch_tab",
         description = "Switch to specified tab id",
-        inputSchema = Tool.Input(
+        inputSchema = ToolSchema(
             properties = buildJsonObject {
                 put("tab_id", buildJsonObject {
                     put("type", "string")
@@ -40,7 +41,7 @@ class SwitchTabTool(
     )
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        val input = Json.decodeFromJsonElement<Input>(request.arguments)
+        val input = Json.decodeFromJsonElement<Input>(request.argumentsOrEmpty())
 
         // Switch to tab and get the tab info
         val selectedTab = tabManager.switchToTab(Tab.Id(input.tab_id)) ?: return CallToolResult(

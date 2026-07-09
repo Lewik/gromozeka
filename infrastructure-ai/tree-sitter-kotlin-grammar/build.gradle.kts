@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("multiplatform") version "2.2.0"
+    alias(libs.plugins.kotlin.multiplatform)
     id("io.github.tree-sitter.ktreesitter-plugin") version "0.24.1"
 }
 

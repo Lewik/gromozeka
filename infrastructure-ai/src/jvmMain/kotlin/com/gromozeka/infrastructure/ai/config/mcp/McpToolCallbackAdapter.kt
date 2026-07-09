@@ -2,12 +2,13 @@ package com.gromozeka.infrastructure.ai.config.mcp
 
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import com.gromozeka.domain.tool.ToolExecutionContext
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
-import com.gromozeka.domain.tool.ToolExecutionContext
 
 class McpToolCallbackAdapter(
     private val clientWrapper: McpWrapperInterface,
@@ -21,11 +22,7 @@ class McpToolCallbackAdapter(
     override val definition: AiToolDefinition = AiToolDefinition(
         name = tool.name,
         description = tool.description ?: "",
-        inputSchema = if (tool.inputSchema != null) {
-            Json.encodeToString(io.modelcontextprotocol.kotlin.sdk.Tool.Input.serializer(), tool.inputSchema!!)
-        } else {
-            """{"type":"object","properties":{}}"""
-        }
+        inputSchema = Json.encodeToString(ToolSchema.serializer(), tool.inputSchema)
     )
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String {

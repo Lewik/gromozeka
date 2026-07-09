@@ -2,10 +2,11 @@ package com.gromozeka.infrastructure.ai.mcp.tools
 
 import com.gromozeka.domain.repository.TabManager
 import com.gromozeka.domain.model.Tab
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.TextContent
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.buildJsonObject
 import org.springframework.stereotype.Service
 
@@ -17,7 +18,7 @@ class ListTabsTool(
     override val definition = Tool(
         name = "list_tabs",
         description = "Get list of all open tabs with their information",
-        inputSchema = Tool.Input(
+        inputSchema = ToolSchema(
             properties = buildJsonObject {},
             required = emptyList()
         ),

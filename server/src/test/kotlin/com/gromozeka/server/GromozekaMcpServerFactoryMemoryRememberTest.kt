@@ -6,8 +6,9 @@ import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ToolExecutionContext
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -25,14 +26,15 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
         val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
 
         val tool = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).tool
+        val properties = requireNotNull(requireNotNull(tool.inputSchema).properties)
 
         assertFalse(tool.description.orEmpty().contains("previous_user_message"))
-        assertFalse(tool.inputSchema.properties.containsKey("target"))
-        assertFalse(tool.inputSchema.properties.containsKey("target_message_id"))
-        assertFalse(tool.inputSchema.properties.containsKey("user_consent_confirmed"))
-        assertTrue(tool.inputSchema.properties.containsKey("text"))
-        assertTrue(tool.inputSchema.properties.containsKey("file_path"))
-        assertTrue(tool.inputSchema.properties.containsKey("raw_url"))
+        assertFalse(properties.containsKey("target"))
+        assertFalse(properties.containsKey("target_message_id"))
+        assertFalse(properties.containsKey("user_consent_confirmed"))
+        assertTrue(properties.containsKey("text"))
+        assertTrue(properties.containsKey("file_path"))
+        assertTrue(properties.containsKey("raw_url"))
     }
 
     @Test
@@ -41,13 +43,13 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
         val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
 
         runBlocking {
-            val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).handler(
-                CallToolRequest(
+            val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
+                CallToolRequest(CallToolRequestParams(
                     name = MEMORY_REMEMBER_TOOL_NAME,
                     arguments = buildJsonObject {
                         put("text", "Remember that the API endpoint is https://example.test")
                     },
-                )
+                ))
             )
 
             assertFalse(result.isError == true)
@@ -64,15 +66,15 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
         val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
 
         runBlocking {
-            val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).handler(
-                CallToolRequest(
+            val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
+                CallToolRequest(CallToolRequestParams(
                     name = MEMORY_REMEMBER_TOOL_NAME,
                     arguments = buildJsonObject {
                         put("text", "# API Notes")
                         put("document_type", "markdown")
                         put("source_ref", "docs/api.md")
                     },
-                )
+                ))
             )
 
             assertFalse(result.isError == true)
@@ -88,13 +90,13 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
         val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
 
         val result = runBlocking {
-            server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).handler(
-                CallToolRequest(
+            server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
+                CallToolRequest(CallToolRequestParams(
                     name = MEMORY_REMEMBER_TOOL_NAME,
                     arguments = buildJsonObject {
                         put("target", "previous_user_message")
                     },
-                )
+                ))
             )
         }
 
@@ -109,14 +111,14 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
         val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
 
         val result = runBlocking {
-            server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).handler(
-                CallToolRequest(
+            server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
+                CallToolRequest(CallToolRequestParams(
                     name = MEMORY_REMEMBER_TOOL_NAME,
                     arguments = buildJsonObject {
                         put("text", "Remember this")
                         put("raw_url", "https://example.test/memory.md")
                     },
-                )
+                ))
             )
         }
 

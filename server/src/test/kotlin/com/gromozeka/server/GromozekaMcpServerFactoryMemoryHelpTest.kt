@@ -13,8 +13,9 @@ import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ToolExecutionContext
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFalse
@@ -35,11 +36,11 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
         assertFalse(rememberDescription.contains("global, user:lewik"))
 
         val result = runBlocking {
-            server.tools.getValue(MCP_MEMORY_HELP_TOOL_NAME).handler(
-                CallToolRequest(
+            server.tools.getValue(MCP_MEMORY_HELP_TOOL_NAME).callForTest(
+                CallToolRequest(CallToolRequestParams(
                     name = MCP_MEMORY_HELP_TOOL_NAME,
                     arguments = buildJsonObject {},
-                )
+                ))
             )
         }
 

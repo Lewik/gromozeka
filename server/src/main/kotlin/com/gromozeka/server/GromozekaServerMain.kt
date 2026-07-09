@@ -10,9 +10,9 @@ import io.ktor.server.http.content.default
 import io.ktor.server.http.content.staticFiles
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.routing.routing
-import io.ktor.server.sse.SSE
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
+import io.modelcontextprotocol.kotlin.sdk.server.mcpStreamableHttp
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.runBlocking
@@ -56,7 +56,7 @@ fun main() {
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
     val ktorServer = embeddedServer(CIO, port = port, host = host) {
-        install(SSE)
+        mcpStreamableHttp(path = "/mcp") { mcpServerFactory.create() }
         install(WebSockets) {
             maxFrameSize = Long.MAX_VALUE
             masking = false
@@ -65,7 +65,6 @@ fun main() {
             webSocket("/ws") {
                 remoteServer.handle(this)
             }
-            gromozekaMcp("/mcp", mcpServerFactory)
             gromozekaMemoryHttp(memoryToolApplicationService)
             staticFiles("/", webRoot) {
                 modify { _, call ->
@@ -81,7 +80,7 @@ fun main() {
             .joinToString { "ws://${it.host}:${it.port}/ws" }
     }
     println("==== Gromozeka server started: $endpoints ====")
-    println("==== Gromozeka MCP SSE: http://$host:$port/mcp ====")
+    println("==== Gromozeka MCP Streamable HTTP: http://$host:$port/mcp ====")
     println("==== Gromozeka memory HTTP: http://$host:$port/memory/status ====")
     Thread.currentThread().join()
 }

@@ -1,9 +1,9 @@
 package com.gromozeka.infrastructure.ai.config.mcp
 
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
 
 /**
- * Common interface for MCP client wrappers supporting different transports (stdio, SSE, etc).
+ * Common interface for MCP client wrappers supporting different transports.
  */
 sealed interface McpWrapperInterface {
     val name: String
@@ -12,7 +12,7 @@ sealed interface McpWrapperInterface {
 
     suspend fun listTools(): List<Tool>
 
-    suspend fun callTool(toolName: String, arguments: Map<String, Any>): String
+    suspend fun callTool(toolName: String, arguments: Map<String, Any?>): String
 
     fun close()
 

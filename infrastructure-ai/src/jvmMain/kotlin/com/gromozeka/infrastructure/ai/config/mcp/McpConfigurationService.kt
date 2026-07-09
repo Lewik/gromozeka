@@ -2,10 +2,21 @@ package com.gromozeka.infrastructure.ai.config.mcp
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.gromozeka.domain.tool.AiToolCallback
-import io.modelcontextprotocol.kotlin.sdk.Implementation
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.sse.SSE
 import io.modelcontextprotocol.kotlin.sdk.client.Client
 import io.modelcontextprotocol.kotlin.sdk.client.StdioClientTransport
+import io.modelcontextprotocol.kotlin.sdk.client.StreamableHttpClientTransport
+import io.modelcontextprotocol.kotlin.sdk.types.AudioContent
+import io.modelcontextprotocol.kotlin.sdk.types.EmbeddedResource
+import io.modelcontextprotocol.kotlin.sdk.types.ImageContent
+import io.modelcontextprotocol.kotlin.sdk.types.Implementation
+import io.modelcontextprotocol.kotlin.sdk.types.McpJson
+import io.modelcontextprotocol.kotlin.sdk.types.ResourceLink
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import klog.KLoggers
@@ -75,7 +86,7 @@ class McpConfigurationService(
                 } else {
                     when (config.transportType) {
                         TransportType.STDIO -> log.info { "  - $name: stdio (${config.command})" }
-                        TransportType.SSE -> log.info { "  - $name: SSE (${config.url})" }
+                        TransportType.STREAMABLE_HTTP -> log.info { "  - $name: streamable HTTP (${config.url})" }
                         TransportType.UNKNOWN -> log.warn { "  - $name: unknown transport type (missing command or url)" }
                     }
                 }
@@ -96,9 +107,9 @@ class McpConfigurationService(
         onProgress: (serverName: String, current: Int, total: Int) -> Unit = { _, _, _ -> }
     ) {
         val stdioServers = getStdioServers()
-        val sseServers = getSseServers()
+        val streamableHttpServers = getStreamableHttpServers()
 
-        val totalServers = stdioServers.size + sseServers.size
+        val totalServers = stdioServers.size + streamableHttpServers.size
 
         if (totalServers == 0) {
             log.info { "No MCP servers configured" }
@@ -141,7 +152,8 @@ class McpConfigurationService(
 
                 val transport = StdioClientTransport(
                     input = input,
-                    output = output
+                    output = output,
+                    error = process.errorStream.asSource().buffered()
                 )
 
                 val client = Client(
@@ -151,7 +163,7 @@ class McpConfigurationService(
                     )
                 )
 
-                val wrapper = McpClientWrapper(name, client, transport, process, coroutineScope)
+                val wrapper = McpStdioClientWrapper(name, client, transport, process)
 
                 wrapper.initialize()
 
@@ -162,47 +174,48 @@ class McpConfigurationService(
             }
         }
 
-        // Start SSE servers
-        for ((name, config) in sseServers) {
+        for ((name, config) in streamableHttpServers) {
             try {
                 current++
                 onProgress(name, current, totalServers)
 
-                log.info { "Starting MCP SSE client: $name ($current/$totalServers)" }
+                log.info { "Starting MCP streamable HTTP client: $name ($current/$totalServers)" }
                 log.debug { "  URL: ${config.url}" }
-                log.debug { "  SSE Endpoint: ${config.sseEndpoint ?: "/sse"}" }
 
-                val transport = io.modelcontextprotocol.client.transport.HttpClientSseClientTransport.builder(config.url!!)
-                    .apply {
-                        config.sseEndpoint?.let { sseEndpoint(it) }
-                        config.headers?.let { headers ->
-                            customizeRequest { builder ->
-                                headers.forEach { (key, value) ->
-                                    builder.header(key, value)
-                                }
-                            }
-                        }
+                val httpClient = HttpClient(CIO) {
+                    install(SSE)
+                }
+                val transport = StreamableHttpClientTransport(
+                    client = httpClient,
+                    url = config.url!!,
+                ) {
+                    config.headers?.forEach { (key, value) ->
+                        headers.append(key, value)
                     }
-                    .build()
+                }
+                val client = Client(
+                    clientInfo = Implementation(
+                        name = "Gromozeka",
+                        version = "1.0.0"
+                    )
+                )
 
-                val client = io.modelcontextprotocol.client.McpClient.async(transport)
-                    .clientInfo(io.modelcontextprotocol.spec.McpSchema.Implementation("Gromozeka", "1.2.0"))
-                    .requestTimeout(java.time.Duration.ofSeconds(config.timeout?.toLong() ?: 30))
-                    .build()
-
-                val wrapper = McpSseClientWrapper(name, client, transport, coroutineScope)
+                val wrapper = McpRemoteClientWrapper(name, client, transport, httpClient)
 
                 wrapper.initialize()
 
                 clients.add(wrapper)
-                log.info { "Successfully started MCP SSE client: $name" }
+                log.info { "Successfully started MCP streamable HTTP client: $name" }
             } catch (e: Exception) {
-                log.error(e) { "Failed to start MCP SSE client: $name" }
+                log.error(e) { "Failed to start MCP streamable HTTP client: $name" }
             }
         }
 
         mcpClients = clients
-        log.info { "Initialized ${mcpClients.size} MCP client(s) (${stdioServers.size} stdio, ${sseServers.size} SSE)" }
+        log.info {
+            "Initialized ${mcpClients.size} MCP client(s) " +
+                "(${stdioServers.size} stdio, ${streamableHttpServers.size} streamable HTTP)"
+        }
     }
 
     fun getStdioServers(): Map<String, ServerConfig> {
@@ -211,9 +224,9 @@ class McpConfigurationService(
             ?: emptyMap()
     }
 
-    fun getSseServers(): Map<String, ServerConfig> {
+    fun getStreamableHttpServers(): Map<String, ServerConfig> {
         return cachedConfig?.mcpServers
-            ?.filter { it.value.transportType == TransportType.SSE && !it.value.disabled }
+            ?.filter { it.value.transportType == TransportType.STREAMABLE_HTTP && !it.value.disabled }
             ?: emptyMap()
     }
 
@@ -253,16 +266,11 @@ class McpConfigurationService(
                         log.info { tool.description ?: "No description" }
                         log.info { "" }
 
-                        if (tool.inputSchema != null) {
-                            log.info { "**Parameters (JSON Schema):**" }
-                            log.info { "```json" }
-                            log.info { io.modelcontextprotocol.kotlin.sdk.shared.McpJson.encodeToString(
-                                io.modelcontextprotocol.kotlin.sdk.Tool.Input.serializer(),
-                                tool.inputSchema!!
-                            ) }
-                            log.info { "```" }
-                            log.info { "" }
-                        }
+                        log.info { "**Parameters (JSON Schema):**" }
+                        log.info { "```json" }
+                        log.info { McpJson.encodeToString(ToolSchema.serializer(), tool.inputSchema) }
+                        log.info { "```" }
+                        log.info { "" }
 
                         callbacks.add(McpToolCallbackAdapter(wrapper, tool, coroutineScope))
                     }
@@ -356,12 +364,11 @@ class McpConfigurationService(
     }
 }
 
-data class McpClientWrapper(
+private data class McpStdioClientWrapper(
     override val name: String,
     private val client: Client,
     private val transport: StdioClientTransport,
     private val process: Process,
-    private val coroutineScope: CoroutineScope
 ) : McpWrapperInterface {
     private val log = KLoggers.logger {}
 
@@ -374,16 +381,15 @@ data class McpClientWrapper(
     }
 
     override suspend fun listTools(): List<Tool> {
-        val result = client.listTools() ?: throw IllegalStateException("listTools returned null")
-        return result.tools
+        return client.listTools().tools
     }
 
-    override suspend fun callTool(toolName: String, arguments: Map<String, Any>): String {
+    override suspend fun callTool(toolName: String, arguments: Map<String, Any?>): String {
         val startTime = System.currentTimeMillis()
-        log.info { "[MCP] Calling tool '$toolName' on server '$name' (timeout: 20s)" }
+        log.info { "[MCP] Calling tool '$toolName' on server '$name' (timeout: 40s)" }
         
         val result = try {
-            withTimeout(40_000) { // 20 seconds
+            withTimeout(40_000) {
                 client.callTool(toolName, arguments)
             }
         } catch (e: Exception) {
@@ -395,18 +401,7 @@ data class McpClientWrapper(
         val duration = System.currentTimeMillis() - startTime
         log.info { "[MCP] Tool '$toolName' completed in ${duration}ms" }
 
-        if (result == null) {
-            log.warn { "[MCP] Tool '$toolName' returned null result" }
-            return "Tool returned no result"
-        }
-
-        return result.content.joinToString("\n") { content ->
-            when (content) {
-                is io.modelcontextprotocol.kotlin.sdk.TextContent -> content.text ?: ""
-                is io.modelcontextprotocol.kotlin.sdk.ImageContent -> "[Image: ${content.mimeType ?: "image"}]"
-                else -> content.toString()
-            }
-        }
+        return renderToolResultContent(result.content)
     }
 
     override fun close() {
@@ -464,3 +459,71 @@ data class McpClientWrapper(
         }
     }
 }
+
+private data class McpRemoteClientWrapper(
+    override val name: String,
+    private val client: Client,
+    private val transport: StreamableHttpClientTransport,
+    private val httpClient: HttpClient,
+) : McpWrapperInterface {
+    private val log = KLoggers.logger {}
+
+    override suspend fun initialize() {
+        client.connect(transport)
+
+        val serverInfo = client.serverVersion
+        log.info { "Connected to MCP streamable HTTP server: $name" }
+        log.info { "  Server: ${serverInfo?.name} v${serverInfo?.version}" }
+    }
+
+    override suspend fun listTools(): List<Tool> {
+        return client.listTools().tools
+    }
+
+    override suspend fun callTool(toolName: String, arguments: Map<String, Any?>): String {
+        val startTime = System.currentTimeMillis()
+        log.info { "[MCP] Calling tool '$toolName' on streamable HTTP server '$name' (timeout: 40s)" }
+
+        val result = try {
+            withTimeout(40_000) {
+                client.callTool(toolName, arguments)
+            }
+        } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
+            log.error(e) { "[MCP] Tool '$toolName' failed after ${duration}ms: ${e.message}" }
+            throw IllegalStateException("MCP tool '$toolName' failed after ${duration}ms", e)
+        }
+
+        val duration = System.currentTimeMillis() - startTime
+        log.info { "[MCP] Tool '$toolName' completed in ${duration}ms" }
+
+        return renderToolResultContent(result.content)
+    }
+
+    override fun close() {
+        try {
+            log.info { "Closing MCP streamable HTTP client: $name" }
+            runBlocking { client.close() }
+            httpClient.close()
+            log.info { "MCP streamable HTTP client $name closed successfully" }
+        } catch (e: Exception) {
+            log.error(e) { "Error closing MCP streamable HTTP client: $name" }
+        }
+    }
+
+    override fun forceClose() {
+        close()
+    }
+}
+
+private fun renderToolResultContent(content: List<io.modelcontextprotocol.kotlin.sdk.types.ContentBlock>): String =
+    content.joinToString("\n") {
+        when (it) {
+            is TextContent -> it.text
+            is ImageContent -> "[Image: ${it.mimeType}]"
+            is AudioContent -> "[Audio: ${it.mimeType}]"
+            is EmbeddedResource -> "[Resource: ${it.resource.uri}]"
+            is ResourceLink -> "[Resource Link: ${it.uri}]"
+            else -> it.toString()
+        }
+    }

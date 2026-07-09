@@ -2,10 +2,12 @@ package com.gromozeka.infrastructure.ai.mcp.tools.treesitter
 
 import com.gromozeka.domain.service.treesitter.TreeSitterService
 import com.gromozeka.infrastructure.ai.mcp.tools.GromozekaMcpTool
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.TextContent
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import com.gromozeka.infrastructure.ai.mcp.tools.argumentsOrEmpty
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -36,7 +38,7 @@ class GetAstTool(
         positions, and optionally the source text.
         
         Currently supports: Kotlin only (more languages coming soon)""",
-        inputSchema = Tool.Input(
+        inputSchema = ToolSchema(
             properties = buildJsonObject {
                 put("project", buildJsonObject {
                     put("type", "string")
@@ -62,7 +64,7 @@ class GetAstTool(
     )
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        val input = Json.decodeFromJsonElement<Input>(request.arguments)
+        val input = Json.decodeFromJsonElement<Input>(request.argumentsOrEmpty())
         
         return try {
             val maxDepth = input.max_depth ?: 5

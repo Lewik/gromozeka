@@ -5,10 +5,11 @@ import com.gromozeka.domain.model.Tab
 import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
 
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.TextContent
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.springframework.stereotype.Service
@@ -31,7 +32,7 @@ class TellAgentTool(
     override val definition = Tool(
         name = "tell_agent",
         description = "Send a message to another agent for collaboration and communication",
-        inputSchema = Tool.Input(
+        inputSchema = ToolSchema(
             properties = buildJsonObject {
                 put("message", buildJsonObject {
                     put("type", "string")
@@ -63,7 +64,7 @@ class TellAgentTool(
     )
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        val input = Json.decodeFromJsonElement<Input>(request.arguments)
+        val input = Json.decodeFromJsonElement<Input>(request.argumentsOrEmpty())
         val senderTabId = input.sender_tab_id
         log.info("Executing with senderTabId=$senderTabId, targetTabId=${input.target_tab_id}")
 

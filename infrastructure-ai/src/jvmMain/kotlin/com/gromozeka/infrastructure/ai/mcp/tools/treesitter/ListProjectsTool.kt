@@ -2,10 +2,11 @@ package com.gromozeka.infrastructure.ai.mcp.tools.treesitter
 
 import com.gromozeka.infrastructure.ai.mcp.tools.GromozekaMcpTool
 import com.gromozeka.infrastructure.ai.treesitter.ProjectRegistryImpl
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.TextContent
-import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.buildJsonObject
 import org.springframework.stereotype.Service
 
@@ -20,7 +21,7 @@ class ListProjectsTool(
         
         Returns information about all projects that have been registered for code analysis,
         including their names, paths, descriptions, detected languages, and last scan times.""",
-        inputSchema = Tool.Input(
+        inputSchema = ToolSchema(
             properties = buildJsonObject {},
             required = emptyList()
         ),

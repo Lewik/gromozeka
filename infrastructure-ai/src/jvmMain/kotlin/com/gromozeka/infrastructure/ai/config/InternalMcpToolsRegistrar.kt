@@ -3,7 +3,11 @@ package com.gromozeka.infrastructure.ai.config
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.infrastructure.ai.mcp.tools.GromozekaMcpTool
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
+import io.modelcontextprotocol.kotlin.sdk.types.ImageContent
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.runBlocking
@@ -43,14 +47,7 @@ class InternalMcpToolsRegistrar(
             override val definition: AiToolDefinition = AiToolDefinition(
                 name = mcpTool.definition.name,
                 description = mcpTool.definition.description ?: "",
-                inputSchema = if (mcpTool.definition.inputSchema != null) {
-                    Json.encodeToString(
-                        io.modelcontextprotocol.kotlin.sdk.Tool.Input.serializer(),
-                        mcpTool.definition.inputSchema!!
-                    )
-                } else {
-                    """{"type":"object","properties":{}}"""
-                }
+                inputSchema = Json.encodeToString(ToolSchema.serializer(), mcpTool.definition.inputSchema)
             )
 
             override fun call(toolInput: String, context: com.gromozeka.domain.tool.ToolExecutionContext?): String {
@@ -66,17 +63,17 @@ class InternalMcpToolsRegistrar(
                             buildJsonObject {}
                         }
 
-                        val request = CallToolRequest(
+                        val request = CallToolRequest(CallToolRequestParams(
                             name = mcpTool.definition.name,
                             arguments = argumentsObject
-                        )
+                        ))
 
                         val result = mcpTool.execute(request)
 
                         val resultText = result.content.joinToString("\n") { content ->
                             when (content) {
-                                is io.modelcontextprotocol.kotlin.sdk.TextContent -> content.text ?: ""
-                                is io.modelcontextprotocol.kotlin.sdk.ImageContent -> "[Image: ${content.mimeType ?: "image"}]"
+                                is TextContent -> content.text
+                                is ImageContent -> "[Image: ${content.mimeType}]"
                                 else -> content.toString()
                             }
                         }

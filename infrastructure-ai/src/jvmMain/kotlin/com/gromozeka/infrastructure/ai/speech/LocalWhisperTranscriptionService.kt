@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.io.path.createTempDirectory
+import kotlin.io.path.pathString
 
 @Service
 class LocalWhisperTranscriptionService(
@@ -83,7 +85,7 @@ class LocalWhisperTranscriptionService(
     private fun createRunDir(): File {
         val parent = File(settingsProvider.homeDirectory, "cache/local-whisper")
         parent.mkdirs()
-        return createTempDir(prefix = "run-", directory = parent)
+        return File(createTempDirectory(parent.toPath(), "run-").pathString)
     }
 
     private fun resolveModelFile(settings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper): File {

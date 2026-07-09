@@ -11,6 +11,7 @@ plugins {
 
 extra["kotlin.version"] = libs.versions.kotlin.get()
 extra["kotlin-serialization.version"] = libs.versions.kotlinx.serialization.get()
+extra["kotlin-coroutines.version"] = libs.versions.kotlinx.coroutines.get()
 
 val javaVersion = libs.versions.java.get().toInt()
 
