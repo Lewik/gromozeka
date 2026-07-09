@@ -172,6 +172,19 @@ object MemoryToolResultRenderer {
         }.toString()
     }
 
+    fun pendingEnrichContextResultJsonString(): String =
+        buildJsonObject {
+            put("status", "pending")
+            put("need_memory", true)
+            put("context_mode", "ASYNC_RECALL")
+            put("retrieved_count", 0)
+            put(
+                "usage_guidance",
+                "Runtime memory recall is running asynchronously. If the user question depends on remembered context, say briefly that memory is being checked and wait for the follow-up memory result instead of guessing."
+            )
+            put("memory_context", "Memory recall has been queued and is not available in this model call yet.")
+        }.toString()
+
     internal fun answerQuestionResultJsonString(result: MemoryQuestionAnswerResult?): String {
         if (result == null) {
             return buildJsonObject {

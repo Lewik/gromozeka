@@ -864,6 +864,7 @@ private fun ConversationRuntimeSnapshot.runtimeDetailsText(): String =
                     is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.UserTurn -> "user_turn"
                     is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.LlmCall -> "llm_call"
                     is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.ToolExecution -> "tool_execution"
+                    is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.MemoryRecall -> "memory_recall"
                 }
             )
         }

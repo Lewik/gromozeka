@@ -16,6 +16,7 @@ import com.gromozeka.application.service.memory.MemoryThreadContextCompactor
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipeline
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipelineResult
 import com.gromozeka.application.service.memory.defaultMemoryNamespace
+import com.gromozeka.application.service.memory.MemoryNamespaceRecallAccessGuard
 import com.gromozeka.application.service.memory.MemoryRunLlmCallObserver
 import com.gromozeka.application.service.memory.MemoryRepairPipeline
 import com.gromozeka.application.service.memory.MemoryRepairPipelineResult
@@ -62,6 +63,7 @@ class MemoryApplicationService(
     private val embeddingIndexer: MemoryEmbeddingIndexer,
 ) {
     private val log = KLoggers.logger(this)
+    private val recallAccessGuard = MemoryNamespaceRecallAccessGuard(store)
 
     suspend fun ingestCurrentThread(
         conversationId: Conversation.Id,
@@ -118,6 +120,7 @@ class MemoryApplicationService(
         val namespace = namespaceOverride
             ?: settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
             ?: project.defaultMemoryNamespace()
+        recallAccessGuard.ensureRecallSupported(namespace)
         val runtimes = MemoryServiceStageRuntimes(project)
         val threadContext = MemoryThreadContext(
             conversationId = conversationId,

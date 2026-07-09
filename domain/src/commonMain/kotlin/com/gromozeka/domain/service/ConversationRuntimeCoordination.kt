@@ -66,6 +66,19 @@ data class ConversationRuntimeTask(
                 require(toolCalls.isNotEmpty()) { "Conversation tool execution task must contain at least one tool call" }
             }
         }
+
+        @Serializable
+        @SerialName("memory_recall")
+        data class MemoryRecall(
+            val rootUserMessageId: Conversation.Message.Id,
+            val targetMessageId: Conversation.Message.Id,
+            val agent: AgentDefinition,
+            val followUpIteration: Int,
+        ) : Payload {
+            init {
+                require(followUpIteration >= 1) { "Conversation memory recall follow-up iteration must be positive" }
+            }
+        }
     }
 
     fun requireUserTurn(): Payload.UserTurn =

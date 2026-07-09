@@ -14,6 +14,15 @@ import kotlinx.serialization.json.jsonPrimitive
 
 class MemoryToolResultRendererTest {
     @Test
+    fun pendingEnrichContextResultIsExplicitlyPending() {
+        val root = Json.parseToJsonElement(MemoryToolResultRenderer.pendingEnrichContextResultJsonString()).jsonObject
+
+        assertEquals("pending", root.getValue("status").jsonPrimitive.content)
+        assertEquals("ASYNC_RECALL", root.getValue("context_mode").jsonPrimitive.content)
+        assertTrue(root.getValue("usage_guidance").jsonPrimitive.content.contains("asynchronously"))
+    }
+
+    @Test
     fun enrichContextSelectedRefsFollowSelectorRankBeforeTraceHitOrder() {
         val lowRankedHit = traceHit(id = "claim-a", summary = "Lower-ranked selected claim")
         val highRankedHit = traceHit(id = "claim-b", summary = "Higher-ranked selected claim")

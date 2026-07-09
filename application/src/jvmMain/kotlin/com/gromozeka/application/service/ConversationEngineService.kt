@@ -12,6 +12,7 @@ import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryMaintenanceAction
 import com.gromozeka.application.service.memory.MemoryMaintenanceQueue
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
+import com.gromozeka.application.service.memory.MemoryNamespaceRecallAccessException
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
 import com.gromozeka.application.service.memory.defaultMemoryNamespace
 import com.gromozeka.application.service.memory.withoutMemoryManagementTools
@@ -51,7 +52,9 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import org.springframework.beans.factory.ObjectProvider
 
@@ -130,6 +133,7 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.UserTurn -> runUserTurnStep(task, workerId, payload)
             is ConversationRuntimeTask.Payload.LlmCall -> runLlmCallStep(task, workerId, payload)
             is ConversationRuntimeTask.Payload.ToolExecution -> runToolExecutionStep(task, workerId, payload)
+            is ConversationRuntimeTask.Payload.MemoryRecall -> runMemoryRecallStep(task, workerId, payload)
         }
 
     private fun runUserTurnStep(
@@ -152,7 +156,6 @@ class ConversationEngineService(
             memoryPipelineTools = context.memoryPipelineTools,
             automaticMemoryRememberEnabled = context.automaticMemoryRememberEnabled,
             automaticMemoryRecallEnabled = context.automaticMemoryRecallEnabled,
-            recallFailureLogPrefix = "Memory runtime recall failed",
         ).forEach { emit(it) }
 
         val fixResult = toolCallSequenceFixerService.fixNonSequentialPairs(conversationId)
@@ -323,6 +326,13 @@ class ConversationEngineService(
                 )
             )
         } else {
+            submitPendingMemoryRecallIfNeeded(
+                conversationId = conversationId,
+                rootUserMessageId = payload.rootUserMessageId,
+                agent = payload.agent,
+                nextLlmIteration = payload.iteration + 1,
+                automaticMemoryRecallEnabled = context.automaticMemoryRecallEnabled,
+            )
             log.info {
                 "Legacy memory inline ingest disabled: conversation=${conversationId.value} " +
                     "thread=${conversation.currentThread.value}; router-only per-message pipeline is active"
@@ -428,6 +438,98 @@ class ConversationEngineService(
         }
     }
 
+    private fun runMemoryRecallStep(
+        task: ConversationRuntimeTask,
+        workerId: String,
+        payload: ConversationRuntimeTask.Payload.MemoryRecall,
+    ): Flow<Conversation.Message> = flow {
+        val conversationId = task.conversationId
+        if (!awaitExecutionCanContinue(conversationId)) {
+            return@flow
+        }
+
+        ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+        val conversation = conversationService.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        val context = buildConversationRuntimeContext(payload.agent, conversation)
+        val currentMessages = conversationService.loadCurrentMessages(conversationId)
+        if (!currentMessages.hasPendingMemoryRecall(payload.targetMessageId)) {
+            log.info {
+                "Skipping memory recall without pending marker: conversation=${conversationId.value} target=${payload.targetMessageId.value}"
+            }
+            return@flow
+        }
+        if (currentMessages.hasCompletedMemoryRecall(payload.targetMessageId)) {
+            log.info {
+                "Skipping already completed memory recall: conversation=${conversationId.value} target=${payload.targetMessageId.value}"
+            }
+            return@flow
+        }
+        val targetMessage = currentMessages.firstOrNull { it.id == payload.targetMessageId }
+            ?: throw IllegalStateException("Memory recall target message not found: ${payload.targetMessageId.value}")
+
+        val runtimeMemoryResult = runCatching {
+            memoryApplicationService.buildRuntimeMemoryReadResult(
+                conversationId = conversationId,
+                threadId = conversation.currentThread,
+                targetMessage = targetMessage,
+                threadMessages = currentMessages,
+                agent = payload.agent,
+                project = context.project,
+                runtimeSystemPrompts = context.memorySystemPrompts,
+                runtimeTools = context.memoryPipelineTools,
+            )
+        }.onFailure { error ->
+            if (error is CancellationException) {
+                throw error
+            }
+            if (error is MemoryNamespaceRecallAccessException) {
+                throw error
+            }
+            log.warn(error) {
+                "Async memory recall failed: conversation=${conversationId.value} target=${targetMessage.id.value} error=${error.message}"
+            }
+            if (java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast")) {
+                throw error
+            }
+        }.getOrNull()
+
+        buildSyntheticMemoryToolPair(
+            conversationId = conversationId,
+            targetMessage = targetMessage,
+            toolName = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+            arguments = buildJsonObject {
+                put("target", "previous_user_message")
+                put("target_message_id", targetMessage.id.value)
+                put("mode", "automatic_runtime_context_enrichment_async_completed")
+            },
+            resultText = MemoryToolResultRenderer.enrichContextResultJsonString(runtimeMemoryResult),
+            syntheticPhase = SYNTHETIC_MEMORY_PHASE_COMPLETED_ASYNC,
+        ).forEach { syntheticMessage ->
+            ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+            if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
+                emit(syntheticMessage)
+            }
+        }
+
+        log.info {
+            "Async memory recall completed: conversation=${conversationId.value} target=${targetMessage.id.value} " +
+                "memoryPromptPresent=${!runtimeMemoryResult?.runtimePrompt.isNullOrBlank()} " +
+                "memoryPromptChars=${runtimeMemoryResult?.runtimePrompt?.length ?: 0}"
+        }
+
+        if (awaitExecutionCanContinue(conversationId)) {
+            submitContinuationTask(
+                llmCallTask(
+                    conversationId = conversationId,
+                    rootUserMessageId = payload.rootUserMessageId,
+                    agent = payload.agent,
+                    iteration = payload.followUpIteration,
+                )
+            )
+        }
+    }
+
     private data class ConversationRuntimeStepContext(
         val project: Project,
         val runtime: AiRuntime,
@@ -503,7 +605,6 @@ class ConversationEngineService(
         memoryPipelineTools: List<AiToolCallback>,
         automaticMemoryRememberEnabled: Boolean,
         automaticMemoryRecallEnabled: Boolean,
-        recallFailureLogPrefix: String,
     ): List<Conversation.Message> {
         val emittedMessages = mutableListOf<Conversation.Message>()
         val userMessageAdded = addRuntimeMessageIfMissing(conversationId, userMessage)
@@ -548,35 +649,6 @@ class ConversationEngineService(
             }
         }
 
-        val activeConversation = conversationService.findById(conversationId) ?: conversation
-        val messagesBeforeRecall = conversationService.loadCurrentMessages(conversationId)
-        val runtimeMemoryResult = if (automaticMemoryRecallEnabled) {
-            runCatching {
-                memoryApplicationService.buildRuntimeMemoryReadResult(
-                    conversationId = conversationId,
-                    threadId = activeConversation.currentThread,
-                    targetMessage = userMessage,
-                    threadMessages = messagesBeforeRecall,
-                    agent = agent,
-                    project = project,
-                    runtimeSystemPrompts = memorySystemPrompts,
-                    runtimeTools = memoryPipelineTools,
-                )
-            }.onFailure { error ->
-                if (error is CancellationException) {
-                    throw error
-                }
-                log.warn(error) {
-                    "$recallFailureLogPrefix: conversation=${conversationId.value} target=${userMessage.id.value} error=${error.message}"
-                }
-                if (java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast")) {
-                    throw error
-                }
-            }.getOrNull()
-        } else {
-            null
-        }
-
         if (automaticMemoryRecallEnabled) {
             buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
@@ -585,9 +657,10 @@ class ConversationEngineService(
                 arguments = buildJsonObject {
                     put("target", "previous_user_message")
                     put("target_message_id", userMessage.id.value)
-                    put("mode", "automatic_runtime_context_enrichment")
+                    put("mode", "automatic_runtime_context_enrichment_async_pending")
                 },
-                resultText = MemoryToolResultRenderer.enrichContextResultJsonString(runtimeMemoryResult)
+                resultText = MemoryToolResultRenderer.pendingEnrichContextResultJsonString(),
+                syntheticPhase = SYNTHETIC_MEMORY_PHASE_PENDING,
             ).forEach { syntheticMessage ->
                 if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
                     emittedMessages.add(syntheticMessage)
@@ -597,8 +670,7 @@ class ConversationEngineService(
 
         log.info {
             "Memory auto wiring: conversation=${conversationId.value} autoRemember=$automaticMemoryRememberEnabled autoRecall=$automaticMemoryRecallEnabled " +
-                "memoryPromptPresent=${!runtimeMemoryResult?.runtimePrompt.isNullOrBlank()} memoryPromptChars=${runtimeMemoryResult?.runtimePrompt?.length ?: 0} " +
-                "systemPrompts=${memorySystemPrompts.size} rememberTriggered=$automaticMemoryRememberEnabled recallTriggered=$automaticMemoryRecallEnabled"
+                "systemPrompts=${memorySystemPrompts.size} rememberTriggered=$automaticMemoryRememberEnabled recallQueued=$automaticMemoryRecallEnabled"
         }
         return emittedMessages
     }
@@ -655,6 +727,30 @@ class ConversationEngineService(
         runtimeDispatcher.submitContinuationTask(task)
     }
 
+    private suspend fun submitPendingMemoryRecallIfNeeded(
+        conversationId: Conversation.Id,
+        rootUserMessageId: Conversation.Message.Id,
+        agent: AgentDefinition,
+        nextLlmIteration: Int,
+        automaticMemoryRecallEnabled: Boolean,
+    ) {
+        if (!automaticMemoryRecallEnabled) {
+            return
+        }
+        val targetMessageId = conversationService.loadCurrentMessages(conversationId)
+            .nextPendingMemoryRecallTarget()
+            ?: return
+        submitContinuationTask(
+            memoryRecallTask(
+                conversationId = conversationId,
+                rootUserMessageId = rootUserMessageId,
+                targetMessageId = targetMessageId,
+                agent = agent,
+                followUpIteration = nextLlmIteration,
+            )
+        )
+    }
+
     private fun llmCallTask(
         conversationId: Conversation.Id,
         rootUserMessageId: Conversation.Message.Id,
@@ -673,6 +769,30 @@ class ConversationEngineService(
             idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:llm:$iteration",
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(ConversationRuntimeWorkerCapability.LLM_RUNTIME),
+            ),
+            createdAt = Clock.System.now(),
+        )
+
+    private fun memoryRecallTask(
+        conversationId: Conversation.Id,
+        rootUserMessageId: Conversation.Message.Id,
+        targetMessageId: Conversation.Message.Id,
+        agent: AgentDefinition,
+        followUpIteration: Int,
+    ): ConversationRuntimeTask =
+        ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("${targetMessageId.value}:memory-recall"),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.MemoryRecall(
+                rootUserMessageId = rootUserMessageId,
+                targetMessageId = targetMessageId,
+                agent = agent,
+                followUpIteration = followUpIteration,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "conversation:${conversationId.value}:runtime:${targetMessageId.value}:memory-recall",
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE),
             ),
             createdAt = Clock.System.now(),
         )
@@ -712,6 +832,9 @@ class ConversationEngineService(
 
     private companion object {
         const val MAX_TOOL_LOOP_ITERATIONS = 200
+        const val SYNTHETIC_MEMORY_PHASE_COMPLETED = "completed"
+        const val SYNTHETIC_MEMORY_PHASE_PENDING = "pending"
+        const val SYNTHETIC_MEMORY_PHASE_COMPLETED_ASYNC = "completed_async"
     }
 
     private suspend fun routeMessageThroughMemoryRouter(
@@ -921,32 +1044,6 @@ class ConversationEngineService(
             }
         }
 
-        val activeConversation = conversationService.findById(conversationId) ?: conversation
-        val messagesBeforeRecall = conversationService.loadCurrentMessages(conversationId)
-        val runtimeMemoryResult = if (automaticMemoryRecallEnabled) {
-            runCatching {
-                memoryApplicationService.buildRuntimeMemoryReadResult(
-                    conversationId = conversationId,
-                    threadId = activeConversation.currentThread,
-                    targetMessage = userMessage,
-                    threadMessages = messagesBeforeRecall,
-                    agent = agent,
-                    project = project,
-                    runtimeSystemPrompts = memorySystemPrompts,
-                    runtimeTools = memoryPipelineTools,
-                )
-            }.onFailure { error ->
-                if (error is CancellationException) {
-                    throw error
-                }
-                log.warn(error) {
-                    "Queued message memory recall failed: conversation=${conversationId.value} target=${userMessage.id.value} error=${error.message}"
-                }
-            }.getOrNull()
-        } else {
-            null
-        }
-
         if (automaticMemoryRecallEnabled) {
             val recallMessages = buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
@@ -955,9 +1052,10 @@ class ConversationEngineService(
                 arguments = buildJsonObject {
                     put("target", "previous_user_message")
                     put("target_message_id", userMessage.id.value)
-                    put("mode", "automatic_runtime_context_enrichment")
+                    put("mode", "automatic_runtime_context_enrichment_async_pending")
                 },
-                resultText = MemoryToolResultRenderer.enrichContextResultJsonString(runtimeMemoryResult)
+                resultText = MemoryToolResultRenderer.pendingEnrichContextResultJsonString(),
+                syntheticPhase = SYNTHETIC_MEMORY_PHASE_PENDING,
             )
             recallMessages.forEach { syntheticMessage ->
                 if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
@@ -1126,13 +1224,16 @@ class ConversationEngineService(
         toolName: String,
         arguments: JsonObject,
         resultText: String,
+        syntheticPhase: String = SYNTHETIC_MEMORY_PHASE_COMPLETED,
     ): List<Conversation.Message> {
+        val phaseIdSuffix = if (syntheticPhase == SYNTHETIC_MEMORY_PHASE_COMPLETED) "" else ":$syntheticPhase"
+        val phaseToolCallSuffix = if (syntheticPhase == SYNTHETIC_MEMORY_PHASE_COMPLETED) "" else "_${stableIdentifierSlug(syntheticPhase)}"
         val toolCallId = ContentItem.ToolCall.Id(
-            "mem_${stableIdentifierSlug(targetMessage.id.value)}_${stableIdentifierSlug(toolName)}"
+            "mem_${stableIdentifierSlug(targetMessage.id.value)}_${stableIdentifierSlug(toolName)}$phaseToolCallSuffix"
         )
         val createdAt = Clock.System.now()
         val toolCallMessage = Conversation.Message(
-            id = Conversation.Message.Id("${targetMessage.id.value}:memory:$toolName:call"),
+            id = Conversation.Message.Id("${targetMessage.id.value}:memory:$toolName$phaseIdSuffix:call"),
             conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
             content = listOf(
@@ -1148,13 +1249,15 @@ class ConversationEngineService(
             providerMetadata = buildJsonObject {
                 put("synthetic", true)
                 put("syntheticKind", "memory")
+                put("syntheticToolName", toolName)
+                put("syntheticPhase", syntheticPhase)
                 put("targetMessageId", targetMessage.id.value)
             },
             createdAt = createdAt,
         )
 
         val toolResultMessage = Conversation.Message(
-            id = Conversation.Message.Id("${targetMessage.id.value}:memory:$toolName:result"),
+            id = Conversation.Message.Id("${targetMessage.id.value}:memory:$toolName$phaseIdSuffix:result"),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
             content = listOf(
@@ -1169,6 +1272,8 @@ class ConversationEngineService(
             providerMetadata = buildJsonObject {
                 put("synthetic", true)
                 put("syntheticKind", "memory")
+                put("syntheticToolName", toolName)
+                put("syntheticPhase", syntheticPhase)
                 put("targetMessageId", targetMessage.id.value)
             },
             createdAt = createdAt,
@@ -1176,6 +1281,60 @@ class ConversationEngineService(
 
         return listOf(toolCallMessage, toolResultMessage)
     }
+
+    private fun List<Conversation.Message>.nextPendingMemoryRecallTarget(): Conversation.Message.Id? {
+        val completedTargets = mapNotNull { message ->
+            message.syntheticMemoryTargetIdOrNull(
+                toolName = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+                phase = SYNTHETIC_MEMORY_PHASE_COMPLETED_ASYNC,
+            )
+        }.toSet()
+        return asSequence()
+            .mapNotNull { message ->
+                message.syntheticMemoryTargetIdOrNull(
+                    toolName = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+                    phase = SYNTHETIC_MEMORY_PHASE_PENDING,
+                )
+            }
+            .firstOrNull { targetMessageId -> targetMessageId !in completedTargets }
+    }
+
+    private fun List<Conversation.Message>.hasPendingMemoryRecall(targetMessageId: Conversation.Message.Id): Boolean =
+        any { message ->
+            message.syntheticMemoryTargetIdOrNull(
+                toolName = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+                phase = SYNTHETIC_MEMORY_PHASE_PENDING,
+            ) == targetMessageId
+        }
+
+    private fun List<Conversation.Message>.hasCompletedMemoryRecall(targetMessageId: Conversation.Message.Id): Boolean =
+        any { message ->
+            message.syntheticMemoryTargetIdOrNull(
+                toolName = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+                phase = SYNTHETIC_MEMORY_PHASE_COMPLETED_ASYNC,
+            ) == targetMessageId
+        }
+
+    private fun Conversation.Message.syntheticMemoryTargetIdOrNull(
+        toolName: String,
+        phase: String,
+    ): Conversation.Message.Id? {
+        if (providerMetadata.stringValue("syntheticKind") != "memory") {
+            return null
+        }
+        if (providerMetadata.stringValue("syntheticToolName") != toolName) {
+            return null
+        }
+        if (providerMetadata.stringValue("syntheticPhase") != phase) {
+            return null
+        }
+        return providerMetadata.stringValue("targetMessageId")
+            ?.takeIf { it.isNotBlank() }
+            ?.let(Conversation.Message::Id)
+    }
+
+    private fun JsonObject.stringValue(name: String): String? =
+        (this[name] as? JsonPrimitive)?.contentOrNull
 
     private fun stableIdentifierSlug(value: String): String =
         value.filter { it.isLetterOrDigit() }.take(48).ifBlank { "x" }
