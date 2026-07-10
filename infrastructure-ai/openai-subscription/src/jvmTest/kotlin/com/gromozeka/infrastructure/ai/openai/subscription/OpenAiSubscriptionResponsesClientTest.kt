@@ -1,11 +1,13 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -15,6 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class OpenAiSubscriptionResponsesClientTest {
     @Test
@@ -83,6 +86,7 @@ class OpenAiSubscriptionResponsesClientTest {
                 conversationKey = "conversation-1",
                 requestBody = logicalRequest,
                 modelProfile = profile,
+                assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
             )
 
             assertEquals("resp_test", response.completed?.id)
@@ -99,5 +103,78 @@ class OpenAiSubscriptionResponsesClientTest {
         } finally {
             server.stop(0)
         }
+    }
+
+    @Test
+    fun sendsOnlyNewTransportItemsForStrictContinuation() {
+        val prefix = buildJsonObject {
+            put("type", JsonPrimitive("additional_tools"))
+        }
+        val firstUser = buildJsonObject {
+            put("type", JsonPrimitive("message"))
+            put("content", JsonPrimitive("first"))
+        }
+        val assistant = buildJsonObject {
+            put("type", JsonPrimitive("message"))
+            put("content", JsonPrimitive("answer"))
+        }
+        val secondUser = buildJsonObject {
+            put("type", JsonPrimitive("message"))
+            put("content", JsonPrimitive("second"))
+        }
+        val firstRequest = OpenAiSubscriptionResponsesRequest(
+            model = "gpt-5.6-luna",
+            input = listOf(prefix, firstUser),
+            tools = null,
+        )
+        val state = OpenAiSubscriptionIncrementalState()
+
+        val initialPlan = state.plan(firstRequest, transportSignature = "shape")
+        assertEquals(OpenAiSubscriptionRequestMode.FULL, initialPlan.mode)
+        assertEquals(listOf(prefix, firstUser), initialPlan.request.input)
+        assertNull(initialPlan.request.previousResponseId)
+
+        state.record(
+            transportSignature = "shape",
+            responseId = "resp-1",
+            expectedNextInputPrefix = firstRequest.input + assistant,
+        )
+        val continuation = firstRequest.copy(
+            input = firstRequest.input + assistant + secondUser,
+        )
+
+        val incrementalPlan = state.plan(continuation, transportSignature = "shape")
+        assertEquals(OpenAiSubscriptionRequestMode.INCREMENTAL, incrementalPlan.mode)
+        assertEquals(listOf(secondUser), incrementalPlan.request.input)
+        assertEquals("resp-1", incrementalPlan.request.previousResponseId)
+        assertTrue(incrementalPlan.reason.contains("strict_extension"))
+    }
+
+    @Test
+    fun sendsFullRequestWhenTransportShapeChangesOrStateIsCleared() {
+        val input = buildJsonObject {
+            put("type", JsonPrimitive("message"))
+            put("content", JsonPrimitive("first"))
+        }
+        val request = OpenAiSubscriptionResponsesRequest(
+            model = "gpt-5.6-luna",
+            input = listOf(input),
+        )
+        val state = OpenAiSubscriptionIncrementalState()
+        state.record(
+            transportSignature = "shape-1",
+            responseId = "resp-1",
+            expectedNextInputPrefix = request.input,
+        )
+
+        val changedShapePlan = state.plan(request, transportSignature = "shape-2")
+        assertEquals(OpenAiSubscriptionRequestMode.FULL, changedShapePlan.mode)
+        assertEquals("request_shape_changed", changedShapePlan.reason)
+        assertNull(changedShapePlan.request.previousResponseId)
+
+        state.clear()
+        val clearedPlan = state.plan(request, transportSignature = "shape-1")
+        assertEquals(OpenAiSubscriptionRequestMode.FULL, clearedPlan.mode)
+        assertEquals("missing_previous_response", clearedPlan.reason)
     }
 }

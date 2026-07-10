@@ -149,8 +149,7 @@ class OpenAiSubscriptionResponseMapper {
         val name = this["name"]?.jsonPrimitive?.contentOrNull
             ?: error("Function call is missing name")
         val arguments = this["arguments"]?.jsonPrimitive?.contentOrNull.orEmpty()
-        val input = runCatching { json.parseToJsonElement(arguments) }
-            .getOrElse { JsonObject(mapOf("raw" to JsonPrimitive(arguments))) }
+        val input = json.parseOpenAiSubscriptionToolArguments(arguments)
 
         return AiAssistantMessage(
             content = listOf(
@@ -277,3 +276,7 @@ class OpenAiSubscriptionResponseMapper {
     private fun JsonElement.textOrNull(): String? =
         (this as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
 }
+
+internal fun Json.parseOpenAiSubscriptionToolArguments(arguments: String): JsonElement =
+    runCatching { parseToJsonElement(arguments) }
+        .getOrElse { JsonObject(mapOf("raw" to JsonPrimitive(arguments))) }

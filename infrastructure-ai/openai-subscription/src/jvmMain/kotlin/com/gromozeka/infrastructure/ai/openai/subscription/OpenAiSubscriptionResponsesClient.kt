@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -63,6 +64,7 @@ class OpenAiSubscriptionResponsesClient(
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
         modelProfile: OpenAiSubscriptionModelProfile,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): OpenAiSubscriptionParsedResponse = withContext(Dispatchers.IO) {
         evictIdleWebSocketSessions()
 
@@ -72,6 +74,7 @@ class OpenAiSubscriptionResponsesClient(
                 conversationKey = conversationKey,
                 requestBody = requestBody,
                 modelProfile = modelProfile,
+                assistantResponseFormat = assistantResponseFormat,
             )
         }
 
@@ -160,6 +163,7 @@ class OpenAiSubscriptionResponsesClient(
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
         modelProfile: OpenAiSubscriptionModelProfile,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): OpenAiSubscriptionParsedResponse {
         val sessionState = webSocketSessions.compute(conversationKey) { _, existing ->
             existing?.takeUnless { it.isExpired(websocketIdleMs) }
@@ -178,6 +182,7 @@ class OpenAiSubscriptionResponsesClient(
             requestMapper = requestMapper,
             responseMapper = responseMapper,
             modelProfile = modelProfile,
+            assistantResponseFormat = assistantResponseFormat,
             userAgent = openAiSubscriptionUserAgent(clientVersion),
         )
     }
@@ -315,14 +320,7 @@ class OpenAiSubscriptionResponsesClient(
         @Volatile
         private var lastUsedAt: Long = System.currentTimeMillis()
 
-        @Volatile
-        private var lastTransportSignature: String? = null
-
-        @Volatile
-        private var lastResponseId: String? = null
-
-        @Volatile
-        private var expectedNextInputPrefix: List<JsonObject> = emptyList()
+        private val incrementalState = OpenAiSubscriptionIncrementalState()
 
         suspend fun execute(
             session: OpenAiSubscriptionSession,
@@ -331,41 +329,34 @@ class OpenAiSubscriptionResponsesClient(
             requestMapper: OpenAiSubscriptionRequestMapper,
             responseMapper: OpenAiSubscriptionResponseMapper,
             modelProfile: OpenAiSubscriptionModelProfile,
+            assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
             userAgent: String,
         ): OpenAiSubscriptionParsedResponse = requestMutex.withLock {
             lastUsedAt = System.currentTimeMillis()
             ensureOpen(session = session, userAgent = userAgent)
 
-            val transportSignature = requestMapper.buildTransportSignature(requestBody)
-            val plan = planRequest(
-                requestBody = requestBody,
+            val transportRequest = requestMapper.toTransportRequest(requestBody, modelProfile)
+            val transportSignature = requestMapper.buildTransportSignature(transportRequest)
+            val plan = incrementalState.plan(
+                transportRequest = transportRequest,
                 transportSignature = transportSignature,
             )
-
-            val outboundRequest = when (plan.mode) {
-                RequestMode.FULL -> requestBody.copy(previousResponseId = null)
-                RequestMode.INCREMENTAL -> requestBody.copy(
-                    input = requestBody.input.drop(expectedNextInputPrefix.size),
-                    previousResponseId = lastResponseId,
-                )
-            }
 
             log.info(
                 "OpenAI subscription websocket request: " +
                     "conversationKey=$conversationKey, mode=${plan.mode.name.lowercase()}, " +
-                    "reason=${plan.reason}, fullInputItems=${requestBody.input.size}, " +
-                    "sentInputItems=${outboundRequest.input.size}, tools=${requestBody.tools.orEmpty().size}, " +
-                    "previousResponseId=${outboundRequest.previousResponseId != null}"
+                    "reason=${plan.reason}, fullInputItems=${transportRequest.input.size}, " +
+                    "sentInputItems=${plan.request.input.size}, tools=${requestBody.tools.orEmpty().size}, " +
+                    "previousResponseId=${plan.request.previousResponseId != null}"
             )
 
             val parsed = try {
                 val coroutineContext = currentCoroutineContext()
                 sendAndAwait(
-                    requestBody = outboundRequest,
+                    requestBody = plan.request,
                     json = json,
                     responseMapper = responseMapper,
-                    requestMapper = requestMapper,
-                    modelProfile = modelProfile,
+                    useResponsesLite = modelProfile.useResponsesLite,
                     ensureActive = { coroutineContext.ensureActive() },
                 )
             } catch (error: Throwable) {
@@ -378,11 +369,16 @@ class OpenAiSubscriptionResponsesClient(
                     "OpenAI subscription websocket response completed without response id"
                 )
 
-            lastTransportSignature = transportSignature
-            lastResponseId = responseId
-            expectedNextInputPrefix = buildExpectedNextInputPrefix(
-                requestBody = requestBody,
-                replayItems = requestMapper.toReplayItems(parsed.outputItems),
+            incrementalState.record(
+                transportSignature = transportSignature,
+                responseId = responseId,
+                expectedNextInputPrefix = buildExpectedNextInputPrefix(
+                    requestBody = transportRequest,
+                    replayItems = requestMapper.toReplayItems(
+                        outputItems = parsed.outputItems,
+                        assistantResponseFormat = assistantResponseFormat,
+                    ),
+                ),
             )
             lastUsedAt = System.currentTimeMillis()
 
@@ -398,37 +394,11 @@ class OpenAiSubscriptionResponsesClient(
             webSocket?.abort()
             webSocket = null
             inboundEvents.clear()
+            incrementalState.clear()
             log.info(
                 "OpenAI subscription websocket session closed: " +
                     "conversationKey=$conversationKey, reason=$reason"
             )
-        }
-
-        private fun planRequest(
-            requestBody: OpenAiSubscriptionResponsesRequest,
-            transportSignature: String,
-        ): RequestPlan {
-            val previousResponseId = lastResponseId
-            if (previousResponseId.isNullOrBlank()) {
-                return RequestPlan(mode = RequestMode.FULL, reason = "missing_previous_response")
-            }
-
-            if (lastTransportSignature != transportSignature) {
-                return RequestPlan(mode = RequestMode.FULL, reason = "request_shape_changed")
-            }
-
-            if (!requestBody.input.startsWith(expectedNextInputPrefix)) {
-                return RequestPlan(
-                    mode = RequestMode.FULL,
-                    reason = "input_not_strict_extension@" +
-                        firstMismatchDescription(
-                            expected = expectedNextInputPrefix,
-                            actual = requestBody.input,
-                        )
-                )
-            }
-
-            return RequestPlan(mode = RequestMode.INCREMENTAL, reason = "strict_extension")
         }
 
         private fun buildExpectedNextInputPrefix(
@@ -454,26 +424,14 @@ class OpenAiSubscriptionResponsesClient(
             return requestBody.input + replayItems
         }
 
-        private fun firstMismatchDescription(
-            expected: List<JsonObject>,
-            actual: List<JsonObject>,
-        ): String {
-            val mismatchIndex = expected.indices.firstOrNull { index -> index >= actual.size || expected[index] != actual[index] }
-                ?: expected.size
-
-            val expectedType = expected.getOrNull(mismatchIndex)?.itemType() ?: "eof"
-            val actualType = actual.getOrNull(mismatchIndex)?.itemType() ?: "eof"
-
-            return "index=$mismatchIndex,expectedType=$expectedType,actualType=$actualType," +
-                "expectedSize=${expected.size},actualSize=${actual.size}"
-        }
-
         private fun ensureOpen(
             session: OpenAiSubscriptionSession,
             userAgent: String,
         ) {
             val existing = webSocket
             if (existing != null && open.get()) return
+
+            incrementalState.clear()
 
             inboundEvents.clear()
             val listener = object : WebSocket.Listener {
@@ -549,8 +507,7 @@ class OpenAiSubscriptionResponsesClient(
             requestBody: OpenAiSubscriptionResponsesRequest,
             json: Json,
             responseMapper: OpenAiSubscriptionResponseMapper,
-            requestMapper: OpenAiSubscriptionRequestMapper,
-            modelProfile: OpenAiSubscriptionModelProfile,
+            useResponsesLite: Boolean,
             ensureActive: () -> Unit,
         ): OpenAiSubscriptionParsedResponse {
             val socket = webSocket
@@ -563,12 +520,11 @@ class OpenAiSubscriptionResponsesClient(
                 log = log,
             )
 
-            val transportRequest = requestMapper.toTransportRequest(requestBody, modelProfile)
             val payload = json.encodeToString(
                 OpenAiSubscriptionResponsesWebSocketRequest.serializer(),
                 OpenAiSubscriptionResponsesWebSocketRequest.from(
-                    request = transportRequest,
-                    useResponsesLite = modelProfile.useResponsesLite,
+                    request = requestBody,
+                    useResponsesLite = useResponsesLite,
                 ),
             )
 
@@ -666,11 +622,6 @@ class OpenAiSubscriptionResponsesClient(
             )
         }
 
-        private fun List<JsonObject>.startsWith(prefix: List<JsonObject>): Boolean {
-            if (prefix.size > size) return false
-            return indices.take(prefix.size).all { index -> this[index] == prefix[index] }
-        }
-
         private fun JsonObject.isCompactionItem(): Boolean {
             return itemType() in setOf("compaction", "compaction_summary")
         }
@@ -683,16 +634,106 @@ class OpenAiSubscriptionResponsesClient(
             return this["type"]?.jsonPrimitive?.contentOrNull ?: "unknown"
         }
 
-        private data class RequestPlan(
-            val mode: RequestMode,
-            val reason: String,
-        )
-
-        private enum class RequestMode {
-            FULL,
-            INCREMENTAL,
-        }
     }
+}
+
+internal class OpenAiSubscriptionIncrementalState {
+    private var lastTransportSignature: String? = null
+    private var lastResponseId: String? = null
+    private var expectedNextInputPrefix: List<JsonObject> = emptyList()
+
+    @Synchronized
+    fun plan(
+        transportRequest: OpenAiSubscriptionResponsesRequest,
+        transportSignature: String,
+    ): OpenAiSubscriptionRequestPlan {
+        val fullRequest = transportRequest.copy(previousResponseId = null)
+        val previousResponseId = lastResponseId
+        if (previousResponseId.isNullOrBlank()) {
+            return OpenAiSubscriptionRequestPlan(
+                request = fullRequest,
+                mode = OpenAiSubscriptionRequestMode.FULL,
+                reason = "missing_previous_response",
+            )
+        }
+
+        if (lastTransportSignature != transportSignature) {
+            return OpenAiSubscriptionRequestPlan(
+                request = fullRequest,
+                mode = OpenAiSubscriptionRequestMode.FULL,
+                reason = "request_shape_changed",
+            )
+        }
+
+        if (!transportRequest.input.startsWith(expectedNextInputPrefix)) {
+            return OpenAiSubscriptionRequestPlan(
+                request = fullRequest,
+                mode = OpenAiSubscriptionRequestMode.FULL,
+                reason = "input_not_strict_extension@" + firstMismatchDescription(
+                    expected = expectedNextInputPrefix,
+                    actual = transportRequest.input,
+                ),
+            )
+        }
+
+        return OpenAiSubscriptionRequestPlan(
+            request = transportRequest.copy(
+                input = transportRequest.input.drop(expectedNextInputPrefix.size),
+                previousResponseId = previousResponseId,
+            ),
+            mode = OpenAiSubscriptionRequestMode.INCREMENTAL,
+            reason = "strict_extension",
+        )
+    }
+
+    @Synchronized
+    fun record(
+        transportSignature: String,
+        responseId: String,
+        expectedNextInputPrefix: List<JsonObject>,
+    ) {
+        lastTransportSignature = transportSignature
+        lastResponseId = responseId
+        this.expectedNextInputPrefix = expectedNextInputPrefix
+    }
+
+    @Synchronized
+    fun clear() {
+        lastTransportSignature = null
+        lastResponseId = null
+        expectedNextInputPrefix = emptyList()
+    }
+
+    private fun List<JsonObject>.startsWith(prefix: List<JsonObject>): Boolean {
+        if (prefix.size > size) return false
+        return prefix.indices.all { index -> this[index] == prefix[index] }
+    }
+
+    private fun firstMismatchDescription(
+        expected: List<JsonObject>,
+        actual: List<JsonObject>,
+    ): String {
+        val mismatchIndex = expected.indices.firstOrNull { index -> index >= actual.size || expected[index] != actual[index] }
+            ?: expected.size
+        val expectedType = expected.getOrNull(mismatchIndex)?.itemType() ?: "eof"
+        val actualType = actual.getOrNull(mismatchIndex)?.itemType() ?: "eof"
+        return "index=$mismatchIndex,expectedType=$expectedType,actualType=$actualType," +
+            "expectedSize=${expected.size},actualSize=${actual.size}"
+    }
+
+    private fun JsonObject.itemType(): String =
+        this["type"]?.jsonPrimitive?.contentOrNull ?: "unknown"
+}
+
+internal data class OpenAiSubscriptionRequestPlan(
+    val request: OpenAiSubscriptionResponsesRequest,
+    val mode: OpenAiSubscriptionRequestMode,
+    val reason: String,
+)
+
+internal enum class OpenAiSubscriptionRequestMode {
+    FULL,
+    INCREMENTAL,
 }
 
 private const val WEBSOCKET_RESPONSE_POLL_SLICE_MS = 1_000L

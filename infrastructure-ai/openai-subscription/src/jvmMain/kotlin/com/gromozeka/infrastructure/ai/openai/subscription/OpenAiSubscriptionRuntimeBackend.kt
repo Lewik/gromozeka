@@ -88,6 +88,7 @@ private class Runtime(
                 conversationKey = conversationKey,
                 requestBody = requestBody,
                 modelProfile = modelProfile,
+                assistantResponseFormat = request.options.assistantResponseFormat,
             )
             responseMapper.toRuntimeResponse(
                 outputItems = parsed.outputItems,

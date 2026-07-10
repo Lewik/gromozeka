@@ -2,12 +2,14 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import klog.KLoggers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -130,8 +132,13 @@ class OpenAiSubscriptionRequestMapper {
         return json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), normalized)
     }
 
-    fun toReplayItems(outputItems: List<JsonObject>): List<JsonObject> {
-        return outputItems.flatMap(::normalizeReplayItem)
+    fun toReplayItems(
+        outputItems: List<JsonObject>,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): List<JsonObject> {
+        return outputItems.flatMap { item ->
+            normalizeReplayItem(item, assistantResponseFormat)
+        }
     }
 
     private fun toInputItems(
@@ -517,22 +524,30 @@ class OpenAiSubscriptionRequestMapper {
         }
     }
 
-    private fun normalizeReplayItem(item: JsonObject): List<JsonObject> {
+    private fun normalizeReplayItem(
+        item: JsonObject,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): List<JsonObject> {
         return when (item["type"]?.jsonPrimitive?.contentOrNull) {
-            "message" -> item.toReplayMessageItems()
+            "message" -> item.toReplayMessageItems(assistantResponseFormat)
             "function_call" -> listOfNotNull(item.toReplayFunctionCallItem())
             "reasoning", "compaction", "compaction_summary" -> listOfNotNull(item.toReplayReasoningItem())
             else -> emptyList()
         }
     }
 
-    private fun JsonObject.toReplayMessageItems(): List<JsonObject> {
+    private fun JsonObject.toReplayMessageItems(
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): List<JsonObject> {
         if (this["role"]?.jsonPrimitive?.contentOrNull != "assistant") return emptyList()
 
         val text = buildList {
             when (val content = this@toReplayMessageItems["content"]) {
                 is JsonPrimitive -> {
-                    content.contentOrNull?.trim()?.takeIf { it.isNotBlank() }?.let(::add)
+                    content.contentOrNull
+                        ?.toCanonicalAssistantText(assistantResponseFormat)
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let(::add)
                 }
 
                 is JsonArray -> {
@@ -540,7 +555,8 @@ class OpenAiSubscriptionRequestMapper {
                         val partObject = part as? JsonObject ?: return@forEach
                         when (partObject["type"]?.jsonPrimitive?.contentOrNull) {
                             "output_text", "text" -> {
-                                partObject["text"]?.jsonPrimitive?.contentOrNull?.trim()
+                                partObject["text"]?.jsonPrimitive?.contentOrNull
+                                    ?.toCanonicalAssistantText(assistantResponseFormat)
                                     ?.takeIf { it.isNotBlank() }
                                     ?.let(::add)
                             }
@@ -577,9 +593,15 @@ class OpenAiSubscriptionRequestMapper {
         return functionCallItem(
             callId = callId,
             name = name,
-            arguments = arguments,
+            arguments = json.parseOpenAiSubscriptionToolArguments(arguments).toString(),
         )
     }
+
+    private fun String.toCanonicalAssistantText(
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): String = AssistantResponseParser.parse(this.trim(), assistantResponseFormat)
+        .fullText
+        .trim()
 
     private fun JsonObject.toReplayReasoningItem(): JsonObject? {
         val type = this["type"]?.jsonPrimitive?.contentOrNull ?: return null

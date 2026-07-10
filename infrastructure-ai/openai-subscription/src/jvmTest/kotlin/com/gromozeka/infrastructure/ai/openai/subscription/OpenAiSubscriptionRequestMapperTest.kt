@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -10,8 +11,11 @@ import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -273,6 +277,95 @@ class OpenAiSubscriptionRequestMapperTest {
         assertEquals(1, transportRequest.tools.orEmpty().size)
         assertTrue(transportRequest.parallelToolCalls)
         assertFalse(transportRequest.input.any { it.string("type") == "additional_tools" })
+    }
+
+    @Test
+    fun normalizesStructuredOutputToThePersistedAssistantReplayProjection() {
+        val structured = Conversation.Message.StructuredText(
+            fullText = "Visible answer",
+            ttsText = "Spoken answer",
+            voiceTone = "warm",
+        )
+        val persistedMessage = Conversation.Message(
+            id = Conversation.Message.Id("assistant"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(
+                Conversation.Message.ContentItem.AssistantMessage(structured = structured)
+            ),
+            providerMetadata = buildJsonObject { put("phase", "final_answer") },
+            createdAt = createdAt,
+        )
+        val persistedReplayItem = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = listOf(persistedMessage),
+            ),
+            modelName = "gpt-5.6-luna",
+            conversationKey = "test-conversation",
+        ).input.single()
+        val rawOutputItem = buildJsonObject {
+            put("type", "message")
+            put("role", "assistant")
+            put("phase", "final_answer")
+            put("content", buildJsonArray {
+                add(buildJsonObject {
+                    put("type", "output_text")
+                    put("text", Json.encodeToString(structured))
+                })
+            })
+        }
+
+        val responseReplayItem = mapper.toReplayItems(
+            outputItems = listOf(rawOutputItem),
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
+        ).single()
+
+        assertEquals(persistedReplayItem, responseReplayItem)
+        assertEquals("Visible answer", responseReplayItem.string("content"))
+    }
+
+    @Test
+    fun normalizesToolArgumentsToThePersistedToolCallProjection() {
+        val toolCall = Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("call-1"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = "test_tool",
+                input = buildJsonObject {
+                    put("first", 1)
+                    put("second", "two")
+                },
+            ),
+        )
+        val persistedMessage = Conversation.Message(
+            id = Conversation.Message.Id("assistant-tool"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(toolCall),
+            createdAt = createdAt,
+        )
+        val persistedReplayItem = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = listOf(persistedMessage),
+            ),
+            modelName = "gpt-5.5",
+            conversationKey = "test-conversation",
+        ).input.single()
+        val rawOutputItem = buildJsonObject {
+            put("type", "function_call")
+            put("call_id", "call-1")
+            put("name", "test_tool")
+            put("arguments", "{ \"first\" : 1, \"second\" : \"two\" }")
+        }
+
+        val responseReplayItem = mapper.toReplayItems(
+            outputItems = listOf(rawOutputItem),
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+        ).single()
+
+        assertEquals(persistedReplayItem, responseReplayItem)
+        assertEquals("{\"first\":1,\"second\":\"two\"}", responseReplayItem.string("arguments"))
     }
 
     @Test
