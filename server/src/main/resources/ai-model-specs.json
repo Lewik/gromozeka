@@ -245,12 +245,45 @@
     }
   },
   {
+    "id": "gpt-5.6-sol",
+    "provider": "OPENAI",
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 372000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
+    }
+  },
+  {
+    "id": "gpt-5.6-terra",
+    "provider": "OPENAI",
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 372000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
+    }
+  },
+  {
+    "id": "gpt-5.6-luna",
+    "provider": "OPENAI",
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 372000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
+    }
+  },
+  {
     "id": "gpt-5.5",
     "provider": "OPENAI",
     "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
-        "contextWindowTokens": 1050000,
+        "contextWindowTokens": 272000,
         "maxOutputTokens": 128000,
         "autoCompaction": { "type": "percent", "value": 80 }
       }

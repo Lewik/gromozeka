@@ -13,7 +13,7 @@ class AiModelSpecConfigurationTest {
         val spec = provider.find(AiProvider.OPENAI, "gpt-5.5")
 
         assertNotNull(spec)
-        assertEquals(1_050_000, spec.contextWindowTokens)
-        assertEquals(840_000, spec.autoCompactionThresholdTokens)
+        assertEquals(272_000, spec.contextWindowTokens)
+        assertEquals(217_600, spec.autoCompactionThresholdTokens)
     }
 }

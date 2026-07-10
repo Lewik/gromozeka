@@ -2,6 +2,8 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -19,7 +21,9 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
     private val mapper = OpenAiSubscriptionRequestMapper()
@@ -144,7 +148,7 @@ class OpenAiSubscriptionRequestMapperTest {
         assertEquals("default", request.serviceTier)
         assertEquals(
             "default",
-            OpenAiSubscriptionResponsesWebSocketRequest.from(request).serviceTier,
+            OpenAiSubscriptionResponsesWebSocketRequest.from(request, useResponsesLite = false).serviceTier,
         )
     }
 
@@ -175,7 +179,7 @@ class OpenAiSubscriptionRequestMapperTest {
             conversationKey = "test-conversation",
         )
 
-        assertEquals(1, request.tools.size)
+        assertEquals(1, request.tools.orEmpty().size)
     }
 
     @Test
@@ -206,6 +210,98 @@ class OpenAiSubscriptionRequestMapperTest {
         )
 
         assertEquals(emptyList(), request.input)
+    }
+
+    @Test
+    fun framesResponsesLiteToolsAndInstructionsInsideInput() {
+        val profile = modelProfile(slug = "gpt-5.6-sol", useResponsesLite = true)
+        val logicalRequest = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = listOf("Base instructions"),
+                messages = emptyList(),
+                tools = listOf(testTool("memory_remember")),
+                options = AiRuntimeOptions(
+                    reasoning = AiReasoningConfig(effort = AiReasoningEffort.HIGH),
+                    autoCompactionThresholdTokens = 297_600,
+                ),
+            ),
+            modelProfile = profile,
+            conversationKey = "test-conversation",
+        )
+
+        val transportRequest = mapper.toTransportRequest(logicalRequest, profile)
+
+        assertNull(transportRequest.instructions)
+        assertNull(transportRequest.tools)
+        assertNull(transportRequest.contextManagement)
+        assertFalse(transportRequest.parallelToolCalls)
+        assertEquals("additional_tools", transportRequest.input[0].string("type"))
+        assertEquals("developer", transportRequest.input[0].string("role"))
+        assertEquals(1, transportRequest.input[0].jsonArray("tools").size)
+        assertEquals("message", transportRequest.input[1].string("type"))
+        assertEquals("developer", transportRequest.input[1].string("role"))
+        assertEquals("all_turns", transportRequest.reasoning?.string("context"))
+        assertEquals(listOf("reasoning.encrypted_content"), transportRequest.include)
+
+        val websocketRequest = OpenAiSubscriptionResponsesWebSocketRequest.from(
+            request = transportRequest,
+            useResponsesLite = true,
+        )
+        assertEquals(
+            "true",
+            websocketRequest.clientMetadata
+                ?.get("ws_request_header_x_openai_internal_codex_responses_lite"),
+        )
+    }
+
+    @Test
+    fun keepsNormalResponsesToolsAndInstructionsAtTopLevel() {
+        val profile = modelProfile(slug = "gpt-5.5")
+        val logicalRequest = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = listOf("Base instructions"),
+                messages = emptyList(),
+                tools = listOf(testTool("memory_remember")),
+            ),
+            modelProfile = profile,
+            conversationKey = "test-conversation",
+        )
+
+        val transportRequest = mapper.toTransportRequest(logicalRequest, profile)
+
+        assertEquals("Base instructions", transportRequest.instructions)
+        assertEquals(1, transportRequest.tools.orEmpty().size)
+        assertTrue(transportRequest.parallelToolCalls)
+        assertFalse(transportRequest.input.any { it.string("type") == "additional_tools" })
+    }
+
+    @Test
+    fun mapsMaximumReasoningToHighestSupportedNonUltraEffort() {
+        val request = AiRuntimeRequest(
+            systemPrompts = emptyList(),
+            messages = emptyList(),
+            options = AiRuntimeOptions(
+                reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX),
+            ),
+        )
+
+        val gpt55 = mapper.toRequest(
+            request = request,
+            modelProfile = modelProfile(slug = "gpt-5.5"),
+            conversationKey = "test-conversation",
+        )
+        val gpt56 = mapper.toRequest(
+            request = request,
+            modelProfile = modelProfile(
+                slug = "gpt-5.6-sol",
+                useResponsesLite = true,
+                supportedReasoningEfforts = listOf("low", "medium", "high", "xhigh", "max", "ultra"),
+            ),
+            conversationKey = "test-conversation",
+        )
+
+        assertEquals("xhigh", assertNotNull(gpt55.reasoning).string("effort"))
+        assertEquals("max", assertNotNull(gpt56.reasoning).string("effort"))
     }
 
     private fun assistantCompactionMessage(
@@ -314,3 +410,27 @@ class OpenAiSubscriptionRequestMapperTest {
     private fun JsonObject.jsonArray(key: String): JsonArray =
         this.getValue(key).jsonArray
 }
+
+private fun OpenAiSubscriptionRequestMapper.toRequest(
+    request: AiRuntimeRequest,
+    modelName: String,
+    conversationKey: String,
+): OpenAiSubscriptionResponsesRequest = toRequest(
+    request = request,
+    modelProfile = modelProfile(slug = modelName),
+    conversationKey = conversationKey,
+)
+
+private fun modelProfile(
+    slug: String,
+    useResponsesLite: Boolean = false,
+    supportedReasoningEfforts: List<String> = listOf("low", "medium", "high", "xhigh"),
+): OpenAiSubscriptionModelProfile = OpenAiSubscriptionModelProfile(
+    slug = slug,
+    useResponsesLite = useResponsesLite,
+    supportsReasoningSummaries = true,
+    supportedReasoningEfforts = supportedReasoningEfforts,
+    supportsVerbosity = true,
+    defaultVerbosity = "low",
+    supportsParallelToolCalls = true,
+)

@@ -40,7 +40,7 @@ class OpenAiSubscriptionRequestMapper {
 
     fun toRequest(
         request: AiRuntimeRequest,
-        modelName: String,
+        modelProfile: OpenAiSubscriptionModelProfile,
         conversationKey: String,
     ): OpenAiSubscriptionResponsesRequest {
         val replayWindow = request.messages.toReplayWindow()
@@ -56,15 +56,18 @@ class OpenAiSubscriptionRequestMapper {
             )
         }.dropOrphanFunctionCallOutputs(conversationKey)
         val instructions = request.systemPrompts.joinToString("\n\n").trim().ifBlank { null }
+        val reasoning = buildReasoning(request.options.reasoning, modelProfile)
         val requestPayload = OpenAiSubscriptionResponsesRequest(
-            model = modelName,
+            model = modelProfile.slug,
             input = inputItems,
             instructions = instructions,
             contextManagement = buildContextManagement(request.options.autoCompactionThresholdTokens),
+            parallelToolCalls = modelProfile.supportsParallelToolCalls && !modelProfile.useResponsesLite,
             tools = effectiveTools.map { tool -> tool.toToolJson() },
             toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { effectiveTools.isNotEmpty() },
-            text = buildTextConfig(request.options.responseFormat),
-            reasoning = buildReasoning(request.options.reasoning),
+            include = if (reasoning == null) emptyList() else listOf("reasoning.encrypted_content"),
+            text = buildTextConfig(request.options.responseFormat, modelProfile),
+            reasoning = reasoning,
             serviceTier = buildServiceTier(request),
             promptCacheKey = conversationKey,
         )
@@ -78,6 +81,44 @@ class OpenAiSubscriptionRequestMapper {
         )
 
         return requestPayload
+    }
+
+    fun toTransportRequest(
+        request: OpenAiSubscriptionResponsesRequest,
+        modelProfile: OpenAiSubscriptionModelProfile,
+    ): OpenAiSubscriptionResponsesRequest {
+        if (!modelProfile.useResponsesLite) return request
+
+        val prefix = buildList {
+            add(
+                buildJsonObject {
+                    put("type", "additional_tools")
+                    put("role", "developer")
+                    put("tools", JsonArray(request.tools.orEmpty()))
+                }
+            )
+            request.instructions?.takeIf { it.isNotBlank() }?.let { instructions ->
+                add(
+                    messageItem(
+                        role = "developer",
+                        content = buildJsonArray { add(inputTextItem(instructions)) },
+                    )
+                )
+            }
+        }
+
+        val reasoning = request.reasoning?.let { current ->
+            JsonObject(current + ("context" to JsonPrimitive("all_turns")))
+        }
+
+        return request.copy(
+            input = prefix + request.input,
+            instructions = null,
+            contextManagement = null,
+            parallelToolCalls = false,
+            tools = null,
+            reasoning = reasoning,
+        )
     }
 
     fun buildTransportSignature(request: OpenAiSubscriptionResponsesRequest): String {
@@ -282,9 +323,14 @@ class OpenAiSubscriptionRequestMapper {
             .ifBlank { null }
     }
 
-    private fun buildTextConfig(responseFormat: AiResponseFormat): JsonObject {
+    private fun buildTextConfig(
+        responseFormat: AiResponseFormat,
+        modelProfile: OpenAiSubscriptionModelProfile,
+    ): JsonObject {
         return buildJsonObject {
-            put("verbosity", "medium")
+            if (modelProfile.supportsVerbosity) {
+                modelProfile.defaultVerbosity?.let { put("verbosity", it) }
+            }
             when (responseFormat) {
                 AiResponseFormat.Text -> Unit
                 is AiResponseFormat.JsonSchema -> putJsonObject("format") {
@@ -308,18 +354,29 @@ class OpenAiSubscriptionRequestMapper {
         )
     }
 
-    private fun buildReasoning(reasoning: AiReasoningConfig?): JsonObject? {
-        val effort = when (reasoning?.effort) {
+    private fun buildReasoning(
+        reasoning: AiReasoningConfig?,
+        modelProfile: OpenAiSubscriptionModelProfile,
+    ): JsonObject? {
+        val requestedEffort = when (reasoning?.effort) {
             AiReasoningEffort.LOW -> "low"
             AiReasoningEffort.MEDIUM -> "medium"
             AiReasoningEffort.HIGH -> "high"
-            AiReasoningEffort.MAX -> "xhigh"
+            AiReasoningEffort.MAX -> MAX_REASONING_EFFORTS.firstOrNull {
+                it in modelProfile.supportedReasoningEfforts
+            } ?: error("Model ${modelProfile.slug} does not support a maximum reasoning effort")
             null -> null
         } ?: return null
 
+        require(requestedEffort in modelProfile.supportedReasoningEfforts) {
+            "Model ${modelProfile.slug} does not support reasoning effort $requestedEffort"
+        }
+
         return buildJsonObject {
-            put("effort", effort)
-            put("summary", "detailed")
+            put("effort", requestedEffort)
+            if (modelProfile.supportsReasoningSummaries) {
+                put("summary", "detailed")
+            }
         }
     }
 
@@ -718,3 +775,5 @@ class OpenAiSubscriptionRequestMapper {
         val trimmedMessageCount: Int,
     )
 }
+
+private val MAX_REASONING_EFFORTS = listOf("max", "xhigh", "high", "medium", "low")

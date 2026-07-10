@@ -65,10 +65,10 @@ data class OpenAiSubscriptionResponsesRequest(
     val contextManagement: List<JsonObject>? = null,
     @SerialName("parallel_tool_calls")
     val parallelToolCalls: Boolean = true,
-    val tools: List<JsonObject> = emptyList(),
+    val tools: List<JsonObject>? = emptyList(),
     @SerialName("tool_choice")
     val toolChoice: JsonElement? = null,
-    val include: List<String> = listOf("reasoning.encrypted_content"),
+    val include: List<String> = emptyList(),
     val text: JsonObject? = null,
     val reasoning: JsonObject? = null,
     @SerialName("service_tier")
@@ -91,19 +91,24 @@ data class OpenAiSubscriptionResponsesWebSocketRequest(
     val contextManagement: List<JsonObject>? = null,
     @SerialName("parallel_tool_calls")
     val parallelToolCalls: Boolean = true,
-    val tools: List<JsonObject> = emptyList(),
+    val tools: List<JsonObject>? = emptyList(),
     @SerialName("tool_choice")
     val toolChoice: JsonElement? = null,
-    val include: List<String> = listOf("reasoning.encrypted_content"),
+    val include: List<String> = emptyList(),
     val text: JsonObject? = null,
     val reasoning: JsonObject? = null,
     @SerialName("service_tier")
     val serviceTier: String? = null,
     @SerialName("prompt_cache_key")
     val promptCacheKey: String? = null,
+    @SerialName("client_metadata")
+    val clientMetadata: Map<String, String>? = null,
 ) {
     companion object {
-        fun from(request: OpenAiSubscriptionResponsesRequest): OpenAiSubscriptionResponsesWebSocketRequest {
+        fun from(
+            request: OpenAiSubscriptionResponsesRequest,
+            useResponsesLite: Boolean,
+        ): OpenAiSubscriptionResponsesWebSocketRequest {
             return OpenAiSubscriptionResponsesWebSocketRequest(
                 model = request.model,
                 input = request.input,
@@ -120,6 +125,11 @@ data class OpenAiSubscriptionResponsesWebSocketRequest(
                 reasoning = request.reasoning,
                 serviceTier = request.serviceTier,
                 promptCacheKey = request.promptCacheKey,
+                clientMetadata = if (useResponsesLite) {
+                    mapOf("ws_request_header_x_openai_internal_codex_responses_lite" to "true")
+                } else {
+                    null
+                },
             )
         }
     }

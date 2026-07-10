@@ -17,6 +17,7 @@ import java.util.UUID
 @Service
 class OpenAiSubscriptionRuntimeBackend(
     private val authService: OpenAiSubscriptionAuthService,
+    private val modelsClient: OpenAiSubscriptionModelsClient,
     private val responsesClient: OpenAiSubscriptionResponsesClient,
     private val requestMapper: OpenAiSubscriptionRequestMapper,
     private val responseMapper: OpenAiSubscriptionResponseMapper,
@@ -35,6 +36,7 @@ class OpenAiSubscriptionRuntimeBackend(
             modelConfigurationId = modelConfiguration.id.value,
             modelName = modelConfiguration.providerModelId,
             authService = authService,
+            modelsClient = modelsClient,
             responsesClient = responsesClient,
             requestMapper = requestMapper,
             responseMapper = responseMapper,
@@ -47,6 +49,7 @@ private class Runtime(
     private val modelConfigurationId: String,
     private val modelName: String,
     private val authService: OpenAiSubscriptionAuthService,
+    private val modelsClient: OpenAiSubscriptionModelsClient,
     private val responsesClient: OpenAiSubscriptionResponsesClient,
     private val requestMapper: OpenAiSubscriptionRequestMapper,
     private val responseMapper: OpenAiSubscriptionResponseMapper,
@@ -73,17 +76,18 @@ private class Runtime(
         val conversationKey = rawConversationKey.toOpenAiSubscriptionKey()
         val promptCacheKey = (request.options.toolContext["promptCacheKey"] as? String ?: rawConversationKey)
             .toOpenAiSubscriptionKey()
-        val requestBody = requestMapper.toRequest(
-            request = request,
-            modelName = modelName,
-            conversationKey = promptCacheKey,
-        )
-
         try {
+            val modelProfile = modelsClient.getProfile(session, modelName)
+            val requestBody = requestMapper.toRequest(
+                request = request,
+                modelProfile = modelProfile,
+                conversationKey = promptCacheKey,
+            )
             val parsed = responsesClient.create(
                 session = session,
                 conversationKey = conversationKey,
                 requestBody = requestBody,
+                modelProfile = modelProfile,
             )
             responseMapper.toRuntimeResponse(
                 outputItems = parsed.outputItems,

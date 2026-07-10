@@ -16,7 +16,7 @@ object UserProfileAiDefaults {
     )
 
     fun runtimeAssignments(): List<AiRuntimeAssignment> = listOf(
-        assignment(AiRuntimeAssignment.Purpose.DEFAULT_CHAT, "openai-subscription-gpt-5.5"),
+        assignment(AiRuntimeAssignment.Purpose.DEFAULT_CHAT, "openai-subscription-gpt-5.6-luna"),
         assignment(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_READ, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_WRITE, "openai-subscription-gpt-5.5"),
@@ -60,6 +60,24 @@ object UserProfileAiDefaults {
             connectionId = AiConnection.Id("openai-subscription"),
             providerModelId = "gpt-5.5",
             displayName = "GPT-5.5 subscription",
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("openai-subscription-gpt-5.6-sol"),
+            connectionId = AiConnection.Id("openai-subscription"),
+            providerModelId = "gpt-5.6-sol",
+            displayName = "GPT-5.6 Sol subscription",
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("openai-subscription-gpt-5.6-terra"),
+            connectionId = AiConnection.Id("openai-subscription"),
+            providerModelId = "gpt-5.6-terra",
+            displayName = "GPT-5.6 Terra subscription",
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("openai-subscription-gpt-5.6-luna"),
+            connectionId = AiConnection.Id("openai-subscription"),
+            providerModelId = "gpt-5.6-luna",
+            displayName = "GPT-5.6 Luna subscription",
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("anthropic-sonnet-4.7"),
@@ -129,7 +147,10 @@ object UserProfileAiDefaults {
     )
 
     fun modelSpecs(): List<AiModelSpec> = listOf(
-        textGenerationSpec(AiProvider.OPENAI, "gpt-5.5", contextWindowTokens = 1_050_000, maxOutputTokens = 128_000),
+        textGenerationSpec(AiProvider.OPENAI, "gpt-5.6-sol", contextWindowTokens = 372_000),
+        textGenerationSpec(AiProvider.OPENAI, "gpt-5.6-terra", contextWindowTokens = 372_000),
+        textGenerationSpec(AiProvider.OPENAI, "gpt-5.6-luna", contextWindowTokens = 372_000),
+        textGenerationSpec(AiProvider.OPENAI, "gpt-5.5", contextWindowTokens = 272_000, maxOutputTokens = 128_000),
         textGenerationSpec(AiProvider.OPENAI, "gpt-5.4", contextWindowTokens = 400_000, maxOutputTokens = 128_000),
         textGenerationSpec(AiProvider.OPENAI, "gpt-5.4-mini", contextWindowTokens = 400_000, maxOutputTokens = 128_000),
         textGenerationSpec(AiProvider.OPENAI, "gpt-5.2", contextWindowTokens = 400_000),

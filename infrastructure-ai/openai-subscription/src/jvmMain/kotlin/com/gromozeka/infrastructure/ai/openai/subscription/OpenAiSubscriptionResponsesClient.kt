@@ -34,8 +34,10 @@ import kotlinx.coroutines.sync.withLock
 class OpenAiSubscriptionResponsesClient(
     private val responseMapper: OpenAiSubscriptionResponseMapper,
     private val requestMapper: OpenAiSubscriptionRequestMapper,
-    @Value("\${gromozeka.ai.openai-subscription.responses-url:https://chatgpt.com/backend-api/codex/responses}")
-    private val responsesUrl: String,
+    @Value("\${gromozeka.ai.openai-subscription.base-url:https://chatgpt.com/backend-api/codex}")
+    private val baseUrl: String,
+    @Value("\${gromozeka.ai.openai-subscription.client-version:1.4.9}")
+    private val clientVersion: String,
     @Value("\${gromozeka.ai.openai-subscription.websocket-idle-ms:300000}")
     private val websocketIdleMs: Long,
     @Value("\${gromozeka.ai.openai-subscription.websocket-response-timeout-ms:1200000}")
@@ -52,6 +54,7 @@ class OpenAiSubscriptionResponsesClient(
         explicitNulls = false
     }
     private val httpClient = HttpClient.newBuilder().build()
+    private val responsesUrl = "${baseUrl.trimEnd('/')}/responses"
     private val websocketUrl = responsesUrl.toWebSocketUrl()
     private val webSocketSessions = ConcurrentHashMap<String, WebSocketSessionState>()
 
@@ -59,6 +62,7 @@ class OpenAiSubscriptionResponsesClient(
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
+        modelProfile: OpenAiSubscriptionModelProfile,
     ): OpenAiSubscriptionParsedResponse = withContext(Dispatchers.IO) {
         evictIdleWebSocketSessions()
 
@@ -67,6 +71,7 @@ class OpenAiSubscriptionResponsesClient(
                 session = session,
                 conversationKey = conversationKey,
                 requestBody = requestBody,
+                modelProfile = modelProfile,
             )
         }
 
@@ -97,6 +102,7 @@ class OpenAiSubscriptionResponsesClient(
             session = session,
             conversationKey = conversationKey,
             requestBody = requestBody,
+            modelProfile = modelProfile,
         )
     }
 
@@ -104,14 +110,16 @@ class OpenAiSubscriptionResponsesClient(
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
+        modelProfile: OpenAiSubscriptionModelProfile,
     ): OpenAiSubscriptionParsedResponse {
-        val requestJson = json.encodeToString(requestBody)
+        val transportRequest = requestMapper.toTransportRequest(requestBody, modelProfile)
+        val requestJson = json.encodeToString(transportRequest)
         val requestBuilder = HttpRequest.newBuilder()
             .uri(URI.create(responsesUrl))
             .timeout(Duration.ofMillis(httpResponseTimeoutMs.coerceAtLeast(1L)))
             .header("Authorization", "Bearer ${session.accessToken}")
-            .header("OpenAI-Beta", "responses=experimental")
-            .header("originator", "gromozeka")
+            .header("originator", OPENAI_SUBSCRIPTION_ORIGINATOR)
+            .header("User-Agent", openAiSubscriptionUserAgent(clientVersion))
             .header("session_id", conversationKey)
             .header("conversation_id", conversationKey)
             .header("Accept", "text/event-stream")
@@ -119,6 +127,9 @@ class OpenAiSubscriptionResponsesClient(
             .POST(HttpRequest.BodyPublishers.ofString(requestJson))
 
         session.accountId?.let { requestBuilder.header("ChatGPT-Account-Id", it) }
+        if (modelProfile.useResponsesLite) {
+            requestBuilder.header("x-openai-internal-codex-responses-lite", "true")
+        }
 
         val response = httpClient
             .sendAsync(
@@ -148,6 +159,7 @@ class OpenAiSubscriptionResponsesClient(
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
+        modelProfile: OpenAiSubscriptionModelProfile,
     ): OpenAiSubscriptionParsedResponse {
         val sessionState = webSocketSessions.compute(conversationKey) { _, existing ->
             existing?.takeUnless { it.isExpired(websocketIdleMs) }
@@ -165,6 +177,8 @@ class OpenAiSubscriptionResponsesClient(
             json = json,
             requestMapper = requestMapper,
             responseMapper = responseMapper,
+            modelProfile = modelProfile,
+            userAgent = openAiSubscriptionUserAgent(clientVersion),
         )
     }
 
@@ -316,9 +330,11 @@ class OpenAiSubscriptionResponsesClient(
             json: Json,
             requestMapper: OpenAiSubscriptionRequestMapper,
             responseMapper: OpenAiSubscriptionResponseMapper,
+            modelProfile: OpenAiSubscriptionModelProfile,
+            userAgent: String,
         ): OpenAiSubscriptionParsedResponse = requestMutex.withLock {
             lastUsedAt = System.currentTimeMillis()
-            ensureOpen(session = session)
+            ensureOpen(session = session, userAgent = userAgent)
 
             val transportSignature = requestMapper.buildTransportSignature(requestBody)
             val plan = planRequest(
@@ -338,7 +354,7 @@ class OpenAiSubscriptionResponsesClient(
                 "OpenAI subscription websocket request: " +
                     "conversationKey=$conversationKey, mode=${plan.mode.name.lowercase()}, " +
                     "reason=${plan.reason}, fullInputItems=${requestBody.input.size}, " +
-                    "sentInputItems=${outboundRequest.input.size}, tools=${requestBody.tools.size}, " +
+                    "sentInputItems=${outboundRequest.input.size}, tools=${requestBody.tools.orEmpty().size}, " +
                     "previousResponseId=${outboundRequest.previousResponseId != null}"
             )
 
@@ -348,6 +364,8 @@ class OpenAiSubscriptionResponsesClient(
                     requestBody = outboundRequest,
                     json = json,
                     responseMapper = responseMapper,
+                    requestMapper = requestMapper,
+                    modelProfile = modelProfile,
                     ensureActive = { coroutineContext.ensureActive() },
                 )
             } catch (error: Throwable) {
@@ -452,6 +470,7 @@ class OpenAiSubscriptionResponsesClient(
 
         private fun ensureOpen(
             session: OpenAiSubscriptionSession,
+            userAgent: String,
         ) {
             val existing = webSocket
             if (existing != null && open.get()) return
@@ -501,8 +520,9 @@ class OpenAiSubscriptionResponsesClient(
             val builder = httpClient.newWebSocketBuilder()
                 .connectTimeout(Duration.ofMillis(boundedTransportTimeoutMs))
                 .header("Authorization", "Bearer ${session.accessToken}")
-                .header("OpenAI-Beta", "responses=experimental")
-                .header("originator", "gromozeka")
+                .header("OpenAI-Beta", "responses_websockets=2026-02-06")
+                .header("originator", OPENAI_SUBSCRIPTION_ORIGINATOR)
+                .header("User-Agent", userAgent)
                 .header("session_id", conversationKey)
                 .header("conversation_id", conversationKey)
 
@@ -529,6 +549,8 @@ class OpenAiSubscriptionResponsesClient(
             requestBody: OpenAiSubscriptionResponsesRequest,
             json: Json,
             responseMapper: OpenAiSubscriptionResponseMapper,
+            requestMapper: OpenAiSubscriptionRequestMapper,
+            modelProfile: OpenAiSubscriptionModelProfile,
             ensureActive: () -> Unit,
         ): OpenAiSubscriptionParsedResponse {
             val socket = webSocket
@@ -541,9 +563,13 @@ class OpenAiSubscriptionResponsesClient(
                 log = log,
             )
 
+            val transportRequest = requestMapper.toTransportRequest(requestBody, modelProfile)
             val payload = json.encodeToString(
                 OpenAiSubscriptionResponsesWebSocketRequest.serializer(),
-                OpenAiSubscriptionResponsesWebSocketRequest.from(requestBody),
+                OpenAiSubscriptionResponsesWebSocketRequest.from(
+                    request = transportRequest,
+                    useResponsesLite = modelProfile.useResponsesLite,
+                ),
             )
 
             try {
