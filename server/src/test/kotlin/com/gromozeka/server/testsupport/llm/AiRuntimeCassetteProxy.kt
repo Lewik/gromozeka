@@ -1418,6 +1418,9 @@ private val runtimeJsonInstantFieldRegex = Regex(
         "importedAt|timestamp)\"\\s*:\\s*\")" +
         "($INSTANT_PATTERN|null)(\")"
 )
+private val runtimeJsonSourceRefUuidRegex = Regex(
+    "(\"(?:source_ref|sourceRef)\"\\s*:\\s*\")($UUID_PATTERN)(\")"
+)
 private val runtimeHumanLabeledInstantRegex = Regex(
     "\\b((?:Document imported at|Imported at|Observed at|Recorded at|Created at|Updated at):\\s*)$INSTANT_PATTERN"
 )
@@ -1453,6 +1456,8 @@ private fun List<String>.isRuntimeFieldPath(): Boolean {
     if (key == "value" && previousKey in setOf("id", "conversationId", "toolUseId", "fileId")) return true
     return key in runtimeOutputInstantFieldNames || key in setOf(
         "conversationId",
+        "projectId",
+        "threadId",
         "timestamp",
         "messageId",
         "responseId",
@@ -1475,6 +1480,7 @@ private fun stableRuntimeValueForField(
 ): String {
     return when (fieldName) {
         "conversationId", "conversationKey" -> STABLE_CONVERSATION_KEY
+        "projectId", "threadId" -> STABLE_ID
         "promptCacheKey" -> STABLE_PROMPT_CACHE_KEY
         in runtimeOutputInstantFieldNames, "timestamp" -> STABLE_INSTANT
         "responseId" -> STABLE_RESPONSE_ID
@@ -1498,6 +1504,8 @@ private fun rehydrateRuntimeValueForField(
 ): String {
     return when (fieldName) {
         "conversationId", "conversationKey" -> context.conversationKey
+        "projectId" -> "cassette_project_${context.replaySuffix}"
+        "threadId" -> "cassette_thread_${context.replaySuffix}"
         "promptCacheKey" -> context.conversationKey.removePrefix("memory:")
         in runtimeOutputInstantFieldNames, "timestamp" -> context.currentInstant
         "responseId" -> context.responseId()
@@ -1570,6 +1578,7 @@ private fun normalizeRuntimeText(
         .replace(runtimeLabeledInstantRegex) { match -> "${match.groupValues[1]}=$STABLE_INSTANT" }
         .replace(runtimeHumanLabeledInstantRegex) { match -> "${match.groupValues[1]}$STABLE_INSTANT" }
         .replace(runtimeJsonInstantFieldRegex) { match -> "${match.groupValues[1]}$STABLE_INSTANT${match.groupValues[3]}" }
+        .replace(runtimeJsonSourceRefUuidRegex) { match -> "${match.groupValues[1]}$STABLE_UUID${match.groupValues[3]}" }
         .replace(runtimeTargetMessageIdRegex) { match -> "${match.groupValues[1]}$STABLE_UUID" }
         .replace(runtimeValidationPathIndexRegex) { match -> "${match.groupValues[1]}[<index>]" }
         .replace(runtimePipelineItemIdRegex) { match ->

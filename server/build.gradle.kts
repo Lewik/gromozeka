@@ -100,11 +100,17 @@ tasks.withType<Test> {
         .map { it == "true" }
         .orElse(false)
         .get()
+    val isMemoryE2eRun = providers.systemProperty("gromozeka.memory.e2e")
+        .map { it == "true" }
+        .orElse(false)
+        .get()
+    if (isLongMemEvalRun || isMemoryE2eRun) {
+        notCompatibleWithConfigurationCache("Memory real-model tests consume run-specific system properties and write cassette resources.")
+        outputs.upToDateWhen { false }
+    }
     if (isLongMemEvalRun) {
-        notCompatibleWithConfigurationCache("LongMemEval smoke tests intentionally consume run-specific system properties and write cassette resources.")
         reports.junitXml.required.set(false)
         reports.html.required.set(false)
-        outputs.upToDateWhen { false }
     }
 
     fun passSystemProperty(name: String) {

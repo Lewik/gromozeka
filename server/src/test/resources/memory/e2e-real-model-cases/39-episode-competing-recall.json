@@ -46,17 +46,17 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedClaimsMin": 1,
-            "selectedClaimsMax": 1,
-            "injectedPromptContainsAll": ["Retrieved claims", "NoMemoryVerifier", "no-memory"],
+            "selectedEpisodesMin": 1,
+            "selectedEpisodesMax": 1,
+            "injectedPromptContainsAll": ["Retrieved episodes", "NoMemoryVerifier", "no-memory"],
             "injectedPromptContainsNone": ["SourceHydrator", "source evidence hydration"],
-            "requiredSelectedClaims": [
+            "requiredSelectedEpisodes": [
               {
                 "containsAll": ["NoMemoryVerifier", "no-memory", "verification"],
                 "evidenceSourceSpeakerRoleIn": ["USER"]
               }
             ],
-            "forbiddenSelectedClaims": [
+            "forbiddenSelectedEpisodes": [
               {
                 "containsAll": ["SourceHydrator", "source", "hydration"]
               }

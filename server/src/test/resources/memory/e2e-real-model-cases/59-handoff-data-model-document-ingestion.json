@@ -31,6 +31,8 @@
               ],
               [
                 "evidence",
+                "provenance",
+                "where the information came from",
                 "raw source",
                 "сырой источник",
                 "what was said",
@@ -61,11 +63,32 @@
     "requiredSources": [
       {
         "textContainsAll": [
-          "Data Model",
           "Source",
+          "Сырой источник знания"
+        ],
+        "allowStructuredExtraction": true,
+        "allowRecall": true
+      },
+      {
+        "textContainsAll": [
           "Entity",
+          "Канонический узел памяти"
+        ],
+        "allowStructuredExtraction": true,
+        "allowRecall": true
+      },
+      {
+        "textContainsAll": [
           "PredicateCatalog",
-          "Note"
+          "reconciliation"
+        ],
+        "allowStructuredExtraction": true,
+        "allowRecall": true
+      },
+      {
+        "textContainsAll": [
+          "Note",
+          "semantic memory fragment"
         ],
         "allowStructuredExtraction": true,
         "allowRecall": true

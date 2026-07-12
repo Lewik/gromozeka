@@ -1,7 +1,7 @@
 package com.gromozeka.server
 
-import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.application.service.AiConversationMessageMapper
+import com.gromozeka.application.service.memory.MemoryOperationExecutor
 import com.gromozeka.application.service.memory.MemoryReadTraceEvent
 import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.domain.model.Conversation
@@ -174,7 +174,7 @@ class LongMemEvalMemorySmokeTest {
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
         ).use { harness ->
-            val memoryTools = harness.context.getBean(MemoryToolApplicationService::class.java)
+            val memoryTools = harness.context.getBean(MemoryOperationExecutor::class.java)
             val readTraceCollector = harness.context.getBean(MemoryE2eReadTraceCollector::class.java)
             val writeTraceCollector = harness.context.getBean(MemoryE2eWriteTraceCollector::class.java)
             val llmCallProgressCollector = harness.context.getBean(MemoryE2eLlmCallProgressCollector::class.java)
@@ -333,7 +333,7 @@ class LongMemEvalMemorySmokeTest {
     }
 
     private suspend fun runCase(
-        memoryTools: MemoryToolApplicationService,
+        memoryTools: MemoryOperationExecutor,
         judgeRuntime: AiRuntime,
         readTraceCollector: MemoryE2eReadTraceCollector,
         writeTraceCollector: MemoryE2eWriteTraceCollector,
@@ -357,14 +357,15 @@ class LongMemEvalMemorySmokeTest {
             )
             val startedAt = System.currentTimeMillis()
             val result = parseToolResult(
-                memoryTools.rememberProvidedText(
-                    conversationIdValue = null,
-                    text = sessionText,
-                    title = "LongMemEval ${entry.questionId} session $sessionNumber",
-                    sourceRef = sourceRef,
-                    forceWrite = true,
-                    mode = "force",
-                    namespaceValue = namespace.value,
+                memoryTools.executeSynchronously(
+                    memoryTools.prepareRememberProvidedContent(
+                        conversationIdValue = null,
+                        text = sessionText,
+                        title = "LongMemEval ${entry.questionId} session $sessionNumber",
+                        sourceRef = sourceRef,
+                        forceWrite = true,
+                        namespaceValue = namespace.value,
+                    )
                 )
             )
             val writeTrace = writeTraceCollector.takeBySourceId(sourceId)
@@ -394,11 +395,13 @@ class LongMemEvalMemorySmokeTest {
         appendProgress(progressPath, "answer_from_memory_start id=${entry.questionId}")
         val answerStartedAt = System.currentTimeMillis()
         val enrichResult = parseToolResult(
-            memoryTools.answerProvidedQuestion(
-                conversationIdValue = null,
-                questionText = renderQuestion(entry),
-                mode = "longmemeval",
-                namespaceValue = namespace.value,
+            memoryTools.executeSynchronously(
+                memoryTools.prepareAnswerProvidedQuestion(
+                    conversationIdValue = null,
+                    questionText = renderQuestion(entry),
+                    mode = "longmemeval",
+                    namespaceValue = namespace.value,
+                )
             )
         )
         val answerDurationMs = System.currentTimeMillis() - answerStartedAt

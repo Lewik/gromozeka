@@ -8,10 +8,10 @@
       "id": "seed-a",
       "turns": [
         {
-          "filePath": "MEMORY_CURRENT_STATE.md",
+          "filePath": "server/src/test/resources/memory/fixtures/local-memory-runtime.md",
           "documentType": "markdown",
-          "title": "Memory Current State",
-          "sourceRef": "MEMORY_CURRENT_STATE.md",
+          "title": "Local Memory Runtime Fixture",
+          "sourceRef": "server/src/test/resources/memory/fixtures/local-memory-runtime.md",
           "forceWrite": true,
           "mode": "memory_e2e_file_path"
         },
@@ -31,7 +31,7 @@
       "id": "recall-b",
       "turns": [
         {
-          "text": "According to the local Memory Current State markdown, what is the active runtime memory storage path? Keep it short.",
+          "text": "According to the local Memory Runtime fixture, what is the active runtime memory storage path? Keep it short.",
           "answerExpectation": {
             "containsAnyGroups": [
               [
@@ -43,7 +43,9 @@
               ]
             ],
             "containsNone": [
-              "[tool:"
+              "[tool:",
+              "access to",
+              "source is unavailable"
             ]
           },
           "memoryTraceExpectation": {
@@ -98,7 +100,7 @@
     "requiredSources": [
       {
         "textContainsAll": [
-          "Memory Current State",
+          "Local Memory Runtime Fixture",
           "PostgreSQL",
           "MemoryStore"
         ],
@@ -107,7 +109,12 @@
       {
         "textContainsAll": [
           "Memory Architecture",
-          "Memory IR",
+          "Memory IR"
+        ],
+        "allowRecall": true
+      },
+      {
+        "textContainsAll": [
           "MemorySource",
           "MemoryProfile"
         ],
@@ -126,7 +133,7 @@
     "requiredSources": [
       {
         "textContainsAll": [
-          "Memory Current State",
+          "Local Memory Runtime Fixture",
           "PostgreSQL",
           "MemoryStore"
         ],
@@ -135,7 +142,12 @@
       {
         "textContainsAll": [
           "Memory Architecture",
-          "Memory IR",
+          "Memory IR"
+        ],
+        "allowRecall": true
+      },
+      {
+        "textContainsAll": [
           "MemorySource",
           "MemoryProfile"
         ],

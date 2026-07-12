@@ -38,10 +38,10 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedNotesMin": 1,
+            "selectedEpisodesMin": 1,
             "selectedContainsAll": ["NoMemoryVerifier"],
-            "injectedPromptContainsAll": ["Retrieved notes", "substring"],
-            "requiredSelectedNotes": [
+            "injectedPromptContainsAll": ["Retrieved episodes", "substring"],
+            "requiredSelectedEpisodes": [
               {
                 "containsAll": ["substring"],
                 "evidenceSourceSpeakerRoleIn": ["USER"]
@@ -58,7 +58,7 @@
     "userSourcesMin": 1,
     "requiredClaims": [
       {
-        "containsAll": ["substring"],
+        "containsAll": ["NoMemoryVerifier", "verification"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
@@ -77,7 +77,7 @@
     "userSourcesMin": 2,
     "requiredClaims": [
       {
-        "containsAll": ["substring"],
+        "containsAll": ["NoMemoryVerifier", "verification"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],

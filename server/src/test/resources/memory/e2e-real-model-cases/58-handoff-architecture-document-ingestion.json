@@ -63,6 +63,13 @@
       {
         "textContainsAll": [
           "Цель системы",
+          "memory layer"
+        ],
+        "allowStructuredExtraction": true,
+        "allowRecall": true
+      },
+      {
+        "textContainsAll": [
           "Representation",
           "Claim",
           "Note"

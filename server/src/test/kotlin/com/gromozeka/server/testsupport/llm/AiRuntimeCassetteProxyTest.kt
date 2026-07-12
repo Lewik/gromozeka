@@ -588,7 +588,9 @@ class AiRuntimeCassetteProxyTest {
                             toolName = "remember_previous_message",
                             result = listOf(
                                 Conversation.Message.ContentItem.ToolResult.Data.Text(
-                                    "memory write completed by hot-path:run:019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(72, '9')
+                                    "{\"source_ref\":\"${"019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(36, '6')}\"," +
+                                        "\"result\":\"memory write completed by " +
+                                        "${"hot-path:run:019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(72, '9')}\"}"
                                 )
                             ),
                         )
@@ -607,6 +609,8 @@ class AiRuntimeCassetteProxyTest {
                 toolContext = mapOf(
                     "conversationId" to "memory:$dynamicPart",
                     "promptCacheKey" to "019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(36, '2'),
+                    "projectId" to "019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(36, 'a'),
+                    "threadId" to "019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(36, 'b'),
                 )
             ),
         )

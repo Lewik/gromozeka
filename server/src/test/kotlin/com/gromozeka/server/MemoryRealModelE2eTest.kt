@@ -1,7 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.ConversationEngineService
-import com.gromozeka.application.service.MemoryToolApplicationService
+import com.gromozeka.application.service.memory.MemoryOperationExecutor
 import com.gromozeka.application.service.memory.MemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
@@ -59,6 +59,7 @@ import java.nio.file.StandardOpenOption
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
+import javax.sql.DataSource
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 import kotlin.io.path.name
@@ -122,6 +123,7 @@ class MemoryRealModelE2eTest {
                 memorySettings = UserProfile.MemorySettings(
                     autoRemember = true,
                     autoRecall = true,
+                    defaultNamespace = MEMORY_E2E_NAMESPACE,
                 )
             ),
         )
@@ -150,9 +152,10 @@ class MemoryRealModelE2eTest {
             val context = harness.context
             val conversationService = context.getBean(ConversationDomainService::class.java)
             val conversationEngineService = context.getBean(ConversationEngineService::class.java)
-            val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
+            val memoryOperationExecutor = context.getBean(MemoryOperationExecutor::class.java)
             val promptDomainService = context.getBean(PromptDomainService::class.java)
             val store = context.getBean(MemoryStore::class.java)
+            val dataSource = context.getBean(DataSource::class.java)
             val traceCollector = context.getBean(MemoryE2eReadTraceCollector::class.java)
             val writeTraceCollector = context.getBean(MemoryE2eWriteTraceCollector::class.java)
             val maintenanceTraceCollector = context.getBean(MemoryE2eMaintenanceTraceCollector::class.java)
@@ -172,6 +175,7 @@ class MemoryRealModelE2eTest {
             val failures = mutableListOf<String>()
             runBlocking {
                 cases.forEachIndexed { caseIndex, case ->
+                    clearMemoryTables(dataSource)
                     val caseStartedAt = System.currentTimeMillis()
                     appendProgress(
                         progressPath,
@@ -183,7 +187,7 @@ class MemoryRealModelE2eTest {
                                 harness = harness,
                                 conversationService = conversationService,
                                 conversationEngineService = conversationEngineService,
-                                memoryToolApplicationService = memoryToolApplicationService,
+                                memoryOperationExecutor = memoryOperationExecutor,
                                 promptDomainService = promptDomainService,
                                 store = store,
                                 case = case,
@@ -279,6 +283,32 @@ class MemoryRealModelE2eTest {
         }
     }
 
+    private fun clearMemoryTables(dataSource: DataSource) {
+        dataSource.connection.use { connection ->
+            val tableNames = connection.createStatement().use { statement ->
+                statement.executeQuery(
+                    "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = current_schema()"
+                ).use { rows ->
+                    buildList {
+                        while (rows.next()) {
+                            rows.getString("tablename")
+                                .takeIf { it.startsWith("memory_") }
+                                ?.let(::add)
+                        }
+                    }
+                }
+            }
+            if (tableNames.isEmpty()) return
+
+            val tables = tableNames
+                .sorted()
+                .joinToString(", ") { tableName -> "\"${tableName.replace("\"", "\"\"")}\"" }
+            connection.createStatement().use { statement ->
+                statement.execute("TRUNCATE TABLE $tables CASCADE")
+            }
+        }
+    }
+
     private fun loadCases(): List<MemoryE2eCase> {
         val casesDirectory = resolveCasesDirectory()
         check(casesDirectory.exists()) { "Memory e2e cases directory does not exist: $casesDirectory" }
@@ -313,7 +343,7 @@ class MemoryRealModelE2eTest {
         harness: ServerTestHarness,
         conversationService: ConversationDomainService,
         conversationEngineService: ConversationEngineService,
-        memoryToolApplicationService: MemoryToolApplicationService,
+        memoryOperationExecutor: MemoryOperationExecutor,
         promptDomainService: PromptDomainService,
         store: MemoryStore,
         case: MemoryE2eCase,
@@ -353,7 +383,7 @@ class MemoryRealModelE2eTest {
 
         if (case.preloadedMemory.isNotEmpty()) {
             val fixtureConversation = conversation("preloaded-memory")
-            val fixtureNamespace = resolveNamespace(conversationService, conversations, projectPath.absolutePathString(), agent)
+            val fixtureNamespace = resolveNamespace()
             val fixtureBatch = case.preloadedMemory.toMemoryUpdateBatch(
                 caseId = case.id,
                 namespace = fixtureNamespace,
@@ -380,14 +410,9 @@ class MemoryRealModelE2eTest {
                 runCatching {
                     if (turn.isProvidedContent()) {
                         val namespaceValue = turn.namespace
-                            ?: resolveNamespace(
-                                conversationService = conversationService,
-                                conversations = conversations,
-                                projectPath = projectPath.absolutePathString(),
-                                agent = agent,
-                            ).value
+                            ?: resolveNamespace().value
                         rememberProvidedSeedTurn(
-                            memoryToolApplicationService = memoryToolApplicationService,
+                            memoryOperationExecutor = memoryOperationExecutor,
                             store = store,
                             turn = turn,
                             namespaceValue = namespaceValue,
@@ -458,7 +483,7 @@ class MemoryRealModelE2eTest {
             )
         }
 
-        val namespace = resolveNamespace(conversationService, conversations, projectPath.absolutePathString(), agent)
+        val namespace = resolveNamespace()
         val afterSeedsSnapshot = store.loadNamespaceSnapshot(namespace)
         appendProgress(
             progressPath,
@@ -521,21 +546,7 @@ class MemoryRealModelE2eTest {
         )
     }
 
-    private suspend fun resolveNamespace(
-        conversationService: ConversationDomainService,
-        conversations: Map<String, Conversation>,
-        projectPath: String,
-        agent: AgentDefinition,
-    ): MemoryNamespace {
-        val conversation = conversations.values.firstOrNull()
-            ?: conversationService.create(
-                projectPath = projectPath,
-                displayName = "namespace-bootstrap",
-                agentDefinitionId = agent.id,
-            )
-        val project = conversationService.getProject(conversation.id)
-        return MemoryNamespace("project:${project.id.value}")
-    }
+    private fun resolveNamespace(): MemoryNamespace = MemoryNamespace(MEMORY_E2E_NAMESPACE)
 
     private fun List<MemoryE2ePreloadedMemory>.toMemoryUpdateBatch(
         caseId: String,
@@ -1146,7 +1157,7 @@ class MemoryRealModelE2eTest {
     }
 
     private suspend fun rememberProvidedSeedTurn(
-        memoryToolApplicationService: MemoryToolApplicationService,
+        memoryOperationExecutor: MemoryOperationExecutor,
         store: MemoryStore,
         turn: MemoryE2eSeedTurnDefinition,
         namespaceValue: String,
@@ -1156,17 +1167,19 @@ class MemoryRealModelE2eTest {
         turnIndex: Int,
         timeoutMs: Long,
     ): ExecutedSeedTurn {
-        val toolResult = memoryToolApplicationService.rememberProvidedText(
-            conversationIdValue = null,
-            text = turn.text?.trim()?.takeIf { it.isNotBlank() && turn.documentType != null },
-            filePath = turn.resolvedFilePath(resolveProjectRoot()),
-            rawUrl = turn.rawUrl?.trim()?.takeIf { it.isNotBlank() },
-            documentType = turn.documentType,
-            title = turn.title,
-            sourceRef = turn.sourceRef,
-            forceWrite = turn.forceWrite,
-            mode = turn.mode,
-            namespaceValue = namespaceValue,
+        val toolResult = memoryOperationExecutor.executeSynchronously(
+            memoryOperationExecutor.prepareRememberProvidedContent(
+                conversationIdValue = null,
+                text = turn.text?.trim()?.takeIf { it.isNotBlank() && turn.documentType != null },
+                filePath = turn.resolvedFilePath(resolveProjectRoot()),
+                rawUrl = turn.rawUrl?.trim()?.takeIf { it.isNotBlank() },
+                documentType = turn.documentType,
+                title = turn.title,
+                sourceRef = turn.sourceRef,
+                forceWrite = turn.forceWrite,
+                mode = turn.mode,
+                namespaceValue = namespaceValue,
+            )
         )
         val runId = extractQueuedRunId(toolResult)
         val completedRun = if (runId != null) {
@@ -1264,7 +1277,13 @@ class MemoryRealModelE2eTest {
         (this[name] as? JsonPrimitive)?.contentOrNull
 
     private fun MemoryRun.Status.isTerminal(): Boolean =
-        this in setOf(MemoryRun.Status.SUCCESS, MemoryRun.Status.FAILED, MemoryRun.Status.PARTIAL, MemoryRun.Status.CANCELLED)
+        this in setOf(
+            MemoryRun.Status.NEEDS_INPUT,
+            MemoryRun.Status.SUCCESS,
+            MemoryRun.Status.FAILED,
+            MemoryRun.Status.PARTIAL,
+            MemoryRun.Status.CANCELLED,
+        )
 
     private suspend fun collectSubmittedTurn(
         conversationEngineService: ConversationEngineService,
@@ -2373,17 +2392,20 @@ class MemoryRealModelE2eTest {
             "objectValueStringIn=$objectValueStringIn objectValueContainsAll=$objectValueContainsAll evidenceQuoteContainsAll=$evidenceQuoteContainsAll"
 
     private fun List<Conversation.Message>.renderAssistantText(): String =
-        filter { it.role == Conversation.Message.Role.ASSISTANT }
-            .flatMap { message ->
+        asReversed()
+            .firstNotNullOfOrNull { message ->
+                if (message.role != Conversation.Message.Role.ASSISTANT) return@firstNotNullOfOrNull null
                 message.content.mapNotNull { item ->
                     when (item) {
                         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
                         else -> null
                     }
                 }
+                    .joinToString("\n")
+                    .trim()
+                    .takeIf(String::isNotBlank)
             }
-            .joinToString("\n")
-            .trim()
+            .orEmpty()
 
     private fun List<MemorySource>.countUserChatTurns(): Int =
         count { it is MemorySource.ChatTurn && it.speakerRole == MemorySource.ActorRole.USER }
@@ -3066,6 +3088,7 @@ class MemoryRealModelE2eTest {
         const val MEMORY_WRITE_PARALLELISM_PROPERTY = "gromozeka.memory.e2e.memoryWriteParallelism"
         const val MEMORY_ROUTING_FAIL_FAST_PROPERTY = "gromozeka.memory.routing.failFast"
         const val DEFAULT_MODEL_NAME = "gpt-5.5"
+        const val MEMORY_E2E_NAMESPACE = "benchmark:memory-real-model-e2e"
 
         val json = Json {
             ignoreUnknownKeys = true

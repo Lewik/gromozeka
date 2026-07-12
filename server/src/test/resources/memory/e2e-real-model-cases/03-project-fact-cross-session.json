@@ -7,7 +7,7 @@
     {
       "id": "seed-a",
       "turns": [
-        "For Gromozeka project context: the memory store uses MongoDB."
+        "For Project Cinnabar context: the memory store uses MongoDB."
       ]
     }
   ],
@@ -16,7 +16,7 @@
       "id": "recall-b",
       "turns": [
         {
-          "text": "What database does the Gromozeka memory store use? Answer with only the database name.",
+          "text": "What database does the Project Cinnabar memory store use? Answer with only the database name.",
           "answerExpectation": {
             "containsAll": ["MongoDB"],
             "containsNone": ["SQLite", "PostgreSQL", "Neo4j"]
@@ -27,10 +27,10 @@
             "selectedClaimsMin": 1,
             "requiredSelectedClaims": [
               {
-                "normalizedContainsAll": ["Gromozeka", "MongoDB"]
+                "normalizedContainsAll": ["Project Cinnabar", "MongoDB"]
               }
             ],
-            "injectedPromptContainsAll": ["Gromozeka", "MongoDB"]
+            "injectedPromptContainsAll": ["Project Cinnabar", "MongoDB"]
           }
         }
       ]
@@ -43,7 +43,7 @@
     "requiredEntities": [
       {
         "typeIn": ["PROJECT", "SERVICE"],
-        "canonicalNameIn": ["Gromozeka", "Gromozeka memory store"]
+        "canonicalNameIn": ["Project Cinnabar", "Project Cinnabar memory store"]
       },
       {
         "canonicalNameIn": ["MongoDB"],
@@ -52,8 +52,8 @@
     ],
     "requiredClaims": [
       {
-        "normalizedContainsAll": ["Gromozeka", "MongoDB"],
-        "evidenceQuoteContainsAll": ["For Gromozeka project context: the memory store uses MongoDB."],
+        "normalizedContainsAll": ["Project Cinnabar", "MongoDB"],
+        "evidenceQuoteContainsAll": ["For Project Cinnabar context: the memory store uses MongoDB."],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
@@ -71,8 +71,8 @@
     "userSourcesMin": 2,
     "requiredClaims": [
       {
-        "normalizedContainsAll": ["Gromozeka", "MongoDB"],
-        "evidenceQuoteContainsAll": ["For Gromozeka project context: the memory store uses MongoDB."],
+        "normalizedContainsAll": ["Project Cinnabar", "MongoDB"],
+        "evidenceQuoteContainsAll": ["For Project Cinnabar context: the memory store uses MongoDB."],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
