@@ -485,7 +485,7 @@ class OpenAiSubscriptionRequestMapper {
     ): JsonObject {
         return buildJsonObject {
             put("type", "function_call")
-            put("call_id", callId)
+            put("call_id", callId.toOpenAiSubscriptionKey())
             put("name", name)
             put("arguments", arguments)
         }
@@ -497,7 +497,7 @@ class OpenAiSubscriptionRequestMapper {
     ): JsonObject {
         return buildJsonObject {
             put("type", "function_call_output")
-            put("call_id", callId)
+            put("call_id", callId.toOpenAiSubscriptionKey())
             put("output", output)
         }
     }

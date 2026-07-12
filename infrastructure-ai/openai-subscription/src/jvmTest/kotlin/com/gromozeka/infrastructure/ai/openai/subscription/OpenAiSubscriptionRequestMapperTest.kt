@@ -62,6 +62,35 @@ class OpenAiSubscriptionRequestMapperTest {
     }
 
     @Test
+    fun shortensLongToolCallIdsWithoutBreakingToolResultPairing() {
+        val originalId = "call_" + "x".repeat(OPENAI_SUBSCRIPTION_KEY_MAX_LENGTH)
+        val toolCallId = Conversation.Message.ContentItem.ToolCall.Id(originalId)
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = listOf(
+                    assistantCompactionMessage(
+                        id = "assistant-anchor",
+                        toolCallId = toolCallId,
+                    ),
+                    userToolResultMessage(
+                        id = "tool-result",
+                        toolCallId = toolCallId,
+                    ),
+                ),
+            ),
+            modelName = "gpt-5",
+            conversationKey = "test-conversation",
+        )
+
+        val functionCallId = requireNotNull(request.input[1].string("call_id"))
+        val functionCallOutputId = requireNotNull(request.input[2].string("call_id"))
+        assertEquals(OPENAI_SUBSCRIPTION_KEY_MAX_LENGTH, functionCallId.length)
+        assertEquals(functionCallId, functionCallOutputId)
+        assertFalse(functionCallId == originalId)
+    }
+
+    @Test
     fun dropsFunctionCallOutputsThatDoNotHaveAMatchingFunctionCallInTheReplayWindow() {
         val request = mapper.toRequest(
             request = AiRuntimeRequest(
