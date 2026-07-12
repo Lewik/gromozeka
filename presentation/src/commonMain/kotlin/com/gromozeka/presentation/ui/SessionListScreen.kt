@@ -52,6 +52,7 @@ fun SessionListScreen(
     searchViewModel: ConversationSearchViewModel,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
+    clientPlatform: ClientPlatform,
     refreshTrigger: Int = 0,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
@@ -124,13 +125,15 @@ fun SessionListScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                CompactButton(
-                    onClick = { directoryPicker.launch() }
-                ) {
-                    Text(LocalTranslation.current.newSessionButton)
-                }
+                if (clientPlatform.canPickProjectDirectory) {
+                    CompactButton(
+                        onClick = { directoryPicker.launch() }
+                    ) {
+                        Text(LocalTranslation.current.newSessionButton)
+                    }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
 
                 CompactButton(
                     onClick = { onShowSettingsPanelChange(!showSettingsPanel) },

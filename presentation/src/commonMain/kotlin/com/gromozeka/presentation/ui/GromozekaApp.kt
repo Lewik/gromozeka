@@ -469,6 +469,7 @@ fun GromozekaAppContent(
                                                                     searchViewModel = appComponents.conversationSearchViewModel,
                                                                     showSettingsPanel = showSettingsPanel,
                                                                     onShowSettingsPanelChange = setSettingsPanel,
+                                                                    clientPlatform = clientPlatform,
                                                                     refreshTrigger = refreshTrigger
                                                                 )
                                                             }
