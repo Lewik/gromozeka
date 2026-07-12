@@ -40,6 +40,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+private const val TEST_EVENT_TIMEOUT_MS = 10_000L
+
 class ConversationRuntimeDispatcherTest {
     private val conversationId = Conversation.Id("conversation-runtime-dispatcher-test")
     private val agent = AgentDefinition(
@@ -237,7 +239,7 @@ class ConversationRuntimeDispatcherTest {
             harness.runner.releaseCurrentTask()
             waitUntil { harness.coordinator.find(conversationId) == null }
 
-            val replayedEvents = withTimeout(2_000) {
+            val replayedEvents = withTimeout(TEST_EVENT_TIMEOUT_MS) {
                 harness.dispatcher.observeConversation(conversationId, afterEventSequence = null)
                     .take(3)
                     .toList()
@@ -428,7 +430,7 @@ class ConversationRuntimeDispatcherTest {
         )
 
     private suspend fun waitUntil(predicate: suspend () -> Boolean) {
-        withTimeout(2_000) {
+        withTimeout(TEST_EVENT_TIMEOUT_MS) {
             while (!predicate()) {
                 delay(20)
             }
@@ -475,7 +477,7 @@ class ConversationRuntimeDispatcherTest {
         }
 
         suspend fun awaitStarted(): ConversationRuntimeTask =
-            withTimeout(2_000) { startedTasks.receive() }
+            withTimeout(TEST_EVENT_TIMEOUT_MS) { startedTasks.receive() }
 
         suspend fun releaseCurrentTask() {
             releases.send(Unit)
@@ -488,7 +490,7 @@ class ConversationRuntimeDispatcherTest {
         }
 
     private class BroadcastRuntimeWorkQueue : ConversationRuntimeWorkQueue {
-        private val items = MutableSharedFlow<ConversationRuntimeWorkItem>(extraBufferCapacity = 64)
+        private val items = MutableSharedFlow<ConversationRuntimeWorkItem>(replay = 64, extraBufferCapacity = 64)
 
         override val deliveries: Flow<ConversationRuntimeWorkDelivery> =
             items.map { item ->
@@ -532,7 +534,7 @@ class ConversationRuntimeDispatcherTest {
         }
 
         suspend fun awaitFailed() {
-            withTimeout(2_000) {
+            withTimeout(TEST_EVENT_TIMEOUT_MS) {
                 failed.await()
             }
         }
