@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class MemoryRememberToolCallback(
-    private val memoryToolApplicationService: MemoryToolApplicationService,
+    private val memoryOperations: MemoryAsyncOperationApplicationService,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -26,14 +25,15 @@ class MemoryRememberToolCallback(
         val title: String? = null,
         val source_ref: String? = null,
         val user_consent_confirmed: Boolean = false,
-        val force_write: Boolean = false,
+        val force_write: Boolean? = null,
+        val confirmed_preflight_run_id: String? = null,
         val mode: String? = null,
         val namespace: String? = null,
     )
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_REMEMBER_TOOL_NAME,
-        description = "Persist memory-worthy information into typed memory. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'; document ingestion returns a queued run_id and continues in the background. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
+        description = "Queue persistence of memory-worthy information into typed memory and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final result. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
         inputSchema = """
             {
               "type": "object",
@@ -76,7 +76,11 @@ class MemoryRememberToolCallback(
                 },
                 "force_write": {
                   "type": "boolean",
-                  "description": "Force ingestion for this exact target when the user explicitly says to remember/store/import it even if the router would normally choose no-op. Use sparingly; does not bypass user_consent_confirmed for provided content."
+                  "description": "Optional explicit override. true forces ingestion after preflight; false disables configured document force; omit to use the configured document-ingest default. Set true only when the user explicitly requests forced storage. Does not bypass technical validation or user_consent_confirmed."
+                },
+                "confirmed_preflight_run_id": {
+                  "type": "string",
+                  "description": "Run id whose run_status is needs_input and whose proposed structure the user explicitly approved. Never set this without asking the user and receiving explicit confirmation."
                 },
                 "mode": {
                   "type": "string",
@@ -109,7 +113,7 @@ class MemoryRememberToolCallback(
                     "Provided content targets require explicit user consent and user_consent_confirmed=true."
                 )
             }
-            return@runBlocking memoryToolApplicationService.rememberProvidedText(
+            return@runBlocking memoryOperations.rememberProvidedContent(
                 conversationIdValue = context?.getString("conversationId"),
                 text = providedText.takeIf { it.isNotBlank() },
                 filePath = providedFilePath.takeIf { it.isNotBlank() },
@@ -118,6 +122,7 @@ class MemoryRememberToolCallback(
                 title = input.title,
                 sourceRef = input.source_ref,
                 forceWrite = input.force_write,
+                confirmedPreflightRunId = input.confirmed_preflight_run_id,
                 mode = input.mode,
                 namespaceValue = input.namespace,
                 writeSurface = writeSurface,
@@ -136,10 +141,11 @@ class MemoryRememberToolCallback(
             return@runBlocking MemoryToolResultRenderer.failureJsonString("target='message_id' requires target_message_id.")
         }
 
-        memoryToolApplicationService.remember(
+        memoryOperations.rememberMessage(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id,
             forceWrite = input.force_write,
+            confirmedPreflightRunId = input.confirmed_preflight_run_id,
             namespaceValue = input.namespace,
         )
     }

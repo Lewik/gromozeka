@@ -245,6 +245,13 @@ class InMemoryMemoryStore(
     override suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun> =
         runs.filter { it.parentRunId == parentRunId }.sortedBy { it.id.value }
 
+    override suspend fun findRunsByStatuses(
+        statuses: Set<MemoryRun.Status>,
+        runTypes: Set<MemoryRun.Type>,
+    ): List<MemoryRun> =
+        runs.filter { it.status in statuses && it.runType in runTypes }
+            .sortedWith(compareBy<MemoryRun> { it.createdAt }.thenBy { it.id.value })
+
     override suspend fun findProfile(
         namespace: MemoryNamespace,
         ownerEntityId: MemoryEntity.Id?,

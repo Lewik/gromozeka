@@ -3,6 +3,7 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -10,6 +11,7 @@ import kotlinx.serialization.json.putJsonArray
 
 const val MEMORY_WRITE_SURFACE_CONTEXT_KEY = "memoryWriteSurface"
 
+@Serializable
 enum class MemoryWriteSurface(val wireName: String) {
     CHAT_TOOL("chat_tool"),
     MCP("mcp"),
@@ -29,6 +31,8 @@ enum class MemoryWriteSurface(val wireName: String) {
 
 internal enum class MemoryWriteOriginKind(val wireName: String) {
     PROVIDED_TEXT("provided_text"),
+    PROVIDED_TEXT_SECTION("provided_text_section"),
+    CHAT_MESSAGE_SECTION("chat_message_section"),
     PROVIDED_DOCUMENT("provided_document"),
     PROVIDED_DOCUMENT_SECTION("provided_document_section"),
     PASTED_DOCUMENT("pasted_document"),
@@ -56,7 +60,7 @@ internal data class MemoryWriteOrigin(
     val parentSourceId: MemorySource.Id? = null,
     val parentRunId: MemoryRun.Id? = null,
     val documentHash: String? = null,
-    val section: MarkdownDocumentSection? = null,
+    val section: MemoryIngestSection? = null,
 ) {
     fun toMetadataJson() = buildJsonObject {
         put("memoryToolOrigin", kind.wireName)

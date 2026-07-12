@@ -18,7 +18,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun markdownSlicerKeepsSmallDocumentTogether() {
-        val sections = MarkdownDocumentSlicer.slice(
+        val sections = MemoryIngestSectionSlicer.sliceMarkdown(
             """
             Intro paragraph.
             # Architecture
@@ -31,7 +31,7 @@ class MemoryRememberDocumentTest {
         )
 
         assertEquals(1, sections.size)
-        assertEquals("Document preamble", sections[0].headingLabel)
+        assertEquals("Source preamble", sections[0].headingLabel)
         assertEquals(1, sections[0].startLine)
         assertEquals(7, sections[0].endLine)
         assertTrue(sections[0].text.contains("## Pipeline"))
@@ -54,7 +54,7 @@ class MemoryRememberDocumentTest {
             ## Probes
             Probe facts stay attached to evaluation.
         """.trimIndent()
-        val sections = MarkdownDocumentSlicer.slice(
+        val sections = MemoryIngestSectionSlicer.sliceMarkdown(
             "$architecture\n\n$evaluation",
             maxSectionChars = maxOf(architecture.length, evaluation.length) + 20,
         )
@@ -77,7 +77,7 @@ class MemoryRememberDocumentTest {
             }
         }
 
-        val sections = MarkdownDocumentSlicer.slice(markdown, maxSectionChars = 230)
+        val sections = MemoryIngestSectionSlicer.sliceMarkdown(markdown, maxSectionChars = 230)
 
         assertTrue(sections.size in 2..4)
         assertTrue(sections.size < 6)
@@ -96,7 +96,7 @@ class MemoryRememberDocumentTest {
             }
         }
 
-        val sections = MarkdownDocumentSlicer.slice(markdown, maxSectionChars = 1_000)
+        val sections = MemoryIngestSectionSlicer.sliceMarkdown(markdown, maxSectionChars = 1_000)
 
         assertEquals(3, sections.size)
         assertEquals("Prompt Pack / Router .. Planner", sections[0].headingLabel)
@@ -122,7 +122,7 @@ class MemoryRememberDocumentTest {
             }
         }
 
-        val sections = MarkdownDocumentSlicer.slice(markdown, maxSectionChars = 1_900)
+        val sections = MemoryIngestSectionSlicer.sliceMarkdown(markdown, maxSectionChars = 1_900)
 
         assertTrue(sections.any { "Memory Router v3" in it.text })
         assertTrue(sections.any { "NoteConstructor v2" in it.text })
@@ -155,7 +155,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun documentSectionSourceTextIncludesImportMetadata() {
-        val section = MarkdownDocumentSection(
+        val section = MemoryIngestSection(
             index = 1,
             headingPath = listOf("Guide"),
             startLine = 3,
@@ -187,7 +187,7 @@ class MemoryRememberDocumentTest {
             }
         }
 
-        val sections = MarkdownDocumentSlicer.slice(markdown, maxSectionChars = 180)
+        val sections = MemoryIngestSectionSlicer.sliceMarkdown(markdown, maxSectionChars = 180)
 
         assertTrue(sections.size > 1)
         assertTrue(sections.all { it.headingPath.firstOrNull() == "Dense section" })
@@ -198,7 +198,7 @@ class MemoryRememberDocumentTest {
     fun markdownSlicerSplitsSingleLongLineByCharacterBudget() {
         val markdown = "# Dense section\n\n" + "important fact ".repeat(200)
 
-        val sections = MarkdownDocumentSlicer.slice(markdown, maxSectionChars = 240)
+        val sections = MemoryIngestSectionSlicer.sliceMarkdown(markdown, maxSectionChars = 240)
 
         assertTrue(sections.size > 1)
         assertTrue(sections.all { it.text.length <= 240 })
@@ -208,7 +208,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun markdownSlicerSplitsRetrySectionsNearNestedHeading() {
-        val section = MarkdownDocumentSection(
+        val section = MemoryIngestSection(
             index = 7,
             headingPath = listOf("Guide"),
             startLine = 10,
@@ -225,7 +225,7 @@ class MemoryRememberDocumentTest {
             """.trimIndent(),
         )
 
-        val parts = MarkdownDocumentSlicer.splitForRetry(section)
+        val parts = MemoryIngestSectionSlicer.splitForRetry(section)
 
         assertEquals(2, parts.size)
         assertEquals(71, parts[0].index)
@@ -241,7 +241,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun markdownSlicerSplitsRetrySectionsWithSingleLongLine() {
-        val section = MarkdownDocumentSection(
+        val section = MemoryIngestSection(
             index = 8,
             headingPath = listOf("Dense"),
             startLine = 4,
@@ -249,7 +249,7 @@ class MemoryRememberDocumentTest {
             text = "important fact ".repeat(80).trim(),
         )
 
-        val parts = MarkdownDocumentSlicer.splitForRetry(section)
+        val parts = MemoryIngestSectionSlicer.splitForRetry(section)
 
         assertEquals(2, parts.size)
         assertEquals(81, parts[0].index)
@@ -264,7 +264,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun adaptiveIngestSplitsRetryableJsonFailures() = runBlocking {
-        val section = MarkdownDocumentSection(
+        val section = MemoryIngestSection(
             index = 5,
             headingPath = listOf("Dense"),
             startLine = 1,
@@ -280,7 +280,7 @@ class MemoryRememberDocumentTest {
         )
         val calls = mutableListOf<Int>()
 
-        val result = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+        val result = MemoryAdaptiveIngest.processSection(section) { effectiveSection ->
             calls += effectiveSection.index
             if (effectiveSection.index == section.index) {
                 throw IllegalStateException("Claim extractor did not return JSON: {\"claims\":[")
@@ -297,7 +297,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun adaptiveIngestSplitsTypedOutputTruncationFailures() = runBlocking {
-        val section = MarkdownDocumentSection(
+        val section = MemoryIngestSection(
             index = 6,
             headingPath = listOf("Dense"),
             startLine = 1,
@@ -313,7 +313,7 @@ class MemoryRememberDocumentTest {
         )
         val calls = mutableListOf<Int>()
 
-        val result = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+        val result = MemoryAdaptiveIngest.processSection(section) { effectiveSection ->
             calls += effectiveSection.index
             if (effectiveSection.index == section.index) {
                 throw MemoryLlmOutputTruncatedException(
@@ -335,7 +335,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun adaptiveIngestSplitsSingleLongLineAfterOutputTruncation() = runBlocking {
-        val section = MarkdownDocumentSection(
+        val section = MemoryIngestSection(
             index = 9,
             headingPath = listOf("Dense"),
             startLine = 1,
@@ -344,7 +344,7 @@ class MemoryRememberDocumentTest {
         )
         val calls = mutableListOf<Int>()
 
-        val result = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+        val result = MemoryAdaptiveIngest.processSection(section) { effectiveSection ->
             calls += effectiveSection.index
             if (effectiveSection.index == section.index) {
                 throw MemoryLlmOutputTruncatedException(
@@ -366,7 +366,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun adaptiveIngestDoesNotSplitUnrelatedFailures() = runBlocking {
-        val section = MarkdownDocumentSection(
+        val section = MemoryIngestSection(
             index = 3,
             headingPath = listOf("Provider"),
             startLine = 1,
@@ -375,7 +375,7 @@ class MemoryRememberDocumentTest {
         )
         val calls = mutableListOf<Int>()
 
-        val result = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+        val result = MemoryAdaptiveIngest.processSection(section) { effectiveSection ->
             calls += effectiveSection.index
             throw IllegalStateException("Unsupported output_config.format")
         }
@@ -389,7 +389,7 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun adaptiveIngestRethrowsUnrelatedFailuresWhenFailFastIsEnabled() = runBlocking {
-        val section = MarkdownDocumentSection(
+        val section = MemoryIngestSection(
             index = 3,
             headingPath = listOf("Provider"),
             startLine = 1,
@@ -398,7 +398,7 @@ class MemoryRememberDocumentTest {
         )
 
         val error = assertFailsWith<IllegalStateException> {
-            MemoryDocumentAdaptiveIngest.processSection(
+            MemoryAdaptiveIngest.processSection(
                 section = section,
                 failFastOnError = true,
             ) {
@@ -415,7 +415,7 @@ class MemoryRememberDocumentTest {
         file.writeText("# Doc\n\nFact.")
 
         val resolved = MemoryRememberContentResolver().resolve(
-            MemoryRememberContentRequest(filePath = file.toString())
+            MemoryRememberContentRequest.fromExternal(filePath = file.toString())
         )
 
         assertEquals(MemoryRememberInputKind.FILE_PATH, resolved.kind)
@@ -426,13 +426,24 @@ class MemoryRememberDocumentTest {
     }
 
     @Test
+    fun resolverPreservesProvidedTextExactly() = runBlocking {
+        val source = "  First line  \n\nSecond line.  \n"
+
+        val resolved = MemoryRememberContentResolver().resolve(
+            MemoryRememberContentRequest.fromExternal(text = source)
+        )
+
+        assertEquals(source, resolved.text)
+    }
+
+    @Test
     fun resolverRejectsAmbiguousProvidedInputs() = runBlocking {
         val file = Files.createTempFile("memory-doc", ".md")
         file.writeText("# Doc")
 
         val error = runCatching {
             MemoryRememberContentResolver().resolve(
-                MemoryRememberContentRequest(text = "# Inline", filePath = file.toString())
+                MemoryRememberContentRequest.fromExternal(text = "# Inline", filePath = file.toString())
             )
         }.exceptionOrNull()
 
@@ -453,7 +464,7 @@ class MemoryRememberDocumentTest {
         try {
             val url = "http://127.0.0.1:${server.address.port}/doc.md"
             val resolved = MemoryRememberContentResolver().resolve(
-                MemoryRememberContentRequest(rawUrl = url)
+                MemoryRememberContentRequest.fromExternal(rawUrl = url)
             )
 
             assertEquals(MemoryRememberInputKind.RAW_URL, resolved.kind)
@@ -480,7 +491,7 @@ class MemoryRememberDocumentTest {
             val url = "http://127.0.0.1:${server.address.port}/page"
             val error = runCatching {
                 MemoryRememberContentResolver().resolve(
-                    MemoryRememberContentRequest(rawUrl = url)
+                    MemoryRememberContentRequest.fromExternal(rawUrl = url)
                 )
             }.exceptionOrNull()
             assertTrue(error is IllegalArgumentException)
@@ -491,26 +502,20 @@ class MemoryRememberDocumentTest {
     }
 
     @Test
-    fun queuedDocumentResultExposesRunAndQueueState() {
-        val sections = MarkdownDocumentSlicer.slice("# Doc\n\nFact.")
-
-        val raw = MemoryToolResultRenderer.rememberDocumentQueuedResultJsonString(
-            MemoryRememberDocumentQueuedResult(
-                runId = "document-ingest:run:test",
-                documentType = MemoryDocumentType.MARKDOWN,
-                inputKind = MemoryRememberInputKind.TEXT,
-                title = "Doc",
-                sourceRef = "memory_remember:provided_text",
-                parentSourceId = "external:document:test",
-                sections = sections,
+    fun queuedOperationResultExposesRunAndQueueState() {
+        val raw = MemoryToolResultRenderer.operationQueuedResultJsonString(
+            MemoryOperationQueuedResult(
+                runId = com.gromozeka.domain.model.memory.MemoryRun.Id("memory-operation:remember:run:test"),
+                operation = MemoryOperationKind.REMEMBER,
+                namespace = com.gromozeka.domain.model.memory.MemoryNamespace("global"),
                 queueSize = 3,
             )
         )
         val json = Json.parseToJsonElement(raw).jsonObject
 
         assertEquals("queued", json.getValue("status").jsonPrimitive.content)
-        assertEquals("document-ingest:run:test", json.getValue("run_id").jsonPrimitive.content)
+        assertEquals("memory-operation:remember:run:test", json.getValue("run_id").jsonPrimitive.content)
+        assertEquals("remember", json.getValue("operation").jsonPrimitive.content)
         assertEquals("3", json.getValue("queue_size").jsonPrimitive.content)
-        assertEquals("1", json.getValue("sections_total").jsonPrimitive.content)
     }
 }

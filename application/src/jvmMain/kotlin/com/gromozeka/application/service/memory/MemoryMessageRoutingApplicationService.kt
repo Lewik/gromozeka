@@ -59,6 +59,7 @@ class MemoryMessageRoutingApplicationService(
         threadContextMessages: List<Conversation.Message>? = null,
         forceMemoryWrite: Boolean = false,
         namespaceOverride: MemoryNamespace? = null,
+        parentRunId: MemoryRun.Id? = null,
     ): DirectStructuredMemoryWriteResult? {
         if (!message.isMemoryRouteableTarget()) {
             log.info {
@@ -120,6 +121,7 @@ class MemoryMessageRoutingApplicationService(
                     threadId = threadId,
                     targetMessageId = message.id,
                 ),
+                parentRunId = parentRunId,
             )
         }
 
@@ -127,7 +129,7 @@ class MemoryMessageRoutingApplicationService(
             namespace = namespace,
             source = source,
             threadContext = threadContext,
-            parentRunId = null,
+            parentRunId = parentRunId,
             agent = agent,
             project = project,
             runtimeSystemPrompts = runtimeSystemPrompts,
@@ -151,10 +153,11 @@ class MemoryMessageRoutingApplicationService(
         runtimeTools: List<AiToolCallback>,
         logContext: String,
         traceContext: MemoryWriteTraceContext,
+        parentRunId: MemoryRun.Id?,
     ): DirectStructuredMemoryWriteResult {
         val now = Clock.System.now()
         val documentHash = parentSource.contentHash
-        val sections = MarkdownDocumentSlicer.slice(document.markdown)
+        val sections = MemoryIngestSectionSlicer.sliceMarkdown(document.markdown)
         require(sections.isNotEmpty()) { "Imported markdown document has no non-blank sections." }
 
         var parentRun = MemoryRun(
@@ -162,6 +165,7 @@ class MemoryMessageRoutingApplicationService(
             namespace = namespace,
             runType = MemoryRun.Type.DOCUMENT_INGEST,
             triggerMode = MemoryRun.TriggerMode.HOT_PATH,
+            parentRunId = parentRunId,
             summary = "Pasted markdown document ingest: ${sections.size} sections",
             sourceIds = listOf(parentSource.id),
             progress = MemoryRun.Progress(
@@ -207,7 +211,7 @@ class MemoryMessageRoutingApplicationService(
                     "lines=${section.startLine}-${section.endLine} chars=${section.text.length}"
             }
 
-            val result = MemoryDocumentAdaptiveIngest.processSection(
+            val result = MemoryAdaptiveIngest.processSection(
                 section = section,
                 failFastOnError = failFastOnError,
             ) { effectiveSection ->
@@ -563,7 +567,7 @@ class MemoryMessageRoutingApplicationService(
     }
 
     private fun MemorySource.ChatTurn.toDocumentSectionSource(
-        section: MarkdownDocumentSection,
+        section: MemoryIngestSection,
         document: MarkdownDocumentImport,
         documentHash: String,
         parentRun: MemoryRun,
@@ -588,6 +592,7 @@ class MemoryMessageRoutingApplicationService(
                 sourceRef = document.sourceRef,
                 title = document.title,
                 importedAt = now,
+                forceWrite = isForcedMemoryWriteSource(),
                 parentSourceId = id,
                 parentRunId = parentRun.id,
                 documentHash = documentHash,
@@ -603,7 +608,7 @@ class MemoryMessageRoutingApplicationService(
     private fun List<DirectStructuredMemoryWriteResult>.toDocumentAggregateResult(
         parentSource: MemorySource,
         parentRun: MemoryRun,
-        sections: List<MarkdownDocumentSection>,
+        sections: List<MemoryIngestSection>,
     ): DirectStructuredMemoryWriteResult {
         val aggregateBatch = fold(MemoryUpdateBatch(runs = listOf(parentRun))) { acc, result ->
             acc + result.memoryBatch

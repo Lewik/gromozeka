@@ -6,9 +6,11 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -69,7 +71,7 @@ class MemoryStatusToolRendererTest {
         val run = json.getValue("run").jsonObject
         val children = run.getValue("children").jsonArray
 
-        assertEquals("completed", json.getValue("status").jsonPrimitive.content)
+        assertEquals("running", json.getValue("status").jsonPrimitive.content)
         assertEquals("document-ingest:run:parent", json.getValue("run_id").jsonPrimitive.content)
         assertEquals("RUNNING", run.getValue("run_status").jsonPrimitive.content)
         assertEquals("2", run.getValue("progress").jsonObject.getValue("total_units").jsonPrimitive.content)
@@ -85,19 +87,47 @@ class MemoryStatusToolRendererTest {
     }
 
     @Test
+    fun runStatusExposesNeedsInputResultAsTerminal() {
+        val run = MemoryRun(
+            id = MemoryRun.Id("memory-operation:remember:needs-input"),
+            namespace = namespace,
+            runType = MemoryRun.Type.REMEMBER,
+            summary = "Memory ingest needs explicit structure confirmation",
+            output = buildJsonObject {
+                put("status", "needs_user_input")
+                put("required_action", "Ask the user to approve the proposed structure.")
+            },
+            status = MemoryRun.Status.NEEDS_INPUT,
+            createdAt = createdAt,
+            completedAt = createdAt,
+        )
+
+        val json = Json.parseToJsonElement(
+            MemoryToolResultRenderer.runStatusJsonString(run, emptyList(), maxDepth = 0)
+        ).jsonObject
+
+        assertEquals("needs_user_input", json.getValue("status").jsonPrimitive.content)
+        assertEquals("needs_input", json.getValue("run_status").jsonPrimitive.content)
+        assertEquals(
+            "Ask the user to approve the proposed structure.",
+            json.getValue("result").jsonObject.getValue("required_action").jsonPrimitive.content,
+        )
+    }
+
+    @Test
     fun queueStatusRendersProcessLocalCounters() {
         val json = Json.parseToJsonElement(
             MemoryToolResultRenderer.queueStatusJsonString(
-                documentStatus = MemoryDocumentIngestQueueStatus(
+                operationStatus = MemoryOperationQueueStatus(
                     pendingJobs = 2,
-                    activeJob = ActiveDocumentIngestJob(
-                        runId = MemoryRun.Id("document-ingest:run:active"),
-                        parentSourceId = MemorySource.Id("external:document:active"),
-                        sourceRef = "agent_memory_handoff/README.md",
-                        sectionsTotal = 7,
+                    activeJob = ActiveMemoryOperation(
+                        runId = MemoryRun.Id("memory-operation:remember:run:active"),
+                        operation = MemoryOperationKind.REMEMBER,
+                        namespace = namespace,
                         startedAt = createdAt,
                     ),
                     totalEnqueuedJobs = 5,
+                    totalRecoveredJobs = 1,
                     totalStartedJobs = 3,
                     totalCompletedJobs = 2,
                     totalFatallyFailedJobs = 1,
@@ -131,8 +161,8 @@ class MemoryStatusToolRendererTest {
         assertEquals("3", json.getValue("pending_jobs").jsonPrimitive.content)
         assertEquals("true", json.getValue("has_active_job").jsonPrimitive.content)
         assertEquals(
-            "document-ingest:run:active",
-            json.getValue("document_ingest").jsonObject
+            "memory-operation:remember:run:active",
+            json.getValue("operations").jsonObject
                 .getValue("active_job").jsonObject
                 .getValue("run_id").jsonPrimitive.content,
         )
@@ -147,7 +177,7 @@ class MemoryStatusToolRendererTest {
             json.getValue("embeddings").jsonObject
                 .getValue("total_embedded_items").jsonPrimitive.content,
         )
-        assertEquals("false", json.getValue("durable_resume").jsonPrimitive.content)
+        assertEquals("resume_queued_fail_interrupted", json.getValue("restart_policy").jsonPrimitive.content)
     }
 
     @Test

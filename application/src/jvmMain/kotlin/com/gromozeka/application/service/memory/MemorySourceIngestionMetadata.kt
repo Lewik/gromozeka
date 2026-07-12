@@ -16,27 +16,16 @@ private val documentOrigins = setOf(
     MemoryWriteOriginKind.PASTED_DOCUMENT_SECTION.wireName,
 )
 
-private val forceModes = setOf(
-    "force",
-    "forced",
-    "force_write",
-    "force_memory",
-    "force_remember",
-)
-
 internal fun MemorySource.isDocumentIngestSource(): Boolean {
-    val metadata = contentPayloadObject() ?: return contentText.startsWith("Document source:")
+    val metadata = contentPayloadObject() ?: return false
     val origin = metadata.stringValue("memoryToolOrigin")
     return metadata.stringValue("sourceKind") == "document" ||
-        origin in documentOrigins ||
-        contentText.startsWith("Document source:")
+        origin in documentOrigins
 }
 
 internal fun MemorySource.isForcedMemoryWriteSource(): Boolean {
     val metadata = contentPayloadObject() ?: return false
-    val mode = metadata.stringValue("mode")?.lowercase()
-    return metadata.booleanValue("forceMemoryWrite") ||
-        mode in forceModes
+    return metadata.booleanValue("forceMemoryWrite")
 }
 
 internal fun MemorySource.withForceMemoryWrite(): MemorySource {

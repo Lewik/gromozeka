@@ -1179,7 +1179,8 @@ class ConversationEngineService(
             conversationId = conversationId,
             agent = agent,
             project = project,
-            namespace = project.defaultMemoryNamespace(),
+            namespace = settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
+                ?: project.defaultMemoryNamespace(),
             runtimeSystemPrompts = systemPrompts,
             runtimeTools = memoryPipelineTools,
         )

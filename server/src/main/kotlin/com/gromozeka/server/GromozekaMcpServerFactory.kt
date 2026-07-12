@@ -242,7 +242,11 @@ class GromozekaMcpServerFactory(
 
             MCP callers cannot target previous conversation messages. If the user wants a prior message remembered, pass the relevant text explicitly.
 
-            `force_write=true` means "the user explicitly wants this content stored even if the router would normally skip it". Use it sparingly.
+            `force_write=true` explicitly forces ingestion after technical/structure preflight. `force_write=false` disables the configured document force for this call; omit it to use the configured document-ingest default. Force never bypasses blank, size, format, or safe-segmentation validation.
+
+            If `memory_run_status` returns top-level `status=needs_user_input` (`run_status=needs_input`), follow the result's `required_action`. Never approve a proposed structure yourself. Ask the user, and only after explicit approval repeat `memory_remember` with `confirmed_preflight_run_id` set to that run id and the same source content.
+
+            `memory_remember` returns a queued `run_id` immediately. The accepted operation continues locally in the background. Call `memory_run_status` with that id until `run_status` is terminal; the completed payload is returned in `result`.
 
             ## Reading memory
 
@@ -255,19 +259,19 @@ class GromozekaMcpServerFactory(
             - `what I know about Lewik's Toyota RunX`
             - `current action item: debug Bedrock JSON schema errors in memory note constructor`
 
-            The tool returns structured JSON containing a rendered `memory_context` block plus trace/status metadata. Inject the returned `memory_context` into your reasoning or answer only when it is relevant. Treat selected memory as strong remembered context, but still reject it if it is clearly stale, contradicted, irrelevant, or insufficient.
+            Both read tools return a queued `run_id` immediately. Call `memory_run_status` with that id until `run_status` is terminal. The `result` then contains the structured payload. For enrichment, inject the returned `memory_context` into your reasoning or answer only when it is relevant. Treat selected memory as strong remembered context, but still reject it if it is clearly stale, contradicted, irrelevant, or insufficient.
 
             `memory_answer_question` returns structured JSON containing `answer`, `sufficiency`, evidence refs, and the same selected `memory_context`. Use it for "what do you remember / what do you know about..." style questions when the answer itself should be produced by the memory subsystem.
 
             ## Maintenance and status
 
             - `memory_run_status`: inspect one memory run by id.
-            - `memory_queue_status`: inspect queued/running memory document ingest and maintenance work.
+            - `memory_queue_status`: inspect queued/running memory operations and maintenance work.
             - `memory_embedding_status`: inspect vector embedding coverage for a namespace.
             - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, targeted repairs, or embedding rebuild.
             - `memory_rebuild_embeddings`: rebuild vector embeddings for a namespace (`full` reset/replace or `missing` fill-only).
 
-            Maintenance tools operate on existing memory and return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Prefer status tools before starting broad maintenance if a run is already active.
+            Memory remember/read operations and maintenance tools return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Prefer status tools before starting broad maintenance if a run is already active.
 
             ## Practical workflow
 
@@ -276,17 +280,17 @@ class GromozekaMcpServerFactory(
             3. Call `memory_answer_question` for direct memory-only questions.
             4. Call `memory_enrich_context` before answering or acting when remembered context may matter.
             5. Call `memory_remember` only for explicit user-approved content.
-            6. Call `memory_run_status` or `memory_queue_status` when a write/import looks slow or unclear.
+            6. Call `memory_run_status` with the returned run id to retrieve the completed result.
         """.trimIndent()
 
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
-            "Persist explicit user-approved text or a raw markdown/text document. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_help for typed-memory concepts, namespaces, and workflow."
+            "Queue persistence of explicit user-approved text or a raw markdown/text document and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_run_status to retrieve completion and the final result. Use memory_help for typed-memory concepts, namespaces, and workflow."
 
         const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
-            "Retrieve persisted memory relevant to a supplied context. This enriches a topic/action item/current turn; it is not a question-answering tool. Use memory_help for interpretation guidance."
+            "Queue retrieval of persisted memory relevant to a supplied context and return a run_id. This enriches a topic/action item/current turn; it is not a question-answering tool. Use memory_run_status to retrieve memory_context."
 
         const val MCP_MEMORY_ANSWER_QUESTION_DESCRIPTION =
-            "Answer a direct question from persisted memory only. Returns answer, sufficiency, evidence refs, selected refs, and memory_context. Use memory_help for workflow guidance."
+            "Queue a direct question answered from persisted memory only and return a run_id. Use memory_run_status to retrieve answer, sufficiency, evidence refs, selected refs, and memory_context."
 
         const val MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION =
             "List readable memory namespaces, item counts, and the configured default namespace."
@@ -301,10 +305,10 @@ class GromozekaMcpServerFactory(
             "Inspect vector embedding coverage for one memory namespace under the currently configured embedding model: embeddable items, expected rows, existing rows, and missing rows. Read-only."
 
         const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
-            "Read process-local memory document ingest, maintenance, and synchronous embedding index status."
+            "Read process-local memory operation, maintenance, and synchronous embedding index status."
 
         const val MCP_MEMORY_RUN_STATUS_DESCRIPTION =
-            "Read persisted status, timings, errors, and child runs for one memory run by run_id."
+            "Read persisted status, result, timings, errors, and child runs for one memory run by run_id."
 
         val MCP_MEMORY_REMEMBER_INPUT_SCHEMA = """
             {
@@ -336,7 +340,11 @@ class GromozekaMcpServerFactory(
                 },
                 "force_write": {
                   "type": "boolean",
-                  "description": "Force ingestion for this exact explicit content when the user says to remember/store/import it even if the router would normally choose no-op. Use sparingly."
+                  "description": "Optional explicit override. true forces ingestion after preflight; false disables configured document force; omit to use the configured document-ingest default. Never bypasses technical or structure validation."
+                },
+                "confirmed_preflight_run_id": {
+                  "type": "string",
+                  "description": "Run id whose run_status is needs_input and whose proposed structure the user explicitly approved. Never set without explicit user confirmation."
                 },
                 "mode": {
                   "type": "string",

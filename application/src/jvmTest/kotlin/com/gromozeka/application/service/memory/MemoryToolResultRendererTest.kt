@@ -19,7 +19,13 @@ class MemoryToolResultRendererTest {
 
         assertEquals("pending", root.getValue("status").jsonPrimitive.content)
         assertEquals("ASYNC_RECALL", root.getValue("context_mode").jsonPrimitive.content)
-        assertTrue(root.getValue("usage_guidance").jsonPrimitive.content.contains("asynchronously"))
+        val usageGuidance = root.getValue("usage_guidance").jsonPrimitive.content
+        assertTrue(usageGuidance.contains("asynchronously"))
+        assertTrue(usageGuidance.contains("not evidence"))
+        assertTrue(usageGuidance.contains("make no claim about source access or absence"))
+        val memoryContext = root.getValue("memory_context").jsonPrimitive.content
+        assertTrue(memoryContext.contains("follow-up memory result"))
+        assertTrue("not available" !in memoryContext.lowercase())
     }
 
     @Test

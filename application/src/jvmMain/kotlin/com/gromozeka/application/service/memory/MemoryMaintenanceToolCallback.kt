@@ -60,7 +60,7 @@ class MemoryMaintenanceToolCallback(
                 },
                 "namespace": {
                   "type": "string",
-                  "description": "Explicit memory namespace, currently only project:<project-id> is supported."
+                  "description": "Explicit readable memory namespace such as global, user:lewik, work:hebrew, or project:<project-id>."
                 },
                 "embedding_mode": {
                   "type": "string",

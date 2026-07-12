@@ -384,6 +384,35 @@ class PostgresMemoryStore(
             }
         }
 
+    override suspend fun findRunsByStatuses(
+        statuses: Set<MemoryRun.Status>,
+        runTypes: Set<MemoryRun.Type>,
+    ): List<MemoryRun> {
+        if (statuses.isEmpty() || runTypes.isEmpty()) return emptyList()
+        val statusValues = statuses.map { it.name }.sorted()
+        val typeValues = runTypes.map { it.name }.sorted()
+        val statusPlaceholders = statusValues.joinToString(",") { "?" }
+        val typePlaceholders = typeValues.joinToString(",") { "?" }
+        val sql =
+            "SELECT payload::text FROM memory_runs " +
+                "WHERE status IN ($statusPlaceholders) AND run_type IN ($typePlaceholders) " +
+                "ORDER BY created_at ASC, id ASC"
+        return dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                (statusValues + typeValues).forEachIndexed { index, value ->
+                    statement.setString(index + 1, value)
+                }
+                statement.executeQuery().use { resultSet ->
+                    buildList {
+                        while (resultSet.next()) {
+                            add(json.decodeFromString<MemoryRun>(resultSet.getString(1)))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override suspend fun findProfile(
         namespace: MemoryNamespace,
         ownerEntityId: MemoryEntity.Id?,

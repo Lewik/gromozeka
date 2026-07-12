@@ -254,12 +254,18 @@ class RuntimeMemoryReadPipeline(
         if (plan.shouldSweepCompleteSetSources()) {
             val sourceSweepLimit = plan.completeSetSourceSweepLimit()
             val sourceSweepSearchLimit = (sourceSweepLimit + request.threadContext.messages.size + 4).coerceAtMost(50)
+            val sourceSweepQuery = if (targetEntities.filterEntityIds.isEmpty()) {
+                ""
+            } else {
+                request.sourceFallbackSearchQuery(plan)
+            }
             val rawSourceSweepHits = store.search(
                 MemoryStore.SearchRequest(
-                    query = "",
+                    query = sourceSweepQuery,
                     namespace = request.namespace,
                     scopes = setOf(MemoryStore.SearchScope.SOURCES),
                     filters = MemoryStore.SearchFilters(),
+                    embedding = queryEmbedding(sourceSweepQuery, queryEmbeddings),
                     limit = sourceSweepSearchLimit,
                 )
             )
@@ -272,7 +278,7 @@ class RuntimeMemoryReadPipeline(
             hits += sourceSweepHits
             searchSteps += MemoryReadTrace.SearchStep(
                 stage = "coverage:${MemorySemanticType.SOURCE.name}",
-                query = "",
+                query = sourceSweepQuery,
                 scope = MemoryStore.SearchScope.SOURCES.name,
                 requestedLimit = sourceSweepLimit,
                 rawCount = rawSourceSweepHits.size,
@@ -283,6 +289,7 @@ class RuntimeMemoryReadPipeline(
             )
             log.info {
                 "Memory read complete-set source sweep: namespace=${request.namespace.value} " +
+                    "query=${sourceSweepQuery.oneLineForRuntimeMemoryLog(120)} " +
                     "limit=$sourceSweepLimit searchLimit=$sourceSweepSearchLimit rawHits=${rawSourceSweepHits.size} " +
                     "hits=${sourceSweepHits.size} sourcePolicy=${sourceSweepSelection.summaryForLog()} " +
                     "top=${sourceSweepHits.summaryForRuntimeMemoryLog()}"

@@ -938,6 +938,9 @@ data class MemoryRun(
 
     @Serializable
     enum class Type {
+        REMEMBER,
+        ENRICH_CONTEXT,
+        ANSWER_QUESTION,
         ROUTE,
         DOCUMENT_INGEST,
         RETRIEVE_UPDATE,
@@ -971,6 +974,7 @@ data class MemoryRun(
     enum class Status {
         QUEUED,
         RUNNING,
+        NEEDS_INPUT,
         SUCCESS,
         FAILED,
         PARTIAL,

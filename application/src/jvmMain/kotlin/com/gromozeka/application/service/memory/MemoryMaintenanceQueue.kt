@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
@@ -49,14 +50,13 @@ class MemoryMaintenanceQueue(
                 activeJob.set(job.toActiveJob(startedAt))
                 totalStartedJobs.incrementAndGet()
                 try {
-                    runCatching {
-                        process(job, startedAt)
-                    }.onSuccess {
-                        totalCompletedJobs.incrementAndGet()
-                    }.onFailure { error ->
-                        totalFatallyFailedJobs.incrementAndGet()
-                        failJob(job, error, startedAt)
-                    }
+                    process(job, startedAt)
+                    totalCompletedJobs.incrementAndGet()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    totalFatallyFailedJobs.incrementAndGet()
+                    failJob(job, error, startedAt)
                 } finally {
                     activeJob.set(null)
                 }

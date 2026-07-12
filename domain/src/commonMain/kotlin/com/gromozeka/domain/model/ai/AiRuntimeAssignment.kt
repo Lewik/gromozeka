@@ -61,6 +61,11 @@ data class AiRuntimeAssignment(
             displayName = "Memory write / Context compactor",
             description = "Optional override for compacting large conversation context before memory writing.",
         ),
+        MEMORY_WRITE_INGEST_PLANNER(
+            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
+            displayName = "Memory write / Ingest planner",
+            description = "Optional override for validating and segmenting explicit memory inputs before writing.",
+        ),
         MEMORY_WRITE_ROUTER(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
             displayName = "Memory write / Router",
@@ -162,6 +167,7 @@ data class AiRuntimeAssignment(
                 MEMORY_READ_ANSWER -> MEMORY_READ
 
                 MEMORY_WRITE_CONTEXT_COMPACTOR,
+                MEMORY_WRITE_INGEST_PLANNER,
                 MEMORY_WRITE_ROUTER,
                 MEMORY_WRITE_RETRIEVAL_PLANNER,
                 MEMORY_WRITE_ENTITY_CANONICALIZER,

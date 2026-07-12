@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class MemoryEnrichContextToolCallback(
-    private val memoryToolApplicationService: MemoryToolApplicationService,
+    private val memoryOperations: MemoryAsyncOperationApplicationService,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -26,7 +25,7 @@ class MemoryEnrichContextToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
-        description = "Enrich a target context with relevant persisted memory. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched; the tool returns memory_context for the assistant to use before answering or acting. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace.",
+        description = "Queue enrichment of a target context with relevant persisted memory and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and memory_context. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace.",
         inputSchema = """
             {
               "type": "object",
@@ -65,7 +64,7 @@ class MemoryEnrichContextToolCallback(
                     "target='provided_context' requires non-blank context."
                 )
             }
-            return@runBlocking memoryToolApplicationService.enrichProvidedContext(
+            return@runBlocking memoryOperations.enrichProvidedContext(
                 conversationIdValue = context?.getString("conversationId"),
                 contextText = providedContext,
                 mode = input.mode,
@@ -82,7 +81,7 @@ class MemoryEnrichContextToolCallback(
             return@runBlocking MemoryToolResultRenderer.failureJsonString("Unsupported memory_enrich_context target: ${input.target}")
         }
 
-        memoryToolApplicationService.enrichContext(
+        memoryOperations.enrichMessage(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id,
             namespaceValue = input.namespace,

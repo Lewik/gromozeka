@@ -11,6 +11,21 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
 internal object MemoryStructuredResponseFormats {
+    val IngestPlanner = AiResponseFormat.JsonSchema(
+        name = "memory_ingest_plan",
+        description = "Validate immutable source blocks and group them into processable memory sections.",
+        schema = objectSchema(
+            "decision" to stringEnumSchema("ready", "needs_user_confirmation", "needs_user_structure"),
+            "sections" to arraySchema(
+                objectSchema(
+                    "title" to stringSchema(),
+                    "block_ids" to arraySchema(stringSchema()),
+                )
+            ),
+            "reason" to stringSchema(),
+        ),
+    )
+
     val WriteRouter = AiResponseFormat.JsonSchema(
         name = "memory_write_router",
         description = "Route one target conversation message into a memory write decision.",

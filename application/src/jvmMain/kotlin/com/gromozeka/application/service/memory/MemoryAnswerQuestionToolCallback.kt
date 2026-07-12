@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class MemoryAnswerQuestionToolCallback(
-    private val memoryToolApplicationService: MemoryToolApplicationService,
+    private val memoryOperations: MemoryAsyncOperationApplicationService,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -26,7 +25,7 @@ class MemoryAnswerQuestionToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ANSWER_QUESTION_TOOL_NAME,
-        description = "Answer a direct question using persisted memory only. Use this when the user asks what Gromozeka remembers or asks a factual question whose answer should come from memory. For normal chat where the assistant should reason over returned context itself, use memory_enrich_context instead.",
+        description = "Queue a direct question answered from persisted memory only and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final answer. Use this when the user asks what Gromozeka remembers or asks a factual question whose answer should come from memory. For normal chat where the assistant should reason over returned context itself, use memory_enrich_context instead.",
         inputSchema = """
             {
               "type": "object",
@@ -65,7 +64,7 @@ class MemoryAnswerQuestionToolCallback(
                     "target='provided_question' requires non-blank question."
                 )
             }
-            return@runBlocking memoryToolApplicationService.answerProvidedQuestion(
+            return@runBlocking memoryOperations.answerProvidedQuestion(
                 conversationIdValue = context?.getString("conversationId"),
                 questionText = providedQuestion,
                 mode = input.mode,
@@ -82,7 +81,7 @@ class MemoryAnswerQuestionToolCallback(
             return@runBlocking MemoryToolResultRenderer.failureJsonString("Unsupported memory_answer_question target: ${input.target}")
         }
 
-        memoryToolApplicationService.answerQuestion(
+        memoryOperations.answerMessage(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id,
             namespaceValue = input.namespace,

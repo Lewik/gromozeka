@@ -82,7 +82,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
     }
 
     @Test
-    fun documentIngestSourceBypassesRouterAndRetrievalPlanner() = runBlocking {
+    fun forcedDocumentIngestSourceBypassesRouterAndRetrievalPlanner() = runBlocking {
         val events = CopyOnWriteArrayList<String>()
         val result = documentBypassPipeline(
             noteConstructor = RecordingMemoryNoteConstructor(events, "note"),
@@ -113,6 +113,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
                         put("heading", "Architecture")
                         put("documentType", "markdown")
                         put("importedAt", NOW.toString())
+                        put("forceMemoryWrite", true)
                     },
                     contentHash = "document-hash",
                     observedAt = NOW,
@@ -123,7 +124,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
         )
 
         assertEquals(MemoryRouteDecision.Decision.MIXED, result.routeDecision.decision)
-        assertTrue(result.routeDecision.reason.contains("deterministic document truth route"))
+        assertTrue(result.routeDecision.reason.contains("Forced document ingestion"))
         assertTrue(result.routeDecision.sourcePolicy.allowStructuredExtraction)
         assertEquals(
             setOf(MemorySemanticType.CLAIM, MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
@@ -136,6 +137,34 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
         )
         assertEquals(listOf("Doc", "doc.md", "Architecture", "markdown"), retrievalPlan.entityQueries)
         assertEquals(listOf("note", "claim"), events.toList())
+    }
+
+    @Test
+    fun nonForcedDocumentUsesOrdinaryMemoryRouter() = runBlocking {
+        val result = noopRouterPipeline().write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = NAMESPACE,
+                source = MemorySource.ExternalRecord(
+                    id = MemorySource.Id("external:document:non-forced"),
+                    namespace = NAMESPACE,
+                    recordRef = "draft.md",
+                    authorLabel = "document",
+                    contentText = "# Draft\n\nPotentially useful content.",
+                    contentPayload = buildJsonObject {
+                        put("memoryToolOrigin", "provided_document")
+                        put("sourceKind", "document")
+                        put("sourceRef", "draft.md")
+                    },
+                    contentHash = "non-forced-document-hash",
+                    observedAt = NOW,
+                    createdAt = NOW,
+                    retentionClass = MemorySource.RetentionClass.IMPORTED,
+                ),
+            )
+        )
+
+        assertEquals(MemoryRouteDecision.Decision.NOOP, result.routeDecision.decision)
+        assertTrue(result.routeDecision.reason.contains("Router decided source is not a current user assertion"))
     }
 
     @Test
@@ -187,6 +216,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
                         put("sourceRef", "profile.md")
                         put("heading", "Skills")
                         put("documentType", "markdown")
+                        put("forceMemoryWrite", true)
                     },
                     contentHash = "document-user-profile-hash",
                     observedAt = NOW,
@@ -220,7 +250,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
         )
 
         assertEquals(MemoryRouteDecision.Decision.NOTE_WRITE, result.routeDecision.decision)
-        assertTrue(result.routeDecision.reason.contains("Forced memory write overrode router NOOP"))
+        assertTrue(result.routeDecision.reason.contains("Explicit force_write overrode router NOOP"))
         assertTrue(result.routeDecision.sourcePolicy.allowStructuredExtraction)
         assertTrue(result.routeDecision.salience >= 0.95)
     }

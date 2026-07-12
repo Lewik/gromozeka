@@ -257,6 +257,7 @@ data class UserProfile(
         val autoRemember: Boolean = false,
         val autoRecall: Boolean = false,
         val defaultNamespace: String? = null,
+        val forceWriteForDocumentIngest: Boolean = true,
     )
 
     @Serializable

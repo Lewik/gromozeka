@@ -65,6 +65,47 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     @Test
+    fun completeSetSourceSweepUsesTargetQueryWhenEntityScopeIsKnown() = runBlocking {
+        val pantryPilotSource = source("source-pantry-pilot", "PantryPilot uses PostgreSQL.")
+        val shelfLogSource = source("source-shelf-log", "ShelfLog uses MongoDB.")
+        val store = SourceSweepStore(
+            sources = listOf(pantryPilotSource, shelfLogSource),
+            entities = listOf(entity("entity:pantry-pilot", "PantryPilot", MemoryEntity.Type.PROJECT)),
+        )
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 4),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need complete evidence about PantryPilot.",
+                            query = "PantryPilot database",
+                            topK = 1,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("Which database does PantryPilot use?"))
+        val coverageStep = result.trace.searchSteps.single { it.stage == "coverage:SOURCE" }
+
+        assertTrue(coverageStep.query.contains("PantryPilot"), coverageStep.query)
+        assertEquals(
+            listOf(pantryPilotSource.id),
+            result.retrievedHits
+                .filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+                .map { it.source.id },
+        )
+    }
+
+    @Test
     fun selectedSourcesRestoreActiveTypedEvidenceSupport() = runBlocking {
         val source = source(
             id = "source-owned-item",
@@ -625,9 +666,17 @@ class RuntimeMemoryReadPipelineTest {
         private val sources: List<MemorySource.ExternalRecord>,
         private val delegateStore: InMemoryMemoryStore,
     ) : MemoryStore by delegateStore {
-        constructor(sources: List<MemorySource.ExternalRecord>) : this(
+        constructor(
+            sources: List<MemorySource.ExternalRecord>,
+            entities: List<MemoryEntity> = emptyList(),
+        ) : this(
             sources = sources,
-            delegateStore = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = sources)),
+            delegateStore = InMemoryMemoryStore(
+                MemoryNamespaceSnapshot(
+                    sources = sources,
+                    entities = entities,
+                )
+            ),
         )
 
         override suspend fun search(request: MemoryStore.SearchRequest): List<MemoryStore.SearchHit> {
@@ -681,6 +730,23 @@ class RuntimeMemoryReadPipelineTest {
                 contentHash = id,
                 observedAt = NOW,
                 createdAt = NOW,
+            )
+
+        private fun entity(
+            id: String,
+            canonicalName: String,
+            type: MemoryEntity.Type,
+        ): MemoryEntity =
+            MemoryEntity(
+                id = MemoryEntity.Id(id),
+                namespace = NAMESPACE,
+                entityType = type,
+                canonicalName = canonicalName,
+                normalizedName = canonicalName.lowercase(),
+                firstSeenAt = NOW,
+                lastSeenAt = NOW,
+                createdAt = NOW,
+                updatedAt = NOW,
             )
 
         private fun claim(

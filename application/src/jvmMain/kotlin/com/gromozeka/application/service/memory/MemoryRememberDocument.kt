@@ -3,10 +3,8 @@ package com.gromozeka.application.service.memory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -14,12 +12,16 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import kotlin.io.path.exists
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 import kotlin.io.path.readText
 
-internal enum class MemoryDocumentType {
+internal const val MAX_MEMORY_REMEMBER_INPUT_BYTES = 10L * 1024L * 1024L
+
+@Serializable
+enum class MemoryDocumentType {
     MARKDOWN;
 
     companion object {
@@ -33,20 +35,81 @@ internal enum class MemoryDocumentType {
     }
 }
 
-internal enum class MemoryRememberInputKind {
+@Serializable
+enum class MemoryRememberInputKind {
     TEXT,
     FILE_PATH,
     RAW_URL,
 }
 
-internal data class MemoryRememberContentRequest(
-    val text: String? = null,
-    val filePath: String? = null,
-    val rawUrl: String? = null,
-    val documentType: String? = null,
+@Serializable
+sealed interface MemoryRememberContentInput {
+    val kind: MemoryRememberInputKind
+
+    @Serializable
+    @SerialName("text")
+    data class Text(val value: String) : MemoryRememberContentInput {
+        override val kind: MemoryRememberInputKind = MemoryRememberInputKind.TEXT
+    }
+
+    @Serializable
+    @SerialName("file_path")
+    data class FilePath(val value: String) : MemoryRememberContentInput {
+        override val kind: MemoryRememberInputKind = MemoryRememberInputKind.FILE_PATH
+    }
+
+    @Serializable
+    @SerialName("raw_url")
+    data class RawUrl(val value: String) : MemoryRememberContentInput {
+        override val kind: MemoryRememberInputKind = MemoryRememberInputKind.RAW_URL
+    }
+}
+
+@Serializable
+data class MemoryRememberContentRequest(
+    val input: MemoryRememberContentInput,
+    val documentType: MemoryDocumentType? = null,
     val title: String? = null,
     val sourceRef: String? = null,
-)
+) {
+    companion object {
+        fun fromExternal(
+            text: String? = null,
+            filePath: String? = null,
+            rawUrl: String? = null,
+            documentType: String? = null,
+            title: String? = null,
+            sourceRef: String? = null,
+        ): MemoryRememberContentRequest {
+            val inputs = listOfNotNull(
+                text?.takeIf { it.isNotBlank() }?.let(MemoryRememberContentInput::Text),
+                filePath?.trim()?.takeIf { it.isNotBlank() }?.let(MemoryRememberContentInput::FilePath),
+                rawUrl?.trim()?.takeIf { it.isNotBlank() }?.let(MemoryRememberContentInput::RawUrl),
+            )
+            require(inputs.size == 1) {
+                "memory_remember requires exactly one of text, file_path, or raw_url for provided content."
+            }
+            val input = inputs.single()
+            if (input is MemoryRememberContentInput.Text) {
+                require(input.value.toByteArray(StandardCharsets.UTF_8).size <= MAX_MEMORY_REMEMBER_INPUT_BYTES) {
+                    "memory_remember text is too large; max=$MAX_MEMORY_REMEMBER_INPUT_BYTES bytes."
+                }
+            }
+            val parsedDocumentType = MemoryDocumentType.parse(documentType)
+                ?: when (input) {
+                    is MemoryRememberContentInput.Text -> null
+                    is MemoryRememberContentInput.FilePath,
+                    is MemoryRememberContentInput.RawUrl -> MemoryDocumentType.MARKDOWN
+                }
+            return MemoryRememberContentRequest(
+                input = input,
+                documentType = parsedDocumentType,
+                title = title?.trim()?.takeIf { it.isNotBlank() },
+                sourceRef = sourceRef?.trim()?.takeIf { it.isNotBlank() },
+            )
+        }
+    }
+}
 
 internal data class MemoryResolvedRememberContent(
     val kind: MemoryRememberInputKind,
@@ -54,27 +117,6 @@ internal data class MemoryResolvedRememberContent(
     val documentType: MemoryDocumentType?,
     val title: String?,
     val sourceRef: String,
-)
-
-internal data class MemoryRememberDocumentResult(
-    val documentType: MemoryDocumentType,
-    val inputKind: MemoryRememberInputKind,
-    val title: String?,
-    val sourceRef: String,
-    val parentSourceId: String,
-    val sections: List<MarkdownDocumentSection>,
-    val sectionResults: List<com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult>,
-)
-
-internal data class MemoryRememberDocumentQueuedResult(
-    val runId: String,
-    val documentType: MemoryDocumentType,
-    val inputKind: MemoryRememberInputKind,
-    val title: String?,
-    val sourceRef: String,
-    val parentSourceId: String,
-    val sections: List<MarkdownDocumentSection>,
-    val queueSize: Int,
 )
 
 internal data class MarkdownDocumentImport(
@@ -116,68 +158,62 @@ internal object MarkdownDocumentImportDetector {
 internal class MemoryRememberContentResolver(
     private val httpClient: HttpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
+        .connectTimeout(RAW_URL_CONNECT_TIMEOUT)
         .build(),
 ) {
     suspend fun resolve(request: MemoryRememberContentRequest): MemoryResolvedRememberContent {
-        val nonBlankInputs = listOfNotNull(
-            request.text?.takeIf { it.isNotBlank() }?.let { MemoryRememberInputKind.TEXT },
-            request.filePath?.takeIf { it.isNotBlank() }?.let { MemoryRememberInputKind.FILE_PATH },
-            request.rawUrl?.takeIf { it.isNotBlank() }?.let { MemoryRememberInputKind.RAW_URL },
-        )
-        require(nonBlankInputs.size == 1) {
-            "memory_remember requires exactly one of text, file_path, or raw_url for provided content."
-        }
-
-        val kind = nonBlankInputs.single()
-        val resolved = when (kind) {
-            MemoryRememberInputKind.TEXT -> resolveText(request)
-            MemoryRememberInputKind.FILE_PATH -> resolveFile(request)
-            MemoryRememberInputKind.RAW_URL -> resolveRawUrl(request)
+        val resolved = when (request.input) {
+            is MemoryRememberContentInput.Text -> resolveText(request)
+            is MemoryRememberContentInput.FilePath -> resolveFile(request)
+            is MemoryRememberContentInput.RawUrl -> resolveRawUrl(request)
         }
         require(resolved.text.isNotBlank()) { "Resolved memory content is blank." }
         return resolved
     }
 
     private fun resolveText(request: MemoryRememberContentRequest): MemoryResolvedRememberContent {
-        val text = request.text.orEmpty().trim()
+        val input = request.input as MemoryRememberContentInput.Text
         return MemoryResolvedRememberContent(
             kind = MemoryRememberInputKind.TEXT,
-            text = text,
-            documentType = MemoryDocumentType.parse(request.documentType),
-            title = request.title?.trim()?.takeIf { it.isNotBlank() },
-            sourceRef = request.sourceRef?.trim()?.takeIf { it.isNotBlank() } ?: "memory_remember:provided_text",
+            text = input.value,
+            documentType = request.documentType,
+            title = request.title,
+            sourceRef = request.sourceRef ?: "memory_remember:provided_text",
         )
     }
 
     private suspend fun resolveFile(request: MemoryRememberContentRequest): MemoryResolvedRememberContent =
         withContext(Dispatchers.IO) {
-            val path = Path.of(request.filePath!!.trim()).toAbsolutePath().normalize()
+            val input = request.input as MemoryRememberContentInput.FilePath
+            val path = Path.of(input.value).toAbsolutePath().normalize()
             require(path.exists()) { "memory_remember file_path does not exist: $path" }
             require(path.isRegularFile()) { "memory_remember file_path is not a regular file: $path" }
-            require(Files.size(path) <= MAX_INPUT_BYTES) {
-                "memory_remember file_path is too large: ${Files.size(path)} bytes; max=$MAX_INPUT_BYTES."
+            require(Files.size(path) <= MAX_MEMORY_REMEMBER_INPUT_BYTES) {
+                "memory_remember file_path is too large: ${Files.size(path)} bytes; max=$MAX_MEMORY_REMEMBER_INPUT_BYTES."
             }
             MemoryResolvedRememberContent(
                 kind = MemoryRememberInputKind.FILE_PATH,
                 text = path.readText(),
-                documentType = MemoryDocumentType.parse(request.documentType) ?: MemoryDocumentType.MARKDOWN,
-                title = request.title?.trim()?.takeIf { it.isNotBlank() } ?: path.name,
-                sourceRef = request.sourceRef?.trim()?.takeIf { it.isNotBlank() } ?: path.toString(),
+                documentType = request.documentType,
+                title = request.title ?: path.name,
+                sourceRef = request.sourceRef ?: path.toString(),
             )
         }
 
     private suspend fun resolveRawUrl(request: MemoryRememberContentRequest): MemoryResolvedRememberContent =
         withContext(Dispatchers.IO) {
-            val uri = URI.create(request.rawUrl!!.trim())
+            val input = request.input as MemoryRememberContentInput.RawUrl
+            val uri = URI.create(input.value)
             require(uri.scheme == "http" || uri.scheme == "https") {
                 "memory_remember raw_url supports only http/https."
             }
             val response = httpClient.send(
                 HttpRequest.newBuilder(uri)
                     .GET()
+                    .timeout(RAW_URL_REQUEST_TIMEOUT)
                     .header("Accept", "text/plain, text/markdown, application/octet-stream;q=0.5")
                     .build(),
-                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8),
+                HttpResponse.BodyHandlers.ofInputStream(),
             )
             require(response.statusCode() in 200..299) {
                 "memory_remember raw_url returned HTTP ${response.statusCode()}: $uri"
@@ -186,43 +222,36 @@ internal class MemoryRememberContentResolver(
             require(!contentType.contains("text/html")) {
                 "memory_remember raw_url returned HTML; provide a raw text/markdown URL instead."
             }
-            val body = response.body().trim()
-            require(body.toByteArray(StandardCharsets.UTF_8).size <= MAX_INPUT_BYTES) {
-                "memory_remember raw_url body is too large; max=$MAX_INPUT_BYTES bytes."
+            val bodyBytes = response.body().use { body ->
+                body.readNBytes((MAX_MEMORY_REMEMBER_INPUT_BYTES + 1).toInt())
             }
+            require(bodyBytes.size <= MAX_MEMORY_REMEMBER_INPUT_BYTES) {
+                "memory_remember raw_url body is too large; max=$MAX_MEMORY_REMEMBER_INPUT_BYTES bytes."
+            }
+            val body = String(bodyBytes, StandardCharsets.UTF_8)
             MemoryResolvedRememberContent(
                 kind = MemoryRememberInputKind.RAW_URL,
                 text = body,
-                documentType = MemoryDocumentType.parse(request.documentType) ?: MemoryDocumentType.MARKDOWN,
-                title = request.title?.trim()?.takeIf { it.isNotBlank() } ?: uri.path.substringAfterLast('/').ifBlank { uri.host },
-                sourceRef = request.sourceRef?.trim()?.takeIf { it.isNotBlank() } ?: uri.toString(),
+                documentType = request.documentType,
+                title = request.title ?: uri.path.substringAfterLast('/').ifBlank { uri.host },
+                sourceRef = request.sourceRef ?: uri.toString(),
             )
         }
 
     private companion object {
-        const val MAX_INPUT_BYTES = 10L * 1024L * 1024L
+        val RAW_URL_CONNECT_TIMEOUT: Duration = Duration.ofSeconds(30)
+        val RAW_URL_REQUEST_TIMEOUT: Duration = Duration.ofMinutes(2)
     }
 }
 
-internal data class MarkdownDocumentSection(
-    val index: Int,
-    val headingPath: List<String>,
-    val startLine: Int,
-    val endLine: Int,
-    val text: String,
-) {
-    val headingLabel: String =
-        headingPath.joinToString(" / ").ifBlank { "Document preamble" }
-}
-
-internal object MarkdownDocumentSlicer {
+internal object MemoryIngestSectionSlicer {
     private val headingRegex = Regex("^(#{1,6})\\s+(.+?)\\s*$")
 
-    fun slice(
+    fun sliceMarkdown(
         markdown: String,
         maxSectionChars: Int = 8_000,
         maxSiblingSubtreesPerSection: Int = 2,
-    ): List<MarkdownDocumentSection> {
+    ): List<MemoryIngestSection> {
         require(maxSectionChars > 0) { "maxSectionChars must be positive." }
         require(maxSiblingSubtreesPerSection > 0) { "maxSiblingSubtreesPerSection must be positive." }
         val lines = markdown.replace("\r\n", "\n").replace('\r', '\n').lines()
@@ -233,7 +262,7 @@ internal object MarkdownDocumentSlicer {
             .mapIndexed { index, section -> section.copy(index = index + 1) }
     }
 
-    fun splitForRetry(section: MarkdownDocumentSection): List<MarkdownDocumentSection> {
+    fun splitForRetry(section: MemoryIngestSection): List<MemoryIngestSection> {
         val sectionLines = section.text.lines()
         val lineParts = if (sectionLines.size >= 2) {
             val splitIndex = sectionLines.headingSplitIndex()
@@ -267,11 +296,11 @@ internal object MarkdownDocumentSlicer {
             ?: section.splitRetryByText()
     }
 
-    private fun MarkdownDocumentSection.splitOversized(maxSectionChars: Int): List<MarkdownDocumentSection> {
+    private fun MemoryIngestSection.splitOversized(maxSectionChars: Int): List<MemoryIngestSection> {
         if (text.length <= maxSectionChars) return listOf(this)
 
         val sectionLines = text.lines()
-        val parts = mutableListOf<MarkdownDocumentSection>()
+        val parts = mutableListOf<MemoryIngestSection>()
         var partStartIndex = 0
         var currentChars = 0
 
@@ -294,12 +323,12 @@ internal object MarkdownDocumentSlicer {
             .flatMap { part -> part.splitOversizedText(maxSectionChars) }
     }
 
-    private fun MarkdownDocumentSection.createPart(
+    private fun MemoryIngestSection.createPart(
         partNumber: Int,
         sectionLines: List<String>,
         startIndex: Int,
         endIndex: Int,
-    ): MarkdownDocumentSection =
+    ): MemoryIngestSection =
         copy(
             index = partNumber,
             headingPath = headingPath + "part $partNumber",
@@ -308,13 +337,13 @@ internal object MarkdownDocumentSlicer {
             text = sectionLines.subList(startIndex, endIndex + 1).joinToString("\n").trim(),
         )
 
-    private fun MarkdownDocumentSection.createRetryPart(
+    private fun MemoryIngestSection.createRetryPart(
         partNumber: Int,
         totalParts: Int,
         sectionLines: List<String>,
         startIndex: Int,
         endIndex: Int,
-    ): MarkdownDocumentSection =
+    ): MemoryIngestSection =
         copy(
             index = index * 10 + partNumber,
             headingPath = headingPath + "retry part $partNumber/$totalParts",
@@ -323,7 +352,7 @@ internal object MarkdownDocumentSlicer {
             text = sectionLines.subList(startIndex, endIndex + 1).joinToString("\n").trim(),
         )
 
-    private fun MarkdownDocumentSection.splitRetryByText(): List<MarkdownDocumentSection> {
+    private fun MemoryIngestSection.splitRetryByText(): List<MemoryIngestSection> {
         if (text.length < 2) return emptyList()
         val splitIndex = text.findSplitBoundaryNear(text.length / 2, minIndex = 1)
             .takeIf { it in 1 until text.length }
@@ -347,10 +376,10 @@ internal object MarkdownDocumentSlicer {
             ?: emptyList()
     }
 
-    private fun MarkdownDocumentSection.splitOversizedText(maxSectionChars: Int): List<MarkdownDocumentSection> {
+    private fun MemoryIngestSection.splitOversizedText(maxSectionChars: Int): List<MemoryIngestSection> {
         if (text.length <= maxSectionChars) return listOf(this)
 
-        val parts = mutableListOf<MarkdownDocumentSection>()
+        val parts = mutableListOf<MemoryIngestSection>()
         var startOffset = 0
         while (startOffset < text.length) {
             val hardEnd = (startOffset + maxSectionChars).coerceAtMost(text.length)
@@ -374,11 +403,11 @@ internal object MarkdownDocumentSlicer {
         return parts.filter { it.text.isNotBlank() }
     }
 
-    private fun MarkdownDocumentSection.createTextPart(
+    private fun MemoryIngestSection.createTextPart(
         partNumber: Int,
         startOffset: Int,
         endOffsetExclusive: Int,
-    ): MarkdownDocumentSection =
+    ): MemoryIngestSection =
         copy(
             index = partNumber,
             headingPath = headingPath + "part $partNumber",
@@ -387,12 +416,12 @@ internal object MarkdownDocumentSlicer {
             text = text.substring(startOffset, endOffsetExclusive).trim(),
         )
 
-    private fun MarkdownDocumentSection.createRetryTextPart(
+    private fun MemoryIngestSection.createRetryTextPart(
         partNumber: Int,
         totalParts: Int,
         startOffset: Int,
         endOffsetExclusive: Int,
-    ): MarkdownDocumentSection =
+    ): MemoryIngestSection =
         copy(
             index = index * 10 + partNumber,
             headingPath = headingPath + "retry part $partNumber/$totalParts",
@@ -401,7 +430,7 @@ internal object MarkdownDocumentSlicer {
             text = text.substring(startOffset, endOffsetExclusive).trim(),
         )
 
-    private fun MarkdownDocumentSection.lineNumberAtOffset(offset: Int): Int =
+    private fun MemoryIngestSection.lineNumberAtOffset(offset: Int): Int =
         startLine + text.take(offset.coerceIn(0, text.length)).count { it == '\n' }
 
     private fun String.findSplitBoundaryNear(targetIndex: Int, minIndex: Int): Int? {
@@ -453,12 +482,12 @@ internal object MarkdownDocumentSlicer {
         fun pack(
             maxSectionChars: Int,
             maxSiblingSubtreesPerSection: Int,
-        ): List<MarkdownDocumentSection> {
+        ): List<MemoryIngestSection> {
             val fullText = text(1, lines.size)
             if (fullText.isBlank()) return emptyList()
             if (fullText.length <= maxSectionChars) {
                 return listOf(
-                    MarkdownDocumentSection(
+                    MemoryIngestSection(
                         index = 1,
                         headingPath = emptyList(),
                         startLine = 1,
@@ -468,7 +497,7 @@ internal object MarkdownDocumentSlicer {
                 )
             }
 
-            val sections = mutableListOf<MarkdownDocumentSection>()
+            val sections = mutableListOf<MemoryIngestSection>()
             root.ownSection()?.let { sections += it }
             sections += packChildren(root, maxSectionChars, maxSiblingSubtreesPerSection)
             return sections
@@ -478,13 +507,13 @@ internal object MarkdownDocumentSlicer {
             node: Node,
             maxSectionChars: Int,
             maxSiblingSubtreesPerSection: Int,
-        ): List<MarkdownDocumentSection> {
+        ): List<MemoryIngestSection> {
             val subtreeText = text(node.startLine, node.endLine)
             if (subtreeText.length <= maxSectionChars) {
                 return listOf(node.toSection(node.startLine, node.endLine, subtreeText))
             }
 
-            val sections = mutableListOf<MarkdownDocumentSection>()
+            val sections = mutableListOf<MemoryIngestSection>()
             node.ownSection()?.let { sections += it }
             sections += packChildren(node, maxSectionChars, maxSiblingSubtreesPerSection)
             return sections.ifEmpty { listOf(node.toSection(node.startLine, node.endLine, subtreeText)) }
@@ -494,8 +523,8 @@ internal object MarkdownDocumentSlicer {
             parent: Node,
             maxSectionChars: Int,
             maxSiblingSubtreesPerSection: Int,
-        ): List<MarkdownDocumentSection> {
-            val sections = mutableListOf<MarkdownDocumentSection>()
+        ): List<MemoryIngestSection> {
+            val sections = mutableListOf<MemoryIngestSection>()
             val buffer = mutableListOf<Node>()
 
             fun flushBuffer() {
@@ -528,14 +557,14 @@ internal object MarkdownDocumentSlicer {
             return sections
         }
 
-        private fun List<Node>.toPackedSection(parent: Node): MarkdownDocumentSection {
+        private fun List<Node>.toPackedSection(parent: Node): MemoryIngestSection {
             val first = first()
             val last = last()
             val headingPath = when (size) {
                 1 -> first.headingPath()
                 else -> parent.headingPath() + "${first.title} .. ${last.title}"
             }
-            return MarkdownDocumentSection(
+            return MemoryIngestSection(
                 index = 0,
                 headingPath = headingPath,
                 startLine = first.startLine,
@@ -544,7 +573,7 @@ internal object MarkdownDocumentSlicer {
             )
         }
 
-        private fun Node.ownSection(): MarkdownDocumentSection? {
+        private fun Node.ownSection(): MemoryIngestSection? {
             val start = ownStartLine ?: return null
             val end = ownEndLine ?: return null
             val ownText = text(start, end)
@@ -557,8 +586,8 @@ internal object MarkdownDocumentSlicer {
             startLine: Int,
             endLine: Int,
             text: String,
-        ): MarkdownDocumentSection =
-            MarkdownDocumentSection(
+        ): MemoryIngestSection =
+            MemoryIngestSection(
                 index = 0,
                 headingPath = headingPath(),
                 startLine = startLine,
@@ -649,7 +678,7 @@ internal object MarkdownDocumentSlicer {
     }
 }
 
-internal fun MarkdownDocumentSection.toMemorySourceText(
+internal fun MemoryIngestSection.toMemorySourceText(
     title: String?,
     sourceRef: String,
     importedAt: Instant? = null,
@@ -662,25 +691,6 @@ internal fun MarkdownDocumentSection.toMemorySourceText(
     appendLine()
     append(text)
 }
-
-internal fun List<MarkdownDocumentSection>.toSectionSummaryJson() =
-    buildJsonArray {
-        val sectionCount = this@toSectionSummaryJson.size
-        take(24).forEach { section ->
-            add(
-                buildJsonObject {
-                    put("index", section.index)
-                    put("heading", section.headingLabel)
-                    put("start_line", section.startLine)
-                    put("end_line", section.endLine)
-                    put("chars", section.text.length)
-                }
-            )
-        }
-        if (sectionCount > 24) {
-            add(JsonPrimitive("... ${sectionCount - 24} more sections"))
-        }
-    }
 
 private fun String.sha256ForMarkdownImport(): String {
     val digest = java.security.MessageDigest.getInstance("SHA-256").digest(toByteArray())

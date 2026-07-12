@@ -3,16 +3,16 @@ package com.gromozeka.application.service.memory
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 
-internal object MemoryDocumentAdaptiveIngest {
+internal object MemoryAdaptiveIngest {
     private val log = KLoggers.logger(this)
     const val DEFAULT_MAX_SPLIT_DEPTH = 4
 
     suspend fun <T> processSection(
-        section: MarkdownDocumentSection,
+        section: MemoryIngestSection,
         maxSplitDepth: Int = DEFAULT_MAX_SPLIT_DEPTH,
         failFastOnError: Boolean = false,
-        processor: suspend (MarkdownDocumentSection) -> T,
-    ): MemoryDocumentAdaptiveSectionResult<T> =
+        processor: suspend (MemoryIngestSection) -> T,
+    ): MemoryAdaptiveSectionResult<T> =
         processSection(
             section = section,
             maxSplitDepth = maxSplitDepth,
@@ -22,17 +22,17 @@ internal object MemoryDocumentAdaptiveIngest {
         )
 
     private suspend fun <T> processSection(
-        section: MarkdownDocumentSection,
+        section: MemoryIngestSection,
         maxSplitDepth: Int,
         failFastOnError: Boolean,
         depth: Int,
-        processor: suspend (MarkdownDocumentSection) -> T,
-    ): MemoryDocumentAdaptiveSectionResult<T> {
+        processor: suspend (MemoryIngestSection) -> T,
+    ): MemoryAdaptiveSectionResult<T> {
         return runCatching {
             processor(section)
         }.fold(
             onSuccess = { result ->
-                MemoryDocumentAdaptiveSectionResult(
+                MemoryAdaptiveSectionResult(
                     results = listOf(result),
                     processedSections = 1,
                     failedSections = emptyList(),
@@ -44,8 +44,8 @@ internal object MemoryDocumentAdaptiveIngest {
                     throw error
                 }
 
-                val parts = if (depth < maxSplitDepth && error.isLikelyMemoryDocumentSplitCandidate()) {
-                    MarkdownDocumentSlicer.splitForRetry(section)
+                val parts = if (depth < maxSplitDepth && error.isLikelyMemoryIngestSplitCandidate()) {
+                    MemoryIngestSectionSlicer.splitForRetry(section)
                 } else {
                     emptyList()
                 }
@@ -55,11 +55,11 @@ internal object MemoryDocumentAdaptiveIngest {
                         throw error
                     }
 
-                    return MemoryDocumentAdaptiveSectionResult(
+                    return MemoryAdaptiveSectionResult(
                         results = emptyList(),
                         processedSections = 0,
                         failedSections = listOf(
-                            MemoryDocumentAdaptiveSectionFailure(
+                            MemoryAdaptiveSectionFailure(
                                 section = section,
                                 message = error.message ?: error::class.simpleName.orEmpty(),
                                 error = error,
@@ -70,7 +70,7 @@ internal object MemoryDocumentAdaptiveIngest {
                 }
 
                 log.warn(error) {
-                    "Memory document section adaptive split: section=${section.index} heading=${section.headingLabel} " +
+                    "Memory ingest section adaptive split: section=${section.index} heading=${section.headingLabel} " +
                         "depth=$depth parts=${parts.size} chars=${section.text.length} error=${error.message}"
                 }
 
@@ -91,17 +91,17 @@ internal object MemoryDocumentAdaptiveIngest {
     }
 }
 
-internal data class MemoryDocumentAdaptiveSectionResult<T>(
+internal data class MemoryAdaptiveSectionResult<T>(
     val results: List<T>,
     val processedSections: Int,
-    val failedSections: List<MemoryDocumentAdaptiveSectionFailure>,
+    val failedSections: List<MemoryAdaptiveSectionFailure>,
     val splitCount: Int,
 ) {
     val attemptedSections: Int
         get() = processedSections + failedSections.size
 
-    operator fun plus(other: MemoryDocumentAdaptiveSectionResult<T>): MemoryDocumentAdaptiveSectionResult<T> =
-        MemoryDocumentAdaptiveSectionResult(
+    operator fun plus(other: MemoryAdaptiveSectionResult<T>): MemoryAdaptiveSectionResult<T> =
+        MemoryAdaptiveSectionResult(
             results = results + other.results,
             processedSections = processedSections + other.processedSections,
             failedSections = failedSections + other.failedSections,
@@ -109,13 +109,13 @@ internal data class MemoryDocumentAdaptiveSectionResult<T>(
         )
 }
 
-internal data class MemoryDocumentAdaptiveSectionFailure(
-    val section: MarkdownDocumentSection,
+internal data class MemoryAdaptiveSectionFailure(
+    val section: MemoryIngestSection,
     val message: String,
     val error: Throwable,
 )
 
-internal fun Throwable.isLikelyMemoryDocumentSplitCandidate(): Boolean {
+internal fun Throwable.isLikelyMemoryIngestSplitCandidate(): Boolean {
     if (this is MemoryLlmOutputTruncatedException) {
         return true
     }

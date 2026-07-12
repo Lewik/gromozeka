@@ -30,6 +30,7 @@ internal object MemoryContextWindowPolicy {
     private const val PRE_COMPACT_CONTEXT_WINDOW_PERCENT = 70
 
     private val WRITE_STAGE_CONTEXT_PURPOSES = listOf(
+        AiRuntimeAssignment.Purpose.MEMORY_WRITE_INGEST_PLANNER,
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_ROUTER,
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_RETRIEVAL_PLANNER,
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_ENTITY_CANONICALIZER,

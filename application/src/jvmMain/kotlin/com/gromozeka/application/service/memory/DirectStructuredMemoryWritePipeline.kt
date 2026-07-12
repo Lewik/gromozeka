@@ -239,9 +239,9 @@ class DirectStructuredMemoryWritePipeline(
             )
         }
 
-        val routeDecision = requestForCapture.source.documentIngestRouteDecision()
+        val routeDecision = requestForCapture.source.forcedIngestionRouteDecision()
             ?: router.route(requestForCapture)
-                .withForcedMemoryWriteFallback(requestForCapture.source)
+                .withExplicitForceWriteOverride(requestForCapture.source)
                 .withSafeNoopSourcePolicy()
         val effectiveSource = sourceForCapture
             .withUsagePolicy(routeDecision.sourcePolicy)
@@ -375,7 +375,7 @@ class DirectStructuredMemoryWritePipeline(
             emptyList()
         }
 
-        val retrievalPlan = effectiveRequest.documentIngestRetrievalPlan(structuredRouteDecision)
+        val retrievalPlan = effectiveRequest.forcedIngestionRetrievalPlan(structuredRouteDecision)
             ?: retrievalPlanner.plan(effectiveRequest, structuredRouteDecision, predicateCatalog)
         val retrievedHits = retrieve(effectiveRequest, retrievalPlan)
 
@@ -869,23 +869,23 @@ class DirectStructuredMemoryWritePipeline(
         MemoryRun.Type.FORGET_MEMORY,
     )
 
-private val documentIngestMemoryTypes = setOf(
+private val forcedIngestionMemoryTypes = setOf(
     MemorySemanticType.CLAIM,
     MemorySemanticType.NOTE,
     MemorySemanticType.SOURCE,
     MemorySemanticType.ENTITY,
 )
 
-private fun MemorySource.documentIngestRouteDecision(): MemoryRouteDecision? {
-    if (!isDocumentIngestSource()) {
+private fun MemorySource.forcedIngestionRouteDecision(): MemoryRouteDecision? {
+    if (!isDocumentIngestSource() || !isForcedMemoryWriteSource()) {
         return null
     }
 
-    val reason = "Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only."
+    val reason = "Forced document ingestion bypasses relevance routing; extractors still decide which claims and notes are supported by the source, and action items stay explicit-only."
     return MemoryRouteDecision(
         decision = MemoryRouteDecision.Decision.MIXED,
-        memoryTypes = documentIngestMemoryTypes,
-        salience = if (isForcedMemoryWriteSource()) 0.95 else 0.85,
+        memoryTypes = forcedIngestionMemoryTypes,
+        salience = 0.95,
         sourcePolicy = MemorySourceUsagePolicy.STANDARD.copy(reason = reason),
         sourceSearchText = defaultIngestSearchText(),
         reason = reason,
@@ -904,10 +904,10 @@ private fun MemoryRouteDecision.shouldRunActionItemBranch(): Boolean =
     decision != MemoryRouteDecision.Decision.NOOP &&
         MemorySemanticType.ACTION_ITEM in memoryTypes
 
-private fun DirectStructuredMemoryWriteRequest.documentIngestRetrievalPlan(
+private fun DirectStructuredMemoryWriteRequest.forcedIngestionRetrievalPlan(
     routeDecision: MemoryRouteDecision,
 ): MemoryWriteRetrievalPlan? {
-    if (!source.isDocumentIngestSource()) {
+    if (!source.isDocumentIngestSource() || !source.isForcedMemoryWriteSource()) {
         return null
     }
     if (routeDecision.decision == MemoryRouteDecision.Decision.NOOP ||
@@ -921,7 +921,7 @@ private fun DirectStructuredMemoryWriteRequest.documentIngestRetrievalPlan(
         needRetrieval = true,
         entityQueries = source.documentIngestSearchHints(),
         textQueries = listOf(sourceSearchText).filter { it.isNotBlank() },
-        memoryTypes = documentIngestMemoryTypes,
+        memoryTypes = forcedIngestionMemoryTypes,
         retrievalBudget = MemoryRetrievalBudget(claims = 8, notes = 8, sources = 6),
     )
 }
@@ -951,7 +951,7 @@ private fun MemoryRouteDecision.withSafeNoopSourcePolicy(): MemoryRouteDecision 
     )
 }
 
-private fun MemoryRouteDecision.withForcedMemoryWriteFallback(source: MemorySource): MemoryRouteDecision {
+private fun MemoryRouteDecision.withExplicitForceWriteOverride(source: MemorySource): MemoryRouteDecision {
     if (decision != MemoryRouteDecision.Decision.NOOP) {
         return this
     }
@@ -960,15 +960,15 @@ private fun MemoryRouteDecision.withForcedMemoryWriteFallback(source: MemorySour
         return this
     }
 
-    val fallbackReason = "Forced memory write overrode router NOOP."
+    val overrideReason = "Explicit force_write overrode router NOOP."
 
     return copy(
         decision = MemoryRouteDecision.Decision.NOTE_WRITE,
         memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE),
         salience = salience.coerceAtLeast(0.95),
-        sourcePolicy = MemorySourceUsagePolicy.STANDARD.copy(reason = fallbackReason),
+        sourcePolicy = MemorySourceUsagePolicy.STANDARD.copy(reason = overrideReason),
         sourceSearchText = sourceSearchText ?: source.defaultIngestSearchText(),
-        reason = "$fallbackReason Original router reason: $reason",
+        reason = "$overrideReason Original router reason: $reason",
     )
 }
 

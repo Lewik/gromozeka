@@ -50,6 +50,11 @@ interface MemoryStore {
 
     suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun>
 
+    suspend fun findRunsByStatuses(
+        statuses: Set<MemoryRun.Status>,
+        runTypes: Set<MemoryRun.Type>,
+    ): List<MemoryRun>
+
     suspend fun findProfile(
         namespace: MemoryNamespace,
         ownerEntityId: MemoryEntity.Id? = null,

@@ -32,7 +32,7 @@ class MemoryRunStatusToolCallback(
               "properties": {
                 "run_id": {
                   "type": "string",
-                  "description": "Exact MemoryRun id returned by memory_remember or seen in logs."
+                  "description": "Exact MemoryRun id returned by memory_remember, memory_enrich_context, memory_answer_question, maintenance tools, or seen in logs."
                 },
                 "include_children": {
                   "type": "boolean",

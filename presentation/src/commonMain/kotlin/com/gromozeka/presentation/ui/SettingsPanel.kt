@@ -592,6 +592,23 @@ fun SettingsPanel(
                                 )
                             }
                         )
+
+                        SwitchSettingItem(
+                            label = "Force document ingest",
+                            description = "Bypass memory relevance routing for technically valid documents; extraction and reconciliation still validate supported memory",
+                            value = memorySettings.forceWriteForDocumentIngest,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(
+                                            memorySettings = memorySettings.copy(
+                                                forceWriteForDocumentIngest = it
+                                            )
+                                        )
+                                    }
+                                )
+                            }
+                        )
                         }
                     }
 

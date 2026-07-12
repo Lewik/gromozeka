@@ -180,9 +180,9 @@ object MemoryToolResultRenderer {
             put("retrieved_count", 0)
             put(
                 "usage_guidance",
-                "Runtime memory recall is running asynchronously. If the user question depends on remembered context, say briefly that memory is being checked and wait for the follow-up memory result instead of guessing."
+                "Runtime memory recall is running asynchronously. This pending state is not evidence that remembered information or its original source is unavailable. If the user question depends on remembered context, say only that memory is being checked, make no claim about source access or absence, and wait for the follow-up memory result instead of guessing."
             )
-            put("memory_context", "Memory recall has been queued and is not available in this model call yet.")
+            put("memory_context", "Memory recall is pending. The follow-up memory result will contain any selected evidence.")
         }.toString()
 
     internal fun answerQuestionResultJsonString(result: MemoryQuestionAnswerResult?): String {
@@ -282,47 +282,18 @@ object MemoryToolResultRenderer {
             is MemorySource.ExternalRecord -> recordRef
         }?.takeIf { it.isNotBlank() }
 
-    internal fun rememberDocumentResultJsonString(result: MemoryRememberDocumentResult): String =
-        buildJsonObject {
-            put("status", if (result.sectionResults.size == result.sections.size) "completed" else "partial")
-            put("document_type", result.documentType.name)
-            put("input_kind", result.inputKind.name)
-            put("title", result.title.orEmpty())
-            put("source_ref", result.sourceRef)
-            put("parent_source_id", result.parentSourceId)
-            put("sections_total", result.sections.size)
-            put("sections_processed", result.sectionResults.size)
-            put("sections_failed", result.sections.size - result.sectionResults.size)
-            put("counts", result.sectionResults.map { it.memoryBatch }.aggregateCountsJson())
-            put("sections", result.sections.toSectionSummaryJson())
-            putJsonArray("section_results") {
-                result.sectionResults.take(24).forEach { sectionResult ->
-                    add(buildJsonObject {
-                        put("source_id", sectionResult.sourceBatch.sources.firstOrNull()?.id?.value.orEmpty())
-                        put("decision", sectionResult.routeDecision.decision.name)
-                        putJsonArray("memory_types") {
-                            sectionResult.routeDecision.memoryTypes.map { it.name }.sorted().forEach { add(JsonPrimitive(it)) }
-                        }
-                        put("counts", sectionResult.memoryBatch.toCountsJson())
-                        put("reason", sectionResult.routeDecision.reason.shortForMemoryToolResult())
-                    })
-                }
-            }
-        }.toString()
-
-    internal fun rememberDocumentQueuedResultJsonString(result: MemoryRememberDocumentQueuedResult): String =
+    fun operationQueuedResultJsonString(result: MemoryOperationQueuedResult): String =
         buildJsonObject {
             put("status", "queued")
-            put("run_id", result.runId)
-            put("document_type", result.documentType.name)
-            put("input_kind", result.inputKind.name)
-            put("title", result.title.orEmpty())
-            put("source_ref", result.sourceRef)
-            put("parent_source_id", result.parentSourceId)
-            put("sections_total", result.sections.size)
+            put("run_id", result.runId.value)
+            put("operation", result.operation.wireName)
+            put("namespace", result.namespace.value)
             put("queue_size", result.queueSize)
-            put("message", "Document ingest was accepted and will continue in the memory document queue.")
-            put("sections", result.sections.toSectionSummaryJson())
+            put(
+                "message",
+                "Memory ${result.operation.wireName} was queued for asynchronous processing. " +
+                    "Call memory_run_status with this run_id to retrieve its state and completed result."
+            )
         }.toString()
 
     fun maintenanceQueuedResultJsonString(result: MemoryMaintenanceQueuedResult): String =
@@ -344,44 +315,55 @@ object MemoryToolResultRenderer {
         maxDepth: Int,
     ): String =
         buildJsonObject {
-            put("status", "completed")
+            put(
+                "status",
+                when {
+                    rootRun.status == MemoryRun.Status.NEEDS_INPUT -> "needs_user_input"
+                    rootRun.status.isTerminal() -> "completed"
+                    else -> "running"
+                }
+            )
             put("run_id", rootRun.id.value)
+            put("run_status", rootRun.status.name.lowercase())
             put("max_depth", maxDepth)
             put("descendant_count", descendants.size)
+            if (rootRun.status.isTerminal()) {
+                rootRun.output?.let { put("result", it) }
+            }
             put("run", rootRun.toStatusJson(descendants, maxDepth))
         }.toString()
 
     fun queueStatusJsonString(
-        documentStatus: MemoryDocumentIngestQueueStatus,
+        operationStatus: MemoryOperationQueueStatus,
         maintenanceStatus: MemoryMaintenanceQueueStatus,
         embeddingStatus: MemoryEmbeddingIndexStatus,
     ): String =
         buildJsonObject {
             put("status", "completed")
             put("kind", "memory_work_queues")
-            put("pending_jobs", documentStatus.pendingJobs + maintenanceStatus.pendingJobs)
-            put("has_active_job", documentStatus.activeJob != null || maintenanceStatus.activeJob != null)
+            put("pending_jobs", operationStatus.pendingJobs + maintenanceStatus.pendingJobs)
+            put("has_active_job", operationStatus.activeJob != null || maintenanceStatus.activeJob != null)
             put(
-                "document_ingest",
+                "operations",
                 buildJsonObject {
-                    put("pending_jobs", documentStatus.pendingJobs)
-                    put("has_active_job", documentStatus.activeJob != null)
-                    documentStatus.activeJob?.let { active ->
+                    put("pending_jobs", operationStatus.pendingJobs)
+                    put("has_active_job", operationStatus.activeJob != null)
+                    operationStatus.activeJob?.let { active ->
                         put(
                             "active_job",
                             buildJsonObject {
                                 put("run_id", active.runId.value)
-                                put("parent_source_id", active.parentSourceId.value)
-                                put("source_ref", active.sourceRef)
-                                put("sections_total", active.sectionsTotal)
+                                put("operation", active.operation.wireName)
+                                put("namespace", active.namespace.value)
                                 put("started_at", active.startedAt.toString())
                             }
                         )
                     }
-                    put("total_enqueued_jobs", documentStatus.totalEnqueuedJobs)
-                    put("total_started_jobs", documentStatus.totalStartedJobs)
-                    put("total_completed_jobs", documentStatus.totalCompletedJobs)
-                    put("total_fatally_failed_jobs", documentStatus.totalFatallyFailedJobs)
+                    put("total_enqueued_jobs", operationStatus.totalEnqueuedJobs)
+                    put("total_recovered_jobs", operationStatus.totalRecoveredJobs)
+                    put("total_started_jobs", operationStatus.totalStartedJobs)
+                    put("total_completed_jobs", operationStatus.totalCompletedJobs)
+                    put("total_fatally_failed_jobs", operationStatus.totalFatallyFailedJobs)
                     put("worker_count", 1)
                 }
             )
@@ -426,7 +408,7 @@ object MemoryToolResultRenderer {
             )
             put("worker_count", 2)
             put("process_local", true)
-            put("durable_resume", false)
+            put("restart_policy", "resume_queued_fail_interrupted")
         }.toString()
 
     fun embeddingCoverageResultJsonString(coverage: MemoryEmbeddingCoverage): String =
@@ -543,8 +525,9 @@ private fun MemoryRun.toStatusJson(
         promptVersion?.let { put("prompt_version", it) }
         modelName?.let { put("model_name", it) }
         inputHash?.let { put("input_hash", it) }
-        if (metadata.isNotEmpty()) {
-            put("metadata", metadata)
+        val visibleMetadata = JsonObject(metadata - MEMORY_OPERATION_REQUEST_METADATA_KEY)
+        if (visibleMetadata.isNotEmpty()) {
+            put("metadata", visibleMetadata)
         }
         output?.let { put("output", it) }
         put("applied_ops_count", appliedOps.size)
@@ -596,6 +579,13 @@ private fun MemoryRun.toStatusJson(
         }
     }
 }
+
+private fun MemoryRun.Status.isTerminal(): Boolean =
+    this == MemoryRun.Status.NEEDS_INPUT ||
+        this == MemoryRun.Status.SUCCESS ||
+        this == MemoryRun.Status.FAILED ||
+        this == MemoryRun.Status.PARTIAL ||
+        this == MemoryRun.Status.CANCELLED
 
 private fun List<MemoryUpdateBatch>.aggregateCountsJson() =
     buildJsonObject {

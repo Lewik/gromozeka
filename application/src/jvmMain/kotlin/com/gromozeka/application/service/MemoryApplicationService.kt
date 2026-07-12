@@ -269,7 +269,8 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-        namespace: MemoryNamespace = project.defaultMemoryNamespace(),
+        namespace: MemoryNamespace = settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
+            ?: project.defaultMemoryNamespace(),
     ): MemoryNoteConsolidationPipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryNoteConsolidationPipeline(
@@ -315,7 +316,8 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-        namespace: MemoryNamespace = project.defaultMemoryNamespace(),
+        namespace: MemoryNamespace = settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
+            ?: project.defaultMemoryNamespace(),
     ): MemoryRepairPipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryRepairPipeline(
@@ -360,7 +362,8 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-        namespace: MemoryNamespace = project.defaultMemoryNamespace(),
+        namespace: MemoryNamespace = settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
+            ?: project.defaultMemoryNamespace(),
     ): MemoryEntityMaintenancePipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryEntityMaintenancePipeline(
@@ -403,7 +406,8 @@ class MemoryApplicationService(
     suspend fun runRetention(
         conversationId: Conversation.Id,
         project: Project,
-        namespace: MemoryNamespace = project.defaultMemoryNamespace(),
+        namespace: MemoryNamespace = settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
+            ?: project.defaultMemoryNamespace(),
     ): MemoryRetentionPipelineResult {
         val pipeline = MemoryRetentionPipeline(
             store = store,
