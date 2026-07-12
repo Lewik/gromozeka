@@ -73,7 +73,6 @@ Maintenance flows are currently explicit/manual and synchronous: note consolidat
 Useful memory docs:
 
 - [MEMORY_IMPLEMENTATION.md](MEMORY_IMPLEMENTATION.md)
-- [MEMORY_CURRENT_STATE.md](MEMORY_CURRENT_STATE.md)
 - [LLM_CASSETTE_NOTE.md](LLM_CASSETTE_NOTE.md)
 - [agent_memory_handoff/README.md](agent_memory_handoff/README.md)
 - [domain memory architecture](domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryArchitecture.md)
