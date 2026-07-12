@@ -1,0 +1,403 @@
+{
+    "version": 1,
+    "hash": "b6d1c0fdcded9bc1d0769af6c8d8b93c84fc945623b67eff0bfa09f2b286df5b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/conditional-preference",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "For editor advice, remember: JetBrains tools are my default choice, but suggest VS Code only when there is a strong plugin reason.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"PROFILE\"],\"salience\":0.8,\"reason\":\"User explicitly asks to remember a stable editor-tool preference and recommendation rule.\",\"source_id\":\"chat:<0>\",\"namespace\":\"project:<0>\",\"source_ref\":\"<uuid>\",\"counts\":{\"predicate_definitions\":2,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":2,\"notes\":0,\"actionItems\":0,\"profiles\":1,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=2, actionItems=0, entities=2; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\",\"text\":\"The user's default choice for editor tools is JetBrains tools.\"},{\"id\":\"hot-path:claim:<1>\",\"predicate\":\"has_constraint\",\"status\":\"ACTIVE\",\"text\":\"For editor advice, the assistant should suggest VS Code only when there is a strong plugin reason.\"}],\"notes\":[],\"actionItems\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"USER\",\"name\":\"User\"},{\"id\":\"entity:<1>\",\"type\":\"PRODUCT\",\"name\":\"JetBrains tools\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment_async_pending",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"pending\",\"need_memory\":true,\"context_mode\":\"ASYNC_RECALL\",\"retrieved_count\":0,\"usage_guidance\":\"Runtime memory recall is running asynchronously. This pending state is not evidence that remembered information or its original source is unavailable. If the user question depends on remembered context, say only that memory is being checked, make no claim about source access or absence, and wait for the follow-up memory result instead of guessing.\",\"memory_context\":\"Memory recall is pending. The follow-up memory result will contain any selected evidence.\"}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 217600,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectId": "<id>",
+                "projectPath": "gromozeka-e2e-<id>/projects/conditional-preference",
+                "threadId": "<id>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "For editor advice, remember: JetBrains tools are my default choice, but suggest VS Code only when there is a strong plugin reason.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "completed",
+                    "syntheticToolName": "memory_remember",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"PROFILE\"],\"salience\":0.8,\"reason\":\"User explicitly asks to remember a stable editor-tool preference and recommendation rule.\",\"source_id\":\"chat:<0>\",\"namespace\":\"project:<0>\",\"source_ref\":\"<uuid>\",\"counts\":{\"predicate_definitions\":2,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":2,\"notes\":0,\"actionItems\":0,\"profiles\":1,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=2, actionItems=0, entities=2; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\",\"text\":\"The user's default choice for editor tools is JetBrains tools.\"},{\"id\":\"hot-path:claim:<1>\",\"predicate\":\"has_constraint\",\"status\":\"ACTIVE\",\"text\":\"For editor advice, the assistant should suggest VS Code only when there is a strong plugin reason.\"}],\"notes\":[],\"actionItems\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"USER\",\"name\":\"User\"},{\"id\":\"entity:<1>\",\"type\":\"PRODUCT\",\"name\":\"JetBrains tools\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "completed",
+                    "syntheticToolName": "memory_remember",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment_async_pending",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "pending",
+                    "syntheticToolName": "memory_enrich_context",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"pending\",\"need_memory\":true,\"context_mode\":\"ASYNC_RECALL\",\"retrieved_count\":0,\"usage_guidance\":\"Runtime memory recall is running asynchronously. This pending state is not evidence that remembered information or its original source is unavailable. If the user question depends on remembered context, say only that memory is being checked, make no claim about source access or absence, and wait for the follow-up memory result instead of guessing.\",\"memory_context\":\"Memory recall is pending. The follow-up memory result will contain any selected evidence.\"}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "pending",
+                    "syntheticToolName": "memory_enrich_context",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 217600,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectId": "<id>",
+                "projectPath": "gromozeka-e2e-<id>/projects/conditional-preference",
+                "threadId": "<id>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Got it — I’ll default to JetBrains tools for editor advice and suggest VS Code only when there’s a strong plugin-specific reason.",
+                                "ttsText": "Got it. I’ll default to JetBrains tools for editor advice.",
+                                "voiceTone": "brief, confirming",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 910,
+                "completionTokens": 68,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

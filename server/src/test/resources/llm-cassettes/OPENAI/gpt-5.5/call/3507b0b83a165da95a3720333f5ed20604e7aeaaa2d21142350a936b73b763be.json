@@ -1,0 +1,558 @@
+{
+    "version": 1,
+    "hash": "3507b0b83a165da95a3720333f5ed20604e7aeaaa2d21142350a936b73b763be",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/preference-paraphrase-russian",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Which car brand should you remember that I prefer? Answer with only the brand name.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: Questions about existing memory are not evidence of the preference and should not be written.\",\"source_id\":\"chat:<0>\",\"namespace\":\"project:<0>\",\"source_ref\":\"<uuid>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment_async_pending",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"pending\",\"need_memory\":true,\"context_mode\":\"ASYNC_RECALL\",\"retrieved_count\":0,\"usage_guidance\":\"Runtime memory recall is running asynchronously. This pending state is not evidence that remembered information or its original source is unavailable. If the user question depends on remembered context, say only that memory is being checked, make no claim about source access or absence, and wait for the follow-up memory result instead of guessing.\",\"memory_context\":\"Memory recall is pending. The follow-up memory result will contain any selected evidence.\"}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Memory is being checked.",
+                            "ttsText": "",
+                            "voiceTone": ""
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment_async_completed",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"context_mode\":\"FACTUAL\",\"retrieved_count\":4,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust active typed memory only when the source is older, adjacent, or weaker evidence. If a selected source is newer and explicitly updates the same current/status/default/approval/limit/metric slot, use the newer source value or mark memory conflicting when the update cannot be resolved.\\n            If selected typed memory is incomplete for an exact requested detail, use selected source evidence as fallback evidence; extract only explicit source facts and say memory is insufficient when the source still does not contain the detail.\\n            For recall of prior assistant recommendations, option lists, generated artifacts, or exact mentioned items, a selected source entry that explicitly satisfies every requested qualifier beats a selected typed claim or note that only matches a weaker adjacent target.\\n            Treat a selected source transcript or document as a coherent local evidence frame. If selected typed memory identifies the asked event/item but lacks one requested detail, and selected source evidence gives that detail in the same local topic or surrounding exchange, answer from that same-source frame.\\nIf selected typed memory gives an older value and a selected later source explicitly gives a different value for the same current/status/default/approval/limit/metric slot, treat the later source as the update evidence instead of silently preferring the older typed value.\\nFor source transcripts, preserve local dialogue topic continuity: when the user reports the asked action as an example while the surrounding turns are about a named store, app, service, venue, program, or source, and no competing named frame is introduced before the topic changes, that named frame can supply the missing place/source/medium for the action.\\nDo not use this to stitch together different sources, different named targets, different events/items, or competing anchors/values. If the source only mentions a related topic without preserving the same asked target, answer insufficient.\\n            \\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering. For ordering or comparison between named alternatives, require explicit retrieved evidence for every compared alternative; if one alternative is missing, answer that memory is insufficient instead of ranking the known alternative. A conditional bridge in a selected reason, such as \\\"if X is Y\\\", is not evidence that X is Y.\\n            For latest/most-recent questions about when the user started, began, first used, acquired, or got access to something, compare actual lifecycle/use/acquisition events for that requested kind. A later recommendation, preference, choice, or access-path decision is not a later started-using event unless selected memory explicitly says the user actually started, used, acquired, or got access to that option.\\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\\n            For completed-experience questions, evidence that the user actually did, attended, took, used, received, or completed something is stronger than same-date planning, booking, reservation, recommendation, or generated artifact evidence. A booking or reservation date is not the event date unless memory explicitly says the booked event happened on that date.\\n            For relative month-count questions such as \\\"two months ago\\\", derive the approximate calendar-offset target from the current/question date and prefer retrieved memory closest to that offset. Do not treat any earlier recent event as matching the requested offset; for example, one month ago is not two months ago when another otherwise relevant retrieved item is near the two-month target.\\n            For \\\"past weekend\\\", \\\"last week\\\", \\\"yesterday\\\", or other relative-window questions, derive the target interval from the current/question date. An event with its own local cue such as \\\"today\\\" resolves to the source/session date and is outside the window when that date is outside the target interval.\\n            For relative-duration questions that name an anchor event, such as \\\"how many days/weeks/months ago did X when/at the time Y\\\", compute the interval from event X to the anchor event Y when both dates are selected. Use the current/question date only when no separate anchor event is named or retrieved.\\n            For personal event timing from imported chat sources, first-person user recency cues such as \\\"just\\\", \\\"today\\\", \\\"yesterday\\\", \\\"this weekend\\\", \\\"last week\\\", or \\\"recently\\\" are stronger event-date evidence than assistant meta-statements about what the assistant did not know or remember. Do not chain an assistant-side relative interval when the user's own local cue dates the same event to the source/session date.\\n            First-person recency wording such as \\\"still recovering from\\\", \\\"just got back from\\\", \\\"previous\\\", \\\"recent\\\", or \\\"last\\\" can make a completed event relevant to the source/session date. Prefer that completed event over a plan or booking created in the same source when the question asks what the user experienced.\\n            For chained relative-time questions, combine explicit offsets instead of stopping at the last lexical hop. If memory says X happened N days/weeks/months before anchor Y, and Y happened M days/weeks/months before the question/current date, answer X as approximately N+M days/weeks/months ago when both operands are selected. A lead time such as \\\"three months in advance\\\" or \\\"two weeks before\\\" is not itself an \\\"ago\\\" answer unless its anchor is the question/current date.\\n            For questions asking how long the user had been doing an activity when an anchor event happened, compute from the explicit start/begin/first-participation date of that activity to the anchor event date when both are selected. Do not add an as-of duration or tenure value to the time between its as-of date and the anchor when selected memory also contains a conflicting explicit start date for the same activity; treat that as-of value as noisy or conflicting context.\\n            For date-scoped questions, a candidate whose event date and local event wording match the requested period is stronger than an ACTIVE typed fact from outside the period. A matching source/session date is only a fallback when the source text describes the same target event or no event-dated candidate matches.\\n            For date-scoped questions, do not smear one relative date cue across unrelated events in the same source; resolve each event from its own local wording and the source/session date.\\n            For date-scoped questions, missing date evidence is uncertainty, not contradiction. Compare otherwise matching no-date candidates with explicit in-period and explicit out-of-period candidates instead of treating the no-date candidate as automatically wrong.\\n            For place-visit questions, treat user-attended venue events such as lectures, guided tours, exhibits, appointments, or behind-the-scenes tours at that venue as visit evidence when the venue and target time match. Prefer the venue/time match over a more literal \\\"visited\\\" or \\\"guided tour\\\" event from a different time period.\\n            For unqualified current/usual/status questions with conflicting ACTIVE facts, prefer the most recent explicit event or source date as the current answer. Use older scoped facts only when the user asks for that specific scope, such as a particular day, project, person, place, or time period.\\n            For current-state answers at a later target date, selected dated plans, intentions, or scheduled changes can be a matured current state when they match the same subject and slot, predate the target date, and no selected active memory contradicts completion. If a broad current-location claim and a matured plan or source give a more specific container or location inside the same place, combine them into the most specific location.\\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\\n            For numeric count/list answers, first form the set of counted items from retrieved memory and make the final number match that set size. If a selected ranked reference is a plausible counted item, include it or explicitly exclude it; do not silently ignore it. An empty counted set is not evidence for zero by itself; answer zero only when retrieved memory explicitly states none/zero for the requested scope or provides a closed complete inventory for that exact scope. Otherwise say memory is insufficient or the requested item was not mentioned, and do not put a concrete zero count in the final answer.\\n            - Use predicate_semantic_kinds, predicate, lifecycle_state, status, temporal fields, qualifiers, and evidence as typed meaning. Do not decide by lexical overlap alone.\\n- For aggregate questions, AGGREGATE_VALUE and AGGREGATE_DELTA claims are numeric operands. Historical observations coexist unless memory says one corrects, replaces, retracts, or repeats the same measurement slot. Current values replace only same-slot current values.\\n- For broad category counts, category fit is semantic, not exact-word matching. A concrete user-attributed member, copy, carrier, component, or subtype may satisfy the requested category unless memory gives an explicit conflicting category or the question asks for transaction/subtype details.\\n- POSSESSION and COUNTABLE_ITEM claims are direct evidence for personal items, collections, and copies. They can answer acquisition-style questions unless the question asks specifically for transaction details such as price, store, payment, download source, or exact purchase date.\\n- USAGE and LIFECYCLE_EVENT claims are direct evidence only when the question asks about actual user use, adoption, completion, attendance, or other experienced events. Assistant recommendations, examples, option lists, and hypotheticals are not evidence of user action.\\n- RESPONSIBILITY and FUNCTIONAL_ROLE claims are direct evidence for leadership, ownership, responsibility, assignment, and role questions. PROJECT_ASSOCIATION alone is supporting context, not proof that the user led, owned, or was responsible for a project.\\n- For project count/list questions, count standalone projects, courses with project work, jobs, initiatives, or simultaneous project boards/workstreams. Exclude tasks, datasets, techniques, papers, subtasks, deliverables, and implementation steps when memory places them inside a selected project or thesis.\\n- For functional replacement or upgrade questions, count a functional slot only when selected memory connects an older same-role item leaving use/inventory with a newer same-role item entering use/inventory. The new item's source is not an exclusion reason by itself.\\n- For location-scoped and functional-category questions, count concrete objects whose selected evidence places them in the location or ordinary function requested. Exclude adjacent decor, accessories, and suggestions unless they themselves satisfy the requested category.\\n- For boundary questions scoped before, prior to, until, or at a commitment/decision about a named target, use the target as boundary context. Do not count the boundary target as a prior alternative unless the question explicitly includes it.\\nFor derived numeric answers, use compatible explicit operands from retrieved memory. Include baselines, later values, aggregate deltas, anchor dates, source dates, and boundary events in reasoning before computing the final answer. If any required operand is missing or contradictory, set sufficiency to insufficient or conflicting.\\nFor imported-source date uncertainty, count otherwise matching first-person evidence only when the selected source/session date and local wording make it plausible and no selected memory explicitly places the event outside scope. State the uncertainty in reasoning instead of hiding it.\\n            For specifically qualified questions, satisfy every explicit qualifier in the question. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting. Do not answer with a value for a different object, person, role, job title, position, event, route, project, artifact, item, or relationship merely because it is adjacent or similar; a caveat that the qualifier differs is not enough. A shared anchor can bridge retrieved memories only when it explicitly preserves the same fully-qualified target; it cannot weaken or rewrite the target's modifiers. Anchor-level metadata can supply a missing requested detail when one retrieved memory explicitly links the asked target to a named venue, publisher, conference, program, service, route, or event and another retrieved memory gives a date, deadline, schedule, price, policy, threshold, or similar property for that same named anchor. Use this bridge only when the metadata is not tied to a different named target and no selected memory gives a competing anchor or value for the asked target. If any requested qualifier is missing or changed, the final answer must be an insufficiency answer, not a concrete adjacent answer with a warning. Do not infer missing academic level, course ownership, job role, job title, position, project identity, artifact type, item ingredient, component, material, feature, participant identity, route, source, owner, medium, or relation from a merely related remembered topic. When refusing because only adjacent or mismatched evidence was retrieved, do not compute or include the mismatched value unless the user explicitly asks about related memories. Do not map an unnamed role or relative to a named person unless retrieved memory explicitly says they are the same person.\\n            For arithmetic, date-difference, and ordering questions with named operands, every named operand must match the requested object or event. A different named object is a missing operand, not an approximate match; answer that memory is insufficient instead of computing from the mismatched object.\\n            For formal education duration from one stage to another stage's completion, use the whole retrieved formal education timeline. Include intermediate formal credentials, attendance, transfer, and completion milestones when they bridge the asked span.\\n            For aggregate questions about events the user participated in, treat explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.\\n            For category-scoped count/list questions, treat explicit venue, organizer, community, and stated context as category signals. A community-hosted service activity can qualify for that community/category even when the concrete task is volunteering, planning, sorting, packing, or another support action, unless the question asks for a narrower subtype.\\n            For replaced/fixed/upgraded household-item counts, count one functional slot when memory says the user fixed it, replaced it with a newer item, got rid of, donated, or gave away the old item as part of an upgrade, or adopted a new item that takes over the old item's function. Do not count both the old item and its replacement unless the user asks for inventory.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Context mode: FACTUAL\\n            Coverage mode: MINIMAL\\n            Require evidence fallback: true\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<0> [ACTIVE] prefers family=prefers semantics=PREFERENCE aggregate_effect=NONE: The user prefers Mazda for car recommendations.; scope=Car recommendation preferences for the user.; context=\\\"This preference applies when giving car recommendations.\\\"; evidence=DIRECT source=chat:<1> quote=\\\"Для рекомендаций по автомобилям запомни: я предпочитаю Mazda.\\\"\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            - source chat:<1> [chat_turn role=USER observedAt=1970-01-01T00:00:00Z]: Для рекомендаций по автомобилям запомни: я предпочитаю Mazda.\\n\\n            Retrieved entities:\\n            - entity entity:<0> [ORGANIZATION]: Mazda; Organization named Mazda.\\n- entity entity:<1> [USER]: User; The user interacting with this agent.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"summary\":\"The user prefers Mazda for car recommendations.\",\"rank\":1,\"selection_reason\":\"Active current preference directly states the user's preferred car brand.\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"chat:<1>\"]},{\"type\":\"SOURCE\",\"id\":\"chat:<1>\",\"summary\":\"Для рекомендаций по автомобилям запомни: я предпочитаю Mazda.\",\"evidence_source_ids\":[\"chat:<1>\"]},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"ORGANIZATION:Mazda\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"USER:User\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Active current preference directly states the user's preferred car brand.\"},{\"type\":\"PROFILE\",\"id\":\"project:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Profile duplicates the selected active claim and is not needed.\"},{\"type\":\"SOURCE\",\"id\":\"chat:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Raw evidence is unnecessary because the active typed claim is sufficient.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 217600,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectId": "<id>",
+                "projectPath": "gromozeka-e2e-<id>/projects/preference-paraphrase-russian",
+                "threadId": "<id>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Which car brand should you remember that I prefer? Answer with only the brand name.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "completed",
+                    "syntheticToolName": "memory_remember",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: Questions about existing memory are not evidence of the preference and should not be written.\",\"source_id\":\"chat:<0>\",\"namespace\":\"project:<0>\",\"source_ref\":\"<uuid>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "completed",
+                    "syntheticToolName": "memory_remember",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment_async_pending",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "pending",
+                    "syntheticToolName": "memory_enrich_context",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"pending\",\"need_memory\":true,\"context_mode\":\"ASYNC_RECALL\",\"retrieved_count\":0,\"usage_guidance\":\"Runtime memory recall is running asynchronously. This pending state is not evidence that remembered information or its original source is unavailable. If the user question depends on remembered context, say only that memory is being checked, make no claim about source access or absence, and wait for the follow-up memory result instead of guessing.\",\"memory_context\":\"Memory recall is pending. The follow-up memory result will contain any selected evidence.\"}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "pending",
+                    "syntheticToolName": "memory_enrich_context",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Memory is being checked.",
+                            "ttsText": "",
+                            "voiceTone": ""
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "conversationKey": "<conversation-key>",
+                    "messageId": "msg_<id>",
+                    "phase": "final_answer",
+                    "responseId": "resp_<id>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment_async_completed",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "completed_async",
+                    "syntheticToolName": "memory_enrich_context",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"context_mode\":\"FACTUAL\",\"retrieved_count\":4,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust active typed memory only when the source is older, adjacent, or weaker evidence. If a selected source is newer and explicitly updates the same current/status/default/approval/limit/metric slot, use the newer source value or mark memory conflicting when the update cannot be resolved.\\n            If selected typed memory is incomplete for an exact requested detail, use selected source evidence as fallback evidence; extract only explicit source facts and say memory is insufficient when the source still does not contain the detail.\\n            For recall of prior assistant recommendations, option lists, generated artifacts, or exact mentioned items, a selected source entry that explicitly satisfies every requested qualifier beats a selected typed claim or note that only matches a weaker adjacent target.\\n            Treat a selected source transcript or document as a coherent local evidence frame. If selected typed memory identifies the asked event/item but lacks one requested detail, and selected source evidence gives that detail in the same local topic or surrounding exchange, answer from that same-source frame.\\nIf selected typed memory gives an older value and a selected later source explicitly gives a different value for the same current/status/default/approval/limit/metric slot, treat the later source as the update evidence instead of silently preferring the older typed value.\\nFor source transcripts, preserve local dialogue topic continuity: when the user reports the asked action as an example while the surrounding turns are about a named store, app, service, venue, program, or source, and no competing named frame is introduced before the topic changes, that named frame can supply the missing place/source/medium for the action.\\nDo not use this to stitch together different sources, different named targets, different events/items, or competing anchors/values. If the source only mentions a related topic without preserving the same asked target, answer insufficient.\\n            \\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering. For ordering or comparison between named alternatives, require explicit retrieved evidence for every compared alternative; if one alternative is missing, answer that memory is insufficient instead of ranking the known alternative. A conditional bridge in a selected reason, such as \\\"if X is Y\\\", is not evidence that X is Y.\\n            For latest/most-recent questions about when the user started, began, first used, acquired, or got access to something, compare actual lifecycle/use/acquisition events for that requested kind. A later recommendation, preference, choice, or access-path decision is not a later started-using event unless selected memory explicitly says the user actually started, used, acquired, or got access to that option.\\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\\n            For completed-experience questions, evidence that the user actually did, attended, took, used, received, or completed something is stronger than same-date planning, booking, reservation, recommendation, or generated artifact evidence. A booking or reservation date is not the event date unless memory explicitly says the booked event happened on that date.\\n            For relative month-count questions such as \\\"two months ago\\\", derive the approximate calendar-offset target from the current/question date and prefer retrieved memory closest to that offset. Do not treat any earlier recent event as matching the requested offset; for example, one month ago is not two months ago when another otherwise relevant retrieved item is near the two-month target.\\n            For \\\"past weekend\\\", \\\"last week\\\", \\\"yesterday\\\", or other relative-window questions, derive the target interval from the current/question date. An event with its own local cue such as \\\"today\\\" resolves to the source/session date and is outside the window when that date is outside the target interval.\\n            For relative-duration questions that name an anchor event, such as \\\"how many days/weeks/months ago did X when/at the time Y\\\", compute the interval from event X to the anchor event Y when both dates are selected. Use the current/question date only when no separate anchor event is named or retrieved.\\n            For personal event timing from imported chat sources, first-person user recency cues such as \\\"just\\\", \\\"today\\\", \\\"yesterday\\\", \\\"this weekend\\\", \\\"last week\\\", or \\\"recently\\\" are stronger event-date evidence than assistant meta-statements about what the assistant did not know or remember. Do not chain an assistant-side relative interval when the user's own local cue dates the same event to the source/session date.\\n            First-person recency wording such as \\\"still recovering from\\\", \\\"just got back from\\\", \\\"previous\\\", \\\"recent\\\", or \\\"last\\\" can make a completed event relevant to the source/session date. Prefer that completed event over a plan or booking created in the same source when the question asks what the user experienced.\\n            For chained relative-time questions, combine explicit offsets instead of stopping at the last lexical hop. If memory says X happened N days/weeks/months before anchor Y, and Y happened M days/weeks/months before the question/current date, answer X as approximately N+M days/weeks/months ago when both operands are selected. A lead time such as \\\"three months in advance\\\" or \\\"two weeks before\\\" is not itself an \\\"ago\\\" answer unless its anchor is the question/current date.\\n            For questions asking how long the user had been doing an activity when an anchor event happened, compute from the explicit start/begin/first-participation date of that activity to the anchor event date when both are selected. Do not add an as-of duration or tenure value to the time between its as-of date and the anchor when selected memory also contains a conflicting explicit start date for the same activity; treat that as-of value as noisy or conflicting context.\\n            For date-scoped questions, a candidate whose event date and local event wording match the requested period is stronger than an ACTIVE typed fact from outside the period. A matching source/session date is only a fallback when the source text describes the same target event or no event-dated candidate matches.\\n            For date-scoped questions, do not smear one relative date cue across unrelated events in the same source; resolve each event from its own local wording and the source/session date.\\n            For date-scoped questions, missing date evidence is uncertainty, not contradiction. Compare otherwise matching no-date candidates with explicit in-period and explicit out-of-period candidates instead of treating the no-date candidate as automatically wrong.\\n            For place-visit questions, treat user-attended venue events such as lectures, guided tours, exhibits, appointments, or behind-the-scenes tours at that venue as visit evidence when the venue and target time match. Prefer the venue/time match over a more literal \\\"visited\\\" or \\\"guided tour\\\" event from a different time period.\\n            For unqualified current/usual/status questions with conflicting ACTIVE facts, prefer the most recent explicit event or source date as the current answer. Use older scoped facts only when the user asks for that specific scope, such as a particular day, project, person, place, or time period.\\n            For current-state answers at a later target date, selected dated plans, intentions, or scheduled changes can be a matured current state when they match the same subject and slot, predate the target date, and no selected active memory contradicts completion. If a broad current-location claim and a matured plan or source give a more specific container or location inside the same place, combine them into the most specific location.\\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\\n            For numeric count/list answers, first form the set of counted items from retrieved memory and make the final number match that set size. If a selected ranked reference is a plausible counted item, include it or explicitly exclude it; do not silently ignore it. An empty counted set is not evidence for zero by itself; answer zero only when retrieved memory explicitly states none/zero for the requested scope or provides a closed complete inventory for that exact scope. Otherwise say memory is insufficient or the requested item was not mentioned, and do not put a concrete zero count in the final answer.\\n            - Use predicate_semantic_kinds, predicate, lifecycle_state, status, temporal fields, qualifiers, and evidence as typed meaning. Do not decide by lexical overlap alone.\\n- For aggregate questions, AGGREGATE_VALUE and AGGREGATE_DELTA claims are numeric operands. Historical observations coexist unless memory says one corrects, replaces, retracts, or repeats the same measurement slot. Current values replace only same-slot current values.\\n- For broad category counts, category fit is semantic, not exact-word matching. A concrete user-attributed member, copy, carrier, component, or subtype may satisfy the requested category unless memory gives an explicit conflicting category or the question asks for transaction/subtype details.\\n- POSSESSION and COUNTABLE_ITEM claims are direct evidence for personal items, collections, and copies. They can answer acquisition-style questions unless the question asks specifically for transaction details such as price, store, payment, download source, or exact purchase date.\\n- USAGE and LIFECYCLE_EVENT claims are direct evidence only when the question asks about actual user use, adoption, completion, attendance, or other experienced events. Assistant recommendations, examples, option lists, and hypotheticals are not evidence of user action.\\n- RESPONSIBILITY and FUNCTIONAL_ROLE claims are direct evidence for leadership, ownership, responsibility, assignment, and role questions. PROJECT_ASSOCIATION alone is supporting context, not proof that the user led, owned, or was responsible for a project.\\n- For project count/list questions, count standalone projects, courses with project work, jobs, initiatives, or simultaneous project boards/workstreams. Exclude tasks, datasets, techniques, papers, subtasks, deliverables, and implementation steps when memory places them inside a selected project or thesis.\\n- For functional replacement or upgrade questions, count a functional slot only when selected memory connects an older same-role item leaving use/inventory with a newer same-role item entering use/inventory. The new item's source is not an exclusion reason by itself.\\n- For location-scoped and functional-category questions, count concrete objects whose selected evidence places them in the location or ordinary function requested. Exclude adjacent decor, accessories, and suggestions unless they themselves satisfy the requested category.\\n- For boundary questions scoped before, prior to, until, or at a commitment/decision about a named target, use the target as boundary context. Do not count the boundary target as a prior alternative unless the question explicitly includes it.\\nFor derived numeric answers, use compatible explicit operands from retrieved memory. Include baselines, later values, aggregate deltas, anchor dates, source dates, and boundary events in reasoning before computing the final answer. If any required operand is missing or contradictory, set sufficiency to insufficient or conflicting.\\nFor imported-source date uncertainty, count otherwise matching first-person evidence only when the selected source/session date and local wording make it plausible and no selected memory explicitly places the event outside scope. State the uncertainty in reasoning instead of hiding it.\\n            For specifically qualified questions, satisfy every explicit qualifier in the question. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting. Do not answer with a value for a different object, person, role, job title, position, event, route, project, artifact, item, or relationship merely because it is adjacent or similar; a caveat that the qualifier differs is not enough. A shared anchor can bridge retrieved memories only when it explicitly preserves the same fully-qualified target; it cannot weaken or rewrite the target's modifiers. Anchor-level metadata can supply a missing requested detail when one retrieved memory explicitly links the asked target to a named venue, publisher, conference, program, service, route, or event and another retrieved memory gives a date, deadline, schedule, price, policy, threshold, or similar property for that same named anchor. Use this bridge only when the metadata is not tied to a different named target and no selected memory gives a competing anchor or value for the asked target. If any requested qualifier is missing or changed, the final answer must be an insufficiency answer, not a concrete adjacent answer with a warning. Do not infer missing academic level, course ownership, job role, job title, position, project identity, artifact type, item ingredient, component, material, feature, participant identity, route, source, owner, medium, or relation from a merely related remembered topic. When refusing because only adjacent or mismatched evidence was retrieved, do not compute or include the mismatched value unless the user explicitly asks about related memories. Do not map an unnamed role or relative to a named person unless retrieved memory explicitly says they are the same person.\\n            For arithmetic, date-difference, and ordering questions with named operands, every named operand must match the requested object or event. A different named object is a missing operand, not an approximate match; answer that memory is insufficient instead of computing from the mismatched object.\\n            For formal education duration from one stage to another stage's completion, use the whole retrieved formal education timeline. Include intermediate formal credentials, attendance, transfer, and completion milestones when they bridge the asked span.\\n            For aggregate questions about events the user participated in, treat explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.\\n            For category-scoped count/list questions, treat explicit venue, organizer, community, and stated context as category signals. A community-hosted service activity can qualify for that community/category even when the concrete task is volunteering, planning, sorting, packing, or another support action, unless the question asks for a narrower subtype.\\n            For replaced/fixed/upgraded household-item counts, count one functional slot when memory says the user fixed it, replaced it with a newer item, got rid of, donated, or gave away the old item as part of an upgrade, or adopted a new item that takes over the old item's function. Do not count both the old item and its replacement unless the user asks for inventory.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Context mode: FACTUAL\\n            Coverage mode: MINIMAL\\n            Require evidence fallback: true\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<0> [ACTIVE] prefers family=prefers semantics=PREFERENCE aggregate_effect=NONE: The user prefers Mazda for car recommendations.; scope=Car recommendation preferences for the user.; context=\\\"This preference applies when giving car recommendations.\\\"; evidence=DIRECT source=chat:<1> quote=\\\"Для рекомендаций по автомобилям запомни: я предпочитаю Mazda.\\\"\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            - source chat:<1> [chat_turn role=USER observedAt=1970-01-01T00:00:00Z]: Для рекомендаций по автомобилям запомни: я предпочитаю Mazda.\\n\\n            Retrieved entities:\\n            - entity entity:<0> [ORGANIZATION]: Mazda; Organization named Mazda.\\n- entity entity:<1> [USER]: User; The user interacting with this agent.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"summary\":\"The user prefers Mazda for car recommendations.\",\"rank\":1,\"selection_reason\":\"Active current preference directly states the user's preferred car brand.\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"chat:<1>\"]},{\"type\":\"SOURCE\",\"id\":\"chat:<1>\",\"summary\":\"Для рекомендаций по автомобилям запомни: я предпочитаю Mazda.\",\"evidence_source_ids\":[\"chat:<1>\"]},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"ORGANIZATION:Mazda\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"USER:User\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Active current preference directly states the user's preferred car brand.\"},{\"type\":\"PROFILE\",\"id\":\"project:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Profile duplicates the selected active claim and is not needed.\"},{\"type\":\"SOURCE\",\"id\":\"chat:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Raw evidence is unnecessary because the active typed claim is sufficient.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "syntheticPhase": "completed_async",
+                    "syntheticToolName": "memory_enrich_context",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 217600,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectId": "<id>",
+                "projectPath": "gromozeka-e2e-<id>/projects/preference-paraphrase-russian",
+                "threadId": "<id>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Mazda",
+                                "ttsText": "",
+                                "voiceTone": "",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4841,
+                "completionTokens": 28,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "dddcea8ec08e855fc6b0415bf0bf2b61ea24b288d6d605c5a2ce34baef4352a5",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=Gromozeka; action=CREATE_NEW; id=entity:<0>; type=PROJECT; name=Gromozeka; reason=The document describes the active memory implementation of the named Gromozeka system; no existing entity is available.\n- mention=memory MVP; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Gromozeka memory MVP; reason=Reusable domain concept discussed throughout the document; scoped to Gromozeka to avoid a generic duplicate.\n- mention=PostgreSQL; action=CREATE_NEW; id=entity:<2>; type=TECHNOLOGY; name=PostgreSQL; reason=Concrete technology used by the memory storage implementation.\n- mention=MemoryStore; action=CREATE_NEW; id=entity:<3>; type=TECHNOLOGY; name=MemoryStore; reason=Named reusable component in the Gromozeka memory system; no existing entity is available.\n- mention=Mongo; action=CREATE_NEW; id=entity:<4>; type=TECHNOLOGY; name=MongoDB; reason=Mention refers to old Mongo memory storage, safely identifiable as MongoDB.\n- mention=SQLite; action=CREATE_NEW; id=entity:<5>; type=TECHNOLOGY; name=SQLite; reason=Concrete technology mentioned as former application persistence.\n- mention=Neo4j; action=CREATE_NEW; id=entity:<6>; type=TECHNOLOGY; name=Neo4j; reason=Concrete technology mentioned as backing a former knowledge-memory prototype.\n- mention=MemoryMessageRoutingApplicationService; action=CREATE_NEW; id=entity:<7>; type=TECHNOLOGY; name=MemoryMessageRoutingApplicationService; reason=Named reusable component in the runtime write path.\n- mention=LlmMemoryWriteRouter; action=CREATE_NEW; id=entity:<8>; type=TECHNOLOGY; name=LlmMemoryWriteRouter; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryWriteRetrievalPlanner; action=CREATE_NEW; id=entity:<9>; type=TECHNOLOGY; name=LlmMemoryWriteRetrievalPlanner; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryEntityCanonicalizer; action=CREATE_NEW; id=entity:<10>; type=TECHNOLOGY; name=LlmMemoryEntityCanonicalizer; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryNoteConstructor; action=CREATE_NEW; id=entity:<11>; type=TECHNOLOGY; name=LlmMemoryNoteConstructor; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryNoteReconciler; action=CREATE_NEW; id=entity:<12>; type=TECHNOLOGY; name=LlmMemoryNoteReconciler; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryClaimExtractor; action=CREATE_NEW; id=entity:<13>; type=TECHNOLOGY; name=LlmMemoryClaimExtractor; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryClaimReconciler; action=CREATE_NEW; id=entity:<14>; type=TECHNOLOGY; name=LlmMemoryClaimReconciler; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryActionItemUpdater; action=CREATE_NEW; id=entity:<15>; type=TECHNOLOGY; name=LlmMemoryActionItemUpdater; reason=Named reusable write-pipeline component.\n- mention=ConversationEngineService; action=CREATE_NEW; id=entity:<16>; type=TECHNOLOGY; name=ConversationEngineService; reason=Named reusable service in the runtime read path.\n- mention=MemoryApplicationService; action=CREATE_NEW; id=entity:<17>; type=TECHNOLOGY; name=MemoryApplicationService; reason=Named reusable service used in read and maintenance flows.\n- mention=LlmMemoryReadPlanner; action=CREATE_NEW; id=entity:<18>; type=TECHNOLOGY; name=LlmMemoryReadPlanner; reason=Named reusable read-pipeline component.\n- mention=LlmMemoryReadSelector; action=CREATE_NEW; id=entity:<19>; type=TECHNOLOGY; name=LlmMemoryReadSelector; reason=Named reusable read-pipeline component.\n- mention=MemoryRealModelE2eTest; action=CREATE_NEW; id=entity:<20>; type=TECHNOLOGY; name=MemoryRealModelE2eTest; reason=Named reusable test suite discussed as verification target.\n- mention=MemoryMaintenancePipelineTest; action=CREATE_NEW; id=entity:<21>; type=TECHNOLOGY; name=MemoryMaintenancePipelineTest; reason=Named reusable test target in verification commands.\n- mention=LLM cassettes; action=CREATE_NEW; id=entity:<22>; type=CONCEPT; name=LLM cassettes; reason=Reusable testing concept mentioned for the full memory real-model suite.\n- mention=record-missing; action=CREATE_NEW; id=entity:<23>; type=CONCEPT; name=record-missing cassette mode; reason=Reusable verification mode; disambiguated from generic phrase.\n- mention=replay-only mode; action=CREATE_NEW; id=entity:<24>; type=CONCEPT; name=replay-only cassette mode; reason=Reusable verification mode; disambiguated from generic phrase.\n- mention=vector search; action=CREATE_NEW; id=entity:<25>; type=CONCEPT; name=vector search; reason=Reusable technical concept mentioned as not currently used.\n- mention=current project; action=CREATE_NEW; id=entity:<26>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=Memory Current State|MEMORY_CURRENT_STATE.md|Document preamble|MARKDOWN\n        text_queries=Memory Current State MEMORY_CURRENT_STATE.md Document preamble MARKDOWN Document title: Memory Current State Document source: MEMORY_CURRENT_STATE.md Document section: Document preamble Document lines: 1-119 # Memory Current State This document is a short engineering snapshot of the current memory MVP after the PostgreSQL typed memory implementation and real-model E2E stabilization. ## What Exists Now Gromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`. The core domain model lives in: - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt` - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryStore.kt` - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryWritePipeline.kt` - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryReadPipeline.kt` - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryMaintenancePipeline.kt` The main storage implementation is: - `infrastructure-db/src/jvmMain/kotlin/com/gromozeka/infrastructure/db/memory/PostgresMemoryStore.kt` The old Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype were removed from the active runtime. ## Runtime Write Path Every chat message is routed through the new write pipeline by `MemoryMessageRoutingApplicationService`. The current write pipeline shape is: 1. Capture source. 2. Route with `LlmMemoryWriteRouter`. 3. If needed, plan write-time retrieval with `LlmMemoryWriteRetrievalPlanner`. 4. Reuse or create entities with `LlmMemoryEntityCanonicalizer`. 5. Build note candidates with `LlmMemoryNoteConstructor`. 6. Reconcile notes with `LlmMemoryNoteReconciler`. 7. Extract claims with `LlmMemoryClaimExtractor`. 8. Reconcile claims with `LlmMemoryClaimReconciler`. 9. Update tasks with `LlmMemoryActionItemUpdater`. 10. Materialize the resulting batch into `MemoryStore`. 11. Update projections such as profiles. Assistant chat turns are captured as sources, but are not materialized as structured memory in the hot path. ## Runtime Read Path `ConversationEngineService` calls `MemoryApplicationService.buildRuntimeMemoryPrompt(...)` before the main LLM call when memory is enabled. The read pipeline shape is: 1. Plan whether memory is needed with `LlmMemoryReadPlanner`. 2. If the planner says no memory is needed, run the model-based no-memory verifier before accepting that decision. 3. Search PostgreSQL through `MemoryStore`. 4. Apply source retrieval policy and retrieval budget. 5. Select final context with `LlmMemoryReadSelector`. 6. Compose a runtime memory prompt. 7. Inject that prompt as a runtime developer message into the main LLM request. The current implementation intentionally avoids hard-coded lexical recall heuristics. ## Manual Maintenance Maintenance is currently manual and synchronous from the UI/service calls: - note consolidation - memory repair - entity maintenance - retention These flows are wired through `MemoryApplicationService` and produce trace events for E2E reports. ## Verification Normal build and targeted JVM tests pass: ```bash ./gradlew :presentation:build -q ./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q ``` The full memory real-model suite is covered by LLM cassettes. Normal verification should use replay-only mode: ```bash ./gradlew :presentation:jvmTest \\ --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \\ -Dgromozeka.memory.e2e=true \\ -Dgromozeka.llm.cassette.mode=replay-only \\ -q ``` Use `record-missing` intentionally when new or changed prompts need fresh live LLM responses: ```bash ./gradlew :presentation:jvmTest \\ --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \\ -Dgromozeka.memory.e2e=true \\ -Dgromozeka.llm.cassette.mode=record-missing \\ -q ``` Latest full recorded/replayable result: - cases: 52/52 - status: PASS - failures: 0 - retained E2E da\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:ab015ca7643f975b43f146e0110b1a4b] EXTERNAL\nSource metadata: source_kind=document; origin=provided_document_section; surface=chat_tool; input_kind=FILE_PATH; document_type=MARKDOWN; source_ref=MEMORY_CURRENT_STATE.md; title=Memory Current State; heading=Document preamble; imported_at=1970-01-01T00:00:00Z; force_memory_write=true; mode=memory_e2e_file_path\nDocument title: Memory Current State\nDocument source: MEMORY_CURRENT_STATE.md\nDocument section: Document preamble\nDocument lines: 1-119\n\n# Memory Current State\n\nThis document is a short engineering snapshot of the current memory MVP after the PostgreSQL typed memory implementation and real-model E2E stabilization.\n\n## What Exists Now\n\nGromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`.\n\nThe core domain model lives in:\n\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt`\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryStore.kt`\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryWritePipeline.kt`\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryReadPipeline.kt`\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryMaintenancePipeline.kt`\n\nThe main storage implementation is:\n\n- `infrastructure-db/src/jvmMain/kotlin/com/gromozeka/infrastructure/db/memory/PostgresMemoryStore.kt`\n\nThe old Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype were removed from the active runtime.\n\n## Runtime Write Path\n\nEvery chat message is routed through the new write pipeline by `MemoryMessageRoutingApplicationService`.\n\nThe current write pipeline shape is:\n\n1. Capture source.\n2. Route with `LlmMemoryWriteRouter`.\n3. If needed, plan write-time retrieval with `LlmMemoryWriteRetrievalPlanner`.\n4. Reuse or create entities with `LlmMemoryEntityCanonicalizer`.\n5. Build note candidates with `LlmMemoryNoteConstructor`.\n6. Reconcile notes with `LlmMemoryNoteReconciler`.\n7. Extract claims with `LlmMemoryClaimExtractor`.\n8. Reconcile claims with `LlmMemoryClaimReconciler`.\n9. Update tasks with `LlmMemoryActionItemUpdater`.\n10. Materialize the resulting batch into `MemoryStore`.\n11. Update projections such as profiles.\n\nAssistant chat turns are captured as sources, but are not materialized as structured memory in the hot path.\n\n## Runtime Read Path\n\n`ConversationEngineService` calls `MemoryApplicationService.buildRuntimeMemoryPrompt(...)` before the main LLM call when memory is enabled.\n\nThe read pipeline shape is:\n\n1. Plan whether memory is needed with `LlmMemoryReadPlanner`.\n2. If the planner says no memory is needed, run the model-based no-memory verifier before accepting that decision.\n3. Search PostgreSQL through `MemoryStore`.\n4. Apply source retrieval policy and retrieval budget.\n5. Select final context with `LlmMemoryReadSelector`.\n6. Compose a runtime memory prompt.\n7. Inject that prompt as a runtime developer message into the main LLM request.\n\nThe current implementation intentionally avoids hard-coded lexical recall heuristics.\n\n## Manual Maintenance\n\nMaintenance is currently manual and synchronous from the UI/service calls:\n\n- note consolidation\n- memory repair\n- entity maintenance\n- retention\n\nThese flows are wired through `MemoryApplicationService` and produce trace events for E2E reports.\n\n## Verification\n\nNormal build and targeted JVM tests pass:\n\n```bash\n./gradlew :presentation:build -q\n./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q\n```\n\nThe full memory real-model suite is covered by LLM cassettes. Normal verification should use replay-only mode:\n\n```bash\n./gradlew :presentation:jvmTest \\\n  --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \\\n  -Dgromozeka.memory.e2e=true \\\n  -Dgromozeka.llm.cassette.mode=replay-only \\\n  -q\n```\n\nUse `record-missing` intentionally when new or changed prompts need fresh live LLM responses:\n\n```bash\n./gradlew :presentation:jvmTest \\\n  --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \\\n  -Dgromozeka.memory.e2e=true \\\n  -Dgromozeka.llm.cassette.mode=record-missing \\\n  -q\n```\n\nLatest full recorded/replayable result:\n\n- cases: 52/52\n- status: PASS\n- failures: 0\n- retained E2E database: `gromozeka_memory_e2e_019e0960_4b91_7450_9ae3_feb26b0e3507`\n- summary artifact: `presentation/build/test-artifacts/memory-e2e/MemoryRealModelE2eTest/2026-05-08T20-56-06.291501Z-gromozeka_memory_e2e_019e0960_4b91_7450_9ae3_feb26b0e3507/summary.md`\n\nThe suite covers direct claims, abstention, deduplication, temporal updates, multilingual source bridge, notes, tasks, profiles, explicit forget, note consolidation, episodes, selector/reranker behavior, and repair/retention maintenance.\n\n## Known Rough Edges\n\nThe implementation is intentionally still MVP-grade:\n\n- Live `record-missing` E2E can be slow; replay-only verification should be fast.\n- Search is still PostgreSQL/local scoring, not vector search.\n- Runtime memory prompt wording and assistant answer style are not polished.\n- Maintenance is manual, not background async.\n- Logs are intentionally verbose for development.\n- The current E2E database is retained after runs for inspection and must be dropped manually when needed.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:ab015ca7643f975b43f146e0110b1a4b"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=Gromozeka; action=CREATE_NEW; id=entity:<0>; type=PROJECT; name=Gromozeka; reason=The document describes the active memory implementation of the named Gromozeka system; no existing entity is available.\n- mention=memory MVP; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Gromozeka memory MVP; reason=Reusable domain concept discussed throughout the document; scoped to Gromozeka to avoid a generic duplicate.\n- mention=PostgreSQL; action=CREATE_NEW; id=entity:<2>; type=TECHNOLOGY; name=PostgreSQL; reason=Concrete technology used by the memory storage implementation.\n- mention=MemoryStore; action=CREATE_NEW; id=entity:<3>; type=TECHNOLOGY; name=MemoryStore; reason=Named reusable component in the Gromozeka memory system; no existing entity is available.\n- mention=Mongo; action=CREATE_NEW; id=entity:<4>; type=TECHNOLOGY; name=MongoDB; reason=Mention refers to old Mongo memory storage, safely identifiable as MongoDB.\n- mention=SQLite; action=CREATE_NEW; id=entity:<5>; type=TECHNOLOGY; name=SQLite; reason=Concrete technology mentioned as former application persistence.\n- mention=Neo4j; action=CREATE_NEW; id=entity:<6>; type=TECHNOLOGY; name=Neo4j; reason=Concrete technology mentioned as backing a former knowledge-memory prototype.\n- mention=MemoryMessageRoutingApplicationService; action=CREATE_NEW; id=entity:<7>; type=TECHNOLOGY; name=MemoryMessageRoutingApplicationService; reason=Named reusable component in the runtime write path.\n- mention=LlmMemoryWriteRouter; action=CREATE_NEW; id=entity:<8>; type=TECHNOLOGY; name=LlmMemoryWriteRouter; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryWriteRetrievalPlanner; action=CREATE_NEW; id=entity:<9>; type=TECHNOLOGY; name=LlmMemoryWriteRetrievalPlanner; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryEntityCanonicalizer; action=CREATE_NEW; id=entity:<10>; type=TECHNOLOGY; name=LlmMemoryEntityCanonicalizer; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryNoteConstructor; action=CREATE_NEW; id=entity:<11>; type=TECHNOLOGY; name=LlmMemoryNoteConstructor; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryNoteReconciler; action=CREATE_NEW; id=entity:<12>; type=TECHNOLOGY; name=LlmMemoryNoteReconciler; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryClaimExtractor; action=CREATE_NEW; id=entity:<13>; type=TECHNOLOGY; name=LlmMemoryClaimExtractor; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryClaimReconciler; action=CREATE_NEW; id=entity:<14>; type=TECHNOLOGY; name=LlmMemoryClaimReconciler; reason=Named reusable write-pipeline component.\n- mention=LlmMemoryActionItemUpdater; action=CREATE_NEW; id=entity:<15>; type=TECHNOLOGY; name=LlmMemoryActionItemUpdater; reason=Named reusable write-pipeline component.\n- mention=ConversationEngineService; action=CREATE_NEW; id=entity:<16>; type=TECHNOLOGY; name=ConversationEngineService; reason=Named reusable service in the runtime read path.\n- mention=MemoryApplicationService; action=CREATE_NEW; id=entity:<17>; type=TECHNOLOGY; name=MemoryApplicationService; reason=Named reusable service used in read and maintenance flows.\n- mention=LlmMemoryReadPlanner; action=CREATE_NEW; id=entity:<18>; type=TECHNOLOGY; name=LlmMemoryReadPlanner; reason=Named reusable read-pipeline component.\n- mention=LlmMemoryReadSelector; action=CREATE_NEW; id=entity:<19>; type=TECHNOLOGY; name=LlmMemoryReadSelector; reason=Named reusable read-pipeline component.\n- mention=MemoryRealModelE2eTest; action=CREATE_NEW; id=entity:<20>; type=TECHNOLOGY; name=MemoryRealModelE2eTest; reason=Named reusable test suite discussed as verification target.\n- mention=MemoryMaintenancePipelineTest; action=CREATE_NEW; id=entity:<21>; type=TECHNOLOGY; name=MemoryMaintenancePipelineTest; reason=Named reusable test target in verification commands.\n- mention=LLM cassettes; action=CREATE_NEW; id=entity:<22>; type=CONCEPT; name=LLM cassettes; reason=Reusable testing concept mentioned for the full memory real-model suite.\n- mention=record-missing; action=CREATE_NEW; id=entity:<23>; type=CONCEPT; name=record-missing cassette mode; reason=Reusable verification mode; disambiguated from generic phrase.\n- mention=replay-only mode; action=CREATE_NEW; id=entity:<24>; type=CONCEPT; name=replay-only cassette mode; reason=Reusable verification mode; disambiguated from generic phrase.\n- mention=vector search; action=CREATE_NEW; id=entity:<25>; type=CONCEPT; name=vector search; reason=Reusable technical concept mentioned as not currently used.\n- mention=current project; action=CREATE_NEW; id=entity:<26>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=Memory Current State|MEMORY_CURRENT_STATE.md|Document preamble|MARKDOWN\n        text_queries=Memory Current State MEMORY_CURRENT_STATE.md Document preamble MARKDOWN Document title: Memory Current State Document source: MEMORY_CURRENT_STATE.md Document section: Document preamble Document lines: 1-119 # Memory Current State This document is a short engineering snapshot of the current memory MVP after the PostgreSQL typed memory implementation and real-model E2E stabilization. ## What Exists Now Gromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`. The core domain model lives in: - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt` - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryStore.kt` - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryWritePipeline.kt` - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryReadPipeline.kt` - `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryMaintenancePipeline.kt` The main storage implementation is: - `infrastructure-db/src/jvmMain/kotlin/com/gromozeka/infrastructure/db/memory/PostgresMemoryStore.kt` The old Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype were removed from the active runtime. ## Runtime Write Path Every chat message is routed through the new write pipeline by `MemoryMessageRoutingApplicationService`. The current write pipeline shape is: 1. Capture source. 2. Route with `LlmMemoryWriteRouter`. 3. If needed, plan write-time retrieval with `LlmMemoryWriteRetrievalPlanner`. 4. Reuse or create entities with `LlmMemoryEntityCanonicalizer`. 5. Build note candidates with `LlmMemoryNoteConstructor`. 6. Reconcile notes with `LlmMemoryNoteReconciler`. 7. Extract claims with `LlmMemoryClaimExtractor`. 8. Reconcile claims with `LlmMemoryClaimReconciler`. 9. Update tasks with `LlmMemoryActionItemUpdater`. 10. Materialize the resulting batch into `MemoryStore`. 11. Update projections such as profiles. Assistant chat turns are captured as sources, but are not materialized as structured memory in the hot path. ## Runtime Read Path `ConversationEngineService` calls `MemoryApplicationService.buildRuntimeMemoryPrompt(...)` before the main LLM call when memory is enabled. The read pipeline shape is: 1. Plan whether memory is needed with `LlmMemoryReadPlanner`. 2. If the planner says no memory is needed, run the model-based no-memory verifier before accepting that decision. 3. Search PostgreSQL through `MemoryStore`. 4. Apply source retrieval policy and retrieval budget. 5. Select final context with `LlmMemoryReadSelector`. 6. Compose a runtime memory prompt. 7. Inject that prompt as a runtime developer message into the main LLM request. The current implementation intentionally avoids hard-coded lexical recall heuristics. ## Manual Maintenance Maintenance is currently manual and synchronous from the UI/service calls: - note consolidation - memory repair - entity maintenance - retention These flows are wired through `MemoryApplicationService` and produce trace events for E2E reports. ## Verification Normal build and targeted JVM tests pass: ```bash ./gradlew :presentation:build -q ./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q ``` The full memory real-model suite is covered by LLM cassettes. Normal verification should use replay-only mode: ```bash ./gradlew :presentation:jvmTest \\ --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \\ -Dgromozeka.memory.e2e=true \\ -Dgromozeka.llm.cassette.mode=replay-only \\ -q ``` Use `record-missing` intentionally when new or changed prompts need fresh live LLM responses: ```bash ./gradlew :presentation:jvmTest \\ --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \\ -Dgromozeka.memory.e2e=true \\ -Dgromozeka.llm.cassette.mode=record-missing \\ -q ``` Latest full recorded/replayable result: - cases: 52/52 - status: PASS - failures: 0 - retained E2E da\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:ab015ca7643f975b43f146e0110b1a4b] EXTERNAL\nSource metadata: source_kind=document; origin=provided_document_section; surface=chat_tool; input_kind=FILE_PATH; document_type=MARKDOWN; source_ref=MEMORY_CURRENT_STATE.md; title=Memory Current State; heading=Document preamble; imported_at=1970-01-01T00:00:00Z; force_memory_write=true; mode=memory_e2e_file_path\nDocument title: Memory Current State\nDocument source: MEMORY_CURRENT_STATE.md\nDocument section: Document preamble\nDocument lines: 1-119\n\n# Memory Current State\n\nThis document is a short engineering snapshot of the current memory MVP after the PostgreSQL typed memory implementation and real-model E2E stabilization.\n\n## What Exists Now\n\nGromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`.\n\nThe core domain model lives in:\n\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt`\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryStore.kt`\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryWritePipeline.kt`\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryReadPipeline.kt`\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryMaintenancePipeline.kt`\n\nThe main storage implementation is:\n\n- `infrastructure-db/src/jvmMain/kotlin/com/gromozeka/infrastructure/db/memory/PostgresMemoryStore.kt`\n\nThe old Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype were removed from the active runtime.\n\n## Runtime Write Path\n\nEvery chat message is routed through the new write pipeline by `MemoryMessageRoutingApplicationService`.\n\nThe current write pipeline shape is:\n\n1. Capture source.\n2. Route with `LlmMemoryWriteRouter`.\n3. If needed, plan write-time retrieval with `LlmMemoryWriteRetrievalPlanner`.\n4. Reuse or create entities with `LlmMemoryEntityCanonicalizer`.\n5. Build note candidates with `LlmMemoryNoteConstructor`.\n6. Reconcile notes with `LlmMemoryNoteReconciler`.\n7. Extract claims with `LlmMemoryClaimExtractor`.\n8. Reconcile claims with `LlmMemoryClaimReconciler`.\n9. Update tasks with `LlmMemoryActionItemUpdater`.\n10. Materialize the resulting batch into `MemoryStore`.\n11. Update projections such as profiles.\n\nAssistant chat turns are captured as sources, but are not materialized as structured memory in the hot path.\n\n## Runtime Read Path\n\n`ConversationEngineService` calls `MemoryApplicationService.buildRuntimeMemoryPrompt(...)` before the main LLM call when memory is enabled.\n\nThe read pipeline shape is:\n\n1. Plan whether memory is needed with `LlmMemoryReadPlanner`.\n2. If the planner says no memory is needed, run the model-based no-memory verifier before accepting that decision.\n3. Search PostgreSQL through `MemoryStore`.\n4. Apply source retrieval policy and retrieval budget.\n5. Select final context with `LlmMemoryReadSelector`.\n6. Compose a runtime memory prompt.\n7. Inject that prompt as a runtime developer message into the main LLM request.\n\nThe current implementation intentionally avoids hard-coded lexical recall heuristics.\n\n## Manual Maintenance\n\nMaintenance is currently manual and synchronous from the UI/service calls:\n\n- note consolidation\n- memory repair\n- entity maintenance\n- retention\n\nThese flows are wired through `MemoryApplicationService` and produce trace events for E2E reports.\n\n## Verification\n\nNormal build and targeted JVM tests pass:\n\n```bash\n./gradlew :presentation:build -q\n./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q\n```\n\nThe full memory real-model suite is covered by LLM cassettes. Normal verification should use replay-only mode:\n\n```bash\n./gradlew :presentation:jvmTest \\\n  --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \\\n  -Dgromozeka.memory.e2e=true \\\n  -Dgromozeka.llm.cassette.mode=replay-only \\\n  -q\n```\n\nUse `record-missing` intentionally when new or changed prompts need fresh live LLM responses:\n\n```bash\n./gradlew :presentation:jvmTest \\\n  --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \\\n  -Dgromozeka.memory.e2e=true \\\n  -Dgromozeka.llm.cassette.mode=record-missing \\\n  -q\n```\n\nLatest full recorded/replayable result:\n\n- cases: 52/52\n- status: PASS\n- failures: 0\n- retained E2E database: `gromozeka_memory_e2e_019e0960_4b91_7450_9ae3_feb26b0e3507`\n- summary artifact: `presentation/build/test-artifacts/memory-e2e/MemoryRealModelE2eTest/2026-05-08T20-56-06.291501Z-gromozeka_memory_e2e_019e0960_4b91_7450_9ae3_feb26b0e3507/summary.md`\n\nThe suite covers direct claims, abstention, deduplication, temporal updates, multilingual source bridge, notes, tasks, profiles, explicit forget, note consolidation, episodes, selector/reranker behavior, and repair/retention maintenance.\n\n## Known Rough Edges\n\nThe implementation is intentionally still MVP-grade:\n\n- Live `record-missing` E2E can be slow; replay-only verification should be fast.\n- Search is still PostgreSQL/local scoring, not vector search.\n- Runtime memory prompt wording and assistant answer style are not polished.\n- Maintenance is manual, not background async.\n- Logs are intentionally verbose for development.\n- The current E2E database is retained after runs for inspection and must be dropped manually when needed.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:ab015ca7643f975b43f146e0110b1a4b"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"Gromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`.\",\"The old Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype were removed from the active runtime.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Gromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`.\",\"evidence_reason\":\"The quoted sentence states the central architecture of the current memory MVP, and the surrounding section lists the implementation file and removed legacy storage paths.\",\"importance\":5,\"keywords\":[\"MEMORY_CURRENT_STATE.md\",\"memory MVP\",\"PostgreSQL\",\"MemoryStore\",\"PostgresMemoryStore\",\"Mongo\",\"SQLite\",\"Neo4j\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is a compact document digest of architecture and migration context spanning several related facts and component roles, not just one atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Document preamble of MEMORY_CURRENT_STATE.md, lines 1-119, describing the current memory MVP architecture\"},\"summary\":\"`MEMORY_CURRENT_STATE.md` describes the current Gromozeka memory MVP as having a single active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`, with `PostgresMemoryStore.kt` as the main storage implementation. Older Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype are no longer active runtime paths.\",\"tags\":[\"memory\",\"architecture\",\"storage\",\"doc_digest\"],\"title\":\"Memory Current State: active storage architecture\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Every chat message is routed through the new write pipeline by `MemoryMessageRoutingApplicationService`.\",\"Assistant chat turns are captured as sources, but are not materialized as structured memory in the hot path.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<11>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<12>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<13>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<14>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<15>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"The current write pipeline shape is:\",\"evidence_reason\":\"The quoted lead-in introduces the ordered list of write-pipeline steps and the following sentence about assistant turns clarifies hot-path materialization policy.\",\"importance\":5,\"keywords\":[\"Runtime Write Path\",\"MemoryMessageRoutingApplicationService\",\"LlmMemoryWriteRouter\",\"LlmMemoryWriteRetrievalPlanner\",\"LlmMemoryEntityCanonicalizer\",\"LlmMemoryNoteConstructor\",\"LlmMemoryClaimExtractor\",\"LlmMemoryActionItemUpdater\"],\"note_type\":\"doc_digest\",\"rationale\":\"The reusable value is the ordered workflow and component responsibilities, which is procedural context rather than a single clean factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Runtime Write Path section of MEMORY_CURRENT_STATE.md\"},\"summary\":\"The current runtime write path routes every chat message through `MemoryMessageRoutingApplicationService`: capture source, route with `LlmMemoryWriteRouter`, optionally plan retrieval, canonicalize entities, construct and reconcile notes, extract and reconcile claims, update tasks, materialize into `MemoryStore`, and update projections such as profiles. Assistant chat turns are captured as sources but not materialized as structured memory in the hot path.\",\"tags\":[\"memory\",\"write_pipeline\",\"runtime\",\"doc_digest\"],\"title\":\"Memory write pipeline order in Memory Current State\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The current implementation intentionally avoids hard-coded lexical recall heuristics.\",\"`ConversationEngineService` calls `MemoryApplicationService.buildRuntimeMemoryPrompt(...)` before the main LLM call when memory is enabled.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<16>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<17>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<18>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<18>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<19>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"The current implementation intentionally avoids hard-coded lexical recall heuristics.\",\"evidence_reason\":\"The quote states a design direction, while the surrounding ordered list gives the read-pipeline procedure it applies to.\",\"importance\":5,\"keywords\":[\"Runtime Read Path\",\"ConversationEngineService\",\"MemoryApplicationService.buildRuntimeMemoryPrompt\",\"LlmMemoryReadPlanner\",\"LlmMemoryReadSelector\",\"no-memory verifier\",\"lexical recall heuristics\"],\"note_type\":\"direction\",\"rationale\":\"This preserves a design direction and ordered workflow, including a non-obvious anti-heuristic constraint, which is more reusable as a note than as isolated claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Runtime Read Path section of MEMORY_CURRENT_STATE.md\"},\"summary\":\"When memory is enabled, `ConversationEngineService` calls `MemoryApplicationService.buildRuntimeMemoryPrompt(...)` before the main LLM call. The read pipeline plans recall with `LlmMemoryReadPlanner`, verifies no-memory decisions with a model-based verifier, searches PostgreSQL through `MemoryStore`, applies retrieval policy and budget, selects final context with `LlmMemoryReadSelector`, then injects a runtime memory prompt as a developer message; the implementation intentionally avoids hard-coded lexical recall heuristics.\",\"tags\":[\"memory\",\"read_pipeline\",\"runtime\",\"direction\"],\"title\":\"Memory read pipeline and no lexical heuristics direction\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Maintenance is currently manual and synchronous from the UI/service calls.\",\"These flows are wired through `MemoryApplicationService` and produce trace events for E2E reports.\"],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<17>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Maintenance is currently manual and synchronous from the UI/service calls:\",\"evidence_reason\":\"The quoted line introduces the maintenance policy and the following bullets list the supported maintenance flows.\",\"importance\":4,\"keywords\":[\"Manual Maintenance\",\"note consolidation\",\"memory repair\",\"entity maintenance\",\"retention\",\"MemoryApplicationService\",\"E2E reports\"],\"note_type\":\"doc_digest\",\"rationale\":\"This note captures a compact policy plus the set of maintenance flows and observability behavior, which is contextual rather than a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Manual Maintenance section of MEMORY_CURRENT_STATE.md\"},\"summary\":\"Memory maintenance in the current MVP is manual and synchronous from UI/service calls, covering note consolidation, memory repair, entity maintenance, and retention. These flows are wired through `MemoryApplicationService` and emit trace events for E2E reports.\",\"tags\":[\"memory\",\"maintenance\",\"manual\",\"doc_digest\"],\"title\":\"Manual memory maintenance flows\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Normal verification should use replay-only mode.\",\"Use `record-missing` intentionally when new or changed prompts need fresh live LLM responses.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<20>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<21>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<22>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<23>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<24>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Normal verification should use replay-only mode:\",\"evidence_reason\":\"The quote introduces the recommended full-suite verification mode, and the same section gives targeted test commands plus the `record-missing` exception.\",\"importance\":5,\"keywords\":[\"Verification\",\"MemoryRealModelE2eTest\",\"MemoryMaintenancePipelineTest\",\"LLM cassettes\",\"replay-only\",\"record-missing\",\"gradlew\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is reusable procedural testing guidance with mode-selection rationale, not just a factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Verification section of MEMORY_CURRENT_STATE.md\"},\"summary\":\"`MEMORY_CURRENT_STATE.md` records that normal build and targeted JVM tests pass, and that the full `MemoryRealModelE2eTest` suite should normally run with LLM cassettes in `replay-only` mode. `record-missing` is intended only when new or changed prompts need fresh live LLM responses.\",\"tags\":[\"memory\",\"verification\",\"testing\",\"cassettes\"],\"title\":\"Memory verification commands and cassette modes\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Latest full recorded/replayable result: cases: 52/52, status: PASS, failures: 0\",\"The suite covers direct claims, abstention, deduplication, temporal updates, multilingual source bridge, notes, tasks, profiles, explicit forget, note consolidation, episodes, selector/reranker behavior, and repair/retention maintenance.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<20>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<22>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Latest full recorded/replayable result:\",\"evidence_reason\":\"The quoted line introduces the recorded E2E result details and coverage list that follow.\",\"importance\":4,\"keywords\":[\"MemoryRealModelE2eTest\",\"52/52\",\"PASS\",\"gromozeka_memory_e2e_019e0960_4b91_7450_9ae3_feb26b0e3507\",\"summary.md\",\"selector/reranker\",\"repair/retention\"],\"note_type\":\"doc_digest\",\"rationale\":\"This note preserves a compact verification snapshot and coverage context that would be cumbersome as separate atomic claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Verification section of MEMORY_CURRENT_STATE.md latest full recorded/replayable result\"},\"summary\":\"The latest full recorded/replayable memory E2E result in `MEMORY_CURRENT_STATE.md` is 52/52 cases passing with 0 failures, retained database `gromozeka_memory_e2e_019e0960_4b91_7450_9ae3_feb26b0e3507`, and summary artifact `presentation/build/test-artifacts/memory-e2e/MemoryRealModelE2eTest/2026-05-08T20-56-06.291501Z-gromozeka_memory_e2e_019e0960_4b91_7450_9ae3_feb26b0e3507/summary.md`. The suite covers claims, abstention, deduplication, temporal updates, multilingual source bridge, notes, tasks, profiles, explicit forget, note consolidation, episodes, selector/reranker behavior, and repair/retention maintenance.\",\"tags\":[\"memory\",\"e2e\",\"test_result\",\"coverage\"],\"title\":\"MemoryRealModelE2eTest latest recorded coverage snapshot\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Search is still PostgreSQL/local scoring, not vector search.\",\"Maintenance is manual, not background async.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<23>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<25>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"The implementation is intentionally still MVP-grade:\",\"evidence_reason\":\"The quoted sentence introduces the list of known limitations and rough edges for the current memory MVP.\",\"importance\":4,\"keywords\":[\"Known Rough Edges\",\"record-missing\",\"PostgreSQL/local scoring\",\"vector search\",\"manual maintenance\",\"verbose logs\",\"E2E database\"],\"note_type\":\"context\",\"rationale\":\"This captures a reusable set of current limitations and development trade-offs, better represented as contextual note than many separate weak claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Known Rough Edges section of MEMORY_CURRENT_STATE.md\"},\"summary\":\"Known rough edges of the current memory MVP are that live `record-missing` E2E can be slow, search uses PostgreSQL/local scoring rather than vector search, prompt wording and assistant answer style are unpolished, maintenance is manual rather than background async, logs are verbose for development, and the retained E2E database must be dropped manually when needed.\",\"tags\":[\"memory\",\"mvp\",\"rough_edges\",\"context\"],\"title\":\"Known MVP rough edges in Gromozeka memory\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7369,
+                "completionTokens": 3262,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
