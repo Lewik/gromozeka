@@ -28,15 +28,15 @@ class MemoryRememberToolCallback(
         val force_write: Boolean? = null,
         val confirmed_preflight_run_id: String? = null,
         val mode: String? = null,
-        val namespace: String? = null,
     )
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_REMEMBER_TOOL_NAME,
-        description = "Queue persistence of memory-worthy information into typed memory and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final result. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
+        description = "Queue persistence of memory-worthy information into typed memory and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final result. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. Memory is written to the configured namespace. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
         inputSchema = """
             {
               "type": "object",
+              "additionalProperties": false,
               "properties": {
                 "target": {
                   "type": "string",
@@ -85,10 +85,6 @@ class MemoryRememberToolCallback(
                 "mode": {
                   "type": "string",
                   "description": "Optional caller mode label for debugging or analytics."
-                },
-                "namespace": {
-                  "type": "string",
-                  "description": "Optional readable memory namespace to write into. Examples: global, user:lewik, work:hebrew, project:<project-id>. Omit to use the configured default or current project namespace."
                 }
               }
             }
@@ -124,7 +120,6 @@ class MemoryRememberToolCallback(
                 forceWrite = input.force_write,
                 confirmedPreflightRunId = input.confirmed_preflight_run_id,
                 mode = input.mode,
-                namespaceValue = input.namespace,
                 writeSurface = writeSurface,
             )
         }
@@ -146,7 +141,6 @@ class MemoryRememberToolCallback(
             targetMessageId = input.target_message_id,
             forceWrite = input.force_write,
             confirmedPreflightRunId = input.confirmed_preflight_run_id,
-            namespaceValue = input.namespace,
         )
     }
 

@@ -11,6 +11,7 @@ internal object GromozekaMcpMemoryRememberAdapter {
         "target",
         "target_message_id",
         "user_consent_confirmed",
+        "namespace",
     )
 
     fun toInternalToolArguments(arguments: JsonObject): JsonObject {

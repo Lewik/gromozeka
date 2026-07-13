@@ -74,28 +74,16 @@ class MemoryToolApplicationService(
 
     suspend fun memoryEmbeddingStatus(
         conversationIdValue: String? = null,
-        targetTypeValue: String? = null,
-        targetValue: String? = null,
-        projectPathValue: String? = null,
-        runIdValue: String? = null,
-        namespaceValue: String? = null,
     ): String =
         runCatching {
-            val target = resolveMaintenanceTarget(
-                conversationIdValue = conversationIdValue,
-                targetTypeValue = targetTypeValue,
-                targetValue = targetValue,
-                projectPathValue = projectPathValue,
-                runIdValue = runIdValue,
-                namespaceValue = namespaceValue,
-            )
+            val target = resolveMaintenanceTarget(conversationIdValue)
             val context = resolveMaintenanceContext(target)
             val coverage = memoryEmbeddingIndexer.coverage(context.namespace)
             MemoryToolResultRenderer.embeddingCoverageResultJsonString(coverage)
         }.onFailure { error ->
             log.warn(error) {
                 "Memory tool failed: tool=$MEMORY_EMBEDDING_STATUS_TOOL_NAME " +
-                    "targetType=$targetTypeValue target=$targetValue conversation=$conversationIdValue error=${error.message}"
+                    "conversation=$conversationIdValue error=${error.message}"
             }
         }.getOrElse { error ->
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory embedding status failed.")
@@ -123,24 +111,12 @@ class MemoryToolApplicationService(
     suspend fun runMaintenance(
         actionValue: String,
         conversationIdValue: String? = null,
-        targetTypeValue: String? = null,
-        targetValue: String? = null,
-        projectPathValue: String? = null,
-        runIdValue: String? = null,
-        namespaceValue: String? = null,
         embeddingRebuildModeValue: String? = null,
     ): String =
         runCatching {
             val action = MemoryMaintenanceAction.from(actionValue)
             val embeddingRebuildMode = MemoryEmbeddingRebuildMode.from(embeddingRebuildModeValue)
-            val target = resolveMaintenanceTarget(
-                conversationIdValue = conversationIdValue,
-                targetTypeValue = targetTypeValue,
-                targetValue = targetValue,
-                projectPathValue = projectPathValue,
-                runIdValue = runIdValue,
-                namespaceValue = namespaceValue,
-            )
+            val target = resolveMaintenanceTarget(conversationIdValue)
             val context = resolveMaintenanceContext(target)
             val result = memoryMaintenanceQueue.enqueue(
                 action = action,
@@ -165,7 +141,7 @@ class MemoryToolApplicationService(
         }.onFailure { error ->
             log.warn(error) {
                 "Memory tool failed: tool=$MEMORY_MAINTENANCE_TOOL_NAME action=$actionValue " +
-                    "targetType=$targetTypeValue target=$targetValue conversation=$conversationIdValue error=${error.message}"
+                    "conversation=$conversationIdValue error=${error.message}"
             }
         }.getOrElse { error ->
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory maintenance failed.")
@@ -199,37 +175,12 @@ class MemoryToolApplicationService(
                 run.childRunIds.mapNotNull { childRunId -> memoryStore.findRunById(childRunId) }
             ).distinctBy { it.id }
 
-    private suspend fun resolveMaintenanceTarget(
-        conversationIdValue: String?,
-        targetTypeValue: String?,
-        targetValue: String?,
-        projectPathValue: String?,
-        runIdValue: String?,
-        namespaceValue: String?,
-    ): MemoryMaintenanceTarget {
-        if (!conversationIdValue.isNullOrBlank()) {
-            return MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.CONVERSATION_ID, conversationIdValue.trim())
-        }
-        if (!projectPathValue.isNullOrBlank()) {
-            return MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.PROJECT_PATH, projectPathValue.trim())
-        }
-        if (!runIdValue.isNullOrBlank()) {
-            return MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.RUN_ID, runIdValue.trim())
-        }
-        if (!namespaceValue.isNullOrBlank()) {
-            return MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.NAMESPACE, namespaceValue.trim())
-        }
-
-        val normalizedTargetType = targetTypeValue?.trim().orEmpty()
-        val normalizedTarget = targetValue?.trim().orEmpty()
-        if (normalizedTargetType.isNotBlank() || normalizedTarget.isNotBlank()) {
-            require(normalizedTargetType.isNotBlank()) { "memory_maintenance target_type is required when target is provided." }
-            require(normalizedTarget.isNotBlank()) { "memory_maintenance target is required when target_type is provided." }
-            return MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.from(normalizedTargetType), normalizedTarget)
-        }
-
-        return MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.PROJECT_PATH, defaultStandaloneProjectPath())
-    }
+    private fun resolveMaintenanceTarget(conversationIdValue: String?): MemoryMaintenanceTarget =
+        conversationIdValue
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.CONVERSATION_ID, it) }
+            ?: MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.PROJECT_PATH, defaultStandaloneProjectPath())
 
     private suspend fun resolveMaintenanceContext(target: MemoryMaintenanceTarget): MemoryMaintenanceContext =
         when (target.kind) {
@@ -240,32 +191,12 @@ class MemoryToolApplicationService(
                 val project = projectService.getOrCreate(File(target.value).absolutePath)
                 project.toStandaloneMaintenanceContext()
             }
-
-            MemoryMaintenanceTarget.Kind.RUN_ID -> {
-                val run = memoryStore.findRunById(MemoryRun.Id(target.value))
-                    ?: throw IllegalArgumentException("Memory run not found: ${target.value}")
-                run.namespace.toStandaloneMaintenanceContext()
-            }
-
-            MemoryMaintenanceTarget.Kind.NAMESPACE -> {
-                MemoryNamespace(target.value).toStandaloneMaintenanceContext()
-            }
         }
 
     private suspend fun Project.toStandaloneMaintenanceContext(): MemoryMaintenanceContext {
-        return toStandaloneMaintenanceContext(namespace = defaultMemoryNamespace())
-    }
-
-    private suspend fun MemoryNamespace.toStandaloneMaintenanceContext(): MemoryMaintenanceContext {
-        val project = projectService.getOrCreate(defaultStandaloneProjectPath())
-        return project.toStandaloneMaintenanceContext(namespace = this)
-    }
-
-    private suspend fun Project.toStandaloneMaintenanceContext(namespace: MemoryNamespace): MemoryMaintenanceContext {
         val context = contextResolver.resolveProject(this)
         return context.toMaintenanceContext(
             conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
-            namespace = namespace,
         )
     }
 
@@ -319,14 +250,6 @@ class MemoryToolApplicationService(
         enum class Kind(val toolName: String) {
             CONVERSATION_ID("conversation_id"),
             PROJECT_PATH("project_path"),
-            RUN_ID("run_id"),
-            NAMESPACE("namespace");
-
-            companion object {
-                fun from(value: String): Kind =
-                    entries.firstOrNull { it.toolName == value.trim().lowercase() || it.name == value.trim().uppercase() }
-                        ?: throw IllegalArgumentException("Unsupported memory_maintenance target_type: $value")
-            }
         }
     }
 

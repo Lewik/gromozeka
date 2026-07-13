@@ -20,15 +20,15 @@ class MemoryAnswerQuestionToolCallback(
         val target_message_id: String? = null,
         val question: String? = null,
         val mode: String? = null,
-        val namespace: String? = null,
     )
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ANSWER_QUESTION_TOOL_NAME,
-        description = "Queue a direct question answered from persisted memory only and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final answer. Use this when the user asks what Gromozeka remembers or asks a factual question whose answer should come from memory. For normal chat where the assistant should reason over returned context itself, use memory_enrich_context instead.",
+        description = "Queue a direct question answered from persisted memory in the configured namespace and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final answer. Use this when the user asks what Gromozeka remembers or asks a factual question whose answer should come from memory. For normal chat where the assistant should reason over returned context itself, use memory_enrich_context instead.",
         inputSchema = """
             {
               "type": "object",
+              "additionalProperties": false,
               "properties": {
                 "target": {
                   "type": "string",
@@ -45,10 +45,6 @@ class MemoryAnswerQuestionToolCallback(
                 "mode": {
                   "type": "string",
                   "description": "Optional caller mode label for debugging or analytics."
-                },
-                "namespace": {
-                  "type": "string",
-                  "description": "Optional readable memory namespace to read from. Examples: global, user:lewik, work:hebrew, project:<project-id>. Omit to use the configured default or current project namespace."
                 }
               }
             }
@@ -68,7 +64,6 @@ class MemoryAnswerQuestionToolCallback(
                 conversationIdValue = context?.getString("conversationId"),
                 questionText = providedQuestion,
                 mode = input.mode,
-                namespaceValue = input.namespace,
             )
         }
 
@@ -84,7 +79,6 @@ class MemoryAnswerQuestionToolCallback(
         memoryOperations.answerMessage(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id,
-            namespaceValue = input.namespace,
         )
     }
 

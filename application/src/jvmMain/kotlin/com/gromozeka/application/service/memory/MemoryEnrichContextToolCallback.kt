@@ -20,15 +20,15 @@ class MemoryEnrichContextToolCallback(
         val target_message_id: String? = null,
         val context: String? = null,
         val mode: String? = null,
-        val namespace: String? = null,
     )
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
-        description = "Queue enrichment of a target context with relevant persisted memory and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and memory_context. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace.",
+        description = "Queue enrichment of a target context with relevant persisted memory from the configured namespace and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and memory_context. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched.",
         inputSchema = """
             {
               "type": "object",
+              "additionalProperties": false,
               "properties": {
                 "target": {
                   "type": "string",
@@ -45,10 +45,6 @@ class MemoryEnrichContextToolCallback(
                 "mode": {
                   "type": "string",
                   "description": "Optional caller mode label for debugging or analytics."
-                },
-                "namespace": {
-                  "type": "string",
-                  "description": "Optional readable memory namespace to read from. Examples: global, user:lewik, work:hebrew, project:<project-id>. Omit to use the configured default or current project namespace."
                 }
               }
             }
@@ -68,7 +64,6 @@ class MemoryEnrichContextToolCallback(
                 conversationIdValue = context?.getString("conversationId"),
                 contextText = providedContext,
                 mode = input.mode,
-                namespaceValue = input.namespace,
             )
         }
 
@@ -84,7 +79,6 @@ class MemoryEnrichContextToolCallback(
         memoryOperations.enrichMessage(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id,
-            namespaceValue = input.namespace,
         )
     }
 
