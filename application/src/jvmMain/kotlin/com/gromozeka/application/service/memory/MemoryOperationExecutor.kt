@@ -49,7 +49,7 @@ class MemoryOperationExecutor internal constructor(
         val conversationId = Conversation.Id(conversationIdValue)
         val context = contextResolver.resolveConversation(conversationId)
         val targetMessage = contextResolver.resolveTargetMessage(context.threadMessages, targetMessageId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue, context.project)
+        val namespace = contextResolver.resolveNamespace(namespaceValue)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.RememberMessage(
                 namespace = namespace,
@@ -88,7 +88,7 @@ class MemoryOperationExecutor internal constructor(
         )
         val conversationId = conversationIdValue.toConversationIdOrNull()
         val context = resolveContext(conversationId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue, context.project)
+        val namespace = contextResolver.resolveNamespace(namespaceValue)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.RememberProvidedContent(
                 namespace = namespace,
@@ -113,7 +113,7 @@ class MemoryOperationExecutor internal constructor(
         val conversationId = Conversation.Id(conversationIdValue)
         val context = contextResolver.resolveConversation(conversationId)
         val targetMessage = contextResolver.resolveTargetMessage(context.threadMessages, targetMessageId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue, context.project)
+        val namespace = contextResolver.resolveNamespace(namespaceValue)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.EnrichMessage(
                 namespace = namespace,
@@ -136,7 +136,7 @@ class MemoryOperationExecutor internal constructor(
         require(normalizedContext.isNotBlank()) { "Provided context is blank." }
         val conversationId = conversationIdValue.toConversationIdOrNull()
         val context = resolveContext(conversationId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue, context.project)
+        val namespace = contextResolver.resolveNamespace(namespaceValue)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.EnrichProvidedContext(
                 namespace = namespace,
@@ -158,7 +158,7 @@ class MemoryOperationExecutor internal constructor(
         val conversationId = Conversation.Id(conversationIdValue)
         val context = contextResolver.resolveConversation(conversationId)
         val targetMessage = contextResolver.resolveTargetMessage(context.threadMessages, targetMessageId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue, context.project)
+        val namespace = contextResolver.resolveNamespace(namespaceValue)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.AnswerMessage(
                 namespace = namespace,
@@ -181,7 +181,7 @@ class MemoryOperationExecutor internal constructor(
         require(normalizedQuestion.isNotBlank()) { "Provided memory question is blank." }
         val conversationId = conversationIdValue.toConversationIdOrNull()
         val context = resolveContext(conversationId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue, context.project)
+        val namespace = contextResolver.resolveNamespace(namespaceValue)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.AnswerProvidedQuestion(
                 namespace = namespace,

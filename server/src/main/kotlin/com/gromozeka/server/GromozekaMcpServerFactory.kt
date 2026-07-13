@@ -121,7 +121,7 @@ class GromozekaMcpServerFactory(
     private fun Server.addMemoryHelpTool() {
         addTool(
             name = MCP_MEMORY_HELP_TOOL_NAME,
-            description = "Read the Gromozeka typed-memory MCP guide: memory concepts, the configured namespace, write/read workflows, and when to use each memory tool.",
+            description = "Read the Gromozeka typed-memory MCP guide: memory concepts, the global namespace, write/read workflows, and when to use each memory tool.",
             inputSchema = ToolSchema(),
         ) {
             CallToolResult(
@@ -223,7 +223,7 @@ class GromozekaMcpServerFactory(
 
             ## Namespaces
 
-            A namespace is a strict memory boundary. The current Gromozeka runtime supports one configured namespace and selects it automatically for every memory operation. MCP callers cannot select or override it. `memory_list_namespaces` is diagnostic and reports the configured namespace plus any unexpected stored namespaces.
+            A namespace is a strict memory boundary. The current Gromozeka runtime uses the single `global` namespace for every production memory operation. MCP callers cannot select or override it. `memory_list_namespaces` is diagnostic and reports `global` plus any unexpected stored namespaces.
 
             ## Writing memory
 
@@ -263,9 +263,9 @@ class GromozekaMcpServerFactory(
 
             - `memory_run_status`: inspect one memory run by id.
             - `memory_queue_status`: inspect queued/running memory operations and maintenance work.
-            - `memory_embedding_status`: inspect vector embedding coverage for the configured namespace.
+            - `memory_embedding_status`: inspect vector embedding coverage for the global namespace.
             - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, targeted repairs, or embedding rebuild.
-            - `memory_rebuild_embeddings`: rebuild vector embeddings for the configured namespace (`full` reset/replace or `missing` fill-only).
+            - `memory_rebuild_embeddings`: rebuild vector embeddings for the global namespace (`full` reset/replace or `missing` fill-only).
 
             Memory remember/read operations and maintenance tools return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Prefer status tools before starting broad maintenance if a run is already active.
 
@@ -280,7 +280,7 @@ class GromozekaMcpServerFactory(
         """.trimIndent()
 
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
-            "Queue persistence of explicit user-approved text or a raw markdown/text document in the configured namespace and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_run_status to retrieve completion and the final result. Use memory_help for typed-memory concepts and workflow."
+            "Queue persistence of explicit user-approved text or a raw markdown/text document in the global namespace and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_run_status to retrieve completion and the final result. Use memory_help for typed-memory concepts and workflow."
 
         const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
             "Queue retrieval of persisted memory relevant to a supplied context and return a run_id. This enriches a topic/action item/current turn; it is not a question-answering tool. Use memory_run_status to retrieve memory_context."
@@ -289,16 +289,16 @@ class GromozekaMcpServerFactory(
             "Queue a direct question answered from persisted memory only and return a run_id. Use memory_run_status to retrieve answer, sufficiency, evidence refs, selected refs, and memory_context."
 
         const val MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION =
-            "Inspect the configured memory namespace, item counts, and any unexpected stored namespaces. This runtime does not support selecting a namespace per operation."
+            "Inspect the global memory namespace, item counts, and any unexpected stored namespaces. This runtime does not support selecting a namespace per operation."
 
         const val MCP_MEMORY_MAINTENANCE_DESCRIPTION =
             "Schedule one explicit maintenance action over existing memory and return a run_id: consolidate, repair, maintain_entities, apply_retention, or rebuild_embeddings. The rebuild_embeddings action supports embedding_mode=full for reset/replace and embedding_mode=missing for fill-only."
 
         const val MCP_MEMORY_REBUILD_EMBEDDINGS_DESCRIPTION =
-            "Rebuild memory vector embeddings for the configured namespace. mode=full generates a fresh complete set and then replaces existing rows; mode=missing inserts only absent rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe completion."
+            "Rebuild memory vector embeddings for the global namespace. mode=full generates a fresh complete set and then replaces existing rows; mode=missing inserts only absent rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe completion."
 
         const val MCP_MEMORY_EMBEDDING_STATUS_DESCRIPTION =
-            "Inspect vector embedding coverage for the configured memory namespace under the currently configured embedding model: embeddable items, expected rows, existing rows, and missing rows. Read-only."
+            "Inspect vector embedding coverage for the global memory namespace under the currently configured embedding model: embeddable items, expected rows, existing rows, and missing rows. Read-only."
 
         const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
             "Read process-local memory operation, maintenance, and synchronous embedding index status."

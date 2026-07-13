@@ -430,11 +430,11 @@ object MemoryToolResultRenderer {
 
     fun namespaceListResultJsonString(
         summaries: List<MemoryNamespaceSummary>,
-        configuredDefaultNamespace: MemoryNamespace?,
+        defaultNamespace: MemoryNamespace,
     ): String =
         buildJsonObject {
             put("status", "completed")
-            put("configured_default_namespace", configuredDefaultNamespace?.value ?: "")
+            put("default_namespace", defaultNamespace.value)
             put("namespace_count", summaries.size)
             putJsonArray("namespaces") {
                 summaries.forEach { summary ->
@@ -442,7 +442,7 @@ object MemoryToolResultRenderer {
                         put("namespace", summary.namespace.value)
                         put("display_name", summary.displayName)
                         put("kind", summary.kind.name)
-                        put("is_configured_default", summary.namespace == configuredDefaultNamespace)
+                        put("is_default", summary.namespace == defaultNamespace)
                         put("last_updated_at", summary.lastUpdatedAt?.toString() ?: "")
                         put(
                             "counts",

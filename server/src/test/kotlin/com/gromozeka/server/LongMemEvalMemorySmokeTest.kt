@@ -146,7 +146,6 @@ class LongMemEvalMemorySmokeTest {
                 memorySettings = UserProfile.MemorySettings(
                     autoRemember = true,
                     autoRecall = true,
-                    defaultNamespace = LONGMEMEVAL_NAMESPACE,
                 )
             ),
         )

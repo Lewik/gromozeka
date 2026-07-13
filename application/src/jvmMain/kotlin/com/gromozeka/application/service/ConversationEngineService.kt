@@ -14,9 +14,9 @@ import com.gromozeka.application.service.memory.MemoryMaintenanceQueue
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
 import com.gromozeka.application.service.memory.MemoryNamespaceRecallAccessException
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
-import com.gromozeka.application.service.memory.defaultMemoryNamespace
 import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.repository.AiModelSpecRepository
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -1179,8 +1179,7 @@ class ConversationEngineService(
             conversationId = conversationId,
             agent = agent,
             project = project,
-            namespace = settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
-                ?: project.defaultMemoryNamespace(),
+            namespace = MemoryNamespace.Global,
             runtimeSystemPrompts = systemPrompts,
             runtimeTools = memoryPipelineTools,
         )

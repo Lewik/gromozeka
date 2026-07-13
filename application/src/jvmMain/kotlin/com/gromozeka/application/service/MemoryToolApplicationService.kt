@@ -11,8 +11,6 @@ import com.gromozeka.application.service.memory.MemoryOperationContext
 import com.gromozeka.application.service.memory.MemoryOperationContextResolver
 import com.gromozeka.application.service.memory.MemoryOperationQueue
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
-import com.gromozeka.application.service.memory.PROJECT_MEMORY_NAMESPACE_PREFIX
-import com.gromozeka.application.service.memory.defaultMemoryNamespace
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
@@ -21,7 +19,6 @@ import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.ProjectDomainService
-import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.shared.uuid.uuid7
 import java.io.File
@@ -32,7 +29,6 @@ import org.springframework.stereotype.Service
 class MemoryToolApplicationService(
     private val contextResolver: MemoryOperationContextResolver,
     private val projectService: ProjectDomainService,
-    private val settingsService: SettingsService,
     private val memoryOperationQueue: MemoryOperationQueue,
     private val memoryMaintenanceQueue: MemoryMaintenanceQueue,
     private val memoryEmbeddingIndexer: MemoryEmbeddingIndexer,
@@ -91,16 +87,14 @@ class MemoryToolApplicationService(
 
     suspend fun listNamespaces(): String =
         runCatching {
-            val configuredDefault = settingsService.userProfile.memorySettings.defaultMemoryNamespace()
             val storedSummaries = memoryStore.listNamespaceSummaries()
-            val summaries = (storedSummaries + configuredDefault.emptyNamespaceSummaryIfMissing(storedSummaries))
+            val summaries = (storedSummaries + MemoryNamespace.Global.emptyNamespaceSummaryIfMissing(storedSummaries))
                 .distinctBy { it.namespace.value }
-                .map { it.withReadableDisplayName() }
-                .sortedWith(compareByDescending<MemoryNamespaceSummary> { it.namespace == configuredDefault }.thenBy { it.namespace.value })
+                .sortedWith(compareByDescending<MemoryNamespaceSummary> { it.namespace == MemoryNamespace.Global }.thenBy { it.namespace.value })
 
             MemoryToolResultRenderer.namespaceListResultJsonString(
                 summaries = summaries,
-                configuredDefaultNamespace = configuredDefault,
+                defaultNamespace = MemoryNamespace.Global,
             )
         }.onFailure { error ->
             log.warn(error) { "Memory tool failed: tool=$MEMORY_LIST_NAMESPACES_TOOL_NAME error=${error.message}" }
@@ -202,14 +196,12 @@ class MemoryToolApplicationService(
 
     private fun MemoryOperationContext.toMaintenanceContext(
         conversationId: Conversation.Id,
-        namespace: MemoryNamespace = settingsService.userProfile.memorySettings.defaultMemoryNamespace()
-            ?: project.defaultMemoryNamespace(),
     ): MemoryMaintenanceContext =
         MemoryMaintenanceContext(
             conversationId = conversationId,
             agent = agent,
             project = project,
-            namespace = namespace,
+            namespace = MemoryNamespace.Global,
             systemPrompts = systemPrompts,
             memoryTools = memoryTools,
         )
@@ -217,21 +209,9 @@ class MemoryToolApplicationService(
     private fun defaultStandaloneProjectPath(): String =
         contextResolver.defaultStandaloneProjectPath()
 
-    private fun MemoryNamespace?.emptyNamespaceSummaryIfMissing(existing: List<MemoryNamespaceSummary>): List<MemoryNamespaceSummary> {
-        if (this == null || existing.any { it.namespace == this }) return emptyList()
+    private fun MemoryNamespace.emptyNamespaceSummaryIfMissing(existing: List<MemoryNamespaceSummary>): List<MemoryNamespaceSummary> {
+        if (existing.any { it.namespace == this }) return emptyList()
         return listOf(MemoryNamespaceSummary(namespace = this))
-    }
-
-    private suspend fun MemoryNamespaceSummary.withReadableDisplayName(): MemoryNamespaceSummary =
-        copy(displayName = readableNamespaceName(namespace))
-
-    private suspend fun readableNamespaceName(namespace: MemoryNamespace): String {
-        val projectId = namespace.value.removePrefix(PROJECT_MEMORY_NAMESPACE_PREFIX)
-        if (projectId == namespace.value || projectId.isBlank()) return namespace.value
-        val project = projectService.findById(Project.Id(projectId)) ?: return namespace.value
-        val pathName = File(project.path).name.takeIf { it.isNotBlank() }
-        val projectName = project.name.takeIf { it.isNotBlank() } ?: pathName ?: project.id.value
-        return "$projectName (${namespace.value})"
     }
 
     private data class MemoryMaintenanceContext(

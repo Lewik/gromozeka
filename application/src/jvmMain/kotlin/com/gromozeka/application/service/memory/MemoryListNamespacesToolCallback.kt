@@ -13,7 +13,7 @@ class MemoryListNamespacesToolCallback(
 ) : AiToolCallback {
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_LIST_NAMESPACES_TOOL_NAME,
-        description = "Inspect the configured memory namespace, item counts, and any unexpected stored namespaces. Memory operations cannot select a namespace in the current runtime.",
+        description = "Inspect the global memory namespace, item counts, and any unexpected stored namespaces. Memory operations cannot select a namespace in the current runtime.",
         inputSchema = """
             {
               "type": "object",

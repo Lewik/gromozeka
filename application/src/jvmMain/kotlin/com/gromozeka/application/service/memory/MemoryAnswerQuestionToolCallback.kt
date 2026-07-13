@@ -24,7 +24,7 @@ class MemoryAnswerQuestionToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ANSWER_QUESTION_TOOL_NAME,
-        description = "Queue a direct question answered from persisted memory in the configured namespace and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final answer. Use this when the user asks what Gromozeka remembers or asks a factual question whose answer should come from memory. For normal chat where the assistant should reason over returned context itself, use memory_enrich_context instead.",
+        description = "Queue a direct question answered from persisted memory in the global namespace and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final answer. Use this when the user asks what Gromozeka remembers or asks a factual question whose answer should come from memory. For normal chat where the assistant should reason over returned context itself, use memory_enrich_context instead.",
         inputSchema = """
             {
               "type": "object",

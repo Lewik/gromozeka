@@ -69,9 +69,7 @@ class MemoryMessageRoutingApplicationService(
             return null
         }
 
-        val namespace = namespaceOverride
-            ?: settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
-            ?: project.defaultMemoryNamespace()
+        val namespace = namespaceOverride ?: MemoryNamespace.Global
         val baseSource = sourceMapper.toChatTurn(
             namespace = namespace,
             conversationId = conversationId,

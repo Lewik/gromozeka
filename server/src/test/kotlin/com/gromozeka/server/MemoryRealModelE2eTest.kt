@@ -123,7 +123,6 @@ class MemoryRealModelE2eTest {
                 memorySettings = UserProfile.MemorySettings(
                     autoRemember = true,
                     autoRecall = true,
-                    defaultNamespace = MEMORY_E2E_NAMESPACE,
                 )
             ),
         )

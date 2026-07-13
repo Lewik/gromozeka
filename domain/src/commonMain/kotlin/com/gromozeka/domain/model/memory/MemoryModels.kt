@@ -37,11 +37,16 @@ import kotlin.jvm.JvmInline
  * Boundary for one independent memory space.
  *
  * A namespace is the first guardrail against accidental memory mixing between
- * projects, users, experiments, or future tenants.
+ * projects, users, experiments, or future tenants. Production currently uses
+ * only [Global]; explicit values remain available for isolated tests.
  */
 @Serializable
 @JvmInline
-value class MemoryNamespace(val value: String)
+value class MemoryNamespace(val value: String) {
+    companion object {
+        val Global = MemoryNamespace("global")
+    }
+}
 
 /**
  * Human-readable and machine-readable boundary of a memory item.

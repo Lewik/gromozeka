@@ -24,7 +24,7 @@ class MemoryEnrichContextToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
-        description = "Queue enrichment of a target context with relevant persisted memory from the configured namespace and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and memory_context. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched.",
+        description = "Queue enrichment of a target context with relevant persisted memory from the global namespace and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and memory_context. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched.",
         inputSchema = """
             {
               "type": "object",

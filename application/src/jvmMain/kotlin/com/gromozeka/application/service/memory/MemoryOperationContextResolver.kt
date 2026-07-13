@@ -111,13 +111,8 @@ class MemoryOperationContextResolver(
         return message
     }
 
-    internal fun resolveNamespace(
-        explicitNamespaceValue: String?,
-        project: Project,
-    ): MemoryNamespace =
-        explicitNamespaceValue.toConfiguredMemoryNamespace()
-            ?: settingsService.userProfile.memorySettings.defaultMemoryNamespace()
-            ?: project.defaultMemoryNamespace()
+    internal fun resolveNamespace(explicitNamespaceValue: String?): MemoryNamespace =
+        explicitNamespaceValue.toMemoryNamespaceOverride() ?: MemoryNamespace.Global
 
     internal fun defaultStandaloneProjectPath(): String =
         System.getProperty("gromozeka.project.root")

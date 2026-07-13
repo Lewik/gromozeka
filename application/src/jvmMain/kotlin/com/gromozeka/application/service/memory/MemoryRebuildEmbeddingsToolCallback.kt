@@ -22,7 +22,7 @@ class MemoryRebuildEmbeddingsToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,
-        description = "Rebuild memory vector embeddings in the configured namespace. mode=full first generates a complete fresh embedding set and then atomically replaces all existing embeddings only if generation succeeded. mode=missing inserts only currently absent embeddings and never deletes or rewrites existing rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe progress.",
+        description = "Rebuild memory vector embeddings in the global namespace. mode=full first generates a complete fresh embedding set and then atomically replaces all existing embeddings only if generation succeeded. mode=missing inserts only currently absent embeddings and never deletes or rewrites existing rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe progress.",
         inputSchema = """
             {
               "type": "object",

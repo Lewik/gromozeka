@@ -13,7 +13,7 @@ class MemoryEmbeddingStatusToolCallback(
 ) : AiToolCallback {
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_EMBEDDING_STATUS_TOOL_NAME,
-        description = "Report vector embedding coverage for the configured memory namespace under the currently configured embedding model. Counts embeddable memory items, expected embedding rows, existing rows, and missing rows. This does not modify memory.",
+        description = "Report vector embedding coverage for the global memory namespace under the currently configured embedding model. Counts embeddable memory items, expected embedding rows, existing rows, and missing rows. This does not modify memory.",
         inputSchema = """
             {
               "type": "object",
