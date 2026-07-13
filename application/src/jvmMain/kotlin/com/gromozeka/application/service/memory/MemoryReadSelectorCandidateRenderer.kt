@@ -116,11 +116,11 @@ internal object MemoryReadSelectorCandidateRenderer {
             searchText
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
-                ?.limitForSelectorView(MAX_SOURCE_SEARCH_TEXT_CHARS)
+                ?.limitForSelectorView(MAX_SELECTOR_SOURCE_SEARCH_TEXT_CHARS)
                 ?.let { "search_text:\n$it" },
             contentText
                 .trim()
-                .let { RuntimeMemorySourceExcerpt.queryFocused(text = it, query = query, maxChars = MAX_SOURCE_CONTENT_TEXT_CHARS) }
+                .let { RuntimeMemorySourceExcerpt.queryFocused(text = it, query = query, maxChars = MAX_SELECTOR_SOURCE_EXCERPT_CHARS) }
                 .let { "source_text:\n$it" },
         ).distinct().joinToString("\n\n")
 
@@ -460,5 +460,5 @@ private fun String.limitForSelectorView(maxChars: Int): String {
     return normalized.take(maxChars) + "...[truncated ${normalized.length - maxChars} chars]"
 }
 
-private const val MAX_SOURCE_SEARCH_TEXT_CHARS = 1_200
-private const val MAX_SOURCE_CONTENT_TEXT_CHARS = 2_400
+private const val MAX_SELECTOR_SOURCE_SEARCH_TEXT_CHARS = 600
+private const val MAX_SELECTOR_SOURCE_EXCERPT_CHARS = 1_200

@@ -833,6 +833,26 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
+    fun sourceCandidateViewUsesCompactSelectorPayload() {
+        val source = source(
+            id = "source-compact-selector",
+            text = "c".repeat(1_400) + "CONTENT_TAIL",
+        ).copy(
+            searchText = "s".repeat(800) + "SEARCH_TAIL",
+        )
+
+        val rendered = MemoryReadSelectorCandidateRenderer.render(
+            hits = listOf(MemoryStore.SearchHit.SourceHit(source, score = 1.0)),
+            snapshot = MemoryNamespaceSnapshot(sources = listOf(source)),
+            query = "",
+        )
+
+        assertTrue(rendered.contains("[truncated"), rendered)
+        assertTrue(!rendered.contains("SEARCH_TAIL"), rendered)
+        assertTrue(!rendered.contains("CONTENT_TAIL"), rendered)
+    }
+
+    @Test
     fun selectorPromptKeepsBaselineOperandsForMetricDeltaQuestions() = runBlocking {
         val baseline = claim(
             id = "claim-baseline",

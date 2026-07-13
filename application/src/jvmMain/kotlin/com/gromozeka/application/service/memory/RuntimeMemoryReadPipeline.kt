@@ -99,7 +99,6 @@ class RuntimeMemoryReadPipeline(
     ): RuntimeMemoryRetrievedHits {
         val targetEntities = resolveTargetEntitiesForRead(request, plan)
         val includeHistoricalTypedMemory = request.targetAsksForHistoricalTypedMemory(plan)
-        val namespaceSnapshot = store.loadNamespaceSnapshot(request.namespace, includeArchived = true)
         val queryEmbeddings = mutableMapOf<String, MemoryStore.SearchEmbedding?>()
         val hits = mutableListOf<MemoryStore.SearchHit>()
         hits += targetEntities.hits
@@ -350,6 +349,7 @@ class RuntimeMemoryReadPipeline(
         val activeTypedRefsBeforeSourceSupport = sourceSelection.hits.currentTruthBearingTypedRefs()
         val sourceTypedSupportHits = sourceSelection.hits
             .withTypedEvidenceSupport(request, plan)
+        val candidateSourceSupportSnapshot = sourceTypedSupportHits.toReadPartialSnapshot(request.namespace)
         val rawSourceDeferral = sourceTypedSupportHits.deferRawSourceCandidatesToEvidenceHydration(
             plan = plan,
             activeTypedRefs = activeTypedRefsBeforeSourceSupport,
@@ -431,7 +431,7 @@ class RuntimeMemoryReadPipeline(
         val selectedSourceSafety = completeSetTypedCoverage.hits.applyActiveTypedMemorySourceSafety(
             plan = plan,
             includeHistoricalTypedMemory = includeHistoricalTypedMemory,
-            snapshot = namespaceSnapshot,
+            snapshot = candidateSourceSupportSnapshot,
             candidateHits = selectorCandidateHits,
             protectedRefs = selectorSelectedRefs,
             rejectedRefs = selectorRejectedRefs,
@@ -456,7 +456,7 @@ class RuntimeMemoryReadPipeline(
             }
         }
         val selectedHits = sourceSafety.hits.sortedForRuntimeMemoryRead()
-        val evidenceHydratedHits = hydrateEvidenceSources(request, plan, selectedHits, namespaceSnapshot)
+        val evidenceHydratedHits = hydrateEvidenceSources(request, plan, selectedHits)
             .sortedForRuntimeMemoryRead()
         val entityHydratedHits = hydrateLinkedEntities(request, evidenceHydratedHits)
             .sortedForRuntimeMemoryRead()
@@ -644,17 +644,20 @@ class RuntimeMemoryReadPipeline(
         request: MemoryReadRequest,
         plan: MemoryReadPlan,
         hits: List<MemoryStore.SearchHit>,
-        snapshot: MemoryNamespaceSnapshot,
     ): List<MemoryStore.SearchHit> {
         val sourceLimit = plan.evidenceHydrationSourceLimit()
         if (sourceLimit <= 0) return hits
 
-        val unsafeFullEvidenceSourceIds = snapshot.sourceIdsWithActiveTypedReplacement()
         val rawEvidenceSourceIds = hits
             .flatMap { it.evidenceRefsForRecall() }
             .map { it.sourceId }
             .distinct()
             .filterNot { it in request.currentThreadChatSourceIds() }
+        val evidenceSupportSnapshot = store.findTypedMemoryByEvidenceSourceIds(
+            namespace = request.namespace,
+            sourceIds = rawEvidenceSourceIds.toSet(),
+        ).toReadPartialSnapshot(request.namespace)
+        val unsafeFullEvidenceSourceIds = evidenceSupportSnapshot.sourceIdsWithActiveTypedReplacement()
         val suppressedUnsafeEvidenceSourceIds = rawEvidenceSourceIds.filter { it in unsafeFullEvidenceSourceIds }
         val evidenceSourceIds = rawEvidenceSourceIds
             .filterNot { it in unsafeFullEvidenceSourceIds }

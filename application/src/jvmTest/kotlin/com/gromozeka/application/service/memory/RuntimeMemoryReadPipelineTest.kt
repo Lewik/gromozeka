@@ -27,6 +27,54 @@ import kotlinx.datetime.Instant
 
 class RuntimeMemoryReadPipelineTest {
     @Test
+    fun readDoesNotLoadFullNamespaceSnapshot() = runBlocking {
+        val source = source("source-targeted-read", "The project uses PostgreSQL.")
+        val claim = claim(
+            id = "claim-targeted-read",
+            sourceId = source.id,
+            text = "The project uses PostgreSQL.",
+        )
+        val delegate = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                claims = listOf(claim),
+            )
+        )
+        val store = object : MemoryStore by delegate {
+            override suspend fun loadNamespaceSnapshot(
+                namespace: MemoryNamespace,
+                includeArchived: Boolean,
+            ): MemoryNamespaceSnapshot = error("Runtime reads must not load the full namespace snapshot")
+        }
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need the project database fact.",
+                            query = "project PostgreSQL database",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("Which database does the project use?"))
+
+        assertTrue(
+            result.retrievedHits
+                .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
+                .any { it.claim.id == claim.id }
+        )
+    }
+
+    @Test
     fun completeSetEvidenceReadSweepsBoundedSourcesBeyondLexicalTopHits() = runBlocking {
         val matchingSource = source("source-01", "Matching source mentions the obvious counted item.")
         val coverageOnlySource = source("source-02", "Coverage-only source contains another separate item.")
