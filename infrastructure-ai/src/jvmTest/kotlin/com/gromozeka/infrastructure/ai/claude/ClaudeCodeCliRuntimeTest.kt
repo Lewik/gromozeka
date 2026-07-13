@@ -18,12 +18,12 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -59,8 +59,25 @@ class ClaudeCodeCliRuntimeTest {
         assertTrue(systemPrompt.contains("Never invoke an external action name through Claude Code native tool use"))
         assertTrue(systemPrompt.contains("<action name=\"read_file\">"))
         assertTrue(executor.commands.single().userPrompt.endsWith("</gromozeka_external_action_reminder>"))
-        assertNotNull(executor.commands.single().jsonSchema)
-        assertFalse(executor.commands.single().noSessionPersistence)
+        val command = executor.commands.single()
+        val schema = command.jsonSchema?.jsonObject ?: error("Expected Claude Code wrapper schema")
+        val requiredPropertiesByBranch = schema["anyOf"]
+            ?.jsonArray
+            ?.map { branch ->
+                branch.jsonObject["required"]
+                    ?.jsonArray
+                    ?.map { it.jsonPrimitive.content }
+                    ?.toSet()
+            }
+            ?.toSet()
+        assertEquals(
+            setOf(
+                setOf("kind", "final_answer"),
+                setOf("kind", "action_name", "arguments"),
+            ),
+            requiredPropertiesByBranch,
+        )
+        assertFalse(command.noSessionPersistence)
     }
 
     @Test
@@ -204,7 +221,6 @@ class ClaudeCodeCliRuntimeTest {
                 messages = listOf(userMessage("Call the read_file tool for README.md. Do not answer directly.")),
                 tools = listOf(readFileTool()),
                 options = AiRuntimeOptions(
-                    toolChoice = AiToolChoice.RequiredTool("read_file"),
                     assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
                     toolContext = testToolContext("real-claude-tool-call-test"),
                 ),
@@ -214,6 +230,26 @@ class ClaudeCodeCliRuntimeTest {
         val toolCall = response.toolCalls.single()
         assertEquals("read_file", toolCall.call.name)
         assertEquals("README.md", toolCall.call.input.jsonObject["path"]?.jsonPrimitive?.contentOrNull)
+    }
+
+    @Test
+    fun realClaudeCodeReturnsWrapperFinalAnswerWithToolsInAutoModeWhenEnabled() = runBlocking {
+        if (!realClaudeCodeEnabled()) return@runBlocking
+
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val response = runtime.call(
+            request(
+                messages = listOf(userMessage("Do not use external actions. Return exactly: AUTO_FINAL_OK")),
+                tools = listOf(readFileTool()),
+                options = AiRuntimeOptions(
+                    assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                    toolContext = testToolContext("real-claude-auto-final-answer-test"),
+                ),
+            )
+        )
+
+        assertTrue(response.toolCalls.isEmpty())
+        assertTrue(response.messages.single().text().contains("AUTO_FINAL_OK"))
     }
 
     @Test

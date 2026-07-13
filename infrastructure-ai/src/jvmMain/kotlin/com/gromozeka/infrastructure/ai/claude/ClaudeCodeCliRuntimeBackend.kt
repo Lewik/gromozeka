@@ -703,21 +703,45 @@ private class ClaudeCodeToolProtocol(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val actionNames = tools.map { it.definition.name }.toSet()
 
-    private fun buildSchema(finalAnswerSchema: JsonElement): JsonObject {
-        val requiredProperties = when (toolChoice) {
-            AiToolChoice.Auto -> listOf("kind")
-            AiToolChoice.None -> listOf("kind")
+    private fun buildSchema(finalAnswerSchema: JsonElement): JsonObject =
+        when (toolChoice) {
+            AiToolChoice.Auto -> JsonObject(
+                mapOf(
+                    "type" to JsonPrimitive("object"),
+                    "anyOf" to JsonArray(
+                        listOf(
+                            finalAnswerBranch(finalAnswerSchema),
+                            externalActionBranch(),
+                        )
+                    ),
+                )
+            )
+
+            AiToolChoice.None -> finalAnswerBranch(finalAnswerSchema)
             AiToolChoice.RequiredAny,
-            is AiToolChoice.RequiredTool -> listOf("kind", "action_name", "arguments")
+            is AiToolChoice.RequiredTool -> externalActionBranch()
         }
 
-        return JsonObject(mapOf(
+    private fun finalAnswerBranch(finalAnswerSchema: JsonElement): JsonObject =
+        JsonObject(mapOf(
             "type" to JsonPrimitive("object"),
             "additionalProperties" to JsonPrimitive(false),
             "properties" to JsonObject(
                 mapOf(
-                    "kind" to kindSchema(),
+                    "kind" to kindSchema("final_answer"),
                     "final_answer" to finalAnswerSchema,
+                )
+            ),
+            "required" to JsonArray(listOf("kind", "final_answer").map(::JsonPrimitive)),
+        ))
+
+    private fun externalActionBranch(): JsonObject =
+        JsonObject(mapOf(
+            "type" to JsonPrimitive("object"),
+            "additionalProperties" to JsonPrimitive(false),
+            "properties" to JsonObject(
+                mapOf(
+                    "kind" to kindSchema("tool_call"),
                     "action_name" to actionNameSchema(),
                     "arguments" to JsonObject(
                         mapOf(
@@ -727,24 +751,16 @@ private class ClaudeCodeToolProtocol(
                     ),
                 )
             ),
-            "required" to JsonArray(requiredProperties.map(::JsonPrimitive)),
+            "required" to JsonArray(listOf("kind", "action_name", "arguments").map(::JsonPrimitive)),
         ))
-    }
 
-    private fun kindSchema(): JsonObject {
-        val allowedKinds = when (toolChoice) {
-            AiToolChoice.RequiredAny,
-            is AiToolChoice.RequiredTool -> listOf("tool_call")
-            AiToolChoice.Auto,
-            AiToolChoice.None -> listOf("final_answer", "tool_call")
-        }
-        return JsonObject(
+    private fun kindSchema(kind: String): JsonObject =
+        JsonObject(
             mapOf(
                 "type" to JsonPrimitive("string"),
-                "enum" to JsonArray(allowedKinds.map(::JsonPrimitive)),
+                "enum" to JsonArray(listOf(JsonPrimitive(kind))),
             )
         )
-    }
 
     private fun actionNameSchema(): JsonObject {
         val allowedActionNames = when (toolChoice) {
