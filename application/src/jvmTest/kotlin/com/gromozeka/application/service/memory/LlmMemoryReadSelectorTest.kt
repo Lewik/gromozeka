@@ -22,9 +22,12 @@ import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.AiRuntime
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -83,6 +86,46 @@ class LlmMemoryReadSelectorTest {
         )
         assertEquals(listOf(20, 20, 5, 8), result.selectorTrace.stages.map { it.inputCount })
         assertEquals(listOf(3, 3, 2, 2), result.selectorTrace.stages.map { it.outputCount })
+    }
+
+    @Test
+    fun runsIntermediateBatchesWithConfiguredParallelism() = runBlocking {
+        val notes = (1..45).map { index ->
+            note(
+                id = "parallel-note-${index.toString().padStart(2, '0')}",
+                title = "Parallel candidate $index",
+                summary = "Parallel candidate $index exercises bounded selector concurrency.",
+            )
+        }
+        val runtime = ConcurrencyTrackingRuntime()
+
+        val result = LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+            batchParallelism = 3,
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("Which parallel candidates matter?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.MIXED,
+                    retrievalBudget = MemoryRetrievalBudget(notes = 2),
+                ),
+                candidateHits = notes.mapIndexed { index, note ->
+                    MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(notes = notes),
+            )
+        )
+
+        assertEquals(3, runtime.maxConcurrentCalls.get())
+        assertEquals(4, runtime.totalCalls.get())
+        assertEquals(4, runtime.conversationKeys.size)
+        assertEquals(1, runtime.promptCacheKeys.size)
+        assertEquals(4, result.selectorTrace.stages.size)
+        assertEquals(listOf(20, 20, 5), result.selectorTrace.stages.dropLast(1).map { it.inputCount })
+        assertEquals(MemoryReadSelectorTrace.Mode.FINAL_SELECTION, result.selectorTrace.stages.last().mode)
     }
 
     @Test
@@ -999,6 +1042,50 @@ class LlmMemoryReadSelectorTest {
             val type: String,
             val id: String,
         )
+    }
+
+    private class ConcurrencyTrackingRuntime : AiRuntime {
+        val maxConcurrentCalls = AtomicInteger()
+        val totalCalls = AtomicInteger()
+        val conversationKeys: MutableSet<String> = ConcurrentHashMap.newKeySet()
+        val promptCacheKeys: MutableSet<String> = ConcurrentHashMap.newKeySet()
+        private val activeCalls = AtomicInteger()
+        override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            totalCalls.incrementAndGet()
+            (request.options.toolContext["conversationId"] as? String)?.let(conversationKeys::add)
+            (request.options.toolContext["promptCacheKey"] as? String)?.let(promptCacheKeys::add)
+            val active = activeCalls.incrementAndGet()
+            maxConcurrentCalls.updateAndGet { current -> maxOf(current, active) }
+            try {
+                delay(50)
+            } finally {
+                activeCalls.decrementAndGet()
+            }
+
+            return AiRuntimeResponse(
+                messages = listOf(
+                    AiAssistantMessage(
+                        content = listOf(
+                            Conversation.Message.ContentItem.AssistantMessage(
+                                Conversation.Message.StructuredText(
+                                    """
+                                    {
+                                      "selected_items": [],
+                                      "rejected_items": [],
+                                      "summary": "No explicit selections."
+                                    }
+                                    """.trimIndent()
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
     }
 
     private companion object {

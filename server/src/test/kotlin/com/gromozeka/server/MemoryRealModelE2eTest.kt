@@ -142,8 +142,8 @@ class MemoryRealModelE2eTest {
                     systemProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, DIRECT_MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, "1200000"),
                 "gromozeka.ai.openai-subscription.http-response-timeout-ms" to
                     systemProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, DIRECT_OPENAI_SUBSCRIPTION_HTTP_RESPONSE_TIMEOUT_MS_PROPERTY, "1200000"),
-                "gromozeka.memory.write.parallelism" to
-                    System.getProperty(MEMORY_WRITE_PARALLELISM_PROPERTY, "2"),
+                "gromozeka.memory.parallelism" to
+                    System.getProperty(MEMORY_PARALLELISM_PROPERTY, "2"),
                 "gromozeka.memory.routing.failFast" to "true",
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
@@ -3084,7 +3084,7 @@ class MemoryRealModelE2eTest {
         const val DIRECT_OPENAI_SUBSCRIPTION_HTTP_RESPONSE_TIMEOUT_MS_PROPERTY =
             "gromozeka.ai.openai-subscription.http-response-timeout-ms"
         const val DIRECT_MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY = "gromozeka.memory.llm.timeoutMs"
-        const val MEMORY_WRITE_PARALLELISM_PROPERTY = "gromozeka.memory.e2e.memoryWriteParallelism"
+        const val MEMORY_PARALLELISM_PROPERTY = "gromozeka.memory.e2e.memoryParallelism"
         const val MEMORY_ROUTING_FAIL_FAST_PROPERTY = "gromozeka.memory.routing.failFast"
         const val DEFAULT_MODEL_NAME = "gpt-5.5"
         const val MEMORY_E2E_NAMESPACE = "benchmark:memory-real-model-e2e"

@@ -22,6 +22,11 @@ import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -32,8 +37,10 @@ class LlmMemoryReadSelector(
     private val runtimeSystemPrompts: List<String>,
     private val runtimeTools: List<AiToolCallback>,
     private val json: Json = Json { ignoreUnknownKeys = true },
+    batchParallelism: Int = MemoryPipelineParallelism.configuredParallelism(),
 ) : MemoryReadSelector {
     private val log = KLoggers.logger(this)
+    private val batchParallelism = MemoryPipelineParallelism.normalizeParallelism(batchParallelism)
 
     override suspend fun select(request: MemoryReadSelectionRequest): MemoryReadSelectionResult {
         if (request.candidateHits.isEmpty()) {
@@ -92,15 +99,13 @@ class LlmMemoryReadSelector(
             val candidateBatches = survivors.chunked(candidateBatchSize)
             log.info {
                 "Memory read selector hierarchical level start: namespace=${request.readRequest.namespace.value} " +
-                    "level=$level candidates=${survivors.size} batches=${candidateBatches.size} batchSize=$candidateBatchSize"
+                    "level=$level candidates=${survivors.size} batches=${candidateBatches.size} " +
+                    "batchSize=$candidateBatchSize parallelism=$batchParallelism"
             }
 
+            val batchResults = selectIntermediateBatches(request, level, candidateBatches)
             val nextSurvivors = candidateBatches.flatMapIndexed { index, batch ->
-                val batchResult = selectBatch(
-                    request = request.copy(candidateHits = batch),
-                    batchLabel = "level=$level batch=${index + 1}/${candidateBatches.size}",
-                    passMode = ReadSelectorPassMode.INTERMEDIATE_RECALL,
-                )
+                val batchResult = batchResults[index]
                 val selectedSurvivors = if (request.plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
                     batchResult.selectedHits
                 } else {
@@ -193,10 +198,44 @@ class LlmMemoryReadSelector(
         )
     }
 
+    private suspend fun selectIntermediateBatches(
+        request: MemoryReadSelectionRequest,
+        level: Int,
+        candidateBatches: List<List<MemoryStore.SearchHit>>,
+    ): List<MemoryReadSelectionResult> {
+        suspend fun select(index: Int, batch: List<MemoryStore.SearchHit>): MemoryReadSelectionResult =
+            selectBatch(
+                request = request.copy(candidateHits = batch),
+                batchLabel = "level=$level batch=${index + 1}/${candidateBatches.size}",
+                passMode = ReadSelectorPassMode.INTERMEDIATE_RECALL,
+                runtimeConversationSuffix = if (batchParallelism > 1 && candidateBatches.size > 1) {
+                    "read-selector:l$level:b${index + 1}"
+                } else {
+                    null
+                },
+            )
+
+        if (batchParallelism == 1 || candidateBatches.size == 1) {
+            return candidateBatches.mapIndexed { index, batch -> select(index, batch) }
+        }
+
+        return coroutineScope {
+            val semaphore = Semaphore(batchParallelism)
+            candidateBatches.mapIndexed { index, batch ->
+                async {
+                    semaphore.withPermit {
+                        select(index, batch)
+                    }
+                }
+            }.awaitAll()
+        }
+    }
+
     private suspend fun selectBatch(
         request: MemoryReadSelectionRequest,
         batchLabel: String?,
         passMode: ReadSelectorPassMode,
+        runtimeConversationSuffix: String? = null,
     ): MemoryReadSelectionResult {
         val renderedCandidates = MemoryReadSelectorCandidateRenderer.render(
             hits = request.candidateHits,
@@ -220,6 +259,8 @@ class LlmMemoryReadSelector(
         }
 
         val hitsByRef = request.candidateHits.associateBy { it.toReadSelectorItemRef() }
+        val runtimeConversationKey = "memory:${request.readRequest.threadContext.conversationId.value}" +
+            runtimeConversationSuffix?.let { ":$it" }.orEmpty()
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
@@ -232,7 +273,7 @@ class LlmMemoryReadSelector(
                     toolContext = mapOf(
                         "memoryReadSelector" to true,
                         "memoryNamespace" to request.readRequest.namespace.value,
-                        "conversationId" to "memory:${request.readRequest.threadContext.conversationId.value}",
+                        "conversationId" to runtimeConversationKey,
                         "promptCacheKey" to request.readRequest.threadContext.conversationId.value,
                     ),
                 ),

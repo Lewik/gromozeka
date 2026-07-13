@@ -143,7 +143,7 @@ tasks.withType<Test> {
     passSystemProperty("gromozeka.longmemeval.evalLlmMaxAttempts")
     passSystemProperty("gromozeka.longmemeval.memoryLlmStageTimeoutMs")
     passSystemProperty("gromozeka.longmemeval.memoryLlmMaxAttempts")
-    passSystemProperty("gromozeka.longmemeval.memoryWriteParallelism")
+    passSystemProperty("gromozeka.longmemeval.memoryParallelism")
 
     passSystemProperty("gromozeka.ai.openai-subscription.websocket-response-timeout-ms")
     passSystemProperty("gromozeka.ai.openai-subscription.websocket-transport-timeout-ms")

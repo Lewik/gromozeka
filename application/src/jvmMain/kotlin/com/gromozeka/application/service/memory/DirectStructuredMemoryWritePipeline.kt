@@ -148,10 +148,10 @@ class DirectStructuredMemoryWritePipeline(
     private val forgetPipeline: ExplicitMemoryForgetPipeline? = null,
     private val embeddingIndexer: MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer,
     private val clock: MemoryClock = SystemMemoryClock,
-    branchParallelism: Int = MemoryPipelineParallelism.writeBranchParallelism(),
+    branchParallelism: Int = MemoryPipelineParallelism.configuredParallelism(),
 ) : DirectStructuredMemoryWriteService {
     private val log = KLoggers.logger(this)
-    private val branchParallelism = MemoryPipelineParallelism.normalizeWriteBranchParallelism(branchParallelism)
+    private val branchParallelism = MemoryPipelineParallelism.normalizeParallelism(branchParallelism)
 
     override suspend fun write(request: DirectStructuredMemoryWriteRequest): DirectStructuredMemoryWriteResult {
         require(request.source.namespace == request.namespace) {
