@@ -61,7 +61,16 @@ class ClaudeCodeCliRuntimeTest {
         assertTrue(executor.commands.single().userPrompt.endsWith("</gromozeka_external_action_reminder>"))
         val command = executor.commands.single()
         val schema = command.jsonSchema?.jsonObject ?: error("Expected Claude Code wrapper schema")
-        val requiredPropertiesByBranch = schema["anyOf"]
+        assertEquals(
+            listOf("response"),
+            schema["required"]?.jsonArray?.map { it.jsonPrimitive.content },
+        )
+        val responseSchema = schema["properties"]
+            ?.jsonObject
+            ?.get("response")
+            ?.jsonObject
+            ?: error("Expected nested Claude Code response schema")
+        val requiredPropertiesByBranch = responseSchema["anyOf"]
             ?.jsonArray
             ?.map { branch ->
                 branch.jsonObject["required"]
@@ -418,10 +427,11 @@ class ClaudeCodeCliRuntimeTest {
     private fun response(
         sessionId: String = "session-1",
         structuredOutput: JsonElement,
-    ): ClaudeCodeCliResponse =
-        ClaudeCodeCliResponse(
-            result = structuredOutput.toString(),
-            structuredOutput = structuredOutput,
+    ): ClaudeCodeCliResponse {
+        val envelope = jsonObject("response" to structuredOutput)
+        return ClaudeCodeCliResponse(
+            result = envelope.toString(),
+            structuredOutput = envelope,
             sessionId = sessionId,
             usage = jsonObject(
                 "input_tokens" to JsonPrimitive(10),
@@ -432,6 +442,7 @@ class ClaudeCodeCliRuntimeTest {
             finishReason = "success",
             raw = jsonObject("type" to JsonPrimitive("result")),
         )
+    }
 
     private fun readFileTool(): AiToolCallback =
         object : AiToolCallback {

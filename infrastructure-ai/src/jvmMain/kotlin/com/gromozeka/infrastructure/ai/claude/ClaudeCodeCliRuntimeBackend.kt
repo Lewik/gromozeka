@@ -704,10 +704,21 @@ private class ClaudeCodeToolProtocol(
     private val actionNames = tools.map { it.definition.name }.toSet()
 
     private fun buildSchema(finalAnswerSchema: JsonElement): JsonObject =
+        JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("object"),
+                "additionalProperties" to JsonPrimitive(false),
+                "properties" to JsonObject(
+                    mapOf("response" to responseSchema(finalAnswerSchema))
+                ),
+                "required" to JsonArray(listOf(JsonPrimitive("response"))),
+            )
+        )
+
+    private fun responseSchema(finalAnswerSchema: JsonElement): JsonObject =
         when (toolChoice) {
             AiToolChoice.Auto -> JsonObject(
                 mapOf(
-                    "type" to JsonPrimitive("object"),
                     "anyOf" to JsonArray(
                         listOf(
                             finalAnswerBranch(finalAnswerSchema),
@@ -784,10 +795,11 @@ private class ClaudeCodeToolProtocol(
             appendLine("Never invoke an external action name through Claude Code native tool use, even when the user explicitly asks to call it.")
             appendLine("Claude Code native tools are disabled. Gromozeka owns external action execution.")
             appendLine("Submit exactly one object through the structured-output mechanism matching the provided JSON schema.")
+            appendLine("The object has one required response field. Put the selected response branch inside it.")
             appendLine("When an external action is needed, do not execute or wait for it in this invocation.")
-            appendLine("Instead, immediately submit kind=\"tool_call\", the action name in action_name, and its input in arguments.")
+            appendLine("Instead, immediately submit response.kind=\"tool_call\", the action name in response.action_name, and its input in response.arguments.")
             appendLine("Gromozeka will execute the action and resume this Claude Code session with its result.")
-            appendLine("Submit kind=\"final_answer\" only when no external action is needed.")
+            appendLine("Submit response.kind=\"final_answer\" only when no external action is needed.")
             appendLine("For final_answer, return the exact assistant payload required by the normal Gromozeka response contract.")
             appendLine(toolChoiceInstruction())
             appendLine("<external_actions>")
@@ -805,7 +817,7 @@ private class ClaudeCodeToolProtocol(
         """
         <gromozeka_external_action_reminder>
         External action names are not Claude Code tools. Never invoke them through native tool use.
-        Submit exactly one object through structured output now: kind="tool_call" to request an external action, otherwise kind="final_answer".
+        Submit exactly one object through structured output now. Inside its response field, use kind="tool_call" to request an external action, otherwise kind="final_answer".
         </gromozeka_external_action_reminder>
         """.trimIndent()
 
@@ -863,8 +875,13 @@ private class ClaudeCodeToolProtocol(
 
     private fun wrapperRoot(cliResponse: ClaudeCodeCliResponse): JsonObject {
         val structured = cliResponse.structuredOutput
-        if (structured is JsonObject) return structured
-        return json.parseToJsonElement(cliResponse.result).jsonObject
+        val envelope = if (structured is JsonObject) {
+            structured
+        } else {
+            json.parseToJsonElement(cliResponse.result).jsonObject
+        }
+        return envelope["response"]?.jsonObject
+            ?: error("Claude Code structured-output wrapper missed response")
     }
 
     private fun finalAnswerText(answer: JsonElement): String =
