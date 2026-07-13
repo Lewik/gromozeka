@@ -121,7 +121,7 @@ internal class ClaudeCodeCliRuntime(
         val toolProtocol = request.toolProtocol()
         val sessionPlan = planSession(sessionStateKey, request.messages)
         val systemPrompt = buildSystemPrompt(request, toolProtocol)
-        val userPrompt = buildUserPrompt(sessionPlan)
+        val userPrompt = buildUserPrompt(sessionPlan, toolProtocol)
         val schema = toolProtocol?.schema ?: (request.options.responseFormat as? AiResponseFormat.JsonSchema)?.schema
 
         log.info {
@@ -290,13 +290,19 @@ internal class ClaudeCodeCliRuntime(
             .joinToString("\n\n")
     }
 
-    private fun buildUserPrompt(plan: ClaudeCodeSessionPlan): String {
+    private fun buildUserPrompt(
+        plan: ClaudeCodeSessionPlan,
+        toolProtocol: ClaudeCodeToolProtocol?,
+    ): String {
         val header = if (plan.resumeSessionId == null) {
             "Gromozeka conversation transcript:"
         } else {
             "New Gromozeka messages since the previous Claude Code session turn:"
         }
-        return "$header\n\n${messagesToTranscript(plan.messagesToSend)}"
+        return listOf(
+            "$header\n\n${messagesToTranscript(plan.messagesToSend)}",
+            toolProtocol?.runtimeReminder(),
+        ).filterNotNull().joinToString("\n\n")
     }
 
     private fun toRuntimeResponse(
@@ -695,14 +701,14 @@ private class ClaudeCodeToolProtocol(
     val schema: JsonObject = buildSchema(finalAnswerSchema)
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private val toolNames = tools.map { it.definition.name }.toSet()
+    private val actionNames = tools.map { it.definition.name }.toSet()
 
     private fun buildSchema(finalAnswerSchema: JsonElement): JsonObject {
         val requiredProperties = when (toolChoice) {
             AiToolChoice.Auto -> listOf("kind")
             AiToolChoice.None -> listOf("kind")
             AiToolChoice.RequiredAny,
-            is AiToolChoice.RequiredTool -> listOf("kind", "tool_name", "arguments")
+            is AiToolChoice.RequiredTool -> listOf("kind", "action_name", "arguments")
         }
 
         return JsonObject(mapOf(
@@ -712,7 +718,7 @@ private class ClaudeCodeToolProtocol(
                 mapOf(
                     "kind" to kindSchema(),
                     "final_answer" to finalAnswerSchema,
-                    "tool_name" to toolNameSchema(),
+                    "action_name" to actionNameSchema(),
                     "arguments" to JsonObject(
                         mapOf(
                             "type" to JsonPrimitive("object"),
@@ -740,8 +746,8 @@ private class ClaudeCodeToolProtocol(
         )
     }
 
-    private fun toolNameSchema(): JsonObject {
-        val allowedToolNames = when (toolChoice) {
+    private fun actionNameSchema(): JsonObject {
+        val allowedActionNames = when (toolChoice) {
             is AiToolChoice.RequiredTool -> listOf(toolChoice.name)
             AiToolChoice.Auto,
             AiToolChoice.RequiredAny,
@@ -750,30 +756,42 @@ private class ClaudeCodeToolProtocol(
         return JsonObject(
             mapOf(
                 "type" to JsonPrimitive("string"),
-                "enum" to JsonArray(allowedToolNames.map(::JsonPrimitive)),
+                "enum" to JsonArray(allowedActionNames.map(::JsonPrimitive)),
             )
         )
     }
 
     fun instructions(): String =
         buildString {
-            appendLine("<gromozeka_tool_protocol>")
-            appendLine("Claude Code native tools are disabled. Gromozeka owns tool execution.")
-            appendLine("Return one JSON object matching the provided schema.")
-            appendLine("Use kind=\"tool_call\" only when you need Gromozeka to execute one available tool.")
-            appendLine("Use kind=\"final_answer\" when you can answer the user.")
+            appendLine("<gromozeka_external_action_protocol>")
+            appendLine("The entries below are external Gromozeka actions, not Claude Code tools.")
+            appendLine("Never invoke an external action name through Claude Code native tool use, even when the user explicitly asks to call it.")
+            appendLine("Claude Code native tools are disabled. Gromozeka owns external action execution.")
+            appendLine("Submit exactly one object through the structured-output mechanism matching the provided JSON schema.")
+            appendLine("When an external action is needed, do not execute or wait for it in this invocation.")
+            appendLine("Instead, immediately submit kind=\"tool_call\", the action name in action_name, and its input in arguments.")
+            appendLine("Gromozeka will execute the action and resume this Claude Code session with its result.")
+            appendLine("Submit kind=\"final_answer\" only when no external action is needed.")
             appendLine("For final_answer, return the exact assistant payload required by the normal Gromozeka response contract.")
             appendLine(toolChoiceInstruction())
-            appendLine("<available_tools>")
+            appendLine("<external_actions>")
             tools.forEach { tool ->
-                appendLine("<tool name=\"${xmlEscape(tool.definition.name)}\">")
+                appendLine("<action name=\"${xmlEscape(tool.definition.name)}\">")
                 appendLine("<description>${xmlEscape(tool.definition.description)}</description>")
                 appendLine("<input_schema>${xmlEscape(tool.definition.inputSchema)}</input_schema>")
-                appendLine("</tool>")
+                appendLine("</action>")
             }
-            appendLine("</available_tools>")
-            appendLine("</gromozeka_tool_protocol>")
+            appendLine("</external_actions>")
+            appendLine("</gromozeka_external_action_protocol>")
         }
+
+    fun runtimeReminder(): String =
+        """
+        <gromozeka_external_action_reminder>
+        External action names are not Claude Code tools. Never invoke them through native tool use.
+        Submit exactly one object through structured output now: kind="tool_call" to request an external action, otherwise kind="final_answer".
+        </gromozeka_external_action_reminder>
+        """.trimIndent()
 
     fun toAssistantMessage(
         cliResponse: ClaudeCodeCliResponse,
@@ -784,7 +802,7 @@ private class ClaudeCodeToolProtocol(
         return when (val kind = root["kind"]?.jsonPrimitive?.contentOrNull) {
             "final_answer" -> {
                 if (toolChoice is AiToolChoice.RequiredAny || toolChoice is AiToolChoice.RequiredTool) {
-                    error("Claude Code returned final_answer while runtime required a tool call")
+                    error("Claude Code returned final_answer while runtime required an external action request")
                 }
                 val answer = root["final_answer"] ?: error("Claude Code final_answer wrapper missed final_answer")
                 AiAssistantMessage(
@@ -799,12 +817,12 @@ private class ClaudeCodeToolProtocol(
             }
 
             "tool_call" -> {
-                val name = root["tool_name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-                    ?: error("Claude Code tool_call wrapper missed tool_name")
-                require(name in toolNames) { "Claude Code requested unavailable tool: $name" }
+                val name = root["action_name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                    ?: error("Claude Code tool_call wrapper missed action_name")
+                require(name in actionNames) { "Claude Code requested unavailable external action: $name" }
                 if (toolChoice is AiToolChoice.RequiredTool) {
                     require(name == toolChoice.name) {
-                        "Claude Code requested tool $name while runtime required ${toolChoice.name}"
+                        "Claude Code requested external action $name while runtime required ${toolChoice.name}"
                     }
                 }
                 val arguments = parseArguments(root["arguments"] ?: JsonObject(emptyMap()))
@@ -849,10 +867,10 @@ private class ClaudeCodeToolProtocol(
 
     private fun toolChoiceInstruction(): String =
         when (toolChoice) {
-            AiToolChoice.Auto -> "Tool choice: auto. Call a tool only when useful."
-            AiToolChoice.None -> "Tool choice: none. Do not call tools."
-            AiToolChoice.RequiredAny -> "Tool choice: required. You must call one available tool."
-            is AiToolChoice.RequiredTool -> "Tool choice: required. You must call tool ${toolChoice.name}."
+            AiToolChoice.Auto -> "External action choice: auto. Request an external action only when useful."
+            AiToolChoice.None -> "External action choice: none. Do not request external actions."
+            AiToolChoice.RequiredAny -> "External action choice: required. You must request one external action."
+            is AiToolChoice.RequiredTool -> "External action choice: required. You must request external action ${toolChoice.name}."
         }
 
     private fun xmlEscape(value: String): String =

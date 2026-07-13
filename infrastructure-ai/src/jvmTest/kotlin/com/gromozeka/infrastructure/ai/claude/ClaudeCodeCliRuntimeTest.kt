@@ -36,7 +36,7 @@ class ClaudeCodeCliRuntimeTest {
             response(
                 structuredOutput = jsonObject(
                     "kind" to JsonPrimitive("tool_call"),
-                    "tool_name" to JsonPrimitive("read_file"),
+                    "action_name" to JsonPrimitive("read_file"),
                     "arguments" to jsonObject("path" to JsonPrimitive("README.md")),
                 )
             )
@@ -53,9 +53,69 @@ class ClaudeCodeCliRuntimeTest {
         val toolCall = response.toolCalls.single()
         assertEquals("read_file", toolCall.call.name)
         assertEquals("README.md", toolCall.call.input.jsonObject["path"]?.jsonPrimitive?.contentOrNull)
-        assertTrue(executor.commands.single().systemPrompt.contains("<gromozeka_tool_protocol>"))
+        val systemPrompt = executor.commands.single().systemPrompt
+        assertTrue(systemPrompt.contains("<gromozeka_external_action_protocol>"))
+        assertTrue(systemPrompt.contains("external Gromozeka actions, not Claude Code tools"))
+        assertTrue(systemPrompt.contains("Never invoke an external action name through Claude Code native tool use"))
+        assertTrue(systemPrompt.contains("<action name=\"read_file\">"))
+        assertTrue(executor.commands.single().userPrompt.endsWith("</gromozeka_external_action_reminder>"))
         assertNotNull(executor.commands.single().jsonSchema)
         assertFalse(executor.commands.single().noSessionPersistence)
+    }
+
+    @Test
+    fun resumesSessionWithExternalActionResult() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("tool_call"),
+                    "action_name" to JsonPrimitive("read_file"),
+                    "arguments" to jsonObject("path" to JsonPrimitive("README.md")),
+                )
+            ),
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("Gromozeka"),
+                )
+            ),
+        )
+        val runtime = runtime(executor)
+        val firstUser = userMessage("Read README.md")
+        val firstResponse = runtime.call(request(messages = listOf(firstUser), tools = listOf(readFileTool())))
+        val toolCall = firstResponse.toolCalls.single()
+        val assistantToolCall = Conversation.Message(
+            id = Conversation.Message.Id("msg-${messageCounter++}"),
+            conversationId = firstUser.conversationId,
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(toolCall),
+            createdAt = Clock.System.now(),
+        )
+        val toolResult = Conversation.Message(
+            id = Conversation.Message.Id("msg-${messageCounter++}"),
+            conversationId = firstUser.conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(
+                Conversation.Message.ContentItem.ToolResult(
+                    toolUseId = toolCall.id,
+                    toolName = toolCall.call.name,
+                    result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("# Gromozeka")),
+                )
+            ),
+            createdAt = Clock.System.now(),
+        )
+
+        val finalResponse = runtime.call(
+            request(
+                messages = listOf(firstUser, assistantToolCall, toolResult),
+                tools = listOf(readFileTool()),
+            )
+        )
+
+        assertEquals("Gromozeka", finalResponse.messages.single().text())
+        assertEquals("session-1", executor.commands[1].resumeSessionId)
+        assertTrue(executor.commands[1].userPrompt.contains("<tool_result"))
+        assertTrue(executor.commands[1].userPrompt.contains("# Gromozeka"))
     }
 
     @Test
