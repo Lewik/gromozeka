@@ -48,7 +48,14 @@ Useful selection knobs:
 -Dgromozeka.longmemeval.type=<question_type>[,<question_type>]
 -Dgromozeka.longmemeval.sample=balanced[:per-type-count][@page]
 -Dgromozeka.longmemeval.data=/absolute/path/to/longmemeval_*.json
+-Dgromozeka.longmemeval.modelName=<provider-model-id>
+-Dgromozeka.longmemeval.readSearchReasoningEffort=low|medium|high|max
 ```
+
+`readSearchReasoningEffort` changes only the memory planner and selector. Memory
+write, answer hypothesis generation, and the judge remain on the base model so
+read-stage optimizations can be compared without changing the rest of the
+benchmark.
 
 `balanced:4` selects the first four cases of each question type. `balanced:4@2`
 selects the next four cases of each type. This keeps benchmark shards
