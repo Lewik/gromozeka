@@ -14,7 +14,7 @@ class MemoryIngestPreflightEngineTest {
     private val engine = MemoryIngestPreflightEngine()
 
     @Test
-    fun readyPlanMaterializesExactContiguousSourceSections() = runBlocking {
+    fun readyPlanPacksExactContiguousSourceSectionsIntoOneProcessingChunk() = runBlocking {
         val source = """
             # First
 
@@ -40,13 +40,12 @@ class MemoryIngestPreflightEngineTest {
             },
         )
 
-        assertEquals(2, result.sections.size)
-        assertEquals("# First\n\nAlpha paragraph.", result.sections[0].text)
-        assertEquals(1, result.sections[0].startLine)
-        assertEquals(3, result.sections[0].endLine)
-        assertEquals("# Second\n\nBeta paragraph.", result.sections[1].text)
-        assertEquals(5, result.sections[1].startLine)
-        assertEquals(7, result.sections[1].endLine)
+        assertEquals(2, result.plan.sections.size)
+        assertEquals(1, result.sections.size)
+        assertEquals("# First\n\nAlpha paragraph.\n\n# Second\n\nBeta paragraph.", result.sections.single().text)
+        assertEquals(listOf("First .. Second"), result.sections.single().headingPath)
+        assertEquals(1, result.sections.single().startLine)
+        assertEquals(7, result.sections.single().endLine)
     }
 
     @Test
@@ -68,8 +67,9 @@ class MemoryIngestPreflightEngineTest {
             },
         )
 
-        assertEquals(listOf("  Alpha.  ", "\tBeta.\t"), result.sections.map { it.text })
-        assertEquals(listOf(2, 4), result.sections.map { it.startLine })
+        assertEquals(listOf("Alpha .. Beta"), result.sections.single().headingPath)
+        assertEquals("  Alpha.  \n\n\tBeta.\t", result.sections.single().text)
+        assertEquals(2, result.sections.single().startLine)
     }
 
     @Test
@@ -112,10 +112,40 @@ class MemoryIngestPreflightEngineTest {
         )
 
         assertEquals(MemoryIngestPlan.Decision.NEEDS_USER_CONFIRMATION, proposed.plan.decision)
+        assertEquals(2, proposed.sections.size)
         val approved = engine.approve(source, proposed.plan)
         assertEquals(MemoryIngestPlan.Decision.READY, approved.plan.decision)
         assertEquals(proposed.contentHash, approved.contentHash)
-        assertEquals(listOf("Alpha paragraph.", "Beta paragraph."), approved.sections.map { it.text })
+        assertEquals(listOf("Alpha .. Beta"), approved.sections.single().headingPath)
+        assertEquals("Alpha paragraph.\n\nBeta paragraph.", approved.sections.single().text)
+    }
+
+    @Test
+    fun readyPlanPacksAdjacentSectionsGreedilyWithinTechnicalLimit() = runBlocking {
+        val first = "a".repeat(3_000)
+        val second = "b".repeat(3_000)
+        val third = "c".repeat(3_000)
+        val result = engine.inspect(
+            contentText = "$first\n\n$second\n\n$third",
+            sourceLabel = "large structured source",
+            planner = FixedPlanner {
+                MemoryIngestPlan(
+                    decision = MemoryIngestPlan.Decision.READY,
+                    sections = listOf(
+                        MemoryIngestSectionPlan("First", listOf("b1")),
+                        MemoryIngestSectionPlan("Second", listOf("b2")),
+                        MemoryIngestSectionPlan("Third", listOf("b3")),
+                    ),
+                    reason = "Three explicit logical sections.",
+                )
+            },
+        )
+
+        assertEquals(3, result.plan.sections.size)
+        assertEquals(2, result.sections.size)
+        assertEquals(listOf("First .. Second"), result.sections[0].headingPath)
+        assertEquals(listOf("Third"), result.sections[1].headingPath)
+        assertTrue(result.sections.all { it.text.length <= MAX_MEMORY_INGEST_SECTION_CHARS })
     }
 
     @Test

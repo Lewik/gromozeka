@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.memory.MemoryIngestPlan
 import com.gromozeka.domain.model.memory.MemoryIngestPlanner
 import com.gromozeka.domain.model.memory.MemoryIngestPlanningRequest
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.model.memory.MemoryIngestSectionPlan
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.SettingsProvider
 import java.nio.charset.StandardCharsets
@@ -223,19 +224,57 @@ private fun String.materializeSections(
     plan.validateMaterializable(blocks)
     val lines = lines()
     val blocksById = blocks.associateBy { it.id }
-    return plan.sections.mapIndexed { index, section ->
-        val sectionBlocks = section.blockIds.map { blocksById.getValue(it) }
+    val processingGroups = if (plan.decision == MemoryIngestPlan.Decision.READY) {
+        plan.sections.packMemoryIngestProcessingGroups(blocksById)
+    } else {
+        plan.sections.map(::listOf)
+    }
+    return processingGroups.mapIndexed { index, sectionGroup ->
+        val sectionBlocks = sectionGroup.flatMap { section ->
+            section.blockIds.map { blocksById.getValue(it) }
+        }
         val startLine = sectionBlocks.first().startLine
         val endLine = sectionBlocks.last().endLine
         MemoryIngestSection(
             index = index + 1,
-            headingPath = listOf(section.title),
+            headingPath = sectionGroup.processingHeadingPath(),
             startLine = startLine,
             endLine = endLine,
             text = lines.subList(startLine - 1, endLine).joinToString("\n"),
         )
     }
 }
+
+private fun List<MemoryIngestSectionPlan>.packMemoryIngestProcessingGroups(
+    blocksById: Map<String, MemoryIngestBlock>,
+): List<List<MemoryIngestSectionPlan>> {
+    val groups = mutableListOf<List<MemoryIngestSectionPlan>>()
+    var current = mutableListOf<MemoryIngestSectionPlan>()
+
+    forEach { section ->
+        val candidate = current + section
+        val candidateBlocks = candidate.flatMap { plan ->
+            plan.blockIds.map { blocksById.getValue(it) }
+        }
+        if (current.isNotEmpty() && candidateBlocks.materializedMemoryIngestChars() > MAX_MEMORY_INGEST_SECTION_CHARS) {
+            groups.add(current)
+            current = mutableListOf(section)
+        } else {
+            current.add(section)
+        }
+    }
+
+    if (current.isNotEmpty()) groups.add(current)
+    return groups
+}
+
+private fun List<MemoryIngestSectionPlan>.processingHeadingPath(): List<String> = when (size) {
+    1 -> listOf(single().title)
+    else -> listOf("${first().title} .. ${last().title}")
+}
+
+private fun List<MemoryIngestBlock>.materializedMemoryIngestChars(): Int =
+    sumOf { it.text.length } + zipWithNext().sumOf { (left, right) -> right.startLine - left.endLine }
 
 private fun MemoryIngestPlan.validateMaterializable(blocks: List<MemoryIngestBlock>) {
     require(decision != MemoryIngestPlan.Decision.NEEDS_USER_STRUCTURE) {
@@ -253,8 +292,7 @@ private fun MemoryIngestPlan.validateMaterializable(blocks: List<MemoryIngestBlo
             "Memory ingest section ${section.title} is not contiguous."
         }
         val sectionBlocks = section.blockIds.map { id -> blocks[blockIndex.getValue(id)] }
-        val chars = sectionBlocks.sumOf { block -> block.text.length } +
-            sectionBlocks.zipWithNext().sumOf { (left, right) -> right.startLine - left.endLine }
+        val chars = sectionBlocks.materializedMemoryIngestChars()
         require(chars <= MAX_MEMORY_INGEST_SECTION_CHARS) {
             "Memory ingest section ${section.title} is too large: $chars > $MAX_MEMORY_INGEST_SECTION_CHARS."
         }
