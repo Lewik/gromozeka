@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -13,13 +14,84 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 class OpenAiSubscriptionResponsesClientTest {
+    @Test
+    fun cancelsHttpFallbackWithCallerCoroutine() = runBlocking {
+        val releaseResponse = CountDownLatch(1)
+        val server = HttpServer.create(InetSocketAddress(0), 0)
+        server.createContext("/responses") { exchange ->
+            if (exchange.requestMethod == "GET") {
+                exchange.sendResponseHeaders(426, -1)
+                exchange.close()
+            } else {
+                releaseResponse.await(15, TimeUnit.SECONDS)
+                exchange.close()
+            }
+        }
+        server.start()
+
+        try {
+            val profile = OpenAiSubscriptionModelProfile(
+                slug = "gpt-5.6-sol",
+                useResponsesLite = true,
+                supportsReasoningSummaries = true,
+                supportedReasoningEfforts = listOf("low", "max"),
+                supportsVerbosity = true,
+                defaultVerbosity = "low",
+                supportsParallelToolCalls = true,
+            )
+            val client = OpenAiSubscriptionResponsesClient(
+                responseMapper = OpenAiSubscriptionResponseMapper(),
+                requestMapper = OpenAiSubscriptionRequestMapper(),
+                baseUrl = "http://127.0.0.1:${server.address.port}",
+                clientVersion = "1.4.9",
+                websocketIdleMs = 300_000,
+                websocketResponseTimeoutMs = 5_000,
+                websocketTransportTimeoutMs = 1_000,
+                httpResponseTimeoutMs = 10_000,
+            )
+
+            val elapsed = measureTime {
+                assertFailsWith<kotlinx.coroutines.TimeoutCancellationException> {
+                    withTimeout(2.seconds) {
+                        client.create(
+                            session = OpenAiSubscriptionSession(
+                                accessToken = "access-token",
+                                refreshToken = "refresh-token",
+                                idToken = null,
+                                accountId = "account-1",
+                                expiresAt = Long.MAX_VALUE,
+                            ),
+                            conversationKey = "conversation-cancel",
+                            requestBody = OpenAiSubscriptionResponsesRequest(
+                                model = profile.slug,
+                                input = emptyList(),
+                            ),
+                            modelProfile = profile,
+                            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA,
+                        )
+                    }
+                }
+            }
+
+            assertTrue(elapsed < 5.seconds, "HTTP fallback ignored coroutine cancellation for $elapsed")
+        } finally {
+            releaseResponse.countDown()
+            server.stop(0)
+        }
+    }
+
     @Test
     fun sendsResponsesLiteHttpContractAfterWebSocketIsUnavailable() = runBlocking {
         var requestBody: JsonObject? = null

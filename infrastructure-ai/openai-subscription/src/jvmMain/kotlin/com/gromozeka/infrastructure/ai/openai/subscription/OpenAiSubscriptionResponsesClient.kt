@@ -5,7 +5,9 @@ import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -30,6 +32,8 @@ import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @Component
 class OpenAiSubscriptionResponsesClient(
@@ -101,6 +105,7 @@ class OpenAiSubscriptionResponsesClient(
             }
         }
 
+        currentCoroutineContext().ensureActive()
         createViaHttp(
             session = session,
             conversationKey = conversationKey,
@@ -109,7 +114,7 @@ class OpenAiSubscriptionResponsesClient(
         )
     }
 
-    private fun createViaHttp(
+    private suspend fun createViaHttp(
         session: OpenAiSubscriptionSession,
         conversationKey: String,
         requestBody: OpenAiSubscriptionResponsesRequest,
@@ -219,28 +224,25 @@ class OpenAiSubscriptionResponsesClient(
         return collector.toParsedResponse()
     }
 
-    private fun CompletableFuture<HttpResponse<String>>.awaitHttpResponse(timeoutMs: Long): HttpResponse<String> {
+    private suspend fun CompletableFuture<HttpResponse<String>>.awaitHttpResponse(timeoutMs: Long): HttpResponse<String> {
         return try {
-            get(timeoutMs, TimeUnit.MILLISECONDS)
+            withTimeoutOrNull(timeoutMs) {
+                suspendCancellableCoroutine { continuation ->
+                    whenComplete { response, error ->
+                        if (error == null) {
+                            continuation.resume(response)
+                        } else {
+                            continuation.resumeWithException(error)
+                        }
+                    }
+                    continuation.invokeOnCancellation { cancel(true) }
+                }
+            } ?: throw TimeoutException("Timed out waiting for OpenAI subscription HTTP response")
         } catch (error: TimeoutException) {
             cancel(true)
             throw OpenAiSubscriptionTransportException(
                 "Timed out waiting for OpenAI subscription HTTP response",
                 error,
-            )
-        } catch (error: InterruptedException) {
-            cancel(true)
-            Thread.currentThread().interrupt()
-            throw OpenAiSubscriptionTransportException(
-                "Interrupted while waiting for OpenAI subscription HTTP response",
-                error,
-            )
-        } catch (error: ExecutionException) {
-            val cause = error.cause ?: error
-            if (cause is OpenAiSubscriptionApiException) throw cause
-            throw OpenAiSubscriptionTransportException(
-                "OpenAI subscription HTTP transport failed: ${cause.message}",
-                cause,
             )
         } catch (error: CompletionException) {
             val cause = error.cause ?: error
