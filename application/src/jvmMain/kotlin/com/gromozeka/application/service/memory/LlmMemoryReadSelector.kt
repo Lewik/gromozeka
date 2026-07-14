@@ -80,7 +80,111 @@ class LlmMemoryReadSelector(
             )
         }
 
+        if (request.plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+            return selectCompleteSetBatches(request)
+        }
+
         return selectHierarchically(request)
+    }
+
+    private suspend fun selectCompleteSetBatches(
+        request: MemoryReadSelectionRequest,
+    ): MemoryReadSelectionResult {
+        val candidateBatches = request.candidateHits.chunked(request.plan.readSelectorCandidateBatchSize())
+        log.info {
+            "Memory read selector complete-set start: namespace=${request.readRequest.namespace.value} " +
+                "candidates=${request.candidateHits.size} batches=${candidateBatches.size} " +
+                "batchSize=${request.plan.readSelectorCandidateBatchSize()} parallelism=$batchParallelism"
+        }
+
+        val batchResults = selectBatches(
+            request = request,
+            candidateBatches = candidateBatches,
+            passMode = ReadSelectorPassMode.COMPLETE_SET_SELECTION,
+            labelPrefix = "complete-set",
+        )
+        val traceStages = mutableListOf<MemoryReadSelectorTrace.Stage>()
+        val decisions = mutableListOf<MemoryReadSelectionResult.Decision>()
+        val selectedHits = candidateBatches.flatMapIndexed { index, batch ->
+            val batchResult = batchResults[index]
+            val safetySurvivors = batch.readSelectorSafetySurvivors(request)
+            val llmSelectedRefs = batchResult.selectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+            val safetyAddedSurvivors = safetySurvivors
+                .filterNot { it.toReadSelectorItemRef() in llmSelectedRefs }
+            val batchSelectedHits = (batchResult.selectedHits + safetyAddedSurvivors)
+                .distinctBy { it.toReadSelectorItemRef() }
+            val batchSelectedRefs = batchSelectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+
+            decisions += batchResult.decisions.map { decision ->
+                if (decision.ref in batchSelectedRefs && !decision.selected) {
+                    decision.copy(
+                        selected = true,
+                        rank = Int.MAX_VALUE,
+                        reason = "Deterministic complete-set safety retained this candidate. ${decision.reason}",
+                    )
+                } else {
+                    decision
+                }
+            }
+            val decidedRefs = batchResult.decisions.mapTo(mutableSetOf()) { it.ref }
+            decisions += safetyAddedSurvivors
+                .filterNot { it.toReadSelectorItemRef() in decidedRefs }
+                .map { hit ->
+                    MemoryReadSelectionResult.Decision(
+                        ref = hit.toReadSelectorItemRef(),
+                        selected = true,
+                        rank = Int.MAX_VALUE,
+                        reason = "Deterministic complete-set safety retained this candidate.",
+                    )
+                }
+            traceStages += readSelectorTraceStage(
+                mode = MemoryReadSelectorTrace.Mode.COMPLETE_SET_SELECTION,
+                level = 1,
+                batchIndex = index + 1,
+                batchCount = candidateBatches.size,
+                inputHits = batch,
+                llmSelectedHits = batchResult.selectedHits,
+                llmCarriedHits = emptyList(),
+                safetyAddedHits = safetyAddedSurvivors,
+                outputHits = batchSelectedHits,
+            )
+            batchSelectedHits
+        }.distinctBy { it.toReadSelectorItemRef() }
+
+        val selectedRefs = selectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+        val safetyAddedCount = traceStages.sumOf { it.safetyAddedCount }
+        val selectedRanks = selectedHits
+            .mapIndexed { index, hit -> hit.toReadSelectorItemRef() to index + 1 }
+            .toMap()
+        val rankedDecisions = decisions
+            .distinctBy { it.ref }
+            .map { decision ->
+                if (decision.ref in selectedRefs) {
+                    decision.copy(rank = selectedRanks.getValue(decision.ref))
+                } else {
+                    decision.copy(rank = Int.MAX_VALUE)
+                }
+            }
+
+        log.info {
+            "Memory read selector complete-set completed: namespace=${request.readRequest.namespace.value} " +
+                "candidates=${request.candidateHits.size} batches=${candidateBatches.size} selected=${selectedHits.size}"
+        }
+
+        return MemoryReadSelectionResult(
+            selectedHits = selectedHits,
+            decisions = rankedDecisions,
+            summary = buildString {
+                append("Complete-set selector evaluated ${request.candidateHits.size} candidates in ${candidateBatches.size} independent batches and selected ${selectedHits.size}.")
+                if (safetyAddedCount > 0) append(" Deterministic safety added $safetyAddedCount candidate(s).")
+            },
+            selectorTrace = MemoryReadSelectorTrace(
+                initialCandidateCount = request.candidateHits.size,
+                finalCandidateCount = request.candidateHits.size,
+                selectedCount = selectedHits.size,
+                stages = traceStages,
+            ),
+        )
     }
 
     private suspend fun selectHierarchically(
@@ -103,14 +207,15 @@ class LlmMemoryReadSelector(
                     "batchSize=$candidateBatchSize parallelism=$batchParallelism"
             }
 
-            val batchResults = selectIntermediateBatches(request, level, candidateBatches)
+            val batchResults = selectBatches(
+                request = request,
+                candidateBatches = candidateBatches,
+                passMode = ReadSelectorPassMode.INTERMEDIATE_RECALL,
+                labelPrefix = "level=$level",
+            )
             val nextSurvivors = candidateBatches.flatMapIndexed { index, batch ->
                 val batchResult = batchResults[index]
-                val selectedSurvivors = if (request.plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
-                    batchResult.selectedHits
-                } else {
-                    batchResult.selectedHits.take(READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH)
-                }
+                val selectedSurvivors = batchResult.selectedHits.take(READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH)
                 val safetySurvivors = batch.readSelectorSafetySurvivors(request)
                 val selectedSurvivorRefs = selectedSurvivors.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
                 val safetyAddedSurvivors = safetySurvivors
@@ -198,18 +303,19 @@ class LlmMemoryReadSelector(
         )
     }
 
-    private suspend fun selectIntermediateBatches(
+    private suspend fun selectBatches(
         request: MemoryReadSelectionRequest,
-        level: Int,
         candidateBatches: List<List<MemoryStore.SearchHit>>,
+        passMode: ReadSelectorPassMode,
+        labelPrefix: String,
     ): List<MemoryReadSelectionResult> {
         suspend fun select(index: Int, batch: List<MemoryStore.SearchHit>): MemoryReadSelectionResult =
             selectBatch(
                 request = request.copy(candidateHits = batch),
-                batchLabel = "level=$level batch=${index + 1}/${candidateBatches.size}",
-                passMode = ReadSelectorPassMode.INTERMEDIATE_RECALL,
+                batchLabel = "$labelPrefix batch=${index + 1}/${candidateBatches.size}",
+                passMode = passMode,
                 runtimeConversationSuffix = if (batchParallelism > 1 && candidateBatches.size > 1) {
-                    "read-selector:l$level:b${index + 1}"
+                    "read-selector:${passMode.runtimeKey}:b${index + 1}"
                 } else {
                     null
                 },
@@ -474,11 +580,13 @@ class LlmMemoryReadSelector(
 }
 
 private enum class ReadSelectorPassMode(
+    val runtimeKey: String,
     val promptLabel: String,
     val goalText: String,
     val selectionRule: String,
 ) {
     INTERMEDIATE_RECALL(
+        runtimeKey = "intermediate",
         promptLabel = "intermediate_recall",
         goalText = "Preserve candidates that may be useful for a later global selector. This pass is recall-oriented, not final.",
         selectionRule = "Select a compact survivor set, but prefer keeping a plausible candidate over dropping it too early.",
@@ -491,6 +599,7 @@ private enum class ReadSelectorPassMode(
         """.trimIndent()
     },
     FINAL_SELECTION(
+        runtimeKey = "final",
         promptLabel = "final_selection",
         goalText = "Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.",
         selectionRule = "Select the smallest sufficient set.",
@@ -501,6 +610,18 @@ private enum class ReadSelectorPassMode(
             } else {
                 "- This is the final global pass. Prefer precision over keeping marginal context."
             }
+    },
+    COMPLETE_SET_SELECTION(
+        runtimeKey = "complete-set",
+        promptLabel = "complete_set_selection",
+        goalText = "Select every distinct candidate in this batch that is relevant to the complete requested set.",
+        selectionRule = "Select the complete relevant set in this batch; do not reduce it to a representative sample.",
+    ) {
+        override fun extraRules(plan: MemoryReadPlan): String = """
+        - This batch is an independent final partition of a complete-set query. Its selected items will be unioned with selected items from the other batches without another LLM reduction pass.
+        - Decide each candidate on its own relevance to the requested set. Cross-batch ranking and representative sampling are unnecessary.
+        - Reject candidates that do not belong to the requested set; keep every distinct candidate that does.
+        """.trimIndent()
     };
 
     abstract fun extraRules(plan: MemoryReadPlan): String
@@ -691,11 +812,7 @@ private fun MemoryReadPlan.readSelectorEvidenceSafetyLimit(): Int =
     }
 
 private fun MemoryReadPlan.readSelectorHardFinalSurvivorLimit(): Int =
-    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
-        READ_SELECTOR_COMPLETE_SET_HARD_FINAL_SURVIVOR_LIMIT
-    } else {
-        READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT
-    }
+    READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT
 
 private fun MemoryReadPlan.readSelectorDirectFinalCandidateLimit(): Int =
     if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
@@ -712,11 +829,7 @@ private fun MemoryReadPlan.readSelectorCandidateBatchSize(): Int =
     }
 
 private fun MemoryReadPlan.readSelectorIntermediateLlmSurvivorLimit(): Int =
-    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
-        READ_SELECTOR_COMPLETE_SET_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH
-    } else {
-        READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH
-    }
+    READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH
 
 private fun readSelectorTraceStage(
     mode: MemoryReadSelectorTrace.Mode,
@@ -909,7 +1022,6 @@ private const val READ_SELECTOR_CANDIDATE_BATCH_SIZE = 20
 private const val READ_SELECTOR_COMPLETE_SET_DIRECT_FINAL_CANDIDATE_LIMIT = 40
 private const val READ_SELECTOR_COMPLETE_SET_CANDIDATE_BATCH_SIZE = 40
 private const val READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH = 8
-private const val READ_SELECTOR_COMPLETE_SET_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH = 16
 private const val READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH = 4
 private const val READ_SELECTOR_COMPLETE_SET_SAFETY_SURVIVORS_PER_BATCH = 16
 private const val READ_SELECTOR_COMPLETE_SET_EVIDENCE_TYPED_SAFETY_PER_BATCH = 8
@@ -920,7 +1032,6 @@ private const val READ_SELECTOR_SCORE_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_ACTIVE_TYPED_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_TEMPORAL_SAFETY_SURVIVORS_PER_BATCH = 8
 private const val READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT = 20
-private const val READ_SELECTOR_COMPLETE_SET_HARD_FINAL_SURVIVOR_LIMIT = 40
 private const val READ_SELECTOR_TRACE_REF_LIMIT = 24
 
 private val selectorDateRegex = Regex("""\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b""")

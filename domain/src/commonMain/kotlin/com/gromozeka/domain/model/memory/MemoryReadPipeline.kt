@@ -87,6 +87,7 @@ data class MemoryReadSelectorTrace(
     enum class Mode {
         INTERMEDIATE_RECALL,
         FINAL_SELECTION,
+        COMPLETE_SET_SELECTION,
     }
 }
 

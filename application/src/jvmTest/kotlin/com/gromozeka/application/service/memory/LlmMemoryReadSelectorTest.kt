@@ -306,8 +306,8 @@ class LlmMemoryReadSelectorTest {
             listOf("source-01", "source-02", "source-03"),
             result.selectedHits.filterIsInstance<MemoryStore.SearchHit.SourceHit>().map { it.source.id.value },
         )
-        assertTrue(runtime.finalCandidateIds.single().containsAll(listOf("source-01", "source-02", "source-03")))
-        assertTrue(result.summary.contains("Final safety added"))
+        assertTrue(runtime.finalCandidateIds.flatten().containsAll(listOf("source-01", "source-02", "source-03")))
+        assertTrue(result.summary.contains("Deterministic safety added"))
     }
 
     @Test
@@ -365,7 +365,7 @@ class LlmMemoryReadSelectorTest {
             )
         )
 
-        assertTrue(runtime.finalCandidateIds.single().contains("claim-personal-copy"))
+        assertTrue(runtime.finalCandidateIds.flatten().contains("claim-personal-copy"))
         assertTrue(
             result.selectedHits
                 .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
@@ -425,6 +425,51 @@ class LlmMemoryReadSelectorTest {
                 .filterIsInstance<MemoryStore.SearchHit.SourceHit>()
                 .any { it.source.id.value == "source-06" }
         )
+    }
+
+    @Test
+    fun completeSetEvaluatesEachCandidateOnceWhenModelSelectsEverything() = runBlocking {
+        val notes = (1..85).map { index ->
+            note(
+                id = "complete-note-${index.toString().padStart(2, '0')}",
+                title = "Complete candidate $index",
+                summary = "Complete candidate $index belongs to the requested set.",
+            )
+        }
+        val selectedIds = notes.mapTo(mutableSetOf()) { it.id.value }
+        val runtime = SelectingRuntime(finalSelectedIds = selectedIds)
+
+        val result = LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+            batchParallelism = 3,
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("List every complete candidate."),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(notes = notes.size),
+                ),
+                candidateHits = notes.mapIndexed { index, note ->
+                    MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(notes = notes),
+            )
+        )
+
+        assertEquals(listOf(5, 40, 40), runtime.candidateCounts.sorted())
+        assertEquals(notes.size, result.selectedHits.size)
+        assertEquals(notes.size, result.decisions.count { it.selected })
+        assertEquals(
+            List(3) { MemoryReadSelectorTrace.Mode.COMPLETE_SET_SELECTION },
+            result.selectorTrace.stages.map { it.mode },
+        )
+        assertEquals(notes.size, result.selectorTrace.initialCandidateCount)
+        assertEquals(notes.size, result.selectorTrace.finalCandidateCount)
+        assertEquals(notes.size, result.selectorTrace.selectedCount)
     }
 
     @Test
