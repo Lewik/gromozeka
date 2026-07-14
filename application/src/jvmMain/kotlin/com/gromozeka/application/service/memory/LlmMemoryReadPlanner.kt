@@ -60,7 +60,7 @@ class LlmMemoryReadPlanner(
             parse = {
                 json.decodeFromString<ReadPlannerResponse>(it)
                     .toPlan()
-                    .withCoverageGuards(request)
+                    .withCoverageInvariants(request)
                     .withFactualRecallEvidenceRequests(request)
                     .withRationaleNoteRequest(request)
             },
@@ -152,7 +152,7 @@ class LlmMemoryReadPlanner(
                 "query=${verifier.query.oneLineForReadMemoryLog(300)} reason=${verifier.reason.oneLineForReadMemoryLog(300)}"
         }
         return verifier.toFallbackPlan(request)
-            .withCoverageGuards(request)
+            .withCoverageInvariants(request)
             .withFactualRecallEvidenceRequests(request)
     }
 
@@ -409,6 +409,7 @@ class LlmMemoryReadPlanner(
             - Use "mixed" when multiple memory classes are required.
             - Use coverage_mode="minimal" when one or a few directly relevant items are sufficient.
             - Use coverage_mode="complete_set" when omission changes the answer: counts, inventories, list-all/set questions, timeline/order reconstruction, or requests that need every distinct matching item/event/assignment/source.
+            - Ordinal words alone do not require complete_set. Use minimal when the ordinal is part of a directly named fact or slot, such as "the recommended first implementation". Use complete_set only when multiple candidates must be compared or a sequence must be reconstructed to determine the ordinal answer.
             - Prefer no memory when the current request is fully self-contained.
             - A request is not self-contained when it asks about user-specific, project-specific, team-specific, or prior-session context and the target message does not contain the answer.
             - Include the profile core block for broad user/project working style, language, tone, preferences, constraints, and "how should you adapt to me/us" questions.
@@ -418,7 +419,7 @@ class LlmMemoryReadPlanner(
             - For named document questions that ask for exact definitions, fields, listed items, or specific component roles, include source retrieval; notes are useful for document digests and rationale, but raw source can be the best answer evidence.
             - If the target asks what order, procedure, workflow, policy, or working agreement "we should follow", and the target itself does not provide the steps, retrieve memory even if the wording sounds like a general advice question.
             - If the target asks what a named report, trace, pipeline, component, policy, rule, or workflow should show/include/do/use/be, retrieve memory unless the target itself provides that rule.
-            - For timeline, sequence, ordering, ordinal, "first/second/third/latest/previous/next", or "what happened before/after" questions, use coverage_mode="complete_set" and retrieve enough surrounding ordered items to establish the order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.
+            - For timeline, sequence, ordering, ordinal, "first/second/third/latest/previous/next", or "what happened before/after" questions that require establishing order, use coverage_mode="complete_set" and retrieve enough surrounding ordered items to establish that order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.
             - For temporal recall questions such as "how many days ago", "when did I", "what date", or "what day", retrieve direct claims first and include source retrieval as evidence fallback because dated personal events may be preserved as source-only evidence.
             - For relative-duration questions that name an anchor event, such as "how many days/weeks/months ago did X when/at the time Y", retrieve the dated fact for X and the dated anchor event Y. Use coverage_mode="complete_set" because the question date alone may be the wrong endpoint.
             - For questions asking how long the user had been doing an activity when an anchor event happened, retrieve explicit start/begin/first-participation evidence for that activity and the anchor event. A duration-as-of claim can be useful conflict context, but it is not a substitute for the start-date operand.
@@ -469,26 +470,24 @@ private fun MemoryReadPlan.withRationaleNoteRequest(request: MemoryReadRequest):
     )
 }
 
-private fun MemoryReadPlan.withCoverageGuards(request: MemoryReadRequest): MemoryReadPlan {
+private fun MemoryReadPlan.withCoverageInvariants(request: MemoryReadRequest): MemoryReadPlan {
     if (!needMemory) return this
 
-    val target = request.targetMessageText()
-    val needsCompleteSet = target.requiresCompleteSetCoverage()
-    val needsTemporalEvidence = target.requiresTemporalEvidenceFallback()
-    if (!needsCompleteSet && !needsTemporalEvidence) return this
+    val needsCompleteSetEvidence = coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET
+    val needsSourceEvidence = requireEvidenceFallback || needsCompleteSetEvidence
+    if (!needsSourceEvidence) return this
 
     val guardedBudget = retrievalBudget.copy(
-        claims = retrievalBudget.claims.coerceAtLeast(if (needsCompleteSet) 8 else 4),
-        sources = retrievalBudget.sources.coerceAtLeast(if (needsTemporalEvidence || needsCompleteSet) 2 else 0),
+        sources = retrievalBudget.sources.coerceAtLeast(2),
     )
     val hasSourceRequest = retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE }
-    val guardedRequests = if (hasSourceRequest || (!needsTemporalEvidence && !needsCompleteSet)) {
+    val guardedRequests = if (hasSourceRequest) {
         retrievalRequests
     } else {
         retrievalRequests + MemoryReadPlan.RetrievalRequest(
             memoryType = MemorySemanticType.SOURCE,
-            why = "Coverage guard added source evidence for count/temporal recall; typed facts may miss required anchors.",
-            query = target.ifBlank { "temporal count recall source evidence" },
+            why = "The read plan requires source evidence for completeness or fallback.",
+            query = request.targetMessageText().ifBlank { "memory source evidence" },
             topK = 2,
             preferredClaimPredicates = emptyList(),
             deprioritizedClaimPredicates = emptyList(),
@@ -496,14 +495,9 @@ private fun MemoryReadPlan.withCoverageGuards(request: MemoryReadRequest): Memor
     }
 
     return copy(
-        coverageMode = if (needsCompleteSet || needsTemporalEvidence) {
-            MemoryReadPlan.CoverageMode.COMPLETE_SET
-        } else {
-            coverageMode
-        },
         retrievalBudget = guardedBudget,
         retrievalRequests = guardedRequests,
-        requireEvidenceFallback = requireEvidenceFallback || needsTemporalEvidence || needsCompleteSet,
+        requireEvidenceFallback = needsSourceEvidence,
     )
 }
 
@@ -591,36 +585,6 @@ private fun Conversation.Message.ContentItem.ContextCompactionResult.readPlanner
         is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
             "[context_compaction:${providerScope?.provider ?: "unknown"}]"
     }
-
-private fun String.requiresCompleteSetCoverage(): Boolean {
-    val normalized = lowercase().replace(Regex("\\s+"), " ")
-    return normalized.contains("how many") ||
-        normalized.contains("how much") ||
-        normalized.contains("list all") ||
-        normalized.contains("all of") ||
-        normalized.contains("every ") ||
-        normalized.contains("which one") ||
-        normalized.contains("which did") ||
-        normalized.contains("which was") ||
-        normalized.contains("first") ||
-        normalized.contains("second") ||
-        normalized.contains("third") ||
-        normalized.contains("latest") ||
-        normalized.contains("earliest") ||
-        normalized.contains("most recent") ||
-        normalized.contains("before") ||
-        normalized.contains("after")
-}
-
-private fun String.requiresTemporalEvidenceFallback(): Boolean {
-    val normalized = lowercase().replace(Regex("\\s+"), " ")
-    return normalized.contains("how long ago") ||
-        Regex("""how many\s+(seconds?|minutes?|hours?|days?|weeks?|months?|years?)\s+ago""").containsMatchIn(normalized) ||
-        normalized.contains("when did") ||
-        normalized.contains("what date") ||
-        normalized.contains("what day") ||
-        normalized.contains("which date")
-}
 
 private fun String.requiresFactualRecallContextFallback(): Boolean {
     val normalized = lowercase().replace(Regex("\\s+"), " ")

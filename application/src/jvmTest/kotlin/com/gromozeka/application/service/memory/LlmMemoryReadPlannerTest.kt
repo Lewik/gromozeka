@@ -129,6 +129,24 @@ class LlmMemoryReadPlannerTest {
     }
 
     @Test
+    fun promptDistinguishesNamedOrdinalFactsFromOrderReconstruction() = runBlocking {
+        val runtime = CapturingJsonRuntime(minimalReadPlanResponse())
+
+        val plan = LlmMemoryReadPlanner(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).plan(readRequest("What is the recommended first implementation for the Gromozeka Claude Code provider?"))
+
+        val prompt = runtime.requests.single().messages.asText()
+        assertTrue(prompt.contains("Ordinal words alone do not require complete_set"), prompt)
+        assertTrue(prompt.contains("the recommended first implementation"), prompt)
+        assertEquals(MemoryReadPlan.CoverageMode.MINIMAL, plan.coverageMode)
+        assertEquals(false, plan.requireEvidenceFallback)
+    }
+
+    @Test
     fun promptPlansAnchorEventForRelativeDurationQuestions() = runBlocking {
         val runtime = CapturingJsonRuntime(
             """
@@ -224,13 +242,13 @@ class LlmMemoryReadPlannerTest {
     }
 
     @Test
-    fun upgradesRelativeTemporalCountPlanToCompleteSetWithSourceFallback() = runBlocking {
+    fun completeSetPlanAddsSourceFallbackWithoutReclassifyingTheTarget() = runBlocking {
         val runtime = CapturingJsonRuntime(
             """
             {
               "need_memory": true,
               "context_mode": "factual",
-              "coverage_mode": "minimal",
+              "coverage_mode": "complete_set",
               "core_blocks": [],
               "retrieval_budget": {
                 "claims": 4,
@@ -266,7 +284,6 @@ class LlmMemoryReadPlannerTest {
 
         assertEquals(MemoryReadPlan.CoverageMode.COMPLETE_SET, plan.coverageMode)
         assertEquals(true, plan.requireEvidenceFallback)
-        assertTrue(plan.retrievalBudget.claims >= 8)
         assertTrue(plan.retrievalBudget.sources >= 2)
         assertTrue(plan.retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE })
     }
@@ -384,5 +401,34 @@ class LlmMemoryReadPlannerTest {
                     }
                 }
             }
+
+        fun minimalReadPlanResponse(): String =
+            """
+            {
+              "need_memory": true,
+              "context_mode": "factual",
+              "coverage_mode": "minimal",
+              "core_blocks": [],
+              "retrieval_budget": {
+                "claims": 2,
+                "notes": 0,
+                "action_items": 0,
+                "sources": 0,
+                "episodes": 0
+              },
+              "retrieval_requests": [
+                {
+                  "memory_type": "claim",
+                  "why": "Find the directly named recommendation.",
+                  "query": "recommended first implementation",
+                  "top_k": 2,
+                  "filters": {},
+                  "preferred_claim_predicates": [],
+                  "deprioritized_claim_predicates": []
+                }
+              ],
+              "require_evidence_fallback": false
+            }
+            """.trimIndent()
     }
 }
