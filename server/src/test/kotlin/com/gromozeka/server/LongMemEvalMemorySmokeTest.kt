@@ -144,12 +144,15 @@ class LongMemEvalMemorySmokeTest {
         assertNotNull(subscriptionSession, "OpenAI subscription config not found or incomplete: $subscriptionPath")
 
         val modelName = System.getProperty(MODEL_NAME_PROPERTY)?.trim().orEmpty().ifBlank { DEFAULT_MODEL_NAME }
+        val readSearchModelName = System.getProperty(READ_SEARCH_MODEL_NAME_PROPERTY)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
         val readSearchReasoningEffort = readSearchReasoningEffortFromSystemProperty()
         val postgresSchema = "longmemeval_${uuid7().replace("-", "_")}"
         val runId = "${Clock.System.now()}-$postgresSchema".sanitizePathSegment()
         val settings = Settings(
             userProfile = ServerTestHarness.openAiSubscriptionProfile(modelName)
-                .withReadSearchReasoningEffort(readSearchReasoningEffort)
+                .withReadSearchRuntime(readSearchModelName, readSearchReasoningEffort)
                 .copy(
                     memorySettings = UserProfile.MemorySettings(
                         autoRemember = true,
@@ -200,7 +203,8 @@ class LongMemEvalMemorySmokeTest {
             llmCallProgressCollector.bind(progressPath)
             appendProgress(
                 progressPath,
-                "suite_start model=$modelName readSearchReasoningEffort=${readSearchReasoningEffort?.name ?: "default"} " +
+                "suite_start model=$modelName readSearchModel=${readSearchModelName ?: "default"} " +
+                    "readSearchReasoningEffort=${readSearchReasoningEffort?.name ?: "default"} " +
                     "schema=$postgresSchema data=$dataFile cases=${entries.size} namespace=$LONGMEMEVAL_NAMESPACE " +
                     "selection=${selectionProperties.renderForProgress()}"
             )
@@ -323,18 +327,28 @@ class LongMemEvalMemorySmokeTest {
             }
     }
 
-    private fun UserProfile.withReadSearchReasoningEffort(effort: AiReasoningEffort?): UserProfile {
-        if (effort == null) return this
+    private fun UserProfile.withReadSearchRuntime(
+        modelName: String?,
+        effort: AiReasoningEffort?,
+    ): UserProfile {
+        if (modelName == null && effort == null) return this
 
         val baseSelection = ServerTestHarness.openAiSubscriptionRuntimeSelection()
         val baseConfiguration = aiSettings.modelConfigurations.single {
             it.id == baseSelection.modelConfigurationId
         }
+        val readModelName = modelName ?: baseConfiguration.providerModelId
+        val readEffortName = effort?.name?.lowercase() ?: "default"
+        val configurationSuffix = readModelName
+            .lowercase()
+            .replace(Regex("[^a-z0-9._-]"), "-")
         val readConfiguration = baseConfiguration.copy(
-            id = AiModelConfiguration.Id("${baseConfiguration.id.value}-longmemeval-read-${effort.name.lowercase()}"),
-            displayName = "${baseConfiguration.displayName} LongMemEval read ${effort.name.lowercase()}",
+            id = AiModelConfiguration.Id("${baseConfiguration.id.value}-longmemeval-read-$configurationSuffix-$readEffortName"),
+            providerModelId = readModelName,
+            displayName = "LongMemEval read $readModelName $readEffortName",
             defaultParameters = baseConfiguration.defaultParameters.copy(
-                reasoning = AiReasoningConfig(effort = effort),
+                reasoning = effort?.let { AiReasoningConfig(effort = it) }
+                    ?: baseConfiguration.defaultParameters.reasoning,
             ),
         )
         val readSelection = AiRuntimeSelection(readConfiguration.id)
@@ -1516,6 +1530,7 @@ class LongMemEvalMemorySmokeTest {
         const val TYPE_FILTER_PROPERTY = "gromozeka.longmemeval.type"
         const val SAMPLE_PROPERTY = "gromozeka.longmemeval.sample"
         const val MODEL_NAME_PROPERTY = "gromozeka.longmemeval.modelName"
+        const val READ_SEARCH_MODEL_NAME_PROPERTY = "gromozeka.longmemeval.readSearchModelName"
         const val READ_SEARCH_REASONING_EFFORT_PROPERTY = "gromozeka.longmemeval.readSearchReasoningEffort"
         const val SUBSCRIPTION_CONFIG_PROPERTY = "gromozeka.longmemeval.subscriptionConfig"
         const val WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.websocketResponseTimeoutMs"
