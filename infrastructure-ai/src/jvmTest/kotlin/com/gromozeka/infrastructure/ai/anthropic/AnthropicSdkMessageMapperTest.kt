@@ -36,6 +36,25 @@ class AnthropicSdkMessageMapperTest {
         assertFalse(params.outputConfig().get().format().isEmpty)
     }
 
+    @Test
+    fun directAnthropicCachesStableSystemPromptPrefix() {
+        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+            .toCreateParams("claude-sonnet-4-20250514", requestWithJsonSchema())
+
+        val systemBlocks = params.system().orElseThrow().asTextBlockParams()
+        assertTrue(params.cacheControl().isPresent)
+        assertTrue(systemBlocks.single().cacheControl().isPresent)
+    }
+
+    @Test
+    fun bedrockLeavesPromptCachingToTheProvider() {
+        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_BEDROCK)
+            .toCreateParams("anthropic.claude-sonnet-4-20250514-v1:0", requestWithoutJsonSchema())
+
+        assertTrue(params.system().orElseThrow().isString())
+        assertFalse(params.cacheControl().isPresent)
+    }
+
     private fun requestWithJsonSchema(): AiRuntimeRequest =
         AiRuntimeRequest(
             systemPrompts = listOf("Return JSON only."),
@@ -61,6 +80,12 @@ class AnthropicSdkMessageMapperTest {
                     }
                 )
             )
+        )
+
+    private fun requestWithoutJsonSchema(): AiRuntimeRequest =
+        AiRuntimeRequest(
+            systemPrompts = listOf("Return a concise answer."),
+            messages = listOf(userMessage("Extract the answer.")),
         )
 
     private fun userMessage(text: String): Conversation.Message =

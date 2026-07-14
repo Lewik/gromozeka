@@ -216,7 +216,18 @@ internal class AnthropicSdkMessageMapper(
             .filter { it.isNotBlank() }
             .joinToString("\n\n")
         if (systemPrompt.isNotBlank()) {
-            builder.system(systemPrompt)
+            if (connectionKind == AiConnection.Kind.ANTHROPIC_API) {
+                builder.systemOfTextBlockParams(
+                    listOf(
+                        TextBlockParam.builder()
+                            .text(systemPrompt)
+                            .cacheControl(CacheControlEphemeral.builder().build())
+                            .build()
+                    )
+                )
+            } else {
+                builder.system(systemPrompt)
+            }
         }
 
         val messages = request.messages.mapNotNull(::toMessageParam)
