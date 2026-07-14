@@ -37,6 +37,41 @@ import kotlinx.serialization.json.JsonPrimitive
 
 class LlmMemoryReadSelectorTest {
     @Test
+    fun selectsModerateCandidateSetInOneGlobalPass() = runBlocking {
+        val notes = (1..33).map { index ->
+            note(
+                id = "direct-note-${index.toString().padStart(2, '0')}",
+                title = "Direct candidate $index",
+                summary = "Direct candidate $index exercises bounded global selection.",
+            )
+        }
+        val runtime = SelectingRuntime(setOf("direct-note-07"))
+
+        val result = LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("Which direct candidate matters?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.MIXED,
+                    retrievalBudget = MemoryRetrievalBudget(notes = 1),
+                ),
+                candidateHits = notes.mapIndexed { index, note ->
+                    MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(notes = notes),
+            )
+        )
+
+        assertEquals(listOf(33), runtime.candidateCounts)
+        assertEquals(listOf("direct-note-07"), result.selectedHits.map { (it as MemoryStore.SearchHit.NoteHit).note.id.value })
+        assertEquals(listOf(MemoryReadSelectorTrace.Mode.FINAL_SELECTION), result.selectorTrace.stages.map { it.mode })
+    }
+
+    @Test
     fun batchesLargeCandidateSets() = runBlocking {
         val notes = (1..45).map { index ->
             note(

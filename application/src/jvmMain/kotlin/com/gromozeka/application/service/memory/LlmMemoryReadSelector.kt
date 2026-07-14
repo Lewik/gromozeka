@@ -814,11 +814,7 @@ private fun MemoryReadPlan.readSelectorHardFinalSurvivorLimit(): Int =
     READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT
 
 private fun MemoryReadPlan.readSelectorDirectFinalCandidateLimit(): Int =
-    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
-        READ_SELECTOR_COMPLETE_SET_DIRECT_FINAL_CANDIDATE_LIMIT
-    } else {
-        READ_SELECTOR_CANDIDATE_BATCH_SIZE
-    }
+    READ_SELECTOR_DIRECT_FINAL_CANDIDATE_LIMIT
 
 private fun MemoryReadPlan.readSelectorCandidateBatchSize(): Int =
     if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
@@ -1018,7 +1014,7 @@ private fun MemoryStore.SearchHit.readSelectorImportance(): Int =
     }
 
 private const val READ_SELECTOR_CANDIDATE_BATCH_SIZE = 20
-private const val READ_SELECTOR_COMPLETE_SET_DIRECT_FINAL_CANDIDATE_LIMIT = 40
+private const val READ_SELECTOR_DIRECT_FINAL_CANDIDATE_LIMIT = 40
 private const val READ_SELECTOR_COMPLETE_SET_CANDIDATE_BATCH_SIZE = 40
 private const val READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH = 8
 private const val READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH = 4
