@@ -3,6 +3,7 @@ package com.gromozeka.remote.protocol
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryNamespace
@@ -91,11 +92,7 @@ class RemoteProtocolCodecTest {
                 chunk = RemoteLiveAudioChunk(
                     sequenceNumber = 7,
                     data = bytes,
-                    mediaType = "audio/wav",
-                    fileExtension = "wav",
-                    sampleRate = 16_000,
-                    channels = 1,
-                    bitDepth = 16,
+                    format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
                 )
             )
         )
@@ -107,7 +104,7 @@ class RemoteProtocolCodecTest {
         assertEquals("live-session-1", command.sessionId)
         assertEquals(7, command.chunk.sequenceNumber)
         assertContentEquals(bytes, command.chunk.data)
-        assertEquals("audio/wav", command.chunk.mediaType)
+        assertEquals(SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ, command.chunk.format)
 
         val transcriptEnvelope = GromozekaClientEnvelope(
             id = "live-transcript-1",
@@ -375,8 +372,7 @@ class RemoteProtocolCodecTest {
             payload = TranscribeAudioRequest(
                 recording = RemoteAudioRecording(
                     sessionId = "session-1",
-                    mediaType = "audio/webm",
-                    fileExtension = "webm",
+                    format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
                     chunks = listOf(
                         RemoteAudioChunk(
                             sequenceNumber = 0,

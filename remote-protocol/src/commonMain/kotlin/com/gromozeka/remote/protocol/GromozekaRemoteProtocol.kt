@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
@@ -324,12 +325,8 @@ data class StartLiveInterpreterRequest(
 @Serializable
 data class RemoteAudioRecording(
     val sessionId: String,
-    val mediaType: String,
-    val fileExtension: String,
+    val format: SpeechAudioFormat,
     val chunks: List<RemoteAudioChunk>,
-    val sampleRate: Int? = null,
-    val channels: Int? = null,
-    val bitDepth: Int? = null,
 )
 
 @Serializable
@@ -342,11 +339,7 @@ data class RemoteAudioChunk(
 data class RemoteLiveAudioChunk(
     val sequenceNumber: Int,
     val data: ByteArray,
-    val mediaType: String,
-    val fileExtension: String,
-    val sampleRate: Int? = null,
-    val channels: Int? = null,
-    val bitDepth: Int? = null,
+    val format: SpeechAudioFormat,
 )
 
 @Serializable

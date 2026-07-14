@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -105,12 +106,7 @@ private class IosClientAudioRecordingSession(
 
         return ClientRecordedAudio(
             data = data,
-            mediaType = "audio/wav",
-            fileExtension = "wav",
-            byteSize = data.size,
-            sampleRate = 16_000,
-            channels = 1,
-            bitDepth = 16,
+            format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
         )
     }
 

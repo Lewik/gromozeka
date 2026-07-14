@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.remote.protocol.RemoteAudioRecording
@@ -61,8 +62,7 @@ class DesktopLocalWhisperSpeechToTextService(
 
         return transcribe(
             audioData = audioBytes,
-            fileExtension = recording.fileExtension,
-            mediaType = recording.mediaType,
+            format = recording.format,
             language = settingsService.userProfile.speechSettings.speechToText.mainLanguageCode,
             prompt = null,
             sequenceNumber = null,
@@ -76,8 +76,7 @@ class DesktopLocalWhisperSpeechToTextService(
     ): String =
         transcribe(
             audioData = chunk.data,
-            fileExtension = chunk.fileExtension,
-            mediaType = chunk.mediaType,
+            format = chunk.format,
             language = language.ifBlank { settingsService.userProfile.speechSettings.speechToText.mainLanguageCode },
             prompt = prompt,
             sequenceNumber = chunk.sequenceNumber,
@@ -85,16 +84,13 @@ class DesktopLocalWhisperSpeechToTextService(
 
     private suspend fun transcribe(
         audioData: ByteArray,
-        fileExtension: String,
-        mediaType: String,
+        format: SpeechAudioFormat,
         language: String,
         prompt: String?,
         sequenceNumber: Int?,
     ): String = withContext(Dispatchers.IO) {
         check(isEnabled()) { "Client-side Local Whisper is disabled" }
-        require(isWav(mediaType, fileExtension)) {
-            "Client-side Local Whisper supports only WAV input. Received mediaType=$mediaType fileExtension=$fileExtension"
-        }
+        format.requireValid(audioData)
 
         val speechToText = settingsService.userProfile.speechSettings.speechToText
         val settings = speechToText.localWhisper
@@ -105,7 +101,7 @@ class DesktopLocalWhisperSpeechToTextService(
 
         log.info {
             "Client Local Whisper transcription requested: sequence=$sequenceNumber bytes=${audioData.size} " +
-                "mediaType=$mediaType language=$requestedLanguage audioCtx=$audioContext url=${server.inferenceUrl}"
+                "format=$format language=$requestedLanguage audioCtx=$audioContext url=${server.inferenceUrl}"
         }
 
         val startedAt = TimeSource.Monotonic.markNow()
@@ -344,10 +340,6 @@ class DesktopLocalWhisperSpeechToTextService(
 
     private fun findFreePort(): Int =
         ServerSocket(0).use { it.localPort }
-
-    private fun isWav(mediaType: String, fileExtension: String): Boolean =
-        mediaType.contains("wav", ignoreCase = true) ||
-            fileExtension.trim().trimStart('.').equals("wav", ignoreCase = true)
 
     private fun wavDurationSeconds(audioBytes: Int): Double? {
         val pcmBytes = audioBytes - WavHeaderBytes

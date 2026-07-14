@@ -1,7 +1,9 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
+import com.gromozeka.shared.audio.SpeechPcmWav
 import klog.KLoggers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -204,15 +206,11 @@ class RollingClientLiveAudioStreamer(
     private fun ByteArray.toRemoteLiveWavChunk(sequenceNumber: Int): RemoteLiveAudioChunk =
         RemoteLiveAudioChunk(
             sequenceNumber = sequenceNumber,
-            data = toWav16BitMonoBigEndianPcm(),
-            mediaType = "audio/wav",
-            fileExtension = "wav",
-            sampleRate = sampleRate,
-            channels = channels,
-            bitDepth = bitDepth,
+            data = SpeechPcmWav.encode(toLittleEndianPcm16()),
+            format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
         )
 
-    private fun ByteArray.toWav16BitMonoBigEndianPcm(): ByteArray {
+    private fun ByteArray.toLittleEndianPcm16(): ByteArray {
         val littleEndianPcm = ByteArray(size)
         var index = 0
         while (index + 1 < size) {
@@ -223,7 +221,7 @@ class RollingClientLiveAudioStreamer(
         if (index < size) {
             littleEndianPcm[index] = this[index]
         }
-        return wav16BitMono(sampleRate, littleEndianPcm)
+        return littleEndianPcm
     }
 }
 
@@ -239,45 +237,11 @@ fun ClientRecordedAudio.toRemoteLiveAudioChunk(sequenceNumber: Int): RemoteLiveA
     RemoteLiveAudioChunk(
         sequenceNumber = sequenceNumber,
         data = data,
-        mediaType = mediaType,
-        fileExtension = fileExtension,
-        sampleRate = sampleRate,
-        channels = channels,
-        bitDepth = bitDepth,
+        format = format,
     )
 
 private fun ByteArray.takeLastBytes(maxSize: Int): ByteArray =
     if (size <= maxSize) this else copyOfRange(size - maxSize, size)
-
-private fun wav16BitMono(sampleRate: Int, pcmLittleEndian: ByteArray): ByteArray {
-    val output = ByteArray(44 + pcmLittleEndian.size)
-    output.writeAscii(0, "RIFF")
-    output.writeLittleEndianInt(4, 36 + pcmLittleEndian.size)
-    output.writeAscii(8, "WAVE")
-    output.writeAscii(12, "fmt ")
-    output.writeLittleEndianInt(16, 16)
-    output.writeLittleEndianShort(20, 1)
-    output.writeLittleEndianShort(22, 1)
-    output.writeLittleEndianInt(24, sampleRate)
-    output.writeLittleEndianInt(28, sampleRate * 2)
-    output.writeLittleEndianShort(32, 2)
-    output.writeLittleEndianShort(34, 16)
-    output.writeAscii(36, "data")
-    output.writeLittleEndianInt(40, pcmLittleEndian.size)
-    pcmLittleEndian.copyInto(output, destinationOffset = 44)
-    return output
-}
-
-private fun ByteArray.writeAscii(offset: Int, value: String) {
-    value.encodeToByteArray().copyInto(this, destinationOffset = offset)
-}
-
-private fun ByteArray.writeLittleEndianInt(offset: Int, value: Int) {
-    this[offset] = (value and 0xff).toByte()
-    this[offset + 1] = ((value ushr 8) and 0xff).toByte()
-    this[offset + 2] = ((value ushr 16) and 0xff).toByte()
-    this[offset + 3] = ((value ushr 24) and 0xff).toByte()
-}
 
 internal object LiveAudioWindowSizing {
     fun backlogPreservingWindowBytes(
@@ -291,9 +255,4 @@ internal object LiveAudioWindowSizing {
         }
         return windowBytes.toInt()
     }
-}
-
-private fun ByteArray.writeLittleEndianShort(offset: Int, value: Int) {
-    this[offset] = (value and 0xff).toByte()
-    this[offset + 1] = ((value ushr 8) and 0xff).toByte()
 }

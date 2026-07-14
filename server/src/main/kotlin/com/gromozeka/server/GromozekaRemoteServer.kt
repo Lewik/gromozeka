@@ -372,13 +372,12 @@ class GromozekaRemoteServer(
 
         log.info {
             "Remote audio transcription requested: session=${recording.sessionId} " +
-                "chunks=${recording.chunks.size} bytes=${audioBytes.size} mediaType=${recording.mediaType}"
+                "chunks=${recording.chunks.size} bytes=${audioBytes.size} format=${recording.format}"
         }
 
         val text = sttService.transcribe(
             audioData = audioBytes,
-            fileExtension = recording.fileExtension,
-            mediaType = recording.mediaType
+            format = recording.format,
         ).trim()
 
         log.info {

@@ -76,7 +76,7 @@ class RemotePttController(
 
         val sessionId = uuid7()
         log.info {
-            "PTT recording captured: session=$sessionId bytes=${recording.byteSize} mediaType=${recording.mediaType}"
+            "PTT recording captured: session=$sessionId bytes=${recording.byteSize} format=${recording.format}"
         }
 
         val remoteRecording = recording.toRemoteRecording(sessionId)

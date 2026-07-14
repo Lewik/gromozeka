@@ -48,6 +48,7 @@ kotlin {
                 implementation(project(":device-telemetry"))
                 implementation(project(":domain"))
                 implementation(project(":remote-client"))
+                implementation(project(":shared"))
 
                 implementation(compose.runtime)
                 implementation(compose.foundation)

@@ -172,13 +172,12 @@ class LiveInterpreterApplicationService(
         private suspend fun transcribeChunk(chunk: RemoteLiveAudioChunk) {
             log.info {
                 "Live interpreter chunk received: session=$sessionId chunk=${chunk.sequenceNumber} " +
-                    "bytes=${chunk.data.size} mediaType=${chunk.mediaType}"
+                    "bytes=${chunk.data.size} format=${chunk.format}"
             }
             emit(LiveInterpreterStatusEvent(sessionId, "Transcribing segment ${chunk.sequenceNumber}"))
             val transcript = sttService.transcribe(
                 audioData = chunk.data,
-                fileExtension = chunk.fileExtension,
-                mediaType = chunk.mediaType,
+                format = chunk.format,
                 language = sourceLanguageCode,
                 prompt = sourceLanguageHint,
             ).trim()

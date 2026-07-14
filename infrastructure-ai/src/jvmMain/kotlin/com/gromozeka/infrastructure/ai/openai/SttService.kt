@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.openai
 
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.SettingsProvider
@@ -26,29 +27,29 @@ class SttService(
 
     suspend fun transcribe(
         audioData: ByteArray,
-        fileExtension: String = "wav",
-        mediaType: String = "audio/wav",
+        format: SpeechAudioFormat,
         language: String? = null,
         prompt: String? = null,
     ): String = withContext(Dispatchers.IO) {
-        log.debug("Transcribing audio data (${audioData.size} bytes, mediaType=$mediaType)")
+        log.debug("Transcribing audio data (${audioData.size} bytes, format=$format)")
 
-        val isWav = mediaType.contains("wav", ignoreCase = true) ||
-            fileExtension.equals("wav", ignoreCase = true)
+        when (format) {
+            SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ -> {
+                format.requireValid(audioData)
+                val audioConfig = AudioConfig(
+                    sampleRate = format.sampleRate,
+                    channels = format.channels,
+                    bitDepth = format.bitDepth,
+                )
+                val audioDurationSeconds = audioData.getAudioDuration(AudioOutputFormat.WAV, audioConfig)
 
-        if (isWav) {
-            val audioConfig = AudioConfig(sampleRate = 16000, channels = 1, bitDepth = 16)
-            val audioDurationSeconds = audioData.getAudioDuration(AudioOutputFormat.WAV, audioConfig)
+                log.debug("Audio duration: ${audioDurationSeconds}s")
 
-            log.debug("Audio duration: ${audioDurationSeconds}s")
-
-            if (!audioData.isAudioLongEnough(AudioOutputFormat.WAV, audioConfig, minSeconds = 0.1)) {
-                log.debug("Audio too short (${audioDurationSeconds}s < 0.1s), skipping transcription")
-                return@withContext ""
+                if (!audioData.isAudioLongEnough(AudioOutputFormat.WAV, audioConfig, minSeconds = 0.1)) {
+                    log.debug("Audio too short (${audioDurationSeconds}s < 0.1s), skipping transcription")
+                    return@withContext ""
+                }
             }
-        } else if (audioData.size < 256) {
-            log.debug("Audio too small (${audioData.size} bytes), skipping transcription")
-            return@withContext ""
         }
 
         val sttSettings = settingsProvider.userProfile.speechSettings.speechToText
@@ -56,8 +57,6 @@ class SttService(
         if (sttSettings.engine == UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER) {
             return@withContext localWhisperTranscriptionService.transcribe(
                 audioData = audioData,
-                fileExtension = fileExtension,
-                mediaType = mediaType,
                 language = requestedLanguage,
                 prompt = prompt,
                 settings = sttSettings.localWhisper,
@@ -66,8 +65,7 @@ class SttService(
 
         val runtime = settingsProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT)
         val client = clientFactory.createClient(runtime.connection)
-        val normalizedExtension = fileExtension.trim().trimStart('.').ifBlank { "webm" }
-        val tempFile = File.createTempFile("gromozeka-stt", ".$normalizedExtension")
+        val tempFile = File.createTempFile("gromozeka-stt", ".${format.fileExtension}")
 
         try {
             tempFile.writeBytes(audioData)

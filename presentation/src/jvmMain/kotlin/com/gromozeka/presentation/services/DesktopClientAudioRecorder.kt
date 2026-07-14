@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.shared.audio.AudioConfig
 import com.gromozeka.shared.audio.AudioOutputFormat
 import com.gromozeka.shared.audio.AudioRecorder
@@ -34,12 +35,7 @@ private class DesktopClientAudioRecordingSession(
         val bytes = session.stop()
         return ClientRecordedAudio(
             data = bytes,
-            mediaType = "audio/wav",
-            fileExtension = "wav",
-            byteSize = bytes.size,
-            sampleRate = audioConfig.sampleRate,
-            channels = audioConfig.channels,
-            bitDepth = audioConfig.bitDepth
+            format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
         )
     }
 

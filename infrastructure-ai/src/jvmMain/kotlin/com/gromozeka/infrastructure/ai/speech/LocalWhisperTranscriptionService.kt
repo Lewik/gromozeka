@@ -22,8 +22,6 @@ class LocalWhisperTranscriptionService(
 
     suspend fun transcribe(
         audioData: ByteArray,
-        fileExtension: String,
-        mediaType: String,
         language: String,
         prompt: String?,
         settings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper,
@@ -31,13 +29,7 @@ class LocalWhisperTranscriptionService(
         val runDir = createRunDir()
         try {
             val wavFile = File(runDir, "input-whisper.wav")
-            wavFile.writeBytes(
-                WhisperWavNormalizer.normalize(
-                    audioData = audioData,
-                    mediaType = mediaType,
-                    fileExtension = fileExtension,
-                )
-            )
+            wavFile.writeBytes(audioData)
             val modelFile = resolveModelFile(settings)
             val outputPrefix = File(runDir, "transcript")
 
@@ -60,7 +52,7 @@ class LocalWhisperTranscriptionService(
             }
 
             log.info {
-                "Local Whisper transcription requested: mediaType=$mediaType bytes=${audioData.size} " +
+                "Local Whisper transcription requested: bytes=${audioData.size} " +
                     "language=$language promptChars=${prompt?.length ?: 0} model=${modelFile.absolutePath}"
             }
 
