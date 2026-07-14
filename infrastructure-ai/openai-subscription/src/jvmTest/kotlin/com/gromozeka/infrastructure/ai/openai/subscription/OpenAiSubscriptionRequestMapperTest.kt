@@ -288,6 +288,23 @@ class OpenAiSubscriptionRequestMapperTest {
     }
 
     @Test
+    fun addsAllTurnsReasoningContextForResponsesLiteWithoutExplicitReasoning() {
+        val profile = modelProfile(slug = "gpt-5.6-sol", useResponsesLite = true)
+        val logicalRequest = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = listOf("Base instructions"),
+                messages = emptyList(),
+            ),
+            modelProfile = profile,
+            conversationKey = "test-conversation",
+        )
+
+        val transportRequest = mapper.toTransportRequest(logicalRequest, profile)
+
+        assertEquals("all_turns", transportRequest.reasoning?.string("context"))
+    }
+
+    @Test
     fun keepsNormalResponsesToolsAndInstructionsAtTopLevel() {
         val profile = modelProfile(slug = "gpt-5.5")
         val logicalRequest = mapper.toRequest(

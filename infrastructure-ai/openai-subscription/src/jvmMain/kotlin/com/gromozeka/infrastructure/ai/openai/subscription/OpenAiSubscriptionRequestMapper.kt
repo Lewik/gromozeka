@@ -109,9 +109,9 @@ class OpenAiSubscriptionRequestMapper {
             }
         }
 
-        val reasoning = request.reasoning?.let { current ->
-            JsonObject(current + ("context" to JsonPrimitive("all_turns")))
-        }
+        val reasoning = JsonObject(
+            request.reasoning.orEmpty() + ("context" to JsonPrimitive("all_turns"))
+        )
 
         return request.copy(
             input = prefix + request.input,
