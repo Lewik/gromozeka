@@ -80,7 +80,6 @@ internal fun DirectStructuredMemoryWriteRequest.conversationToolContext(): Map<S
     when (val source = source) {
         is MemorySource.ChatTurn -> mapOf(
             "conversationId" to "memory:${source.conversationId.value}",
-            "promptCacheKey" to source.conversationId.value,
         )
         else -> emptyMap()
     }

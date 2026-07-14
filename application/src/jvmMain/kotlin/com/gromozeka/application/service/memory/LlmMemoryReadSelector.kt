@@ -380,7 +380,6 @@ class LlmMemoryReadSelector(
                         "memoryReadSelector" to true,
                         "memoryNamespace" to request.readRequest.namespace.value,
                         "conversationId" to runtimeConversationKey,
-                        "promptCacheKey" to request.readRequest.threadContext.conversationId.value,
                     ),
                 ),
             ),

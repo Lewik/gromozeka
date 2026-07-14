@@ -45,6 +45,9 @@ class MemoryStructuredStageExecutorTest {
 
         assertEquals("ok", result.value.value)
         assertEquals(2, runtime.requests.size)
+        assertTrue(runtime.requests.all {
+            it.options.toolContext["promptCacheKey"] == "gromozeka:memory:test-stage"
+        })
         val repairMessages = runtime.requests[1].messages.takeLast(2)
         assertEquals(Conversation.Message.Role.ASSISTANT, repairMessages[0].role)
         assertEquals(Conversation.Message.Role.USER, repairMessages[1].role)

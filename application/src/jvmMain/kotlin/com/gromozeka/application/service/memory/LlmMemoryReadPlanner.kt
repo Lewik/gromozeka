@@ -564,7 +564,6 @@ private fun MemoryReadRequest.memoryThreadContextSummaryForLog(): String {
 private fun MemoryReadRequest.conversationToolContext(): Map<String, Any?> =
     mapOf(
         "conversationId" to "memory:${threadContext.conversationId.value}",
-        "promptCacheKey" to threadContext.conversationId.value,
     )
 
 private fun MemoryReadRequest.targetMessageText(): String {

@@ -36,7 +36,7 @@ internal suspend fun <T> AiRuntime.callMemoryStructuredStage(
     parse: (String) -> T,
     validate: (T) -> Unit = {},
 ): MemoryStructuredStageResult<T> {
-    var currentRequest = request
+    var currentRequest = request.withMemoryStagePromptCacheKey(stageName)
     var repairAttempt = 0
 
     while (true) {
@@ -96,6 +96,15 @@ internal suspend fun <T> AiRuntime.callMemoryStructuredStage(
         }
     }
 }
+
+private fun AiRuntimeRequest.withMemoryStagePromptCacheKey(stageName: String): AiRuntimeRequest =
+    copy(
+        options = options.copy(
+            toolContext = options.toolContext + (
+                "promptCacheKey" to "gromozeka:memory:$stageName"
+            ),
+        ),
+    )
 
 private data class StructuredJsonExtraction(
     val jsonText: String,
