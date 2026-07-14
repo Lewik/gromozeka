@@ -171,6 +171,8 @@ data class OpenAiSubscriptionUsage(
 data class OpenAiSubscriptionInputTokensDetails(
     @SerialName("cached_tokens")
     val cachedTokens: Long = 0,
+    @SerialName("cache_write_tokens")
+    val cacheWriteTokens: Long = 0,
 )
 
 @Serializable

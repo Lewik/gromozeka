@@ -56,7 +56,10 @@ class OpenAiSubscriptionResponseMapperTest {
                 id = "response",
                 usage = OpenAiSubscriptionUsage(
                     inputTokens = 1_500,
-                    inputTokensDetails = OpenAiSubscriptionInputTokensDetails(cachedTokens = 500),
+                    inputTokensDetails = OpenAiSubscriptionInputTokensDetails(
+                        cachedTokens = 500,
+                        cacheWriteTokens = 300,
+                    ),
                     outputTokens = 800,
                     outputTokensDetails = OpenAiSubscriptionOutputTokensDetails(reasoningTokens = 600),
                 ),
@@ -68,9 +71,10 @@ class OpenAiSubscriptionResponseMapperTest {
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         )
 
-        assertEquals(1_000, response.usage?.promptTokens)
+        assertEquals(700, response.usage?.promptTokens)
         assertEquals(200, response.usage?.completionTokens)
         assertEquals(600, response.usage?.thinkingTokens)
+        assertEquals(300, response.usage?.cacheCreationTokens)
         assertEquals(500, response.usage?.cacheReadTokens)
         assertEquals(2_300, response.usage?.totalTokens)
     }
