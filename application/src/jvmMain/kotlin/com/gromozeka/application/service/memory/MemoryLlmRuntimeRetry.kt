@@ -24,12 +24,23 @@ internal class MemoryLlmOutputTruncatedException(
         "${usage?.memoryUsageSummary().orEmpty()} $logContext".trim()
 )
 
+internal class MemoryLlmStageTimeoutException(
+    stageName: String,
+    attempt: Int,
+    timeoutMs: Long,
+    logContext: String,
+    cause: TimeoutCancellationException,
+) : IllegalStateException(
+    "Memory LLM stage timed out: stage=$stageName attempt=$attempt timeoutMs=$timeoutMs $logContext",
+    cause,
+)
+
 internal suspend fun AiRuntime.callMemoryStageWithRetry(
     request: AiRuntimeRequest,
     stageName: String,
     logContext: String,
     maxAttempts: Int = memoryLlmMaxAttempts(),
-    timeoutMs: Long = memoryLlmTimeoutMs(stageName),
+    timeoutMs: Long = memoryLlmTimeoutMs(),
 ): AiRuntimeResponse {
     var attempt = 1
     var delayMs = 750L
@@ -119,6 +130,15 @@ internal suspend fun AiRuntime.callMemoryStageWithRetry(
                         "elapsedMs=$elapsedMs timeoutMs=$timeoutMs $logContext " +
                         "retryable=$retryable error=${error.message}"
                 }
+                if (error is TimeoutCancellationException) {
+                    throw MemoryLlmStageTimeoutException(
+                        stageName = stageName,
+                        attempt = attempt,
+                        timeoutMs = timeoutMs,
+                        logContext = logContext,
+                        cause = error,
+                    )
+                }
                 throw error
             }
 
@@ -141,15 +161,12 @@ private fun memoryLlmMaxAttempts(): Int =
         ?.coerceAtLeast(1)
         ?: 3
 
-private fun memoryLlmTimeoutMs(stageName: String): Long =
+private fun memoryLlmTimeoutMs(): Long =
     System.getProperty("gromozeka.memory.llm.timeoutMs")
         ?.trim()
         ?.toLongOrNull()
         ?.coerceAtLeast(1_000L)
-        ?: when (stageName) {
-            "claim-extractor" -> 1_200_000L
-            else -> 90_000L
-        }
+        ?: 1_200_000L
 
 private fun AiRuntimeResponse.memoryStageUsageLogLine(
     stageName: String,

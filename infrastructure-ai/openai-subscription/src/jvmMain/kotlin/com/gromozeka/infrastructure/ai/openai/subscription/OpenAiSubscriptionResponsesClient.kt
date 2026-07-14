@@ -45,7 +45,7 @@ class OpenAiSubscriptionResponsesClient(
     private val websocketResponseTimeoutMs: Long,
     @Value("\${gromozeka.ai.openai-subscription.websocket-transport-timeout-ms:30000}")
     private val websocketTransportTimeoutMs: Long,
-    @Value("\${gromozeka.ai.openai-subscription.http-response-timeout-ms:\${gromozeka.memory.llm.timeoutMs:300000}}")
+    @Value("\${gromozeka.ai.openai-subscription.http-response-timeout-ms:\${gromozeka.memory.llm.timeoutMs:1200000}}")
     private val httpResponseTimeoutMs: Long,
 ) {
     private val log = KLoggers.logger(this)

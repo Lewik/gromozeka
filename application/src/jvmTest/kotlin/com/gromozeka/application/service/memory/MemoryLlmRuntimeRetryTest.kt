@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.service.AiRuntime
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -66,6 +67,23 @@ class MemoryLlmRuntimeRetryTest {
         assertEquals(1, runtime.calls)
     }
 
+    @Test
+    fun exhaustedStageTimeoutIsReportedAsOperationFailure() = runBlocking {
+        val runtime = SlowRuntime()
+
+        assertFailsWith<MemoryLlmStageTimeoutException> {
+            runtime.callMemoryStageWithRetry(
+                request = AiRuntimeRequest(systemPrompts = emptyList(), messages = emptyList()),
+                stageName = "entity-canonicalizer",
+                logContext = "test",
+                maxAttempts = 1,
+                timeoutMs = 1,
+            )
+        }
+
+        assertEquals(1, runtime.calls)
+    }
+
     private class FailingRuntime(
         private val error: Throwable,
     ) : AiRuntime {
@@ -94,6 +112,21 @@ class MemoryLlmRuntimeRetryTest {
         override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
             calls += 1
             if (calls <= failuresBeforeSuccess) throw error
+            return AiRuntimeResponse(messages = emptyList())
+        }
+
+        override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
+    }
+
+    private class SlowRuntime : AiRuntime {
+        var calls = 0
+            private set
+
+        override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            calls += 1
+            delay(10_000)
             return AiRuntimeResponse(messages = emptyList())
         }
 
