@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
+import klog.KLoggers
 import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -18,14 +19,16 @@ class OpenAiSubscriptionModelsClient(
     private val baseUrl: String,
     @Value("\${gromozeka.ai.openai-subscription.client-version:1.4.9}")
     private val clientVersion: String,
-    @Value("\${gromozeka.ai.openai-subscription.models-cache-ttl-ms:300000}")
+    @Value("\${gromozeka.ai.openai-subscription.models-cache-ttl-ms:3600000}")
     private val cacheTtlMs: Long,
     @Value("\${gromozeka.ai.openai-subscription.models-timeout-ms:30000}")
     private val timeoutMs: Long,
 ) {
+    private val log = KLoggers.logger(this)
     private val json = Json { ignoreUnknownKeys = true }
     private val httpClient = HttpClient.newBuilder().build()
     private val cache = ConcurrentHashMap<String, CachedModels>()
+    private val refreshLocks = ConcurrentHashMap<String, Any>()
 
     fun getProfile(
         session: OpenAiSubscriptionSession,
@@ -46,9 +49,29 @@ class OpenAiSubscriptionModelsClient(
             return it.models
         }
 
-        val models = fetchModels(session)
-        cache[cacheKey] = CachedModels(loadedAtMs = now, models = models)
-        return models
+        return synchronized(refreshLocks.computeIfAbsent(cacheKey) { Any() }) {
+            val refreshStartedAtMs = System.currentTimeMillis()
+            val cached = cache[cacheKey]
+            cached?.takeIf { refreshStartedAtMs - it.loadedAtMs < cacheTtlMs.coerceAtLeast(0L) }?.models
+                ?: try {
+                    fetchModels(session).also { models ->
+                        cache[cacheKey] = CachedModels(
+                            loadedAtMs = System.currentTimeMillis(),
+                            models = models,
+                        )
+                    }
+                } catch (error: OpenAiSubscriptionApiException) {
+                    if (cached != null && error.allowsStaleModelCatalog()) {
+                        log.warn(error) {
+                            "OpenAI subscription model catalog refresh failed; using last confirmed catalog: " +
+                                "account=$cacheKey ageMs=${refreshStartedAtMs - cached.loadedAtMs}"
+                        }
+                        cached.models
+                    } else {
+                        throw error
+                    }
+                }
+        }
     }
 
     private fun fetchModels(session: OpenAiSubscriptionSession): List<OpenAiSubscriptionRemoteModel> {
@@ -95,3 +118,7 @@ class OpenAiSubscriptionModelsClient(
         val models: List<OpenAiSubscriptionRemoteModel>,
     )
 }
+
+private fun OpenAiSubscriptionApiException.allowsStaleModelCatalog(): Boolean =
+    this is OpenAiSubscriptionTransportException ||
+        this is OpenAiSubscriptionRequestException && statusCode >= 500

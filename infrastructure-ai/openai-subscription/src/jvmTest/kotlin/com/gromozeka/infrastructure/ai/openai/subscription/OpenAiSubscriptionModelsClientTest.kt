@@ -77,4 +77,54 @@ class OpenAiSubscriptionModelsClientTest {
             server.stop(0)
         }
     }
+
+    @Test
+    fun usesLastConfirmedCatalogWhenRefreshTransportFails() {
+        val requests = AtomicInteger()
+        val server = HttpServer.create(InetSocketAddress(0), 0)
+        server.createContext("/models") { exchange ->
+            requests.incrementAndGet()
+            val body = """
+                {
+                  "models": [
+                    {
+                      "slug": "gpt-5.6-sol",
+                      "supported_reasoning_levels": [{"effort": "medium"}],
+                      "supports_reasoning_summaries": true,
+                      "support_verbosity": true,
+                      "default_verbosity": "low",
+                      "supports_parallel_tool_calls": true,
+                      "use_responses_lite": true
+                    }
+                  ]
+                }
+            """.trimIndent().toByteArray(StandardCharsets.UTF_8)
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.start()
+
+        val client = OpenAiSubscriptionModelsClient(
+            baseUrl = "http://127.0.0.1:${server.address.port}",
+            clientVersion = "1.4.9",
+            cacheTtlMs = 0,
+            timeoutMs = 100,
+        )
+        val session = OpenAiSubscriptionSession(
+            accessToken = "access-token",
+            refreshToken = "refresh-token",
+            idToken = null,
+            accountId = "account-1",
+            expiresAt = Long.MAX_VALUE,
+        )
+
+        try {
+            assertEquals("gpt-5.6-sol", client.getProfile(session, "gpt-5.6-sol").slug)
+        } finally {
+            server.stop(0)
+        }
+
+        assertEquals("gpt-5.6-sol", client.getProfile(session, "gpt-5.6-sol").slug)
+        assertEquals(1, requests.get())
+    }
 }
