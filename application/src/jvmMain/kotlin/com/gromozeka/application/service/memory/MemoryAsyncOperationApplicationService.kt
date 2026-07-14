@@ -4,7 +4,6 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.shared.uuid.uuid7
-import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
@@ -14,6 +13,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 
 @Service
@@ -29,7 +30,7 @@ class MemoryAsyncOperationApplicationService(
         classDiscriminator = "requestType"
     }
 
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent::class)
     fun start() = runBlocking {
         operationQueue.start(
             recoveredJobs = recoverJobs(),
