@@ -264,11 +264,12 @@ class OpenAiSubscriptionResponseMapper {
 
     private fun OpenAiSubscriptionUsage.toAiUsage(): AiUsage {
         val cachedTokens = inputTokensDetails?.cachedTokens?.toInt() ?: 0
+        val reasoningTokens = outputTokensDetails?.reasoningTokens?.toInt() ?: 0
 
         return AiUsage(
             promptTokens = (inputTokens.toInt() - cachedTokens).coerceAtLeast(0),
-            completionTokens = outputTokens.toInt(),
-            thinkingTokens = outputTokensDetails?.reasoningTokens?.toInt() ?: 0,
+            completionTokens = (outputTokens.toInt() - reasoningTokens).coerceAtLeast(0),
+            thinkingTokens = reasoningTokens,
             cacheReadTokens = cachedTokens,
         )
     }

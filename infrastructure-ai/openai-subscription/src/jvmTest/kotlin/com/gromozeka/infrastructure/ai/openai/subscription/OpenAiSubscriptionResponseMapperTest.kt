@@ -47,4 +47,31 @@ class OpenAiSubscriptionResponseMapperTest {
         assertEquals("compaction", replayItem.getValue("type").jsonPrimitive.contentOrNull)
         assertEquals("encrypted-compact", replayItem.getValue("encrypted_content").jsonPrimitive.contentOrNull)
     }
+
+    @Test
+    fun separatesVisibleCompletionTokensFromReasoningTokens() {
+        val response = mapper.toRuntimeResponse(
+            outputItems = emptyList(),
+            completed = OpenAiSubscriptionCompletedResponse(
+                id = "response",
+                usage = OpenAiSubscriptionUsage(
+                    inputTokens = 1_500,
+                    inputTokensDetails = OpenAiSubscriptionInputTokensDetails(cachedTokens = 500),
+                    outputTokens = 800,
+                    outputTokensDetails = OpenAiSubscriptionOutputTokensDetails(reasoningTokens = 600),
+                ),
+            ),
+            conversationKey = "conversation",
+            connectionId = "openai-subscription",
+            modelConfigurationId = "gpt-5",
+            modelName = "gpt-5",
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+        )
+
+        assertEquals(1_000, response.usage?.promptTokens)
+        assertEquals(200, response.usage?.completionTokens)
+        assertEquals(600, response.usage?.thinkingTokens)
+        assertEquals(500, response.usage?.cacheReadTokens)
+        assertEquals(2_300, response.usage?.totalTokens)
+    }
 }
