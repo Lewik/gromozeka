@@ -20,7 +20,6 @@ import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AiRuntime
-import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -34,8 +33,6 @@ import kotlinx.serialization.json.Json
 
 class LlmMemoryReadSelector(
     private val runtime: AiRuntime,
-    private val runtimeSystemPrompts: List<String>,
-    private val runtimeTools: List<AiToolCallback>,
     private val json: Json = Json { ignoreUnknownKeys = true },
     batchParallelism: Int = MemoryPipelineParallelism.configuredParallelism(),
 ) : MemoryReadSelector {
@@ -369,7 +366,7 @@ class LlmMemoryReadSelector(
         log.info {
             "Memory read selector LLM call: namespace=${request.readRequest.namespace.value} " +
                 "candidates=${request.candidateHits.size} contextMode=${request.plan.contextMode.name} " +
-                "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}$logSuffix"
+                "stageMessages=${stageMessages.size}$logSuffix"
         }
         log.info {
             "Memory read selector candidates rendered: namespace=${request.readRequest.namespace.value} " +
@@ -380,9 +377,9 @@ class LlmMemoryReadSelector(
             runtimeConversationSuffix?.let { ":$it" }.orEmpty()
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
-                systemPrompts = runtimeSystemPrompts,
+                systemPrompts = emptyList(),
                 messages = stageMessages,
-                tools = runtimeTools,
+                tools = emptyList(),
                 options = AiRuntimeOptions(
                     maxOutputTokens = MemoryLlmStageLimits.READ_SELECTOR_OUTPUT,
                     toolChoice = AiToolChoice.None,

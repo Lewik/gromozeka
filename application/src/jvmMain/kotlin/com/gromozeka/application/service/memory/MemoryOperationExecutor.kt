@@ -791,10 +791,7 @@ class MemoryOperationExecutor internal constructor(
             threadId = request.threadId,
             targetMessage = targetMessage,
             threadMessages = context.threadMessages.withTargetMessage(targetMessage),
-            agent = context.agent,
             project = context.project,
-            runtimeSystemPrompts = context.systemPrompts,
-            runtimeTools = context.memoryTools,
             namespaceOverride = request.namespace,
         )
         return completedExecution(
@@ -823,10 +820,7 @@ class MemoryOperationExecutor internal constructor(
             threadId = threadId,
             targetMessage = targetMessage,
             threadMessages = context.threadMessages + targetMessage,
-            agent = context.agent,
             project = context.project,
-            runtimeSystemPrompts = context.systemPrompts,
-            runtimeTools = context.memoryTools,
             namespaceOverride = request.namespace,
         )
         return completedExecution(
@@ -846,10 +840,8 @@ class MemoryOperationExecutor internal constructor(
             threadId = request.threadId,
             targetMessage = targetMessage,
             threadMessages = context.threadMessages.withTargetMessage(targetMessage),
-            agent = context.agent,
             project = context.project,
             runtimeSystemPrompts = context.systemPrompts,
-            runtimeTools = context.memoryTools,
             namespaceOverride = request.namespace,
         )
         return completedExecution(
@@ -878,10 +870,8 @@ class MemoryOperationExecutor internal constructor(
             threadId = threadId,
             targetMessage = targetMessage,
             threadMessages = context.threadMessages + targetMessage,
-            agent = context.agent,
             project = context.project,
             runtimeSystemPrompts = context.systemPrompts,
-            runtimeTools = context.memoryTools,
             namespaceOverride = request.namespace,
         )
         return completedExecution(

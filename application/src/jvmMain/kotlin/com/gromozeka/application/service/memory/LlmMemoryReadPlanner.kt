@@ -10,7 +10,6 @@ import com.gromozeka.domain.model.memory.MemoryReadRequest
 import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.service.AiRuntime
-import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
@@ -22,8 +21,6 @@ import kotlinx.serialization.json.JsonObject
 class LlmMemoryReadPlanner(
     private val runtime: AiRuntime,
     private val timezone: String,
-    private val runtimeSystemPrompts: List<String>,
-    private val runtimeTools: List<AiToolCallback>,
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) : MemoryReadPlanner {
     private val log = KLoggers.logger(this)
@@ -37,14 +34,14 @@ class LlmMemoryReadPlanner(
         log.info {
             "Memory read planner LLM call: namespace=${request.namespace.value} " +
                 "threadContext=${request.memoryThreadContextSummaryForLog()} " +
-                "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}"
+                "stageMessages=${stageMessages.size}"
         }
 
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
-                systemPrompts = runtimeSystemPrompts,
+                systemPrompts = emptyList(),
                 messages = stageMessages,
-                tools = runtimeTools,
+                tools = emptyList(),
                 options = AiRuntimeOptions(
                     maxOutputTokens = MemoryLlmStageLimits.READ_PLANNER_OUTPUT,
                     toolChoice = AiToolChoice.None,
@@ -114,9 +111,9 @@ class LlmMemoryReadPlanner(
 
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
-                systemPrompts = runtimeSystemPrompts,
+                systemPrompts = emptyList(),
                 messages = stageMessages,
-                tools = runtimeTools,
+                tools = emptyList(),
                 options = AiRuntimeOptions(
                     maxOutputTokens = MemoryLlmStageLimits.READ_NEED_VERIFIER_OUTPUT,
                     toolChoice = AiToolChoice.None,

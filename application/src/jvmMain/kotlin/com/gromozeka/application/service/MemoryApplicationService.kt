@@ -71,37 +71,12 @@ class MemoryApplicationService(
         log.info { "Legacy memory ingest disabled: conversation=${conversationId.value} agent=${agent?.name}" }
     }
 
-    suspend fun buildRuntimeMemoryPrompt(
-        conversationId: Conversation.Id,
-        threadId: Conversation.Thread.Id,
-        targetMessage: Conversation.Message,
-        threadMessages: List<Conversation.Message>,
-        agent: AgentDefinition,
-        project: Project,
-        runtimeSystemPrompts: List<String>,
-        runtimeTools: List<AiToolCallback>,
-    ): String? {
-        return buildRuntimeMemoryReadResult(
-            conversationId = conversationId,
-            threadId = threadId,
-            targetMessage = targetMessage,
-            threadMessages = threadMessages,
-            agent = agent,
-            project = project,
-            runtimeSystemPrompts = runtimeSystemPrompts,
-            runtimeTools = runtimeTools,
-        ).runtimePrompt
-    }
-
     suspend fun buildRuntimeMemoryReadResult(
         conversationId: Conversation.Id,
         threadId: Conversation.Thread.Id,
         targetMessage: Conversation.Message,
         threadMessages: List<Conversation.Message>,
-        agent: AgentDefinition,
         project: Project,
-        runtimeSystemPrompts: List<String>,
-        runtimeTools: List<AiToolCallback>,
         namespaceOverride: MemoryNamespace? = null,
     ): MemoryReadResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val startedAt = Clock.System.now()
@@ -138,13 +113,9 @@ class MemoryApplicationService(
             planner = LlmMemoryReadPlanner(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_PLANNER),
                 timezone = TimeZone.currentSystemDefault().id,
-                runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
             ),
             selector = LlmMemoryReadSelector(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_SELECTOR),
-                runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
             ),
             embeddingIndexer = embeddingIndexer,
         )
@@ -193,10 +164,8 @@ class MemoryApplicationService(
         threadId: Conversation.Thread.Id,
         targetMessage: Conversation.Message,
         threadMessages: List<Conversation.Message>,
-        agent: AgentDefinition,
         project: Project,
         runtimeSystemPrompts: List<String>,
-        runtimeTools: List<AiToolCallback>,
         namespaceOverride: MemoryNamespace? = null,
     ): MemoryQuestionAnswerResult {
         val readResult = buildRuntimeMemoryReadResult(
@@ -204,10 +173,7 @@ class MemoryApplicationService(
             threadId = threadId,
             targetMessage = targetMessage,
             threadMessages = threadMessages,
-            agent = agent,
             project = project,
-            runtimeSystemPrompts = runtimeSystemPrompts,
-            runtimeTools = runtimeTools,
             namespaceOverride = namespaceOverride,
         )
         val runtime = aiRuntimeProvider.getRuntime(

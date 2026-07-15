@@ -75,8 +75,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("What is the selected note?"),
@@ -107,8 +105,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("Which direct candidate matters?"),
@@ -142,8 +138,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("What matters for memory selector batching?"),
@@ -194,8 +188,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
             batchParallelism = 3,
         ).select(
             MemoryReadSelectionRequest(
@@ -237,8 +229,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("What matters for memory selector batching?"),
@@ -304,8 +294,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest(
@@ -379,8 +367,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many distinct matching items are remembered?"),
@@ -439,8 +425,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many complete-set items did I acquire?"),
@@ -495,8 +479,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many distinct matching items are remembered?"),
@@ -538,8 +520,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("List every matching candidate."),
@@ -579,8 +559,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
             batchParallelism = 2,
         ).select(
             MemoryReadSelectionRequest(
@@ -620,8 +598,6 @@ class LlmMemoryReadSelectorTest {
 
         val result = LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
             batchParallelism = 3,
         ).select(
             MemoryReadSelectionRequest(
@@ -669,8 +645,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many months ago did I book the Airbnb in San Francisco?"),
@@ -716,8 +690,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest(
@@ -776,8 +748,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest(
@@ -833,8 +803,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many years did I spend in formal education from high school to my Bachelor's degree?"),
@@ -879,8 +847,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many rare items do I have in total?"),
@@ -917,8 +883,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many creative works or content items have I acquired?"),
@@ -953,8 +917,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many projects have I led or am currently leading?"),
@@ -994,8 +956,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest(
@@ -1044,8 +1004,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many weddings did I attend this year?"),
@@ -1077,8 +1035,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("What camera lens did I purchase most recently?"),
@@ -1135,8 +1091,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("What was the increase in newsletter subscribers after two weeks?"),
@@ -1175,8 +1129,6 @@ class LlmMemoryReadSelectorTest {
 
         LlmMemoryReadSelector(
             runtime = runtime,
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
                 readRequest = readRequest("How many days ago did I attend the workshop when the product launch happened?"),

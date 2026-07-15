@@ -474,10 +474,7 @@ class ConversationEngineService(
                 threadId = conversation.currentThread,
                 targetMessage = targetMessage,
                 threadMessages = currentMessages,
-                agent = payload.agent,
                 project = context.project,
-                runtimeSystemPrompts = context.memorySystemPrompts,
-                runtimeTools = context.memoryPipelineTools,
             )
         }.onFailure { error ->
             if (error is CancellationException) {

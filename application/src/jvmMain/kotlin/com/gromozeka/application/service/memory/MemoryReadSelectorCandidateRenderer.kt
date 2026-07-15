@@ -85,8 +85,8 @@ internal object MemoryReadSelectorCandidateRenderer {
         val overriddenBy = snapshot?.activeTypedReplacementsForSource(id).orEmpty()
         val supportsActive = supports.any { it.lifecycleState == "current" }
         val lifecycleState = when {
-            overriddenBy.isNotEmpty() -> "overridden_evidence"
             supportsActive -> "evidence_for_active_memory"
+            overriddenBy.isNotEmpty() -> "overridden_evidence"
             else -> "raw_evidence"
         }
 

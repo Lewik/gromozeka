@@ -64,8 +64,6 @@ class LlmMemoryReadPlannerTest {
         val plan = LlmMemoryReadPlanner(
             runtime = runtime,
             timezone = "UTC",
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).plan(
             readRequest(
                 "I'm planning to revisit Orlando. Remind me of the unique dessert shop with giant milkshakes we talked about last time."
@@ -118,8 +116,6 @@ class LlmMemoryReadPlannerTest {
         LlmMemoryReadPlanner(
             runtime = runtime,
             timezone = "UTC",
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).plan(readRequest("What was the increase in newsletter subscribers after two weeks?"))
 
         val prompt = runtime.requests.single().messages.asText()
@@ -135,8 +131,6 @@ class LlmMemoryReadPlannerTest {
         val plan = LlmMemoryReadPlanner(
             runtime = runtime,
             timezone = "UTC",
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).plan(readRequest("What is the recommended first implementation for the Gromozeka Claude Code provider?"))
 
         val prompt = runtime.requests.single().messages.asText()
@@ -181,8 +175,6 @@ class LlmMemoryReadPlannerTest {
         LlmMemoryReadPlanner(
             runtime = runtime,
             timezone = "UTC",
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).plan(readRequest("How many days ago did I attend the workshop when the product launch happened?"))
 
         val prompt = runtime.requests.single().messages.asText()
@@ -226,8 +218,6 @@ class LlmMemoryReadPlannerTest {
         val plan = LlmMemoryReadPlanner(
             runtime = runtime,
             timezone = "UTC",
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).plan(
             readRequest(
                 "What was the dessert shop with giant milkshakes you suggested before?"
@@ -275,8 +265,6 @@ class LlmMemoryReadPlannerTest {
         val plan = LlmMemoryReadPlanner(
             runtime = runtime,
             timezone = "UTC",
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).plan(readRequest("Can you recommend resources where I can learn more?"))
 
         val plannerPrompt = runtime.requests.first().messages.asText()
@@ -322,8 +310,6 @@ class LlmMemoryReadPlannerTest {
         val plan = LlmMemoryReadPlanner(
             runtime = runtime,
             timezone = "UTC",
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).plan(
             readRequest("How many months ago did I book the Airbnb in San Francisco?")
         )
@@ -369,8 +355,6 @@ class LlmMemoryReadPlannerTest {
         val plan = LlmMemoryReadPlanner(
             runtime = runtime,
             timezone = "UTC",
-            runtimeSystemPrompts = emptyList(),
-            runtimeTools = emptyList(),
         ).plan(
             readRequest("What time do I usually go to the gym?")
         )

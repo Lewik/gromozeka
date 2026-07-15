@@ -3874,6 +3874,51 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun readSelectorCandidateViewKeepsMixedSourceActive() {
+        val mixedSource = source("selector-mixed-source", "ShelfLog used CSV, and workshop notes are in the blue binder.")
+        val replacementSource = source("selector-replacement-source", "ShelfLog now uses JSON Lines.")
+        val oldClaim = claim(
+            id = "selector-mixed-old-claim",
+            sourceId = mixedSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "The primary export format for ShelfLog was CSV.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val replacementClaim = claim(
+            id = "selector-mixed-replacement-claim",
+            sourceId = replacementSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("JSON Lines"),
+            normalizedText = "The primary export format for ShelfLog is JSON Lines.",
+            status = MemoryClaim.Status.ACTIVE,
+        ).copy(supersedesClaimId = oldClaim.id)
+        val activeClaim = claim(
+            id = "selector-mixed-active-claim",
+            sourceId = mixedSource.id.value,
+            predicate = "current_location",
+            objectValue = JsonPrimitive("blue binder"),
+            normalizedText = "The workshop notes are in the blue binder.",
+            status = MemoryClaim.Status.ACTIVE,
+        )
+        val snapshot = MemoryNamespaceSnapshot(
+            sources = listOf(mixedSource, replacementSource),
+            entities = listOf(entity()),
+            claims = listOf(oldClaim, replacementClaim, activeClaim),
+        )
+
+        val rendered = MemoryReadSelectorCandidateRenderer.render(
+            hits = listOf(MemoryStore.SearchHit.SourceHit(mixedSource, score = 0.99)),
+            snapshot = snapshot,
+            query = "ShelfLog workshop notes",
+        )
+
+        assertTrue(rendered.contains("\"lifecycle_state\":\"evidence_for_active_memory\""))
+        assertTrue(rendered.contains("\"id\":\"selector-mixed-active-claim\",\"status\":\"ACTIVE\""))
+        assertTrue(rendered.contains("\"overridden_by\":[{\"type\":\"claim\",\"id\":\"selector-mixed-replacement-claim\""))
+    }
+
+    @Test
     fun readSelectorCandidateViewBoundsSourceTextButKeepsSearchText() {
         val longSourceText = buildString {
             appendLine("Source beginning")
