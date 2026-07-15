@@ -34,6 +34,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
+import javax.sql.DataSource
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 import kotlin.io.path.readText
@@ -188,6 +189,7 @@ class LongMemEvalMemorySmokeTest {
             val readTraceCollector = harness.context.getBean(MemoryE2eReadTraceCollector::class.java)
             val writeTraceCollector = harness.context.getBean(MemoryE2eWriteTraceCollector::class.java)
             val llmCallProgressCollector = harness.context.getBean(MemoryE2eLlmCallProgressCollector::class.java)
+            val dataSource = harness.context.getBean(DataSource::class.java)
             val judgeRuntime = harness.context
                 .getBean(AiRuntimeProvider::class.java)
                 .getRuntime(ServerTestHarness.openAiSubscriptionRuntimeSelection(), resolveProjectRoot())
@@ -210,6 +212,7 @@ class LongMemEvalMemorySmokeTest {
             )
 
             val caseResults = entries.mapIndexed { index, entry ->
+                clearLongMemEvalMemory(dataSource)
                 val namespace = namespaceFor(entry)
                 appendProgress(
                     progressPath,
@@ -310,6 +313,29 @@ class LongMemEvalMemorySmokeTest {
                 "Expected answer was not supported by memory_context and gold evidence was not fully selected for ${failedCases.size}/${caseResults.size} cases. " +
                     "Artifact: $summaryPath"
             )
+        }
+    }
+
+    private fun clearLongMemEvalMemory(dataSource: DataSource) {
+        dataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    """
+                    TRUNCATE TABLE
+                        memory_embeddings,
+                        memory_episodes,
+                        memory_profiles,
+                        memory_action_items,
+                        memory_notes,
+                        memory_claims,
+                        memory_entities,
+                        memory_runs,
+                        memory_sources,
+                        memory_predicate_definitions
+                    CASCADE
+                    """.trimIndent()
+                )
+            }
         }
     }
 
