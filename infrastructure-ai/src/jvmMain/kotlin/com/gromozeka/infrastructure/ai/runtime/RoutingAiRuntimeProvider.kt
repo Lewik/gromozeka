@@ -32,7 +32,7 @@ internal class RoutingAiRuntimeProvider(
     }
 }
 
-private class ModelDefaultAiRuntime(
+class ModelDefaultAiRuntime(
     private val delegate: AiRuntime,
     private val defaults: AiModelConfiguration.DefaultParameters,
 ) : AiRuntime {
@@ -46,7 +46,7 @@ private class ModelDefaultAiRuntime(
         delegate.stream(request.withModelDefaults(defaults))
 }
 
-internal fun AiRuntimeRequest.withModelDefaults(
+fun AiRuntimeRequest.withModelDefaults(
     defaults: AiModelConfiguration.DefaultParameters,
 ): AiRuntimeRequest =
     copy(

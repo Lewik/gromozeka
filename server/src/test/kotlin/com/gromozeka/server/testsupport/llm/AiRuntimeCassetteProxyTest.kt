@@ -8,6 +8,8 @@ import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -123,6 +125,50 @@ class AiRuntimeCassetteProxyTest {
             assertEquals(1, backend.callCount)
             assertEquals(
                 1,
+                root.resolve("OPENAI")
+                    .resolve("fake_model_1")
+                    .resolve("call")
+                    .listDirectoryEntries("*.json")
+                    .size,
+            )
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun modelDefaultsReachBackendAndCassetteKey() = runBlocking {
+        val root = Files.createTempDirectory("llm-cassettes-test-")
+        try {
+            val backend = CountingBackend()
+            val settings = AiRuntimeCassetteSettings(
+                mode = AiRuntimeCassetteMode.RECORD_MISSING,
+                rootDirectory = root,
+            )
+            val request = requestWithDynamicIds("111", "Compare reasoning efforts.")
+
+            cassetteProvider(
+                backends = listOf(backend),
+                settings = settings,
+                defaultParameters = AiModelConfiguration.DefaultParameters(
+                    reasoning = AiReasoningConfig(effort = AiReasoningEffort.LOW),
+                ),
+            ).getRuntime(runtimeSelection("fake/model:1"), null).call(request)
+            cassetteProvider(
+                backends = listOf(backend),
+                settings = settings,
+                defaultParameters = AiModelConfiguration.DefaultParameters(
+                    reasoning = AiReasoningConfig(effort = AiReasoningEffort.MEDIUM),
+                ),
+            ).getRuntime(runtimeSelection("fake/model:1"), null).call(request)
+
+            assertEquals(2, backend.callCount)
+            assertEquals(
+                listOf(AiReasoningEffort.LOW, AiReasoningEffort.MEDIUM),
+                backend.requests.map { it.options.reasoning?.effort },
+            )
+            assertEquals(
+                2,
                 root.resolve("OPENAI")
                     .resolve("fake_model_1")
                     .resolve("call")
@@ -620,14 +666,18 @@ class AiRuntimeCassetteProxyTest {
         backends: List<AiRuntimeBackend>,
         settings: AiRuntimeCassetteSettings,
         modelNames: List<String> = listOf("fake/model:1"),
+        defaultParameters: AiModelConfiguration.DefaultParameters = AiModelConfiguration.DefaultParameters(),
     ): CassetteAiRuntimeProvider =
         CassetteAiRuntimeProvider(
             backends = backends,
-            userProfile = testUserProfile(modelNames),
+            userProfile = testUserProfile(modelNames, defaultParameters),
             settings = settings,
         )
 
-    private fun testUserProfile(modelNames: List<String>): UserProfile {
+    private fun testUserProfile(
+        modelNames: List<String>,
+        defaultParameters: AiModelConfiguration.DefaultParameters = AiModelConfiguration.DefaultParameters(),
+    ): UserProfile {
         val connectionId = AiConnection.Id("test-openai")
         val modelConfigurations = modelNames.distinct().map { modelName ->
             AiModelConfiguration(
@@ -635,6 +685,7 @@ class AiRuntimeCassetteProxyTest {
                 connectionId = connectionId,
                 providerModelId = modelName,
                 displayName = modelName,
+                defaultParameters = defaultParameters,
             )
         }
         val modelSpecs = modelNames.distinct().map { modelName ->
@@ -676,6 +727,7 @@ class AiRuntimeCassetteProxyTest {
 
     private class CountingBackend : AiRuntimeBackend {
         var callCount: Int = 0
+        val requests = mutableListOf<AiRuntimeRequest>()
 
         override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
 
@@ -688,6 +740,7 @@ class AiRuntimeCassetteProxyTest {
 
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
                 callCount += 1
+                requests += request
                 return response("answer-$callCount")
             }
 

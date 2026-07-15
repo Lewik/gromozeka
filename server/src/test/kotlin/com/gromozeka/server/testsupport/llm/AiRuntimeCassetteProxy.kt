@@ -21,6 +21,7 @@ import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
+import com.gromozeka.infrastructure.ai.runtime.ModelDefaultAiRuntime
 import com.gromozeka.shared.utils.sha256
 import klog.KLoggers
 import kotlinx.coroutines.flow.Flow
@@ -65,16 +66,22 @@ internal class CassetteAiRuntimeProvider(
         val (connection, modelConfiguration) = resolveRuntime(selection)
         val backend = backends.firstOrNull { it.supports(connection.kind) }
             ?: error("No AI runtime backend registered for connection kind ${connection.kind}")
-        val runtime = backend.createRuntime(connection, modelConfiguration, projectPath)
-        if (settings.mode == AiRuntimeCassetteMode.OFF) return runtime
-
-        return CassetteAiRuntime(
+        val backendRuntime = backend.createRuntime(connection, modelConfiguration, projectPath)
+        val runtime = if (settings.mode == AiRuntimeCassetteMode.OFF) {
+            backendRuntime
+        } else {
+            CassetteAiRuntime(
+                delegate = backendRuntime,
+                store = AiRuntimeCassetteStore(settings.rootDirectory),
+                provider = connection.kind.provider.name,
+                modelName = modelConfiguration.providerModelId,
+                projectPath = projectPath,
+                mode = settings.mode,
+            )
+        }
+        return ModelDefaultAiRuntime(
             delegate = runtime,
-            store = AiRuntimeCassetteStore(settings.rootDirectory),
-            provider = connection.kind.provider.name,
-            modelName = modelConfiguration.providerModelId,
-            projectPath = projectPath,
-            mode = settings.mode,
+            defaults = modelConfiguration.defaultParameters,
         )
     }
 
