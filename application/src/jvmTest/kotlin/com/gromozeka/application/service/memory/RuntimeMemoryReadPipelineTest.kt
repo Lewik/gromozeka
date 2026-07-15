@@ -256,6 +256,57 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     @Test
+    fun selectedSourceDoesNotRestoreTypedItemsThatBypassedSelectorCandidates() = runBlocking {
+        val source = source(
+            id = "source-shared-document",
+            text = "One large document contains many independent topics.",
+        )
+        val claims = (1..60).map { index ->
+            claim(
+                id = "claim-shared-document-$index",
+                sourceId = source.id,
+                text = "Independent fact $index from the shared document.",
+            )
+        }
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                claims = claims,
+            )
+        )
+        val selector = CapturingSourceOnlySelector()
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1, sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need one source and its relevant typed candidates.",
+                            query = "shared document fact",
+                            topK = 1,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+            selector = selector,
+        )
+
+        val result = pipeline.read(readRequest("Which shared document facts are relevant?"))
+        val retrievedClaimIds = result.retrievedHits
+            .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
+            .mapTo(mutableSetOf()) { it.claim.id.value }
+
+        assertTrue(retrievedClaimIds.isNotEmpty())
+        assertTrue(selector.candidateClaimIds.containsAll(retrievedClaimIds))
+    }
+
+    @Test
     fun completeSetKeepsUnselectedTypedCandidatesFromIndependentSources() = runBlocking {
         val earlierSource = source(
             id = "source-earlier-event",
@@ -698,6 +749,18 @@ class RuntimeMemoryReadPipelineTest {
                 selectedHits = request.candidateHits.filterIsInstance<MemoryStore.SearchHit.SourceHit>(),
                 summary = "Test selector kept only raw sources.",
             )
+    }
+
+    private class CapturingSourceOnlySelector : MemoryReadSelector {
+        var candidateClaimIds: Set<String> = emptySet()
+            private set
+
+        override suspend fun select(request: MemoryReadSelectionRequest): MemoryReadSelectionResult {
+            candidateClaimIds = request.candidateHits
+                .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
+                .mapTo(mutableSetOf()) { it.claim.id.value }
+            return SourceOnlySelector.select(request)
+        }
     }
 
     private class FixedRefsSelector(
