@@ -36,7 +36,7 @@ internal object MemoryReadSelectorCandidateRenderer {
                 val candidate = hit.toCandidateView(snapshot, query).copy(
                     safetyCandidate = hit.toSelectorItemRef() in safetyRefs,
                 )
-                "${index + 1}. ${json.encodeToString(candidate)}"
+                "[$index] ${json.encodeToString(candidate)}"
             }.joinToString("\n")
         }
 

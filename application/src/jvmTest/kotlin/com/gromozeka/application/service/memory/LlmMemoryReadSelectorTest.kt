@@ -37,6 +37,64 @@ import kotlinx.serialization.json.JsonPrimitive
 
 class LlmMemoryReadSelectorTest {
     @Test
+    fun repairsOutOfRangeCandidateIndex() = runBlocking {
+        val calls = AtomicInteger()
+        val runtime = object : AiRuntime {
+            override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+            override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+                val candidateIndex = if (calls.incrementAndGet() == 1) 7 else 0
+                return AiRuntimeResponse(
+                    messages = listOf(
+                        AiAssistantMessage(
+                            content = listOf(
+                                Conversation.Message.ContentItem.AssistantMessage(
+                                    Conversation.Message.StructuredText(
+                                        """
+                                        {
+                                          "selected_candidates": [{"candidate_index":$candidateIndex,"reason":"direct match"}],
+                                          "rejected_safety_candidate_indices": [],
+                                          "summary": "selected direct match"
+                                        }
+                                        """.trimIndent()
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+
+            override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
+        }
+        val selectedNote = note(
+            id = "selected-note",
+            title = "Selected note",
+            summary = "The only candidate.",
+        )
+
+        val result = LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("What is the selected note?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(notes = 1),
+                ),
+                candidateHits = listOf(MemoryStore.SearchHit.NoteHit(selectedNote, score = 1.0)),
+                snapshot = MemoryNamespaceSnapshot(notes = listOf(selectedNote)),
+            )
+        )
+
+        assertEquals(2, calls.get())
+        assertEquals(listOf("selected-note"), result.selectedHits.map { (it as MemoryStore.SearchHit.NoteHit).note.id.value })
+    }
+
+    @Test
     fun selectsModerateCandidateSetInOneGlobalPass() = runBlocking {
         val notes = (1..33).map { index ->
             note(
@@ -1164,14 +1222,15 @@ class LlmMemoryReadSelectorTest {
                 }
             }
             prompts += prompt
-            val candidateRefs = Regex("""(?m)^\s*\d+\. (\{.*})$""")
+            val candidateRefs = Regex("""(?m)^\s*\[(\d+)] (\{.*})$""")
                 .findAll(prompt)
                 .mapNotNull { match ->
-                    val candidateJson = match.groupValues[1]
+                    val candidateJson = match.groupValues[2]
                     Regex(""""type":"([^"]+)","id":"([^"]+)"""")
                         .find(candidateJson)
                         ?.let { ref ->
                             CandidateRef(
+                                index = match.groupValues[1].toInt(),
                                 type = ref.groupValues[1],
                                 id = ref.groupValues[2],
                                 safetyCandidate = candidateJson.contains("\"safety_candidate\":true"),
@@ -1200,8 +1259,8 @@ class LlmMemoryReadSelectorTest {
                                 Conversation.Message.StructuredText(
                                     """
                                     {
-                                      "selected_items": [${selected.mapIndexed { index, ref -> """{"item_type":"${ref.type}","item_id":"${ref.id}","rank":${index + 1},"relevance":"direct_answer","reason":"selected"}""" }.joinToString(",")}],
-                                      "rejected_safety_items": [${rejectedSafety.joinToString(",") { ref -> """{"item_type":"${ref.type}","item_id":"${ref.id}"}""" }}],
+                                      "selected_candidates": [${selected.joinToString(",") { ref -> """{"candidate_index":${ref.index},"reason":"selected"}""" }}],
+                                      "rejected_safety_candidate_indices": [${rejectedSafety.joinToString(",") { it.index.toString() }}],
                                       "summary": "selected ${selected.size}"
                                     }
                                     """.trimIndent()
@@ -1216,6 +1275,7 @@ class LlmMemoryReadSelectorTest {
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
 
         private data class CandidateRef(
+            val index: Int,
             val type: String,
             val id: String,
             val safetyCandidate: Boolean,
@@ -1250,8 +1310,8 @@ class LlmMemoryReadSelectorTest {
                                 Conversation.Message.StructuredText(
                                     """
                                     {
-                                      "selected_items": [],
-                                      "rejected_safety_items": [],
+                                      "selected_candidates": [],
+                                      "rejected_safety_candidate_indices": [],
                                       "summary": "No explicit selections."
                                     }
                                     """.trimIndent()

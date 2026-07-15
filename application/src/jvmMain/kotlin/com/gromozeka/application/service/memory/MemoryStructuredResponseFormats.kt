@@ -453,21 +453,13 @@ internal object MemoryStructuredResponseFormats {
         name = "memory_read_selector",
         description = "Select and rerank retrieved memory candidates for the current target request.",
         schema = objectSchema(
-            "selected_items" to arraySchema(
+            "selected_candidates" to arraySchema(
                 objectSchema(
-                    "item_type" to stringEnumSchema("source", "entity", "claim", "note", "action_item", "profile", "episode", "run"),
-                    "item_id" to stringSchema(),
-                    "rank" to integerSchema(),
-                    "relevance" to stringEnumSchema("direct_answer", "supporting_context", "required_evidence"),
+                    "candidate_index" to integerSchema(),
                     "reason" to stringSchema(),
                 )
             ),
-            "rejected_safety_items" to arraySchema(
-                objectSchema(
-                    "item_type" to stringEnumSchema("source", "entity", "claim", "note", "action_item", "profile", "episode", "run"),
-                    "item_id" to stringSchema(),
-                )
-            ),
+            "rejected_safety_candidate_indices" to arraySchema(integerSchema()),
             "summary" to stringSchema(),
         ),
     )

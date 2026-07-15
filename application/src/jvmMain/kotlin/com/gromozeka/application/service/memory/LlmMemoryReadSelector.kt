@@ -376,7 +376,6 @@ class LlmMemoryReadSelector(
                 "chars=${renderedCandidates.length}$logSuffix preview=${renderedCandidates.oneLineForReadSelectorLog(8_000)}"
         }
 
-        val hitsByRef = request.candidateHits.associateBy { it.toReadSelectorItemRef() }
         val runtimeConversationKey = "memory:${request.readRequest.threadContext.conversationId.value}" +
             runtimeConversationSuffix?.let { ":$it" }.orEmpty()
         val result = runtime.callMemoryStructuredStage(
@@ -398,6 +397,7 @@ class LlmMemoryReadSelector(
             stageName = "read-selector-reranker",
             logContext = "namespace=${request.readRequest.namespace.value}$logSuffix",
             parse = { json.decodeFromString<ReadSelectorResponse>(it) },
+            validate = { it.validate(request.candidateHits.size) },
         )
 
         log.info {
@@ -406,16 +406,15 @@ class LlmMemoryReadSelector(
         }
 
         val selectorResponse = result.value
-        val selectedRefs = selectorResponse.selectedItems
-            .sortedWith(compareBy<SelectedItem> { it.rank.coerceAtLeast(0) }.thenBy { it.itemId })
-            .mapNotNull { it.toItemRef() }
-            .distinct()
-        val selectedHits = selectedRefs.mapNotNull(hitsByRef::get)
-        val rejectedSafetyRefs = selectorResponse.rejectedSafetyItems
-            .mapNotNull { it.toItemRef() }
+        val selectedHits = selectorResponse.selectedCandidates
+            .map { request.candidateHits[it.candidateIndex] }
+            .distinctBy { it.toReadSelectorItemRef() }
+        val selectedRefs = selectedHits.map { it.toReadSelectorItemRef() }
+        val rejectedSafetyRefs = selectorResponse.rejectedSafetyCandidateIndices
+            .map { request.candidateHits[it].toReadSelectorItemRef() }
             .filterTo(mutableSetOf()) { it in safetyRefs && it !in selectedRefs }
         val decisions = selectorResponse.toDecisions(
-            candidateRefs = hitsByRef.keys,
+            candidateHits = request.candidateHits,
             safetyRefs = safetyRefs,
         )
         val implicitRejectedCount = decisions.count { !it.selected } - rejectedSafetyRefs.size
@@ -449,7 +448,7 @@ class LlmMemoryReadSelector(
         }
 
         return """
-        Memory stage: ReadSelectorReranker v2.
+        Memory stage: ReadSelectorReranker v3.
         Namespace: ${request.readRequest.namespace.value}
         Pass mode: ${passMode.promptLabel}
 
@@ -508,10 +507,11 @@ class LlmMemoryReadSelector(
         - For questions about an initial, original, previous, older, or before/after state, non-current typed memory can be the direct historical answer. A direct SUPERSEDED, RETRACTED, EXPIRED, or otherwise non-current typed claim for the same semantic slot is higher priority than the active replacement for the historical value being asked. Select both the older candidate and the current replacement when the answer depends on comparing old vs current state; do not reject the older candidate merely because the active replacement answers the current value.
         - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.
         - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.
-        - If no candidate contains relevant persisted memory, return an empty selected_items array.
-        - Return retained candidates in selected_items. All ordinary candidates omitted from selected_items are rejected implicitly.
-        - A candidate with safety_candidate=true is retained by deterministic safety unless you either select it or explicitly list it in rejected_safety_items.
-        - List only rejected safety candidates in rejected_safety_items. Do not list ordinary rejected candidates and do not explain individual safety rejections.
+        - Candidate indices are zero-based and shown in square brackets before each candidate JSON record.
+        - If no candidate contains relevant persisted memory, return an empty selected_candidates array.
+        - Return retained candidates in selected_candidates, ordered from most to least useful. All ordinary candidates omitted from selected_candidates are rejected implicitly.
+        - A candidate with safety_candidate=true is retained by deterministic safety unless you either select it or explicitly list its index in rejected_safety_candidate_indices.
+        - List only rejected safety candidate indices in rejected_safety_candidate_indices. Do not list ordinary rejected candidates and do not explain individual safety rejections.
 
         Planned context mode: ${request.plan.contextMode.name}
         Planned coverage mode: ${request.plan.coverageMode.name}
@@ -525,21 +525,13 @@ class LlmMemoryReadSelector(
 
         Return JSON:
         {
-          "selected_items": [
+          "selected_candidates": [
             {
-              "item_type": "claim | note | action_item | profile | source | episode | entity | run",
-              "item_id": "exact candidate id",
-              "rank": 1,
-              "relevance": "direct_answer | supporting_context | required_evidence",
+              "candidate_index": 0,
               "reason": "short reason"
             }
           ],
-          "rejected_safety_items": [
-            {
-              "item_type": "claim | note | action_item | profile | source | episode | entity | run",
-              "item_id": "exact candidate id"
-            }
-          ],
+          "rejected_safety_candidate_indices": [1],
           "summary": "one short sentence"
         }
     """.trimIndent()
@@ -547,29 +539,50 @@ class LlmMemoryReadSelector(
 
     @Serializable
     private data class ReadSelectorResponse(
-        @SerialName("selected_items")
-        val selectedItems: List<SelectedItem> = emptyList(),
-        @SerialName("rejected_safety_items")
-        val rejectedSafetyItems: List<RejectedItem> = emptyList(),
+        @SerialName("selected_candidates")
+        val selectedCandidates: List<SelectedCandidate> = emptyList(),
+        @SerialName("rejected_safety_candidate_indices")
+        val rejectedSafetyCandidateIndices: List<Int> = emptyList(),
         val summary: String = "",
     ) {
+        fun validate(candidateCount: Int) {
+            val validIndices = 0 until candidateCount
+            val selectedIndices = selectedCandidates.map { it.candidateIndex }
+            require(selectedIndices.all { it in validIndices }) {
+                "selected candidate index must be in 0 until $candidateCount: $selectedIndices"
+            }
+            require(rejectedSafetyCandidateIndices.all { it in validIndices }) {
+                "rejected safety candidate index must be in 0 until $candidateCount: $rejectedSafetyCandidateIndices"
+            }
+            require(selectedIndices.distinct().size == selectedIndices.size) {
+                "selected candidate indices must be unique: $selectedIndices"
+            }
+            require(rejectedSafetyCandidateIndices.distinct().size == rejectedSafetyCandidateIndices.size) {
+                "rejected safety candidate indices must be unique: $rejectedSafetyCandidateIndices"
+            }
+            require(selectedIndices.none { it in rejectedSafetyCandidateIndices }) {
+                "candidate cannot be both selected and rejected: $selectedIndices / $rejectedSafetyCandidateIndices"
+            }
+        }
+
         fun toDecisions(
-            candidateRefs: Set<MemoryItemRef>,
+            candidateHits: List<MemoryStore.SearchHit>,
             safetyRefs: Set<MemoryItemRef>,
         ): List<MemoryReadSelectionResult.Decision> {
-            val selectedDecisions = selectedItems.mapNotNull { item ->
-                item.toItemRef()?.takeIf { it in candidateRefs }?.let { ref ->
+            val candidateRefs = candidateHits.map { it.toReadSelectorItemRef() }.toSet()
+            val selectedDecisions = selectedCandidates.mapIndexed { rank, item ->
+                candidateHits[item.candidateIndex].toReadSelectorItemRef().let { ref ->
                     MemoryReadSelectionResult.Decision(
                         ref = ref,
                         selected = true,
-                        rank = item.rank,
+                        rank = rank + 1,
                         reason = item.reason,
                     )
                 }
             }.distinctBy { it.ref }
             val selectedRefs = selectedDecisions.mapTo(mutableSetOf()) { it.ref }
-            val explicitlyRejectedSafetyRefs = rejectedSafetyItems
-                .mapNotNull { it.toItemRef() }
+            val explicitlyRejectedSafetyRefs = rejectedSafetyCandidateIndices
+                .map { candidateHits[it].toReadSelectorItemRef() }
                 .filterTo(mutableSetOf()) { it in safetyRefs && it !in selectedRefs }
             val rejectedDecisions = candidateRefs
                 .filter { ref ->
@@ -594,29 +607,11 @@ class LlmMemoryReadSelector(
     }
 
     @Serializable
-    private data class SelectedItem(
-        @SerialName("item_type")
-        val itemType: String,
-        @SerialName("item_id")
-        val itemId: String,
-        val rank: Int = 0,
-        val relevance: String = "",
+    private data class SelectedCandidate(
+        @SerialName("candidate_index")
+        val candidateIndex: Int,
         val reason: String = "",
-    ) {
-        fun toItemRef(): MemoryItemRef? =
-            itemType.toReadSelectorItemType()?.let { MemoryItemRef(it, itemId) }
-    }
-
-    @Serializable
-    private data class RejectedItem(
-        @SerialName("item_type")
-        val itemType: String,
-        @SerialName("item_id")
-        val itemId: String,
-    ) {
-        fun toItemRef(): MemoryItemRef? =
-            itemType.toReadSelectorItemType()?.let { MemoryItemRef(it, itemId) }
-    }
+    )
 }
 
 private enum class ReadSelectorPassMode(
@@ -635,7 +630,7 @@ private enum class ReadSelectorPassMode(
         - This is an intermediate pass over one candidate batch. A later global selector will rerank survivors from all batches.
         - When uncertain, select the candidate so the final pass can compare it globally.
         - Reject only candidates that are clearly irrelevant, stale compared to stronger active memory, or pure lexical noise. Do not treat an ACTIVE pending obligation as stale solely because its source is old; completion, cancellation, supersession, or a stronger contradictory active memory must be explicit.
-        - Aim for at most ${plan.readSelectorIntermediateLlmSurvivorLimit()} selected_items. Exceed that when many distinct dated facts or complete-set candidates are required together.
+        - Aim for at most ${plan.readSelectorIntermediateLlmSurvivorLimit()} selected_candidates. Exceed that when many distinct dated facts or complete-set candidates are required together.
         """.trimIndent()
     },
     FINAL_SELECTION(
@@ -723,19 +718,6 @@ private fun MemoryStore.SearchHit.toReadSelectorItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
-    }
-
-private fun String.toReadSelectorItemType(): MemoryItemRef.Type? =
-    when (trim().lowercase()) {
-        "source" -> MemoryItemRef.Type.SOURCE
-        "entity" -> MemoryItemRef.Type.ENTITY
-        "claim" -> MemoryItemRef.Type.CLAIM
-        "note" -> MemoryItemRef.Type.NOTE
-        "action_item", "actionItem" -> MemoryItemRef.Type.ACTION_ITEM
-        "profile" -> MemoryItemRef.Type.PROFILE
-        "episode" -> MemoryItemRef.Type.EPISODE
-        "run" -> MemoryItemRef.Type.RUN
-        else -> null
     }
 
 private fun String.limitForReadSelectorPrompt(maxChars: Int): String {
