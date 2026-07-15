@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -211,6 +212,39 @@ class LlmMemoryReadSelectorTest {
         assertEquals(4, result.selectorTrace.stages.size)
         assertEquals(listOf(20, 20, 5), result.selectorTrace.stages.dropLast(1).map { it.inputCount })
         assertEquals(MemoryReadSelectorTrace.Mode.FINAL_SELECTION, result.selectorTrace.stages.last().mode)
+    }
+
+    @Test
+    fun keepsSelectorPolicyInStableSystemPrefix() = runBlocking {
+        val selectedNote = note(
+            id = "stable-prefix-note",
+            title = "Stable prefix",
+            summary = "Selector policy should precede request-specific memory data.",
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf(selectedNote.id.value))
+
+        LlmMemoryReadSelector(runtime = runtime).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("Which stable-prefix note matters?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(notes = 1),
+                ),
+                candidateHits = listOf(MemoryStore.SearchHit.NoteHit(selectedNote, score = 1.0)),
+                snapshot = MemoryNamespaceSnapshot(notes = listOf(selectedNote)),
+            )
+        )
+
+        val systemPrompt = runtime.systemPrompts.single()
+        assertTrue(systemPrompt.contains("ReadSelectorReranker v4"), systemPrompt)
+        assertTrue(systemPrompt.contains("AGGREGATE_VALUE and AGGREGATE_DELTA claims are numeric operands"), systemPrompt)
+        assertFalse(systemPrompt.contains("Which stable-prefix note matters?"), systemPrompt)
+        assertFalse(systemPrompt.contains(selectedNote.id.value), systemPrompt)
+
+        val taskPrompt = runtime.taskPrompts.single()
+        assertTrue(taskPrompt.contains("Which stable-prefix note matters?"), taskPrompt)
+        assertTrue(taskPrompt.contains(selectedNote.id.value), taskPrompt)
     }
 
     @Test
@@ -1161,10 +1195,12 @@ class LlmMemoryReadSelectorTest {
         val candidateCounts = mutableListOf<Int>()
         val finalCandidateIds = mutableListOf<List<String>>()
         val prompts = mutableListOf<String>()
+        val systemPrompts = mutableListOf<String>()
+        val taskPrompts = mutableListOf<String>()
         override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
 
         override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
-            val prompt = request.messages.joinToString("\n") { message ->
+            val taskPrompt = request.messages.joinToString("\n") { message ->
                 message.content.joinToString("\n") { item ->
                     when (item) {
                         is Conversation.Message.ContentItem.UserMessage -> item.text
@@ -1173,6 +1209,9 @@ class LlmMemoryReadSelectorTest {
                     }
                 }
             }
+            systemPrompts += request.systemPrompts.single()
+            taskPrompts += taskPrompt
+            val prompt = (request.systemPrompts + taskPrompt).joinToString("\n")
             prompts += prompt
             val candidateRefs = Regex("""(?m)^\s*\[(\d+)] (\{.*})$""")
                 .findAll(prompt)

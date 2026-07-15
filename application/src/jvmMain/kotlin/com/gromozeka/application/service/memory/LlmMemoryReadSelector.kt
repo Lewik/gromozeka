@@ -357,9 +357,10 @@ class LlmMemoryReadSelector(
             query = request.sourceCandidateQuery(),
             safetyRefs = safetyRefs,
         )
+        val selectorPrompt = buildSelectorPrompt(request, renderedCandidates, passMode)
         val stageMessages = request.readRequest.toMemoryStageMessages(
             stageName = "read-selector-reranker",
-            taskPrompt = buildSelectorPrompt(request, renderedCandidates, passMode),
+            taskPrompt = selectorPrompt.taskPrompt,
         )
         val logSuffix = batchLabel?.let { " $it" }.orEmpty()
 
@@ -377,7 +378,7 @@ class LlmMemoryReadSelector(
             runtimeConversationSuffix?.let { ":$it" }.orEmpty()
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
-                systemPrompts = emptyList(),
+                systemPrompts = listOf(selectorPrompt.systemPrompt),
                 messages = stageMessages,
                 tools = emptyList(),
                 options = AiRuntimeOptions(
@@ -437,24 +438,19 @@ class LlmMemoryReadSelector(
         request: MemoryReadSelectionRequest,
         renderedCandidates: String,
         passMode: ReadSelectorPassMode,
-    ): String {
+    ): ReadSelectorPrompt {
         val selectionRule = if (request.plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
             "Select the complete relevant set: every distinct candidate that may represent a separate matching item, event, assignment, source, or ordered fact needed to avoid an incomplete answer."
         } else {
             passMode.selectionRule
         }
 
-        return """
-        Memory stage: ReadSelectorReranker v3.
-        Namespace: ${request.readRequest.namespace.value}
-        Pass mode: ${passMode.promptLabel}
+        return ReadSelectorPrompt(
+            systemPrompt = """
+        Memory stage: ReadSelectorReranker v4.
+        This stable system policy applies to every read-selector pass. The task message supplies the pass mode, target, plan, and candidate records.
 
-        Goal:
-        ${passMode.goalText}
-
-        Selection rules:
-        ${passMode.extraRules(request.plan)}
-        - $selectionRule
+        Common selection rules:
         - Candidate memory items are JSON records. Read lifecycle_state, predicate_semantic_kinds, supports, supersedes, and overridden_by before choosing.
         - supports, supersedes, and overridden_by are compact relationship metadata. A referenced item can be selected only when it is also present as a top-level candidate.
         - Reject candidates that only have vague lexical overlap.
@@ -514,6 +510,19 @@ class LlmMemoryReadSelector(
         - A candidate with safety_candidate=true is retained by deterministic safety unless you either select it or explicitly list its index in rejected_safety_candidate_indices.
         - List only rejected safety candidate indices in rejected_safety_candidate_indices. Do not list ordinary rejected candidates and do not explain individual safety rejections.
 
+        """.trimIndent(),
+            taskPrompt = """
+        Execute ReadSelectorReranker v4 for this request.
+        Namespace: ${request.readRequest.namespace.value}
+        Pass mode: ${passMode.promptLabel}
+
+        Goal:
+        ${passMode.goalText}
+
+        Mode-specific selection rules:
+        ${passMode.extraRules(request.plan)}
+        - $selectionRule
+
         Planned context mode: ${request.plan.contextMode.name}
         Planned coverage mode: ${request.plan.coverageMode.name}
         Require evidence fallback: ${request.plan.requireEvidenceFallback}
@@ -535,8 +544,14 @@ class LlmMemoryReadSelector(
           "rejected_safety_candidate_indices": [1],
           "summary": "one short sentence"
         }
-    """.trimIndent()
+    """.trimIndent(),
+        )
     }
+
+    private data class ReadSelectorPrompt(
+        val systemPrompt: String,
+        val taskPrompt: String,
+    )
 
     @Serializable
     private data class ReadSelectorResponse(
