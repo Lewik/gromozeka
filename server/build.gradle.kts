@@ -138,6 +138,8 @@ tasks.withType<Test> {
     passSystemProperty("gromozeka.longmemeval.modelName")
     passSystemProperty("gromozeka.longmemeval.readSearchModelName")
     passSystemProperty("gromozeka.longmemeval.readSearchReasoningEffort")
+    passSystemProperty("gromozeka.longmemeval.readAnswerModelName")
+    passSystemProperty("gromozeka.longmemeval.readAnswerReasoningEffort")
     passSystemProperty("gromozeka.longmemeval.subscriptionConfig")
     passSystemProperty("gromozeka.longmemeval.websocketResponseTimeoutMs")
     passSystemProperty("gromozeka.longmemeval.websocketTransportTimeoutMs")

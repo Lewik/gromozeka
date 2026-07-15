@@ -148,12 +148,30 @@ class LongMemEvalMemorySmokeTest {
         val readSearchModelName = System.getProperty(READ_SEARCH_MODEL_NAME_PROPERTY)
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
-        val readSearchReasoningEffort = readSearchReasoningEffortFromSystemProperty()
+        val readSearchReasoningEffort = reasoningEffortFromSystemProperty(READ_SEARCH_REASONING_EFFORT_PROPERTY)
+        val readAnswerModelName = System.getProperty(READ_ANSWER_MODEL_NAME_PROPERTY)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+        val readAnswerReasoningEffort = reasoningEffortFromSystemProperty(READ_ANSWER_REASONING_EFFORT_PROPERTY)
         val postgresSchema = "longmemeval_${uuid7().replace("-", "_")}"
         val runId = "${Clock.System.now()}-$postgresSchema".sanitizePathSegment()
         val settings = Settings(
             userProfile = ServerTestHarness.openAiSubscriptionProfile(modelName)
-                .withReadSearchRuntime(readSearchModelName, readSearchReasoningEffort)
+                .withRuntimeOverride(
+                    idLabel = "read-search",
+                    purposes = setOf(
+                        AiRuntimeAssignment.Purpose.MEMORY_READ_PLANNER,
+                        AiRuntimeAssignment.Purpose.MEMORY_READ_SELECTOR,
+                    ),
+                    modelName = readSearchModelName,
+                    effort = readSearchReasoningEffort,
+                )
+                .withRuntimeOverride(
+                    idLabel = "read-answer",
+                    purposes = setOf(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
+                    modelName = readAnswerModelName,
+                    effort = readAnswerReasoningEffort,
+                )
                 .copy(
                     memorySettings = UserProfile.MemorySettings(
                         autoRemember = true,
@@ -207,6 +225,8 @@ class LongMemEvalMemorySmokeTest {
                 progressPath,
                 "suite_start model=$modelName readSearchModel=${readSearchModelName ?: "default"} " +
                     "readSearchReasoningEffort=${readSearchReasoningEffort?.name ?: "default"} " +
+                    "readAnswerModel=${readAnswerModelName ?: "default"} " +
+                    "readAnswerReasoningEffort=${readAnswerReasoningEffort?.name ?: "default"} " +
                     "schema=$postgresSchema data=$dataFile cases=${entries.size} namespace=$LONGMEMEVAL_NAMESPACE " +
                     "selection=${selectionProperties.renderForProgress()}"
             )
@@ -271,7 +291,19 @@ class LongMemEvalMemorySmokeTest {
                 result
             }
 
-            summaryPath.writeText(renderSummary(dataFile, modelName, postgresSchema, officialHypothesesPath, caseResults))
+            summaryPath.writeText(
+                renderSummary(
+                    dataFile = dataFile,
+                    modelName = modelName,
+                    readSearchModelName = readSearchModelName,
+                    readSearchReasoningEffort = readSearchReasoningEffort,
+                    readAnswerModelName = readAnswerModelName,
+                    readAnswerReasoningEffort = readAnswerReasoningEffort,
+                    postgresSchema = postgresSchema,
+                    officialHypothesesPath = officialHypothesesPath,
+                    results = caseResults,
+                )
+            )
             AiRuntimeCassetteUsageReporter.writeReportIfEnabled(
                 settings = cassetteSettings,
                 artifactDirectory = artifactDirectory,
@@ -339,21 +371,23 @@ class LongMemEvalMemorySmokeTest {
         }
     }
 
-    private fun readSearchReasoningEffortFromSystemProperty(): AiReasoningEffort? {
-        val value = System.getProperty(READ_SEARCH_REASONING_EFFORT_PROPERTY)
+    private fun reasoningEffortFromSystemProperty(propertyName: String): AiReasoningEffort? {
+        val value = System.getProperty(propertyName)
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: return null
         return runCatching { AiReasoningEffort.valueOf(value.uppercase()) }
             .getOrElse {
                 error(
-                    "Invalid $READ_SEARCH_REASONING_EFFORT_PROPERTY=$value. Expected one of " +
+                    "Invalid $propertyName=$value. Expected one of " +
                         AiReasoningEffort.entries.joinToString { effort -> effort.name.lowercase() }
                 )
             }
     }
 
-    private fun UserProfile.withReadSearchRuntime(
+    private fun UserProfile.withRuntimeOverride(
+        idLabel: String,
+        purposes: Set<AiRuntimeAssignment.Purpose>,
         modelName: String?,
         effort: AiReasoningEffort?,
     ): UserProfile {
@@ -369,25 +403,21 @@ class LongMemEvalMemorySmokeTest {
             .lowercase()
             .replace(Regex("[^a-z0-9._-]"), "-")
         val readConfiguration = baseConfiguration.copy(
-            id = AiModelConfiguration.Id("${baseConfiguration.id.value}-longmemeval-read-$configurationSuffix-$readEffortName"),
+            id = AiModelConfiguration.Id("${baseConfiguration.id.value}-longmemeval-$idLabel-$configurationSuffix-$readEffortName"),
             providerModelId = readModelName,
-            displayName = "LongMemEval read $readModelName $readEffortName",
+            displayName = "LongMemEval $idLabel $readModelName $readEffortName",
             defaultParameters = baseConfiguration.defaultParameters.copy(
                 reasoning = effort?.let { AiReasoningConfig(effort = it) }
                     ?: baseConfiguration.defaultParameters.reasoning,
             ),
         )
         val readSelection = AiRuntimeSelection(readConfiguration.id)
-        val readPurposes = setOf(
-            AiRuntimeAssignment.Purpose.MEMORY_READ_PLANNER,
-            AiRuntimeAssignment.Purpose.MEMORY_READ_SELECTOR,
-        )
 
         return copy(
             aiSettings = aiSettings.copy(
                 modelConfigurations = aiSettings.modelConfigurations + readConfiguration,
-                runtimeAssignments = aiSettings.runtimeAssignments.filterNot { it.purpose in readPurposes } +
-                    readPurposes.map { purpose -> AiRuntimeAssignment(purpose, readSelection) },
+                runtimeAssignments = aiSettings.runtimeAssignments.filterNot { it.purpose in purposes } +
+                    purposes.map { purpose -> AiRuntimeAssignment(purpose, readSelection) },
             )
         )
     }
@@ -1138,6 +1168,10 @@ class LongMemEvalMemorySmokeTest {
     private fun renderSummary(
         dataFile: Path,
         modelName: String,
+        readSearchModelName: String?,
+        readSearchReasoningEffort: AiReasoningEffort?,
+        readAnswerModelName: String?,
+        readAnswerReasoningEffort: AiReasoningEffort?,
         postgresSchema: String,
         officialHypothesesPath: Path,
         results: List<LongMemEvalSmokeCaseResult>,
@@ -1151,7 +1185,11 @@ class LongMemEvalMemorySmokeTest {
         appendLine("status | ${if (results.all { it.memorySmokePassed } && completedRememberSessions == allRememberSessions) "PASS" else "FAIL"}")
         appendLine()
         appendLine("- data: `$dataFile`")
-        appendLine("- model: `$modelName`")
+        appendLine("- base model: `$modelName`")
+        appendLine("- read search model: `${readSearchModelName ?: "default"}`")
+        appendLine("- read search reasoning effort: `${readSearchReasoningEffort?.name?.lowercase() ?: "default"}`")
+        appendLine("- read answer model: `${readAnswerModelName ?: "default"}`")
+        appendLine("- read answer reasoning effort: `${readAnswerReasoningEffort?.name?.lowercase() ?: "default"}`")
         appendLine("- postgres schema: `$postgresSchema`")
         appendLine("- namespace prefix: `$LONGMEMEVAL_NAMESPACE`")
         appendLine("- official hypotheses: `$officialHypothesesPath`")
@@ -1558,6 +1596,8 @@ class LongMemEvalMemorySmokeTest {
         const val MODEL_NAME_PROPERTY = "gromozeka.longmemeval.modelName"
         const val READ_SEARCH_MODEL_NAME_PROPERTY = "gromozeka.longmemeval.readSearchModelName"
         const val READ_SEARCH_REASONING_EFFORT_PROPERTY = "gromozeka.longmemeval.readSearchReasoningEffort"
+        const val READ_ANSWER_MODEL_NAME_PROPERTY = "gromozeka.longmemeval.readAnswerModelName"
+        const val READ_ANSWER_REASONING_EFFORT_PROPERTY = "gromozeka.longmemeval.readAnswerReasoningEffort"
         const val SUBSCRIPTION_CONFIG_PROPERTY = "gromozeka.longmemeval.subscriptionConfig"
         const val WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.websocketResponseTimeoutMs"
         const val WEBSOCKET_TRANSPORT_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.websocketTransportTimeoutMs"
