@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,6 +35,7 @@ import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.presentation.services.PttEventHandler
+import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
@@ -60,7 +62,7 @@ fun SessionScreen(
     ttsQueueService: TtsQueue,
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
-    isRecording: Boolean = false,
+    pttState: PttState = PttState.IDLE,
     pttStatusMessage: String? = null,
 
     // Settings - moved to ChatApplication level, but we still need settings for UI
@@ -532,6 +534,8 @@ fun SessionScreen(
                     ConversationProgressStrip(
                         isWaitingForResponse = isWaitingForResponse,
                         executionPauseRequested = executionPauseRequested,
+                        pttState = pttState,
+                        pttStatusMessage = pttStatusMessage,
                         pendingMessages = pendingMessages,
                         toolExecutions = activeToolExecutions,
                         runtimeTrace = runtimeTrace,
@@ -552,10 +556,9 @@ fun SessionScreen(
                         },
                         coroutineScope = coroutineScope,
                         pttEventHandler = pttEventHandler,
-                        isRecording = isRecording,
+                        pttState = pttState,
                         showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
                         clientPlatform = clientPlatform,
-                        pttStatusMessage = pttStatusMessage,
                         contextPercentage = contextPercentage
                     )
 
@@ -746,6 +749,8 @@ fun SessionScreen(
 private fun ConversationProgressStrip(
     isWaitingForResponse: Boolean,
     executionPauseRequested: Boolean,
+    pttState: PttState,
+    pttStatusMessage: String?,
     pendingMessages: List<PendingUserMessage>,
     toolExecutions: List<ConversationRuntimeToolExecution>,
     runtimeTrace: List<ConversationRuntimeTraceEntry>,
@@ -755,12 +760,19 @@ private fun ConversationProgressStrip(
     onStop: () -> Unit,
     onInterrupt: () -> Unit,
 ) {
-    val isReady = !isWaitingForResponse && pendingMessages.isEmpty()
+    val voiceError = pttStatusMessage?.takeIf { it.isNotBlank() }
+    val isReady = !isWaitingForResponse &&
+        pendingMessages.isEmpty() &&
+        pttState == PttState.IDLE &&
+        voiceError == null
     val runningTools = toolExecutions
         .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
         .map { it.toolName }
         .distinct()
     val statusText = when {
+        voiceError != null -> voiceError
+        pttState == PttState.TRANSCRIBING -> "Расшифровываю голос…"
+        pttState == PttState.RECORDING -> "Идёт запись голоса. Отпустите кнопку, чтобы отправить."
         executionPauseRequested ->
             "Пауза запрошена. Агент остановится на ближайшей безопасной границе."
         runningTools.isNotEmpty() ->
@@ -776,17 +788,19 @@ private fun ConversationProgressStrip(
     }
     val traceText = runtimeTrace.lastOrNull()?.runtimeTraceText()
     val runtimeDetailsText = runtimeSnapshot?.runtimeDetailsText()
-    val containerColor = if (isReady) {
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    val containerColor = when {
+        voiceError != null -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f)
+        isReady -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
     }
-    val contentColor = if (isReady) {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+    val contentColor = when {
+        voiceError != null -> MaterialTheme.colorScheme.onErrorContainer
+        isReady -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val icon = when {
+        voiceError != null -> Icons.Default.ErrorOutline
+        pttState == PttState.RECORDING -> Icons.Default.FiberManualRecord
         isReady -> Icons.Default.CheckCircle
         pendingMessages.isEmpty() -> Icons.Default.HourglassTop
         else -> Icons.Default.PlaylistAddCheck
@@ -804,12 +818,25 @@ private fun ConversationProgressStrip(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isReady) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp)
-            )
+            if (pttState == PttState.TRANSCRIBING) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = when {
+                        voiceError != null -> MaterialTheme.colorScheme.error
+                        pttState == PttState.RECORDING -> MaterialTheme.colorScheme.error
+                        isReady -> MaterialTheme.colorScheme.secondary
+                        else -> MaterialTheme.colorScheme.primary
+                    },
+                    modifier = Modifier.size(16.dp)
+                )
+            }
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -820,7 +847,7 @@ private fun ConversationProgressStrip(
                     color = contentColor
                 )
                 val detailText = runtimeDetailsText?.takeIf { it.isNotBlank() } ?: traceText
-                if (!detailText.isNullOrBlank() && !isReady) {
+                if (!detailText.isNullOrBlank() && !isReady && pttState == PttState.IDLE && voiceError == null) {
                     Text(
                         text = detailText,
                         maxLines = 1,

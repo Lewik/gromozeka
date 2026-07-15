@@ -76,13 +76,19 @@ object NoOpSystemAudioMuteService : SystemAudioMuteService {
 }
 
 interface PttRecordingService {
-    val recordingState: StateFlow<Boolean>
+    val state: StateFlow<PttState>
     val statusMessage: StateFlow<String?>
 }
 
 class NoOpPttRecordingService : PttRecordingService {
-    override val recordingState: StateFlow<Boolean> = MutableStateFlow(false)
+    override val state: StateFlow<PttState> = MutableStateFlow(PttState.IDLE)
     override val statusMessage: StateFlow<String?> = MutableStateFlow(null)
+}
+
+enum class PttState {
+    IDLE,
+    RECORDING,
+    TRANSCRIBING,
 }
 
 enum class PTTEvent {

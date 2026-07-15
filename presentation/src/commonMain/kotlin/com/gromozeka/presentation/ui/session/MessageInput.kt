@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.gromozeka.presentation.services.PttEventHandler
+import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
@@ -39,10 +40,9 @@ fun MessageInput(
     onSendMessage: suspend (String) -> Unit,
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
-    isRecording: Boolean,
+    pttState: PttState,
     showPttButton: Boolean,
     clientPlatform: ClientPlatform,
-    pttStatusMessage: String? = null,
     contextPercentage: Int? = null,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -146,26 +146,35 @@ fun MessageInput(
                     modifier = Modifier
                         .zIndex(2f)
                         .fillMaxHeight()
-                        .advancedPttGestures(pttEventHandler, coroutineScope)
+                        .then(
+                            if (pttState == PttState.TRANSCRIBING) {
+                                Modifier
+                            } else {
+                                Modifier.advancedPttGestures(pttEventHandler, coroutineScope)
+                            }
+                        )
                         .testTag(UiTestTag.PttButton.value),
-                    tooltip = if (isRecording) LocalTranslation.current.recordingTooltip else LocalTranslation.current.pttButtonTooltip
+                    tooltip = when (pttState) {
+                        PttState.IDLE -> LocalTranslation.current.pttButtonTooltip
+                        PttState.RECORDING -> LocalTranslation.current.recordingTooltip
+                        PttState.TRANSCRIBING -> "Распознавание голоса"
+                    }
                 ) {
-                    Icon(
-                        imageVector = if (isRecording) Icons.Default.FiberManualRecord else Icons.Default.Mic,
-                        contentDescription = if (isRecording) LocalTranslation.current.recordingText else LocalTranslation.current.pushToTalkText,
-                        tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current
-                    )
+                    if (pttState == PttState.TRANSCRIBING) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        val isRecording = pttState == PttState.RECORDING
+                        Icon(
+                            imageVector = if (isRecording) Icons.Default.FiberManualRecord else Icons.Default.Mic,
+                            contentDescription = if (isRecording) LocalTranslation.current.recordingText else LocalTranslation.current.pushToTalkText,
+                            tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current
+                        )
+                    }
                 }
             }
-        }
-
-        pttStatusMessage?.takeIf { it.isNotBlank() }?.let { message ->
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = message,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
-            )
         }
     }
 }

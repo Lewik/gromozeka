@@ -407,7 +407,7 @@ class TabViewModel(
 
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
             if (submitPendingMessage(queuedMessage)) {
-                _pendingMessages.update { it + queuedMessage }
+                showPendingMessage(queuedMessage)
                 _uiState.update { it.copy(userInput = "") }
                 log.info {
                     "Queued user message for conversation $conversationId because previous request is still running"
@@ -528,7 +528,7 @@ class TabViewModel(
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
             scope.launch {
                 if (submitPendingMessage(pendingMessage)) {
-                    _pendingMessages.update { it + pendingMessage }
+                    showPendingMessage(pendingMessage)
                 }
             }
             return
@@ -579,6 +579,16 @@ class TabViewModel(
                 "Runtime queue request failed for conversation $conversationId: ${error.message}"
             }
         }.getOrDefault(false)
+
+    private fun showPendingMessage(pendingMessage: PendingUserMessage) {
+        _pendingMessages.update { messages ->
+            if (messages.any { it.id == pendingMessage.id }) {
+                messages
+            } else {
+                messages + pendingMessage
+            }
+        }
+    }
 
     private suspend fun PendingUserMessage.cancelRuntimeQueueIfNeeded() {
         conversationRuntimeService.cancelQueuedMessage(conversationId, userMessage.id)

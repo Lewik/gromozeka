@@ -26,11 +26,11 @@ class RemotePttController(
 ) : PttEventHandler, PttRecordingService {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
-    private val _recordingState = MutableStateFlow(false)
+    private val _state = MutableStateFlow(PttState.IDLE)
     private val _statusMessage = MutableStateFlow<String?>(null)
     private var recordingSession: ClientAudioRecordingSession? = null
 
-    override val recordingState: StateFlow<Boolean> = _recordingState
+    override val state: StateFlow<PttState> = _state
     override val statusMessage: StateFlow<String?> = _statusMessage
 
     override fun initialize() = Unit
@@ -51,47 +51,52 @@ class RemotePttController(
         val session = mutex.withLock {
             val current = recordingSession ?: return
             recordingSession = null
-            _recordingState.value = false
+            _state.value = PttState.TRANSCRIBING
+            _statusMessage.value = null
             current
         }
 
-        val recording = runCatching {
-            try {
-                session.stop()
-            } finally {
-                restoreSystemAudioAfterPtt()
+        val sessionId = uuid7()
+        val text = try {
+            val recording = runCatching {
+                try {
+                    session.stop()
+                } finally {
+                    restoreSystemAudioAfterPtt()
+                }
             }
-        }
-            .getOrElse { error ->
-                _statusMessage.value = "Не удалось записать голос: ${error.message}"
-                log.warn(error) { "PTT recording stop failed: ${error.message}" }
+                .getOrElse { error ->
+                    _statusMessage.value = "Не удалось записать голос: ${error.message}"
+                    log.warn(error) { "PTT recording stop failed: ${error.message}" }
+                    return
+                }
+
+            if (recording.byteSize == 0) {
+                _statusMessage.value = "Не удалось записать голос: аудио пустое"
+                log.info { "PTT recording ignored: empty audio" }
                 return
             }
 
-        if (recording.byteSize == 0) {
-            _statusMessage.value = "Не удалось записать голос: аудио пустое"
-            log.info { "PTT recording ignored: empty audio" }
-            return
-        }
-
-        val sessionId = uuid7()
-        log.info {
-            "PTT recording captured: session=$sessionId bytes=${recording.byteSize} format=${recording.format}"
-        }
-
-        val remoteRecording = recording.toRemoteRecording(sessionId)
-        val text = runCatching {
-            if (clientSideSpeechToTextService.isEnabled()) {
-                log.info { "PTT transcription using client-side speech-to-text: session=$sessionId" }
-                clientSideSpeechToTextService.transcribe(remoteRecording).trim()
-            } else {
-                log.info { "PTT transcription using remote speech-to-text: session=$sessionId" }
-                audioTranscriptionService.transcribe(remoteRecording).trim()
+            log.info {
+                "PTT recording captured: session=$sessionId bytes=${recording.byteSize} format=${recording.format}"
             }
-        }.getOrElse { error ->
-            _statusMessage.value = "Не удалось распознать голос: ${error.message}"
-            log.warn(error) { "PTT transcription failed: ${error.message}" }
-            return
+
+            val remoteRecording = recording.toRemoteRecording(sessionId)
+            runCatching {
+                if (clientSideSpeechToTextService.isEnabled()) {
+                    log.info { "PTT transcription using client-side speech-to-text: session=$sessionId" }
+                    clientSideSpeechToTextService.transcribe(remoteRecording).trim()
+                } else {
+                    log.info { "PTT transcription using remote speech-to-text: session=$sessionId" }
+                    audioTranscriptionService.transcribe(remoteRecording).trim()
+                }
+            }.getOrElse { error ->
+                _statusMessage.value = "Не удалось распознать голос: ${error.message}"
+                log.warn(error) { "PTT transcription failed: ${error.message}" }
+                return
+            }
+        } finally {
+            _state.value = PttState.IDLE
         }
 
         if (text.isBlank()) {
@@ -116,7 +121,7 @@ class RemotePttController(
         val session = mutex.withLock {
             val current = recordingSession ?: return
             recordingSession = null
-            _recordingState.value = false
+            _state.value = PttState.IDLE
             current
         }
         runCatching {
@@ -146,8 +151,8 @@ class RemotePttController(
 
     private suspend fun startRecording() {
         mutex.withLock {
-            if (recordingSession != null) {
-                log.info { "PTT recording start skipped: already recording" }
+            if (_state.value != PttState.IDLE || recordingSession != null) {
+                log.info { "PTT recording start skipped: state=${_state.value}" }
                 return
             }
 
@@ -164,7 +169,7 @@ class RemotePttController(
                 }
 
             recordingSession = session
-            _recordingState.value = true
+            _state.value = PttState.RECORDING
             log.info { "PTT recording started" }
         }
     }
