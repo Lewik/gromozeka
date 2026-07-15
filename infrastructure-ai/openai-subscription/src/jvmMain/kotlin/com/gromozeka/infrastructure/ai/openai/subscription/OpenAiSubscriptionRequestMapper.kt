@@ -748,6 +748,9 @@ class OpenAiSubscriptionRequestMapper {
         log.info(
             "OpenAI subscription request layout: " +
                 "conversationKey=$conversationKey, " +
+                "model=${requestPayload.model}, " +
+                "reasoning=${requestPayload.reasoning?.toString()?.take(120) ?: "omitted"}, " +
+                "serviceTier=${requestPayload.serviceTier ?: "omitted"}, " +
                 "systemPrompts=${request.systemPrompts.size}, " +
                 "instructionsChars=${requestPayload.instructions?.length ?: 0}, " +
                 "replayMessages=${replayWindow.messages.size}/${replayWindow.originalMessageCount}, " +
