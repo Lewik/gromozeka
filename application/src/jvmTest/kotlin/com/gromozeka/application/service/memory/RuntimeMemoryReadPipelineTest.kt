@@ -24,6 +24,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class RuntimeMemoryReadPipelineTest {
     @Test
@@ -71,6 +73,110 @@ class RuntimeMemoryReadPipelineTest {
             result.retrievedHits
                 .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
                 .any { it.claim.id == claim.id }
+        )
+    }
+
+    @Test
+    fun exactDuplicateDocumentsShareOneRawCandidateWithoutLosingTypedSupport() = runBlocking {
+        val firstSource = documentSource(
+            id = "source-document-first",
+            text = "The same imported document describes two durable project facts.",
+            contentHash = "same-document-content",
+        )
+        val secondSource = documentSource(
+            id = "source-document-second",
+            text = firstSource.contentText,
+            contentHash = firstSource.contentHash,
+        )
+        val firstClaim = claim(
+            id = "claim-from-first-import",
+            sourceId = firstSource.id,
+            text = "The project uses PostgreSQL.",
+        )
+        val secondClaim = claim(
+            id = "claim-from-second-import",
+            sourceId = secondSource.id,
+            text = "The project uses pgvector.",
+        )
+        val selector = CapturingSourceOnlySelector()
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = InMemoryMemoryStore(
+                MemoryNamespaceSnapshot(
+                    sources = listOf(firstSource, secondSource),
+                    claims = listOf(firstClaim, secondClaim),
+                )
+            ),
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 4, sources = 4),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need the imported project document.",
+                            query = "imported document project facts",
+                            topK = 4,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+            selector = selector,
+        )
+
+        val result = pipeline.read(readRequest("What durable project facts were imported?"))
+
+        assertEquals(1, selector.candidateSourceIds.size)
+        assertEquals(
+            setOf(firstClaim.id.value, secondClaim.id.value),
+            selector.candidateClaimIds,
+        )
+        assertEquals(
+            1,
+            result.retrievedHits.filterIsInstance<MemoryStore.SearchHit.SourceHit>().size,
+        )
+    }
+
+    @Test
+    fun equalContentHashesDoNotCollapseNonDocumentSources() = runBlocking {
+        val firstSource = source(
+            id = "source-event-first",
+            text = "The user repeated the same words in a separate event.",
+            contentHash = "same-event-content",
+        )
+        val secondSource = source(
+            id = "source-event-second",
+            text = firstSource.contentText,
+            contentHash = firstSource.contentHash,
+        )
+        val selector = CapturingSourceOnlySelector()
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(firstSource, secondSource))),
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 4),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need both separate user events.",
+                            query = "user repeated same words separate event",
+                            topK = 4,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+            selector = selector,
+        )
+
+        pipeline.read(readRequest("When did the user repeat those words?"))
+
+        assertEquals(
+            setOf(firstSource.id.value, secondSource.id.value),
+            selector.candidateSourceIds,
         )
     }
 
@@ -752,10 +858,15 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     private class CapturingSourceOnlySelector : MemoryReadSelector {
+        var candidateSourceIds: Set<String> = emptySet()
+            private set
         var candidateClaimIds: Set<String> = emptySet()
             private set
 
         override suspend fun select(request: MemoryReadSelectionRequest): MemoryReadSelectionResult {
+            candidateSourceIds = request.candidateHits
+                .filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+                .mapTo(mutableSetOf()) { it.source.id.value }
             candidateClaimIds = request.candidateHits
                 .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
                 .mapTo(mutableSetOf()) { it.claim.id.value }
@@ -832,15 +943,28 @@ class RuntimeMemoryReadPipelineTest {
         private fun source(
             id: String,
             text: String,
+            contentHash: String = id,
         ): MemorySource.ExternalRecord =
             MemorySource.ExternalRecord(
                 id = MemorySource.Id(id),
                 namespace = NAMESPACE,
                 recordRef = "test:$id",
                 contentText = text,
-                contentHash = id,
+                contentHash = contentHash,
                 observedAt = NOW,
                 createdAt = NOW,
+            )
+
+        private fun documentSource(
+            id: String,
+            text: String,
+            contentHash: String,
+        ): MemorySource.ExternalRecord =
+            source(id = id, text = text, contentHash = contentHash).copy(
+                contentPayload = buildJsonObject {
+                    put("sourceKind", "document")
+                    put("sourceRef", "test:$id")
+                }
             )
 
         private fun entity(

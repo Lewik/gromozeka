@@ -338,10 +338,10 @@ class RuntimeMemoryReadPipeline(
         }
 
         val distinctHits = hits
-            .distinctBy { it.toItemRef() }
             .excludeCurrentThreadSources(request)
             .filterNot { it.isEmptyProfileHit() }
             .sortedForRuntimeMemoryRead(plan)
+            .distinctBy { it.toItemRef() }
         val sourceSelection = MemorySourceRetrievalPolicy.apply(
             hits = distinctHits,
             useCase = plan.sourceRetrievalUseCase(),
@@ -350,7 +350,9 @@ class RuntimeMemoryReadPipeline(
         val sourceTypedSupportHits = sourceSelection.hits
             .withTypedEvidenceSupport(request, plan)
         val candidateSourceSupportSnapshot = sourceTypedSupportHits.toReadPartialSnapshot(request.namespace)
-        val rawSourceDeferral = sourceTypedSupportHits.deferRawSourceCandidatesToEvidenceHydration(
+        val documentDeduplicatedHits = sourceTypedSupportHits
+            .deduplicateExactDocumentContent(plan)
+        val rawSourceDeferral = documentDeduplicatedHits.deferRawSourceCandidatesToEvidenceHydration(
             plan = plan,
             activeTypedRefs = activeTypedRefsBeforeSourceSupport,
         )
@@ -445,7 +447,7 @@ class RuntimeMemoryReadPipeline(
         }
         val selectedHits = sourceSafety.hits.sortedForRuntimeMemoryRead()
         val evidenceHydratedHits = hydrateEvidenceSources(request, plan, selectedHits)
-            .sortedForRuntimeMemoryRead()
+            .deduplicateExactDocumentContent(plan)
         val entityHydratedHits = hydrateLinkedEntities(request, evidenceHydratedHits)
             .sortedForRuntimeMemoryRead()
         searchSteps += MemoryReadTrace.SearchStep(
@@ -473,7 +475,9 @@ class RuntimeMemoryReadPipeline(
 
         log.info {
             "Memory read budget applied: namespace=${request.namespace.value} before=${hits.size} " +
-                "distinct=${distinctHits.size} sourcePolicy=${sourceSelection.summaryForLog()} " +
+                "distinct=${distinctHits.size} sourceSupported=${sourceTypedSupportHits.size} " +
+                "exactDocumentDeduplicated=${documentDeduplicatedHits.size} " +
+                "sourcePolicy=${sourceSelection.summaryForLog()} " +
                 "sourceDeferral=${rawSourceDeferral.summaryForLog()} after=${budgetedHits.size} " +
                 "selected=${selectedHits.size} evidenceHydrated=${evidenceHydratedHits.size} entityHydrated=${entityHydratedHits.size} " +
                 "beforeBreakdown=${hits.breakdownForRuntimeMemoryLog()} distinctBreakdown=${distinctHits.breakdownForRuntimeMemoryLog()} " +
@@ -1197,6 +1201,35 @@ private fun List<MemoryStore.SearchHit>.sortedForRuntimeMemoryRead(plan: MemoryR
         compareByDescending<MemoryStore.SearchHit> { it.claimPredicatePriority(plan) }
             .then(runtimeMemorySearchHitComparator)
     )
+
+private fun List<MemoryStore.SearchHit>.deduplicateExactDocumentContent(
+    plan: MemoryReadPlan,
+): List<MemoryStore.SearchHit> =
+    sortedForRuntimeMemoryRead(plan)
+        .distinctBy { hit ->
+            when (hit) {
+                is MemoryStore.SearchHit.SourceHit -> {
+                    val contentHash = hit.source.contentHash.takeIf { it.isNotBlank() }
+                    if (contentHash != null && hit.source.isDocumentIngestSource()) {
+                        RuntimeMemoryReadDedupKey.DocumentContent(contentHash)
+                    } else {
+                        RuntimeMemoryReadDedupKey.Item(hit.toItemRef())
+                    }
+                }
+
+                else -> RuntimeMemoryReadDedupKey.Item(hit.toItemRef())
+            }
+        }
+
+private sealed interface RuntimeMemoryReadDedupKey {
+    data class Item(
+        val ref: MemoryItemRef,
+    ) : RuntimeMemoryReadDedupKey
+
+    data class DocumentContent(
+        val contentHash: String,
+    ) : RuntimeMemoryReadDedupKey
+}
 
 private val runtimeMemorySearchHitComparator: Comparator<MemoryStore.SearchHit> =
     compareByDescending<MemoryStore.SearchHit> { it.score }
