@@ -242,6 +242,52 @@ class LlmMemoryReadPlannerTest {
     }
 
     @Test
+    fun plannerAndVerifierTreatPersonalizableRecommendationsAsPotentiallyMemoryDependent() = runBlocking {
+        val runtime = CapturingJsonRuntime(
+            """
+            {
+              "need_memory": false,
+              "context_mode": "factual",
+              "coverage_mode": "minimal",
+              "core_blocks": [],
+              "retrieval_budget": {
+                "claims": 0,
+                "notes": 0,
+                "action_items": 0,
+                "sources": 0,
+                "episodes": 0
+              },
+              "retrieval_requests": [],
+              "require_evidence_fallback": false
+            }
+            """.trimIndent(),
+            """
+            {
+              "needs_memory": true,
+              "context_mode": "factual",
+              "needs_source": false,
+              "query": "user preferences goals experience tools relevant resources",
+              "reason": "Remembered context could materially change the recommendation."
+            }
+            """.trimIndent(),
+        )
+
+        val plan = LlmMemoryReadPlanner(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).plan(readRequest("Can you recommend resources where I can learn more?"))
+
+        val plannerPrompt = runtime.requests.first().messages.asText()
+        val verifierPrompt = runtime.requests.last().messages.asText()
+        assertTrue(plannerPrompt.contains("generic answer is possible"), plannerPrompt)
+        assertTrue(plannerPrompt.contains("could materially change the useful answer"), plannerPrompt)
+        assertTrue(verifierPrompt.contains("could materially change what is useful"), verifierPrompt)
+        assertTrue(plan.needMemory)
+    }
+
+    @Test
     fun completeSetPlanAddsSourceFallbackWithoutReclassifyingTheTarget() = runBlocking {
         val runtime = CapturingJsonRuntime(
             """

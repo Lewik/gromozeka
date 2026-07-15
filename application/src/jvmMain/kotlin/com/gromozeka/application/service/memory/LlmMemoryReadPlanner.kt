@@ -191,6 +191,7 @@ class LlmMemoryReadPlanner(
         - "what should report X show/include?"
         - "what should component X do/use/be?"
         - questions about prior user preferences, project facts, team facts, ownership, decisions, corrections, maintenance rules, reporting rules, or prior-session context.
+        - recommendations, choices, planning, or advice when remembered user preferences, constraints, goals, experience, tools, or project context could materially change what is useful.
         - requests for a short phrase can still be memory-dependent when they ask for remembered rules or prior decisions.
 
         Treat these as no-memory:
@@ -412,6 +413,7 @@ class LlmMemoryReadPlanner(
             - Ordinal words alone do not require complete_set. Use minimal when the ordinal is part of a directly named fact or slot, such as "the recommended first implementation". Use complete_set only when multiple candidates must be compared or a sequence must be reconstructed to determine the ordinal answer.
             - Prefer no memory when the current request is fully self-contained.
             - A request is not self-contained when it asks about user-specific, project-specific, team-specific, or prior-session context and the target message does not contain the answer.
+            - A recommendation, choice, plan, or advice request can require memory even when a generic answer is possible. Retrieve memory when remembered user preferences, constraints, goals, experience, tools, or project context could materially change the useful answer.
             - Include the profile core block for broad user/project working style, language, tone, preferences, constraints, and "how should you adapt to me/us" questions.
             - For adaptation/profile questions involving both the user and a project, retrieve profile memory broadly enough to include both user-level and project-level preferences.
             - For named local projects, repositories, products, agents, user preferences, or working agreements, plan memory retrieval instead of relying on model world knowledge.
