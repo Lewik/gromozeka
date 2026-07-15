@@ -309,6 +309,7 @@ class LlmMemoryReadSelectorTest {
         val runtime = SelectingRuntime(
             intermediateSelectedIds = setOf("note-33"),
             finalSelectedIds = setOf("source-01"),
+            emitRejectedItems = false,
         )
         val hits = notes.take(14).mapIndexed { index, note ->
             MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
@@ -375,6 +376,7 @@ class LlmMemoryReadSelectorTest {
         val runtime = SelectingRuntime(
             intermediateSelectedIds = setOf("note-38"),
             finalSelectedIds = setOf("source-personal-copy"),
+            emitRejectedItems = false,
         )
 
         val result = LlmMemoryReadSelector(
@@ -455,11 +457,52 @@ class LlmMemoryReadSelectorTest {
         assertEquals(listOf(33), runtime.candidateCounts)
         assertEquals(listOf(MemoryReadSelectorTrace.Mode.FINAL_SELECTION), result.selectorTrace.stages.map { it.mode })
         assertTrue(runtime.finalCandidateIds.single().containsAll(sources.map { it.id.value }))
-        assertTrue(
-            result.selectedHits
-                .filterIsInstance<MemoryStore.SearchHit.SourceHit>()
-                .any { it.source.id.value == "source-06" }
+        assertEquals(
+            listOf("source-06"),
+            result.selectedHits.filterIsInstance<MemoryStore.SearchHit.SourceHit>().map { it.source.id.value },
         )
+        assertEquals(1, result.selectedHits.size)
+    }
+
+    @Test
+    fun completeSetBatchesDoNotOverrideExplicitRejections() = runBlocking {
+        val notes = (1..45).map { index ->
+            note(
+                id = "candidate-${index.toString().padStart(2, '0')}",
+                title = "Candidate $index",
+                summary = "Candidate $index may or may not belong to the requested set.",
+            )
+        }
+        val selectedId = "candidate-33"
+        val runtime = SelectingRuntime(finalSelectedIds = setOf(selectedId))
+
+        val result = LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+            batchParallelism = 2,
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("List every matching candidate."),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(notes = notes.size),
+                ),
+                candidateHits = notes.mapIndexed { index, note ->
+                    MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(notes = notes),
+            )
+        )
+
+        assertEquals(
+            listOf(selectedId),
+            result.selectedHits.filterIsInstance<MemoryStore.SearchHit.NoteHit>().map { it.note.id.value },
+        )
+        assertEquals(0, result.selectorTrace.stages.sumOf { it.safetyAddedCount })
+        assertEquals(notes.size - 1, result.decisions.count { !it.selected })
     }
 
     @Test

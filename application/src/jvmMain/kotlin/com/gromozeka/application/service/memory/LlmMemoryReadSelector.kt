@@ -53,7 +53,7 @@ class LlmMemoryReadSelector(
                 batchLabel = null,
                 passMode = ReadSelectorPassMode.FINAL_SELECTION,
             )
-            val finalSafetyAddedHits = request.finalSelectionSafetyAddedHits(result.selectedHits)
+            val finalSafetyAddedHits = request.finalSelectionSafetyAddedHits(result.selectedHits, result.decisions)
             val finalSelectedHits = (result.selectedHits + finalSafetyAddedHits)
                 .distinctBy { it.toReadSelectorItemRef() }
             return result.copy(
@@ -109,23 +109,16 @@ class LlmMemoryReadSelector(
             val batchResult = batchResults[index]
             val safetySurvivors = batch.readSelectorSafetySurvivors(request)
             val llmSelectedRefs = batchResult.selectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+            val explicitlyRejectedRefs = batchResult.decisions
+                .filterNot { it.selected }
+                .mapTo(mutableSetOf()) { it.ref }
             val safetyAddedSurvivors = safetySurvivors
                 .filterNot { it.toReadSelectorItemRef() in llmSelectedRefs }
+                .filterNot { it.toReadSelectorItemRef() in explicitlyRejectedRefs }
             val batchSelectedHits = (batchResult.selectedHits + safetyAddedSurvivors)
                 .distinctBy { it.toReadSelectorItemRef() }
-            val batchSelectedRefs = batchSelectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
 
-            decisions += batchResult.decisions.map { decision ->
-                if (decision.ref in batchSelectedRefs && !decision.selected) {
-                    decision.copy(
-                        selected = true,
-                        rank = Int.MAX_VALUE,
-                        reason = "Deterministic complete-set safety retained this candidate. ${decision.reason}",
-                    )
-                } else {
-                    decision
-                }
-            }
+            decisions += batchResult.decisions
             val decidedRefs = batchResult.decisions.mapTo(mutableSetOf()) { it.ref }
             decisions += safetyAddedSurvivors
                 .filterNot { it.toReadSelectorItemRef() in decidedRefs }
@@ -270,7 +263,10 @@ class LlmMemoryReadSelector(
             passMode = ReadSelectorPassMode.FINAL_SELECTION,
         )
         val finalRequest = request.copy(candidateHits = survivors)
-        val finalSafetyAddedHits = finalRequest.finalSelectionSafetyAddedHits(finalResult.selectedHits)
+        val finalSafetyAddedHits = finalRequest.finalSelectionSafetyAddedHits(
+            finalResult.selectedHits,
+            finalResult.decisions,
+        )
         val finalSelectedHits = (finalResult.selectedHits + finalSafetyAddedHits)
             .distinctBy { it.toReadSelectorItemRef() }
         traceStages += readSelectorTraceStage(
@@ -761,6 +757,7 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(
 
 private fun MemoryReadSelectionRequest.finalSelectionSafetyAddedHits(
     selectedHits: List<MemoryStore.SearchHit>,
+    decisions: List<MemoryReadSelectionResult.Decision>,
 ): List<MemoryStore.SearchHit> {
     val selectedRefs = selectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
 
@@ -770,9 +767,13 @@ private fun MemoryReadSelectionRequest.finalSelectionSafetyAddedHits(
             .take(READ_SELECTOR_TEMPORAL_FINAL_SAFETY_ADD_LIMIT)
     }
 
+    val explicitlyRejectedRefs = decisions
+        .filterNot { it.selected }
+        .mapTo(mutableSetOf()) { it.ref }
     return candidateHits
         .readSelectorSafetySurvivors(this)
         .filterNot { it.toReadSelectorItemRef() in selectedRefs }
+        .filterNot { it.toReadSelectorItemRef() in explicitlyRejectedRefs }
 }
 
 private fun MemoryReadSelectionRequest.temporalSafetySurvivors(): List<MemoryStore.SearchHit> =
