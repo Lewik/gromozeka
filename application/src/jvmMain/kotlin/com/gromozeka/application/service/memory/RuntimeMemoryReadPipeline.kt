@@ -268,7 +268,9 @@ class RuntimeMemoryReadPipeline(
                     limit = sourceSweepSearchLimit,
                 )
             )
-            val sourceSweepSelection = rawSourceSweepHits
+            val blankSweepOverflowed = sourceSweepQuery.isBlank() && rawSourceSweepHits.size >= sourceSweepSearchLimit
+            val usableSourceSweepHits = if (blankSweepOverflowed) emptyList() else rawSourceSweepHits
+            val sourceSweepSelection = usableSourceSweepHits
                 .excludeCurrentThreadSources(request)
                 .applySourceRetrievalPolicyFor(MemorySemanticType.SOURCE)
             val sourceSweepHits = sourceSweepSelection.hits
@@ -290,7 +292,8 @@ class RuntimeMemoryReadPipeline(
                 "Memory read complete-set source sweep: namespace=${request.namespace.value} " +
                     "query=${sourceSweepQuery.oneLineForRuntimeMemoryLog(120)} " +
                     "limit=$sourceSweepLimit searchLimit=$sourceSweepSearchLimit rawHits=${rawSourceSweepHits.size} " +
-                    "hits=${sourceSweepHits.size} sourcePolicy=${sourceSweepSelection.summaryForLog()} " +
+                    "blankSweepOverflowed=$blankSweepOverflowed hits=${sourceSweepHits.size} " +
+                    "sourcePolicy=${sourceSweepSelection.summaryForLog()} " +
                     "top=${sourceSweepHits.summaryForRuntimeMemoryLog()}"
             }
         }

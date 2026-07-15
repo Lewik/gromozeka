@@ -219,6 +219,53 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     @Test
+    fun completeSetEvidenceReadRejectsIncompleteBlankSourceSweep() = runBlocking {
+        val sources = (1..10).map { index ->
+            source(
+                id = "source-${index.toString().padStart(2, '0')}",
+                text = if (index == 1) {
+                    "Matching source mentions the obvious counted item."
+                } else {
+                    "Unrelated source $index must not enter an incomplete complete-set sweep."
+                },
+            )
+        }
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = SourceSweepStore(sources),
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 4),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need complete source evidence for every distinct item.",
+                            query = "matching obvious counted item",
+                            topK = 1,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("How many distinct matching items are remembered?"))
+        val coverageStep = result.trace.searchSteps.single { it.stage == "coverage:SOURCE" }
+
+        assertTrue(coverageStep.rawCount < sources.size)
+        assertEquals(0, coverageStep.candidateCount)
+        assertEquals(0, coverageStep.selectedCount)
+        assertEquals(
+            listOf("source-01"),
+            result.retrievedHits
+                .filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+                .map { it.source.id.value },
+        )
+    }
+
+    @Test
     fun completeSetSourceSweepUsesTargetQueryWhenEntityScopeIsKnown() = runBlocking {
         val pantryPilotSource = source("source-pantry-pilot", "PantryPilot uses PostgreSQL.")
         val shelfLogSource = source("source-shelf-log", "ShelfLog uses MongoDB.")
