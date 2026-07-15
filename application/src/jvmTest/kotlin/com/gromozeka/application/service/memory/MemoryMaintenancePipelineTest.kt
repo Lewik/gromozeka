@@ -3867,8 +3867,10 @@ class MemoryMaintenancePipelineTest {
         assertTrue(rendered.contains("\"lifecycle_state\":\"overridden_evidence\""))
         assertTrue(rendered.contains("\"supports\":[{\"type\":\"claim\",\"id\":\"selector-old-export-claim\",\"status\":\"SUPERSEDED\""))
         assertTrue(rendered.contains("\"overridden_by\":[{\"type\":\"claim\",\"id\":\"selector-active-export-claim\",\"status\":\"ACTIVE\""))
-        assertTrue(rendered.contains("Do not select as current truth"))
         assertTrue(rendered.contains("\"lifecycle_state\":\"current\""))
+        assertFalse(rendered.contains("selection_hint"))
+        assertFalse(rendered.contains("usage_policy"))
+        assertFalse(rendered.contains("evidence_source_ids"))
     }
 
     @Test

@@ -458,7 +458,8 @@ class LlmMemoryReadSelector(
         Selection rules:
         ${passMode.extraRules(request.plan)}
         - $selectionRule
-        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, predicate_semantic_kinds, supports, supersedes, and overridden_by before choosing.
+        - Candidate memory items are JSON records. Read lifecycle_state, predicate_semantic_kinds, supports, supersedes, and overridden_by before choosing.
+        - supports, supersedes, and overridden_by are compact relationship metadata. A referenced item can be selected only when it is also present as a top-level candidate.
         - Reject candidates that only have vague lexical overlap.
         - Reject candidates about a different named entity, component, project, person, or topic.
         - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.
@@ -467,6 +468,9 @@ class LlmMemoryReadSelector(
         - Prefer notes for rationale, decisions, plans, contextual meaning, and summarized factual details that do not have a complete current claim.
         - Prefer action items only for open commitments or workflow state.
         - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.
+        - A source with lifecycle_state=evidence_for_active_memory is evidence for current typed memory, not an independent stronger truth.
+        - A source with lifecycle_state=overridden_evidence is historical evidence whose current typed replacement is listed in overridden_by. Use it for historical questions, not as current truth.
+        - Run records are operational audit data; select them only for debugging or memory-maintenance questions.
         - For advice, improvement, troubleshooting, or "how should I do better" questions, select concrete user-specific successes, failures, constraints, goals, preferences, and prior attempts. Do not drop a specific successful/failed example merely because a broader experience claim was selected.
         - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.
         ${MemoryReadPromptPolicy.selectorCountAndCategoryRules()}

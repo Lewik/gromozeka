@@ -51,7 +51,6 @@ internal object MemoryReadSelectorCandidateRenderer {
                 entityType = entity.entityType.name,
                 name = entity.canonicalName,
                 text = entity.summary.orEmpty().limitForSelectorView(500),
-                selectionHint = "Entity labels are anchors only; select them only as supporting context for selected typed memory.",
             )
 
             is MemoryStore.SearchHit.ClaimHit -> claim.toClaimCandidateView(score, snapshot)
@@ -64,7 +63,6 @@ internal object MemoryReadSelectorCandidateRenderer {
                 lifecycleState = "projection",
                 ownerEntityId = profile.ownerEntityId.value,
                 text = profile.profileText.limitForSelectorView(1_000),
-                selectionHint = "Profile is a compact projection/cache. Use as context, but do not treat it as stronger than relevant ACTIVE claims or notes.",
             )
 
             is MemoryStore.SearchHit.EpisodeHit -> episode.toEpisodeCandidateView(score)
@@ -75,7 +73,6 @@ internal object MemoryReadSelectorCandidateRenderer {
                 status = run.status.name,
                 lifecycleState = run.status.name.lowercase(),
                 text = run.summary.limitForSelectorView(700),
-                selectionHint = "Run records explain memory operations; select only for debugging or maintenance questions.",
             )
         }
 
@@ -100,19 +97,10 @@ internal object MemoryReadSelectorCandidateRenderer {
             sourceType = sourceTypeForSelectorView(),
             actorRole = actorRoleForSelectorView(),
             retentionClass = retentionClass.name,
-            usagePolicy = usagePolicyForSelectorView(),
             lifecycleState = lifecycleState,
             text = sourceTextForSelectorView(query),
             supports = supports,
             overriddenBy = overriddenBy,
-            selectionHint = when {
-                overriddenBy.isNotEmpty() ->
-                    "Historical evidence only. Do not select as current truth. Select for historical/previous-state questions; prefer the ACTIVE overridden_by item for current-state factual answers."
-                supportsActive ->
-                    "Evidence only. Select only when exact wording/provenance is required; typed ACTIVE memory carries the current truth."
-                else ->
-                    "Raw source. Select only when exact wording/provenance is required or no typed memory answers the target."
-            },
         )
     }
 
@@ -163,14 +151,6 @@ internal object MemoryReadSelectorCandidateRenderer {
             supersedes = replaces,
             overriddenBy = overriddenBy,
             evidence = evidenceRefs.toEvidenceViews(),
-            selectionHint = when {
-                status == MemoryClaim.Status.ACTIVE ->
-                    "Current typed fact. Prefer this for relevant factual answers over raw sources."
-                overriddenBy.isNotEmpty() ->
-                    "Non-current typed fact. Use for historical/previous-state questions; prefer the ACTIVE overridden_by item for current-state questions."
-                else ->
-                    "Non-current typed fact. Use only when the target asks about historical, expired, retracted, or candidate memory."
-            },
         )
     }
 
@@ -203,14 +183,6 @@ internal object MemoryReadSelectorCandidateRenderer {
             supersedes = replaces,
             overriddenBy = overriddenBy,
             evidence = evidenceRefs.toEvidenceViews(),
-            selectionHint = when {
-                status == MemoryNote.Status.ACTIVE ->
-                    "Current typed context. Prefer for rationale, decisions, plans, contextual meaning, and exact factual details when claims are missing, incomplete, or conflicting."
-                overriddenBy.isNotEmpty() ->
-                    "Non-current note. Do not use as current context; prefer the ACTIVE overridden_by item."
-                else ->
-                    "Non-current note. Use only when the target asks about historical or stale context."
-            },
         )
     }
 
@@ -224,7 +196,6 @@ internal object MemoryReadSelectorCandidateRenderer {
             title = title.limitForSelectorView(300),
             text = description.orEmpty().limitForSelectorView(700),
             evidence = evidenceRefs.toEvidenceViews(),
-            selectionHint = "Action item memory is for open commitments/workflow state; select only when the target asks about work to do or action item status.",
         )
 
     private fun MemoryEpisode.toEpisodeCandidateView(score: Double): CandidateView =
@@ -235,17 +206,16 @@ internal object MemoryReadSelectorCandidateRenderer {
             lifecycleState = "experience",
             text = "situation=${situation.limitForSelectorView(350)} action=${action.limitForSelectorView(350)} result=${result.limitForSelectorView(350)} lesson=${lesson.limitForSelectorView(700)}",
             evidence = evidenceRefs.toEvidenceViews(),
-            selectionHint = "Episode memory is reusable experience; prefer for lessons, patterns, and what-worked questions.",
         )
 
     private fun MemoryNamespaceSnapshot.typedRefsSupportedBy(sourceId: MemorySource.Id): List<TypedMemoryRef> =
         buildList {
             claims
                 .filter { claim -> claim.evidenceRefs.any { it.sourceId == sourceId } }
-                .mapTo(this) { it.toTypedMemoryRef(this@typedRefsSupportedBy) }
+                .mapTo(this) { it.toTypedMemoryRef() }
             notes
                 .filter { note -> note.evidenceRefs.any { it.sourceId == sourceId } }
-                .mapTo(this) { it.toTypedMemoryRef(this@typedRefsSupportedBy) }
+                .mapTo(this) { it.toTypedMemoryRef() }
             actionItems
                 .filter { actionItem -> actionItem.evidenceRefs.any { it.sourceId == sourceId } }
                 .mapTo(this) { it.toTypedMemoryRef() }
@@ -282,7 +252,7 @@ internal object MemoryReadSelectorCandidateRenderer {
                     active.status == MemoryClaim.Status.ACTIVE &&
                         (active.supersedesClaimId == claim.id || claim.retractedByClaimId == active.id)
                 }
-                .map { it.toTypedMemoryRef(this) }
+                .map { it.toTypedMemoryRef() }
         }
 
     private fun MemoryNamespaceSnapshot.activeNoteReplacementsFor(note: MemoryNote): List<TypedMemoryRef> =
@@ -291,16 +261,16 @@ internal object MemoryReadSelectorCandidateRenderer {
         } else {
             notes
                 .filter { active -> active.status == MemoryNote.Status.ACTIVE && active.supersedesNoteId == note.id }
-                .map { it.toTypedMemoryRef(this) }
+                .map { it.toTypedMemoryRef() }
         }
 
     private fun MemoryNamespaceSnapshot.claimRefById(id: MemoryClaim.Id): TypedMemoryRef? =
-        claims.firstOrNull { it.id == id }?.toTypedMemoryRef(this)
+        claims.firstOrNull { it.id == id }?.toTypedMemoryRef()
 
     private fun MemoryNamespaceSnapshot.noteRefById(id: MemoryNote.Id): TypedMemoryRef? =
-        notes.firstOrNull { it.id == id }?.toTypedMemoryRef(this)
+        notes.firstOrNull { it.id == id }?.toTypedMemoryRef()
 
-    private fun MemoryClaim.toTypedMemoryRef(snapshot: MemoryNamespaceSnapshot): TypedMemoryRef =
+    private fun MemoryClaim.toTypedMemoryRef(): TypedMemoryRef =
         TypedMemoryRef(
             type = "claim",
             id = id.value,
@@ -308,21 +278,14 @@ internal object MemoryReadSelectorCandidateRenderer {
             lifecycleState = if (status == MemoryClaim.Status.ACTIVE) "current" else "non_current",
             predicate = predicate,
             predicateSemanticKinds = predicatePolicy?.semanticKinds?.map { it.name },
-            text = normalizedText.limitForSelectorView(300),
-            evidenceSourceIds = evidenceRefs.map { it.sourceId.value }.distinct(),
-            overriddenByIds = snapshot.activeClaimReplacementsFor(this).map { it.id },
         )
 
-    private fun MemoryNote.toTypedMemoryRef(snapshot: MemoryNamespaceSnapshot): TypedMemoryRef =
+    private fun MemoryNote.toTypedMemoryRef(): TypedMemoryRef =
         TypedMemoryRef(
             type = "note",
             id = id.value,
             status = status.name,
             lifecycleState = if (status == MemoryNote.Status.ACTIVE) "current" else "non_current",
-            title = title.limitForSelectorView(200),
-            text = summary.limitForSelectorView(300),
-            evidenceSourceIds = evidenceRefs.map { it.sourceId.value }.distinct(),
-            overriddenByIds = snapshot.activeNoteReplacementsFor(this).map { it.id },
         )
 
     private fun MemoryActionItem.toTypedMemoryRef(): TypedMemoryRef =
@@ -331,9 +294,6 @@ internal object MemoryReadSelectorCandidateRenderer {
             id = id.value,
             status = status.name,
             lifecycleState = status.name.lowercase(),
-            title = title.limitForSelectorView(200),
-            text = description?.limitForSelectorView(300),
-            evidenceSourceIds = evidenceRefs.map { it.sourceId.value }.distinct(),
         )
 
     private fun MemoryEpisode.toTypedMemoryRef(): TypedMemoryRef =
@@ -341,8 +301,6 @@ internal object MemoryReadSelectorCandidateRenderer {
             type = "episode",
             id = id.value,
             lifecycleState = "experience",
-            text = lesson.limitForSelectorView(300),
-            evidenceSourceIds = evidenceRefs.map { it.sourceId.value }.distinct(),
         )
 
     private fun List<MemoryEvidenceRef>.toEvidenceViews(): List<EvidenceView> =
@@ -370,8 +328,6 @@ internal object MemoryReadSelectorCandidateRenderer {
             is MemorySource.ToolOutput -> null
         }
 
-    private fun MemorySource.usagePolicyForSelectorView(): String =
-        "recall=${usagePolicy.allowRecall},evidence=${usagePolicy.allowEvidenceHydration},extract=${usagePolicy.allowStructuredExtraction},reason=${usagePolicy.reason.limitForSelectorView(120)}"
 }
 
 @Serializable
@@ -382,8 +338,6 @@ private data class CandidateView(
     val status: String? = null,
     @SerialName("lifecycle_state")
     val lifecycleState: String? = null,
-    @SerialName("selection_hint")
-    val selectionHint: String,
     @SerialName("safety_candidate")
     val safetyCandidate: Boolean = false,
     @SerialName("source_type")
@@ -396,8 +350,6 @@ private data class CandidateView(
     val createdAt: String? = null,
     @SerialName("retention_class")
     val retentionClass: String? = null,
-    @SerialName("usage_policy")
-    val usagePolicy: String? = null,
     @SerialName("entity_type")
     val entityType: String? = null,
     val name: String? = null,
@@ -442,12 +394,6 @@ private data class TypedMemoryRef(
     val predicate: String? = null,
     @SerialName("predicate_semantic_kinds")
     val predicateSemanticKinds: List<String>? = null,
-    val title: String? = null,
-    val text: String? = null,
-    @SerialName("evidence_source_ids")
-    val evidenceSourceIds: List<String> = emptyList(),
-    @SerialName("overridden_by_ids")
-    val overriddenByIds: List<String> = emptyList(),
 )
 
 @Serializable
