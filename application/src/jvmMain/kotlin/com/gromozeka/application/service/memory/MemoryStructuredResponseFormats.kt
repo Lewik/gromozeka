@@ -466,7 +466,6 @@ internal object MemoryStructuredResponseFormats {
                 objectSchema(
                     "item_type" to stringEnumSchema("source", "entity", "claim", "note", "action_item", "profile", "episode", "run"),
                     "item_id" to stringSchema(),
-                    "reason" to stringSchema(),
                 )
             ),
             "summary" to stringSchema(),

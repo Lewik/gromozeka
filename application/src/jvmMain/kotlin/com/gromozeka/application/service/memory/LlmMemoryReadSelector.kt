@@ -483,6 +483,7 @@ class LlmMemoryReadSelector(
         - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.
         - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.
         - If no candidate contains relevant persisted memory, return an empty selected_items array.
+        - Return every candidate exactly once: retained candidates in selected_items, all others in rejected_items. Rejected items need identifiers only; do not explain individual rejections.
 
         Planned context mode: ${request.plan.contextMode.name}
         Planned coverage mode: ${request.plan.coverageMode.name}
@@ -508,8 +509,7 @@ class LlmMemoryReadSelector(
           "rejected_items": [
             {
               "item_type": "claim | note | action_item | profile | source | episode | entity | run",
-              "item_id": "exact candidate id",
-              "reason": "short reason"
+              "item_id": "exact candidate id"
             }
           ],
           "summary": "one short sentence"
@@ -541,7 +541,7 @@ class LlmMemoryReadSelector(
                         ref = ref,
                         selected = false,
                         rank = Int.MAX_VALUE,
-                        reason = item.reason,
+                        reason = "Explicitly rejected by the memory reranker.",
                     )
                 }
             }
@@ -567,7 +567,6 @@ class LlmMemoryReadSelector(
         val itemType: String,
         @SerialName("item_id")
         val itemId: String,
-        val reason: String = "",
     ) {
         fun toItemRef(): MemoryItemRef? =
             itemType.toReadSelectorItemType()?.let { MemoryItemRef(it, itemId) }

@@ -1147,7 +1147,7 @@ class LlmMemoryReadSelectorTest {
                                     """
                                     {
                                       "selected_items": [${selected.mapIndexed { index, ref -> """{"item_type":"${ref.type}","item_id":"${ref.id}","rank":${index + 1},"relevance":"direct_answer","reason":"selected"}""" }.joinToString(",")}],
-                                      "rejected_items": [${rejected.joinToString(",") { ref -> """{"item_type":"${ref.type}","item_id":"${ref.id}","reason":"not selected"}""" }}],
+                                      "rejected_items": [${rejected.joinToString(",") { ref -> """{"item_type":"${ref.type}","item_id":"${ref.id}"}""" }}],
                                       "summary": "selected ${selected.size}"
                                     }
                                     """.trimIndent()
