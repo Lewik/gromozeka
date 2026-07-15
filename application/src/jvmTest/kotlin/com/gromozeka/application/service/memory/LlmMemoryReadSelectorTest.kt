@@ -309,7 +309,7 @@ class LlmMemoryReadSelectorTest {
         val runtime = SelectingRuntime(
             intermediateSelectedIds = setOf("note-33"),
             finalSelectedIds = setOf("source-01"),
-            emitRejectedItems = false,
+            emitRejectedSafetyItems = false,
         )
         val hits = notes.take(14).mapIndexed { index, note ->
             MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
@@ -376,7 +376,7 @@ class LlmMemoryReadSelectorTest {
         val runtime = SelectingRuntime(
             intermediateSelectedIds = setOf("note-38"),
             finalSelectedIds = setOf("source-personal-copy"),
-            emitRejectedItems = false,
+            emitRejectedSafetyItems = false,
         )
 
         val result = LlmMemoryReadSelector(
@@ -462,6 +462,49 @@ class LlmMemoryReadSelectorTest {
             result.selectedHits.filterIsInstance<MemoryStore.SearchHit.SourceHit>().map { it.source.id.value },
         )
         assertEquals(1, result.selectedHits.size)
+    }
+
+    @Test
+    fun retainsOmittedCompleteSetSafetyCandidatesAsSelectedDecisions() = runBlocking {
+        val notes = (1..3).map { index ->
+            note(
+                id = "candidate-$index",
+                title = "Complete-set candidate $index",
+                summary = "Candidate $index may belong to the requested complete set.",
+            )
+        }
+        val runtime = SelectingRuntime(
+            finalSelectedIds = setOf("candidate-1"),
+            emitRejectedSafetyItems = false,
+        )
+
+        val result = LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("List every matching candidate."),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(notes = notes.size),
+                ),
+                candidateHits = notes.mapIndexed { index, note ->
+                    MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(notes = notes),
+            )
+        )
+
+        assertEquals(
+            notes.map { it.id.value },
+            result.selectedHits.filterIsInstance<MemoryStore.SearchHit.NoteHit>().map { it.note.id.value },
+        )
+        assertEquals(notes.size, result.decisions.count { it.selected })
+        assertEquals(2, result.selectorTrace.stages.single().safetyAddedCount)
+        assertTrue(runtime.prompts.single().contains("\"safety_candidate\":true"))
     }
 
     @Test
@@ -1103,7 +1146,7 @@ class LlmMemoryReadSelectorTest {
     private class SelectingRuntime(
         private val intermediateSelectedIds: Set<String> = emptySet(),
         private val finalSelectedIds: Set<String> = intermediateSelectedIds,
-        private val emitRejectedItems: Boolean = true,
+        private val emitRejectedSafetyItems: Boolean = true,
     ) : AiRuntime {
         val candidateCounts = mutableListOf<Int>()
         val finalCandidateIds = mutableListOf<List<String>>()
@@ -1121,9 +1164,20 @@ class LlmMemoryReadSelectorTest {
                 }
             }
             prompts += prompt
-            val candidateRefs = Regex(""""type":"([^"]+)","id":"([^"]+)"""")
+            val candidateRefs = Regex("""(?m)^\s*\d+\. (\{.*})$""")
                 .findAll(prompt)
-                .map { CandidateRef(type = it.groupValues[1], id = it.groupValues[2]) }
+                .mapNotNull { match ->
+                    val candidateJson = match.groupValues[1]
+                    Regex(""""type":"([^"]+)","id":"([^"]+)"""")
+                        .find(candidateJson)
+                        ?.let { ref ->
+                            CandidateRef(
+                                type = ref.groupValues[1],
+                                id = ref.groupValues[2],
+                                safetyCandidate = candidateJson.contains("\"safety_candidate\":true"),
+                            )
+                        }
+                }
                 .toList()
             candidateCounts += candidateRefs.size
             val isIntermediate = prompt.contains("Pass mode: intermediate_recall")
@@ -1132,8 +1186,8 @@ class LlmMemoryReadSelectorTest {
             }
             val selectedIds = if (isIntermediate) intermediateSelectedIds else finalSelectedIds
             val selected = candidateRefs.filter { it.id in selectedIds }
-            val rejected = if (emitRejectedItems) {
-                candidateRefs.filterNot { it.id in selectedIds }
+            val rejectedSafety = if (emitRejectedSafetyItems) {
+                candidateRefs.filter { it.safetyCandidate && it.id !in selectedIds }
             } else {
                 emptyList()
             }
@@ -1147,7 +1201,7 @@ class LlmMemoryReadSelectorTest {
                                     """
                                     {
                                       "selected_items": [${selected.mapIndexed { index, ref -> """{"item_type":"${ref.type}","item_id":"${ref.id}","rank":${index + 1},"relevance":"direct_answer","reason":"selected"}""" }.joinToString(",")}],
-                                      "rejected_items": [${rejected.joinToString(",") { ref -> """{"item_type":"${ref.type}","item_id":"${ref.id}"}""" }}],
+                                      "rejected_safety_items": [${rejectedSafety.joinToString(",") { ref -> """{"item_type":"${ref.type}","item_id":"${ref.id}"}""" }}],
                                       "summary": "selected ${selected.size}"
                                     }
                                     """.trimIndent()
@@ -1164,6 +1218,7 @@ class LlmMemoryReadSelectorTest {
         private data class CandidateRef(
             val type: String,
             val id: String,
+            val safetyCandidate: Boolean,
         )
     }
 
@@ -1196,7 +1251,7 @@ class LlmMemoryReadSelectorTest {
                                     """
                                     {
                                       "selected_items": [],
-                                      "rejected_items": [],
+                                      "rejected_safety_items": [],
                                       "summary": "No explicit selections."
                                     }
                                     """.trimIndent()

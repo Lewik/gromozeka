@@ -3,6 +3,7 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryEpisode
 import com.gromozeka.domain.model.memory.MemoryEvidenceRef
+import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemorySource
@@ -26,12 +27,16 @@ internal object MemoryReadSelectorCandidateRenderer {
         hits: List<MemoryStore.SearchHit>,
         snapshot: MemoryNamespaceSnapshot?,
         query: String,
+        safetyRefs: Set<MemoryItemRef> = emptySet(),
     ): String =
         if (hits.isEmpty()) {
             "none"
         } else {
             hits.mapIndexed { index, hit ->
-                "${index + 1}. ${json.encodeToString(hit.toCandidateView(snapshot, query))}"
+                val candidate = hit.toCandidateView(snapshot, query).copy(
+                    safetyCandidate = hit.toSelectorItemRef() in safetyRefs,
+                )
+                "${index + 1}. ${json.encodeToString(candidate)}"
             }.joinToString("\n")
         }
 
@@ -379,6 +384,8 @@ private data class CandidateView(
     val lifecycleState: String? = null,
     @SerialName("selection_hint")
     val selectionHint: String,
+    @SerialName("safety_candidate")
+    val safetyCandidate: Boolean = false,
     @SerialName("source_type")
     val sourceType: String? = null,
     @SerialName("actor_role")
@@ -450,6 +457,18 @@ private data class EvidenceView(
     val kind: String,
     val quote: String? = null,
 )
+
+private fun MemoryStore.SearchHit.toSelectorItemRef(): MemoryItemRef =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> MemoryItemRef(MemoryItemRef.Type.SOURCE, source.id.value)
+        is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
+        is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
+        is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
+        is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
+        is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
+        is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
+    }
 
 private fun String.limitForSelectorView(maxChars: Int): String {
     val normalized = trim()

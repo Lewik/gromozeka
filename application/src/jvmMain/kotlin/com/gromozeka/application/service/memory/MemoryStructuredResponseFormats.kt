@@ -462,7 +462,7 @@ internal object MemoryStructuredResponseFormats {
                     "reason" to stringSchema(),
                 )
             ),
-            "rejected_items" to arraySchema(
+            "rejected_safety_items" to arraySchema(
                 objectSchema(
                     "item_type" to stringEnumSchema("source", "entity", "claim", "note", "action_item", "profile", "episode", "run"),
                     "item_id" to stringSchema(),

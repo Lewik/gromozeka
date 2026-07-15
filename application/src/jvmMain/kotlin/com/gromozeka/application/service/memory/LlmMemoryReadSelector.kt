@@ -58,6 +58,10 @@ class LlmMemoryReadSelector(
                 .distinctBy { it.toReadSelectorItemRef() }
             return result.copy(
                 selectedHits = finalSelectedHits,
+                decisions = result.decisions.withSafetyAddedDecisions(
+                    safetyAddedHits = finalSafetyAddedHits,
+                    rankOffset = result.selectedHits.size,
+                ),
                 summary = result.summary.withFinalSafetySummary(finalSafetyAddedHits),
                 selectorTrace = MemoryReadSelectorTrace(
                     initialCandidateCount = request.candidateHits.size,
@@ -289,6 +293,10 @@ class LlmMemoryReadSelector(
 
         return finalResult.copy(
             selectedHits = finalSelectedHits,
+            decisions = finalResult.decisions.withSafetyAddedDecisions(
+                safetyAddedHits = finalSafetyAddedHits,
+                rankOffset = finalResult.selectedHits.size,
+            ),
             summary = "Hierarchical selector ${levelSummaries.joinToString("; ")}. Final: ${finalResult.summary.withFinalSafetySummary(finalSafetyAddedHits)}",
             selectorTrace = MemoryReadSelectorTrace(
                 initialCandidateCount = request.candidateHits.size,
@@ -339,10 +347,18 @@ class LlmMemoryReadSelector(
         passMode: ReadSelectorPassMode,
         runtimeConversationSuffix: String? = null,
     ): MemoryReadSelectionResult {
+        val safetyRefs = if (request.plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+            request.candidateHits
+                .readSelectorSafetySurvivors(request)
+                .mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+        } else {
+            emptySet()
+        }
         val renderedCandidates = MemoryReadSelectorCandidateRenderer.render(
             hits = request.candidateHits,
             snapshot = request.snapshot,
             query = request.sourceCandidateQuery(),
+            safetyRefs = safetyRefs,
         )
         val stageMessages = request.readRequest.toMemoryStageMessages(
             stageName = "read-selector-reranker",
@@ -395,11 +411,21 @@ class LlmMemoryReadSelector(
             .mapNotNull { it.toItemRef() }
             .distinct()
         val selectedHits = selectedRefs.mapNotNull(hitsByRef::get)
-        val decisions = selectorResponse.toDecisions()
+        val rejectedSafetyRefs = selectorResponse.rejectedSafetyItems
+            .mapNotNull { it.toItemRef() }
+            .filterTo(mutableSetOf()) { it in safetyRefs && it !in selectedRefs }
+        val decisions = selectorResponse.toDecisions(
+            candidateRefs = hitsByRef.keys,
+            safetyRefs = safetyRefs,
+        )
+        val implicitRejectedCount = decisions.count { !it.selected } - rejectedSafetyRefs.size
+        val undecidedSafetyCount = safetyRefs.count { it !in selectedRefs && it !in rejectedSafetyRefs }
 
         log.info {
             "Memory read selector completed: namespace=${request.readRequest.namespace.value} " +
-                "candidates=${request.candidateHits.size} selected=${selectedHits.size} rejected=${selectorResponse.rejectedItems.size} " +
+                "candidates=${request.candidateHits.size} selected=${selectedHits.size} " +
+                "implicitRejected=$implicitRejectedCount rejectedSafety=${rejectedSafetyRefs.size} " +
+                "undecidedSafety=$undecidedSafetyCount " +
                 "selectedRefs=${selectedRefs.joinToString("|") { "${it.type.name.lowercase()}:${it.id}" }} " +
                 "$logSuffix summary=${selectorResponse.summary.oneLineForReadSelectorLog(500)}"
         }
@@ -423,7 +449,7 @@ class LlmMemoryReadSelector(
         }
 
         return """
-        Memory stage: ReadSelectorReranker v1.
+        Memory stage: ReadSelectorReranker v2.
         Namespace: ${request.readRequest.namespace.value}
         Pass mode: ${passMode.promptLabel}
 
@@ -483,7 +509,9 @@ class LlmMemoryReadSelector(
         - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.
         - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.
         - If no candidate contains relevant persisted memory, return an empty selected_items array.
-        - Return every candidate exactly once: retained candidates in selected_items, all others in rejected_items. Rejected items need identifiers only; do not explain individual rejections.
+        - Return retained candidates in selected_items. All ordinary candidates omitted from selected_items are rejected implicitly.
+        - A candidate with safety_candidate=true is retained by deterministic safety unless you either select it or explicitly list it in rejected_safety_items.
+        - List only rejected safety candidates in rejected_safety_items. Do not list ordinary rejected candidates and do not explain individual safety rejections.
 
         Planned context mode: ${request.plan.contextMode.name}
         Planned coverage mode: ${request.plan.coverageMode.name}
@@ -506,7 +534,7 @@ class LlmMemoryReadSelector(
               "reason": "short reason"
             }
           ],
-          "rejected_items": [
+          "rejected_safety_items": [
             {
               "item_type": "claim | note | action_item | profile | source | episode | entity | run",
               "item_id": "exact candidate id"
@@ -521,13 +549,16 @@ class LlmMemoryReadSelector(
     private data class ReadSelectorResponse(
         @SerialName("selected_items")
         val selectedItems: List<SelectedItem> = emptyList(),
-        @SerialName("rejected_items")
-        val rejectedItems: List<RejectedItem> = emptyList(),
+        @SerialName("rejected_safety_items")
+        val rejectedSafetyItems: List<RejectedItem> = emptyList(),
         val summary: String = "",
     ) {
-        fun toDecisions(): List<MemoryReadSelectionResult.Decision> =
-            selectedItems.mapNotNull { item ->
-                item.toItemRef()?.let { ref ->
+        fun toDecisions(
+            candidateRefs: Set<MemoryItemRef>,
+            safetyRefs: Set<MemoryItemRef>,
+        ): List<MemoryReadSelectionResult.Decision> {
+            val selectedDecisions = selectedItems.mapNotNull { item ->
+                item.toItemRef()?.takeIf { it in candidateRefs }?.let { ref ->
                     MemoryReadSelectionResult.Decision(
                         ref = ref,
                         selected = true,
@@ -535,16 +566,31 @@ class LlmMemoryReadSelector(
                         reason = item.reason,
                     )
                 }
-            } + rejectedItems.mapNotNull { item ->
-                item.toItemRef()?.let { ref ->
+            }.distinctBy { it.ref }
+            val selectedRefs = selectedDecisions.mapTo(mutableSetOf()) { it.ref }
+            val explicitlyRejectedSafetyRefs = rejectedSafetyItems
+                .mapNotNull { it.toItemRef() }
+                .filterTo(mutableSetOf()) { it in safetyRefs && it !in selectedRefs }
+            val rejectedDecisions = candidateRefs
+                .filter { ref ->
+                    ref !in selectedRefs &&
+                        (ref !in safetyRefs || ref in explicitlyRejectedSafetyRefs)
+                }
+                .map { ref ->
                     MemoryReadSelectionResult.Decision(
                         ref = ref,
                         selected = false,
                         rank = Int.MAX_VALUE,
-                        reason = "Explicitly rejected by the memory reranker.",
+                        reason = if (ref in explicitlyRejectedSafetyRefs) {
+                            "Explicitly rejected by the memory reranker despite deterministic safety eligibility."
+                        } else {
+                            "Implicitly rejected by omission from the memory reranker selection."
+                        },
                     )
                 }
-            }
+
+            return selectedDecisions + rejectedDecisions
+        }
     }
 
     @Serializable
@@ -784,6 +830,23 @@ private fun String.withFinalSafetySummary(safetyAddedHits: List<MemoryStore.Sear
     } else {
         "$this Final safety added ${safetyAddedHits.size} complete-set survivor(s)."
     }
+
+private fun List<MemoryReadSelectionResult.Decision>.withSafetyAddedDecisions(
+    safetyAddedHits: List<MemoryStore.SearchHit>,
+    rankOffset: Int,
+): List<MemoryReadSelectionResult.Decision> {
+    if (safetyAddedHits.isEmpty()) return this
+
+    val addedRefs = safetyAddedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+    return filterNot { it.ref in addedRefs } + safetyAddedHits.mapIndexed { index, hit ->
+        MemoryReadSelectionResult.Decision(
+            ref = hit.toReadSelectorItemRef(),
+            selected = true,
+            rank = rankOffset + index + 1,
+            reason = "Deterministic selector safety retained this candidate.",
+        )
+    }
+}
 
 private fun MemoryReadSelectionRequest.readSelectorSafetySurvivorLimit(): Int =
     if (plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
