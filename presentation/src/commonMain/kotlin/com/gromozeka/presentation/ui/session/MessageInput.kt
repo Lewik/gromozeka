@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -58,7 +59,14 @@ fun MessageInput(
     val focusManager = LocalFocusManager.current
     var inputFocused by remember { mutableStateOf(false) }
 
-    val actionButtonSize = 56.dp
+    val textFieldPadding = OutlinedTextFieldDefaults.contentPadding()
+    val textFieldLineHeight = with(LocalDensity.current) {
+        MaterialTheme.typography.bodyLarge.lineHeight.toDp()
+    }
+    val actionButtonSize = maxOf(
+        OutlinedTextFieldDefaults.MinHeight,
+        textFieldLineHeight + textFieldPadding.calculateTopPadding() + textFieldPadding.calculateBottomPadding(),
+    )
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val actionAreaMaxWidth = maxWidth * 0.64f
