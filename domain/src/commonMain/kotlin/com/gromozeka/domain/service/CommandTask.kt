@@ -14,8 +14,10 @@ data class CommandTask(
     val status: Status,
     val processId: Long?,
     val processStartedAt: Instant?,
+    val processGroupId: Long? = null,
     val outputFile: String,
     val outputBytes: Long,
+    val timeoutAt: Instant? = null,
     val exitCode: Int? = null,
     val statusMessage: String? = null,
     val createdAt: Instant,
@@ -45,4 +47,8 @@ data class CommandTaskOutput(
     val outputStartByte: Long,
     val nextOutputByte: Long,
     val hasMoreOutput: Boolean,
+)
+
+data class CommandTaskUpsertResult(
+    val evictedTasks: List<CommandTask> = emptyList(),
 )

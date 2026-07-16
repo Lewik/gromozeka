@@ -1,11 +1,14 @@
 package com.gromozeka.infrastructure.ai.tool
 
 import com.gromozeka.domain.service.CommandProcessSpec
+import com.gromozeka.domain.service.CommandProcessRecovery
+import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandTask
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class LocalCommandProcessRunnerTest {
@@ -55,6 +58,113 @@ class LocalCommandProcessRunnerTest {
             }
             assertFalse(ProcessHandle.of(process.processId).map(ProcessHandle::isAlive).orElse(false))
             assertFalse(ProcessHandle.of(childPid).map(ProcessHandle::isAlive).orElse(false))
+        }
+    }
+
+    @Test
+    fun `runner terminates descendant created while handling termination`() {
+        withTemporaryGromozekaHome { home ->
+            val readyFile = File(home, "ready")
+            val lateChildPidFile = File(home, "late-child.pid")
+            val process = runner.start(
+                CommandProcessSpec(
+                    taskId = CommandTask.Id("late-descendant-task"),
+                    command = "trap 'sleep 30 & late=${'$'}!; echo ${'$'}late > '${lateChildPidFile.absolutePath}'; wait ${'$'}late' TERM; " +
+                        "echo ready > '${readyFile.absolutePath}'; while :; do sleep 30; done",
+                    workingDirectory = home.absolutePath,
+                )
+            )
+            waitUntil(5_000) { readyFile.isFile }
+
+            process.terminateTree()
+
+            waitUntil(5_000) { lateChildPidFile.isFile && lateChildPidFile.readText().trim().isNotEmpty() }
+            val lateChildPid = lateChildPidFile.readText().trim().toLong()
+            assertFalse(ProcessHandle.of(lateChildPid).map(ProcessHandle::isAlive).orElse(false))
+        }
+    }
+
+    @Test
+    fun `runner recovers completed command from exit artifact`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(
+                CommandProcessSpec(
+                    taskId = CommandTask.Id("completed-recovery-task"),
+                    command = "printf recovered; exit 7",
+                    workingDirectory = home.absolutePath,
+                )
+            )
+            assertTrue(process.waitFor(5_000))
+
+            val recovery = assertIs<CommandProcessRecovery.Completed>(
+                runner.recover(
+                    CommandProcessRecoverySpec(
+                        processId = process.processId,
+                        processStartedAt = process.processStartedAt,
+                        processGroupId = process.processGroupId,
+                        outputFile = process.outputFile,
+                    )
+                )
+            )
+
+            assertTrue(recovery.exitCode == 7)
+            assertTrue(File(process.outputFile).readText() == "recovered")
+        }
+    }
+
+    @Test
+    fun `runner reconnects to a live command with matching process identity`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(
+                CommandProcessSpec(
+                    taskId = CommandTask.Id("live-recovery-task"),
+                    command = "sleep 30",
+                    workingDirectory = home.absolutePath,
+                )
+            )
+
+            val recovery = assertIs<CommandProcessRecovery.Running>(
+                runner.recover(
+                    CommandProcessRecoverySpec(
+                        processId = process.processId,
+                        processStartedAt = process.processStartedAt,
+                        processGroupId = process.processGroupId,
+                        outputFile = process.outputFile,
+                    )
+                )
+            )
+
+            recovery.process.terminateTree()
+            assertFalse(process.isAlive())
+        }
+    }
+
+    @Test
+    fun `runner garbage collects only unreferenced output artifacts`() {
+        withTemporaryGromozekaHome { home ->
+            val retained = runner.start(
+                CommandProcessSpec(
+                    taskId = CommandTask.Id("retained-output-task"),
+                    command = "printf retained",
+                    workingDirectory = home.absolutePath,
+                )
+            )
+            val orphaned = runner.start(
+                CommandProcessSpec(
+                    taskId = CommandTask.Id("orphaned-output-task"),
+                    command = "printf orphaned",
+                    workingDirectory = home.absolutePath,
+                )
+            )
+            assertTrue(retained.waitFor(5_000))
+            assertTrue(orphaned.waitFor(5_000))
+
+            runner.garbageCollectOutputArtifacts(setOf(retained.outputFile))
+
+            assertTrue(File(retained.outputFile).isFile)
+            assertFalse(File(orphaned.outputFile).exists())
+            assertFalse(File("${orphaned.outputFile}.pgid").exists())
+            assertFalse(File("${orphaned.outputFile}.exit").exists())
         }
     }
 

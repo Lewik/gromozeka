@@ -1,12 +1,15 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.CommandProcessRecovery
+import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
@@ -150,6 +153,127 @@ class DefaultCommandTaskServiceTest {
         }
     }
 
+    @Test
+    fun `server restart reconnects running command and monitors it to completion`() = runBlocking {
+        withService { service, runner, coordinator, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(command = "running", yield_time_ms = 0),
+                context(projectDirectory),
+            )
+            service.close()
+            assertTrue(runner.lastProcess.isAlive())
+            assertFalse(runner.lastProcess.terminateTreeCalled)
+
+            val recoveredService = DefaultCommandTaskService(
+                processRunner = runner,
+                runtimeCoordinator = coordinator,
+                runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            )
+            try {
+                recoveredService.recoverPersistedTasks()
+                assertTrue(result.task.outputFile in runner.garbageCollectionRetainedFiles)
+                runner.lastProcess.appendOutput("recovered output")
+                runner.lastProcess.complete(0)
+
+                waitUntil(2_000) {
+                    coordinator.findCommandTask(conversationId, result.task.id)?.isTerminal == true
+                }
+                val recoveredTask = assertNotNull(coordinator.findCommandTask(conversationId, result.task.id))
+                assertEquals(CommandTask.Status.COMPLETED, recoveredTask.status)
+                assertEquals(
+                    "recovered output",
+                    assertNotNull(recoveredService.get(conversationId, result.task.id, 0, 0)).output,
+                )
+            } finally {
+                recoveredService.close()
+            }
+        }
+    }
+
+    @Test
+    fun `server restart finalizes command that completed while offline`() = runBlocking {
+        withService { service, runner, coordinator, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(command = "offline", yield_time_ms = 0),
+                context(projectDirectory),
+            )
+            service.close()
+            runner.lastProcess.complete(7)
+
+            val recoveredService = DefaultCommandTaskService(
+                processRunner = runner,
+                runtimeCoordinator = coordinator,
+                runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            )
+            try {
+                recoveredService.recoverPersistedTasks()
+
+                val recoveredTask = assertNotNull(coordinator.findCommandTask(conversationId, result.task.id))
+                assertEquals(CommandTask.Status.FAILED, recoveredTask.status)
+                assertEquals(7, recoveredTask.exitCode)
+            } finally {
+                recoveredService.close()
+            }
+        }
+    }
+
+    @Test
+    fun `concurrent cancellation terminates command once`() = runBlocking {
+        withService { service, runner, _, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(command = "running", yield_time_ms = 0),
+                context(projectDirectory),
+            )
+
+            val first = async { service.cancel(conversationId, result.task.id) }
+            val second = async { service.cancel(conversationId, result.task.id) }
+            val results = listOf(first.await(), second.await())
+
+            assertEquals(1, results.count { it })
+            assertEquals(1, runner.lastProcess.terminationCount)
+        }
+    }
+
+    @Test
+    fun `terminal task retention deletes evicted output artifacts`() = runBlocking {
+        withService { service, runner, coordinator, projectDirectory ->
+            val evictedOutput = File(projectDirectory, "retained-0.log").apply { createNewFile() }
+            repeat(100) { index ->
+                val createdAt = Instant.fromEpochMilliseconds(index.toLong())
+                val outputFile = if (index == 0) {
+                    evictedOutput
+                } else {
+                    File(projectDirectory, "retained-$index.log").apply { createNewFile() }
+                }
+                coordinator.upsertCommandTask(
+                    CommandTask(
+                        id = CommandTask.Id("retained-$index"),
+                        conversationId = conversationId,
+                        command = "completed-$index",
+                        workingDirectory = projectDirectory.absolutePath,
+                        status = CommandTask.Status.COMPLETED,
+                        processId = null,
+                        processStartedAt = null,
+                        outputFile = outputFile.absolutePath,
+                        outputBytes = 0,
+                        createdAt = createdAt,
+                        updatedAt = createdAt,
+                        completedAt = createdAt,
+                    )
+                )
+            }
+            runner.onStart = { process -> process.complete(0) }
+
+            service.start(
+                ExecuteCommandRequest(command = "newest", yield_time_ms = 2_000),
+                context(projectDirectory),
+            )
+
+            assertTrue(evictedOutput.absolutePath in runner.deletedOutputFiles)
+            assertFalse(evictedOutput.exists())
+        }
+    }
+
     private suspend fun withService(
         block: suspend (
             service: DefaultCommandTaskService,
@@ -195,6 +319,8 @@ class DefaultCommandTaskServiceTest {
         private val nextPid = AtomicLong(1_000)
         lateinit var lastProcess: FakeRunningCommandProcess
         var onStart: (FakeRunningCommandProcess) -> Unit = {}
+        val deletedOutputFiles = mutableListOf<String>()
+        var garbageCollectionRetainedFiles = emptySet<String>()
 
         override fun start(spec: CommandProcessSpec): RunningCommandProcess =
             FakeRunningCommandProcess(
@@ -205,12 +331,26 @@ class DefaultCommandTaskServiceTest {
                 onStart(process)
             }
 
-        override fun reconnect(
-            processId: Long,
-            processStartedAt: Instant,
-            outputFile: String,
-        ): RunningCommandProcess? = lastProcess.takeIf {
-            it.processId == processId && it.processStartedAt == processStartedAt
+        override fun recover(spec: CommandProcessRecoverySpec): CommandProcessRecovery {
+            val process = lastProcess.takeIf {
+                it.processId == spec.processId &&
+                    it.processStartedAt == spec.processStartedAt &&
+                    it.processGroupId == spec.processGroupId
+            } ?: return CommandProcessRecovery.Unavailable("Fake process is unavailable")
+            return if (process.isAlive()) {
+                CommandProcessRecovery.Running(process)
+            } else {
+                CommandProcessRecovery.Completed(process.exitCode())
+            }
+        }
+
+        override fun deleteOutputArtifacts(outputFile: String) {
+            deletedOutputFiles += outputFile
+            File(outputFile).delete()
+        }
+
+        override fun garbageCollectOutputArtifacts(retainedOutputFiles: Set<String>) {
+            garbageCollectionRetainedFiles = retainedOutputFiles
         }
     }
 
@@ -219,6 +359,7 @@ class DefaultCommandTaskServiceTest {
         private val outputArtifact: File,
     ) : RunningCommandProcess {
         override val processStartedAt: Instant = Instant.fromEpochMilliseconds(processId)
+        override val processGroupId: Long = processId + 10_000
         override val outputFile: String
             get() = outputArtifact.absolutePath
         @Volatile
@@ -227,6 +368,8 @@ class DefaultCommandTaskServiceTest {
         private var code = 0
         @Volatile
         var terminateTreeCalled = false
+            private set
+        var terminationCount = 0
             private set
 
         override fun isAlive(): Boolean = alive
@@ -242,6 +385,7 @@ class DefaultCommandTaskServiceTest {
 
         override fun terminateTree() {
             terminateTreeCalled = true
+            terminationCount += 1
             alive = false
             code = 137
         }

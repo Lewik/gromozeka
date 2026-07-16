@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -371,7 +372,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             true
         }
 
-    override suspend fun upsertCommandTask(task: CommandTask): Boolean =
+    override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult =
         mutex.withLock {
             val tasks = commandTasksByConversation.getOrPut(task.conversationId) { mutableListOf() }
             val existingIndex = tasks.indexOfFirst { it.id == task.id }
@@ -387,6 +388,8 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                     working + terminal.sortedBy { it.createdAt }.takeLast(COMMAND_TASK_TERMINAL_RETENTION_LIMIT)
                 }
                 .sortedBy { it.createdAt }
+            val retainedTaskIds = retainedTasks.mapTo(mutableSetOf()) { it.id }
+            val evictedTasks = tasks.filterNot { it.id in retainedTaskIds }
             tasks.clear()
             tasks.addAll(retainedTasks)
             if (previousStatus != task.status) {
@@ -398,8 +401,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 )
             }
             bumpRevision(task.conversationId)
-            true
+            CommandTaskUpsertResult(evictedTasks)
         }
+
+    override suspend fun findCommandTasks(): List<CommandTask> = mutex.withLock {
+        commandTasksByConversation.values.flatten()
+    }
 
     override suspend fun findCommandTask(
         conversationId: Conversation.Id,

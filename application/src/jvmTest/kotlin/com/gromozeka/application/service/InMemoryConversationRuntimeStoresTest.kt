@@ -229,10 +229,10 @@ class InMemoryConversationRuntimeStoresTest {
             updatedAt = now,
         )
 
-        assertTrue(coordinator.upsertCommandTask(commandTask))
+        assertTrue(coordinator.upsertCommandTask(commandTask).evictedTasks.isEmpty())
         val initialTraceSize = coordinator.snapshot(conversationId).trace.size
         val progressedTask = commandTask.copy(outputBytes = 64, updatedAt = Clock.System.now())
-        assertTrue(coordinator.upsertCommandTask(progressedTask))
+        assertTrue(coordinator.upsertCommandTask(progressedTask).evictedTasks.isEmpty())
         coordinator.abort(conversationId)
 
         val snapshot = coordinator.snapshot(conversationId)
@@ -246,18 +246,22 @@ class InMemoryConversationRuntimeStoresTest {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val now = Clock.System.now()
         val workingTask = commandTask("working", CommandTask.Status.WORKING, now)
-        assertTrue(coordinator.upsertCommandTask(workingTask))
+        assertTrue(coordinator.upsertCommandTask(workingTask).evictedTasks.isEmpty())
+        var evictedTasks = emptyList<CommandTask>()
         repeat(101) { index ->
-            assertTrue(
-                coordinator.upsertCommandTask(
-                    commandTask("completed-$index", CommandTask.Status.COMPLETED, now)
-                )
-            )
+            evictedTasks = coordinator.upsertCommandTask(
+                commandTask("completed-$index", CommandTask.Status.COMPLETED, now)
+            ).evictedTasks
+            if (index < 100) {
+                assertTrue(evictedTasks.isEmpty())
+            }
         }
 
         val tasks = coordinator.snapshot(conversationId).commandTasks
         assertTrue(workingTask in tasks)
         assertEquals(100, tasks.count { it.status == CommandTask.Status.COMPLETED })
+        assertEquals(listOf(CommandTask.Id("completed-0")), evictedTasks.map { it.id })
+        assertEquals(tasks, coordinator.findCommandTasks())
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.CommandProcessRecovery
+import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandTask
@@ -21,13 +23,17 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
 import java.io.RandomAccessFile
@@ -43,8 +49,16 @@ class DefaultCommandTaskService(
     private val runtimeEventBus: ConversationRuntimeEventBus,
 ) : CommandTaskService {
     private val log = KLoggers.logger(this)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CoroutineName("command-tasks"))
+    private val supervisor = SupervisorJob()
+    private val scope = CoroutineScope(supervisor + Dispatchers.IO + CoroutineName("command-tasks"))
     private val activeCommands = ConcurrentHashMap<CommandTask.Id, ActiveCommand>()
+    private val lifecycleMutex = Mutex()
+    private val taskMutexes = Array(TASK_MUTEX_STRIPES) { Mutex() }
+
+    @EventListener(ApplicationReadyEvent::class)
+    fun recoverOnStartup() = runBlocking {
+        recoverPersistedTasks()
+    }
 
     override suspend fun start(
         request: ExecuteCommandRequest,
@@ -54,55 +68,62 @@ class DefaultCommandTaskService(
         val conversationId = context.requiredConversationId()
         val workingDirectory = resolveWorkingDirectory(context.requiredProjectPath(), request.working_directory)
         val taskId = CommandTask.Id(uuid7())
-        val process = processRunner.start(
-            CommandProcessSpec(
-                taskId = taskId,
+        val activeCommand = lifecycleMutex.withLock {
+            val process = processRunner.start(
+                CommandProcessSpec(
+                    taskId = taskId,
+                    command = request.command,
+                    workingDirectory = workingDirectory,
+                )
+            )
+            val now = Clock.System.now()
+            val task = CommandTask(
+                id = taskId,
+                conversationId = conversationId,
                 command = request.command,
                 workingDirectory = workingDirectory,
+                status = CommandTask.Status.WORKING,
+                processId = process.processId,
+                processStartedAt = process.processStartedAt,
+                processGroupId = process.processGroupId,
+                outputFile = process.outputFile,
+                outputBytes = 0,
+                timeoutAt = request.timeout_seconds?.let { now + it.seconds },
+                statusMessage = "Command is running",
+                createdAt = now,
+                updatedAt = now,
             )
-        )
-        val now = Clock.System.now()
-        val task = CommandTask(
-            id = taskId,
-            conversationId = conversationId,
-            command = request.command,
-            workingDirectory = workingDirectory,
-            status = CommandTask.Status.WORKING,
-            processId = process.processId,
-            processStartedAt = process.processStartedAt,
-            outputFile = process.outputFile,
-            outputBytes = 0,
-            statusMessage = "Command is running",
-            createdAt = now,
-            updatedAt = now,
-        )
-        val activeCommand = ActiveCommand(task, process, request.timeout_seconds)
-        try {
-            check(runtimeCoordinator.upsertCommandTask(task)) {
-                "Command task persistence rejected: ${task.id.value}"
-            }
-            activeCommands[task.id] = activeCommand
-            publishSnapshot(conversationId)
-            scope.launch {
-                monitor(activeCommand)
-            }
-        } catch (error: Throwable) {
-            activeCommands.remove(task.id, activeCommand)
+            val command = ActiveCommand(task, process, taskMutex(task.id))
             try {
-                process.terminateTree()
-            } catch (terminationError: Throwable) {
-                error.addSuppressed(terminationError)
+                command.mutex.withLock {
+                    persistCommandTask(task)
+                    activeCommands[task.id] = command
+                    publishSnapshot(conversationId)
+                    scope.launch {
+                        monitor(command)
+                    }
+                }
+            } catch (error: Throwable) {
+                activeCommands.remove(task.id, command)
+                try {
+                    process.terminateTree()
+                } catch (terminationError: Throwable) {
+                    error.addSuppressed(terminationError)
+                }
+                runCatching { processRunner.deleteOutputArtifacts(process.outputFile) }
+                    .onFailure(error::addSuppressed)
+                throw error
             }
-            throw error
+            command
         }
 
         try {
             awaitInitialResult(activeCommand, request.yield_time_ms, context)
         } catch (error: CancellationException) {
-            cancel(conversationId, task.id)
+            cancel(conversationId, taskId)
             throw error
         }
-        return output(currentTask(conversationId, task.id) ?: task, 0)
+        return output(currentTask(conversationId, taskId) ?: activeCommand.task, 0)
     }
 
     override suspend fun get(
@@ -133,62 +154,77 @@ class DefaultCommandTaskService(
     override suspend fun cancel(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
-    ): Boolean {
-        val stored = runtimeCoordinator.findCommandTask(conversationId, taskId) ?: return false
-        if (stored.isTerminal) {
-            return false
-        }
+    ): Boolean = taskMutex(taskId).withLock {
+        val stored = runtimeCoordinator.findCommandTask(conversationId, taskId) ?: return@withLock false
+        if (stored.isTerminal) return@withLock false
+
         val activeCommand = activeCommands[taskId]
         if (activeCommand != null) {
-            return activeCommand.mutex.withLock {
-                if (activeCommand.task.isTerminal) {
-                    return@withLock false
-                }
-                if (!activeCommand.process.isAlive()) {
-                    val exitCode = activeCommand.process.exitCode()
-                    complete(
-                        activeCommand = activeCommand,
-                        status = if (exitCode == 0) CommandTask.Status.COMPLETED else CommandTask.Status.FAILED,
-                        exitCode = exitCode,
-                        statusMessage = "Command exited with code $exitCode before cancellation",
-                    )
-                    return@withLock false
-                }
-                activeCommand.process.terminateTree()
+            if (activeCommand.task.isTerminal) return@withLock false
+            if (!activeCommand.process.isAlive()) {
+                val exitCode = runCatching(activeCommand.process::exitCode).getOrNull()
                 complete(
                     activeCommand = activeCommand,
+                    status = exitCode?.toTaskStatus() ?: CommandTask.Status.FAILED,
+                    exitCode = exitCode,
+                    statusMessage = exitCode?.let { "Command exited with code $it before cancellation" }
+                        ?: "Command stopped before cancellation without an exit code",
+                )
+                return@withLock false
+            }
+            activeCommand.process.terminateTree()
+            complete(
+                activeCommand = activeCommand,
+                status = CommandTask.Status.CANCELLED,
+                exitCode = null,
+                statusMessage = "Command was cancelled",
+            )
+            return@withLock true
+        }
+
+        when (val recovery = processRunner.recover(stored.recoverySpec())) {
+            is CommandProcessRecovery.Running -> {
+                recovery.process.terminateTree()
+                completeStoredTask(
+                    task = stored,
                     status = CommandTask.Status.CANCELLED,
                     exitCode = null,
-                    statusMessage = "Command was cancelled",
+                    statusMessage = "Command was cancelled after reconnecting to its process",
                 )
                 true
             }
-        }
 
-        val reconnected = stored.processId?.let { processId ->
-            stored.processStartedAt?.let { startedAt ->
-                processRunner.reconnect(processId, startedAt, stored.outputFile)
+            is CommandProcessRecovery.Completed -> {
+                completeStoredTask(
+                    task = stored,
+                    status = recovery.exitCode.toTaskStatus(),
+                    exitCode = recovery.exitCode,
+                    statusMessage = "Command exited with code ${recovery.exitCode} before cancellation",
+                )
+                false
+            }
+
+            is CommandProcessRecovery.UnrecoverableRunning -> {
+                recovery.process.terminateTree()
+                completeStoredTask(
+                    task = stored,
+                    status = CommandTask.Status.CANCELLED,
+                    exitCode = null,
+                    statusMessage = "Command was cancelled because recovery failed: ${recovery.reason}",
+                )
+                true
+            }
+
+            is CommandProcessRecovery.Unavailable -> {
+                completeStoredTask(
+                    task = stored,
+                    status = CommandTask.Status.FAILED,
+                    exitCode = null,
+                    statusMessage = "Command could not be recovered: ${recovery.reason}",
+                )
+                false
             }
         }
-        reconnected?.terminateTree()
-        val now = Clock.System.now()
-        check(
-            runtimeCoordinator.upsertCommandTask(
-                stored.copy(
-                    status = CommandTask.Status.CANCELLED,
-                    outputBytes = File(stored.outputFile).length(),
-                    statusMessage = if (reconnected == null) {
-                        "Command process was no longer running"
-                    } else {
-                        "Command was cancelled"
-                    },
-                    updatedAt = now,
-                    completedAt = now,
-                )
-            )
-        ) { "Command task cancellation update rejected: ${stored.id.value}" }
-        publishSnapshot(conversationId)
-        return true
     }
 
     override suspend fun cancelAll(conversationId: Conversation.Id): Int {
@@ -197,21 +233,95 @@ class DefaultCommandTaskService(
         return tasks.count { cancel(conversationId, it.id) }
     }
 
+    internal suspend fun recoverPersistedTasks() = lifecycleMutex.withLock {
+        val tasks = runtimeCoordinator.findCommandTasks()
+        runCatching {
+            processRunner.garbageCollectOutputArtifacts(tasks.mapTo(mutableSetOf()) { it.outputFile })
+        }.onFailure { error ->
+            log.warn(error) { "Failed to garbage-collect command output artifacts" }
+        }
+        tasks.asSequence()
+            .filter { it.status == CommandTask.Status.WORKING }
+            .sortedBy { it.createdAt }
+            .forEach { recoverPersistedTask(it) }
+    }
+
+    private suspend fun recoverPersistedTask(candidate: CommandTask) {
+        taskMutex(candidate.id).withLock {
+            val task = runtimeCoordinator.findCommandTask(candidate.conversationId, candidate.id)
+                ?: return@withLock
+            if (task.isTerminal || activeCommands.containsKey(task.id)) return@withLock
+
+            when (val recovery = processRunner.recover(task.recoverySpec())) {
+                is CommandProcessRecovery.Running -> {
+                    if (task.timeoutAt?.let { Clock.System.now() >= it } == true) {
+                        recovery.process.terminateTree()
+                        completeStoredTask(
+                            task = task,
+                            status = CommandTask.Status.FAILED,
+                            exitCode = null,
+                            statusMessage = "Command timed out while the server was restarting",
+                        )
+                    } else {
+                        val activeCommand = ActiveCommand(task, recovery.process, taskMutex(task.id))
+                        activeCommands[task.id] = activeCommand
+                        scope.launch { monitor(activeCommand) }
+                        log.info { "Recovered running command task: ${task.id.value}" }
+                    }
+                }
+
+                is CommandProcessRecovery.Completed -> completeStoredTask(
+                    task = task,
+                    status = recovery.exitCode.toTaskStatus(),
+                    exitCode = recovery.exitCode,
+                    statusMessage = if (recovery.exitCode == 0) {
+                        "Command completed while the server was restarting"
+                    } else {
+                        "Command exited with code ${recovery.exitCode} while the server was restarting"
+                    },
+                )
+
+                is CommandProcessRecovery.UnrecoverableRunning -> {
+                    recovery.process.terminateTree()
+                    completeStoredTask(
+                        task = task,
+                        status = CommandTask.Status.FAILED,
+                        exitCode = null,
+                        statusMessage = "Command could not be recovered: ${recovery.reason}",
+                    )
+                }
+
+                is CommandProcessRecovery.Unavailable -> {
+                    completeStoredTask(
+                        task = task,
+                        status = CommandTask.Status.FAILED,
+                        exitCode = null,
+                        statusMessage = "Command could not be recovered: ${recovery.reason}",
+                    )
+                }
+            }
+        }
+    }
+
     private suspend fun monitor(activeCommand: ActiveCommand) {
         try {
-            val timeoutDeadline = activeCommand.timeoutSeconds?.let { timeout ->
-                System.nanoTime() + timeout.seconds.inWholeNanoseconds
-            }
             var lastPublishedBytes = 0L
             var lastPublishedAt = System.nanoTime()
             while (true) {
-                if (activeCommand.process.waitFor(POLL_INTERVAL_MILLIS)) {
-                    activeCommand.mutex.withLock {
-                        if (!activeCommand.task.isTerminal) {
+                currentCoroutineContext().ensureActive()
+                val processStopped = activeCommand.process.waitFor(POLL_INTERVAL_MILLIS)
+                var stopMonitoring = false
+                activeCommand.mutex.withLock {
+                    if (activeCommand.task.isTerminal) {
+                        stopMonitoring = true
+                        return@withLock
+                    }
+                    when {
+                        processStopped -> {
                             val exitCode = activeCommand.process.exitCode()
                             complete(
                                 activeCommand = activeCommand,
-                                status = if (exitCode == 0) CommandTask.Status.COMPLETED else CommandTask.Status.FAILED,
+                                status = exitCode.toTaskStatus(),
                                 exitCode = exitCode,
                                 statusMessage = if (exitCode == 0) {
                                     "Command completed"
@@ -219,42 +329,39 @@ class DefaultCommandTaskService(
                                     "Command exited with code $exitCode"
                                 },
                             )
+                            stopMonitoring = true
                         }
-                    }
-                    return
-                }
-                if (timeoutDeadline != null && System.nanoTime() >= timeoutDeadline) {
-                    activeCommand.mutex.withLock {
-                        if (!activeCommand.task.isTerminal) {
+
+                        activeCommand.task.timeoutAt?.let { Clock.System.now() >= it } == true -> {
                             activeCommand.process.terminateTree()
                             complete(
                                 activeCommand = activeCommand,
                                 status = CommandTask.Status.FAILED,
                                 exitCode = null,
-                                statusMessage = "Command timed out after ${activeCommand.timeoutSeconds} seconds",
+                                statusMessage = "Command timed out at ${activeCommand.task.timeoutAt}",
                             )
+                            stopMonitoring = true
                         }
-                    }
-                    return
-                }
-                val outputBytes = File(activeCommand.task.outputFile).length()
-                val now = System.nanoTime()
-                if (outputBytes != lastPublishedBytes && now - lastPublishedAt >= PROGRESS_PUBLISH_INTERVAL_NANOS) {
-                    activeCommand.mutex.withLock {
-                        if (!activeCommand.task.isTerminal) {
-                            activeCommand.task = activeCommand.task.copy(
-                                outputBytes = outputBytes,
-                                updatedAt = Clock.System.now(),
-                            )
-                            check(runtimeCoordinator.upsertCommandTask(activeCommand.task)) {
-                                "Command task progress update rejected: ${activeCommand.task.id.value}"
+
+                        else -> {
+                            val outputBytes = File(activeCommand.task.outputFile).length()
+                            val now = System.nanoTime()
+                            if (outputBytes != lastPublishedBytes &&
+                                now - lastPublishedAt >= PROGRESS_PUBLISH_INTERVAL_NANOS
+                            ) {
+                                lastPublishedBytes = outputBytes
+                                lastPublishedAt = now
+                                activeCommand.task = activeCommand.task.copy(
+                                    outputBytes = outputBytes,
+                                    updatedAt = Clock.System.now(),
+                                )
+                                persistCommandTask(activeCommand.task)
+                                publishSnapshot(activeCommand.task.conversationId)
                             }
-                            publishSnapshot(activeCommand.task.conversationId)
                         }
                     }
-                    lastPublishedBytes = outputBytes
-                    lastPublishedAt = now
                 }
+                if (stopMonitoring) return
             }
         } catch (error: CancellationException) {
             throw error
@@ -292,12 +399,37 @@ class DefaultCommandTaskService(
             updatedAt = now,
             completedAt = now,
         )
-        check(runtimeCoordinator.upsertCommandTask(activeCommand.task)) {
-            "Command task update rejected: ${activeCommand.task.id.value}"
-        }
+        persistCommandTask(activeCommand.task)
         publishSnapshot(activeCommand.task.conversationId)
-        activeCommands.remove(activeCommand.task.id, activeCommand)
-        activeCommand.completed.complete(Unit)
+    }
+
+    private suspend fun completeStoredTask(
+        task: CommandTask,
+        status: CommandTask.Status,
+        exitCode: Int?,
+        statusMessage: String,
+    ) {
+        val now = Clock.System.now()
+        persistCommandTask(
+            task.copy(
+                status = status,
+                outputBytes = File(task.outputFile).length(),
+                exitCode = exitCode,
+                statusMessage = statusMessage,
+                updatedAt = now,
+                completedAt = now,
+            )
+        )
+        publishSnapshot(task.conversationId)
+    }
+
+    private suspend fun persistCommandTask(task: CommandTask) {
+        runtimeCoordinator.upsertCommandTask(task).evictedTasks.forEach { evictedTask ->
+            runCatching { processRunner.deleteOutputArtifacts(evictedTask.outputFile) }
+                .onFailure { error ->
+                    log.warn(error) { "Failed to delete evicted command output: ${evictedTask.outputFile}" }
+                }
+        }
     }
 
     private suspend fun awaitInitialResult(
@@ -315,7 +447,16 @@ class DefaultCommandTaskService(
 
     private fun output(task: CommandTask, afterByte: Long): CommandTaskOutput {
         val file = File(task.outputFile)
-        check(file.isFile) { "Command output artifact is missing: ${file.absolutePath}" }
+        if (!file.isFile) {
+            check(task.isTerminal) { "Command output artifact is missing: ${file.absolutePath}" }
+            return CommandTaskOutput(
+                task = task.copy(outputBytes = 0),
+                output = "",
+                outputStartByte = 0,
+                nextOutputByte = 0,
+                hasMoreOutput = false,
+            )
+        }
         val size = file.length()
         val start = min(afterByte, size)
         val bytesToRead = min(size - start, MAX_OUTPUT_CHUNK_BYTES.toLong()).toInt()
@@ -367,6 +508,21 @@ class DefaultCommandTaskService(
         }
         return runtimeCoordinator.findCommandTask(conversationId, taskId)
     }
+
+    private fun taskMutex(taskId: CommandTask.Id): Mutex {
+        val index = (taskId.value.hashCode().toLong() and Int.MAX_VALUE.toLong()).toInt() % taskMutexes.size
+        return taskMutexes[index]
+    }
+
+    private fun CommandTask.recoverySpec(): CommandProcessRecoverySpec = CommandProcessRecoverySpec(
+        processId = processId,
+        processStartedAt = processStartedAt,
+        processGroupId = processGroupId,
+        outputFile = outputFile,
+    )
+
+    private fun Int.toTaskStatus(): CommandTask.Status =
+        if (this == 0) CommandTask.Status.COMPLETED else CommandTask.Status.FAILED
 
     private fun ByteArray.completeUtf8PrefixLength(): Int {
         if (isEmpty()) {
@@ -420,21 +576,13 @@ class DefaultCommandTaskService(
     }
 
     @PreDestroy
-    fun close() {
-        runBlocking {
-            activeCommands.values.toList().forEach { activeCommand ->
-                runCatching { cancel(activeCommand.task.conversationId, activeCommand.task.id) }
-            }
-        }
-        scope.cancel()
-    }
+    fun close() = runBlocking { supervisor.cancelAndJoin() }
 
     private class ActiveCommand(
         var task: CommandTask,
         val process: RunningCommandProcess,
-        val timeoutSeconds: Long?,
+        val mutex: Mutex,
     ) {
-        val mutex = Mutex()
         val completed = CompletableDeferred<Unit>()
     }
 
@@ -443,5 +591,6 @@ class DefaultCommandTaskService(
         const val POLL_INTERVAL_MILLIS = 100L
         const val MAX_OUTPUT_CHUNK_BYTES = 64 * 1024
         const val PROGRESS_PUBLISH_INTERVAL_NANOS = 1_000_000_000L
+        const val TASK_MUTEX_STRIPES = 64
     }
 }

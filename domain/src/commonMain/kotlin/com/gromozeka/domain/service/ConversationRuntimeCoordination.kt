@@ -420,7 +420,9 @@ interface ConversationRuntimeCoordinator {
         workerId: String,
     ): Boolean
 
-    suspend fun upsertCommandTask(task: CommandTask): Boolean
+    suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult
+
+    suspend fun findCommandTasks(): List<CommandTask>
 
     suspend fun findCommandTask(
         conversationId: Conversation.Id,

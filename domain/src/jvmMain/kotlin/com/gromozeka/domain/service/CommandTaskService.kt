@@ -32,19 +32,37 @@ data class CommandProcessSpec(
     val workingDirectory: String,
 )
 
+data class CommandProcessRecoverySpec(
+    val processId: Long?,
+    val processStartedAt: Instant?,
+    val processGroupId: Long?,
+    val outputFile: String,
+)
+
+sealed interface CommandProcessRecovery {
+    data class Running(val process: RunningCommandProcess) : CommandProcessRecovery
+    data class Completed(val exitCode: Int) : CommandProcessRecovery
+    data class UnrecoverableRunning(
+        val process: RunningCommandProcess,
+        val reason: String,
+    ) : CommandProcessRecovery
+    data class Unavailable(val reason: String) : CommandProcessRecovery
+}
+
 interface CommandProcessRunner {
     fun start(spec: CommandProcessSpec): RunningCommandProcess
 
-    fun reconnect(
-        processId: Long,
-        processStartedAt: Instant,
-        outputFile: String,
-    ): RunningCommandProcess?
+    fun recover(spec: CommandProcessRecoverySpec): CommandProcessRecovery
+
+    fun deleteOutputArtifacts(outputFile: String)
+
+    fun garbageCollectOutputArtifacts(retainedOutputFiles: Set<String>)
 }
 
 interface RunningCommandProcess {
     val processId: Long
     val processStartedAt: Instant
+    val processGroupId: Long
     val outputFile: String
 
     fun isAlive(): Boolean

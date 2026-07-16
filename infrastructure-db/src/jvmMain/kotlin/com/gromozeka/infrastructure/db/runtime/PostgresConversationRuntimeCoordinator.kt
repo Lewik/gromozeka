@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.db.runtime
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -345,7 +346,7 @@ class PostgresConversationRuntimeCoordinator(
             true
         }
 
-    override suspend fun upsertCommandTask(task: CommandTask): Boolean =
+    override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult =
         mutateRecord(task.conversationId, createIfMissing = true) { record ->
             val tasks = record.commandTasks.toMutableList()
             val existingIndex = tasks.indexOfFirst { it.id == task.id }
@@ -355,12 +356,15 @@ class PostgresConversationRuntimeCoordinator(
             } else {
                 tasks += task
             }
-            record.commandTasks = tasks
+            val retainedTasks = tasks
                 .partition { it.status == CommandTask.Status.WORKING }
                 .let { (working, terminal) ->
                     working + terminal.sortedBy { it.createdAt }.takeLast(COMMAND_TASK_TERMINAL_RETENTION_LIMIT)
                 }
                 .sortedBy { it.createdAt }
+            val retainedTaskIds = retainedTasks.mapTo(mutableSetOf()) { it.id }
+            val evictedTasks = tasks.filterNot { it.id in retainedTaskIds }
+            record.commandTasks = retainedTasks
             if (previousStatus != task.status) {
                 record.appendTrace(
                     conversationId = task.conversationId,
@@ -370,8 +374,11 @@ class PostgresConversationRuntimeCoordinator(
                 )
             }
             record.bumpRevision()
-            true
+            CommandTaskUpsertResult(evictedTasks)
         }
+
+    override suspend fun findCommandTasks(): List<CommandTask> =
+        readAllRecords().flatMap { it.commandTasks }
 
     override suspend fun findCommandTask(
         conversationId: Conversation.Id,
@@ -696,6 +703,23 @@ class PostgresConversationRuntimeCoordinator(
                     statement.setString(1, conversationId.value)
                     statement.executeQuery().use { result ->
                         if (result.next()) result.runtimeRecord() else null
+                    }
+                }
+            }
+        }
+
+    private suspend fun readAllRecords(): List<RuntimeRecord> =
+        withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    "SELECT record_json FROM conversation_runtime_records ORDER BY conversation_id"
+                ).use { statement ->
+                    statement.executeQuery().use { result ->
+                        buildList {
+                            while (result.next()) {
+                                add(result.runtimeRecord())
+                            }
+                        }
                     }
                 }
             }
