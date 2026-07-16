@@ -37,6 +37,8 @@ import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.CommandTaskService
 import com.gromozeka.domain.service.ConversationRuntimeWorkerAffinity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
@@ -88,6 +90,7 @@ class ConversationEngineService(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
+    private val commandTaskService: CommandTaskService,
     runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
 ) : ConversationRuntimeService, ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
@@ -111,7 +114,19 @@ class ConversationEngineService(
     override suspend fun controlExecution(
         conversationId: Conversation.Id,
         action: ConversationRuntimeControlAction,
-    ): Boolean = runtimeDispatcher.controlExecution(conversationId, action)
+    ): Boolean {
+        val cancelledCommands = if (action == ConversationRuntimeControlAction.INTERRUPT) {
+            commandTaskService.cancelAll(conversationId)
+        } else {
+            0
+        }
+        return runtimeDispatcher.controlExecution(conversationId, action) || cancelledCommands > 0
+    }
+
+    override suspend fun cancelCommandTask(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+    ): Boolean = commandTaskService.cancel(conversationId, taskId)
 
     override suspend fun submitMessage(
         conversationId: Conversation.Id,

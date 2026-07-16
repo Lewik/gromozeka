@@ -10,6 +10,8 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -210,6 +212,55 @@ class InMemoryConversationRuntimeStoresTest {
     }
 
     @Test
+    fun `coordinator retains command task after conversation runtime is cleared`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val now = Clock.System.now()
+        val commandTask = CommandTask(
+            id = CommandTask.Id("command-task-1"),
+            conversationId = conversationId,
+            command = "sleep 30",
+            workingDirectory = "/tmp",
+            status = CommandTask.Status.WORKING,
+            processId = 123,
+            processStartedAt = now,
+            outputFile = "/tmp/command-task-1.log",
+            outputBytes = 0,
+            createdAt = now,
+            updatedAt = now,
+        )
+
+        assertTrue(coordinator.upsertCommandTask(commandTask))
+        val initialTraceSize = coordinator.snapshot(conversationId).trace.size
+        val progressedTask = commandTask.copy(outputBytes = 64, updatedAt = Clock.System.now())
+        assertTrue(coordinator.upsertCommandTask(progressedTask))
+        coordinator.abort(conversationId)
+
+        val snapshot = coordinator.snapshot(conversationId)
+        assertEquals(progressedTask, coordinator.findCommandTask(conversationId, commandTask.id))
+        assertEquals(listOf(progressedTask), snapshot.commandTasks)
+        assertEquals(initialTraceSize, snapshot.trace.count { it.kind == ConversationRuntimeTraceEntry.Kind.COMMAND_TASK })
+    }
+
+    @Test
+    fun `command task retention never evicts working tasks`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val now = Clock.System.now()
+        val workingTask = commandTask("working", CommandTask.Status.WORKING, now)
+        assertTrue(coordinator.upsertCommandTask(workingTask))
+        repeat(101) { index ->
+            assertTrue(
+                coordinator.upsertCommandTask(
+                    commandTask("completed-$index", CommandTask.Status.COMPLETED, now)
+                )
+            )
+        }
+
+        val tasks = coordinator.snapshot(conversationId).commandTasks
+        assertTrue(workingTask in tasks)
+        assertEquals(100, tasks.count { it.status == CommandTask.Status.COMPLETED })
+    }
+
+    @Test
     fun `coordinator records sequenced event log entries`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val firstEvent = ConversationRuntimeEvent.ExecutionCompleted(conversationId)
@@ -283,6 +334,25 @@ class InMemoryConversationRuntimeStoresTest {
         assertEquals(item, delivery.item)
         delivery.ack()
     }
+
+    private fun commandTask(
+        id: String,
+        status: CommandTask.Status,
+        createdAt: Instant,
+    ): CommandTask = CommandTask(
+        id = CommandTask.Id(id),
+        conversationId = conversationId,
+        command = id,
+        workingDirectory = "/tmp",
+        status = status,
+        processId = null,
+        processStartedAt = null,
+        outputFile = "/tmp/$id.log",
+        outputBytes = 0,
+        createdAt = createdAt,
+        updatedAt = createdAt,
+        completedAt = createdAt.takeIf { status != CommandTask.Status.WORKING },
+    )
 
     private fun task(
         messageId: String,

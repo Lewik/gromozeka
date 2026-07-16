@@ -36,13 +36,9 @@ private fun formatPath(path: String, projectPath: String): String {
     }
 }
 
-private fun truncateText(text: String, toolName: String, maxLines: Int = 5): String {
-    if (toolName == "grz_execute_command") {
-        return text
-    }
-    
+private fun truncateText(text: String, maxLines: Int = 5): String {
     val lines = text.lines()
-    return if (lines.size > maxLines * 2) {
+    val lineBounded = if (lines.size > maxLines * 2) {
         val firstLines = lines.take(maxLines)
         val lastLines = lines.takeLast(maxLines)
         val omittedCount = lines.size - (maxLines * 2)
@@ -53,7 +49,16 @@ private fun truncateText(text: String, toolName: String, maxLines: Int = 5): Str
     } else {
         text
     }
+    if (lineBounded.length <= MaxExpandedToolResultChars) {
+        return lineBounded
+    }
+    val halfLimit = MaxExpandedToolResultChars / 2
+    return lineBounded.take(halfLimit) +
+        "\n\n...[${lineBounded.length - MaxExpandedToolResultChars} chars omitted]...\n\n" +
+        lineBounded.takeLast(halfLimit)
 }
+
+private const val MaxExpandedToolResultChars = 12_000
 
 private fun buildDetailedParameters(toolName: String, input: JsonElement, projectPath: String): String {
     return try {
@@ -372,7 +377,7 @@ fun ToolCallItem(
                             result.result.forEach { dataItem ->
                                     when (dataItem) {
                                         is Conversation.Message.ContentItem.ToolResult.Data.Text -> {
-                                            val displayText = truncateText(dataItem.content, toolName)
+                                            val displayText = truncateText(dataItem.content)
                                             Text(
                                                 text = displayText,
                                                 modifier = Modifier.fillMaxWidth(),

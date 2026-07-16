@@ -233,6 +233,7 @@ data class ConversationRuntimeTraceEntry(
         TASK_CANCELLED,
         CONTROL_REQUESTED,
         TOOL_EXECUTION,
+        COMMAND_TASK,
         EVENT_PUBLISHED,
     }
 
@@ -259,6 +260,7 @@ data class ConversationRuntimeSnapshot(
     val activeTask: ConversationRuntimeTask? = null,
     val pendingTasks: List<ConversationRuntimeTask>,
     val toolExecutions: List<ConversationRuntimeToolExecution> = emptyList(),
+    val commandTasks: List<CommandTask> = emptyList(),
     val failedTasks: List<ConversationRuntimeTaskFailure> = emptyList(),
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
     val lastEventSequence: Long = 0,
@@ -417,6 +419,13 @@ interface ConversationRuntimeCoordinator {
         taskId: ConversationRuntimeTask.Id,
         workerId: String,
     ): Boolean
+
+    suspend fun upsertCommandTask(task: CommandTask): Boolean
+
+    suspend fun findCommandTask(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+    ): CommandTask?
 
     suspend fun requestPause(conversationId: Conversation.Id): Boolean
     suspend fun markPaused(conversationId: Conversation.Id): Boolean

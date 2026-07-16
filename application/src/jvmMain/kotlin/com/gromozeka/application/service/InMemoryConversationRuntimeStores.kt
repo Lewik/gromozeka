@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -35,6 +36,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private val statesByConversation = mutableMapOf<Conversation.Id, ConversationExecutionState>()
     private val toolExecutionsByConversation =
         mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeToolExecution>>()
+    private val commandTasksByConversation = mutableMapOf<Conversation.Id, MutableList<CommandTask>>()
     private val failedTasksByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTaskFailure>>()
     private val traceByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTraceEntry>>()
     private val eventLogByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeEventLogEntry>>()
@@ -369,6 +371,43 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             true
         }
 
+    override suspend fun upsertCommandTask(task: CommandTask): Boolean =
+        mutex.withLock {
+            val tasks = commandTasksByConversation.getOrPut(task.conversationId) { mutableListOf() }
+            val existingIndex = tasks.indexOfFirst { it.id == task.id }
+            val previousStatus = tasks.getOrNull(existingIndex)?.status
+            if (existingIndex >= 0) {
+                tasks[existingIndex] = task
+            } else {
+                tasks.add(task)
+            }
+            val retainedTasks = tasks
+                .partition { it.status == CommandTask.Status.WORKING }
+                .let { (working, terminal) ->
+                    working + terminal.sortedBy { it.createdAt }.takeLast(COMMAND_TASK_TERMINAL_RETENTION_LIMIT)
+                }
+                .sortedBy { it.createdAt }
+            tasks.clear()
+            tasks.addAll(retainedTasks)
+            if (previousStatus != task.status) {
+                appendTrace(
+                    conversationId = task.conversationId,
+                    kind = ConversationRuntimeTraceEntry.Kind.COMMAND_TASK,
+                    status = task.status.toTraceStatus(),
+                    message = "${task.id.value}: ${task.status}",
+                )
+            }
+            bumpRevision(task.conversationId)
+            true
+        }
+
+    override suspend fun findCommandTask(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+    ): CommandTask? = mutex.withLock {
+        commandTasksByConversation[conversationId]?.firstOrNull { it.id == taskId }
+    }
+
     override suspend fun requestPause(conversationId: Conversation.Id): Boolean =
         mutex.withLock {
             val state = statesByConversation[conversationId] ?: return@withLock false
@@ -512,6 +551,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 activeTask = activeTasksByConversation[conversationId],
                 pendingTasks = tasksByConversation[conversationId]?.toList().orEmpty(),
                 toolExecutions = toolExecutionsByConversation[conversationId]?.toList().orEmpty(),
+                commandTasks = commandTasksByConversation[conversationId]?.toList().orEmpty(),
                 failedTasks = failedTasksByConversation[conversationId]?.toList().orEmpty(),
                 trace = traceByConversation[conversationId]?.takeLast(TRACE_SNAPSHOT_LIMIT).orEmpty(),
                 lastEventSequence = eventSequencesByConversation[conversationId] ?: 0L,
@@ -845,6 +885,13 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         }
     }
 
+    private fun CommandTask.Status.toTraceStatus(): ConversationRuntimeTraceEntry.Status = when (this) {
+        CommandTask.Status.WORKING -> ConversationRuntimeTraceEntry.Status.STARTED
+        CommandTask.Status.COMPLETED -> ConversationRuntimeTraceEntry.Status.COMPLETED
+        CommandTask.Status.FAILED -> ConversationRuntimeTraceEntry.Status.FAILED
+        CommandTask.Status.CANCELLED -> ConversationRuntimeTraceEntry.Status.CANCELLED
+    }
+
     private fun recordActiveTaskFailure(
         conversationId: Conversation.Id,
         reason: ConversationRuntimeTaskFailure.Reason,
@@ -877,6 +924,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     }
 
     private companion object {
+        const val COMMAND_TASK_TERMINAL_RETENTION_LIMIT = 100
         const val TRACE_SNAPSHOT_LIMIT = 200
         const val TRACE_RETENTION_LIMIT = 2_000
         const val EVENT_LOG_RETENTION_LIMIT = 10_000

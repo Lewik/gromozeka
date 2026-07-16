@@ -9,12 +9,14 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  * 
  * @property command Shell command to execute
  * @property working_directory Working directory (optional, defaults to project root)
- * @property timeout_seconds Timeout in seconds (optional, default: 30)
+ * @property yield_time_ms Time to wait before returning a running task
+ * @property timeout_seconds Optional hard timeout in seconds
  */
 data class ExecuteCommandRequest(
     val command: String,
     val working_directory: String? = null,
-    val timeout_seconds: Long? = null
+    val yield_time_ms: Long = 10_000,
+    val timeout_seconds: Long? = null,
 )
 
 /**
@@ -39,20 +41,21 @@ data class ExecuteCommandRequest(
  * 
  * **Shell execution:**
  * - Runs commands via `sh -c` (Unix shell)
- * - Supports pipes, redirects, background jobs
+ * - Supports pipes, redirects, and compound commands
  * - Environment variables inherited from process
  * - Working directory configurable
  * 
  * **Output capture:**
  * - STDOUT and STDERR merged into one stream
  * - Full output is saved to a file under Gromozeka home
- * - Returned `output` is a bounded preview; large output includes head and tail
+ * - Returned `output` is a bounded chunk with a byte cursor
  * - Exit code captured for success/failure detection
  * 
- * **Timeout protection:**
- * - Default 30 second timeout (prevents hanging)
- * - Configurable per command
- * - Forceful termination on timeout
+ * **Task lifecycle:**
+ * - Waits briefly for short commands
+ * - Returns a task ID when a command keeps running
+ * - Supports incremental output reads and explicit process-tree cancellation
+ * - Applies a hard timeout only when timeout_seconds is provided
  * 
  * # When to Use
  * 
@@ -70,7 +73,7 @@ data class ExecuteCommandRequest(
  * - Reading single file → use `grz_read_file` (safer, better parsing)
  * - Writing single file → use `grz_write_file` (better error handling)
  * - Editing file → use `grz_edit_file` (more precise)
- * - Long-running processes → consider background execution patterns
+ * - Interactive terminal applications that require a TTY
  * 
  * # Usage Examples
  * 
@@ -133,7 +136,7 @@ data class ExecuteCommandRequest(
  * # Related Domain Services
  * 
  * This tool delegates to:
- * @see com.gromozeka.domain.service.CommandExecutionService.execute (when created)
+ * @see com.gromozeka.domain.service.CommandTaskService
  */
 interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> {
     
@@ -145,7 +148,9 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
     
     override val description: String
         get() = """
-            Execute shell command and return bounded output preview. Full stdout/stderr is saved to output_file.
+            Execute a shell command as a managed task. Short commands return a terminal result; long commands return status WORKING and task_id after yield_time_ms.
+            Use grz_get_command_task with next_output_byte until the task is terminal and has_more_output is false. Use grz_cancel_command_task to terminate the process tree.
+            Do not append '&' to create unmanaged background processes. Full merged stdout/stderr is saved to output_file.
             Use with caution - has full system access.
             
             Common use cases:
@@ -154,7 +159,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
             - List directory: ls -la /path/to/dir
             - Git operations: git status, git diff, git log
             - Build operations: ./gradlew build, npm run build
-            Large command output is truncated in the response; inspect output_file with grz_read_file or rerun a narrower command.
+            Large output is chunked; keep calling grz_get_command_task with next_output_byte or rerun a narrower command when needed.
         """.trimIndent()
     
     override val requestType: Class<ExecuteCommandRequest>

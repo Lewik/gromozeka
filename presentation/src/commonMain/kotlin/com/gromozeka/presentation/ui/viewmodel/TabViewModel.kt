@@ -20,6 +20,7 @@ import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
@@ -300,7 +301,11 @@ class TabViewModel(
         _isWaitingForResponse.value = false
         _executionPauseRequested.value = false
         _activeToolExecutions.value = emptyList()
-        _runtimeSnapshot.value = null
+        _runtimeSnapshot.update { snapshot ->
+            snapshot?.takeIf { current ->
+                current.commandTasks.any { it.status == CommandTask.Status.WORKING }
+            }
+        }
         _uiState.update { it.copy(isWaitingForResponse = false) }
     }
 
@@ -629,6 +634,16 @@ class TabViewModel(
         lastRuntimeMessage = null
         _isWaitingForResponse.value = false
         _uiState.update { it.copy(isWaitingForResponse = false) }
+    }
+
+    fun cancelCommandTask(taskId: CommandTask.Id) {
+        scope.launch {
+            runCatching {
+                conversationRuntimeService.cancelCommandTask(conversationId, taskId)
+            }.onFailure { error ->
+                log.warn(error) { "Command task cancellation failed for ${taskId.value}: ${error.message}" }
+            }
+        }
     }
 
     fun pauseExecution() {

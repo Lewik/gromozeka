@@ -232,6 +232,9 @@ class GromozekaRemoteServer(
                 is ControlConversationRuntimeRequest -> OperationResultResponse(
                     conversationRuntimeService.controlExecution(request.conversationId, request.action)
                 )
+                is CancelCommandTaskRequest -> OperationResultResponse(
+                    conversationRuntimeService.cancelCommandTask(request.conversationId, request.taskId)
+                )
 
                 is GetMemoryActionItemsRequest -> loadMemoryActionItems(request)
 

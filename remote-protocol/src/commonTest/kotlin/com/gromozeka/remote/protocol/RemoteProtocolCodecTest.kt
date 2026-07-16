@@ -11,6 +11,8 @@ import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
@@ -331,6 +333,62 @@ class RemoteProtocolCodecTest {
 
         assertEquals("conversation-control-1", decoded.conversationId.value)
         assertEquals(ConversationRuntimeControlAction.PAUSE, decoded.action)
+    }
+
+    @Test
+    fun cborRoundTripSupportsCommandTaskCancellation() {
+        val envelope = GromozekaClientEnvelope(
+            id = "cancel-command-1",
+            payload = CancelCommandTaskRequest(
+                conversationId = Conversation.Id("conversation-command-1"),
+                taskId = CommandTask.Id("command-task-1"),
+            )
+        )
+
+        val decoded = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(envelope)
+        ).payload as CancelCommandTaskRequest
+
+        assertEquals("conversation-command-1", decoded.conversationId.value)
+        assertEquals("command-task-1", decoded.taskId.value)
+    }
+
+    @Test
+    fun cborRoundTripPreservesCommandTasksInRuntimeSnapshot() {
+        val now = Instant.parse("2026-07-15T12:00:00Z")
+        val commandTask = CommandTask(
+            id = CommandTask.Id("command-task-1"),
+            conversationId = Conversation.Id("conversation-command-1"),
+            command = "./gradlew build",
+            workingDirectory = "/workspace",
+            status = CommandTask.Status.WORKING,
+            processId = 321,
+            processStartedAt = now,
+            outputFile = "/tmp/command-task-1.log",
+            outputBytes = 42,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val envelope = GromozekaServerEnvelope(
+            id = "runtime-command-1",
+            payload = ConversationRuntimeSnapshotEvent(
+                subscriptionId = "subscription-1",
+                conversationId = commandTask.conversationId,
+                snapshot = ConversationRuntimeSnapshot(
+                    revision = 1,
+                    conversationId = commandTask.conversationId,
+                    state = null,
+                    pendingTasks = emptyList(),
+                    commandTasks = listOf(commandTask),
+                ),
+            )
+        )
+
+        val decoded = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(envelope)
+        ).payload as ConversationRuntimeSnapshotEvent
+
+        assertEquals(commandTask, decoded.snapshot.commandTasks.single())
     }
 
     @Test

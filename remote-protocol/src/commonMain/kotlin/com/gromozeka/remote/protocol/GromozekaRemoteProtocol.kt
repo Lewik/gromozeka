@@ -14,6 +14,7 @@ import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -398,6 +399,13 @@ data class CancelQueuedMessageRequest(
 data class ControlConversationRuntimeRequest(
     val conversationId: Conversation.Id,
     val action: ConversationRuntimeControlAction,
+) : ClientRequest
+
+@Serializable
+@SerialName("cancel_command_task")
+data class CancelCommandTaskRequest(
+    val conversationId: Conversation.Id,
+    val taskId: CommandTask.Id,
 ) : ClientRequest
 
 @Serializable

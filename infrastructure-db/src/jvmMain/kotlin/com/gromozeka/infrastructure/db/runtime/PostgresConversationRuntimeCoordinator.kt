@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.runtime
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -343,6 +344,39 @@ class PostgresConversationRuntimeCoordinator(
             }
             true
         }
+
+    override suspend fun upsertCommandTask(task: CommandTask): Boolean =
+        mutateRecord(task.conversationId, createIfMissing = true) { record ->
+            val tasks = record.commandTasks.toMutableList()
+            val existingIndex = tasks.indexOfFirst { it.id == task.id }
+            val previousStatus = tasks.getOrNull(existingIndex)?.status
+            if (existingIndex >= 0) {
+                tasks[existingIndex] = task
+            } else {
+                tasks += task
+            }
+            record.commandTasks = tasks
+                .partition { it.status == CommandTask.Status.WORKING }
+                .let { (working, terminal) ->
+                    working + terminal.sortedBy { it.createdAt }.takeLast(COMMAND_TASK_TERMINAL_RETENTION_LIMIT)
+                }
+                .sortedBy { it.createdAt }
+            if (previousStatus != task.status) {
+                record.appendTrace(
+                    conversationId = task.conversationId,
+                    kind = ConversationRuntimeTraceEntry.Kind.COMMAND_TASK,
+                    status = task.status.toTraceStatus(),
+                    message = "${task.id.value}: ${task.status}",
+                )
+            }
+            record.bumpRevision()
+            true
+        }
+
+    override suspend fun findCommandTask(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+    ): CommandTask? = readRecord(conversationId)?.commandTasks?.firstOrNull { it.id == taskId }
 
     override suspend fun requestPause(conversationId: Conversation.Id): Boolean =
         mutateRecord(conversationId, createIfMissing = false) { record ->
@@ -787,6 +821,7 @@ class PostgresConversationRuntimeCoordinator(
         var activeTask: ConversationRuntimeTask? = null,
         var pendingTasks: List<ConversationRuntimeTask> = emptyList(),
         var toolExecutions: List<ConversationRuntimeToolExecution> = emptyList(),
+        var commandTasks: List<CommandTask> = emptyList(),
         var failedTasks: List<ConversationRuntimeTaskFailure> = emptyList(),
         var trace: List<ConversationRuntimeTraceEntry> = emptyList(),
         var eventLog: List<ConversationRuntimeEventLogEntry> = emptyList(),
@@ -804,6 +839,7 @@ class PostgresConversationRuntimeCoordinator(
                 activeTask = activeTask,
                 pendingTasks = pendingTasks,
                 toolExecutions = toolExecutions,
+                commandTasks = commandTasks,
                 failedTasks = failedTasks,
                 trace = trace.takeLast(TRACE_SNAPSHOT_LIMIT),
                 lastEventSequence = eventSequence,
@@ -973,7 +1009,15 @@ class PostgresConversationRuntimeCoordinator(
     private fun Instant.toTimestamp(): Timestamp =
         Timestamp.from(java.time.Instant.ofEpochMilli(toEpochMilliseconds()))
 
+    private fun CommandTask.Status.toTraceStatus(): ConversationRuntimeTraceEntry.Status = when (this) {
+        CommandTask.Status.WORKING -> ConversationRuntimeTraceEntry.Status.STARTED
+        CommandTask.Status.COMPLETED -> ConversationRuntimeTraceEntry.Status.COMPLETED
+        CommandTask.Status.FAILED -> ConversationRuntimeTraceEntry.Status.FAILED
+        CommandTask.Status.CANCELLED -> ConversationRuntimeTraceEntry.Status.CANCELLED
+    }
+
     private companion object {
+        const val COMMAND_TASK_TERMINAL_RETENTION_LIMIT = 100
         const val TRACE_SNAPSHOT_LIMIT = 200
         const val TRACE_RETENTION_LIMIT = 2_000
         const val EVENT_LOG_RETENTION_LIMIT = 10_000

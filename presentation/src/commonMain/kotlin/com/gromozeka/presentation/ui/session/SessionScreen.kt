@@ -31,6 +31,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -538,12 +539,14 @@ fun SessionScreen(
                         pttStatusMessage = pttStatusMessage,
                         pendingMessages = pendingMessages,
                         toolExecutions = activeToolExecutions,
+                        commandTasks = runtimeSnapshot?.commandTasks.orEmpty(),
                         runtimeTrace = runtimeTrace,
                         runtimeSnapshot = runtimeSnapshot,
                         onPause = viewModel::pauseExecution,
                         onResume = viewModel::resumeExecution,
                         onStop = viewModel::stopExecution,
                         onInterrupt = viewModel::interrupt,
+                        onCancelCommandTask = viewModel::cancelCommandTask,
                     )
 
                     MessageInput(
@@ -753,16 +756,20 @@ private fun ConversationProgressStrip(
     pttStatusMessage: String?,
     pendingMessages: List<PendingUserMessage>,
     toolExecutions: List<ConversationRuntimeToolExecution>,
+    commandTasks: List<CommandTask>,
     runtimeTrace: List<ConversationRuntimeTraceEntry>,
     runtimeSnapshot: ConversationRuntimeSnapshot?,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
     onInterrupt: () -> Unit,
+    onCancelCommandTask: (CommandTask.Id) -> Unit,
 ) {
     val voiceError = pttStatusMessage?.takeIf { it.isNotBlank() }
+    val activeCommandTasks = commandTasks.filter { it.status == CommandTask.Status.WORKING }
     val isReady = !isWaitingForResponse &&
         pendingMessages.isEmpty() &&
+        activeCommandTasks.isEmpty() &&
         pttState == PttState.IDLE &&
         voiceError == null
     val runningTools = toolExecutions
@@ -775,6 +782,10 @@ private fun ConversationProgressStrip(
         pttState == PttState.RECORDING -> "Идёт запись голоса. Отпустите кнопку, чтобы отправить."
         executionPauseRequested ->
             "Пауза запрошена. Агент остановится на ближайшей безопасной границе."
+        activeCommandTasks.size == 1 ->
+            "Команда выполняется"
+        activeCommandTasks.size > 1 ->
+            "Выполняются команды: ${activeCommandTasks.size}"
         runningTools.isNotEmpty() ->
             "Инструменты выполняются: ${runningTools.joinToString(", ")}"
         isWaitingForResponse && pendingMessages.isNotEmpty() ->
@@ -814,64 +825,88 @@ private fun ConversationProgressStrip(
         color = containerColor,
         shape = MaterialTheme.shapes.small,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (pttState == PttState.TRANSCRIBING) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = when {
-                        voiceError != null -> MaterialTheme.colorScheme.error
-                        pttState == PttState.RECORDING -> MaterialTheme.colorScheme.error
-                        isReady -> MaterialTheme.colorScheme.secondary
-                        else -> MaterialTheme.colorScheme.primary
-                    },
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = statusText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = contentColor
-                )
-                val detailText = runtimeDetailsText?.takeIf { it.isNotBlank() } ?: traceText
-                if (!detailText.isNullOrBlank() && !isReady && pttState == PttState.IDLE && voiceError == null) {
-                    Text(
-                        text = detailText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = contentColor.copy(alpha = 0.78f)
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (pttState == PttState.TRANSCRIBING) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = when {
+                            voiceError != null -> MaterialTheme.colorScheme.error
+                            pttState == PttState.RECORDING -> MaterialTheme.colorScheme.error
+                            isReady -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.primary
+                        },
+                        modifier = Modifier.size(16.dp)
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = statusText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor
+                    )
+                    val detailText = runtimeDetailsText?.takeIf { it.isNotBlank() } ?: traceText
+                    if (!detailText.isNullOrBlank() && !isReady && pttState == PttState.IDLE && voiceError == null) {
+                        Text(
+                            text = detailText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = contentColor.copy(alpha = 0.78f)
+                        )
+                    }
+                }
+                if (isWaitingForResponse) {
+                    if (executionPauseRequested) {
+                        TextButton(onClick = onResume) {
+                            Text("Продолжить")
+                        }
+                    } else {
+                        TextButton(onClick = onPause) {
+                            Text("Пауза")
+                        }
+                    }
+                    TextButton(onClick = onStop) {
+                        Text("Стоп")
+                    }
+                    TextButton(onClick = onInterrupt) {
+                        Text("Прервать")
+                    }
+                }
             }
-            if (isWaitingForResponse) {
-                if (executionPauseRequested) {
-                    TextButton(onClick = onResume) {
-                        Text("Продолжить")
+            activeCommandTasks.forEach { commandTask ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Terminal,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = contentColor.copy(alpha = 0.78f),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${commandTask.command} · ${commandTask.outputBytes.formatBytes()}",
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                    )
+                    TextButton(onClick = { onCancelCommandTask(commandTask.id) }) {
+                        Text("Убить")
                     }
-                } else {
-                    TextButton(onClick = onPause) {
-                        Text("Пауза")
-                    }
-                }
-                TextButton(onClick = onStop) {
-                    Text("Стоп")
-                }
-                TextButton(onClick = onInterrupt) {
-                    Text("Прервать")
                 }
             }
         }
@@ -902,6 +937,12 @@ private fun ConversationRuntimeSnapshot.runtimeDetailsText(): String =
             add("failed=${failedTasks.size}")
         }
     }.joinToString(" · ")
+
+private fun Long.formatBytes(): String = when {
+    this < 1_024 -> "$this B"
+    this < 1_048_576 -> "${this / 1_024} KiB"
+    else -> "${this / 1_048_576} MiB"
+}
 
 private fun ConversationRuntimeTraceEntry.runtimeTraceText(): String =
     buildString {
