@@ -136,18 +136,20 @@ Context.FileSpec allows granular file inclusion:
 
 **Extraction prompt determines format** (function signature vs full body).
 
-## MessageTag UI Binding
+## Message Instruction Group UI Binding
 
-MessageTagDefinition binds UI controls to domain Instructions:
+MessageInstructionGroup binds a settings-defined composer control to domain Instructions:
 - User clicks button → Instruction added to Message
-- includeInMessage flag: some controls just trigger action, don't modify message
+- Controls in one group are mutually exclusive
+- `showInComposer` decides whether the group has a quick button near the input
+- `includeInMessage` allows a control to change UI state without modifying the message
 
 **Example**: "Response Expected" button
 - Creates Instruction.ResponseExpected(targetTabId)
 - Added to message → Agent B knows to reply via tell_agent
 
 **Why in domain?**
-- UI state tied to message semantics
+- Composer state is tied to message semantics
 - Need to persist which Instructions were active
 - Resume session requires restoring UI state from domain
 

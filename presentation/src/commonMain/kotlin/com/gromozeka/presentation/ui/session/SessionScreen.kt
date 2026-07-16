@@ -12,15 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MergeType
 import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,13 +20,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.domain.model.Settings
-import com.gromozeka.domain.service.ConversationRuntimeSnapshot
-import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.ConversationRuntimeToolExecution
-import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
-import com.gromozeka.domain.service.QueuedMessagePlacement
+import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.TtsQueue
@@ -44,7 +31,6 @@ import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.format
-import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -64,7 +50,6 @@ fun SessionScreen(
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState = PttState.IDLE,
-    pttStatusMessage: String? = null,
 
     // Settings - moved to ChatApplication level, but we still need settings for UI
     settings: Settings,
@@ -72,6 +57,8 @@ fun SessionScreen(
     onShowSettingsPanelChange: (Boolean) -> Unit,
     showMemoryActionItemsPanel: Boolean,
     onShowMemoryActionItemsPanelChange: (Boolean) -> Unit,
+    showRuntimePanel: Boolean,
+    onShowRuntimePanelChange: (Boolean) -> Unit,
 
     // Tab Settings Panel
     onShowPromptsPanelChange: (Boolean) -> Unit,
@@ -103,26 +90,13 @@ fun SessionScreen(
     val filteredHistory by viewModel.filteredMessages.collectAsState()
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
-    val executionPauseRequested by viewModel.executionPauseRequested.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
-    val pendingMessages by viewModel.pendingMessages.collectAsState()
-    val activeToolExecutions by viewModel.activeToolExecutions.collectAsState()
-    val runtimeTrace by viewModel.runtimeTrace.collectAsState()
-    val runtimeSnapshot by viewModel.runtimeSnapshot.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
-    val tokenStats by viewModel.tokenStats.collectAsState()
     val topToolbarScrollState = rememberScrollState()
     val editToolbarScrollState = rememberScrollState()
-    val bottomToolbarScrollState = rememberScrollState()
-    
-    // Context percentage calculation (used by Agent button and Send button)
-    val contextPercentage = tokenStats?.currentContextSize?.let { currentContext ->
-        tokenStats?.contextWindowTokens?.let { contextWindow ->
-            (currentContext.toFloat() / contextWindow * 100).toInt()
-        }
-    }
+    var showMemoryMenu by remember { mutableStateOf(false) }
 
     // Message sending function using ViewModel
     val onSendMessage: (String) -> Unit = { message ->
@@ -237,41 +211,109 @@ fun SessionScreen(
                         CompactButton(
                             onClick = { onShowPromptsPanelChange(true) },
                             modifier = Modifier.testTag(UiTestTag.AgentButton.value),
-                            tooltip = when {
-                                contextPercentage != null && contextPercentage >= 90 -> "Agent (критическое заполнение контекста $contextPercentage%)"
-                                contextPercentage != null && contextPercentage >= 75 -> "Agent (контекст заполнен на $contextPercentage%)"
-                                else -> "Agent"
-                            },
-                            colors = when {
-                                contextPercentage != null && contextPercentage >= 90 -> ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
-                                contextPercentage != null && contextPercentage >= 75 -> ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiary
-                                )
-                                else -> ButtonDefaults.buttonColors()
-                            }
+                            tooltip = "Select agent",
+                        ) {
+                            Icon(Icons.Default.Psychology, contentDescription = "Select agent")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        CompactButton(
+                            onClick = { onShowRuntimePanelChange(!showRuntimePanel) },
+                            modifier = Modifier.testTag(UiTestTag.RuntimeButton.value),
+                            tooltip = if (showRuntimePanel) "Hide runtime" else "Show runtime",
+                        ) {
+                            Icon(Icons.Default.HourglassTop, contentDescription = "Runtime")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        CompactButton(
+                            onClick = {},
+                            tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Psychology, contentDescription = "Agent")
-
-                                // Show context window percentage if available
-                                contextPercentage?.let { percentage ->
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("$percentage%")
-                                }
+                                Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Messages")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("${filteredHistory.size}")
                             }
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Memory action items button
-                        CompactButton(
-                            onClick = { onShowMemoryActionItemsPanelChange(!showMemoryActionItemsPanel) },
-                            modifier = Modifier.testTag(UiTestTag.MemoryActionItemsButton.value),
-                            tooltip = "Memory action items"
-                        ) {
-                            Icon(Icons.Default.ListAlt, contentDescription = "Memory action items")
+                        Box {
+                            CompactButton(
+                                onClick = { showMemoryMenu = !showMemoryMenu },
+                                modifier = Modifier.testTag(UiTestTag.MemoryMenuButton.value),
+                                tooltip = "Memory actions",
+                            ) {
+                                Icon(Icons.Default.Inventory2, contentDescription = "Memory actions")
+                            }
+
+                            DropdownMenu(
+                                expanded = showMemoryMenu,
+                                onDismissRequest = { showMemoryMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Action items") },
+                                    leadingIcon = { Icon(Icons.Default.ListAlt, contentDescription = null) },
+                                    onClick = {
+                                        showMemoryMenu = false
+                                        onShowMemoryActionItemsPanelChange(!showMemoryActionItemsPanel)
+                                    },
+                                    modifier = Modifier.testTag(UiTestTag.MemoryActionItemsButton.value),
+                                )
+                                onRememberThread?.let { rememberCallback ->
+                                    DropdownMenuItem(
+                                        text = { Text("Remember conversation") },
+                                        leadingIcon = { Icon(Icons.Default.Psychology, contentDescription = null) },
+                                        onClick = {
+                                            showMemoryMenu = false
+                                            rememberCallback()
+                                        },
+                                    )
+                                }
+                                onConsolidateMemory?.let { consolidateCallback ->
+                                    DropdownMenuItem(
+                                        text = { Text("Consolidate") },
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = null) },
+                                        onClick = {
+                                            showMemoryMenu = false
+                                            consolidateCallback()
+                                        },
+                                    )
+                                }
+                                onRepairMemory?.let { repairCallback ->
+                                    DropdownMenuItem(
+                                        text = { Text("Repair") },
+                                        leadingIcon = { Icon(Icons.Default.Build, contentDescription = null) },
+                                        onClick = {
+                                            showMemoryMenu = false
+                                            repairCallback()
+                                        },
+                                    )
+                                }
+                                onMaintainMemoryEntities?.let { maintainEntitiesCallback ->
+                                    DropdownMenuItem(
+                                        text = { Text("Entity maintenance") },
+                                        leadingIcon = { Icon(Icons.Default.AccountTree, contentDescription = null) },
+                                        onClick = {
+                                            showMemoryMenu = false
+                                            maintainEntitiesCallback()
+                                        },
+                                    )
+                                }
+                                onApplyMemoryRetention?.let { retentionCallback ->
+                                    DropdownMenuItem(
+                                        text = { Text("Apply retention") },
+                                        leadingIcon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
+                                        onClick = {
+                                            showMemoryMenu = false
+                                            retentionCallback()
+                                        },
+                                    )
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -524,31 +566,6 @@ fun SessionScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DisableSelection {
-                    PendingMessagesPanel(
-                        isWaitingForResponse = isWaitingForResponse,
-                        pendingMessages = pendingMessages,
-                        onSendInCurrentTurn = viewModel::sendPendingMessageInCurrentTurn,
-                        onEdit = viewModel::editPendingMessage,
-                        onCancel = viewModel::cancelPendingMessage,
-                    )
-
-                    ConversationProgressStrip(
-                        isWaitingForResponse = isWaitingForResponse,
-                        executionPauseRequested = executionPauseRequested,
-                        pttState = pttState,
-                        pttStatusMessage = pttStatusMessage,
-                        pendingMessages = pendingMessages,
-                        toolExecutions = activeToolExecutions,
-                        commandTasks = runtimeSnapshot?.commandTasks.orEmpty(),
-                        runtimeTrace = runtimeTrace,
-                        runtimeSnapshot = runtimeSnapshot,
-                        onPause = viewModel::pauseExecution,
-                        onResume = viewModel::resumeExecution,
-                        onStop = viewModel::stopExecution,
-                        onInterrupt = viewModel::interrupt,
-                        onCancelCommandTask = viewModel::cancelCommandTask,
-                    )
-
                     MessageInput(
                         userInput = userInput,
                         onUserInputChange = { viewModel.updateUserInput(it) },
@@ -562,151 +579,12 @@ fun SessionScreen(
                         pttState = pttState,
                         showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
                         clientPlatform = clientPlatform,
-                        contextPercentage = contextPercentage
+                        instructionGroups = viewModel.messageInstructionGroups,
+                        activeInstructionIds = uiState.activeMessageInstructionIds,
+                        onSelectInstruction = viewModel::selectMessageInstruction,
+                        onCaptureScreenshot = viewModel::captureAndAddToInput,
+                        onInsertCurrentLocation = onInsertCurrentLocation,
                     )
-
-                    // Message Tags and Screenshot button
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (isCompactLayout) Modifier.horizontalScroll(bottomToolbarScrollState) else Modifier)
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Message Tags
-                        viewModel.availableMessageTags.forEach { messageTag ->
-                            MultiStateMessageTagButton(
-                                messageTag = messageTag,
-                                activeMessageTags = uiState.activeMessageTags,
-                                onToggleTag = { tag, controlIdx -> viewModel.toggleMessageTag(tag, controlIdx) }
-                            )
-                        }
-
-                        // Screenshot button
-                        CompactButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.captureAndAddToInput()
-                                }
-                            },
-                            tooltip = LocalTranslation.current.screenshotTooltip
-                        ) {
-                            Icon(
-                                Icons.Default.CameraAlt,
-                                contentDescription = LocalTranslation.current.screenshotTooltip
-                            )
-                        }
-
-                        onInsertCurrentLocation?.let { insertCurrentLocation ->
-                            CompactButton(
-                                onClick = insertCurrentLocation,
-                                tooltip = "Insert current device location"
-                            ) {
-                                Icon(
-                                    Icons.Default.LocationOn,
-                                    contentDescription = "Insert location"
-                                )
-                            }
-                        }
-
-                        // Message count
-                        CompactButton(
-                            onClick = { },
-                            tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Default.ChatBubbleOutline,
-                                    contentDescription = "Messages"
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("${filteredHistory.size}")
-                            }
-                        }
-
-                        // Remember button (if memory is enabled and callback provided)
-                        onRememberThread?.let { rememberCallback ->
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        rememberCallback()
-                                    }
-                                },
-                                tooltip = "Remember this conversation in typed memory"
-                            ) {
-                                Icon(
-                                    Icons.Default.Psychology,
-                                    contentDescription = "Remember"
-                                )
-                            }
-                        }
-
-                        onConsolidateMemory?.let { consolidateCallback ->
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        consolidateCallback()
-                                    }
-                                },
-                                tooltip = "Run note consolidation"
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.MergeType,
-                                    contentDescription = "Consolidate Memory"
-                                )
-                            }
-                        }
-
-                        onRepairMemory?.let { repairCallback ->
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        repairCallback()
-                                    }
-                                },
-                                tooltip = "Run memory repair"
-                            ) {
-                                Icon(
-                                    Icons.Default.Build,
-                                    contentDescription = "Repair Memory"
-                                )
-                            }
-                        }
-
-                        onMaintainMemoryEntities?.let { maintainEntitiesCallback ->
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        maintainEntitiesCallback()
-                                    }
-                                },
-                                tooltip = "Run entity maintenance"
-                            ) {
-                                Icon(
-                                    Icons.Default.AccountTree,
-                                    contentDescription = "Entity Maintenance"
-                                )
-                            }
-                        }
-
-                        onApplyMemoryRetention?.let { retentionCallback ->
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        retentionCallback()
-                                    }
-                                },
-                                tooltip = "Apply memory retention"
-                            ) {
-                                Icon(
-                                    Icons.Default.Inventory2,
-                                    contentDescription = "Memory Retention"
-                                )
-                            }
-                        }
-
-                    }
 
                     // Dev buttons only
                     if (isDev) {
@@ -744,340 +622,6 @@ fun SessionScreen(
                     viewModel.cancelEditMessage()
                 }
             )
-        }
-    }
-}
-
-@Composable
-private fun ConversationProgressStrip(
-    isWaitingForResponse: Boolean,
-    executionPauseRequested: Boolean,
-    pttState: PttState,
-    pttStatusMessage: String?,
-    pendingMessages: List<PendingUserMessage>,
-    toolExecutions: List<ConversationRuntimeToolExecution>,
-    commandTasks: List<CommandTask>,
-    runtimeTrace: List<ConversationRuntimeTraceEntry>,
-    runtimeSnapshot: ConversationRuntimeSnapshot?,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit,
-    onInterrupt: () -> Unit,
-    onCancelCommandTask: (CommandTask.Id) -> Unit,
-) {
-    val voiceError = pttStatusMessage?.takeIf { it.isNotBlank() }
-    val activeCommandTasks = commandTasks.filter { it.status == CommandTask.Status.WORKING }
-    val isReady = !isWaitingForResponse &&
-        pendingMessages.isEmpty() &&
-        activeCommandTasks.isEmpty() &&
-        pttState == PttState.IDLE &&
-        voiceError == null
-    val runningTools = toolExecutions
-        .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
-        .map { it.toolName }
-        .distinct()
-    val statusText = when {
-        voiceError != null -> voiceError
-        pttState == PttState.TRANSCRIBING -> "Расшифровываю голос…"
-        pttState == PttState.RECORDING -> "Идёт запись голоса. Отпустите кнопку, чтобы отправить."
-        executionPauseRequested ->
-            "Пауза запрошена. Агент остановится на ближайшей безопасной границе."
-        activeCommandTasks.size == 1 ->
-            "Команда выполняется"
-        activeCommandTasks.size > 1 ->
-            "Выполняются команды: ${activeCommandTasks.size}"
-        runningTools.isNotEmpty() ->
-            "Инструменты выполняются: ${runningTools.joinToString(", ")}"
-        isWaitingForResponse && pendingMessages.isNotEmpty() ->
-            "Агент отвечает. В очереди ${pendingMessages.size}."
-        isWaitingForResponse ->
-            "Агент отвечает. Можно отправить уточнение или поставить сообщение в очередь."
-        pendingMessages.isNotEmpty() ->
-            "В очереди ${pendingMessages.size}"
-        else ->
-            "Готов к отправке"
-    }
-    val traceText = runtimeTrace.lastOrNull()?.runtimeTraceText()
-    val runtimeDetailsText = runtimeSnapshot?.runtimeDetailsText()
-    val containerColor = when {
-        voiceError != null -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f)
-        isReady -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-    }
-    val contentColor = when {
-        voiceError != null -> MaterialTheme.colorScheme.onErrorContainer
-        isReady -> MaterialTheme.colorScheme.onSecondaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val icon = when {
-        voiceError != null -> Icons.Default.ErrorOutline
-        pttState == PttState.RECORDING -> Icons.Default.FiberManualRecord
-        isReady -> Icons.Default.CheckCircle
-        pendingMessages.isEmpty() -> Icons.Default.HourglassTop
-        else -> Icons.Default.PlaylistAddCheck
-    }
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 6.dp)
-            .testTag(UiTestTag.ConversationProgressStrip.value),
-        color = containerColor,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (pttState == PttState.TRANSCRIBING) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = when {
-                            voiceError != null -> MaterialTheme.colorScheme.error
-                            pttState == PttState.RECORDING -> MaterialTheme.colorScheme.error
-                            isReady -> MaterialTheme.colorScheme.secondary
-                            else -> MaterialTheme.colorScheme.primary
-                        },
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = statusText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = contentColor
-                    )
-                    val detailText = runtimeDetailsText?.takeIf { it.isNotBlank() } ?: traceText
-                    if (!detailText.isNullOrBlank() && !isReady && pttState == PttState.IDLE && voiceError == null) {
-                        Text(
-                            text = detailText,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = contentColor.copy(alpha = 0.78f)
-                        )
-                    }
-                }
-                if (isWaitingForResponse) {
-                    if (executionPauseRequested) {
-                        TextButton(onClick = onResume) {
-                            Text("Продолжить")
-                        }
-                    } else {
-                        TextButton(onClick = onPause) {
-                            Text("Пауза")
-                        }
-                    }
-                    TextButton(onClick = onStop) {
-                        Text("Стоп")
-                    }
-                    TextButton(onClick = onInterrupt) {
-                        Text("Прервать")
-                    }
-                }
-            }
-            activeCommandTasks.forEach { commandTask ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Terminal,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = contentColor.copy(alpha = 0.78f),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "${commandTask.command} · ${commandTask.outputBytes.formatBytes()}",
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = contentColor,
-                    )
-                    TextButton(onClick = { onCancelCommandTask(commandTask.id) }) {
-                        Text("Убить")
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun ConversationRuntimeSnapshot.runtimeDetailsText(): String =
-    buildList {
-        state?.let { state ->
-            add("control=${state.controlState.name.lowercase()}")
-            state.activeWorkerId?.takeIf { it.isNotBlank() }?.let { add("worker=$it") }
-            state.activeTaskId?.value?.let { add("task=$it") }
-        }
-        activeTask?.payload?.let { payload ->
-            add(
-                "payload=" + when (payload) {
-                    is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.UserTurn -> "user_turn"
-                    is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.LlmCall -> "llm_call"
-                    is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.ToolExecution -> "tool_execution"
-                    is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.MemoryRecall -> "memory_recall"
-                }
-            )
-        }
-        if (pendingTasks.isNotEmpty()) {
-            add("pending=${pendingTasks.size}")
-        }
-        if (failedTasks.isNotEmpty()) {
-            add("failed=${failedTasks.size}")
-        }
-    }.joinToString(" · ")
-
-private fun Long.formatBytes(): String = when {
-    this < 1_024 -> "$this B"
-    this < 1_048_576 -> "${this / 1_024} KiB"
-    else -> "${this / 1_048_576} MiB"
-}
-
-private fun ConversationRuntimeTraceEntry.runtimeTraceText(): String =
-    buildString {
-        append(kind.name.lowercase().replace('_', ' '))
-        message?.takeIf { it.isNotBlank() }?.let {
-            append(": ")
-            append(it)
-        }
-    }
-
-private fun queuePlacementDescription(placement: QueuedMessagePlacement): String =
-    when (placement) {
-        QueuedMessagePlacement.AFTER_TOOL_RESULT -> "Будет передано в текущий ход после ближайшего результата инструмента"
-        QueuedMessagePlacement.END_OF_TURN -> "В очереди: отправится после текущего ответа"
-    }
-
-private fun pendingMessageOrder(placement: QueuedMessagePlacement): Int =
-    when (placement) {
-        QueuedMessagePlacement.AFTER_TOOL_RESULT -> 0
-        QueuedMessagePlacement.END_OF_TURN -> 1
-    }
-
-private fun List<PendingUserMessage>.orderedForDisplay(): List<PendingUserMessage> =
-    withIndex()
-        .sortedWith(compareBy({ pendingMessageOrder(it.value.placement) }, { it.index }))
-        .map { it.value }
-
-@Composable
-private fun PendingMessagesPanel(
-    isWaitingForResponse: Boolean,
-    pendingMessages: List<PendingUserMessage>,
-    onSendInCurrentTurn: (String) -> Unit,
-    onEdit: (String) -> Unit,
-    onCancel: (String) -> Unit,
-) {
-    if (pendingMessages.isEmpty()) {
-        return
-    }
-
-    val orderedMessages = pendingMessages.orderedForDisplay()
-    val steeringMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
-    val queuedMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.END_OF_TURN }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 6.dp)
-            .testTag(UiTestTag.PendingMessagesPanel.value),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = "Очередь сообщений: ${pendingMessages.size}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-
-            PendingMessageGroup(
-                title = "Уточнение текущего хода",
-                messages = steeringMessages,
-                firstIndex = 1,
-                isWaitingForResponse = isWaitingForResponse,
-                onSendInCurrentTurn = onSendInCurrentTurn,
-                onEdit = onEdit,
-                onCancel = onCancel,
-            )
-            PendingMessageGroup(
-                title = "После ответа",
-                messages = queuedMessages,
-                firstIndex = steeringMessages.size + 1,
-                isWaitingForResponse = isWaitingForResponse,
-                onSendInCurrentTurn = onSendInCurrentTurn,
-                onEdit = onEdit,
-                onCancel = onCancel,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PendingMessageGroup(
-    title: String,
-    messages: List<PendingUserMessage>,
-    firstIndex: Int,
-    isWaitingForResponse: Boolean,
-    onSendInCurrentTurn: (String) -> Unit,
-    onEdit: (String) -> Unit,
-    onCancel: (String) -> Unit,
-) {
-    if (messages.isEmpty()) {
-        return
-    }
-
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
-    )
-    messages.forEachIndexed { index, message ->
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${firstIndex + index}. ${message.text}",
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = queuePlacementDescription(message.placement),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (isWaitingForResponse && message.placement == QueuedMessagePlacement.END_OF_TURN) {
-                TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
-                    Text("В текущий ход")
-                }
-            }
-            TextButton(onClick = { onEdit(message.id) }) {
-                Text("Править")
-            }
-            TextButton(onClick = { onCancel(message.id) }) {
-                Text("Убрать")
-            }
         }
     }
 }

@@ -208,7 +208,7 @@ interface AppLogicVM {
          *
          * @property projectPath Absolute path to project directory
          * @property conversationId ID of conversation to load
-         * @property activeMessageTags Set of active message tag IDs (e.g., "mode_readonly")
+         * @property activeMessageInstructionIds Set of active message tag IDs (e.g., "mode_readonly")
          * @property userInput Unsent text in input field
          * @property customName Custom tab display name (null = use default)
          * @property tabId Stable tab identifier for MCP
@@ -222,7 +222,7 @@ interface AppLogicVM {
         data class TabState(
             val projectPath: String,
             val conversationId: Conversation.Id,
-            val activeMessageTags: Set<String>,
+            val activeMessageInstructionIds: Set<String>,
             val userInput: String,
             val customName: String?,
             val tabId: String,

@@ -71,7 +71,9 @@ open class AppViewModel(
         val initialTabUiState = UIState.Tab(
             projectPath = projectPath,
             conversationId = conversation.id,
-            activeMessageTags = TabViewModel.getDefaultEnabledTags(),
+            activeMessageInstructionIds = settingsService.settingsFlow.value.userProfile.messageInstructionGroups
+                .map { group -> group.controls[group.selectedByDefault].data.id }
+                .toSet(),
             tabId = tabId.value,
             parentTabId = parentTabId,
             agent = tabAgent,

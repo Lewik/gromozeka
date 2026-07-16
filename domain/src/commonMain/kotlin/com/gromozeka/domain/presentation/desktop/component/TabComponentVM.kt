@@ -2,6 +2,7 @@ package com.gromozeka.domain.presentation.desktop.component
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.TokenUsageStatistics
 import kotlinx.coroutines.flow.StateFlow
 
@@ -37,7 +38,7 @@ import kotlinx.coroutines.flow.StateFlow
  * │ [Select All] [User] [Assistant] [Thinking] [Tools] [Plain]     │
  * │ Selected: 3 | [Squash] [Distill] [Summarize] [Delete]          │
  * ├─────────────────────────────────────────────────────────────────┤
- * │ Message Tags: [Readonly ▼]                                      │
+ * │ Message Instructions: [R]                                       │
  * ├─────────────────────────────────────────────────────────────────┤
  * │ ┌─────────────────────────────────────────────────────────────┐ │
  * │ │ Type your message here...                                   │ │
@@ -58,7 +59,7 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * ### Sending Messages
  * 1. User types in input field ([userInput])
- * 2. Optionally selects message tags (Readonly)
+ * 2. Optionally selects a message instruction (Readonly/Writable)
  * 3. Clicks [Send] or presses Ctrl+Enter → [sendMessage]
  * 4. User message added to [allMessages] immediately
  * 5. Input field cleared
@@ -81,14 +82,14 @@ import kotlinx.coroutines.flow.StateFlow
  * - Selected messages highlighted, count shown in toolbar
  * - Bulk operations: Squash, Distill, Summarize, Delete
  *
- * ### Message Tags
- * - Tags defined in [availableMessageTags]
- * - Active tags in [activeMessageTags]
- * - Tags are mutually exclusive within same group
+ * ### Message Instructions
+ * - Groups defined in [messageInstructionGroups]
+ * - Active instructions in [activeMessageInstructionIds]
+ * - Instructions are mutually exclusive within the same group
  * - Example groups:
  *   - Mode: [Readonly, Writable]
- * - Click tag → [toggleMessageTag]
- * - Active tags included in message instructions
+ * - Click a control → [selectMessageInstruction]
+ * - Selected controls marked with `includeInMessage` are included in the message
  *
  * ### Message Squashing
  * - **Manual Squash**: Concatenate selected messages as-is
@@ -102,7 +103,7 @@ import kotlinx.coroutines.flow.StateFlow
  * - [userInput] - current text in input field (reactive)
  * - [isWaitingForResponse] - whether AI is currently responding
  * - [tokenStats] - token usage statistics for this conversation
- * - [activeMessageTags] - currently selected message tags
+ * - [activeMessageInstructionIds] - currently selected message instructions
  * - [editMode] - whether bulk editing UI is visible
  * - [selectedMessageIds] - IDs of selected messages for bulk operations
  * - [collapsedMessageIds] - IDs of messages with collapsed thinking blocks
@@ -121,8 +122,8 @@ import kotlinx.coroutines.flow.StateFlow
  * @property isWaitingForResponse Whether AI is currently generating response
  * @property tokenStats Token usage statistics (input/output/total tokens)
  * @property toolResultsMap Map of tool call IDs to their results (for lookup)
- * @property availableMessageTags All available message tag definitions
- * @property activeMessageTags Set of currently active tag IDs
+ * @property messageInstructionGroups Settings-defined message instruction groups
+ * @property activeMessageInstructionIds Set of currently selected instruction IDs
  */
 interface TabComponentVM {
     // Immutable properties
@@ -136,8 +137,8 @@ interface TabComponentVM {
     val isWaitingForResponse: StateFlow<Boolean>
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?>
     val toolResultsMap: StateFlow<Map<String, Conversation.Message.ContentItem.ToolResult>>
-    val availableMessageTags: List<MessageTagDefinition>
-    val activeMessageTags: Set<String>
+    val messageInstructionGroups: List<MessageInstructionGroup>
+    val activeMessageInstructionIds: Set<String>
     
     // Actions - Message Input
     /**
@@ -153,7 +154,7 @@ interface TabComponentVM {
      * This is a TRANSACTIONAL operation - saves user message AND streams AI response atomically.
      *
      * Message sending flow:
-     * 1. Collect active message tags from [activeMessageTags]
+     * 1. Collect selected message instructions from [activeMessageInstructionIds]
      * 2. Combine with additionalInstructions
      * 3. Create user Message with content + instructions
      * 4. Add to [allMessages] immediately
@@ -166,7 +167,7 @@ interface TabComponentVM {
      * 11. Update [tokenStats]
      *
      * @param message message text to send
-     * @param additionalInstructions extra instructions beyond message tags
+     * @param additionalInstructions extra instructions beyond selected composer controls
      */
     suspend fun sendMessageToSession(
         message: String,
@@ -187,16 +188,15 @@ interface TabComponentVM {
      */
     suspend fun captureAndAddToInput()
     
-    // Actions - Message Tags
+    // Actions - Message Instructions
     /**
-     * Toggle message tag selection.
-     * Tags are mutually exclusive within same [MessageTagDefinition] group.
-     * Activating a tag deactivates others in same group.
+     * Select a message instruction within a group.
+     * Controls are mutually exclusive within the same group.
      *
-     * @param messageTag tag group definition
+     * @param group instruction group definition
      * @param controlIndex index of control to activate in group
      */
-    fun toggleMessageTag(messageTag: MessageTagDefinition, controlIndex: Int)
+    fun selectMessageInstruction(group: MessageInstructionGroup, controlIndex: Int)
     
     // Actions - Agent Management
     /**
@@ -377,7 +377,7 @@ interface TabComponentVM {
      *
      * @property projectPath absolute path to project directory
      * @property conversationId ID of conversation being displayed
-     * @property activeMessageTags set of active message tag IDs
+     * @property activeMessageInstructionIds set of selected message instruction IDs
      * @property userInput current text in input field (unsent)
      * @property isWaitingForResponse whether AI is currently responding
      * @property customName custom tab display name (null = use default)
@@ -393,7 +393,7 @@ interface TabComponentVM {
     data class TabUIState(
         val projectPath: String,
         val conversationId: Conversation.Id,
-        val activeMessageTags: Set<String>,
+        val activeMessageInstructionIds: Set<String>,
         val userInput: String,
         val isWaitingForResponse: Boolean,
         val customName: String?,
@@ -406,38 +406,4 @@ interface TabComponentVM {
         val editingMessageId: Conversation.Message.Id?,
         val editingMessageText: String
     )
-    
-    /**
-     * Definition of a message tag group.
-     * Tags in same group are mutually exclusive.
-     *
-     * Example: mode tag group
-     * ```
-     * MessageTagDefinition(
-     *   controls = listOf(
-     *     Control(UserInstruction("mode_readonly", "Readonly", "Readonly mode"), includeInMessage = true),
-     *     Control(UserInstruction("mode_writable", "Writable", "Writable mode"), includeInMessage = false)
-     *   ),
-     *   selectedByDefault = 1
-     * )
-     * ```
-     *
-     * @property controls list of mutually exclusive tag options
-     * @property selectedByDefault index of default active control
-     */
-    data class MessageTagDefinition(
-        val controls: List<Control>,
-        val selectedByDefault: Int
-    ) {
-        /**
-         * Single tag control within a group.
-         *
-         * @property data instruction data (ID, display name, description)
-         * @property includeInMessage whether to include this tag in message instructions
-         */
-        data class Control(
-            val data: Conversation.Message.Instruction.UserInstruction,
-            val includeInMessage: Boolean
-        )
-    }
 }

@@ -26,11 +26,14 @@ sealed interface UiTestTag {
     data object SendButton : UiTestTag
     data object ConversationProgressStrip : UiTestTag
     data object PendingMessagesPanel : UiTestTag
+    data object RuntimePanel : UiTestTag
+    data object RuntimeButton : UiTestTag
     data object PttButton : UiTestTag
     data object PromptsPanel : UiTestTag
     data object AgentButton : UiTestTag
     data object MemoryActionItemsButton : UiTestTag
     data object MemoryActionItemsPanel : UiTestTag
+    data object MemoryMenuButton : UiTestTag
 
     data class SessionTab(val index: Int) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)

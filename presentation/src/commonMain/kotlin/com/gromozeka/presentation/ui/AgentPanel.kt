@@ -23,7 +23,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.service.AgentDomainService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -40,7 +39,6 @@ fun AgentPanel(
     onClose: () -> Unit,
     agentService: AgentDomainService,
     coroutineScope: CoroutineScope,
-    tokenStats: TokenUsageStatistics.ThreadTotals?,
     modifier: Modifier = Modifier,
     fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
@@ -112,14 +110,6 @@ fun AgentPanel(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Token Statistics Table at the top
-                TokenStatisticsTable(
-                    tokenStats = tokenStats,
-                    modifier = Modifier.fillMaxWidth()
-                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 

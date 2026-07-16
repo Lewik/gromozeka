@@ -47,7 +47,6 @@ enum class SettingsPanelContentMode {
     Quick,
     AiRuntime,
 }
-
 @Composable
 fun SettingsPanel(
     isVisible: Boolean,
@@ -696,6 +695,33 @@ fun SettingsPanel(
                     }
 
                     if (contentMode == SettingsPanelContentMode.Quick) {
+                    SettingsGroup(title = "Composer shortcuts") {
+                        userProfile.messageInstructionGroups.forEach { group ->
+                            SwitchSettingItem(
+                                label = group.title,
+                                description = group.controls.joinToString(" · ") { control ->
+                                    "${control.shortLabel} ${control.data.title}"
+                                },
+                                value = group.showInComposer,
+                                onValueChange = { showInComposer ->
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                messageInstructionGroups = messageInstructionGroups.map { existingGroup ->
+                                                    if (existingGroup.id == group.id) {
+                                                        existingGroup.copy(showInComposer = showInComposer)
+                                                    } else {
+                                                        existingGroup
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    )
+                                },
+                            )
+                        }
+                    }
+
                     // UI Settings
                     SettingsGroup(title = translation.settings.interfaceSettingsTitle) {
                         SwitchSettingItem(

@@ -27,7 +27,7 @@ data class UIState(
     data class Tab(
         val projectPath: String,
         val conversationId: Conversation.Id,
-        val activeMessageTags: Set<String> = emptySet(),
+        val activeMessageInstructionIds: Set<String> = emptySet(),
         val userInput: String = "",
         val isWaitingForResponse: Boolean = false,
         val customName: String? = null,

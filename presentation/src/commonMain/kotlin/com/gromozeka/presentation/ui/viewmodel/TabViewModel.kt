@@ -10,7 +10,7 @@ import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.utils.ChatMessageSoundDetector
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.MessageTagDefinition
+import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -73,39 +73,15 @@ class TabViewModel(
                 "usually after the current tool result. Do not restart or discard completed work unless the user explicitly asks."
         )
 
-        private val ALL_MESSAGE_TAG_DEFINITIONS = listOf(
-            MessageTagDefinition(
-                controls = listOf(
-                    MessageTagDefinition.Control(
-                        data = Conversation.Message.Instruction.UserInstruction(
-                            "mode_readonly",
-                            "Readonly",
-                            "Режим readonly - никаких изменений кода или команд применяющих изменения"
-                        ),
-                        includeInMessage = true
-                    ),
-                    MessageTagDefinition.Control(
-                        data = Conversation.Message.Instruction.UserInstruction("mode_writable", "Writable", "Разрешено исправление файлов"),
-                        includeInMessage = true
-                    )
-                ),
-                selectedByDefault = 0
-            )
-        )
-
-        fun getDefaultEnabledTags(): Set<String> {
-            return ALL_MESSAGE_TAG_DEFINITIONS.map { tagDefinition ->
-                (tagDefinition.controls[tagDefinition.selectedByDefault].data as Conversation.Message.Instruction.UserInstruction).id
-            }.toSet()
-        }
     }
 
-    val availableMessageTags = ALL_MESSAGE_TAG_DEFINITIONS
+    val messageInstructionGroups: List<MessageInstructionGroup>
+        get() = settingsFlow.value.userProfile.messageInstructionGroups
 
-    val activeMessageTags: Set<String> get() = _uiState.value.activeMessageTags
+    val activeMessageInstructionIds: Set<String> get() = _uiState.value.activeMessageInstructionIds
     val userInput: String get() = _uiState.value.userInput
-    val activeMessageTagsFlow: StateFlow<Set<String>> = _uiState.map { it.activeMessageTags }.stateIn(
-        scope, SharingStarted.Lazily, initialTabUiState.activeMessageTags
+    val activeMessageInstructionIdsFlow: StateFlow<Set<String>> = _uiState.map { it.activeMessageInstructionIds }.stateIn(
+        scope, SharingStarted.Lazily, initialTabUiState.activeMessageInstructionIds
     )
 
     private val _allMessages = MutableStateFlow<List<Conversation.Message>>(emptyList())
@@ -360,21 +336,21 @@ class TabViewModel(
                 initialValue = emptyMap()
             )
 
-    fun toggleMessageTag(messageTag: MessageTagDefinition, controlIndex: Int) {
+    fun selectMessageInstruction(group: MessageInstructionGroup, controlIndex: Int) {
         _uiState.update { currentState ->
-            if (controlIndex >= 0 && controlIndex < messageTag.controls.size) {
-                val selectedId = (messageTag.controls[controlIndex].data as Conversation.Message.Instruction.UserInstruction).id
+            if (controlIndex >= 0 && controlIndex < group.controls.size) {
+                val selectedId = group.controls[controlIndex].data.id
 
-                val allIdsInGroup = messageTag.controls.map { (it.data as Conversation.Message.Instruction.UserInstruction).id }.toSet()
+                val allIdsInGroup = group.controls.map { it.data.id }.toSet()
 
-                val isAlreadyActive = selectedId in currentState.activeMessageTags
+                val isAlreadyActive = selectedId in currentState.activeMessageInstructionIds
 
                 if (isAlreadyActive) {
                     currentState
                 } else {
-                    val cleanedTags = currentState.activeMessageTags - allIdsInGroup
-                    val newTags = cleanedTags + selectedId
-                    currentState.copy(activeMessageTags = newTags)
+                    val cleanedInstructions = currentState.activeMessageInstructionIds - allIdsInGroup
+                    val newInstructions = cleanedInstructions + selectedId
+                    currentState.copy(activeMessageInstructionIds = newInstructions)
                 }
             } else {
                 currentState
@@ -496,20 +472,20 @@ class TabViewModel(
     ): PendingUserMessage {
         val currentState = _uiState.value
 
-        val activeTagsData = availableMessageTags.mapNotNull { messageTag ->
-            val activeControlIndex = messageTag.controls.indexOfFirst { control ->
-                (control.data as Conversation.Message.Instruction.UserInstruction).id in currentState.activeMessageTags
+        val activeInstructions = messageInstructionGroups.mapNotNull { group ->
+            val activeControlIndex = group.controls.indexOfFirst { control ->
+                control.data.id in currentState.activeMessageInstructionIds
             }
 
-            val selectedControlIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
-            val selectedControl = messageTag.controls[selectedControlIndex]
+            val selectedControlIndex = if (activeControlIndex >= 0) activeControlIndex else group.selectedByDefault
+            val selectedControl = group.controls[selectedControlIndex]
 
             if (selectedControl.includeInMessage) {
                 selectedControl.data
             } else null
         }
 
-        val instructions = activeTagsData + additionalInstructions
+        val instructions = activeInstructions + additionalInstructions
 
         val userMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),

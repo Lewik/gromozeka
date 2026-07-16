@@ -24,9 +24,17 @@ data class UserProfile(
     val agentSettings: AgentSettings = AgentSettings(),
     val memorySettings: MemorySettings = MemorySettings(),
     val toolSettings: ToolSettings = ToolSettings(),
+    val messageInstructionGroups: List<MessageInstructionGroup> = MessageInstructionGroup.defaults(),
 ) {
     init {
         require(displayName.isNotBlank()) { "User profile display name must not be blank" }
+        require(messageInstructionGroups.map { it.id }.distinct().size == messageInstructionGroups.size) {
+            "Message instruction group ids must be unique"
+        }
+        val instructionIds = messageInstructionGroups.flatMap { group -> group.controls.map { it.data.id } }
+        require(instructionIds.distinct().size == instructionIds.size) {
+            "Message instruction ids must be unique across groups"
+        }
     }
 
     @Serializable

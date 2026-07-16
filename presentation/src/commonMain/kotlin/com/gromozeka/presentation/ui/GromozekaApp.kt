@@ -43,6 +43,7 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.AppComponents
 import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
+import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
 import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -55,7 +56,7 @@ fun GromozekaApp(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
     uiScaleMultiplier: Float = 1f,
-    showPromptsPanelInitially: Boolean = true,
+    showRuntimePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
@@ -67,7 +68,7 @@ fun GromozekaApp(
                 appComponents = appComponents,
                 skipLoadingScreen = skipLoadingScreen,
                 uiScaleMultiplier = uiScaleMultiplier,
-                showPromptsPanelInitially = showPromptsPanelInitially,
+                showRuntimePanelInitially = showRuntimePanelInitially,
                 forceCompactLayout = forceCompactLayout,
                 clientPlatform = clientPlatform,
             )
@@ -80,7 +81,7 @@ fun GromozekaAppContent(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
     uiScaleMultiplier: Float = 1f,
-    showPromptsPanelInitially: Boolean = true,
+    showRuntimePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
@@ -90,7 +91,8 @@ fun GromozekaAppContent(
     var initialized by remember { mutableStateOf(false) }
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
     var showSettingsPanel by remember { mutableStateOf(false) }
-    var showPromptsPanel by remember(showPromptsPanelInitially) { mutableStateOf(showPromptsPanelInitially) }
+    var showPromptsPanel by remember { mutableStateOf(false) }
+    var showRuntimePanel by remember(showRuntimePanelInitially) { mutableStateOf(showRuntimePanelInitially) }
     var showMemoryActionItemsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var hoveredTabIndex by remember { mutableStateOf(-1) }
@@ -231,6 +233,7 @@ fun GromozekaAppContent(
                             showSettingsPanel = visible
                             if (visible && isCompactLayout) {
                                 showPromptsPanel = false
+                                showRuntimePanel = false
                                 showMemoryActionItemsPanel = false
                             }
                         }
@@ -238,6 +241,15 @@ fun GromozekaAppContent(
                             showPromptsPanel = visible
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
+                                showRuntimePanel = false
+                                showMemoryActionItemsPanel = false
+                            }
+                        }
+                        val setRuntimePanel: (Boolean) -> Unit = { visible ->
+                            showRuntimePanel = visible
+                            if (visible && isCompactLayout) {
+                                showSettingsPanel = false
+                                showPromptsPanel = false
                                 showMemoryActionItemsPanel = false
                             }
                         }
@@ -246,15 +258,25 @@ fun GromozekaAppContent(
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
                                 showPromptsPanel = false
+                                showRuntimePanel = false
                             }
                         }
 
-                        LaunchedEffect(isCompactLayout, showSettingsPanel, showPromptsPanel, showMemoryActionItemsPanel) {
+                        LaunchedEffect(
+                            isCompactLayout,
+                            showSettingsPanel,
+                            showPromptsPanel,
+                            showRuntimePanel,
+                            showMemoryActionItemsPanel,
+                        ) {
                             if (isCompactLayout) {
                                 when {
                                     showSettingsPanel && showPromptsPanel -> showPromptsPanel = false
+                                    showSettingsPanel && showRuntimePanel -> showRuntimePanel = false
                                     showSettingsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
+                                    showPromptsPanel && showRuntimePanel -> showRuntimePanel = false
                                     showPromptsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
+                                    showRuntimePanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
                                 }
                             }
                         }
@@ -352,12 +374,13 @@ fun GromozekaAppContent(
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,
                                                         pttState = pttState,
-                                                        pttStatusMessage = pttStatusMessage,
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,
                                                         showMemoryActionItemsPanel = showMemoryActionItemsPanel,
                                                         onShowMemoryActionItemsPanelChange = setMemoryActionItemsPanel,
+                                                        showRuntimePanel = showRuntimePanel,
+                                                        onShowRuntimePanelChange = setRuntimePanel,
                                                         onRememberThread = {
                                                             coroutineScope.launch {
                                                                 runCatching { appComponents.appViewModel.rememberCurrentThread() }
@@ -482,6 +505,34 @@ fun GromozekaAppContent(
                                         if (!isCompactLayout) currentTab?.let { tabViewModel ->
                                             val tabUiState by tabViewModel.uiState.collectAsState()
                                             val tokenStats by tabViewModel.tokenStats.collectAsState()
+                                            val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
+                                            val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
+                                            val pendingMessages by tabViewModel.pendingMessages.collectAsState()
+                                            val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
+
+                                            Box(modifier = Modifier.testTag(UiTestTag.RuntimePanel.value)) {
+                                                ConversationRuntimePanel(
+                                                    isVisible = showRuntimePanel,
+                                                    currentAgent = tabUiState.agent,
+                                                    settings = currentSettings,
+                                                    tokenStats = tokenStats,
+                                                    isWaitingForResponse = isWaitingForResponse,
+                                                    executionPauseRequested = executionPauseRequested,
+                                                    pttState = pttState,
+                                                    pttStatusMessage = pttStatusMessage,
+                                                    pendingMessages = pendingMessages,
+                                                    runtimeSnapshot = runtimeSnapshot,
+                                                    onPause = tabViewModel::pauseExecution,
+                                                    onResume = tabViewModel::resumeExecution,
+                                                    onStop = tabViewModel::stopExecution,
+                                                    onCancelCommandTask = tabViewModel::cancelCommandTask,
+                                                    onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
+                                                    onEditPendingMessage = tabViewModel::editPendingMessage,
+                                                    onCancelPendingMessage = tabViewModel::cancelPendingMessage,
+                                                    onClose = { setRuntimePanel(false) },
+                                                )
+                                            }
+
                                             Box(modifier = Modifier.testTag(UiTestTag.PromptsPanel.value)) {
                                                 AgentPanel(
                                                     projectPath = tabUiState.projectPath,
@@ -491,7 +542,6 @@ fun GromozekaAppContent(
                                                     onClose = { setPromptsPanel(false) },
                                                     agentService = appComponents.agentService,
                                                     coroutineScope = coroutineScope,
-                                                    tokenStats = tokenStats
                                                 )
                                             }
                                         }
@@ -543,10 +593,45 @@ fun GromozekaAppContent(
                             currentTab?.let { tabViewModel ->
                                 val tabUiState by tabViewModel.uiState.collectAsState()
                                 val tokenStats by tabViewModel.tokenStats.collectAsState()
+                                val isWaitingForResponse by tabViewModel.isWaitingForResponse.collectAsState()
+                                val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
+                                val pendingMessages by tabViewModel.pendingMessages.collectAsState()
+                                val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
+
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .zIndex(2f)
+                                        .testTag(UiTestTag.RuntimePanel.value)
+                                ) {
+                                    ConversationRuntimePanel(
+                                        isVisible = showRuntimePanel,
+                                        currentAgent = tabUiState.agent,
+                                        settings = currentSettings,
+                                        tokenStats = tokenStats,
+                                        isWaitingForResponse = isWaitingForResponse,
+                                        executionPauseRequested = executionPauseRequested,
+                                        pttState = pttState,
+                                        pttStatusMessage = pttStatusMessage,
+                                        pendingMessages = pendingMessages,
+                                        runtimeSnapshot = runtimeSnapshot,
+                                        onPause = tabViewModel::pauseExecution,
+                                        onResume = tabViewModel::resumeExecution,
+                                        onStop = tabViewModel::stopExecution,
+                                        onCancelCommandTask = tabViewModel::cancelCommandTask,
+                                        onSendInCurrentTurn = tabViewModel::sendPendingMessageInCurrentTurn,
+                                        onEditPendingMessage = tabViewModel::editPendingMessage,
+                                        onCancelPendingMessage = tabViewModel::cancelPendingMessage,
+                                        onClose = { setRuntimePanel(false) },
+                                        fullScreen = true,
+                                        slideFromRight = true,
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(3f)
                                         .testTag(UiTestTag.PromptsPanel.value)
                                 ) {
                                     AgentPanel(
@@ -557,7 +642,6 @@ fun GromozekaAppContent(
                                         onClose = { setPromptsPanel(false) },
                                         agentService = appComponents.agentService,
                                         coroutineScope = coroutineScope,
-                                        tokenStats = tokenStats,
                                         fullScreen = true,
                                         slideFromRight = true
                                     )
@@ -567,7 +651,7 @@ fun GromozekaAppContent(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .zIndex(3f)
+                                    .zIndex(4f)
                                     .testTag(UiTestTag.SettingsPanel.value)
                             ) {
                                 SettingsPanel(
@@ -597,7 +681,7 @@ fun GromozekaAppContent(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .zIndex(4f)
+                                        .zIndex(5f)
                                         .testTag(UiTestTag.MemoryActionItemsPanel.value)
                                 ) {
                                     MemoryActionItemsPanel(

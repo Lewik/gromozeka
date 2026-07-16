@@ -28,7 +28,7 @@ import kotlinx.browser.window
 
 private data class WebLayoutHints(
     val uiScaleMultiplier: Float,
-    val showPromptsPanelInitially: Boolean,
+    val showRuntimePanelInitially: Boolean,
     val forceCompactLayout: Boolean,
     val clientPlatform: ClientPlatform,
 )
@@ -76,7 +76,7 @@ private fun GromozekaWebApp() {
             appComponents = remoteApp!!.components,
             skipLoadingScreen = true,
             uiScaleMultiplier = layoutHints.uiScaleMultiplier,
-            showPromptsPanelInitially = layoutHints.showPromptsPanelInitially,
+            showRuntimePanelInitially = layoutHints.showRuntimePanelInitially,
             forceCompactLayout = layoutHints.forceCompactLayout,
             clientPlatform = layoutHints.clientPlatform,
         )
@@ -104,19 +104,19 @@ private fun resolveWebLayoutHints(): WebLayoutHints {
     return when {
         compactScreen -> WebLayoutHints(
             uiScaleMultiplier = 1.25f,
-            showPromptsPanelInitially = false,
+            showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         hasTouch && tabletScreen -> WebLayoutHints(
             uiScaleMultiplier = 1.15f,
-            showPromptsPanelInitially = false,
+            showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         else -> WebLayoutHints(
             uiScaleMultiplier = 1.0f,
-            showPromptsPanelInitially = true,
+            showRuntimePanelInitially = true,
             forceCompactLayout = false,
             clientPlatform = clientPlatform,
         )
