@@ -83,7 +83,7 @@ fun ConversationRuntimePanel(
             modifier = if (fullScreen) {
                 Modifier.fillMaxSize()
             } else {
-                Modifier.width(400.dp).fillMaxHeight()
+                Modifier.width(533.dp).fillMaxHeight()
             },
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
