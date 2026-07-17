@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.TtsTask
+import com.gromozeka.domain.model.WorkspaceContextReference
+import com.gromozeka.domain.service.WorkspaceFileSystemService
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.TtsQueue
@@ -30,6 +32,7 @@ import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
 import com.gromozeka.presentation.ui.UiTestTag
+import com.gromozeka.presentation.ui.WorkspacePathPickerDialog
 import com.gromozeka.presentation.ui.format
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -50,6 +53,7 @@ fun SessionScreen(
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState = PttState.IDLE,
+    workspaceFileSystemService: WorkspaceFileSystemService,
 
     // Settings - moved to ChatApplication level, but we still need settings for UI
     settings: Settings,
@@ -97,6 +101,7 @@ fun SessionScreen(
     val topToolbarScrollState = rememberScrollState()
     val editToolbarScrollState = rememberScrollState()
     var showMemoryMenu by remember { mutableStateOf(false) }
+    var showWorkspaceContextPicker by remember { mutableStateOf(false) }
 
     // Message sending function using ViewModel
     val onSendMessage: (String) -> Unit = { message ->
@@ -582,6 +587,9 @@ fun SessionScreen(
                         instructionGroups = viewModel.messageInstructionGroups,
                         activeInstructionIds = uiState.activeMessageInstructionIds,
                         onSelectInstruction = viewModel::selectMessageInstruction,
+                        workspaceContextReferences = uiState.workspaceContextReferences,
+                        onAddWorkspaceContext = { showWorkspaceContextPicker = true },
+                        onRemoveWorkspaceContext = viewModel::removeWorkspaceContextReference,
                         onCaptureScreenshot = viewModel::captureAndAddToInput,
                         onInsertCurrentLocation = onInsertCurrentLocation,
                     )
@@ -621,6 +629,28 @@ fun SessionScreen(
                 onDismiss = {
                     viewModel.cancelEditMessage()
                 }
+            )
+        }
+
+        if (showWorkspaceContextPicker) {
+            WorkspacePathPickerDialog(
+                title = "Add workspace context",
+                fileSystemService = workspaceFileSystemService,
+                initialPath = viewModel.projectPath,
+                showFiles = true,
+                selectLabel = "Add this folder",
+                allowDirectoryEntrySelection = true,
+                onSelect = { path ->
+                    viewModel.addWorkspaceContextReference(
+                        WorkspaceContextReference(
+                            path = path.path,
+                            name = path.name,
+                            kind = path.kind,
+                        )
+                    )
+                    showWorkspaceContextPicker = false
+                },
+                onDismiss = { showWorkspaceContextPicker = false },
             )
         }
     }

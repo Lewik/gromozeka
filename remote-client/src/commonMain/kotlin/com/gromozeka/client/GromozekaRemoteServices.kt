@@ -10,6 +10,7 @@ import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.domain.service.WorkspaceFileSystemService
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +44,7 @@ class GromozekaRemoteServices(
     val agentService: AgentDomainService = remoteAgentService
     val promptService: PromptDomainService = RemotePromptService(client)
     val projectService: ProjectDomainService = RemoteProjectService(client)
+    val workspaceFileSystemService: WorkspaceFileSystemService = RemoteWorkspaceFileSystemService(client)
     val conversationService: ConversationDomainService = RemoteConversationService(client)
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)
     val conversationNameSearchService: ConversationNameSearchService = RemoteConversationNameSearchService(client)

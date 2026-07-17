@@ -15,6 +15,7 @@ import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.domain.service.WorkspaceFileSystemService
 import com.gromozeka.infrastructure.ai.openai.SttService
 import com.gromozeka.infrastructure.ai.openai.TtsService
 import com.gromozeka.remote.protocol.*
@@ -45,6 +46,7 @@ class GromozekaRemoteServer(
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
     private val projectDomainService: ProjectDomainService,
+    private val workspaceFileSystemService: WorkspaceFileSystemService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
@@ -154,6 +156,9 @@ class GromozekaRemoteServer(
                 ResetAllBuiltinPromptsRequest -> countResultResponse(promptDomainService.resetAllBuiltinPrompts())
                 ImportAllClaudeMdRequest -> countResultResponse(promptDomainService.importAllClaudeMd())
                 is GetOrCreateProjectRequest -> ProjectResponse(projectDomainService.getOrCreate(request.path))
+                is BrowseWorkspaceRequest -> WorkspaceDirectoryResponse(
+                    workspaceFileSystemService.browse(request.path, request.includeFiles)
+                )
                 is FindProjectByIdRequest -> NullableProjectResponse(projectDomainService.findById(request.projectId))
                 is FindProjectByPathRequest -> NullableProjectResponse(projectDomainService.findByPath(request.path))
                 is UpdateProjectLastUsedRequest -> NullableProjectResponse(projectDomainService.updateLastUsed(request.projectId))

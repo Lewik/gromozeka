@@ -8,6 +8,8 @@ import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.nio.file.Files
+import java.nio.file.Path
 
 /**
  * Application service for project management.
@@ -42,13 +44,14 @@ class ProjectApplicationService(
      */
     @Transactional
     override suspend fun getOrCreate(path: String): Project {
-        val existing = projectRepository.findByPath(path)
+        val normalizedPath = normalizeProjectPath(path)
+        val existing = projectRepository.findByPath(normalizedPath)
         if (existing != null) {
             updateLastUsed(existing.id)
             return existing
         }
 
-        val newProject = createProject(path)
+        val newProject = createProject(normalizedPath)
         return projectRepository.save(newProject)
     }
 
@@ -68,7 +71,7 @@ class ProjectApplicationService(
      * @return project if found, null otherwise
      */
     override suspend fun findByPath(path: String): Project? =
-        projectRepository.findByPath(path)
+        projectRepository.findByPath(normalizeLookupPath(path))
 
     /**
      * Finds most recently used projects.
@@ -104,7 +107,8 @@ class ProjectApplicationService(
      * @return new project instance (not yet persisted)
      */
     private fun createProject(path: String): Project {
-        val name = path.substringAfterLast('/')
+        val projectPath = Path.of(path)
+        val name = projectPath.fileName?.toString() ?: projectPath.toString()
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
         return Project(
@@ -114,5 +118,18 @@ class ProjectApplicationService(
             createdAt = now,
             lastUsedAt = now
         )
+    }
+
+    private fun normalizeProjectPath(path: String): String {
+        require(path.isNotBlank()) { "Project path cannot be blank" }
+        val resolved = Path.of(path).toRealPath()
+        require(Files.isDirectory(resolved)) { "Project path is not a directory: $resolved" }
+        return resolved.toString()
+    }
+
+    private fun normalizeLookupPath(path: String): String {
+        require(path.isNotBlank()) { "Project path cannot be blank" }
+        val normalized = Path.of(path).toAbsolutePath().normalize()
+        return if (Files.exists(normalized)) normalized.toRealPath().toString() else normalized.toString()
     }
 }

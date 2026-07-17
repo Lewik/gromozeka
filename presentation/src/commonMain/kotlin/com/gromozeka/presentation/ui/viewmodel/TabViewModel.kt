@@ -13,6 +13,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.WorkspaceContextReference
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationExecutionState
@@ -364,6 +365,28 @@ class TabViewModel(
         }
     }
 
+    fun addWorkspaceContextReference(reference: WorkspaceContextReference) {
+        _uiState.update { currentState ->
+            if (currentState.workspaceContextReferences.any { it.path == reference.path && it.kind == reference.kind }) {
+                currentState
+            } else {
+                currentState.copy(
+                    workspaceContextReferences = currentState.workspaceContextReferences + reference
+                )
+            }
+        }
+    }
+
+    fun removeWorkspaceContextReference(reference: WorkspaceContextReference) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                workspaceContextReferences = currentState.workspaceContextReferences.filterNot {
+                    it.path == reference.path && it.kind == reference.kind
+                }
+            )
+        }
+    }
+
     fun updateCustomName(customName: String?) {
         _uiState.update { currentState ->
             currentState.copy(customName = customName)
@@ -389,7 +412,12 @@ class TabViewModel(
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
             if (submitPendingMessage(queuedMessage)) {
                 showPendingMessage(queuedMessage)
-                _uiState.update { it.copy(userInput = "") }
+                _uiState.update {
+                    it.copy(
+                        userInput = "",
+                        workspaceContextReferences = emptyList(),
+                    )
+                }
                 log.info {
                     "Queued user message for conversation $conversationId because previous request is still running"
                 }
@@ -422,7 +450,12 @@ class TabViewModel(
         scope.launch {
             message.cancelRuntimeQueueIfNeeded()
         }
-        _uiState.update { it.copy(userInput = message.text) }
+        _uiState.update {
+            it.copy(
+                userInput = message.text,
+                workspaceContextReferences = message.workspaceContextReferences,
+            )
+        }
     }
 
     fun sendPendingMessageInCurrentTurn(messageId: String) {
@@ -485,7 +518,11 @@ class TabViewModel(
             } else null
         }
 
-        val instructions = activeInstructions + additionalInstructions
+        val workspaceContextInstruction = currentState.workspaceContextReferences
+            .takeIf { it.isNotEmpty() }
+            ?.let { Conversation.Message.Instruction.WorkspaceContext(it) }
+
+        val instructions = activeInstructions + listOfNotNull(workspaceContextInstruction) + additionalInstructions
 
         val userMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
@@ -521,7 +558,13 @@ class TabViewModel(
         lastRuntimeMessage = null
         _isWaitingForResponse.value = true
         _executionPauseRequested.value = false
-        _uiState.update { it.copy(userInput = "", isWaitingForResponse = true) }
+        _uiState.update {
+            it.copy(
+                userInput = "",
+                workspaceContextReferences = emptyList(),
+                isWaitingForResponse = true,
+            )
+        }
 
         currentRequestJob = scope.launch {
             try {
@@ -532,7 +575,13 @@ class TabViewModel(
                         messages.filterNot { it.id == userMessage.id }
                     }
                     _isWaitingForResponse.value = false
-                    _uiState.update { it.copy(userInput = pendingMessage.text, isWaitingForResponse = false) }
+                    _uiState.update {
+                        it.copy(
+                            userInput = pendingMessage.text,
+                            workspaceContextReferences = pendingMessage.workspaceContextReferences,
+                            isWaitingForResponse = false,
+                        )
+                    }
                     log.warn { "Runtime rejected submitted message for conversation $conversationId" }
                 }
             } catch (e: Exception) {
@@ -540,7 +589,13 @@ class TabViewModel(
                     messages.filterNot { it.id == userMessage.id }
                 }
                 _isWaitingForResponse.value = false
-                _uiState.update { it.copy(userInput = pendingMessage.text, isWaitingForResponse = false) }
+                _uiState.update {
+                    it.copy(
+                        userInput = pendingMessage.text,
+                        workspaceContextReferences = pendingMessage.workspaceContextReferences,
+                        isWaitingForResponse = false,
+                    )
+                }
                 log.error(e) { "Failed to submit message" }
             } finally {
                 currentRequestJob = null
@@ -1057,6 +1112,11 @@ data class PendingUserMessage(
         get() = userMessage.content
             .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
             .joinToString("\n") { it.text }
+
+    val workspaceContextReferences: List<WorkspaceContextReference>
+        get() = userMessage.instructions
+            .filterIsInstance<Conversation.Message.Instruction.WorkspaceContext>()
+            .flatMap { it.references }
 }
 
 private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMessage? =

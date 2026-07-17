@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.WorkspaceFileSystemService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
@@ -25,7 +26,6 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.ConversationDomainService
 import klog.KLoggers
-import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -47,30 +47,23 @@ fun SessionListScreen(
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
     projectService: ProjectDomainService,
+    workspaceFileSystemService: WorkspaceFileSystemService,
     conversationTreeService: ConversationDomainService,
     appViewModel: AppViewModel,
     searchViewModel: ConversationSearchViewModel,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
-    clientPlatform: ClientPlatform,
     refreshTrigger: Int = 0,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
+    var showWorkspacePicker by remember { mutableStateOf(false) }
 
     val searchQuery by searchViewModel.searchQuery.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
     val searchResults by searchViewModel.searchResults.collectAsState()
     val showSearchResults by searchViewModel.showSearchResults.collectAsState()
-
-    val directoryPicker = rememberDirectoryPickerLauncher { directory ->
-        directory?.let { dir ->
-            dir.path?.let { path ->
-                onNewSession(path)
-            }
-        }
-    }
 
     suspend fun loadProjects() {
         isLoading = true
@@ -125,15 +118,13 @@ fun SessionListScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                if (clientPlatform.canPickProjectDirectory) {
-                    CompactButton(
-                        onClick = { directoryPicker.launch() }
-                    ) {
-                        Text(LocalTranslation.current.newSessionButton)
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
+                CompactButton(
+                    onClick = { showWorkspacePicker = true }
+                ) {
+                    Text(LocalTranslation.current.newSessionButton)
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 CompactButton(
                     onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
@@ -277,6 +268,21 @@ fun SessionListScreen(
                 }
             }
         }
+    }
+
+    if (showWorkspacePicker) {
+        WorkspacePathPickerDialog(
+            title = "Choose server workspace",
+            fileSystemService = workspaceFileSystemService,
+            initialPath = projectGroups.firstOrNull()?.projectPath,
+            showFiles = false,
+            selectLabel = "Create conversation here",
+            onSelect = { directory ->
+                showWorkspacePicker = false
+                onNewSession(directory.path)
+            },
+            onDismiss = { showWorkspacePicker = false },
+        )
     }
 }
 

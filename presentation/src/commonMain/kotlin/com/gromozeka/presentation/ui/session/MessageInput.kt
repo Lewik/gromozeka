@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.ui.session
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -7,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
@@ -29,6 +31,7 @@ import androidx.compose.ui.zIndex
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.WorkspaceContextReference
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
@@ -52,6 +55,9 @@ fun MessageInput(
     instructionGroups: List<MessageInstructionGroup>,
     activeInstructionIds: Set<String>,
     onSelectInstruction: (MessageInstructionGroup, Int) -> Unit,
+    workspaceContextReferences: List<WorkspaceContextReference>,
+    onAddWorkspaceContext: () -> Unit,
+    onRemoveWorkspaceContext: (WorkspaceContextReference) -> Unit,
     onCaptureScreenshot: suspend () -> Unit,
     onInsertCurrentLocation: (() -> Unit)? = null,
 ) {
@@ -68,170 +74,223 @@ fun MessageInput(
         textFieldLineHeight + textFieldPadding.calculateTopPadding() + textFieldPadding.calculateBottomPadding(),
     )
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val actionAreaMaxWidth = maxWidth * 0.64f
-
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            OutlinedTextField(
-                value = userInput,
-                onValueChange = onUserInputChange,
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (workspaceContextReferences.isNotEmpty()) {
+            FlowRow(
                 modifier = Modifier
-                    .onFocusChanged { inputFocused = it.isFocused }
-                    .onPreviewKeyEvent { event ->
-                        when {
-                            // Shift+Enter для отправки сообщения
-                            event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank() -> {
+                    .fillMaxWidth()
+                    .testTag(UiTestTag.ContextReferenceChips.value),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                workspaceContextReferences.forEach { reference ->
+                    InputChip(
+                        selected = true,
+                        onClick = {},
+                        label = { Text("@${reference.name}") },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove ${reference.name} from context",
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable { onRemoveWorkspaceContext(reference) },
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val actionAreaMaxWidth = maxWidth * 0.64f
+
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                OutlinedTextField(
+                    value = userInput,
+                    onValueChange = onUserInputChange,
+                    modifier = Modifier
+                        .onFocusChanged { inputFocused = it.isFocused }
+                        .onPreviewKeyEvent { event ->
+                            when {
+                                event.key == Key.Enter &&
+                                    event.isShiftPressed &&
+                                    event.type == KeyEventType.KeyDown &&
+                                    userInput.isNotBlank() -> {
+                                    coroutineScope.launch {
+                                        onSendMessage(userInput)
+                                    }
+                                    true
+                                }
+
+                                event.utf16CodePoint == 167 -> true
+                                else -> false
+                            }
+                        }
+                        .weight(1f)
+                        .testTag(UiTestTag.MessageInput.value),
+                    placeholder = { Text("") },
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+
+                Row(
+                    modifier = Modifier
+                        .widthIn(max = actionAreaMaxWidth)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    if (clientPlatform.showSoftwareKeyboardControls && inputFocused) {
+                        CompactButton(
+                            onClick = {
+                                keyboardController?.hide()
+                                focusManager.clearFocus(force = true)
+                            },
+                            modifier = Modifier.size(actionButtonSize),
+                            tooltip = "Hide keyboard",
+                        ) {
+                            Icon(Icons.Default.KeyboardHide, contentDescription = "Hide keyboard")
+                        }
+                    }
+
+                    CompactButton(
+                        onClick = onAddWorkspaceContext,
+                        modifier = Modifier
+                            .size(actionButtonSize)
+                            .testTag(UiTestTag.ContextPickerButton.value),
+                        tooltip = "Add file or folder context",
+                    ) {
+                        Text("@", style = MaterialTheme.typography.titleMedium)
+                    }
+
+                    BadgedBox(
+                        modifier = Modifier.zIndex(1f),
+                        badge = {
+                            if (pendingMessagesCount > 0) {
+                                Badge(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                ) {
+                                    Text("$pendingMessagesCount")
+                                }
+                            }
+                        },
+                    ) {
+                        CompactButton(
+                            onClick = {
                                 coroutineScope.launch {
                                     onSendMessage(userInput)
                                 }
-                                true
-                            }
-
-                            // Блокируем символ § - используется для PTT хоткея
-                            event.utf16CodePoint == 167 -> true // § параграф
-
-                            else -> false
+                            },
+                            modifier = Modifier
+                                .size(actionButtonSize)
+                                .testTag(UiTestTag.SendButton.value),
+                            tooltip = when {
+                                isWaitingForResponse && pendingMessagesCount > 0 ->
+                                    "Поставить в очередь ($pendingMessagesCount уже ждёт)"
+                                isWaitingForResponse -> "Поставить в очередь"
+                                else -> LocalTranslation.current.sendMessageTooltip
+                            },
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send",
+                            )
                         }
                     }
-                    .weight(1f)
-                    .testTag(UiTestTag.MessageInput.value),
-                placeholder = { Text("") }
-            )
-            Spacer(modifier = Modifier.width(4.dp))
 
-            Row(
-                modifier = Modifier
-                    .widthIn(max = actionAreaMaxWidth)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                if (clientPlatform.showSoftwareKeyboardControls && inputFocused) {
-                    CompactButton(
-                        onClick = {
-                            keyboardController?.hide()
-                            focusManager.clearFocus(force = true)
-                        },
-                        modifier = Modifier.size(actionButtonSize),
-                        tooltip = "Hide keyboard"
-                    ) {
-                        Icon(Icons.Default.KeyboardHide, contentDescription = "Hide keyboard")
-                    }
-                }
-
-                // Send button with queue badge
-                BadgedBox(
-                    modifier = Modifier.zIndex(1f),
-                    badge = {
-                        if (pendingMessagesCount > 0) {
-                            Badge(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            ) {
-                                Text("$pendingMessagesCount")
+                    if (showPttButton) {
+                        CompactButton(
+                            onClick = {},
+                            modifier = Modifier
+                                .zIndex(2f)
+                                .size(actionButtonSize)
+                                .then(
+                                    if (pttState == PttState.TRANSCRIBING) {
+                                        Modifier
+                                    } else {
+                                        Modifier.advancedPttGestures(pttEventHandler, coroutineScope)
+                                    }
+                                )
+                                .testTag(UiTestTag.PttButton.value),
+                            tooltip = when (pttState) {
+                                PttState.IDLE -> LocalTranslation.current.pttButtonTooltip
+                                PttState.RECORDING -> LocalTranslation.current.recordingTooltip
+                                PttState.TRANSCRIBING -> "Распознавание голоса"
+                            },
+                        ) {
+                            if (pttState == PttState.TRANSCRIBING) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                val isRecording = pttState == PttState.RECORDING
+                                Icon(
+                                    imageVector = if (isRecording) {
+                                        Icons.Default.FiberManualRecord
+                                    } else {
+                                        Icons.Default.Mic
+                                    },
+                                    contentDescription = if (isRecording) {
+                                        LocalTranslation.current.recordingText
+                                    } else {
+                                        LocalTranslation.current.pushToTalkText
+                                    },
+                                    tint = if (isRecording) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        LocalContentColor.current
+                                    },
+                                )
                             }
                         }
                     }
-                ) {
+
                     CompactButton(
                         onClick = {
                             coroutineScope.launch {
-                                onSendMessage(userInput)
+                                onCaptureScreenshot()
                             }
                         },
-                        modifier = Modifier
-                            .size(actionButtonSize)
-                            .testTag(UiTestTag.SendButton.value),
-                        tooltip = when {
-                            isWaitingForResponse && pendingMessagesCount > 0 -> "Поставить в очередь ($pendingMessagesCount уже ждёт)"
-                            isWaitingForResponse -> "Поставить в очередь"
-                            else -> LocalTranslation.current.sendMessageTooltip
-                        }
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
-                        )
-                    }
-                }
-
-                // PTT button - only show if STT is enabled
-                if (showPttButton) {
-                    CompactButton(
-                        onClick = {},
-                        modifier = Modifier
-                            .zIndex(2f)
-                            .size(actionButtonSize)
-                            .then(
-                                if (pttState == PttState.TRANSCRIBING) {
-                                    Modifier
-                                } else {
-                                    Modifier.advancedPttGestures(pttEventHandler, coroutineScope)
-                                }
-                            )
-                            .testTag(UiTestTag.PttButton.value),
-                        tooltip = when (pttState) {
-                            PttState.IDLE -> LocalTranslation.current.pttButtonTooltip
-                            PttState.RECORDING -> LocalTranslation.current.recordingTooltip
-                            PttState.TRANSCRIBING -> "Распознавание голоса"
-                        }
-                    ) {
-                        if (pttState == PttState.TRANSCRIBING) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            val isRecording = pttState == PttState.RECORDING
-                            Icon(
-                                imageVector = if (isRecording) Icons.Default.FiberManualRecord else Icons.Default.Mic,
-                                contentDescription = if (isRecording) LocalTranslation.current.recordingText else LocalTranslation.current.pushToTalkText,
-                                tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current
-                            )
-                        }
-                    }
-                }
-
-                CompactButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            onCaptureScreenshot()
-                        }
-                    },
-                    modifier = Modifier.size(actionButtonSize),
-                    tooltip = LocalTranslation.current.screenshotTooltip,
-                ) {
-                    Icon(
-                        Icons.Default.CameraAlt,
-                        contentDescription = LocalTranslation.current.screenshotTooltip,
-                    )
-                }
-
-                onInsertCurrentLocation?.let { insertCurrentLocation ->
-                    CompactButton(
-                        onClick = insertCurrentLocation,
                         modifier = Modifier.size(actionButtonSize),
-                        tooltip = "Insert current device location",
+                        tooltip = LocalTranslation.current.screenshotTooltip,
                     ) {
                         Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = "Insert location",
+                            Icons.Default.CameraAlt,
+                            contentDescription = LocalTranslation.current.screenshotTooltip,
                         )
                     }
-                }
 
-                instructionGroups
-                    .filter { it.showInComposer }
-                    .forEach { group ->
-                        QuickMessageInstructionButton(
-                            group = group,
-                            activeInstructionIds = activeInstructionIds,
-                            onSelect = onSelectInstruction,
+                    onInsertCurrentLocation?.let { insertCurrentLocation ->
+                        CompactButton(
+                            onClick = insertCurrentLocation,
                             modifier = Modifier.size(actionButtonSize),
-                        )
+                            tooltip = "Insert current device location",
+                        ) {
+                            Icon(
+                                Icons.Default.LocationOn,
+                                contentDescription = "Insert location",
+                            )
+                        }
                     }
+
+                    instructionGroups
+                        .filter { it.showInComposer }
+                        .forEach { group ->
+                            QuickMessageInstructionButton(
+                                group = group,
+                                activeInstructionIds = activeInstructionIds,
+                                onSelect = onSelectInstruction,
+                                modifier = Modifier.size(actionButtonSize),
+                            )
+                        }
+                }
             }
         }
     }

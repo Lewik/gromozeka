@@ -17,7 +17,6 @@ kotlinx-datetime = "0.8.0-0.6.x-compat"
 kotlinx-browser = "0.3"
 batik = "1.19"
 pdfbox = "3.0.3"
-filekit = "0.8.2"
 multiplatform-markdown-renderer = "0.41.0"
 constraintlayout-compose = "1.1.0"
 mcp-kotlin-sdk = "0.14.0"
@@ -108,10 +107,6 @@ batik-codec = { module = "org.apache.xmlgraphics:batik-codec", version.ref = "ba
 
 # Apache PDFBox (for PDF parsing)
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
-
-# FileKit (file picker)
-filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
-filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
 
 # Markdown renderer
 multiplatform-markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "multiplatform-markdown-renderer" }

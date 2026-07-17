@@ -11,6 +11,7 @@ import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.WorkspaceDirectoryListing
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -158,6 +159,13 @@ data object ImportAllClaudeMdRequest : ClientRequest
 @SerialName("get_or_create_project")
 data class GetOrCreateProjectRequest(
     val path: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("browse_workspace")
+data class BrowseWorkspaceRequest(
+    val path: String? = null,
+    val includeFiles: Boolean = true,
 ) : ClientRequest
 
 @Serializable
@@ -518,6 +526,12 @@ data class NullableProjectResponse(
 @SerialName("projects")
 data class ProjectsResponse(
     val projects: List<Project>,
+) : ServerResponse
+
+@Serializable
+@SerialName("workspace_directory")
+data class WorkspaceDirectoryResponse(
+    val listing: WorkspaceDirectoryListing,
 ) : ServerResponse
 
 @Serializable

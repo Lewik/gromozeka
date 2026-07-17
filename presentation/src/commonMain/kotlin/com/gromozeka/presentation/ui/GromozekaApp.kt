@@ -377,6 +377,7 @@ fun GromozekaAppContent(
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,
                                                         pttState = pttState,
+                                                        workspaceFileSystemService = appComponents.workspaceFileSystemService,
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,
@@ -490,12 +491,12 @@ fun GromozekaAppContent(
                                                                     coroutineScope = coroutineScope,
                                                                     onNewSession = createNewSession,
                                                                     projectService = appComponents.projectService,
+                                                                    workspaceFileSystemService = appComponents.workspaceFileSystemService,
                                                                     conversationTreeService = appComponents.conversationService,
                                                                     appViewModel = appComponents.appViewModel,
                                                                     searchViewModel = appComponents.conversationSearchViewModel,
                                                                     showSettingsPanel = showSettingsPanel,
                                                                     onShowSettingsPanelChange = setSettingsPanel,
-                                                                    clientPlatform = clientPlatform,
                                                                     refreshTrigger = refreshTrigger
                                                                 )
                                                             }

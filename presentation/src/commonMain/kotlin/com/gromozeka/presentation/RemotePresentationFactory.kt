@@ -124,6 +124,7 @@ suspend fun createRemoteAppComponents(
             logEncryptor = LogEncryptor(),
             ollamaModelService = OllamaModelService(),
             projectService = remoteServices.projectService,
+            workspaceFileSystemService = remoteServices.workspaceFileSystemService,
             conversationService = remoteServices.conversationService,
             conversationSearchViewModel = ConversationSearchViewModel(remoteServices.conversationNameSearchService, scope),
             loadingViewModel = LoadingViewModel(),

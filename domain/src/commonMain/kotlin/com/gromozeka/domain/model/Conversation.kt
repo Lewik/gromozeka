@@ -582,6 +582,37 @@ data class Conversation(
                 override fun toXmlLine() = serializeContent()
             }
 
+            @Serializable
+            @SerialName("workspace_context")
+            data class WorkspaceContext(
+                val references: List<WorkspaceContextReference>,
+            ) : Instruction() {
+                init {
+                    require(references.isNotEmpty()) { "Workspace context references cannot be empty" }
+                }
+
+                override val title = "Workspace context"
+                override val description = references.joinToString { it.name }
+                override fun serializeContent(): String =
+                    buildString {
+                        appendLine(
+                            "<workspace_context purpose=\"Paths explicitly selected by the user for this message; inspect them when relevant\">"
+                        )
+                        references.forEach { reference ->
+                            append("  <reference kind=\"")
+                            append(reference.kind.name.lowercase())
+                            append("\" path=\"")
+                            append(reference.path.escapeXml())
+                            append("\">")
+                            append(reference.name.escapeXml())
+                            appendLine("</reference>")
+                        }
+                        append("</workspace_context>")
+                    }
+
+                override fun toXmlLine() = serializeContent()
+            }
+
             /**
              * Response expected instruction for inter-agent communication.
              *

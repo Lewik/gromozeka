@@ -55,8 +55,6 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
 
-                implementation(libs.filekit.core)
-                implementation(libs.filekit.compose)
                 implementation(libs.multiplatform.markdown.renderer.m3)
                 implementation(libs.multiplatform.markdown.renderer.code)
                 implementation(libs.kotlinx.datetime)

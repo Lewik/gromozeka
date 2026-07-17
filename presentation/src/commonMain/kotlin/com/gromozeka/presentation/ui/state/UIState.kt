@@ -3,6 +3,7 @@ package com.gromozeka.presentation.ui.state
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.WorkspaceContextReference
 import kotlinx.serialization.Serializable
 
 /**
@@ -29,6 +30,7 @@ data class UIState(
         val conversationId: Conversation.Id,
         val activeMessageInstructionIds: Set<String> = emptySet(),
         val userInput: String = "",
+        val workspaceContextReferences: List<WorkspaceContextReference> = emptyList(),
         val isWaitingForResponse: Boolean = false,
         val customName: String? = null,
         val tabId: String,
