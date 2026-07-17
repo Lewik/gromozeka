@@ -12,6 +12,7 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.SettingsService
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 
 class GromozekaRemoteServices(
     url: String = GromozekaRemoteDefaults.REMOTE_URL,
@@ -33,6 +34,7 @@ class GromozekaRemoteServices(
     }
     val clientSettingsService: RemoteClientSettingsService =
         RemoteClientSettingsService(client, clientSettingsStore, initialClientSettings)
+    val connectionState: StateFlow<RemoteConnectionState> = client.connectionState
     private val remoteSettingsService = RemoteSettingsService(client, scope, clientHomeDirectory)
     private val remoteAgentService = RemoteAgentService(client)
 

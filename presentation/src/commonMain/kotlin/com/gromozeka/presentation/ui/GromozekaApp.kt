@@ -99,6 +99,7 @@ fun GromozekaAppContent(
 
     val currentSettings by appComponents.settingsService.settingsFlow.collectAsState()
     val remoteClientSettings by appComponents.remoteClientSettingsService.settingsFlow.collectAsState()
+    val remoteConnectionState by appComponents.remoteConnectionState.collectAsState()
     val tabs by appComponents.appViewModel.tabs.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
@@ -317,6 +318,8 @@ fun GromozekaAppContent(
                                 if (!currentUiSettings.showTabsAtBottom) {
                                     tabRowComponent()
                                 }
+
+                                RemoteConnectionStatusBar(remoteConnectionState)
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(modifier = Modifier.weight(1f)) {

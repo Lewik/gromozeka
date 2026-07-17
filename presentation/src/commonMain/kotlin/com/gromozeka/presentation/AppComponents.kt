@@ -1,6 +1,7 @@
 package com.gromozeka.presentation
 
 import com.gromozeka.client.RemoteClientSettingsService
+import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.client.RemoteLiveInterpreterService
 import com.gromozeka.client.RemoteMemoryActionItemService
 import com.gromozeka.device.telemetry.DeviceLocationService
@@ -24,12 +25,14 @@ import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.presentation.ui.viewmodel.LoadingViewModel
+import kotlinx.coroutines.flow.StateFlow
 
 data class AppComponents(
     val appViewModel: AppViewModel,
     val ttsQueueService: TtsQueue,
     val settingsService: com.gromozeka.domain.service.SettingsService,
     val remoteClientSettingsService: RemoteClientSettingsService,
+    val remoteConnectionState: StateFlow<RemoteConnectionState>,
     val memoryActionItemService: RemoteMemoryActionItemService,
     val liveInterpreterService: RemoteLiveInterpreterService,
     val clientSideSpeechToTextService: ClientSideSpeechToTextService,

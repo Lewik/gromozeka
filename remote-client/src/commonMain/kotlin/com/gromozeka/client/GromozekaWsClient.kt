@@ -43,14 +43,18 @@ import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -67,18 +71,27 @@ internal class GromozekaWsClient(
 ) {
     private val encodingState = MutableStateFlow(encoding)
     private val connectMutex = Mutex()
+    private val registryMutex = Mutex()
+    private val _connectionState = MutableStateFlow(RemoteConnectionState(RemoteConnectionState.Status.DISCONNECTED))
+    val connectionState: StateFlow<RemoteConnectionState> = _connectionState.asStateFlow()
+
     private var session: DefaultClientWebSocketSession? = null
     private var readerJob: Job? = null
+    private var reconnectJob: Job? = null
+    private var hasConnected = false
+    private var closed = false
     private val pending = mutableMapOf<String, CompletableDeferred<ServerResponse>>()
     private val streams = mutableMapOf<String, Channel<ServerPayload>>()
-    private val conversationSubscriptions = mutableMapOf<String, Channel<ServerPayload>>()
+    private val conversationSubscriptions = mutableMapOf<String, ConversationSubscription>()
     private val conversationEventSequences = mutableMapOf<Conversation.Id, Long>()
     private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
 
     suspend fun request(payload: ClientRequest): ServerResponse {
         val id = uuid7()
         val deferred = CompletableDeferred<ServerResponse>()
-        pending[id] = deferred
+        registryMutex.withLock {
+            pending[id] = deferred
+        }
 
         try {
             println("Gromozeka WS request id=$id type=${payload::class.simpleName}")
@@ -87,7 +100,9 @@ internal class GromozekaWsClient(
                 println("Gromozeka WS response id=$id type=${response::class.simpleName}")
             }
         } finally {
-            pending.remove(id)
+            registryMutex.withLock {
+                pending.remove(id)
+            }
         }
     }
 
@@ -97,23 +112,45 @@ internal class GromozekaWsClient(
     ): Flow<ConversationRuntimeEvent> = flow {
         val subscriptionId = uuid7()
         val channel = Channel<ServerPayload>(Channel.UNLIMITED)
-        conversationSubscriptions[subscriptionId] = channel
-        val replayAfterSequence = listOfNotNull(afterEventSequence, conversationEventSequences[conversationId]).maxOrNull()
-        send(ObserveConversationCommand(
+        val subscription = ConversationSubscription(
             subscriptionId = subscriptionId,
             conversationId = conversationId,
-            afterEventSequence = replayAfterSequence,
-        ))
+            initialAfterEventSequence = afterEventSequence,
+            channel = channel,
+        )
+        registryMutex.withLock {
+            conversationSubscriptions[subscriptionId] = subscription
+        }
+
+        runCatching {
+            val connection = ensureConnected()
+            if (!connection.newlyConnected) {
+                sendObserveConversation(connection.session, subscription)
+            }
+        }.onFailure { error ->
+            if (error is CancellationException) {
+                throw error
+            }
+            println(
+                "Gromozeka WS initial conversation observation deferred until reconnect: " +
+                    "conversation=${conversationId.value} error=${error.message}"
+            )
+            scheduleReconnect()
+        }
 
         try {
             for (event in channel) {
                 val cursorSequence = event.cursorSequenceOrNull()
                 if (cursorSequence != null) {
-                    val previousSequence = conversationEventSequences[conversationId] ?: 0L
+                    val previousSequence = registryMutex.withLock {
+                        conversationEventSequences[conversationId] ?: 0L
+                    }
                     if (cursorSequence <= previousSequence && event !is ConversationRuntimeSnapshotEvent) {
                         continue
                     }
-                    conversationEventSequences[conversationId] = cursorSequence
+                    registryMutex.withLock {
+                        conversationEventSequences[conversationId] = cursorSequence
+                    }
                 }
                 when (event) {
                     is ConversationRuntimeSnapshotEvent -> emit(
@@ -149,7 +186,9 @@ internal class GromozekaWsClient(
                 }
             }
         } finally {
-            conversationSubscriptions.remove(subscriptionId)
+            registryMutex.withLock {
+                conversationSubscriptions.remove(subscriptionId)
+            }
             runCatching { sendIfConnected(StopObserveConversationCommand(subscriptionId)) }
             channel.close()
         }
@@ -170,7 +209,9 @@ internal class GromozekaWsClient(
     ): Flow<ServerPayload> = flow {
         val streamId = uuid7()
         val channel = Channel<ServerPayload>(Channel.UNLIMITED)
-        streams[streamId] = channel
+        registryMutex.withLock {
+            streams[streamId] = channel
+        }
         send(SynthesizeSpeechStreamCommand(streamId, text, tone))
 
         try {
@@ -184,7 +225,9 @@ internal class GromozekaWsClient(
                 }
             }
         } finally {
-            streams.remove(streamId)
+            registryMutex.withLock {
+                streams.remove(streamId)
+            }
             channel.close()
         }
     }
@@ -192,7 +235,9 @@ internal class GromozekaWsClient(
     suspend fun startLiveInterpreter(request: StartLiveInterpreterRequest): LiveInterpreterClientSession {
         val response = requestTyped<StartLiveInterpreterRequest, LiveInterpreterStartedResponse>(request)
         val channel = Channel<ServerPayload>(Channel.UNLIMITED)
-        liveInterpreterSessions[response.sessionId] = channel
+        registryMutex.withLock {
+            liveInterpreterSessions[response.sessionId] = channel
+        }
         return LiveInterpreterClientSession(response.sessionId, channel)
     }
 
@@ -215,7 +260,11 @@ internal class GromozekaWsClient(
     }
 
     fun closeLiveInterpreterSession(sessionId: String) {
-        liveInterpreterSessions.remove(sessionId)?.close()
+        scope.launch {
+            registryMutex.withLock {
+                liveInterpreterSessions.remove(sessionId)
+            }?.close()
+        }
     }
 
     private suspend fun send(payload: ClientPayload) {
@@ -223,16 +272,32 @@ internal class GromozekaWsClient(
     }
 
     private suspend fun sendIfConnected(payload: ClientPayload) {
-        val activeSession = session?.takeIf { it.isActive } ?: return
+        val activeSession = connectMutex.withLock {
+            session?.takeIf { it.isActive }
+        } ?: return
         sendEnvelope(activeSession, GromozekaClientEnvelope(uuid7(), payload))
     }
 
     private suspend fun sendEnvelope(envelope: GromozekaClientEnvelope) {
-        val activeSession = ensureConnected()
-        sendEnvelope(activeSession, envelope)
+        val connection = ensureConnected()
+        sendEnvelope(connection.session, envelope)
     }
 
     private suspend fun sendEnvelope(
+        activeSession: DefaultClientWebSocketSession,
+        envelope: GromozekaClientEnvelope,
+    ) {
+        try {
+            sendEnvelopeRaw(activeSession, envelope)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            handleConnectionLoss(activeSession, error)
+            throw error
+        }
+    }
+
+    private suspend fun sendEnvelopeRaw(
         activeSession: DefaultClientWebSocketSession,
         envelope: GromozekaClientEnvelope,
     ) {
@@ -248,24 +313,53 @@ internal class GromozekaWsClient(
         println("Gromozeka WS protocol encoding=${encoding.name}")
     }
 
-    private suspend fun ensureConnected(): DefaultClientWebSocketSession =
+    private suspend fun ensureConnected(reconnectAttempt: Int = 0): ActiveConnection =
         connectMutex.withLock {
+            check(!closed) { "Gromozeka WS client is closed" }
+
             val current = session
             if (current != null && current.isActive) {
-                return@withLock current
+                return@withLock ActiveConnection(current, newlyConnected = false)
             }
 
-            val newSession = httpClient.webSocketSession(url)
-            println("Gromozeka WS connected url=$url")
-            session = newSession
-            readerJob?.cancel()
-            readerJob = scope.launch {
-                readLoop(newSession)
+            _connectionState.value = RemoteConnectionState(
+                status = if (hasConnected) {
+                    RemoteConnectionState.Status.RECONNECTING
+                } else {
+                    RemoteConnectionState.Status.CONNECTING
+                },
+                reconnectAttempt = reconnectAttempt,
+                lastError = _connectionState.value.lastError,
+            )
+
+            try {
+                val newSession = httpClient.webSocketSession(url)
+                println("Gromozeka WS connected url=$url")
+                session = newSession
+                readerJob?.cancel()
+                readerJob = scope.launch {
+                    readLoop(newSession)
+                }
+                resubscribeConversations(newSession)
+                hasConnected = true
+                _connectionState.value = RemoteConnectionState(RemoteConnectionState.Status.CONNECTED)
+                ActiveConnection(newSession, newlyConnected = true)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                session?.cancel()
+                session = null
+                _connectionState.value = RemoteConnectionState(
+                    status = RemoteConnectionState.Status.OFFLINE,
+                    reconnectAttempt = reconnectAttempt,
+                    lastError = error.message ?: error.toString(),
+                )
+                throw error
             }
-            newSession
         }
 
     private suspend fun readLoop(activeSession: DefaultClientWebSocketSession) {
+        var failure: Throwable? = null
         try {
             for (frame in activeSession.incoming) {
                 val envelope = when (frame) {
@@ -275,15 +369,15 @@ internal class GromozekaWsClient(
                 }
                 println("Gromozeka WS incoming id=${envelope.id} type=${envelope.payload::class.simpleName}")
                 when (val payload = envelope.payload) {
-                    is ServerResponse -> pending.remove(envelope.id)?.complete(payload)
-                    is ConversationRuntimeSnapshotEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
-                    is MessageUpsertedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
-                    is ConversationExecutionCompletedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
-                    is ConversationExecutionFailedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
-                    is SpeechSynthesisStartedEvent -> streams[payload.streamId]?.send(payload)
-                    is SpeechSynthesisChunkEvent -> streams[payload.streamId]?.send(payload)
-                    is SpeechSynthesisCompletedEvent -> streams[payload.streamId]?.send(payload)
-                    is SpeechSynthesisFailedEvent -> streams[payload.streamId]?.send(payload)
+                    is ServerResponse -> registryMutex.withLock { pending.remove(envelope.id) }?.complete(payload)
+                    is ConversationRuntimeSnapshotEvent -> routeConversationEvent(payload.subscriptionId, payload)
+                    is MessageUpsertedEvent -> routeConversationEvent(payload.subscriptionId, payload)
+                    is ConversationExecutionCompletedEvent -> routeConversationEvent(payload.subscriptionId, payload)
+                    is ConversationExecutionFailedEvent -> routeConversationEvent(payload.subscriptionId, payload)
+                    is SpeechSynthesisStartedEvent -> routeStreamEvent(payload.streamId, payload)
+                    is SpeechSynthesisChunkEvent -> routeStreamEvent(payload.streamId, payload)
+                    is SpeechSynthesisCompletedEvent -> routeStreamEvent(payload.streamId, payload)
+                    is SpeechSynthesisFailedEvent -> routeStreamEvent(payload.streamId, payload)
                     is LiveInterpreterStatusEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
                     is LiveInterpreterTranscriptEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
                     is LiveInterpreterDraftsEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
@@ -298,32 +392,206 @@ internal class GromozekaWsClient(
                     }
                 }
             }
+            failure = IllegalStateException("Gromozeka WebSocket closed")
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
+            failure = error
             println("Gromozeka WS read loop failed: ${error.message ?: error.toString()}")
-            pending.values.forEach { it.completeExceptionally(error) }
-            pending.clear()
-            streams.values.forEach { it.close(error) }
-            streams.clear()
-            conversationSubscriptions.values.forEach { it.close(error) }
-            conversationSubscriptions.clear()
-            liveInterpreterSessions.values.forEach { it.close(error) }
-            liveInterpreterSessions.clear()
-            if (session === activeSession) {
-                session = null
+        } finally {
+            if (!closed) {
+                handleConnectionLoss(
+                    activeSession,
+                    failure ?: IllegalStateException("Gromozeka WebSocket read loop stopped"),
+                )
             }
         }
     }
 
-    private fun routeLiveInterpreterEvent(sessionId: String, payload: ServerPayload) {
-        liveInterpreterSessions[sessionId]?.trySend(payload)
+    private suspend fun resubscribeConversations(activeSession: DefaultClientWebSocketSession) {
+        val subscriptions = registryMutex.withLock {
+            conversationSubscriptions.values.toList()
+        }
+        subscriptions.forEach { subscription ->
+            sendObserveConversationRaw(activeSession, subscription)
+        }
+    }
+
+    private suspend fun sendObserveConversation(
+        activeSession: DefaultClientWebSocketSession,
+        subscription: ConversationSubscription,
+    ) {
+        sendEnvelope(
+            activeSession,
+            observeConversationEnvelope(subscription),
+        )
+    }
+
+    private suspend fun sendObserveConversationRaw(
+        activeSession: DefaultClientWebSocketSession,
+        subscription: ConversationSubscription,
+    ) {
+        sendEnvelopeRaw(
+            activeSession,
+            observeConversationEnvelope(subscription),
+        )
+    }
+
+    private suspend fun observeConversationEnvelope(
+        subscription: ConversationSubscription,
+    ): GromozekaClientEnvelope {
+        val replayAfterSequence = registryMutex.withLock {
+            listOfNotNull(
+                subscription.initialAfterEventSequence,
+                conversationEventSequences[subscription.conversationId],
+            ).maxOrNull()
+        }
+        return GromozekaClientEnvelope(
+            id = uuid7(),
+            payload = ObserveConversationCommand(
+                subscriptionId = subscription.subscriptionId,
+                conversationId = subscription.conversationId,
+                afterEventSequence = replayAfterSequence,
+            ),
+        )
+    }
+
+    private suspend fun handleConnectionLoss(
+        activeSession: DefaultClientWebSocketSession,
+        error: Throwable,
+    ) {
+        val disconnected = connectMutex.withLock {
+            if (session !== activeSession || closed) {
+                false
+            } else {
+                session = null
+                _connectionState.value = RemoteConnectionState(
+                    status = RemoteConnectionState.Status.OFFLINE,
+                    lastError = error.message ?: error.toString(),
+                )
+                true
+            }
+        }
+        if (!disconnected) {
+            return
+        }
+
+        activeSession.cancel()
+        failNonResumableOperations(error)
+        scheduleReconnect()
+    }
+
+    private suspend fun failNonResumableOperations(error: Throwable) {
+        val pendingRequests: List<CompletableDeferred<ServerResponse>>
+        val activeStreams: List<Channel<ServerPayload>>
+        val activeInterpreterSessions: List<Channel<ServerPayload>>
+        registryMutex.withLock {
+            pendingRequests = pending.values.toList()
+            pending.clear()
+            activeStreams = streams.values.toList()
+            streams.clear()
+            activeInterpreterSessions = liveInterpreterSessions.values.toList()
+            liveInterpreterSessions.clear()
+        }
+        pendingRequests.forEach { it.completeExceptionally(error) }
+        activeStreams.forEach { it.close(error) }
+        activeInterpreterSessions.forEach { it.close(error) }
+    }
+
+    private suspend fun scheduleReconnect() {
+        if (!hasConversationSubscriptions()) {
+            return
+        }
+        connectMutex.withLock {
+            if (closed || reconnectJob?.isActive == true) {
+                return@withLock
+            }
+            reconnectJob = scope.launch {
+                reconnectLoop()
+            }
+        }
+    }
+
+    private suspend fun reconnectLoop() {
+        var attempt = 1
+        try {
+            while (scope.isActive && !closed && hasConversationSubscriptions()) {
+                delay(reconnectDelayMillis(attempt))
+                if (!hasConversationSubscriptions()) {
+                    return
+                }
+                try {
+                    ensureConnected(reconnectAttempt = attempt)
+                    return
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Throwable) {
+                    attempt++
+                }
+            }
+        } finally {
+            connectMutex.withLock {
+                reconnectJob = null
+            }
+        }
+    }
+
+    private fun reconnectDelayMillis(attempt: Int): Long {
+        val exponent = (attempt - 1).coerceIn(0, 5)
+        return (RECONNECT_INITIAL_DELAY_MILLIS * (1L shl exponent))
+            .coerceAtMost(RECONNECT_MAX_DELAY_MILLIS)
+    }
+
+    private suspend fun hasConversationSubscriptions(): Boolean =
+        registryMutex.withLock {
+            conversationSubscriptions.isNotEmpty()
+        }
+
+    private suspend fun routeConversationEvent(subscriptionId: String, payload: ServerPayload) {
+        registryMutex.withLock {
+            conversationSubscriptions[subscriptionId]?.channel
+        }?.send(payload)
+    }
+
+    private suspend fun routeStreamEvent(streamId: String, payload: ServerPayload) {
+        registryMutex.withLock {
+            streams[streamId]
+        }?.send(payload)
+    }
+
+    private suspend fun routeLiveInterpreterEvent(sessionId: String, payload: ServerPayload) {
+        registryMutex.withLock {
+            liveInterpreterSessions[sessionId]
+        }?.send(payload)
     }
 
     fun close() {
+        closed = true
+        _connectionState.value = RemoteConnectionState(RemoteConnectionState.Status.CLOSED)
+        reconnectJob?.cancel()
+        reconnectJob = null
         readerJob?.cancel()
         readerJob = null
         session?.cancel()
         session = null
         httpClient.close()
+    }
+
+    private data class ActiveConnection(
+        val session: DefaultClientWebSocketSession,
+        val newlyConnected: Boolean,
+    )
+
+    private data class ConversationSubscription(
+        val subscriptionId: String,
+        val conversationId: Conversation.Id,
+        val initialAfterEventSequence: Long?,
+        val channel: Channel<ServerPayload>,
+    )
+
+    private companion object {
+        const val RECONNECT_INITIAL_DELAY_MILLIS = 500L
+        const val RECONNECT_MAX_DELAY_MILLIS = 10_000L
     }
 }
 
