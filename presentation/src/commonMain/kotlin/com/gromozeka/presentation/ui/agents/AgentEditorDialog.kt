@@ -124,7 +124,7 @@ fun AgentEditorDialog(
                                             text = when (val type = prompt.type) {
                                                 is Prompt.Type.Builtin -> "Built-in"
                                                 is Prompt.Type.Global -> "Global"
-                                                is Prompt.Type.Project -> "Project"
+                                                is Prompt.Type.Workspace -> "Workspace"
                                                 is Prompt.Type.Environment -> "Inline"
                                             },
                                             style = MaterialTheme.typography.bodySmall,

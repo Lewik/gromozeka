@@ -8,23 +8,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.service.ProjectDomainService
-import com.gromozeka.domain.service.WorkspaceFileSystemService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.WorkspaceCatalogService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -33,21 +36,25 @@ private val log = KLoggers.logger("SessionListScreen")
 
 private data class ProjectGroup(
     val project: Project,
+    val workspaces: List<Workspace>,
     val conversations: List<Conversation>,
     val latestConversation: Conversation?,
     val formattedTime: String,
 ) {
-    val projectPath get() = project.path
+    val projectId get() = project.id
     val projectName get() = project.name
+
+    fun workspaceName(workspaceId: Workspace.Id): String =
+        workspaces.firstOrNull { it.id == workspaceId }?.name ?: workspaceId.value
 }
 
 @Composable
 fun SessionListScreen(
     onConversationSelected: (Conversation, Project) -> Unit,
     coroutineScope: CoroutineScope,
-    onNewSession: (String) -> Unit,
+    onNewSession: (Project, Workspace) -> Unit,
     projectService: ProjectDomainService,
-    workspaceFileSystemService: WorkspaceFileSystemService,
+    workspaceCatalogService: WorkspaceCatalogService,
     conversationTreeService: ConversationDomainService,
     appViewModel: AppViewModel,
     searchViewModel: ConversationSearchViewModel,
@@ -59,6 +66,7 @@ fun SessionListScreen(
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
     var showWorkspacePicker by remember { mutableStateOf(false) }
+    var workspacePickerProjectId by remember { mutableStateOf<Project.Id?>(null) }
 
     val searchQuery by searchViewModel.searchQuery.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
@@ -71,12 +79,14 @@ fun SessionListScreen(
             val projects = projectService.findRecent(limit = 100)
 
             val groupedProjects = projects.map { project ->
-                val conversations = conversationTreeService.findByProject(project.path)
+                val workspaces = workspaceCatalogService.findByProject(project.id)
+                val conversations = conversationTreeService.findByProject(project.id)
                 val latestConversation = conversations.maxByOrNull { it.updatedAt }
                 val formattedTime = latestConversation?.let { formatRelativeTime(it.updatedAt) } ?: ""
 
                 ProjectGroup(
                     project = project,
+                    workspaces = workspaces,
                     conversations = conversations,
                     latestConversation = latestConversation,
                     formattedTime = formattedTime
@@ -119,7 +129,10 @@ fun SessionListScreen(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 CompactButton(
-                    onClick = { showWorkspacePicker = true }
+                    onClick = {
+                        workspacePickerProjectId = null
+                        showWorkspacePicker = true
+                    }
                 ) {
                     Text(LocalTranslation.current.newSessionButton)
                 }
@@ -244,15 +257,18 @@ fun SessionListScreen(
                             projectGroups.forEach { group ->
                                 ProjectGroupHeader(
                                     group = group,
-                                    isExpanded = expandedProjects.contains(group.projectPath),
+                                    isExpanded = expandedProjects.contains(group.projectId.value),
                                     onToggleExpanded = {
-                                        expandedProjects = if (expandedProjects.contains(group.projectPath)) {
-                                            expandedProjects - group.projectPath
+                                        expandedProjects = if (expandedProjects.contains(group.projectId.value)) {
+                                            expandedProjects - group.projectId.value
                                         } else {
-                                            expandedProjects + group.projectPath
+                                            expandedProjects + group.projectId.value
                                         }
                                     },
-                                    onNewSessionClick = onNewSession,
+                                    onNewSessionClick = {
+                                        workspacePickerProjectId = group.project.id
+                                        showWorkspacePicker = true
+                                    },
                                     onConversationClick = { clickedConversation ->
                                         coroutineScope.handleConversationClick(
                                             clickedConversation,
@@ -271,15 +287,13 @@ fun SessionListScreen(
     }
 
     if (showWorkspacePicker) {
-        WorkspacePathPickerDialog(
-            title = "Choose server workspace",
-            fileSystemService = workspaceFileSystemService,
-            initialPath = projectGroups.firstOrNull()?.projectPath,
-            showFiles = false,
-            selectLabel = "Create conversation here",
-            onSelect = { directory ->
+        LogicalWorkspacePickerDialog(
+            projectGroups = projectGroups.filter { group ->
+                workspacePickerProjectId == null || group.project.id == workspacePickerProjectId
+            },
+            onSelect = { project, workspace ->
                 showWorkspacePicker = false
-                onNewSession(directory.path)
+                onNewSession(project, workspace)
             },
             onDismiss = { showWorkspacePicker = false },
         )
@@ -291,7 +305,7 @@ private fun ProjectGroupHeader(
     group: ProjectGroup,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
-    onNewSessionClick: (String) -> Unit,
+    onNewSessionClick: () -> Unit,
     onConversationClick: (Conversation) -> Unit,
 ) {
     CompactCard(
@@ -314,13 +328,13 @@ private fun ProjectGroupHeader(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(text = group.projectName)
-                    Text(text = group.projectPath)
+                    Text(text = "${group.workspaces.size} workspaces")
                     Text(text = "${group.conversations.size} conversations")
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                CompactButton(onClick = { onNewSessionClick(group.projectPath) }) {
+                CompactButton(onClick = onNewSessionClick, enabled = group.workspaces.isNotEmpty()) {
                     Text(LocalTranslation.current.newButton)
                 }
 
@@ -357,6 +371,7 @@ private fun ProjectGroupHeader(
                         ConversationItem(
                             conversation = conversation,
                             project = group.project,
+                            workspaceName = group.workspaceName(conversation.workspaceId),
                             onConversationClick = { clickedConversation, _ ->
                                 onConversationClick(clickedConversation)
                             },
@@ -374,6 +389,7 @@ private fun ProjectGroupHeader(
 private fun ConversationItem(
     conversation: Conversation,
     project: Project,
+    workspaceName: String? = null,
     onConversationClick: (Conversation, Project) -> Unit,
     isGrouped: Boolean = false,
     modifier: Modifier = Modifier,
@@ -407,11 +423,14 @@ private fun ConversationItem(
                 ) {
                     if (!isGrouped) {
                         Text(
-                            text = project.path,
+                            text = workspaceName ?: project.name,
                             modifier = Modifier.weight(1f)
                         )
                     } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = workspaceName ?: conversation.workspaceId.value,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                     // Message count removed - messages are loaded separately via ConversationService
                 }
@@ -437,7 +456,8 @@ private fun CoroutineScope.handleConversationClick(
     launch {
         try {
             val tabIndex = appViewModel.createTab(
-                projectPath = project.path,
+                projectId = clickedConversation.projectId,
+                workspaceId = clickedConversation.workspaceId,
                 conversationId = clickedConversation.id,
                 initiator = ConversationInitiator.System
             )
@@ -451,4 +471,51 @@ private fun CoroutineScope.handleConversationClick(
             log.warn(e) { "Failed to create tab: ${e.message}" }
         }
     }
+}
+
+@Composable
+private fun LogicalWorkspacePickerDialog(
+    projectGroups: List<ProjectGroup>,
+    onSelect: (Project, Workspace) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Choose workspace") },
+        text = {
+            if (projectGroups.none { it.workspaces.isNotEmpty() }) {
+                Text("No filesystem workspace is registered on a worker.")
+            } else {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 480.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    projectGroups.forEach { group ->
+                        if (group.workspaces.isNotEmpty()) {
+                            Text(
+                                text = group.project.name,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            group.workspaces.forEach { workspace ->
+                                CompactButton(
+                                    onClick = { onSelect(group.project, workspace) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(workspace.name)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }

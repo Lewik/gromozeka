@@ -5,9 +5,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
 import com.gromozeka.domain.service.ConversationRuntimeWorkDelivery
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
-import com.gromozeka.domain.service.ConversationRuntimeWorkerAffinity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import klog.KLoggers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
@@ -84,7 +84,7 @@ internal class RabbitConversationRuntimeWorkConsumer(
     private val channel = Channel<ConversationRuntimeWorkDelivery>(Channel.UNLIMITED)
     private val consumerRoutes = runtimeWorkerDescriptor.consumerRoutes()
     private val workerCapabilities = runtimeWorkerDescriptor.capabilities
-    private val workerAffinities = runtimeWorkerDescriptor.effectiveAffinities()
+    private val workerId = runtimeWorkerDescriptor.id
     private var listenerContainer: SimpleMessageListenerContainer? = null
 
     @Volatile
@@ -107,7 +107,7 @@ internal class RabbitConversationRuntimeWorkConsumer(
             .map(topology::queueName)
             .distinct()
         check(listenerQueueNames.isNotEmpty()) {
-            "Conversation runtime worker has no Rabbit routes: capabilities=$workerCapabilities affinities=$workerAffinities"
+            "Conversation runtime worker has no Rabbit routes: worker=${workerId.value} capabilities=$workerCapabilities"
         }
         listenerContainer = SimpleMessageListenerContainer(connectionFactory).apply {
             setQueueNames(*listenerQueueNames.toTypedArray())
@@ -157,7 +157,7 @@ internal class RabbitConversationRuntimeWorkConsumer(
         log.info {
             "Rabbit runtime work consumer started: exchange=${topology.exchangeName} " +
                 "queues=${listenerQueueNames.size} routes=${consumerRoutes.size} " +
-                "workerCapabilities=${workerCapabilities.joinToString()} workerAffinities=${workerAffinities.joinToString()}"
+                "worker=${workerId.value} workerCapabilities=${workerCapabilities.joinToString()}"
         }
     }
 
@@ -355,25 +355,24 @@ internal class RabbitConversationRuntimeWorkTopology(
 
 internal data class RabbitRuntimeWorkRoute(
     val lane: RabbitRuntimeWorkLane,
-    val affinity: ConversationRuntimeWorkerAffinity?,
+    val workerId: ConversationRuntimeWorkerId?,
 ) {
     val id: String = buildString {
         append("lane-")
         append(lane.name.lowercase().replace('_', '-'))
-        append(".aff-")
-        append(affinity?.let(::affinityRouteId) ?: "global")
+        append(".worker-")
+        append(workerId?.let(::workerRouteId) ?: "global")
     }
 
     companion object {
         fun from(requirements: ConversationRuntimeTaskRequirements): RabbitRuntimeWorkRoute =
             RabbitRuntimeWorkRoute(
                 lane = RabbitRuntimeWorkLane.from(requirements.capabilities),
-                affinity = requirements.affinity,
+                workerId = requirements.target?.workerId,
             )
 
-        private fun affinityRouteId(affinity: ConversationRuntimeWorkerAffinity): String =
-            "${affinity.kind.name.lowercase()}-" +
-                "${Integer.toUnsignedString(affinity.value.hashCode(), 36)}-${affinity.value.routeToken()}"
+        private fun workerRouteId(workerId: ConversationRuntimeWorkerId): String =
+            "${Integer.toUnsignedString(workerId.value.hashCode(), 36)}-${workerId.value.routeToken()}"
 
         private fun String.routeToken(): String =
             lowercase()
@@ -419,19 +418,11 @@ internal enum class RabbitRuntimeWorkLane(
     }
 }
 
-internal fun ConversationRuntimeWorkerDescriptor.effectiveAffinities(): Set<ConversationRuntimeWorkerAffinity> =
-    affinities + ConversationRuntimeWorkerAffinity(
-        kind = ConversationRuntimeWorkerAffinity.Kind.WORKER,
-        value = id.value,
-    )
-
 internal fun ConversationRuntimeWorkerDescriptor.consumerRoutes(): List<RabbitRuntimeWorkRoute> {
-    val affinityOptions = listOf<ConversationRuntimeWorkerAffinity?>(null) + effectiveAffinities().sortedWith(
-        compareBy<ConversationRuntimeWorkerAffinity> { it.kind.name }.thenBy { it.value }
-    )
+    val workerOptions = listOf<ConversationRuntimeWorkerId?>(null, id)
     return capabilities.consumerLanes()
         .flatMap { lane ->
-            affinityOptions.map { affinity -> RabbitRuntimeWorkRoute(lane = lane, affinity = affinity) }
+            workerOptions.map { workerId -> RabbitRuntimeWorkRoute(lane = lane, workerId = workerId) }
         }
         .distinctBy { it.id }
 }

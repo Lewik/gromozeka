@@ -5,6 +5,7 @@ import com.gromozeka.domain.tool.filesystem.GrzReadFileTool
 import com.gromozeka.domain.tool.filesystem.ReadFileRequest
 import org.slf4j.LoggerFactory
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.requiredWorkspaceRootPath
 import org.springframework.stereotype.Service
 import java.io.File
 import java.util.Base64
@@ -24,17 +25,15 @@ class GrzReadFileToolImpl(
     private val logger = LoggerFactory.getLogger(GrzReadFileToolImpl::class.java)
     
     override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): Map<String, Any> {
+        val workspaceRootPath = context.requiredWorkspaceRootPath()
         return try {
-            val projectPath = context?.getContext()?.get("projectPath") as? String
-                ?: error("Project path is required in tool context - this is a bug!")
-            
-            val file = resolveFile(request.file_path, projectPath)
+            val file = resolveFile(request.file_path, workspaceRootPath)
             
             when {
                 !file.exists() -> {
                     val suggestions = fileSearchService.findSimilarFiles(
                         targetPath = request.file_path,
-                        projectPath = projectPath,
+                        workspaceRootPath = workspaceRootPath,
                         limit = 5
                     )
                     
@@ -65,9 +64,9 @@ class GrzReadFileToolImpl(
         }
     }
     
-    private fun resolveFile(path: String, projectPath: String): File {
+    private fun resolveFile(path: String, workspaceRootPath: String): File {
         val file = File(path)
-        return if (file.isAbsolute) file else File(projectPath, path)
+        return if (file.isAbsolute) file else File(workspaceRootPath, path)
     }
     
     private fun detectMimeType(file: File): String {

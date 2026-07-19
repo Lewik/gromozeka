@@ -2,6 +2,7 @@ package com.gromozeka.server
 
 import com.gromozeka.application.service.AiConversationMessageMapper
 import com.gromozeka.application.service.memory.MemoryOperationExecutor
+import com.gromozeka.application.service.memory.MemoryOperationPreparer
 import com.gromozeka.application.service.memory.MemoryReadTraceEvent
 import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.domain.model.Conversation
@@ -210,7 +211,8 @@ class LongMemEvalMemorySmokeTest {
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
         ).use { harness ->
-            val memoryTools = harness.context.getBean(MemoryOperationExecutor::class.java)
+            val memoryExecutor = harness.context.getBean(MemoryOperationExecutor::class.java)
+            val memoryPreparer = harness.context.getBean(MemoryOperationPreparer::class.java)
             val readTraceCollector = harness.context.getBean(MemoryE2eReadTraceCollector::class.java)
             val writeTraceCollector = harness.context.getBean(MemoryE2eWriteTraceCollector::class.java)
             val llmCallProgressCollector = harness.context.getBean(MemoryE2eLlmCallProgressCollector::class.java)
@@ -250,7 +252,8 @@ class LongMemEvalMemorySmokeTest {
                 val startedAt = System.currentTimeMillis()
                 val result = try {
                     runCase(
-                        memoryTools = memoryTools,
+                        memoryExecutor = memoryExecutor,
+                        memoryPreparer = memoryPreparer,
                         judgeRuntime = judgeRuntime,
                         readTraceCollector = readTraceCollector,
                         writeTraceCollector = writeTraceCollector,
@@ -466,7 +469,8 @@ class LongMemEvalMemorySmokeTest {
     }
 
     private suspend fun runCase(
-        memoryTools: MemoryOperationExecutor,
+        memoryExecutor: MemoryOperationExecutor,
+        memoryPreparer: MemoryOperationPreparer,
         judgeRuntime: AiRuntime,
         readTraceCollector: MemoryE2eReadTraceCollector,
         writeTraceCollector: MemoryE2eWriteTraceCollector,
@@ -490,8 +494,8 @@ class LongMemEvalMemorySmokeTest {
             )
             val startedAt = System.currentTimeMillis()
             val result = parseToolResult(
-                memoryTools.executeSynchronously(
-                    memoryTools.prepareRememberProvidedContent(
+                memoryExecutor.executeSynchronously(
+                    memoryPreparer.prepareRememberProvidedContent(
                         conversationIdValue = null,
                         text = sessionText,
                         title = "LongMemEval ${entry.questionId} session $sessionNumber",
@@ -528,8 +532,8 @@ class LongMemEvalMemorySmokeTest {
         appendProgress(progressPath, "answer_from_memory_start id=${entry.questionId}")
         val answerStartedAt = System.currentTimeMillis()
         val enrichResult = parseToolResult(
-            memoryTools.executeSynchronously(
-                memoryTools.prepareAnswerProvidedQuestion(
+            memoryExecutor.executeSynchronously(
+                memoryPreparer.prepareAnswerProvidedQuestion(
                     conversationIdValue = null,
                     questionText = renderQuestion(entry),
                     mode = "longmemeval",

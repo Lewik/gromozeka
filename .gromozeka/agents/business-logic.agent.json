@@ -1,5 +1,5 @@
 {
-  "id": "project:business-logic.agent.json",
+  "id": "workspace:business-logic.agent.json",
   "name": "Агент бизнес логики",
   "prompts": [
     "builtin:common-prompt-prefix.md",
@@ -7,9 +7,9 @@
     "builtin:common.knowledge.md",
     "builtin:memory.knowledge.md",
     "builtin:developer.role.md",
-    "project:project-common.knowledge.md",
-    "project:module-implementation.knowledge.md",
-    "project:business-logic.role.md",
+    "workspace:project-common.knowledge.md",
+    "workspace:module-implementation.knowledge.md",
+    "workspace:business-logic.role.md",
     "env"
   ],
   "runtimeSelection": {
@@ -25,7 +25,7 @@
   },
   "description": "Business logic implementation",
   "type": {
-    "kind": "project"
+    "kind": "workspace"
   },
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2026-03-18T00:00:00Z"

@@ -3,14 +3,17 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.ToolCancellationSignal
 import klog.KLoggers
 import kotlinx.coroutines.*
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.datetime.Clock
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import kotlin.coroutines.coroutineContext
 
@@ -29,6 +32,10 @@ data class ToolExecutionResult(
  * to actually run concurrently. Errors in one tool don't affect others.
  */
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "true",
+)
 class ParallelToolExecutor(
     private val aiToolProvider: AiToolProvider,
     private val toolApprovalService: ToolApprovalService,
@@ -39,7 +46,7 @@ class ParallelToolExecutor(
      * Execute multiple tool calls in parallel.
      *
      * @param toolCalls tool calls requested by the model
-     * @param toolContext Context to pass to tools (e.g., projectPath)
+     * @param toolContext exact project, workspace, worker, and cancellation context
      * @return ToolExecutionResult with results and returnDirect flag
      */
     suspend fun executeParallel(
@@ -47,11 +54,32 @@ class ParallelToolExecutor(
         toolContext: ToolExecutionContext,
         runtimeTaskId: ConversationRuntimeTask.Id?,
         worker: ConversationRuntimeWorkerIdentity?,
+        expectedTarget: ConversationRuntimeTaskTarget,
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit = {},
     ): ToolExecutionResult {
         if (toolCalls.isEmpty()) return ToolExecutionResult(emptyList(), false)
 
         val callbackMap = buildCallbackMap()
+        toolCalls.forEach { toolCall ->
+            val callback = callbackMap[toolCall.call.name]
+                ?: error("Worker does not advertise requested tool: ${toolCall.call.name}")
+            val requestedTarget = toolCall.call.input.parseExecutionTarget()
+            require(requestedTarget.workerId == expectedTarget.workerId) {
+                "Tool ${toolCall.call.name} targets worker ${requestedTarget.workerId.value}, " +
+                    "but runtime task targets ${expectedTarget.workerId.value}"
+            }
+            when (callback.metadata.executionScope) {
+                AiToolExecutionScope.WORKER -> require(requestedTarget.workspaceId == null) {
+                    "Worker-scoped tool ${toolCall.call.name} must not target a workspace"
+                }
+                AiToolExecutionScope.WORKSPACE,
+                AiToolExecutionScope.COMMAND_TASK_OWNER,
+                -> require(requestedTarget.workspaceId == expectedTarget.workspaceId) {
+                    "Tool ${toolCall.call.name} targets workspace ${requestedTarget.workspaceId?.value}, " +
+                        "but runtime task targets ${expectedTarget.workspaceId?.value}"
+                }
+            }
+        }
 
         val results = coroutineScope {
             val deferreds: List<Deferred<ContentItem.ToolResult>> = toolCalls.map { toolCall ->
@@ -140,7 +168,7 @@ class ParallelToolExecutor(
     ): ContentItem.ToolResult {
         val toolId = toolCall.id
         val toolName = toolCall.call.name
-        val arguments = toolCall.call.input.toString()
+        val arguments = toolCall.call.input.withoutExecutionTarget().toString()
 
         log.debug { "Executing tool: $toolName (${toolCall.id.value})" }
 

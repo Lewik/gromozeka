@@ -58,7 +58,7 @@ internal class ClaudeCodeCliRuntimeBackend(
     override fun createRuntime(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-        projectPath: String?
+        workspaceRootPath: String?
     ): AiRuntime {
         require(connection is AiConnection.ClaudeCode) {
             "Claude Code runtime requires claude_code connection, got ${connection::class.simpleName}"
@@ -71,16 +71,16 @@ internal class ClaudeCodeCliRuntimeBackend(
             connectionId = connection.id.value,
             modelConfigurationId = modelConfiguration.id.value,
             modelName = modelConfiguration.providerModelId,
-            projectDirectory = resolveProjectDirectory(projectPath),
+            workspaceDirectory = resolveWorkspaceDirectory(workspaceRootPath),
             sessionStateRepository = sessionStateRepository,
             sessionLocks = sessionLocks,
         )
     }
 
-    private fun resolveProjectDirectory(projectPath: String?): File? {
-        val value = projectPath?.takeIf { it.isNotBlank() } ?: return null
+    private fun resolveWorkspaceDirectory(workspaceRootPath: String?): File? {
+        val value = workspaceRootPath?.takeIf { it.isNotBlank() } ?: return null
         val directory = File(value).toPath().toAbsolutePath().normalize().toFile()
-        require(directory.isDirectory) { "Claude Code project path must be an existing directory: $value" }
+        require(directory.isDirectory) { "Claude Code workspace root must be an existing directory: $value" }
         return directory
     }
 }
@@ -90,7 +90,7 @@ internal class ClaudeCodeCliRuntime(
     private val connectionId: String,
     private val modelConfigurationId: String,
     private val modelName: String,
-    private val projectDirectory: File?,
+    private val workspaceDirectory: File?,
     private val sessionStateRepository: ClaudeCodeSessionStateRepository,
     private val sessionLocks: ConcurrentHashMap<String, Mutex>,
 ) : AiRuntime {
@@ -132,7 +132,7 @@ internal class ClaudeCodeCliRuntime(
 
         val command = ClaudeCodeCommand(
             modelName = modelName,
-            projectDirectory = projectDirectory,
+            workspaceDirectory = workspaceDirectory,
             systemPrompt = systemPrompt,
             userPrompt = userPrompt,
             jsonSchema = schema,
@@ -179,14 +179,14 @@ internal class ClaudeCodeCliRuntime(
         val projectId = request.options.toolContext["projectId"].contextString()
             ?.takeIf { it.isNotBlank() }
             ?: return null
-        val projectPath = projectDirectory?.canonicalFile?.absolutePath ?: "no-project"
+        val workspaceRootPath = workspaceDirectory?.canonicalFile?.absolutePath ?: "no-workspace"
 
         return ClaudeCodeSessionState.Key(
             conversationId = Conversation.Id(conversationId),
             threadId = Conversation.Thread.Id(threadId),
             projectId = com.gromozeka.domain.model.Project.Id(projectId),
-            projectPathSnapshot = projectPath,
-            projectPathFingerprint = sha256(projectPath),
+            workspaceRootPathSnapshot = workspaceRootPath,
+            workspaceRootPathFingerprint = sha256(workspaceRootPath),
             connectionId = AiConnection.Id(connectionId),
             modelConfigurationId = AiModelConfiguration.Id(modelConfigurationId),
             modelName = modelName,
@@ -517,7 +517,7 @@ internal class ClaudeCodeCliRuntime(
             conversationId.value,
             threadId.value,
             projectId.value,
-            projectPathFingerprint,
+            workspaceRootPathFingerprint,
             connectionId.value,
             modelConfigurationId.value,
             modelName,
@@ -555,7 +555,7 @@ internal interface ClaudeCodeCliExecutor {
 
 internal data class ClaudeCodeCommand(
     val modelName: String,
-    val projectDirectory: File?,
+    val workspaceDirectory: File?,
     val systemPrompt: String,
     val userPrompt: String,
     val jsonSchema: JsonElement?,
@@ -594,7 +594,7 @@ internal class ProcessClaudeCodeCliExecutor(
             }
 
             val args = buildArgs(command, systemPromptFile.toString())
-            val output = runProcess(args, command.projectDirectory, command.userPrompt)
+            val output = runProcess(args, command.workspaceDirectory, command.userPrompt)
             if (output.exitCode != 0) {
                 val diagnostic = output.stderr.ifBlank { output.stdout }.trim()
                 error("Claude Code CLI failed with exit code ${output.exitCode}: $diagnostic")

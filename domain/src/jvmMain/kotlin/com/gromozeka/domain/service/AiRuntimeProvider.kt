@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.Flow
 interface AiRuntimeProvider {
     fun getRuntime(
         selection: AiRuntimeSelection,
-        projectPath: String?
+        workspaceRootPath: String?
     ): AiRuntime
 }
 

@@ -29,7 +29,7 @@ class OpenAiSubscriptionRuntimeBackend(
     override fun createRuntime(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-        projectPath: String?,
+        workspaceRootPath: String?,
     ): AiRuntime {
         return Runtime(
             connectionId = connection.id.value,

@@ -6,53 +6,52 @@ import com.gromozeka.domain.service.treesitter.TreeSitterService
 import io.github.treesitter.ktreesitter.Node
 import org.springframework.stereotype.Service
 import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.math.min
 
-/**
- * Implementation of TreeSitterService
- */
 @Service
 class TreeSitterServiceImpl(
-    private val projectRegistry: ProjectRegistryImpl,
-    private val languageRegistry: LanguageRegistryImpl
+    private val languageRegistry: LanguageRegistryImpl,
 ) : TreeSitterService {
-    
-    override suspend fun getAst(
-        projectName: String,
+    override fun getAst(
+        workspaceRootPath: String,
         filePath: String,
         maxDepth: Int,
-        includeText: Boolean
+        includeText: Boolean,
     ): FileAst {
-        // Get file path
-        val absolutePath = projectRegistry.getFilePath(projectName, filePath)
-        
-        // Check if file exists
-        if (!Files.exists(absolutePath)) {
+        val relativePath = Path.of(filePath)
+        require(!relativePath.isAbsolute) {
+            "Tree-sitter file path must be relative to the workspace root: $filePath"
+        }
+        val workspaceRoot = Path.of(workspaceRootPath).toRealPath()
+        val candidatePath = workspaceRoot.resolve(relativePath).normalize()
+        if (!Files.exists(candidatePath)) {
             throw IllegalArgumentException("File not found: $filePath")
         }
-        
-        // Detect language
+        val absolutePath = candidatePath.toRealPath()
+        require(absolutePath.startsWith(workspaceRoot)) {
+            "File path is outside the selected workspace: $filePath"
+        }
+        require(Files.isRegularFile(absolutePath)) {
+            "Path is not a file: $filePath"
+        }
+
         val language = languageRegistry.languageForFile(filePath)
             ?: throw IllegalArgumentException("Could not detect language for file: $filePath")
-        
-        // Check if language is supported
         if (!languageRegistry.isLanguageAvailable(language)) {
             throw IllegalArgumentException("Language '$language' is not supported")
         }
-        
-        // Parse file
+
         val sourceBytes = Files.readAllBytes(absolutePath)
         val sourceString = String(sourceBytes, Charsets.UTF_8)
         val parser = languageRegistry.getParser(language)
         val tree = parser.parse(sourceString)
-        
-        // Convert to AST representation
         val astNode = nodeToAst(tree.rootNode, sourceBytes, includeText, maxDepth)
-        
+
         return FileAst(
             file = filePath,
             language = language,
-            tree = astNode
+            tree = astNode,
         )
     }
     

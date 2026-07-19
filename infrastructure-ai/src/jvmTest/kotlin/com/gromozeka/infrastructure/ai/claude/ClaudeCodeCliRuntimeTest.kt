@@ -382,7 +382,7 @@ class ClaudeCodeCliRuntimeTest {
             connectionId = "claude-code",
             modelConfigurationId = "claude-code-haiku",
             modelName = realClaudeModel(),
-            projectDirectory = null,
+            workspaceDirectory = null,
             sessionStateRepository = InMemoryClaudeCodeSessionStateRepository(),
             sessionLocks = java.util.concurrent.ConcurrentHashMap(),
         )

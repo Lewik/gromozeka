@@ -19,14 +19,14 @@ internal class RoutingAiRuntimeProvider(
 
     override fun getRuntime(
         selection: AiRuntimeSelection,
-        projectPath: String?
+        workspaceRootPath: String?
     ): AiRuntime {
         val resolved = settingsProvider.resolveAiRuntime(selection)
         val backend = backends.firstOrNull { it.supports(resolved.connection.kind) }
             ?: error("No AI runtime backend registered for connection kind ${resolved.connection.kind}")
 
         return ModelDefaultAiRuntime(
-            delegate = backend.createRuntime(resolved.connection, resolved.modelConfiguration, projectPath),
+            delegate = backend.createRuntime(resolved.connection, resolved.modelConfiguration, workspaceRootPath),
             defaults = resolved.modelConfiguration.defaultParameters,
         )
     }

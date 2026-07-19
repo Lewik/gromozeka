@@ -39,8 +39,7 @@ internal class RemoteMessageSquashGenerationService(
         selectedIds: List<Conversation.Message.Id>,
         squashType: SquashType,
         runtimeSelection: AiRuntimeSelection,
-        projectPath: String?,
     ): String = client.requestTyped<SquashMessagesWithAiRequest, TextResponse>(
-        SquashMessagesWithAiRequest(conversationId, selectedIds, squashType, runtimeSelection, projectPath)
+        SquashMessagesWithAiRequest(conversationId, selectedIds, squashType, runtimeSelection)
     ).text
 }

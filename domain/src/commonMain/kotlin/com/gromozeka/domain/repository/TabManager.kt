@@ -4,6 +4,8 @@ import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Tab
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Workspace
 
 /**
  * Manages tab lifecycle and operations.
@@ -48,7 +50,8 @@ interface TabManager {
      * - Agent creates tab → initiator = ConversationInitiator.Agent(tabId)
      * - System creates tab → initiator = ConversationInitiator.System
      * 
-     * @param projectPath working directory for conversation
+     * @param projectId logical project containing the conversation
+     * @param workspaceId default workspace for the conversation
      * @param agent agent to handle conversation (null = default agent)
      * @param conversationId existing conversation to resume (null = create new)
      * @param initialMessage optional initial message to send
@@ -57,7 +60,8 @@ interface TabManager {
      * @return index of created tab in platform-specific tab list
      */
     suspend fun createTab(
-        projectPath: String,
+        projectId: Project.Id,
+        workspaceId: Workspace.Id,
         agent: AgentDefinition? = null,
         conversationId: Conversation.Id? = null,
         initialMessage: Conversation.Message? = null,
@@ -130,7 +134,8 @@ interface TabManager {
         val tabId: Tab.Id,
         val conversationId: Conversation.Id,
         val agentId: AgentDefinition.Id,
-        val projectPath: String,
+        val projectId: Project.Id,
+        val workspaceId: Workspace.Id,
         val isWaitingForResponse: Boolean,
         val parentTabId: Tab.Id?
     )

@@ -50,12 +50,17 @@ class SwitchTabTool(
         )
 
         val threadId = selectedTab.conversationId
-        val projectPath = selectedTab.projectPath
         val allTabs = tabManager.listTabs()
         val tabIndex = allTabs.indexOfFirst { it.tabId.value == input.tab_id }
 
         return CallToolResult(
-            content = listOf(TextContent("Successfully switched to tab $tabIndex (${input.tab_id}): $projectPath (Thread ID: ${threadId.value})")),
+            content = listOf(
+                TextContent(
+                    "Successfully switched to tab $tabIndex (${input.tab_id}): " +
+                        "project=${selectedTab.projectId.value}, workspace=${selectedTab.workspaceId.value}, " +
+                        "conversation=${threadId.value}"
+                )
+            ),
             isError = false
         )
     }

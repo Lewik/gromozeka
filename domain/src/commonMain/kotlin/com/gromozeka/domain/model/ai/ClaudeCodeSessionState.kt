@@ -29,15 +29,19 @@ data class ClaudeCodeSessionState(
         val conversationId: Conversation.Id,
         val threadId: Conversation.Thread.Id,
         val projectId: Project.Id,
-        val projectPathSnapshot: String,
-        val projectPathFingerprint: String,
+        val workspaceRootPathSnapshot: String,
+        val workspaceRootPathFingerprint: String,
         val connectionId: AiConnection.Id,
         val modelConfigurationId: AiModelConfiguration.Id,
         val modelName: String,
     ) {
         init {
-            require(projectPathSnapshot.isNotBlank()) { "Claude Code project path snapshot must not be blank" }
-            require(projectPathFingerprint.isNotBlank()) { "Claude Code project path fingerprint must not be blank" }
+            require(workspaceRootPathSnapshot.isNotBlank()) {
+                "Claude Code workspace root path snapshot must not be blank"
+            }
+            require(workspaceRootPathFingerprint.isNotBlank()) {
+                "Claude Code workspace root path fingerprint must not be blank"
+            }
             require(modelName.isNotBlank()) { "Claude Code model name must not be blank" }
         }
     }

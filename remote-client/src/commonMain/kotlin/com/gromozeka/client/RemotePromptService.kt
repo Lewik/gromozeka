@@ -1,9 +1,7 @@
 package com.gromozeka.client
 
-import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.service.PromptDomainService
-import com.gromozeka.remote.protocol.AssemblePromptSystemPromptRequest
 import com.gromozeka.remote.protocol.CopyBuiltinPromptToUserRequest
 import com.gromozeka.remote.protocol.CreateEnvironmentPromptRequest
 import com.gromozeka.remote.protocol.FindPromptRequest
@@ -15,7 +13,6 @@ import com.gromozeka.remote.protocol.PromptsResponse
 import com.gromozeka.remote.protocol.RefreshPromptsRequest
 import com.gromozeka.remote.protocol.ResetAllBuiltinPromptsRequest
 import com.gromozeka.remote.protocol.SavedResponse
-import com.gromozeka.remote.protocol.TextListResponse
 
 internal class RemotePromptService(
     private val client: GromozekaWsClient,
@@ -34,11 +31,6 @@ internal class RemotePromptService(
         client.requestTyped<CreateEnvironmentPromptRequest, PromptResponse>(
             CreateEnvironmentPromptRequest(name, content)
         ).prompt ?: error("Server returned null prompt after create")
-
-    override suspend fun assembleSystemPrompt(promptIds: List<Prompt.Id>, project: Project): List<String> =
-        client.requestTyped<AssemblePromptSystemPromptRequest, TextListResponse>(
-            AssemblePromptSystemPromptRequest(promptIds, project)
-        ).items
 
     override suspend fun copyBuiltinPromptToUser(id: Prompt.Id): Result<Unit> =
         client.requestTyped<CopyBuiltinPromptToUserRequest, OperationResultResponse>(

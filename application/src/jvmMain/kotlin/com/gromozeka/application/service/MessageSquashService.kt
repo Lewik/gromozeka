@@ -12,7 +12,6 @@ import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.MessageSquashService as MessageSquashServiceSpec
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.SettingsProvider
-import com.gromozeka.domain.repository.ProjectRepository
 import klog.KLoggers
 import org.springframework.stereotype.Service
 
@@ -22,7 +21,6 @@ class MessageSquashService(
     private val conversationService: ConversationDomainService,
     private val promptDomainService: PromptDomainService,
     private val settingsProvider: SettingsProvider,
-    private val projectRepository: ProjectRepository
 ) : MessageSquashServiceSpec, MessageSquashGenerationService {
     companion object {
         private val COMMON_PROMPT_PREFIX_ID = Prompt.Id("builtin:common-prompt-prefix.md")
@@ -39,7 +37,6 @@ class MessageSquashService(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
         strategy: SquashType,
-        projectPath: String?
     ): MessageSquashServiceSpec.SquashResult {
         // Validation
         if (messageIds.size < 2) {
@@ -85,20 +82,11 @@ class MessageSquashService(
                 }
 
                 SquashType.SUMMARIZE, SquashType.DISTILL -> {
-                    // AI-based squashing
-                    if (projectPath == null) {
-                        return MessageSquashServiceSpec.SquashResult.Failure(
-                            reason = "Project path required for AI-based squashing strategies",
-                            errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.MISSING_PROJECT_PATH
-                        )
-                    }
-
                     val squashedContent = runSquashWithAI(
                         conversationId = conversationId,
                         selectedIds = messageIds,
                         squashType = strategy,
                         runtimeSelection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH),
-                        projectPath = projectPath
                     )
 
                     MessageSquashServiceSpec.SquashResult.Success(
@@ -123,7 +111,6 @@ class MessageSquashService(
         selectedIds: List<Conversation.Message.Id>,
         squashType: SquashType,
         runtimeSelection: AiRuntimeSelection,
-        projectPath: String?
     ): String {
         require(squashType != SquashType.CONCATENATE) {
             "Use simple concatenation for CONCATENATE type, not AI"
@@ -165,16 +152,13 @@ class MessageSquashService(
             "Calling AI with ${markedMessages.size + 1} messages (${systemPrompts.size} system + ${markedMessages.size} history + 1 command)"
         }
 
-        val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, projectPath)
+        val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null)
         val response = runtime.call(
             AiRuntimeRequest(
                 systemPrompts = systemPrompts,
                 messages = markedMessages + commandMessage,
                 options = com.gromozeka.domain.model.ai.AiRuntimeOptions(
-                    toolContext = buildMap {
-                        put("conversationId", conversationId.value)
-                        projectPath?.let { put("projectPath", it) }
-                    }
+                    toolContext = mapOf("conversationId" to conversationId.value)
                 )
             )
         )
@@ -190,14 +174,12 @@ class MessageSquashService(
         selectedIds: List<Conversation.Message.Id>,
         squashType: SquashType,
         runtimeSelection: AiRuntimeSelection,
-        projectPath: String?,
     ): String =
         runSquashWithAI(
             conversationId = conversationId,
             selectedIds = selectedIds,
             squashType = squashType,
             runtimeSelection = runtimeSelection,
-            projectPath = projectPath,
         )
 
     private fun wrapWithSelectionMarker(message: Conversation.Message): Conversation.Message {
@@ -227,14 +209,8 @@ class MessageSquashService(
     }
 
     private suspend fun loadCommonPromptPrefix(conversationId: Conversation.Id): String {
-        val conversation = conversationService.findById(conversationId) ?: return ""
-        val project = projectRepository.findById(conversation.projectId) ?: return ""
-        
-        val prompts = promptDomainService.assembleSystemPrompt(
-            listOf(COMMON_PROMPT_PREFIX_ID),
-            project
-        )
-        return prompts.firstOrNull() ?: ""
+        conversationService.findById(conversationId) ?: return ""
+        return promptDomainService.findById(COMMON_PROMPT_PREFIX_ID)?.content.orEmpty()
     }
 
     private fun buildDistillPrompt(): String {

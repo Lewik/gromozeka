@@ -5,11 +5,9 @@ import com.gromozeka.domain.model.Project
 /**
  * [SPECIFICATION] Domain service for managing project lifecycle.
  *
- * Projects represent filesystem directories where conversations occur.
+ * Projects are logical containers for conversations and workspaces.
  * Service coordinates project lifecycle and enforces business rules:
- * - Projects created on-demand when first accessed
  * - lastUsedAt automatically updated on access
- * - Configuration read from .gromozeka/project.json (created with defaults if missing)
  *
  * ## Implementation Responsibilities
  *
@@ -22,23 +20,11 @@ import com.gromozeka.domain.model.Project
  */
 interface ProjectDomainService {
 
-    /**
-     * Gets existing project or creates new one.
-     *
-     * On retrieval:
-     * - Updates lastUsedAt timestamp
-     * - Reads configuration from .gromozeka/project.json
-     *
-     * On creation:
-     * - Creates a project record with defaults (name from path, empty description)
-     * - Saves it via repository
-     *
-     * This is a TRANSACTIONAL operation - either find+update or create.
-     *
-     * @param path filesystem path to project directory
-     * @return existing or newly created project
-     */
-    suspend fun getOrCreate(path: String): Project
+    suspend fun create(
+        name: String,
+        description: String? = null,
+        id: Project.Id? = null,
+    ): Project
 
     /**
      * Finds project by unique identifier.
@@ -47,14 +33,6 @@ interface ProjectDomainService {
      * @return project if found, null otherwise
      */
     suspend fun findById(id: Project.Id): Project?
-
-    /**
-     * Finds project by filesystem path.
-     *
-     * @param path exact filesystem path
-     * @return project if found, null otherwise
-     */
-    suspend fun findByPath(path: String): Project?
 
     /**
      * Retrieves recently used projects.

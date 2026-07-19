@@ -35,7 +35,7 @@ class ConversationNameSearchService(
 
         projects.forEach { project ->
             val projectMatches = project.name.lowercase().contains(lowerQuery) ||
-                    project.path.lowercase().contains(lowerQuery)
+                    project.description?.lowercase()?.contains(lowerQuery) == true
 
             val conversations = conversationTreeRepository.findByProject(project.id)
 

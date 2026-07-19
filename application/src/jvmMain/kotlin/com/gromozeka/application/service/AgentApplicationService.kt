@@ -1,9 +1,11 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AgentPromptAssemblyService
+import com.gromozeka.domain.service.PromptAssemblyService
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -23,8 +25,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AgentApplicationService(
     private val agentRepository: AgentRepository,
-    private val promptDomainService: com.gromozeka.domain.service.PromptDomainService,
-) : AgentDomainService {
+    private val promptAssemblyService: PromptAssemblyService,
+) : AgentDomainService, AgentPromptAssemblyService {
     private val log = KLoggers.logger(this)
 
     /**
@@ -37,7 +39,7 @@ class AgentApplicationService(
      * @param runtimeSelection model binding selected for this agent
      * @param tools list of tool names available to this agent
      * @param description optional human-readable description of capabilities
-     * @param type agent scope type (builtin, global, or project-specific)
+     * @param type agent storage scope
      * @return created agent
      */
     @Transactional
@@ -66,8 +68,11 @@ class AgentApplicationService(
         return agentRepository.save(agent)
     }
 
-    override suspend fun assembleSystemPrompt(agent: AgentDefinition, project: Project): List<String> {
-        return promptDomainService.assembleSystemPrompt(agent.prompts, project)
+    override suspend fun assembleSystemPrompt(
+        agent: AgentDefinition,
+        runtimeContext: RuntimeEnvironmentContext,
+    ): List<String> {
+        return promptAssemblyService.assembleSystemPrompt(agent.prompts, runtimeContext)
     }
 
     /**
@@ -82,11 +87,10 @@ class AgentApplicationService(
     /**
      * Retrieves all agents, including built-in and user-created.
      *
-     * @param projectPath path to the current project (for loading PROJECT agents), null for global context
      * @return list of all agents
      */
-    override suspend fun findAll(projectPath: String?): List<AgentDefinition> =
-        agentRepository.findAll(projectPath)
+    override suspend fun findAll(): List<AgentDefinition> =
+        agentRepository.findAll()
 
     /**
      * Updates agent configuration.

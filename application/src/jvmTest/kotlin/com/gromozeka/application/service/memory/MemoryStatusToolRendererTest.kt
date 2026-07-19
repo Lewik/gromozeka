@@ -148,7 +148,7 @@ class MemoryStatusToolRendererTest {
                         ConversationRuntimeWorkerRegistration(
                             identity = workerIdentity,
                             capabilities = setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE),
-                            affinities = emptySet(),
+                            tools = emptyList(),
                             version = "test",
                             startedAt = createdAt,
                             lastHeartbeatAt = createdAt,
@@ -180,8 +180,8 @@ class MemoryStatusToolRendererTest {
                 MemoryMaintenanceQueuedResult(
                     runId = MemoryRun.Id("maintenance:repair:run:test"),
                     action = MemoryMaintenanceAction.REPAIR,
-                    targetKind = MemoryMaintenanceTargetKind.PROJECT_ID,
-                    targetValue = "project:test",
+                    targetKind = MemoryMaintenanceTargetKind.WORKSPACE_ID,
+                    targetValue = "workspace:test",
                     namespace = namespace,
                     conversationId = com.gromozeka.domain.model.Conversation.Id("conversation:test"),
                     queueSize = 2,

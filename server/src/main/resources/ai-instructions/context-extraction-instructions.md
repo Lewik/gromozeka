@@ -59,6 +59,6 @@
 2. For each context, provide all required fields in the XML structure above
 3. Ensure `content` contains key and sufficient information for understanding this context
 4. Focus on practical information needed to continue or understand the work
-5. Keep file paths relative to the project root when possible (project path is set automatically)
+5. Keep file paths relative to the selected filesystem workspace root when possible
 6. **IMPORTANT**: After creating the XML, call the MCP tool `save_contexts` with parameter `xml_content` containing the XML to save the contexts
 7. **ERROR HANDLING**: If the MCP tool returns an error (invalid XML structure), fix the XML and try calling the tool again

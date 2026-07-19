@@ -43,7 +43,8 @@ open class AppViewModel(
     }.stateIn(scope, SharingStarted.Eagerly, null)
 
     override suspend fun createTab(
-        projectPath: String,
+        projectId: Project.Id,
+        workspaceId: Workspace.Id,
         agent: AgentDefinition?,
         conversationId: Conversation.Id?,
         initialMessage: Conversation.Message?,
@@ -56,11 +57,20 @@ open class AppViewModel(
         val tabAgent = agent ?: defaultAgentProvider.getDefault()
 
         val conversation = if (conversationId != null) {
-            conversationService.findById(conversationId) ?: error("Conversation not found: $conversationId")
+            val existing = conversationService.findById(conversationId)
+                ?: error("Conversation not found: $conversationId")
+            require(existing.projectId == projectId) {
+                "Conversation ${conversationId.value} belongs to project ${existing.projectId.value}, not ${projectId.value}"
+            }
+            require(existing.workspaceId == workspaceId) {
+                "Conversation ${conversationId.value} belongs to workspace ${existing.workspaceId.value}, not ${workspaceId.value}"
+            }
+            existing
         } else {
             conversationService.create(
-                projectPath = projectPath,
-                agentDefinitionId = tabAgent.id
+                projectId = projectId,
+                workspaceId = workspaceId,
+                agentDefinitionId = tabAgent.id,
             )
         }
 
@@ -69,7 +79,8 @@ open class AppViewModel(
                 ?.firstOrNull()?.tabId
 
         val initialTabUiState = UIState.Tab(
-            projectPath = projectPath,
+            projectId = projectId,
+            workspaceId = workspaceId,
             conversationId = conversation.id,
             activeMessageInstructionIds = settingsService.settingsFlow.value.userProfile.messageInstructionGroups
                 .map { group -> group.controls[group.selectedByDefault].data.id }
@@ -82,7 +93,8 @@ open class AppViewModel(
 
         val tabViewModel = TabViewModel(
             conversationId = conversation.id,
-            projectPath = projectPath,
+            projectId = projectId,
+            workspaceId = workspaceId,
             conversationRuntimeService = conversationRuntimeService,
             conversationService = conversationService,
             messageSquashGenerationService = messageSquashGenerationService,
@@ -98,7 +110,7 @@ open class AppViewModel(
         _tabs.value = updatedTabs
 
         val newTabIndex = updatedTabs.size - 1
-        log.info("Created tab at index $newTabIndex for project: $projectPath")
+        log.info("Created tab at index $newTabIndex for project=${projectId.value}, workspace=${workspaceId.value}")
 
         if (setAsCurrent) {
             _currentTabIndex.value = newTabIndex
@@ -186,7 +198,8 @@ open class AppViewModel(
             tabId = Tab.Id(uiState.tabId),
             conversationId = this.conversationId,
             agentId = uiState.agent.id,
-            projectPath = this.projectPath,
+            projectId = this.projectId,
+            workspaceId = this.workspaceId,
             isWaitingForResponse = uiState.isWaitingForResponse,
             parentTabId = uiState.parentTabId?.let { Tab.Id(it) }
         )
@@ -223,19 +236,18 @@ open class AppViewModel(
         uiState.tabs.forEach { tabUiState ->
             try {
                 val conversation = conversationService.findById(tabUiState.conversationId)
-                    ?: run {
-                        log.warn("Conversation not found for tab, creating new conversation")
-                        val defaultAgent = defaultAgentProvider.getDefault()
-                        
-                        conversationService.create(
-                            projectPath = tabUiState.projectPath,
-                            agentDefinitionId = defaultAgent.id
-                        )
-                    }
+                    ?: error("Conversation not found: ${tabUiState.conversationId.value}")
+                require(conversation.projectId == tabUiState.projectId) {
+                    "Saved tab project does not match conversation ${conversation.id.value}"
+                }
+                require(conversation.workspaceId == tabUiState.workspaceId) {
+                    "Saved tab workspace does not match conversation ${conversation.id.value}"
+                }
 
                 val tabViewModel = TabViewModel(
                     conversationId = conversation.id,
-                    projectPath = tabUiState.projectPath,
+                    projectId = tabUiState.projectId,
+                    workspaceId = tabUiState.workspaceId,
                     conversationRuntimeService = conversationRuntimeService,
                     conversationService = conversationService,
                     messageSquashGenerationService = messageSquashGenerationService,
@@ -248,9 +260,9 @@ open class AppViewModel(
                 )
 
                 restoredTabs.add(tabViewModel)
-                log.info("Successfully restored tab for project: ${tabUiState.projectPath}")
+                log.info("Successfully restored tab for conversation: ${conversation.id.value}")
             } catch (e: Exception) {
-                log.warn("Failed to restore tab for project: ${tabUiState.projectPath}, error: ${e.message}")
+                log.warn("Failed to restore tab for conversation ${tabUiState.conversationId.value}: ${e.message}")
             }
         }
 

@@ -109,7 +109,7 @@ class PostgresConversationRuntimeWorkerRegistryTest {
         ConversationRuntimeWorkerRegistration(
             identity = identity,
             capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
-            affinities = emptySet(),
+            tools = emptyList(),
             version = "test",
             startedAt = at,
             lastHeartbeatAt = at,

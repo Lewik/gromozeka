@@ -3,6 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.application.service.ConversationRuntimeApplicationService
 import com.gromozeka.application.service.MemoryApplicationService
 import com.gromozeka.application.service.memory.MemoryOperationExecutor
+import com.gromozeka.application.service.memory.MemoryOperationPreparer
 import com.gromozeka.application.service.memory.MemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
@@ -17,6 +18,7 @@ import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.toRuntimeContext
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryClaimCandidate
@@ -44,10 +46,12 @@ import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import com.gromozeka.domain.service.AiToolProvider
-import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
+import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.server.testsupport.app.ServerTestHarness
@@ -156,9 +160,12 @@ class MemoryRealModelE2eTest {
             val conversationEngineService = context.getBean(ConversationRuntimeApplicationService::class.java)
             val memoryApplicationService = context.getBean(MemoryApplicationService::class.java)
             val memoryOperationExecutor = context.getBean(MemoryOperationExecutor::class.java)
-            val agentDomainService = context.getBean(AgentDomainService::class.java)
+            val memoryOperationPreparer = context.getBean(MemoryOperationPreparer::class.java)
+            val agentPromptAssemblyService = context.getBean(AgentPromptAssemblyService::class.java)
             val aiToolProvider = context.getBean(AiToolProvider::class.java)
+            val projectDomainService = context.getBean(ProjectDomainService::class.java)
             val promptDomainService = context.getBean(PromptDomainService::class.java)
+            val workspaceDomainService = context.getBean(WorkspaceDomainService::class.java)
             val store = context.getBean(MemoryStore::class.java)
             val dataSource = context.getBean(DataSource::class.java)
             val traceCollector = context.getBean(MemoryE2eReadTraceCollector::class.java)
@@ -194,9 +201,12 @@ class MemoryRealModelE2eTest {
                                 conversationEngineService = conversationEngineService,
                                 memoryApplicationService = memoryApplicationService,
                                 memoryOperationExecutor = memoryOperationExecutor,
-                                agentDomainService = agentDomainService,
+                                memoryOperationPreparer = memoryOperationPreparer,
+                                agentPromptAssemblyService = agentPromptAssemblyService,
                                 aiToolProvider = aiToolProvider,
+                                projectDomainService = projectDomainService,
                                 promptDomainService = promptDomainService,
+                                workspaceDomainService = workspaceDomainService,
                                 store = store,
                                 case = case,
                                 modelName = modelName,
@@ -353,9 +363,12 @@ class MemoryRealModelE2eTest {
         conversationEngineService: ConversationRuntimeApplicationService,
         memoryApplicationService: MemoryApplicationService,
         memoryOperationExecutor: MemoryOperationExecutor,
-        agentDomainService: AgentDomainService,
+        memoryOperationPreparer: MemoryOperationPreparer,
+        agentPromptAssemblyService: AgentPromptAssemblyService,
         aiToolProvider: AiToolProvider,
+        projectDomainService: ProjectDomainService,
         promptDomainService: PromptDomainService,
+        workspaceDomainService: WorkspaceDomainService,
         store: MemoryStore,
         case: MemoryE2eCase,
         modelName: String,
@@ -364,10 +377,20 @@ class MemoryRealModelE2eTest {
         writeTraceCollector: MemoryE2eWriteTraceCollector,
         maintenanceTraceCollector: MemoryE2eMaintenanceTraceCollector,
     ): ExecutedMemoryE2eCase {
-        val projectPath = harness.homeDirectory
+        val workspaceRootPath = harness.homeDirectory
             .resolve("projects")
             .resolve(case.id.sanitizePathSegment())
-        Files.createDirectories(projectPath)
+        Files.createDirectories(workspaceRootPath)
+        val project = projectDomainService.create(
+            name = "Memory E2E ${case.id}",
+            description = case.description,
+        )
+        val workspaceContext = workspaceDomainService.createFilesystem(
+            projectId = project.id,
+            name = "${case.id} workspace",
+            workerId = E2E_WORKER_ID,
+            rootPath = workspaceRootPath.absolutePathString(),
+        ).toRuntimeContext()
 
         val prompt = promptDomainService.createEnvironmentPrompt(
             name = "Memory E2E system prompt",
@@ -384,7 +407,8 @@ class MemoryRealModelE2eTest {
         suspend fun conversation(sessionId: String): Conversation {
             conversations[sessionId]?.let { return it }
             val created = conversationService.create(
-                projectPath = projectPath.absolutePathString(),
+                projectId = project.id,
+                workspaceId = workspaceContext.workspace.id,
                 displayName = "${case.id}::$sessionId",
                 agentDefinitionId = agent.id,
             )
@@ -424,6 +448,7 @@ class MemoryRealModelE2eTest {
                             ?: resolveNamespace().value
                         rememberProvidedSeedTurn(
                             memoryOperationExecutor = memoryOperationExecutor,
+                            memoryOperationPreparer = memoryOperationPreparer,
                             store = store,
                             turn = turn,
                             namespaceValue = namespaceValue,
@@ -479,9 +504,9 @@ class MemoryRealModelE2eTest {
                 "consolidate_notes", "note_consolidation" ->
                     runMaintenanceDirectly(
                         memoryApplicationService,
-                        conversationService,
-                        agentDomainService,
+                        agentPromptAssemblyService,
                         aiToolProvider,
+                        workspaceContext,
                         maintenanceConversation,
                         agent,
                         MemoryE2eMaintenanceAction.CONSOLIDATE,
@@ -489,9 +514,9 @@ class MemoryRealModelE2eTest {
                 "repair_memory", "memory_repair" ->
                     runMaintenanceDirectly(
                         memoryApplicationService,
-                        conversationService,
-                        agentDomainService,
+                        agentPromptAssemblyService,
                         aiToolProvider,
+                        workspaceContext,
                         maintenanceConversation,
                         agent,
                         MemoryE2eMaintenanceAction.REPAIR,
@@ -499,9 +524,9 @@ class MemoryRealModelE2eTest {
                 "maintain_entities", "entity_maintenance", "maintain_memory_entities" ->
                     runMaintenanceDirectly(
                         memoryApplicationService,
-                        conversationService,
-                        agentDomainService,
+                        agentPromptAssemblyService,
                         aiToolProvider,
+                        workspaceContext,
                         maintenanceConversation,
                         agent,
                         MemoryE2eMaintenanceAction.MAINTAIN_ENTITIES,
@@ -509,9 +534,9 @@ class MemoryRealModelE2eTest {
                 "apply_retention", "retention_apply", "memory_retention" ->
                     runMaintenanceDirectly(
                         memoryApplicationService,
-                        conversationService,
-                        agentDomainService,
+                        agentPromptAssemblyService,
                         aiToolProvider,
+                        workspaceContext,
                         maintenanceConversation,
                         agent,
                         MemoryE2eMaintenanceAction.APPLY_RETENTION,
@@ -583,7 +608,7 @@ class MemoryRealModelE2eTest {
         return ExecutedMemoryE2eCase(
             definition = case,
             namespace = namespace,
-            projectPath = projectPath.absolutePathString(),
+            workspaceRootPath = workspaceRootPath.absolutePathString(),
             modelName = modelName,
             afterSeedsSnapshot = afterSeedsSnapshot,
             finalSnapshot = store.loadNamespaceSnapshot(namespace),
@@ -1184,22 +1209,21 @@ class MemoryRealModelE2eTest {
 
     private suspend fun runMaintenanceDirectly(
         memoryApplicationService: MemoryApplicationService,
-        conversationService: ConversationDomainService,
-        agentDomainService: AgentDomainService,
+        agentPromptAssemblyService: AgentPromptAssemblyService,
         aiToolProvider: AiToolProvider,
+        workspaceContext: com.gromozeka.domain.model.RuntimeEnvironmentContext.WorkspaceBound,
         conversation: Conversation,
         agent: AgentDefinition,
         action: MemoryE2eMaintenanceAction,
     ) {
-        val project = conversationService.getProject(conversation.id)
-        val systemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
+        val systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, workspaceContext)
         val tools = aiToolProvider.getTools().withoutMemoryManagementTools()
         when (action) {
             MemoryE2eMaintenanceAction.CONSOLIDATE ->
                 memoryApplicationService.runNoteConsolidation(
                     conversation.id,
                     agent,
-                    project,
+                    workspaceContext,
                     systemPrompts,
                     tools,
                 )
@@ -1207,7 +1231,7 @@ class MemoryRealModelE2eTest {
                 memoryApplicationService.runMemoryRepair(
                     conversation.id,
                     agent,
-                    project,
+                    workspaceContext,
                     systemPrompts,
                     tools,
                 )
@@ -1215,12 +1239,12 @@ class MemoryRealModelE2eTest {
                 memoryApplicationService.runEntityMaintenance(
                     conversation.id,
                     agent,
-                    project,
+                    workspaceContext,
                     systemPrompts,
                     tools,
                 )
             MemoryE2eMaintenanceAction.APPLY_RETENTION ->
-                memoryApplicationService.runRetention(conversation.id, project)
+                memoryApplicationService.runRetention(conversation.id)
         }
     }
 
@@ -1254,6 +1278,7 @@ class MemoryRealModelE2eTest {
 
     private suspend fun rememberProvidedSeedTurn(
         memoryOperationExecutor: MemoryOperationExecutor,
+        memoryOperationPreparer: MemoryOperationPreparer,
         store: MemoryStore,
         turn: MemoryE2eSeedTurnDefinition,
         namespaceValue: String,
@@ -1264,7 +1289,7 @@ class MemoryRealModelE2eTest {
         timeoutMs: Long,
     ): ExecutedSeedTurn {
         val toolResult = memoryOperationExecutor.executeSynchronously(
-            memoryOperationExecutor.prepareRememberProvidedContent(
+            memoryOperationPreparer.prepareRememberProvidedContent(
                 conversationIdValue = null,
                 text = turn.text?.trim()?.takeIf { it.isNotBlank() && turn.documentType != null },
                 filePath = turn.resolvedFilePath(resolveProjectRoot()),
@@ -2527,7 +2552,7 @@ class MemoryRealModelE2eTest {
         appendLine("category | ${result.definition.category}")
         appendLine("model | ${result.modelName}")
         appendLine("namespace | ${result.namespace.value}")
-        appendLine("projectPath | ${result.projectPath}")
+        appendLine("workspaceRootPath | ${result.workspaceRootPath}")
         appendLine("status | ${if (errors.isEmpty()) "PASS" else "FAIL"}")
         appendLine()
         appendLine("## Errors")
@@ -3185,6 +3210,7 @@ class MemoryRealModelE2eTest {
         const val MEMORY_ROUTING_FAIL_FAST_PROPERTY = "gromozeka.memory.routing.failFast"
         const val DEFAULT_MODEL_NAME = "gpt-5.5"
         const val MEMORY_E2E_NAMESPACE = "benchmark:memory-real-model-e2e"
+        const val E2E_WORKER_ID = "e2e-worker"
 
         val json = Json {
             ignoreUnknownKeys = true
@@ -3959,7 +3985,7 @@ private data class SentUserTurn(
 private data class ExecutedMemoryE2eCase(
     val definition: MemoryE2eCase,
     val namespace: MemoryNamespace,
-    val projectPath: String,
+    val workspaceRootPath: String,
     val modelName: String,
     val afterSeedsSnapshot: MemoryNamespaceSnapshot,
     val finalSnapshot: MemoryNamespaceSnapshot,

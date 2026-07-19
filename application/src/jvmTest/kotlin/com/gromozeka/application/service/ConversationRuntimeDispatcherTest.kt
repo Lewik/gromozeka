@@ -2,7 +2,12 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
+import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceExecutionContext
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -10,11 +15,11 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkDelivery
 import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
-import com.gromozeka.domain.service.ConversationRuntimeWorkerAffinity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -23,6 +28,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
+import com.gromozeka.domain.service.WorkspaceDomainService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -469,7 +475,7 @@ class ConversationRuntimeDispatcherTest {
                     taskId = task.id,
                     worker = assignedWorker,
                     workerCapabilities = task.requirements.capabilities,
-                    workerAffinities = emptySet(),
+                    workerWorkspaceIds = emptySet(),
                 )
             )
             assertTrue(
@@ -477,7 +483,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerRegistration(
                         identity = assignedWorker,
                         capabilities = task.requirements.capabilities,
-                        affinities = emptySet(),
+                        tools = emptyList(),
                         version = "test",
                         startedAt = stoppedAt,
                         lastHeartbeatAt = stoppedAt,
@@ -593,19 +599,21 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `runtime crosses cloud and project workers at the local tool boundary`() = runBlocking {
+    fun `runtime crosses cloud and workspace workers at the local tool boundary`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val eventBus = InMemoryConversationRuntimeEventBus()
         val workQueue = BroadcastRuntimeWorkQueue()
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val projectAffinity = ConversationRuntimeWorkerAffinity(
-            kind = ConversationRuntimeWorkerAffinity.Kind.PROJECT,
-            value = "project-1",
+        val workspaceId = Workspace.Id("workspace-1")
+        val workspaceWorkerId = ConversationRuntimeWorkerId("workspace-worker")
+        val toolTarget = ConversationRuntimeTaskTarget(
+            workerId = workspaceWorkerId,
+            workspaceId = workspaceId,
         )
         val firstMessage = userMessage("message-1")
         val llmTask1 = runtimeLlmTask(firstMessage.id, iteration = 1)
-        val toolTask = runtimeToolTask(firstMessage.id, iteration = 1, projectAffinity = projectAffinity)
+        val toolTask = runtimeToolTask(firstMessage.id, iteration = 1, target = toolTarget)
         val toolResultProcessingTask = runtimeToolResultProcessingTask(firstMessage.id, iteration = 1)
         val llmTask2 = runtimeLlmTask(firstMessage.id, iteration = 2)
         val executionOrder = Channel<Pair<ConversationRuntimeTask, ConversationRuntimeWorkerIdentity>>(Channel.UNLIMITED)
@@ -616,7 +624,7 @@ class ConversationRuntimeDispatcherTest {
                 toolResultProcessingTask.id -> assertTrue(coordinator.submit(llmTask2))
             }
         }
-        val projectRunner = ChainedTaskRunner(executionOrder) { task ->
+        val workspaceRunner = ChainedTaskRunner(executionOrder) { task ->
             if (task.id == toolTask.id) {
                 assertTrue(coordinator.submit(toolResultProcessingTask))
             }
@@ -645,26 +653,26 @@ class ConversationRuntimeDispatcherTest {
             ),
             scope = scope,
         )
-        val projectWorker = runtimeWorker(
+        val workspaceWorker = runtimeWorker(
             coordinator = coordinator,
             eventBus = eventBus,
             workQueue = workQueue,
             registry = workerRegistry,
-            runner = projectRunner,
+            runner = workspaceRunner,
             descriptor = ConversationRuntimeWorkerDescriptor(
-                id = ConversationRuntimeWorkerId("project-worker"),
+                id = workspaceWorkerId,
                 capabilities = setOf(
                     ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                     ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
                 ),
-                affinities = setOf(projectAffinity),
             ),
             scope = scope,
+            workspaceIds = setOf(workspaceId),
         )
 
         try {
             cloudWorker.start()
-            projectWorker.start()
+            workspaceWorker.start()
             assertTrue(dispatcher.submitMessage(conversationId, firstMessage, agent))
 
             val executions = withTimeout(TEST_EVENT_TIMEOUT_MS) {
@@ -681,13 +689,13 @@ class ConversationRuntimeDispatcherTest {
                 executions.map { it.first.id.value },
             )
             assertEquals(
-                listOf("cloud-worker", "cloud-worker", "project-worker", "cloud-worker", "cloud-worker"),
+                listOf("cloud-worker", "cloud-worker", "workspace-worker", "cloud-worker", "cloud-worker"),
                 executions.map { it.second.workerId.value },
             )
             waitUntil { coordinator.find(conversationId) == null }
         } finally {
             cloudWorker.stop()
-            projectWorker.stop()
+            workspaceWorker.stop()
             scope.cancel()
         }
     }
@@ -766,6 +774,7 @@ class ConversationRuntimeDispatcherTest {
             runtimeEventBus = eventBus,
             runtimeWorkConsumer = workQueue,
             runtimeWorkerRegistry = workerRegistry,
+            workspaceService = StaticWorkspaceDomainService(workerId),
             taskRunnerProvider = objectProvider(runner),
             runtimeWorkerDescriptor = workerDescriptor,
             workerVersion = "test",
@@ -832,7 +841,7 @@ class ConversationRuntimeDispatcherTest {
     private fun runtimeToolTask(
         rootUserMessageId: Conversation.Message.Id,
         iteration: Int,
-        projectAffinity: ConversationRuntimeWorkerAffinity,
+        target: ConversationRuntimeTaskTarget,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:tools:$iteration"),
@@ -850,6 +859,7 @@ class ConversationRuntimeDispatcherTest {
                         ),
                     )
                 ),
+                returnDirect = false,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:tools:$iteration",
@@ -858,7 +868,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                     ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
                 ),
-                affinity = projectAffinity,
+                target = target,
             ),
             createdAt = Clock.System.now(),
         )
@@ -976,6 +986,7 @@ class ConversationRuntimeDispatcherTest {
         runner: ConversationRuntimeTaskRunner,
         descriptor: ConversationRuntimeWorkerDescriptor,
         scope: CoroutineScope,
+        workspaceIds: Set<Workspace.Id> = emptySet(),
         heartbeatIntervalMillis: Long = ConversationRuntimeTiming.workerHeartbeatIntervalMillis,
     ): ConversationRuntimeWorker =
         ConversationRuntimeWorker(
@@ -983,12 +994,81 @@ class ConversationRuntimeDispatcherTest {
             runtimeEventBus = eventBus,
             runtimeWorkConsumer = workQueue,
             runtimeWorkerRegistry = registry,
+            workspaceService = StaticWorkspaceDomainService(descriptor.id.value, workspaceIds),
             taskRunnerProvider = objectProvider(runner),
             runtimeWorkerDescriptor = descriptor,
             workerVersion = "test",
             heartbeatIntervalMillis = heartbeatIntervalMillis,
             parentScope = scope,
         )
+
+    private class StaticWorkspaceDomainService(
+        private val workerId: String,
+        private val workspaceIds: Set<Workspace.Id> = emptySet(),
+    ) : WorkspaceDomainService {
+        private val now = Clock.System.now()
+
+        override suspend fun createFilesystem(
+            projectId: Project.Id,
+            name: String,
+            workerId: String,
+            rootPath: String,
+            id: Workspace.Id?,
+        ): WorkspaceExecutionContext = error("Workspace creation is outside this test")
+
+        override suspend fun attachFilesystem(
+            workspaceId: Workspace.Id,
+            workerId: String,
+            rootPath: String,
+        ): WorkspaceExecutionContext = error("Workspace attachment is outside this test")
+
+        override suspend fun findById(id: Workspace.Id): Workspace? = null
+
+        override suspend fun findByProject(projectId: Project.Id): List<Workspace> = emptyList()
+
+        override suspend fun findMount(
+            workspaceId: Workspace.Id,
+            workerId: String,
+        ): WorkspaceMount? =
+            mountsFor(workerId).singleOrNull { it.workspaceId == workspaceId }
+
+        override suspend fun findMounts(workspaceId: Workspace.Id): List<WorkspaceMount> =
+            mountsFor(workerId).filter { it.workspaceId == workspaceId }
+
+        override suspend fun findMountsByWorker(workerId: String): List<WorkspaceMount> =
+            mountsFor(workerId)
+
+        override suspend fun findByWorkerPath(
+            workerId: String,
+            rootPath: String,
+        ): WorkspaceExecutionContext? = null
+
+        override suspend fun resolveExecution(
+            workspaceId: Workspace.Id,
+            workerId: String,
+        ): WorkspaceExecutionContext = error("Workspace resolution is outside this test")
+
+        override suspend fun resolveRuntime(
+            workspaceId: Workspace.Id,
+            workerId: String,
+        ): RuntimeEnvironmentContext.WorkspaceBound =
+            error("Workspace runtime resolution is outside this test")
+
+        private fun mountsFor(requestedWorkerId: String): List<WorkspaceMount> =
+            if (requestedWorkerId == workerId) {
+                workspaceIds.map { workspaceId ->
+                    WorkspaceMount(
+                        workspaceId = workspaceId,
+                        workerId = workerId,
+                        rootPath = "/workspace/${workspaceId.value}",
+                        createdAt = now,
+                        updatedAt = now,
+                    )
+                }
+            } else {
+                emptyList()
+            }
+    }
 
     private fun <T : Any> objectProvider(value: T): ObjectProvider<T> =
         object : ObjectProvider<T> {

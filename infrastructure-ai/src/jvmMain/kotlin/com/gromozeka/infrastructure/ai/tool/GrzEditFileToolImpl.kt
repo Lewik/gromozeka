@@ -4,6 +4,7 @@ import com.gromozeka.domain.tool.filesystem.GrzEditFileTool
 import com.gromozeka.domain.tool.filesystem.EditFileRequest
 import org.slf4j.LoggerFactory
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.requiredWorkspaceRootPath
 import org.springframework.stereotype.Service
 import java.io.File
 
@@ -20,11 +21,9 @@ class GrzEditFileToolImpl : GrzEditFileTool {
     private val logger = LoggerFactory.getLogger(GrzEditFileToolImpl::class.java)
     
     override fun execute(request: EditFileRequest, context: ToolExecutionContext?): Map<String, Any> {
+        val workspaceRootPath = context.requiredWorkspaceRootPath()
         return try {
-            val projectPath = context?.getContext()?.get("projectPath") as? String
-                ?: error("Project path is required in tool context - this is a bug!")
-            
-            val file = resolveFile(request.file_path, projectPath)
+            val file = resolveFile(request.file_path, workspaceRootPath)
             
             when {
                 !file.exists() -> mapOf("error" to "File not found: ${request.file_path}")
@@ -67,8 +66,8 @@ class GrzEditFileToolImpl : GrzEditFileTool {
         }
     }
     
-    private fun resolveFile(path: String, projectPath: String): File {
+    private fun resolveFile(path: String, workspaceRootPath: String): File {
         val file = File(path)
-        return if (file.isAbsolute) file else File(projectPath, path)
+        return if (file.isAbsolute) file else File(workspaceRootPath, path)
     }
 }

@@ -11,7 +11,8 @@ import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
-import com.gromozeka.domain.model.WorkspaceDirectoryListing
+import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -73,9 +74,7 @@ data class FindAgentRequest(
 
 @Serializable
 @SerialName("find_agents")
-data class FindAgentsRequest(
-    val projectPath: String? = null,
-) : ClientRequest
+data object FindAgentsRequest : ClientRequest
 
 @Serializable
 @SerialName("create_agent")
@@ -105,20 +104,6 @@ data class DeleteAgentRequest(
 @Serializable
 @SerialName("count_agents")
 data object CountAgentsRequest : ClientRequest
-
-@Serializable
-@SerialName("assemble_agent_system_prompt")
-data class AssembleAgentSystemPromptRequest(
-    val agent: AgentDefinition,
-    val project: Project,
-) : ClientRequest
-
-@Serializable
-@SerialName("assemble_prompt_system_prompt")
-data class AssemblePromptSystemPromptRequest(
-    val promptIds: List<Prompt.Id>,
-    val project: Project,
-) : ClientRequest
 
 @Serializable
 @SerialName("find_prompt")
@@ -156,28 +141,17 @@ data object ResetAllBuiltinPromptsRequest : ClientRequest
 data object ImportAllClaudeMdRequest : ClientRequest
 
 @Serializable
-@SerialName("get_or_create_project")
-data class GetOrCreateProjectRequest(
-    val path: String,
+@SerialName("create_project")
+data class CreateProjectRequest(
+    val name: String,
+    val description: String? = null,
 ) : ClientRequest
 
-@Serializable
-@SerialName("browse_workspace")
-data class BrowseWorkspaceRequest(
-    val path: String? = null,
-    val includeFiles: Boolean = true,
-) : ClientRequest
 
 @Serializable
 @SerialName("find_project_by_id")
 data class FindProjectByIdRequest(
     val projectId: Project.Id,
-) : ClientRequest
-
-@Serializable
-@SerialName("find_project_by_path")
-data class FindProjectByPathRequest(
-    val path: String,
 ) : ClientRequest
 
 @Serializable
@@ -189,7 +163,8 @@ data class UpdateProjectLastUsedRequest(
 @Serializable
 @SerialName("create_conversation")
 data class CreateConversationRequest(
-    val projectPath: String,
+    val projectId: Project.Id,
+    val workspaceId: Workspace.Id,
     val agentDefinitionId: AgentDefinition.Id,
     val displayName: String = "",
 ) : ClientRequest
@@ -207,6 +182,12 @@ data class GetProjectRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("get_workspace")
+data class GetWorkspaceRequest(
+    val conversationId: Conversation.Id,
+) : ClientRequest
+
+@Serializable
 @SerialName("find_recent_projects")
 data class FindRecentProjectsRequest(
     val limit: Int = 100,
@@ -215,7 +196,25 @@ data class FindRecentProjectsRequest(
 @Serializable
 @SerialName("find_conversations_by_project")
 data class FindConversationsByProjectRequest(
-    val projectPath: String,
+    val projectId: Project.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("find_workspace")
+data class FindWorkspaceRequest(
+    val workspaceId: Workspace.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("find_workspaces_by_project")
+data class FindWorkspacesByProjectRequest(
+    val projectId: Project.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("find_workspace_mounts")
+data class FindWorkspaceMountsRequest(
+    val workspaceId: Workspace.Id,
 ) : ClientRequest
 
 @Serializable
@@ -286,7 +285,6 @@ data class SquashMessagesWithAiRequest(
     val messageIds: List<Conversation.Message.Id>,
     val squashType: SquashType,
     val runtimeSelection: AiRuntimeSelection,
-    val projectPath: String?,
 ) : ClientRequest
 
 @Serializable
@@ -479,12 +477,6 @@ data class CountResponse(
 ) : ServerResponse
 
 @Serializable
-@SerialName("text_list")
-data class TextListResponse(
-    val items: List<String>,
-) : ServerResponse
-
-@Serializable
 @SerialName("prompt")
 data class PromptResponse(
     val prompt: Prompt?,
@@ -529,10 +521,23 @@ data class ProjectsResponse(
 ) : ServerResponse
 
 @Serializable
-@SerialName("workspace_directory")
-data class WorkspaceDirectoryResponse(
-    val listing: WorkspaceDirectoryListing,
+@SerialName("workspace")
+data class WorkspaceResponse(
+    val workspace: Workspace?,
 ) : ServerResponse
+
+@Serializable
+@SerialName("workspaces")
+data class WorkspacesResponse(
+    val workspaces: List<Workspace>,
+) : ServerResponse
+
+@Serializable
+@SerialName("workspace_mounts")
+data class WorkspaceMountsResponse(
+    val mounts: List<WorkspaceMount>,
+) : ServerResponse
+
 
 @Serializable
 @SerialName("conversations")

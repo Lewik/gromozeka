@@ -197,7 +197,6 @@ private fun AiEmbeddingResponse.toCassetteSnapshot(): AiEmbeddingResponseSnapsho
 private fun AiEmbeddingRequest.toEmbeddingCassetteRequestJson() =
     buildJsonObject {
         put("modelConfigurationId", selection.modelConfigurationId.value)
-        put("projectPath", projectPath?.normalizeEmbeddingCassetteRuntimeText())
         putJsonArray("inputs") {
             inputs.forEach { input -> add(kotlinx.serialization.json.JsonPrimitive(input.normalizeEmbeddingCassetteRuntimeText())) }
         }

@@ -1,10 +1,11 @@
 package com.gromozeka.infrastructure.runtime
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkerAffinity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -37,7 +38,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
     }
 
     @Test
-    fun `worker consumes tasks addressed to its stable worker affinity`() {
+    fun `worker consumes tasks addressed to its stable worker id`() {
         val descriptor = ConversationRuntimeWorkerDescriptor(
             id = ConversationRuntimeWorkerId("local-worker"),
             capabilities = setOf(
@@ -47,10 +48,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
         )
         val workerRoute = RabbitRuntimeWorkRoute(
             lane = RabbitRuntimeWorkLane.LOCAL_AGENT,
-            affinity = ConversationRuntimeWorkerAffinity(
-                kind = ConversationRuntimeWorkerAffinity.Kind.WORKER,
-                value = descriptor.id.value,
-            ),
+            workerId = descriptor.id,
         )
 
         assertTrue(workerRoute in descriptor.consumerRoutes())
@@ -84,10 +82,6 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
             ),
         )
-        val projectAffinity = ConversationRuntimeWorkerAffinity(
-            kind = ConversationRuntimeWorkerAffinity.Kind.PROJECT,
-            value = "project-1",
-        )
         val localToolItem = workItem(
             conversationId = conversationId,
             taskId = "local-tool-task",
@@ -95,11 +89,10 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
             ),
-            affinity = projectAffinity,
-        )
-        val wrongProjectAffinity = ConversationRuntimeWorkerAffinity(
-            kind = ConversationRuntimeWorkerAffinity.Kind.PROJECT,
-            value = "project-2",
+            target = ConversationRuntimeTaskTarget(
+                workerId = ConversationRuntimeWorkerId("local-worker"),
+                workspaceId = Workspace.Id("workspace-1"),
+            ),
         )
         val topology = RabbitConversationRuntimeWorkTopology(
             connectionFactory = connectionFactory,
@@ -124,15 +117,13 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
             ),
-            affinities = setOf(projectAffinity),
         )
-        val wrongProjectWorkerDescriptor = ConversationRuntimeWorkerDescriptor(
-            id = ConversationRuntimeWorkerId("wrong-project-worker"),
+        val wrongWorkerDescriptor = ConversationRuntimeWorkerDescriptor(
+            id = ConversationRuntimeWorkerId("wrong-worker"),
             capabilities = setOf(
                 ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
             ),
-            affinities = setOf(wrongProjectAffinity),
         )
         val turnConsumer = RabbitConversationRuntimeWorkConsumer(
             connectionFactory = connectionFactory,
@@ -148,12 +139,12 @@ class RabbitConversationRuntimeWorkBrokerTest {
             maxRedeliveries = 8,
             runtimeWorkerDescriptor = localWorkerDescriptor,
         )
-        val wrongProjectConsumer = RabbitConversationRuntimeWorkConsumer(
+        val wrongWorkerConsumer = RabbitConversationRuntimeWorkConsumer(
             connectionFactory = connectionFactory,
             rabbitTemplate = RabbitTemplate(connectionFactory),
             topology = topology,
             maxRedeliveries = 8,
-            runtimeWorkerDescriptor = wrongProjectWorkerDescriptor,
+            runtimeWorkerDescriptor = wrongWorkerDescriptor,
         )
 
         try {
@@ -174,8 +165,8 @@ class RabbitConversationRuntimeWorkBrokerTest {
 
             publisher.submit(localToolItem)
             assertNull(withTimeoutOrNull(300) { turnConsumer.deliveries.first() })
-            wrongProjectConsumer.start()
-            assertNull(withTimeoutOrNull(300) { wrongProjectConsumer.deliveries.first() })
+            wrongWorkerConsumer.start()
+            assertNull(withTimeoutOrNull(300) { wrongWorkerConsumer.deliveries.first() })
 
             localConsumer.start()
             val localDelivery = withTimeout(2_000) { localConsumer.deliveries.first() }
@@ -184,11 +175,11 @@ class RabbitConversationRuntimeWorkBrokerTest {
         } finally {
             turnConsumer.stop()
             localConsumer.stop()
-            wrongProjectConsumer.stop()
+            wrongWorkerConsumer.stop()
             val declaredRoutes = buildSet {
                 addAll(turnWorkerDescriptor.consumerRoutes())
                 addAll(localWorkerDescriptor.consumerRoutes())
-                addAll(wrongProjectWorkerDescriptor.consumerRoutes())
+                addAll(wrongWorkerDescriptor.consumerRoutes())
                 add(RabbitRuntimeWorkRoute.from(llmItem.requirements))
                 add(RabbitRuntimeWorkRoute.from(localToolItem.requirements))
             }
@@ -208,7 +199,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
         conversationId: Conversation.Id,
         taskId: String,
         capabilities: Set<ConversationRuntimeWorkerCapability>,
-        affinity: ConversationRuntimeWorkerAffinity? = null,
+        target: ConversationRuntimeTaskTarget? = null,
     ): ConversationRuntimeWorkItem =
         ConversationRuntimeWorkItem(
             conversationId = conversationId,
@@ -216,7 +207,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
             taskId = ConversationRuntimeTask.Id(taskId),
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = capabilities,
-                affinity = affinity,
+                target = target,
             ),
             createdAt = Clock.System.now(),
         )

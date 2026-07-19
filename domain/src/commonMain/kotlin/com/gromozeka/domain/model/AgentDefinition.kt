@@ -12,7 +12,7 @@ import kotlin.jvm.JvmInline
  * Agent definition - reusable configuration template for AI agent behavior.
  *
  * AgentDefinition is a data class representing agent configuration that can be:
- * - Stored as files (builtin, global, project-specific)
+ * - Stored as files (builtin, global, workspace-specific)
  * - Created dynamically (inline)
  * - Reused across multiple conversations
  *
@@ -86,13 +86,13 @@ data class AgentDefinition(
         object Global : Type()
 
         /**
-         * Project-specific agent stored in project directory.
-         * Versioned with project code.
-         * ID format: ".gromozeka/agents/architect.json" (relative to project root)
+         * Workspace-specific agent stored in the mounted filesystem tree.
+         * Versioned with workspace code.
+         * ID format: "workspace:architect.agent.json"
          */
         @Serializable
-        @SerialName("project")
-        object Project : Type()
+        @SerialName("workspace")
+        object Workspace : Type()
 
         /**
          * Inline agent created dynamically (e.g., via MCP).

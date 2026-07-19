@@ -90,21 +90,4 @@ class LanguageRegistryImpl : LanguageRegistry {
         }
     }
     
-    /**
-     * Scan project directory for languages
-     */
-    fun scanProjectLanguages(projectPath: Path): Set<String> {
-        val languages = mutableSetOf<String>()
-        
-        try {
-            projectPath.toFile().walkTopDown()
-                .filter { it.isFile }
-                .mapNotNull { languageForFile(it.path) }
-                .forEach { languages.add(it) }
-        } catch (e: Exception) {
-            println("[LanguageRegistry] Error scanning project languages: ${e.message}")
-        }
-        
-        return languages
-    }
 }

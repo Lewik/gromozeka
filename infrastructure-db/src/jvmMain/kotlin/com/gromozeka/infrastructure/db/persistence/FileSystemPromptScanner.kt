@@ -5,7 +5,6 @@ import klog.KLoggers
 import kotlinx.datetime.Clock
 import org.springframework.stereotype.Component
 import java.io.File
-import java.util.UUID
 
 @Component
 class FileSystemPromptScanner {
@@ -22,25 +21,10 @@ class FileSystemPromptScanner {
             return emptyList()
         }
 
-        return scanPromptsFromDirectory(promptsDir, isGlobal = true)
+        return scanGlobalPromptsFromDirectory(promptsDir)
     }
     
-    fun scanProjectPrompts(projectPath: String): List<Prompt> {
-        val promptsDir = File(projectPath, ".gromozeka/prompts")
-        
-        if (!promptsDir.exists() || !promptsDir.isDirectory) {
-            log.debug { "Project prompts directory does not exist: ${promptsDir.absolutePath}" }
-            return emptyList()
-        }
-
-        return scanPromptsFromDirectory(promptsDir, isGlobal = false)
-    }
-
-    
-    private fun scanPromptsFromDirectory(
-        directory: File,
-        isGlobal: Boolean
-    ): List<Prompt> {
+    private fun scanGlobalPromptsFromDirectory(directory: File): List<Prompt> {
         val promptFiles = directory.listFiles { file -> 
             file.isFile && file.extension == "md"
         } ?: emptyArray()
@@ -52,18 +36,11 @@ class FileSystemPromptScanner {
                     .replace("-", " ")
                     .replaceFirstChar { it.uppercase() }
                 
-                val id = if (isGlobal) {
-                    Prompt.Id("global:${file.absolutePath}")
-                } else {
-                    Prompt.Id("project:${file.name}")
-                }
-                val type = if (isGlobal) Prompt.Type.Global else Prompt.Type.Project
-                
                 Prompt(
-                    id = id,
+                    id = Prompt.Id("global:${file.absolutePath}"),
                     name = name,
                     content = content,
-                    type = type,
+                    type = Prompt.Type.Global,
                     createdAt = Clock.System.now(),
                     updatedAt = Clock.System.now()
                 )
@@ -73,88 +50,47 @@ class FileSystemPromptScanner {
             }
         }
 
-        val typeName = if (isGlobal) "global" else "project"
-        log.info { "Scanned ${prompts.size} $typeName prompts from ${directory.absolutePath}" }
+        log.info { "Scanned ${prompts.size} global prompts from ${directory.absolutePath}" }
         return prompts
     }
 
-    /**
-     * Loads a single prompt by ID from filesystem.
-     * Supports global:path and project:filename formats.
-     */
-    fun loadPromptById(id: Prompt.Id, projectPath: String?, logMissing: Boolean = true): Prompt? {
-        val idValue = id.value
+    fun loadGlobalPromptById(id: Prompt.Id): Prompt? {
+        require(id.value.startsWith("global:")) { "Not a global prompt id: ${id.value}" }
+        val path = id.value.removePrefix("global:")
+        val resolvedPath = resolveGlobalPath(path)
+        return loadPromptFile(id, File(resolvedPath), Prompt.Type.Global)
+    }
 
-        return when {
-            idValue.startsWith("global:") -> {
-                val path = idValue.removePrefix("global:")
-                val resolvedPath = resolveGlobalPath(path)
-                val file = File(resolvedPath)
+    fun loadWorkspacePromptById(id: Prompt.Id, workspaceRootPath: String): Prompt? {
+        require(id.value.startsWith("workspace:")) { "Not a workspace prompt id: ${id.value}" }
+        val fileName = id.value.removePrefix("workspace:")
+        val file = File(workspaceRootPath, ".gromozeka/prompts/$fileName")
+        return loadPromptFile(id, file, Prompt.Type.Workspace)
+    }
 
-                if (!file.exists() || !file.isFile) {
-                    if (logMissing) {
-                        log.warn { "Global prompt file not found: $resolvedPath" }
-                    }
-                    return null
-                }
+    private fun loadPromptFile(id: Prompt.Id, file: File, type: Prompt.Type): Prompt? {
+        if (!file.exists() || !file.isFile) {
+            log.warn { "Prompt file not found: ${file.absolutePath}" }
+            return null
+        }
 
-                try {
-                    val content = file.readText()
-                    val name = file.nameWithoutExtension
-                        .replace("-", " ")
-                        .replaceFirstChar { it.uppercase() }
+        return try {
+            val content = file.readText()
+            val name = file.nameWithoutExtension
+                .replace("-", " ")
+                .replaceFirstChar { it.uppercase() }
 
-                    Prompt(
-                        id = id,
-                        name = name,
-                        content = content,
-                        type = Prompt.Type.Global,
-                        createdAt = Clock.System.now(),
-                        updatedAt = Clock.System.now()
-                    )
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to load global prompt: $resolvedPath" }
-                    null
-                }
-            }
-
-            idValue.startsWith("project:") -> {
-                if (projectPath == null) {
-                    log.warn { "Project path not provided for project prompt: $idValue" }
-                    return null
-                }
-
-                val fileName = idValue.removePrefix("project:")
-                val file = File(projectPath, ".gromozeka/prompts/$fileName")
-
-                if (!file.exists() || !file.isFile) {
-                    if (logMissing) {
-                        log.warn { "Project prompt file not found: ${file.absolutePath}" }
-                    }
-                    return null
-                }
-
-                try {
-                    val content = file.readText()
-                    val name = file.nameWithoutExtension
-                        .replace("-", " ")
-                        .replaceFirstChar { it.uppercase() }
-
-                    Prompt(
-                        id = id,
-                        name = name,
-                        content = content,
-                        type = Prompt.Type.Project,
-                        createdAt = Clock.System.now(),
-                        updatedAt = Clock.System.now()
-                    )
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to load project prompt: ${file.absolutePath}" }
-                    null
-                }
-            }
-
-            else -> null
+            Prompt(
+                id = id,
+                name = name,
+                content = content,
+                type = type,
+                createdAt = Clock.System.now(),
+                updatedAt = Clock.System.now()
+            )
+        } catch (e: Exception) {
+            log.error(e) { "Failed to load prompt: ${file.absolutePath}" }
+            null
         }
     }
 

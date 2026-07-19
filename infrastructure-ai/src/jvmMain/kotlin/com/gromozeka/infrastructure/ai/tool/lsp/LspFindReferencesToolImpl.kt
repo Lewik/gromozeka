@@ -5,6 +5,7 @@ import com.gromozeka.domain.tool.lsp.LspFindReferencesTool
 import com.gromozeka.infrastructure.ai.service.lsp.LspClientService
 import klog.KLoggers
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.requiredWorkspaceRootPath
 import org.springframework.stereotype.Service
 import java.nio.file.Path
 
@@ -24,22 +25,20 @@ class LspFindReferencesToolImpl(
         request: LspFindReferencesRequest,
         context: ToolExecutionContext?
     ): Map<String, Any> {
+        val workspaceRootPath = context.requiredWorkspaceRootPath()
         return try {
-            val projectPath = context?.getContext()?.get("projectPath") as? String
-                ?: return mapOf("error" to "Project path is required in tool context")
-
             log.info {
                 "Finding references for ${request.language} at ${request.file_path}:${request.line}:${request.column} " +
                 "(includeDeclaration=${request.include_declaration})"
             }
 
-            val filePath = resolveFilePath(request.file_path, projectPath)
+            val filePath = resolveFilePath(request.file_path, workspaceRootPath)
 
             if (!filePath.toFile().exists()) {
                 return mapOf("error" to "File not found: ${request.file_path}")
             }
 
-            val client = lspClientService.getClient(request.language, projectPath)
+            val client = lspClientService.getClient(request.language, workspaceRootPath)
 
             val locations = client.findReferences(
                 filePath.toString(),
@@ -78,12 +77,12 @@ class LspFindReferencesToolImpl(
         }
     }
 
-    private fun resolveFilePath(filePath: String, projectPath: String): Path {
+    private fun resolveFilePath(filePath: String, workspaceRootPath: String): Path {
         val path = Path.of(filePath)
         return if (path.isAbsolute) {
             path
         } else {
-            Path.of(projectPath).resolve(filePath)
+            Path.of(workspaceRootPath).resolve(filePath)
         }
     }
 

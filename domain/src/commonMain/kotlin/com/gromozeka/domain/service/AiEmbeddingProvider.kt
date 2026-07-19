@@ -9,7 +9,6 @@ interface AiEmbeddingProvider {
 data class AiEmbeddingRequest(
     val selection: AiRuntimeSelection,
     val inputs: List<String>,
-    val projectPath: String? = null,
 ) {
     init {
         require(inputs.isNotEmpty()) { "AI embedding request inputs must not be empty" }

@@ -10,7 +10,6 @@ import com.gromozeka.application.service.memory.MEMORY_REBUILD_EMBEDDINGS_TOOL_N
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_WRITE_SURFACE_CONTEXT_KEY
-import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ToolCancellationSignal
@@ -39,7 +38,7 @@ internal const val MCP_MEMORY_HELP_TOOL_NAME = "memory_help"
 
 @Service
 class GromozekaMcpServerFactory(
-    private val aiToolProvider: AiToolProvider,
+    private val providedTools: List<AiToolCallback>,
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json {
@@ -50,7 +49,6 @@ class GromozekaMcpServerFactory(
 
     fun create(): Server {
         val toolExposure = GromozekaMcpToolExposure.fromEnvironment()
-        val providedTools = aiToolProvider.getTools()
         val availableToolNames = providedTools
             .map { it.definition.name }
             .toSet() + MCP_MEMORY_HELP_TOOL_NAME

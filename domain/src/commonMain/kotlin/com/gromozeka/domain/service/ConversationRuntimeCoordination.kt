@@ -3,6 +3,10 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.tool.AiToolDescriptor
+import com.gromozeka.domain.tool.AiToolExecutionScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
@@ -35,6 +39,11 @@ data class ConversationRuntimeTask(
         if (payload is Payload.UserTurn) {
             require(payload.userMessage.conversationId == conversationId) {
                 "Conversation runtime task ${id.value} user message belongs to another conversation"
+            }
+        }
+        if (payload is Payload.ToolExecution) {
+            require(requirements.target != null) {
+                "Conversation tool execution task ${id.value} requires an exact worker target"
             }
         }
     }
@@ -71,6 +80,7 @@ data class ConversationRuntimeTask(
             val agent: AgentDefinition,
             val iteration: Int,
             val toolCalls: List<ContentItem.ToolCall>,
+            val returnDirect: Boolean,
         ) : Payload {
             init {
                 require(iteration >= 1) { "Conversation tool execution iteration must be positive" }
@@ -146,12 +156,12 @@ data class ConversationRuntimeTask(
  * Worker selection contract for distributed runtime implementations.
  *
  * `capabilities` says what the worker must be able to do.
- * `affinity` narrows execution to a machine/project/workspace when local state matters.
+ * `target` pins execution to one worker and, when needed, one mounted workspace.
  */
 @Serializable
 data class ConversationRuntimeTaskRequirements(
     val capabilities: Set<ConversationRuntimeWorkerCapability>,
-    val affinity: ConversationRuntimeWorkerAffinity? = null,
+    val target: ConversationRuntimeTaskTarget? = null,
 ) {
     init {
         require(capabilities.isNotEmpty()) { "Conversation runtime task must require at least one worker capability" }
@@ -159,19 +169,26 @@ data class ConversationRuntimeTaskRequirements(
             require(ConversationRuntimeWorkerCapability.TOOL_EXECUTION in capabilities) {
                 "Local agent tool capability requires tool execution capability"
             }
-            require(affinity != null) {
-                "Local agent tool execution requires worker affinity"
-            }
         }
     }
 
     fun isSatisfiedBy(
+        workerId: ConversationRuntimeWorkerId,
         workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
-        workerAffinities: Set<ConversationRuntimeWorkerAffinity>,
+        workerWorkspaceIds: Set<Workspace.Id>,
     ): Boolean =
         workerCapabilities.containsAll(capabilities) &&
-            (affinity == null || affinity in workerAffinities)
+            (target == null || (
+                target.workerId == workerId &&
+                    (target.workspaceId == null || target.workspaceId in workerWorkspaceIds)
+                ))
 }
+
+@Serializable
+data class ConversationRuntimeTaskTarget(
+    val workerId: ConversationRuntimeWorkerId,
+    val workspaceId: Workspace.Id? = null,
+)
 
 @Serializable
 enum class ConversationRuntimeWorkerCapability {
@@ -205,32 +222,22 @@ data class ConversationRuntimeWorkerIdentity(
 )
 
 @Serializable
-data class ConversationRuntimeWorkerAffinity(
-    val kind: Kind,
-    val value: String,
-) {
-    init {
-        require(value.isNotBlank()) { "Conversation runtime worker affinity value must not be blank" }
-    }
-
-    @Serializable
-    enum class Kind {
-        WORKER,
-        MACHINE,
-        PROJECT,
-        WORKSPACE,
-        USER,
-    }
-}
-
-@Serializable
 data class ConversationRuntimeWorkerDescriptor(
     val id: ConversationRuntimeWorkerId,
     val capabilities: Set<ConversationRuntimeWorkerCapability>,
-    val affinities: Set<ConversationRuntimeWorkerAffinity> = emptySet(),
+    val tools: List<AiToolDescriptor> = emptyList(),
 ) {
     init {
         require(capabilities.isNotEmpty()) { "Conversation runtime worker must declare at least one capability" }
+        require(tools.isEmpty() || ConversationRuntimeWorkerCapability.TOOL_EXECUTION in capabilities) {
+            "A worker advertising tools must declare TOOL_EXECUTION"
+        }
+        require(tools.all { capabilities.containsAll(it.metadata.requiredRuntimeCapabilities) }) {
+            "A worker must declare every capability required by its advertised tools"
+        }
+        require(tools.map { it.definition.name }.distinct().size == tools.size) {
+            "Conversation runtime worker tool names must be unique"
+        }
     }
 }
 
@@ -238,7 +245,7 @@ data class ConversationRuntimeWorkerDescriptor(
 data class ConversationRuntimeWorkerRegistration(
     val identity: ConversationRuntimeWorkerIdentity,
     val capabilities: Set<ConversationRuntimeWorkerCapability>,
-    val affinities: Set<ConversationRuntimeWorkerAffinity>,
+    val tools: List<AiToolDescriptor>,
     val version: String,
     val startedAt: Instant,
     val lastHeartbeatAt: Instant,
@@ -246,6 +253,15 @@ data class ConversationRuntimeWorkerRegistration(
 ) {
     init {
         require(capabilities.isNotEmpty()) { "Conversation runtime worker must declare at least one capability" }
+        require(tools.isEmpty() || ConversationRuntimeWorkerCapability.TOOL_EXECUTION in capabilities) {
+            "A worker advertising tools must declare TOOL_EXECUTION"
+        }
+        require(tools.all { capabilities.containsAll(it.metadata.requiredRuntimeCapabilities) }) {
+            "A worker must declare every capability required by its advertised tools"
+        }
+        require(tools.map { it.definition.name }.distinct().size == tools.size) {
+            "Registered worker tool names must be unique"
+        }
         require(version.isNotBlank()) { "Conversation runtime worker version must not be blank" }
         require(lastHeartbeatAt >= startedAt) { "Conversation runtime worker heartbeat cannot precede startup" }
         require(stoppedAt == null || stoppedAt >= startedAt) {
@@ -547,7 +563,7 @@ interface ConversationRuntimeCoordinator {
         taskId: ConversationRuntimeTask.Id,
         worker: ConversationRuntimeWorkerIdentity,
         workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
-        workerAffinities: Set<ConversationRuntimeWorkerAffinity>,
+        workerWorkspaceIds: Set<Workspace.Id>,
     ): ConversationRuntimeTask?
 
     suspend fun completeActiveTask(

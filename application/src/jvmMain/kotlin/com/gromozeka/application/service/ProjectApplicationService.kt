@@ -8,21 +8,14 @@ import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.nio.file.Files
-import java.nio.file.Path
-
 /**
  * Application service for project management.
  *
  * Handles project lifecycle including automatic creation on first use
  * and last-used timestamp tracking.
  *
- * Projects organize conversations by workspace/codebase and map to
- * file system directories. Service ensures projects exist before
- * creating dependent entities (conversations, contexts).
- *
- * Configuration (name, description, domain_patterns) read from
- * .gromozeka/project.json via ProjectRepository.
+ * Projects organize conversations and workspaces without owning a filesystem
+ * path or worker placement.
  */
 @Service
 class ProjectApplicationService(
@@ -30,29 +23,28 @@ class ProjectApplicationService(
 ) : ProjectDomainService {
     private val log = KLoggers.logger(this)
 
-    /**
-     * Retrieves project by path or creates if doesn't exist.
-     *
-     * Updates lastUsedAt timestamp on existing projects.
-     * Creates new project with auto-generated name from path.
-     *
-     * This is the primary method for ensuring project existence
-     * before creating conversations or contexts.
-     *
-     * @param path absolute file system path to project directory
-     * @return existing or newly created project
-     */
     @Transactional
-    override suspend fun getOrCreate(path: String): Project {
-        val normalizedPath = normalizeProjectPath(path)
-        val existing = projectRepository.findByPath(normalizedPath)
-        if (existing != null) {
-            updateLastUsed(existing.id)
-            return existing
+    override suspend fun create(
+        name: String,
+        description: String?,
+        id: Project.Id?,
+    ): Project {
+        val normalizedName = name.trim()
+        require(normalizedName.isNotEmpty()) { "Project name must not be blank" }
+        val projectId = id ?: Project.Id(uuid7())
+        require(projectRepository.findById(projectId) == null) {
+            "Project already exists: ${projectId.value}"
         }
-
-        val newProject = createProject(normalizedPath)
-        return projectRepository.save(newProject)
+        val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
+        return projectRepository.save(
+            Project(
+                id = projectId,
+                name = normalizedName,
+                description = description?.trim()?.takeIf { it.isNotEmpty() },
+                createdAt = now,
+                lastUsedAt = now,
+            )
+        )
     }
 
     /**
@@ -63,15 +55,6 @@ class ProjectApplicationService(
      */
     override suspend fun findById(id: Project.Id): Project? =
         projectRepository.findById(id)
-
-    /**
-     * Finds project by file system path.
-     *
-     * @param path absolute file system path (exact match, case-sensitive)
-     * @return project if found, null otherwise
-     */
-    override suspend fun findByPath(path: String): Project? =
-        projectRepository.findByPath(normalizeLookupPath(path))
 
     /**
      * Finds most recently used projects.
@@ -97,39 +80,4 @@ class ProjectApplicationService(
         return projectRepository.save(updated)
     }
 
-    /**
-     * Creates new project with auto-generated configuration.
-     *
-     * Internal helper for getOrCreate().
-     * Generates name from last path component, sets initial timestamps.
-     *
-     * @param path absolute file system path
-     * @return new project instance (not yet persisted)
-     */
-    private fun createProject(path: String): Project {
-        val projectPath = Path.of(path)
-        val name = projectPath.fileName?.toString() ?: projectPath.toString()
-        val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
-
-        return Project(
-            id = Project.Id(uuid7()),
-            path = path,
-            name = name,
-            createdAt = now,
-            lastUsedAt = now
-        )
-    }
-
-    private fun normalizeProjectPath(path: String): String {
-        require(path.isNotBlank()) { "Project path cannot be blank" }
-        val resolved = Path.of(path).toRealPath()
-        require(Files.isDirectory(resolved)) { "Project path is not a directory: $resolved" }
-        return resolved.toString()
-    }
-
-    private fun normalizeLookupPath(path: String): String {
-        require(path.isNotBlank()) { "Project path cannot be blank" }
-        val normalized = Path.of(path).toAbsolutePath().normalize()
-        return if (Files.exists(normalized)) normalized.toRealPath().toString() else normalized.toString()
-    }
 }

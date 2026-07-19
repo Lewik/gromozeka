@@ -9,9 +9,9 @@
     "builtin:memory.knowledge.md",
     "builtin:agent-architecture.knowledge.md",
     "builtin:meta.role.md",
-    "project:project-agent-design.knowledge.md",
-    "project:agents-roster.knowledge.md",
-    "project:architecture.knowledge.md",
+    "workspace:project-agent-design.knowledge.md",
+    "workspace:agents-roster.knowledge.md",
+    "workspace:architecture.knowledge.md",
     "env"
   ],
   "runtimeSelection": {

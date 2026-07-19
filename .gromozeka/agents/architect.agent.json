@@ -1,5 +1,5 @@
 {
-  "id": "project:architect.agent.json",
+  "id": "workspace:architect.agent.json",
   "name": "Архитектор",
   "prompts": [
     "builtin:common-prompt-prefix.md",
@@ -7,8 +7,8 @@
     "builtin:common.knowledge.md",
     "builtin:memory.knowledge.md",
     "builtin:developer.role.md",
-    "project:project-common.knowledge.md",
-    "project:architect.role.md",
+    "workspace:project-common.knowledge.md",
+    "workspace:architect.role.md",
     "env"
   ],
   "runtimeSelection": {
@@ -24,7 +24,7 @@
   },
   "description": "Domain architect",
   "type": {
-    "kind": "project"
+    "kind": "workspace"
   },
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2026-03-18T00:00:00Z"

@@ -2,7 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.application.service.MemoryApplicationService
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.memory.MemoryIngestPlan
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
@@ -18,16 +18,20 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "true",
+)
 class MemoryOperationExecutor internal constructor(
     private val contextResolver: MemoryOperationContextResolver,
     private val memoryApplicationService: MemoryApplicationService,
@@ -41,195 +45,6 @@ class MemoryOperationExecutor internal constructor(
     private val rememberContentResolver = MemoryRememberContentResolver()
     private val sourceMapper = ConversationMessageMemorySourceMapper()
     private val resultJson = Json { ignoreUnknownKeys = true }
-
-    suspend fun prepareRememberThread(
-        conversationIdValue: String,
-        namespaceValue: String? = null,
-    ): List<PreparedMemoryOperation> {
-        val conversationId = Conversation.Id(conversationIdValue)
-        val context = contextResolver.resolveConversation(conversationId)
-        val conversation = requireNotNull(context.conversation)
-        val namespace = contextResolver.resolveNamespace(namespaceValue)
-        return context.threadMessages.mapNotNull { message ->
-            if (message.isSyntheticMemoryMessage()) {
-                return@mapNotNull null
-            }
-            val source = sourceMapper.toChatTurn(
-                namespace = namespace,
-                conversationId = conversationId,
-                threadId = conversation.currentThread,
-                message = message,
-            ) ?: return@mapNotNull null
-            PreparedMemoryOperation(
-                request = MemoryOperationRequest.RememberMessage(
-                    namespace = namespace,
-                    conversationId = conversationId,
-                    threadId = conversation.currentThread,
-                    targetMessageId = message.id,
-                    forceWrite = null,
-                    confirmedPreflightRunId = null,
-                ),
-                summary = "Memory remember queued",
-                inputHash = source.contentHash,
-            )
-        }
-    }
-
-    suspend fun prepareRememberMessage(
-        conversationIdValue: String,
-        targetMessageId: String? = null,
-        forceWrite: Boolean? = null,
-        confirmedPreflightRunId: String? = null,
-        namespaceValue: String? = null,
-    ): PreparedMemoryOperation {
-        val conversationId = Conversation.Id(conversationIdValue)
-        val context = contextResolver.resolveConversation(conversationId)
-        val targetMessage = contextResolver.resolveTargetMessage(context.threadMessages, targetMessageId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue)
-        return PreparedMemoryOperation(
-            request = MemoryOperationRequest.RememberMessage(
-                namespace = namespace,
-                conversationId = conversationId,
-                threadId = requireNotNull(context.conversation).currentThread,
-                targetMessageId = targetMessage.id,
-                forceWrite = forceWrite,
-                confirmedPreflightRunId = confirmedPreflightRunId.toMemoryRunIdOrNull(),
-            ),
-            summary = "Memory remember queued",
-            inputHash = targetMessage.id.value.sha256(),
-        )
-    }
-
-    suspend fun prepareRememberProvidedContent(
-        conversationIdValue: String?,
-        text: String? = null,
-        filePath: String? = null,
-        rawUrl: String? = null,
-        documentType: String? = null,
-        title: String? = null,
-        sourceRef: String? = null,
-        forceWrite: Boolean? = null,
-        confirmedPreflightRunId: String? = null,
-        mode: String? = null,
-        namespaceValue: String? = null,
-        writeSurface: MemoryWriteSurface = MemoryWriteSurface.CHAT_TOOL,
-    ): PreparedMemoryOperation {
-        val content = MemoryRememberContentRequest.fromExternal(
-            text = text,
-            filePath = filePath,
-            rawUrl = rawUrl,
-            documentType = documentType,
-            title = title,
-            sourceRef = sourceRef,
-        )
-        val conversationId = conversationIdValue.toConversationIdOrNull()
-        val context = resolveContext(conversationId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue)
-        return PreparedMemoryOperation(
-            request = MemoryOperationRequest.RememberProvidedContent(
-                namespace = namespace,
-                conversationId = conversationId,
-                threadId = context.conversation?.currentThread,
-                content = content,
-                forceWrite = forceWrite,
-                confirmedPreflightRunId = confirmedPreflightRunId.toMemoryRunIdOrNull(),
-                mode = mode,
-                writeSurface = writeSurface,
-            ),
-            summary = if (content.documentType == null) "Memory remember queued" else "Document ingest queued",
-            inputHash = content.input.identityValue().sha256(),
-        )
-    }
-
-    suspend fun prepareEnrichMessage(
-        conversationIdValue: String,
-        targetMessageId: String? = null,
-        namespaceValue: String? = null,
-    ): PreparedMemoryOperation {
-        val conversationId = Conversation.Id(conversationIdValue)
-        val context = contextResolver.resolveConversation(conversationId)
-        val targetMessage = contextResolver.resolveTargetMessage(context.threadMessages, targetMessageId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue)
-        return PreparedMemoryOperation(
-            request = MemoryOperationRequest.EnrichMessage(
-                namespace = namespace,
-                conversationId = conversationId,
-                threadId = requireNotNull(context.conversation).currentThread,
-                targetMessageId = targetMessage.id,
-            ),
-            summary = "Memory context enrichment queued",
-            inputHash = targetMessage.id.value.sha256(),
-        )
-    }
-
-    suspend fun prepareEnrichProvidedContext(
-        conversationIdValue: String?,
-        contextText: String,
-        mode: String? = null,
-        namespaceValue: String? = null,
-    ): PreparedMemoryOperation {
-        val normalizedContext = contextText.trim()
-        require(normalizedContext.isNotBlank()) { "Provided context is blank." }
-        val conversationId = conversationIdValue.toConversationIdOrNull()
-        val context = resolveContext(conversationId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue)
-        return PreparedMemoryOperation(
-            request = MemoryOperationRequest.EnrichProvidedContext(
-                namespace = namespace,
-                conversationId = conversationId,
-                threadId = context.conversation?.currentThread,
-                context = normalizedContext,
-                mode = mode,
-            ),
-            summary = "Memory context enrichment queued",
-            inputHash = normalizedContext.sha256(),
-        )
-    }
-
-    suspend fun prepareAnswerMessage(
-        conversationIdValue: String,
-        targetMessageId: String? = null,
-        namespaceValue: String? = null,
-    ): PreparedMemoryOperation {
-        val conversationId = Conversation.Id(conversationIdValue)
-        val context = contextResolver.resolveConversation(conversationId)
-        val targetMessage = contextResolver.resolveTargetMessage(context.threadMessages, targetMessageId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue)
-        return PreparedMemoryOperation(
-            request = MemoryOperationRequest.AnswerMessage(
-                namespace = namespace,
-                conversationId = conversationId,
-                threadId = requireNotNull(context.conversation).currentThread,
-                targetMessageId = targetMessage.id,
-            ),
-            summary = "Memory question answering queued",
-            inputHash = targetMessage.id.value.sha256(),
-        )
-    }
-
-    suspend fun prepareAnswerProvidedQuestion(
-        conversationIdValue: String?,
-        questionText: String,
-        mode: String? = null,
-        namespaceValue: String? = null,
-    ): PreparedMemoryOperation {
-        val normalizedQuestion = questionText.trim()
-        require(normalizedQuestion.isNotBlank()) { "Provided memory question is blank." }
-        val conversationId = conversationIdValue.toConversationIdOrNull()
-        val context = resolveContext(conversationId)
-        val namespace = contextResolver.resolveNamespace(namespaceValue)
-        return PreparedMemoryOperation(
-            request = MemoryOperationRequest.AnswerProvidedQuestion(
-                namespace = namespace,
-                conversationId = conversationId,
-                threadId = context.conversation?.currentThread,
-                question = normalizedQuestion,
-                mode = mode,
-            ),
-            summary = "Memory question answering queued",
-            inputHash = normalizedQuestion.sha256(),
-        )
-    }
 
     internal suspend fun execute(
         rootRun: MemoryRun,
@@ -314,15 +129,17 @@ class MemoryOperationExecutor internal constructor(
         val context = when (request.targetKind) {
             MemoryMaintenanceTargetKind.CONVERSATION_ID ->
                 contextResolver.resolveConversation(Conversation.Id(request.targetValue))
-            MemoryMaintenanceTargetKind.PROJECT_ID ->
-                contextResolver.resolveProjectId(Project.Id(request.targetValue))
+            MemoryMaintenanceTargetKind.WORKSPACE_ID ->
+                contextResolver.resolveWorkspaceId(Workspace.Id(request.targetValue))
+            MemoryMaintenanceTargetKind.STANDALONE ->
+                contextResolver.resolveStandalone()
         }
         val result = when (request.action) {
             MemoryMaintenanceAction.CONSOLIDATE -> {
                 val execution = memoryApplicationService.runNoteConsolidation(
                     conversationId = request.executionConversationId,
                     agent = context.agent,
-                    project = context.project,
+                    runtimeContext = context.runtimeContext,
                     runtimeSystemPrompts = context.systemPrompts,
                     runtimeTools = context.memoryTools,
                     namespace = request.namespace,
@@ -348,7 +165,7 @@ class MemoryOperationExecutor internal constructor(
                 val execution = memoryApplicationService.runMemoryRepair(
                     conversationId = request.executionConversationId,
                     agent = context.agent,
-                    project = context.project,
+                    runtimeContext = context.runtimeContext,
                     runtimeSystemPrompts = context.systemPrompts,
                     runtimeTools = context.memoryTools,
                     namespace = request.namespace,
@@ -367,7 +184,7 @@ class MemoryOperationExecutor internal constructor(
                 val execution = memoryApplicationService.runEntityMaintenance(
                     conversationId = request.executionConversationId,
                     agent = context.agent,
-                    project = context.project,
+                    runtimeContext = context.runtimeContext,
                     runtimeSystemPrompts = context.systemPrompts,
                     runtimeTools = context.memoryTools,
                     namespace = request.namespace,
@@ -384,7 +201,6 @@ class MemoryOperationExecutor internal constructor(
             MemoryMaintenanceAction.APPLY_RETENTION -> {
                 val execution = memoryApplicationService.runRetention(
                     conversationId = request.executionConversationId,
-                    project = context.project,
                     namespace = request.namespace,
                 )
                 MemoryMaintenanceExecutionResult(
@@ -471,7 +287,7 @@ class MemoryOperationExecutor internal constructor(
             threadId = request.threadId,
             message = targetMessage,
             agent = context.agent,
-            project = context.project,
+            runtimeContext = context.runtimeContext,
             runtimeSystemPrompts = context.systemPrompts,
             runtimeTools = context.memoryTools,
             threadContextMessages = context.threadMessages.withTargetMessage(targetMessage),
@@ -582,7 +398,7 @@ class MemoryOperationExecutor internal constructor(
             namespace = request.namespace,
             source = source,
             agent = context.agent,
-            project = context.project,
+            runtimeContext = context.runtimeContext,
             runtimeSystemPrompts = context.systemPrompts,
             runtimeTools = context.memoryTools,
             parentRunId = rootRun?.id,
@@ -655,7 +471,7 @@ class MemoryOperationExecutor internal constructor(
             sections = preflight.sections,
             context = MemorySegmentedIngestContext(
                 agent = context.agent,
-                project = context.project,
+                runtimeContext = context.runtimeContext,
                 systemPrompts = context.systemPrompts,
                 memoryTools = context.memoryTools,
             ),
@@ -710,7 +526,7 @@ class MemoryOperationExecutor internal constructor(
             sections = preflight.sections,
             context = MemorySegmentedIngestContext(
                 agent = context.agent,
-                project = context.project,
+                runtimeContext = context.runtimeContext,
                 systemPrompts = context.systemPrompts,
                 memoryTools = context.memoryTools,
             ),
@@ -740,7 +556,7 @@ class MemoryOperationExecutor internal constructor(
             return ingestPreflight.inspect(
                 contentText = contentText,
                 sourceLabel = sourceLabel,
-                project = context.project,
+                runtimeContext = context.runtimeContext,
                 runtimeSystemPrompts = context.systemPrompts,
             )
         }
@@ -944,7 +760,7 @@ class MemoryOperationExecutor internal constructor(
             threadId = request.threadId,
             targetMessage = targetMessage,
             threadMessages = context.threadMessages.withTargetMessage(targetMessage),
-            project = context.project,
+            runtimeContext = context.runtimeContext,
             namespaceOverride = request.namespace,
         )
         return completedExecution(
@@ -973,7 +789,7 @@ class MemoryOperationExecutor internal constructor(
             threadId = threadId,
             targetMessage = targetMessage,
             threadMessages = context.threadMessages + targetMessage,
-            project = context.project,
+            runtimeContext = context.runtimeContext,
             namespaceOverride = request.namespace,
         )
         return completedExecution(
@@ -993,7 +809,7 @@ class MemoryOperationExecutor internal constructor(
             threadId = request.threadId,
             targetMessage = targetMessage,
             threadMessages = context.threadMessages.withTargetMessage(targetMessage),
-            project = context.project,
+            runtimeContext = context.runtimeContext,
             runtimeSystemPrompts = context.systemPrompts,
             namespaceOverride = request.namespace,
         )
@@ -1023,7 +839,7 @@ class MemoryOperationExecutor internal constructor(
             threadId = threadId,
             targetMessage = targetMessage,
             threadMessages = context.threadMessages + targetMessage,
-            project = context.project,
+            runtimeContext = context.runtimeContext,
             runtimeSystemPrompts = context.systemPrompts,
             namespaceOverride = request.namespace,
         )
@@ -1040,22 +856,6 @@ class MemoryOperationExecutor internal constructor(
         conversationId
             ?.let { contextResolver.resolveConversation(it, threadId) }
             ?: contextResolver.resolveStandalone()
-
-    private fun String?.toConversationIdOrNull(): Conversation.Id? =
-        this?.trim()?.takeIf { it.isNotBlank() }?.let(Conversation::Id)
-
-    private fun String?.toMemoryRunIdOrNull(): MemoryRun.Id? =
-        this?.trim()?.takeIf { it.isNotBlank() }?.let(MemoryRun::Id)
-
-    private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
-        providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
-
-    private fun MemoryRememberContentInput.identityValue(): String =
-        when (this) {
-            is MemoryRememberContentInput.Text -> value
-            is MemoryRememberContentInput.FilePath -> value
-            is MemoryRememberContentInput.RawUrl -> value
-        }
 
     private fun List<Conversation.Message>.withTargetMessage(targetMessage: Conversation.Message): List<Conversation.Message> =
         if (any { it.id == targetMessage.id }) this else this + targetMessage

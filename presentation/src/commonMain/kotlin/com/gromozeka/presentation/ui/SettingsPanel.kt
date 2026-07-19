@@ -62,8 +62,8 @@ fun SettingsPanel(
     settingsService: SettingsService,
     ollamaModelService: OllamaModelService,
     coroutineScope: CoroutineScope,
-    onOpenTab: (String) -> Unit, // Callback to open new tab with project path
-    onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message (uses default agent)
+    onOpenTab: () -> Unit,
+    onOpenTabWithMessage: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
@@ -989,12 +989,9 @@ fun SettingsPanel(
                                     val preparedMessage = aiThemeGenerator.prepareThemeGenerationData(coroutineScope)
                                     if (preparedMessage != null) {
                                         if (onOpenTabWithMessage != null) {
-                                            onOpenTabWithMessage(
-                                                aiThemeGenerator.getWorkingDirectory(),
-                                                preparedMessage
-                                            )
+                                            onOpenTabWithMessage(preparedMessage)
                                         } else {
-                                            onOpenTab(aiThemeGenerator.getWorkingDirectory())
+                                            onOpenTab()
                                         }
                                     }
                                 }

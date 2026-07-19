@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
@@ -225,7 +226,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeCoordinator = coordinator,
                 runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-                runtimeWorkerDescriptor = workerDescriptor,
+                runtimeWorkerDescriptor = objectProvider(workerDescriptor),
             )
             try {
                 recoveredService.recoverPersistedTasks()
@@ -262,7 +263,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeCoordinator = coordinator,
                 runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-                runtimeWorkerDescriptor = workerDescriptor,
+                runtimeWorkerDescriptor = objectProvider(workerDescriptor),
             )
             try {
                 recoveredService.recoverPersistedTasks()
@@ -309,6 +310,7 @@ class DefaultCommandTaskServiceTest {
                         id = CommandTask.Id("retained-$index"),
                         conversationId = conversationId,
                         workerId = workerDescriptor.id,
+                        workspaceId = Workspace.Id("workspace-1"),
                         command = "completed-$index",
                         workingDirectory = projectDirectory.absolutePath,
                         status = CommandTask.Status.COMPLETED,
@@ -349,7 +351,7 @@ class DefaultCommandTaskServiceTest {
             processRunner = runner,
             runtimeCoordinator = coordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-            runtimeWorkerDescriptor = workerDescriptor,
+            runtimeWorkerDescriptor = objectProvider(workerDescriptor),
         )
         try {
             block(service, runner, coordinator, projectDirectory)
@@ -362,7 +364,10 @@ class DefaultCommandTaskServiceTest {
     private fun context(projectDirectory: File): ToolExecutionContext = ToolExecutionContext(
         mapOf(
             "conversationId" to conversationId.value,
-            "projectPath" to projectDirectory.absolutePath,
+            "projectId" to "project-1",
+            "workspaceId" to "workspace-1",
+            "workspaceRootPath" to projectDirectory.absolutePath,
+            "workerId" to workerDescriptor.id.value,
         )
     )
 
@@ -373,6 +378,11 @@ class DefaultCommandTaskServiceTest {
         }
         assertTrue(condition(), "Condition was not met within ${timeoutMillis}ms")
     }
+
+    private fun <T : Any> objectProvider(value: T): org.springframework.beans.factory.ObjectProvider<T> =
+        object : org.springframework.beans.factory.ObjectProvider<T> {
+            override fun getObject(): T = value
+        }
 
     private class FakeCommandProcessRunner(
         private val outputDirectory: File,

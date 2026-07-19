@@ -1,6 +1,7 @@
 package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
 
 /**
  * Repository for managing prompt templates.
@@ -33,10 +34,10 @@ interface PromptRepository {
      * Searches across all sources (builtin, file, remote).
      *
      * @param id prompt identifier
-     * @param project project context (required for project: prompts)
+     * @param runtimeContext execution environment for the current runtime worker
      * @return prompt if found, null otherwise
      */
-    suspend fun findById(id: Prompt.Id, project: com.gromozeka.domain.model.Project): Prompt?
+    suspend fun findById(id: Prompt.Id, runtimeContext: RuntimeEnvironmentContext): Prompt?
 
     /**
      * Finds all available prompts from all sources.

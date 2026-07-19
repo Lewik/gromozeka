@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.repository.PromptRepository
 import com.gromozeka.infrastructure.db.persistence.tables.Prompts
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -32,28 +32,30 @@ class ExposedPromptRepository(
         return null
     }
 
-    override suspend fun findById(id: Prompt.Id, project: Project): Prompt? {
+    override suspend fun findById(id: Prompt.Id, runtimeContext: RuntimeEnvironmentContext): Prompt? {
         val idValue = id.value
 
         findDynamicPrompt(id)?.let { return it }
 
-        // Handle builtin with project override
         if (idValue.startsWith("builtin:")) {
-            val fileName = idValue.removePrefix("builtin:")
-
-            // Check for project override first
-            val projectOverride = Prompt.Id("project:$fileName")
-            fileSystemPromptScanner.loadPromptById(projectOverride, project.path, logMissing = false)?.let {
-                return it
-            }
-
-            // Fall back to builtin
             return cachedBuiltinPrompts.find { it.id == id }
         }
 
-        // For global and project prompts, load from disk
-        if (idValue.startsWith("global:") || idValue.startsWith("project:")) {
-            return fileSystemPromptScanner.loadPromptById(id, project.path)
+        if (idValue.startsWith("global:")) {
+            return fileSystemPromptScanner.loadGlobalPromptById(id)
+        }
+
+        if (idValue.startsWith("workspace:")) {
+            val workspaceContext = runtimeContext as? RuntimeEnvironmentContext.WorkspaceBound
+                ?: error(
+                    "Workspace prompt '${id.value}' cannot be loaded outside a workspace-bound runtime"
+                )
+            val workspaceRootPath = workspaceContext.workspaceRootPath
+                ?: error(
+                    "Workspace prompt '${id.value}' requires workspace " +
+                        "${workspaceContext.workspace.id.value} to be mounted on worker ${workspaceContext.workerId}"
+                )
+            return fileSystemPromptScanner.loadWorkspacePromptById(id, workspaceRootPath)
         }
 
         return null
@@ -63,10 +65,7 @@ class ExposedPromptRepository(
         val globalPrompts = fileSystemPromptScanner.scanGlobalPrompts()
         val dynamicPrompts = findDynamicPrompts()
         
-        // Note: Project prompts are NOT included in findAll() 
-        // because we don't have project context here.
-        // Project prompts are loaded explicitly via findById(id, projectPath)
-        // when assembling system prompts for specific project.
+        // Workspace prompts require a resolved mount and are loaded during runtime assembly.
 
         return (cachedBuiltinPrompts + globalPrompts + dynamicPrompts)
             .sortedBy { it.name }

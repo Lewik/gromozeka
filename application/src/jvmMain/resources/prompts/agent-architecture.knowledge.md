@@ -29,8 +29,8 @@ Typical code-writing specialist:
   "builtin:common.knowledge.md",
   "builtin:memory.knowledge.md",
   "builtin:developer.role.md",
-  "project:project-common.knowledge.md",
-  "project:<specialist>.role.md",
+  "workspace:project-common.knowledge.md",
+  "workspace:<specialist>.role.md",
   "env"
 ]
 ```
@@ -87,7 +87,7 @@ Global user prompts and agents live in `~/.gromozeka/`.
 
 - `builtin:` → shipped with the application
 - `global:` → user-wide local customization
-- `project:` → project-specific, versioned with the repository
+- `workspace:` → workspace-specific, versioned with the filesystem checkout
 
 Prompt references are concatenated in the order listed in the agent JSON.
 

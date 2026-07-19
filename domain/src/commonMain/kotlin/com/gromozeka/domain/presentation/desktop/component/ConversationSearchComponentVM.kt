@@ -68,8 +68,7 @@ import kotlinx.coroutines.flow.StateFlow
  * ## Search Algorithm
  * Searches across:
  * - Conversation display names
- * - Message content (full-text search)
- * - Project paths
+ * - Project names and descriptions
  *
  * Results grouped by project, sorted by last update time (newest first).
  *

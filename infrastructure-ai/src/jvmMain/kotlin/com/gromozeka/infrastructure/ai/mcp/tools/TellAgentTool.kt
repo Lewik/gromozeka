@@ -104,15 +104,14 @@ class TellAgentTool(
             tabManager.switchToTab(Tab.Id(input.target_tab_id))
         }
 
-        val targetProjectPath = targetTab.projectPath
-        val targetConversationId = targetTab.conversationId
         val tabIdInfo = input.target_tab_id
         val switchInfo = if (input.set_as_current) " (set as current)" else ""
 
         return CallToolResult(
             content = listOf(
                 TextContent(
-                    "Successfully sent message to agent at $targetProjectPath$switchInfo\n" +
+                    "Successfully sent message to agent in project ${targetTab.projectId.value}, " +
+                            "workspace ${targetTab.workspaceId.value}$switchInfo\n" +
                             "Agent ID: $tabIdInfo\n" +
                             "Message: ${input.message.take(100)}${if (input.message.length > 100) "..." else ""}"
                 )

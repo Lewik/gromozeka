@@ -7,7 +7,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 /**
  * Request parameters for lsp_find_definition tool.
  *
- * @property file_path Path to the file (absolute or relative to project root)
+ * @property file_path Path to the file (absolute or relative to workspace root)
  * @property line Zero-based line number where the symbol is located
  * @property column Zero-based column number where the symbol is located
  * @property language Language identifier for LSP server selection (kotlin, typescript, python, etc.)
@@ -74,7 +74,7 @@ data class LspFindDefinitionRequest(
  *
  * ## file_path: String (required)
  *
- * Path to the file containing the symbol. Can be absolute or relative to project root.
+ * Path to the file containing the symbol. Can be absolute or relative to workspace root.
  *
  * **Examples:**
  * - `"src/main/kotlin/Main.kt"` - Relative path

@@ -33,7 +33,10 @@ data class ServerConfig(
     val allowedTools: List<String>? = null,
 
     @JsonProperty("excludedTools")
-    val excludedTools: List<String>? = null
+    val excludedTools: List<String>? = null,
+
+    @JsonProperty("workerIds")
+    val workerIds: Set<String> = emptySet(),
 ) {
     val transportType: TransportType
         get() = when {

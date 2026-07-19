@@ -26,10 +26,6 @@ class ExposedAgentRepository(
 
     private var cachedBuiltinAgents: List<AgentDefinition> = emptyList()
 
-    private fun getProjectPath(): String? {
-        return fileSystemAgentScanner.findProjectRoot()?.absolutePath
-    }
-
     override suspend fun save(agent: AgentDefinition): AgentDefinition {
         return when (agent.type) {
             is AgentDefinition.Type.Inline -> saveInlineAgent(agent)
@@ -47,44 +43,22 @@ class ExposedAgentRepository(
 
         findDynamicAgent(id)?.let { return it }
 
-        // Handle builtin with project override
         if (idValue.startsWith("builtin:")) {
-            val fileName = idValue.removePrefix("builtin:")
-            val projectPath = getProjectPath()
-
-            // Check for project override first
-            if (projectPath != null) {
-                val projectOverride = AgentDefinition.Id("project:$fileName")
-                fileSystemAgentScanner.loadAgentById(projectOverride, projectPath, logMissing = false)?.let {
-                    return it
-                }
-            }
-
-            // Fall back to builtin
             return cachedBuiltinAgents.find { it.id == id }
         }
 
-        // For global and project agents, load from disk
-        if (idValue.startsWith("global:") || idValue.startsWith("project:")) {
-            val projectPath = getProjectPath()
-            return fileSystemAgentScanner.loadAgentById(id, projectPath)
+        if (idValue.startsWith("global:")) {
+            return fileSystemAgentScanner.loadGlobalAgentById(id)
         }
 
         return null
     }
 
-    override suspend fun findAll(projectPath: String?): List<AgentDefinition> {
-        val effectiveProjectPath = projectPath ?: getProjectPath()
+    override suspend fun findAll(): List<AgentDefinition> {
         val inlineAgents = findDynamicAgents()
-
         val globalAgents = fileSystemAgentScanner.scanGlobalAgents()
-        val projectAgents = if (effectiveProjectPath != null) {
-            fileSystemAgentScanner.scanProjectAgents(effectiveProjectPath)
-        } else {
-            emptyList()
-        }
 
-        return (cachedBuiltinAgents + globalAgents + projectAgents + inlineAgents)
+        return (cachedBuiltinAgents + globalAgents + inlineAgents)
             .sortedBy { it.name }
     }
 
@@ -103,7 +77,7 @@ class ExposedAgentRepository(
     }
 
     override suspend fun count(): Int {
-        return findAll(null).size
+        return findAll().size
     }
 
     @jakarta.annotation.PostConstruct

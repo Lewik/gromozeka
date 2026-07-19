@@ -16,7 +16,7 @@ import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkOutboxEntry
-import com.gromozeka.domain.service.ConversationRuntimeWorkerAffinity
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -92,7 +92,7 @@ class PostgresConversationRuntimeCoordinator(
         taskId: ConversationRuntimeTask.Id,
         worker: ConversationRuntimeWorkerIdentity,
         workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
-        workerAffinities: Set<ConversationRuntimeWorkerAffinity>,
+        workerWorkspaceIds: Set<Workspace.Id>,
     ): ConversationRuntimeTask? =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val now = Clock.System.now()
@@ -107,7 +107,7 @@ class PostgresConversationRuntimeCoordinator(
                 if (state.activeWorker != worker) {
                     return@mutateRecord null
                 }
-                if (!activeTask.requirements.isSatisfiedBy(workerCapabilities, workerAffinities)) {
+                if (!activeTask.requirements.isSatisfiedBy(worker.workerId, workerCapabilities, workerWorkspaceIds)) {
                     return@mutateRecord null
                 }
                 return@mutateRecord activeTask
@@ -121,7 +121,7 @@ class PostgresConversationRuntimeCoordinator(
                 return@mutateRecord null
             }
             val task = record.pendingTasks[taskIndex]
-            if (!task.requirements.isSatisfiedBy(workerCapabilities, workerAffinities)) {
+            if (!task.requirements.isSatisfiedBy(worker.workerId, workerCapabilities, workerWorkspaceIds)) {
                 return@mutateRecord null
             }
 

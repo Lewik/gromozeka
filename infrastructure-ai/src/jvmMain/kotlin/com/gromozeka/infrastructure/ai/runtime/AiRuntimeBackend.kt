@@ -10,6 +10,6 @@ interface AiRuntimeBackend {
     fun createRuntime(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-        projectPath: String?
+        workspaceRootPath: String?
     ): AiRuntime
 }

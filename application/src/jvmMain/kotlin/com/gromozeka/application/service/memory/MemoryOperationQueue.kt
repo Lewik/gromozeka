@@ -20,6 +20,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Serializable
@@ -33,7 +34,8 @@ enum class MemoryOperationKind(val wireName: String) {
 @Serializable
 enum class MemoryMaintenanceTargetKind(val wireName: String) {
     CONVERSATION_ID("conversation_id"),
-    PROJECT_ID("project_id");
+    WORKSPACE_ID("workspace_id"),
+    STANDALONE("standalone");
 
     companion object {
         fun from(value: String): MemoryMaintenanceTargetKind =
@@ -217,6 +219,10 @@ data class ActiveMemoryOperation(
 )
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "true",
+)
 class MemoryOperationQueue(
     @Qualifier("applicationScope") private val coroutineScope: CoroutineScope,
 ) {

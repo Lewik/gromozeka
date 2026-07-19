@@ -7,7 +7,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 /**
  * Request parameters for lsp_get_hover tool.
  *
- * @property file_path Path to the file (absolute or relative to project root)
+ * @property file_path Path to the file (absolute or relative to workspace root)
  * @property line Zero-based line number where the symbol is located
  * @property column Zero-based column number where the symbol is located
  * @property language Language identifier for LSP server selection (kotlin, typescript, python, etc.)

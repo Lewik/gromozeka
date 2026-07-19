@@ -8,13 +8,33 @@ import kotlinx.datetime.Instant
 
 internal object Projects : Table("projects") {
     val id = varchar("id", 255)
-    val path = varchar("path", 500)
     val name = varchar("name", 255)
     val description = text("description").nullable()
     val createdAt = timestamp("created_at")
     val lastUsedAt = timestamp("last_used_at")
 
     override val primaryKey = PrimaryKey(id)
+}
+
+internal object Workspaces : Table("workspaces") {
+    val id = varchar("id", 255)
+    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val name = varchar("name", 255)
+    val kind = varchar("kind", 50)
+    val createdAt = timestamp("created_at")
+    val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object WorkspaceMounts : Table("workspace_mounts") {
+    val workspaceId = varchar("workspace_id", 255).references(Workspaces.id, onDelete = ReferenceOption.CASCADE)
+    val workerId = varchar("worker_id", 255)
+    val rootPath = varchar("root_path", 1000)
+    val createdAt = timestamp("created_at")
+    val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(workspaceId, workerId)
 }
 
 internal object Contexts : Table("contexts") {
@@ -50,6 +70,7 @@ internal object Agents : Table("agents") {
 internal object Conversations : Table("conversations") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val workspaceId = varchar("workspace_id", 255).references(Workspaces.id, onDelete = ReferenceOption.RESTRICT)
     val agentDefinitionId = varchar("agent_definition_id", 255)
     val displayName = varchar("display_name", 255)
     val currentThreadId = varchar("current_thread_id", 255)

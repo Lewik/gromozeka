@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 class McpConfigurationServiceTest {
     private val service = McpConfigurationService(
         gromozemkaHome = "/tmp/gromozeka-mcp-test",
+        workerId = "test-worker",
         coroutineScope = CoroutineScope(SupervisorJob()),
     )
 
@@ -23,7 +24,8 @@ class McpConfigurationServiceTest {
                 "claude-code": {
                   "command": "claude",
                   "args": ["mcp", "serve"],
-                  "allowedTools": ["WebSearch", "WebFetch"]
+                  "allowedTools": ["WebSearch", "WebFetch"],
+                  "workerIds": ["test-worker"]
                 }
               }
             }
@@ -32,6 +34,7 @@ class McpConfigurationServiceTest {
         )
 
         assertEquals(listOf("WebSearch", "WebFetch"), config.mcpServers["claude-code"]?.allowedTools)
+        assertEquals(setOf("test-worker"), config.mcpServers["claude-code"]?.workerIds)
     }
 
     @Test

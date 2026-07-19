@@ -243,7 +243,7 @@ interface Tool<TRequest, TResponse> {
      * Execute tool with typed request and optional context.
      * 
      * **Implementation contract:**
-     * 1. Extract `projectPath` from context (required for most tools)
+     * 1. Extract `workspaceRootPath` from context (required for filesystem tools)
      * 2. Validate request parameters (fail fast with clear errors)
      * 3. Delegate business logic to domain service
      * 4. Format result as Map<String, Any> for JSON serialization
@@ -251,8 +251,7 @@ interface Tool<TRequest, TResponse> {
      * 
      * **Context usage:**
      * ```kotlin
-     * val projectPath = context?.getContext()?.get("projectPath") as? String
-     *     ?: error("Project path is required in tool context")
+     * val workspaceRootPath = context.requiredWorkspaceRootPath()
      * ```
      * 
      * **Success response format:**
@@ -273,7 +272,7 @@ interface Tool<TRequest, TResponse> {
      * ```
      * 
      * @param request Validated and typed request parameters from LLM
-     * @param context Optional tool context (contains projectPath, conversation context, etc.)
+     * @param context Optional tool context (contains exact project, workspace, worker, and conversation IDs)
      * @return Tool execution result formatted for Spring AI JSON serialization
      */
     fun execute(request: TRequest, context: ToolExecutionContext?): TResponse

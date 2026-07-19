@@ -11,7 +11,7 @@ const val MAX_COMMAND_INITIAL_YIELD_MILLIS = 30_000L
  * Request parameters for grz_execute_command tool.
  * 
  * @property command Shell command to execute
- * @property working_directory Working directory (optional, defaults to project root)
+ * @property working_directory Working directory (optional, defaults to workspace root)
  * @property yield_time_ms Time to wait before returning a running task
  * @property timeout_seconds Optional hard timeout in seconds
  */

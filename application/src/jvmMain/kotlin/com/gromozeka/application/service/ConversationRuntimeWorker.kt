@@ -9,13 +9,13 @@ import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
 import com.gromozeka.domain.service.ConversationRuntimeWorkDelivery
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkerAffinity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
+import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -52,6 +52,7 @@ class ConversationRuntimeWorker(
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val runtimeWorkConsumer: ConversationRuntimeWorkConsumer,
     private val runtimeWorkerRegistry: ConversationRuntimeWorkerRegistry,
+    private val workspaceService: WorkspaceDomainService,
     private val taskRunnerProvider: ObjectProvider<ConversationRuntimeTaskRunner>,
     runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
     @Value("\${gromozeka.runtime.worker.version:dev}") private val workerVersion: String,
@@ -66,11 +67,7 @@ class ConversationRuntimeWorker(
         sessionId = ConversationRuntimeWorkerSessionId(uuid7()),
     )
     private val runtimeWorkerCapabilities = runtimeWorkerDescriptor.capabilities
-    private val runtimeWorkerAffinities = runtimeWorkerDescriptor.affinities +
-        ConversationRuntimeWorkerAffinity(
-            kind = ConversationRuntimeWorkerAffinity.Kind.WORKER,
-            value = runtimeWorker.workerId.value,
-        )
+    private val runtimeTools = runtimeWorkerDescriptor.tools
     private val eventLeaseOwnerId = "worker:${runtimeWorker.workerId.value}:${runtimeWorker.sessionId.value}"
     private val deliveryMutexes = Array(DELIVERY_MUTEX_STRIPES) { Mutex() }
     private val lifecycleLock = Any()
@@ -99,13 +96,13 @@ class ConversationRuntimeWorker(
             require(heartbeatIntervalMillis > 0) {
                 "Conversation runtime worker heartbeat interval must be positive"
             }
-            runBlocking {
+            val workspaceCount = runBlocking {
                 val now = Clock.System.now()
                 val registered = runtimeWorkerRegistry.register(
                     registration = ConversationRuntimeWorkerRegistration(
                         identity = runtimeWorker,
                         capabilities = runtimeWorkerCapabilities,
-                        affinities = runtimeWorkerAffinities,
+                        tools = runtimeTools,
                         version = workerVersion,
                         startedAt = startedAt,
                         lastHeartbeatAt = now,
@@ -115,6 +112,7 @@ class ConversationRuntimeWorker(
                 check(registered) {
                     "Conversation runtime worker id is already owned by a live session: ${runtimeWorker.workerId.value}"
                 }
+                workspaceService.findMountsByWorker(runtimeWorker.workerId.value).size
             }
 
             val parentJob = parentScope.coroutineContext[Job]
@@ -135,7 +133,8 @@ class ConversationRuntimeWorker(
             log.info {
                 "Conversation runtime worker started: identity=$runtimeWorker " +
                     "capabilities=${runtimeWorkerCapabilities.joinToString()} " +
-                    "affinities=${runtimeWorkerAffinities.joinToString()}"
+                    "workspaces=$workspaceCount " +
+                    "tools=${runtimeTools.size}"
             }
         }
     }
@@ -371,7 +370,8 @@ class ConversationRuntimeWorker(
             taskId = item.taskId,
             worker = runtimeWorker,
             workerCapabilities = runtimeWorkerCapabilities,
-            workerAffinities = runtimeWorkerAffinities,
+            workerWorkspaceIds = workspaceService.findMountsByWorker(runtimeWorker.workerId.value)
+                .mapTo(mutableSetOf()) { it.workspaceId },
         )
 
         if (task == null) {

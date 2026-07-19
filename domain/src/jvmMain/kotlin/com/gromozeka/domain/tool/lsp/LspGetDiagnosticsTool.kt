@@ -7,7 +7,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 /**
  * Request parameters for lsp_get_diagnostics tool.
  *
- * @property file_path Path to the file (absolute or relative to project root)
+ * @property file_path Path to the file (absolute or relative to workspace root)
  * @property language Language identifier for LSP server selection (kotlin, typescript, python, etc.)
  */
 data class LspGetDiagnosticsRequest(

@@ -22,8 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.TtsTask
-import com.gromozeka.domain.model.WorkspaceContextReference
-import com.gromozeka.domain.service.WorkspaceFileSystemService
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.TtsQueue
@@ -32,7 +30,7 @@ import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
 import com.gromozeka.presentation.ui.UiTestTag
-import com.gromozeka.presentation.ui.WorkspacePathPickerDialog
+import com.gromozeka.presentation.ui.WorkspaceContextDialog
 import com.gromozeka.presentation.ui.format
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -53,7 +51,6 @@ fun SessionScreen(
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState = PttState.IDLE,
-    workspaceFileSystemService: WorkspaceFileSystemService,
 
     // Settings - moved to ChatApplication level, but we still need settings for UI
     settings: Settings,
@@ -541,7 +538,7 @@ fun SessionScreen(
                             message = message,
                             settings = settings,
                             toolResultsMap = toolResultsMap,
-                            projectPath = viewModel.projectPath,
+                            workspaceRootPath = null,
                             isSelected = message.id in uiState.selectedMessageIds,
                             collapsedContentItems = uiState.collapsedContentItems[message.id] ?: emptySet(),
                             onToggleSelection = { messageId, isShiftPressed ->
@@ -633,21 +630,9 @@ fun SessionScreen(
         }
 
         if (showWorkspaceContextPicker) {
-            WorkspacePathPickerDialog(
-                title = "Add workspace context",
-                fileSystemService = workspaceFileSystemService,
-                initialPath = viewModel.projectPath,
-                showFiles = true,
-                selectLabel = "Add this folder",
-                allowDirectoryEntrySelection = true,
-                onSelect = { path ->
-                    viewModel.addWorkspaceContextReference(
-                        WorkspaceContextReference(
-                            path = path.path,
-                            name = path.name,
-                            kind = path.kind,
-                        )
-                    )
+            WorkspaceContextDialog(
+                onSelect = { reference ->
+                    viewModel.addWorkspaceContextReference(reference)
                     showWorkspaceContextPicker = false
                 },
                 onDismiss = { showWorkspaceContextPicker = false },

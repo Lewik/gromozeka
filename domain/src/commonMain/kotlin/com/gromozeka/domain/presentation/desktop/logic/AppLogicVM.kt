@@ -3,6 +3,8 @@ package com.gromozeka.domain.presentation.desktop.logic
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.presentation.desktop.component.TabComponentVM
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.jvm.JvmInline
@@ -69,7 +71,8 @@ interface AppLogicVM {
      * 5. Optionally switch to new tab (if setAsCurrent = true)
      * 6. Send initial message if provided
      *
-     * @param projectPath Absolute path to project directory
+     * @param projectId Logical project containing the conversation
+     * @param workspaceId Default workspace for the conversation
      * @param agent Agent to handle this tab (null = use default agent)
      * @param conversationId Existing conversation to load (null = create new)
      * @param initialMessage First message to send after tab creation (null = no message)
@@ -78,7 +81,8 @@ interface AppLogicVM {
      * @return Index of created tab in [tabs] list
      */
     suspend fun createTab(
-        projectPath: String,
+        projectId: Project.Id,
+        workspaceId: Workspace.Id,
         agent: AgentDefinition? = null,
         conversationId: Conversation.Id? = null,
         initialMessage: Conversation.Message? = null,
@@ -160,7 +164,7 @@ interface AppLogicVM {
     suspend fun renameTab(tabIndex: Int, newName: String?)
     
     /**
-     * Reset tab name to default (project path based).
+     * Reset tab name to its generated default.
      * Equivalent to renameTab(tabIndex, null).
      * NOT TRANSACTIONAL - caller must handle transaction boundaries.
      *
@@ -206,7 +210,8 @@ interface AppLogicVM {
          * UI state for a single tab.
          * Enough data to recreate TabComponentVM after app restart.
          *
-         * @property projectPath Absolute path to project directory
+         * @property projectId Logical project identifier
+         * @property workspaceId Default workspace identifier
          * @property conversationId ID of conversation to load
          * @property activeMessageInstructionIds Set of active message tag IDs (e.g., "mode_readonly")
          * @property userInput Unsent text in input field
@@ -220,7 +225,8 @@ interface AppLogicVM {
          * @property collapsedMessageIds IDs of messages with collapsed thinking blocks
          */
         data class TabState(
-            val projectPath: String,
+            val projectId: Project.Id,
+            val workspaceId: Workspace.Id,
             val conversationId: Conversation.Id,
             val activeMessageInstructionIds: Set<String>,
             val userInput: String,

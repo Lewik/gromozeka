@@ -9,10 +9,10 @@
     "id": {
       "type": "string",
       "description": "Unique agent identifier with scope prefix",
-      "pattern": "^(builtin|global|project):.+\\.agent\\.json$",
+      "pattern": "^(builtin|global|workspace):.+\\.agent\\.json$",
       "examples": [
         "builtin:meta.agent.json",
-        "project:architect.agent.json"
+        "workspace:architect.agent.json"
       ]
     },
     "name": {
@@ -58,12 +58,12 @@
             "description": "Global user prompt (~/.gromozeka/)"
           },
           {
-            "pattern": "^project:.+\\.(identity|role|knowledge)\\.md$",
-            "description": "Project prompt (.gromozeka/)"
+            "pattern": "^workspace:.+\\.(identity|role|knowledge)\\.md$",
+            "description": "Workspace prompt (.gromozeka/)"
           },
           {
-            "pattern": "^project:.+\\.md$",
-            "description": "Other project prompt"
+            "pattern": "^workspace:.+\\.md$",
+            "description": "Other workspace prompt"
           }
         ]
       }

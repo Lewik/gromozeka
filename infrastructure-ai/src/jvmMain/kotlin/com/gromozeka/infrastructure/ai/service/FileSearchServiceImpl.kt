@@ -10,7 +10,7 @@ import kotlin.io.path.*
 /**
  * Infrastructure implementation of FileSearchService.
  * 
- * Uses Java NIO file walking to find similar files across project tree.
+ * Uses Java NIO file walking to find similar files across a workspace tree.
  * 
  * @see com.gromozeka.domain.service.FileSearchService Domain specification
  */
@@ -29,24 +29,24 @@ class FileSearchServiceImpl : FileSearchService {
     
     override fun findSimilarFiles(
         targetPath: String,
-        projectPath: String,
+        workspaceRootPath: String,
         limit: Int
     ): List<String> {
-        val projectDir = File(projectPath)
-        require(projectDir.exists() && projectDir.isDirectory) {
-            "Project path must be an existing directory: $projectPath"
+        val workspaceDirectory = File(workspaceRootPath)
+        require(workspaceDirectory.exists() && workspaceDirectory.isDirectory) {
+            "Workspace root must be an existing directory: $workspaceRootPath"
         }
         
         val targetFilename = File(targetPath).name
         if (targetFilename.isBlank()) return emptyList()
         
         val matches = mutableListOf<FileMatch>()
-        val projectPathObj = projectDir.toPath()
+        val workspaceRoot = workspaceDirectory.toPath()
         
         try {
             walkDirectory(
-                dir = projectPathObj,
-                projectRoot = projectPathObj,
+                dir = workspaceRoot,
+                workspaceRoot = workspaceRoot,
                 targetFilename = targetFilename,
                 matches = matches,
                 depth = 0
@@ -63,7 +63,7 @@ class FileSearchServiceImpl : FileSearchService {
     
     private fun walkDirectory(
         dir: Path,
-        projectRoot: Path,
+        workspaceRoot: Path,
         targetFilename: String,
         matches: MutableList<FileMatch>,
         depth: Int
@@ -79,7 +79,7 @@ class FileSearchServiceImpl : FileSearchService {
                             Files.isSymbolicLink(path) -> return@forEach
                             
                             Files.isDirectory(path) -> {
-                                walkDirectory(path, projectRoot, targetFilename, matches, depth + 1)
+                                walkDirectory(path, workspaceRoot, targetFilename, matches, depth + 1)
                             }
                             
                             Files.isRegularFile(path) -> {
@@ -87,7 +87,7 @@ class FileSearchServiceImpl : FileSearchService {
                                 val rank = calculateRank(filename, targetFilename)
                                 
                                 if (rank != null) {
-                                    val relativePath = projectRoot.relativize(path).toString()
+                                    val relativePath = workspaceRoot.relativize(path).toString()
                                     matches.add(FileMatch(relativePath, rank))
                                 }
                             }

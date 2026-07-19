@@ -2,37 +2,45 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Project
-import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.DefaultAgentProvider
-import com.gromozeka.domain.service.ProjectDomainService
-import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.supportedBy
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 internal data class MemoryOperationContext(
     val conversation: Conversation?,
     val agent: AgentDefinition,
-    val project: Project,
+    val runtimeContext: RuntimeEnvironmentContext,
     val systemPrompts: List<String>,
     val memoryTools: List<AiToolCallback>,
     val threadMessages: List<Conversation.Message>,
 )
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "true",
+)
 class MemoryOperationContextResolver(
     private val conversationService: ConversationDomainService,
     private val agentDomainService: AgentDomainService,
+    private val agentPromptAssemblyService: AgentPromptAssemblyService,
     private val defaultAgentProvider: DefaultAgentProvider,
-    private val projectService: ProjectDomainService,
-    private val settingsService: SettingsService,
+    private val workspaceService: WorkspaceDomainService,
+    private val runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
     private val aiToolProvider: AiToolProvider,
     private val messageRepository: MessageRepository,
     private val threadMessageRepository: ThreadMessageRepository,
@@ -47,13 +55,16 @@ class MemoryOperationContextResolver(
             ?: throw IllegalStateException(
                 "Agent not found for conversation ${conversationId.value}: ${conversation.agentDefinitionId.value}"
             )
-        val project = conversationService.getProject(conversationId)
+        val workspaceContext = workspaceService.resolveRuntime(
+            conversation.workspaceId,
+            runtimeWorkerDescriptor.id.value,
+        )
         return MemoryOperationContext(
             conversation = conversation,
             agent = agent,
-            project = project,
-            systemPrompts = agentDomainService.assembleSystemPrompt(agent, project),
-            memoryTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
+            runtimeContext = workspaceContext,
+            systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, workspaceContext),
+            memoryTools = memoryTools(),
             threadMessages = threadId
                 ?.let { threadMessageRepository.getMessagesByThread(it) }
                 ?: conversationService.loadCurrentMessages(conversationId),
@@ -61,46 +72,34 @@ class MemoryOperationContextResolver(
     }
 
     internal suspend fun resolveStandalone(): MemoryOperationContext {
-        val project = projectService.getOrCreate(defaultStandaloneProjectPath())
-        return resolveProject(project)
-    }
-
-    internal suspend fun resolveProject(project: Project): MemoryOperationContext {
         val agent = defaultAgentProvider.getDefault()
+        val runtimeContext = RuntimeEnvironmentContext.Standalone(runtimeWorkerDescriptor.id.value)
         return MemoryOperationContext(
             conversation = null,
             agent = agent,
-            project = project,
-            systemPrompts = agentDomainService.assembleSystemPrompt(agent, project),
-            memoryTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
+            runtimeContext = runtimeContext,
+            systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext),
+            memoryTools = memoryTools(),
             threadMessages = emptyList(),
         )
     }
 
-    internal suspend fun resolveProjectId(projectId: Project.Id): MemoryOperationContext {
-        val project = projectService.findById(projectId)
-            ?: throw IllegalArgumentException("Project not found: ${projectId.value}")
-        return resolveProject(project)
+    internal suspend fun resolveWorkspace(
+        runtimeContext: RuntimeEnvironmentContext.WorkspaceBound,
+    ): MemoryOperationContext {
+        val agent = defaultAgentProvider.getDefault()
+        return MemoryOperationContext(
+            conversation = null,
+            agent = agent,
+            runtimeContext = runtimeContext,
+            systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext),
+            memoryTools = memoryTools(),
+            threadMessages = emptyList(),
+        )
     }
 
-    internal fun resolveTargetMessage(
-        threadMessages: List<Conversation.Message>,
-        targetMessageId: String?,
-    ): Conversation.Message {
-        val explicitMessageId = targetMessageId?.takeIf { it.isNotBlank() }
-        if (explicitMessageId != null) {
-            return threadMessages.firstOrNull { message ->
-                message.id.value == explicitMessageId && !message.isSyntheticMemoryMessage()
-            } ?: throw IllegalArgumentException("Target message not found in the current thread: $explicitMessageId")
-        }
-
-        return threadMessages
-            .asReversed()
-            .firstOrNull { message ->
-                message.hasUserAuthoredContent() && !message.isSyntheticMemoryMessage()
-            }
-            ?: throw IllegalArgumentException("No previous user-authored message found in the current thread.")
-    }
+    internal suspend fun resolveWorkspaceId(workspaceId: Workspace.Id): MemoryOperationContext =
+        resolveWorkspace(workspaceService.resolveRuntime(workspaceId, runtimeWorkerDescriptor.id.value))
 
     internal suspend fun loadTargetMessage(
         conversationId: Conversation.Id,
@@ -117,15 +116,10 @@ class MemoryOperationContextResolver(
         return message
     }
 
-    internal fun resolveNamespace(explicitNamespaceValue: String?): MemoryNamespace =
-        explicitNamespaceValue.toMemoryNamespaceOverride() ?: MemoryNamespace.Global
-
-    internal fun defaultStandaloneProjectPath(): String =
-        System.getProperty("gromozeka.project.root")
-            ?: settingsService.homeDirectory
-
-    private fun Conversation.Message.hasUserAuthoredContent(): Boolean =
-        content.any { it is Conversation.Message.ContentItem.UserMessage }
+    private fun memoryTools(): List<AiToolCallback> =
+        aiToolProvider.getTools()
+            .supportedBy(runtimeWorkerDescriptor.capabilities)
+            .withoutMemoryManagementTools()
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"

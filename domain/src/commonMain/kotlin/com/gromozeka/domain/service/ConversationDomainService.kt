@@ -2,6 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Workspace
 
 /**
  * Domain service for conversation lifecycle management.
@@ -28,16 +29,17 @@ interface ConversationDomainService {
     /**
      * Creates new conversation with initial empty thread.
      *
-     * If project doesn't exist, creates it first.
      * This is a TRANSACTIONAL operation - creates conversation AND initial thread atomically.
      *
-     * @param projectPath filesystem path to project (creates if not exists)
+     * @param projectId logical project containing the conversation
+     * @param workspaceId default workspace for environment context and filesystem tools
      * @param displayName human-readable conversation title (default: empty)
      * @param agentDefinitionId agent definition to use for this conversation
      * @return created conversation with assigned IDs
      */
     suspend fun create(
-        projectPath: String,
+        projectId: Project.Id,
+        workspaceId: Workspace.Id,
         displayName: String = "",
         agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id
     ): Conversation
@@ -58,13 +60,15 @@ interface ConversationDomainService {
      */
     suspend fun getProject(conversationId: Conversation.Id): Project
 
+    suspend fun getWorkspace(conversationId: Conversation.Id): Workspace
+
     /**
      * Retrieves all conversations in project.
      *
-     * @param projectPath filesystem path to project
+     * @param projectId logical project identifier
      * @return conversations in project (empty list if project not found)
      */
-    suspend fun findByProject(projectPath: String): List<Conversation>
+    suspend fun findByProject(projectId: Project.Id): List<Conversation>
 
     /**
      * Deletes conversation permanently.

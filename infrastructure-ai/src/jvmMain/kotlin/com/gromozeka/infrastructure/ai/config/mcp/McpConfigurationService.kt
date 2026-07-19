@@ -35,6 +35,8 @@ import java.io.File
 class McpConfigurationService(
     @Value("\${GROMOZEKA_HOME:\${user.home}/.gromozeka}")
     private val gromozemkaHome: String,
+    @Value("\${gromozeka.runtime.worker.id}")
+    private val workerId: String,
     @Qualifier("mcpCoroutineScope") private val coroutineScope: CoroutineScope
 ) {
     companion object {
@@ -77,14 +79,26 @@ class McpConfigurationService(
 
         try {
             cachedConfig = objectMapper.readValue(mcpFile, McpConfig::class.java)
+            cachedConfig!!.mcpServers.forEach { (name, config) ->
+                if (!config.disabled) {
+                    require(config.workerIds.isNotEmpty()) {
+                        "MCP server '$name' must declare a non-empty workerIds array"
+                    }
+                    require(config.transportType != TransportType.UNKNOWN) {
+                        "MCP server '$name' must declare exactly one supported transport"
+                    }
+                }
+            }
             val totalServers = cachedConfig!!.mcpServers.size
-            val activeServers = cachedConfig!!.mcpServers.count { !it.value.disabled }
+            val activeServers = cachedConfig!!.mcpServers.count { it.value.isEnabledOn(workerId) }
 
             log.info { "Loaded MCP config with $activeServers/$totalServers active servers" }
 
             cachedConfig!!.mcpServers.forEach { (name, config) ->
                 if (config.disabled) {
                     log.debug { "  - $name: disabled" }
+                } else if (workerId !in config.workerIds) {
+                    log.debug { "  - $name: assigned to ${config.workerIds.sorted().joinToString()}" }
                 } else {
                     when (config.transportType) {
                         TransportType.STDIO -> log.info { "  - $name: stdio (${config.command})" }
@@ -95,7 +109,7 @@ class McpConfigurationService(
             }
         } catch (e: Exception) {
             log.error(e) { "Failed to load mcp.json from ${mcpFile.absolutePath}" }
-            cachedConfig = McpConfig(emptyMap())
+            throw IllegalStateException("Invalid MCP configuration: ${mcpFile.absolutePath}", e)
         }
     }
 
@@ -173,6 +187,7 @@ class McpConfigurationService(
                 log.info { "Successfully started MCP client: $name" }
             } catch (e: Exception) {
                 log.error(e) { "Failed to start MCP client: $name" }
+                throw IllegalStateException("Failed to start MCP server '$name' on worker '$workerId'", e)
             }
         }
 
@@ -210,6 +225,7 @@ class McpConfigurationService(
                 log.info { "Successfully started MCP streamable HTTP client: $name" }
             } catch (e: Exception) {
                 log.error(e) { "Failed to start MCP streamable HTTP client: $name" }
+                throw IllegalStateException("Failed to connect MCP server '$name' on worker '$workerId'", e)
             }
         }
 
@@ -222,13 +238,13 @@ class McpConfigurationService(
 
     fun getStdioServers(): Map<String, ServerConfig> {
         return cachedConfig?.mcpServers
-            ?.filter { it.value.transportType == TransportType.STDIO && !it.value.disabled }
+            ?.filter { it.value.transportType == TransportType.STDIO && it.value.isEnabledOn(workerId) }
             ?: emptyMap()
     }
 
     fun getStreamableHttpServers(): Map<String, ServerConfig> {
         return cachedConfig?.mcpServers
-            ?.filter { it.value.transportType == TransportType.STREAMABLE_HTTP && !it.value.disabled }
+            ?.filter { it.value.transportType == TransportType.STREAMABLE_HTTP && it.value.isEnabledOn(workerId) }
             ?: emptyMap()
     }
 
@@ -274,7 +290,7 @@ class McpConfigurationService(
                         log.info { "```" }
                         log.info { "" }
 
-                        callbacks.add(McpToolCallbackAdapter(wrapper, tool, coroutineScope))
+                        callbacks.add(McpToolCallbackAdapter(wrapper.name, wrapper, tool, coroutineScope))
                     }
                     log.debug { "Registered ${tools.size} tools from ${wrapper.name}" }
                 } catch (e: Exception) {
@@ -289,6 +305,9 @@ class McpConfigurationService(
             callbacks
         }
     }
+
+    private fun ServerConfig.isEnabledOn(workerId: String): Boolean =
+        !disabled && workerId in workerIds
 
     internal fun filterToolsForServer(
         serverName: String,

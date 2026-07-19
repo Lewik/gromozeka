@@ -74,7 +74,7 @@ internal class AnthropicSdkRuntimeBackend(
     override fun createRuntime(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-        projectPath: String?
+        workspaceRootPath: String?
     ): AiRuntime {
         val connectionKind = connection.kind
         val client = when (connectionKind) {

@@ -213,7 +213,7 @@ data class LspGetDocumentSymbolsRequest(
  * | LSP not available | Language server not installed | Install LSP server for language |
  * | LSP timeout | Server not responding | Restart LSP client |
  * | Parse error | Syntax errors in file | Fix compilation errors |
- * | Project not in context | projectPath missing | Ensure tool context includes projectPath |
+ * | Workspace not in context | workspaceRootPath missing | Ensure tool context includes workspaceRootPath |
  *
  * # Usage Examples
  *

@@ -1,7 +1,6 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 
@@ -29,7 +28,7 @@ interface AgentDomainService {
      * @param runtimeSelection model binding selected for this agent
      * @param tools list of tool names available to this agent (default: empty)
      * @param description optional human-readable agent description
-     * @param type agent scope type (builtin, global, or project-specific)
+     * @param type agent storage scope
      * @return created agent with assigned ID
      */
     suspend fun createAgent(
@@ -42,18 +41,6 @@ interface AgentDomainService {
     ): AgentDefinition
 
     /**
-     * Assembles system prompts for agent.
-     *
-     * Convenience method that delegates to PromptDomainService.assembleSystemPrompt().
-     * Returns a list of prompt contents (one per prompt) ready for an AI model.
-     *
-     * @param agent agent to assemble prompts for
-     * @param project project context (required)
-     * @return list of prompt contents
-     */
-    suspend fun assembleSystemPrompt(agent: AgentDefinition, project: Project): List<String>
-
-    /**
      * Finds agent by unique identifier.
      *
      * @param id agent identifier
@@ -64,12 +51,12 @@ interface AgentDomainService {
     /**
      * Retrieves all agents in system.
      *
-     * Includes BUILTIN + GLOBAL + PROJECT (if projectPath provided) + INLINE agents.
+     * Workspace-local files are not part of the central catalog. They are resolved
+     * by the target worker while assembling a conversation runtime.
      *
-     * @param projectPath path to current project (for loading PROJECT agents), null for global context
-     * @return all agents (builtin, global, project-specific, and inline)
+     * @return all centrally available agents
      */
-    suspend fun findAll(projectPath: String? = null): List<AgentDefinition>
+    suspend fun findAll(): List<AgentDefinition>
 
     /**
      * Updates agent prompts or description.
@@ -108,4 +95,14 @@ interface AgentDomainService {
      * @return count of all agents (builtin and user-created)
      */
     suspend fun count(): Int
+}
+
+/**
+ * [SPECIFICATION] Resolves an agent's prompts for the current runtime worker.
+ */
+interface AgentPromptAssemblyService {
+    suspend fun assembleSystemPrompt(
+        agent: AgentDefinition,
+        runtimeContext: com.gromozeka.domain.model.RuntimeEnvironmentContext,
+    ): List<String>
 }

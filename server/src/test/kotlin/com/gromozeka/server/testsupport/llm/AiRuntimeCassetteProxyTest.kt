@@ -231,13 +231,18 @@ class AiRuntimeCassetteProxyTest {
             )
             val request = AiEmbeddingRequest(
                 selection = runtimeSelection("text-embedding-3-small"),
-                inputs = listOf("memory embedding cassette input"),
-                projectPath = "/tmp/gromozeka-e2e-111/projects/case-a",
+                inputs = listOf(
+                    "memory embedding cassette input from /tmp/gromozeka-e2e-111/projects/case-a"
+                ),
             )
 
             val first = provider.embed(request)
             val second = provider.embed(
-                request.copy(projectPath = "/tmp/gromozeka-e2e-222/projects/case-a")
+                request.copy(
+                    inputs = listOf(
+                        "memory embedding cassette input from /tmp/gromozeka-e2e-222/projects/case-a"
+                    )
+                )
             )
 
             assertEquals(1, delegate.callCount)

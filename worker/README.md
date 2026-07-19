@@ -34,12 +34,17 @@ RabbitMQ acknowledgement, the Server records the execution-start boundary. If
 the session disappears before that boundary, the task is recorded as not
 started; after it, the outcome is unknown. Neither case is rerun automatically.
 
-For project-local tools, configure `project-paths` with directories visible on
-that Worker. At startup the Worker validates each path, resolves its central
-Project id, and registers the corresponding project affinity. Runtime tasks
-carry only that stable Project id, never a machine-local path as routing data.
+Configure `workspaces` for filesystem trees visible on that Worker. Each entry
+declares the logical Project id, stable Workspace id, display names, and the
+Worker-local root path. Two different checkouts of one Project are different
+Workspaces. Multiple Workers may mount one Workspace only when they see the
+same underlying tree.
+
+At startup the Worker creates or validates the central Project and Workspace,
+then attaches its local mount. Tool calls carry an exact Worker and Workspace
+target. They are never reassigned or retried on another Worker automatically.
 
 The current deployment contract gives Workers direct access to PostgreSQL and
 RabbitMQ. These endpoints must stay on a private network and use TLS. A future
 control plane can replace direct credentials without changing runtime task,
-claim, capability, or affinity semantics.
+claim, capability, or exact-target semantics.

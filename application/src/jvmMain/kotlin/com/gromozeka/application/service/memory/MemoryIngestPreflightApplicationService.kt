@@ -1,6 +1,6 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.memory.MemoryIngestBlock
 import com.gromozeka.domain.model.memory.MemoryIngestPlan
@@ -32,7 +32,7 @@ internal class MemoryIngestPreflightApplicationService(
     suspend fun inspect(
         contentText: String,
         sourceLabel: String,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
     ): MemoryIngestPreflightResult {
         return collectMemoryRunTimings(llmCallObservers) { timingCollector ->
@@ -42,7 +42,7 @@ internal class MemoryIngestPreflightApplicationService(
                 planner = LlmMemoryIngestPlanner(
                     runtime = aiRuntimeProvider.getRuntime(
                         selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_INGEST_PLANNER),
-                        projectPath = project.path,
+                        workspaceRootPath = runtimeContext.workspaceRootPath,
                     ),
                     runtimeSystemPrompts = runtimeSystemPrompts,
                 ),

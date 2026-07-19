@@ -8,7 +8,7 @@ import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import kotlin.reflect.KClass
@@ -19,6 +19,10 @@ import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure
 
 @Configuration
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "true",
+)
 class ToolsRegistrationConfig {
     private val objectMapper: ObjectMapper = jacksonObjectMapper().findAndRegisterModules()
     private val logger = LoggerFactory.getLogger(ToolsRegistrationConfig::class.java)
@@ -26,7 +30,6 @@ class ToolsRegistrationConfig {
     @Bean
     fun toolCallbacksRegistrar(
         tools: List<Tool<*, *>>,
-        beanFactory: ConfigurableListableBeanFactory,
     ): ToolCallbacksRegistrar {
         logger.info("=== ToolCallbacksRegistrar: Starting tool registration ===")
         logger.info("Found ${tools.size} Tool beans in Spring context")
@@ -34,17 +37,13 @@ class ToolsRegistrationConfig {
             logger.info("  - Tool bean: ${tool::class.qualifiedName}, name='${tool.name}', description='${tool.description.take(50)}...'")
         }
 
-        logger.info("Registering ${tools.size} tools as individual AiToolCallback beans: ${tools.map { it.name }}")
-
-        tools.forEach { tool ->
-            val callback = adaptToolToCallback(tool)
-            val beanName = "${tool.name}AiToolCallback"
-
-            beanFactory.registerSingleton(beanName, callback)
-            logger.debug("Registered AiToolCallback bean: $beanName")
+        val callbacks = buildList {
+            tools.forEach { tool ->
+                add(adaptToolToCallback(tool))
+            }
         }
-
-        return ToolCallbacksRegistrar(tools.size)
+        logger.info("Prepared ${callbacks.size} local AI tool callbacks: ${callbacks.map { it.definition.name }}")
+        return ToolCallbacksRegistrar(callbacks)
     }
 
     private fun <TRequest, TResponse> adaptToolToCallback(
@@ -72,7 +71,7 @@ class ToolsRegistrationConfig {
     }
 }
 
-class ToolCallbacksRegistrar(val toolCount: Int)
+class ToolCallbacksRegistrar(val callbacks: List<AiToolCallback>)
 
 internal class JsonSchemaGenerator(
     private val objectMapper: ObjectMapper,

@@ -32,7 +32,6 @@ private val log = KLoggers.logger("AgentPanel")
 
 @Composable
 fun AgentPanel(
-    projectPath: String,
     isVisible: Boolean,
     currentAgent: AgentDefinition,
     onAgentChange: (AgentDefinition) -> Unit,
@@ -52,12 +51,12 @@ fun AgentPanel(
             isLoading = true
             error = null
             try {
-                val loadedAgents = agentService.findAll(projectPath)
+                val loadedAgents = agentService.findAll()
 
                 agents = loadedAgents.sortedWith(
                     compareBy<AgentDefinition> { agent ->
                         when (val type = agent.type) {
-                            is AgentDefinition.Type.Project -> 0
+                            is AgentDefinition.Type.Workspace -> 0
                             is AgentDefinition.Type.Global -> 1
                             is AgentDefinition.Type.Builtin -> 2
                             is AgentDefinition.Type.Inline -> 3
@@ -65,7 +64,7 @@ fun AgentPanel(
                     }.thenBy { it.name }
                 )
 
-                log.info { "Loaded ${agents.size} agents (PROJECT first)" }
+                log.info { "Loaded ${agents.size} agents (workspace-scoped first)" }
             } catch (e: Exception) {
                 error = "Failed to load agents: ${e.message}"
                 log.error(e) { "Error loading agents" }
@@ -209,13 +208,13 @@ private fun AgentRadioItem(
 
             Icon(
                 imageVector = when (val type = agent.type) {
-                    is AgentDefinition.Type.Project -> Icons.Default.Folder
+                    is AgentDefinition.Type.Workspace -> Icons.Default.Folder
                     is AgentDefinition.Type.Global -> Icons.Default.Home
                     is AgentDefinition.Type.Builtin -> Icons.Default.Lock
                     is AgentDefinition.Type.Inline -> Icons.Default.Description
                 },
                 contentDescription = when (val type = agent.type) {
-                    is AgentDefinition.Type.Project -> "Project"
+                    is AgentDefinition.Type.Workspace -> "Workspace"
                     is AgentDefinition.Type.Global -> "Global"
                     is AgentDefinition.Type.Builtin -> "Builtin"
                     is AgentDefinition.Type.Inline -> "Inline"

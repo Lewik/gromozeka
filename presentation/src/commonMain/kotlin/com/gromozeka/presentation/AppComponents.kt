@@ -9,7 +9,7 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
-import com.gromozeka.domain.service.WorkspaceFileSystemService
+import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.ClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
@@ -48,7 +48,7 @@ data class AppComponents(
     val logEncryptor: LogEncryptor,
     val ollamaModelService: OllamaModelService,
     val projectService: ProjectDomainService,
-    val workspaceFileSystemService: WorkspaceFileSystemService,
+    val workspaceCatalogService: WorkspaceCatalogService,
     val conversationService: ConversationDomainService,
     val conversationSearchViewModel: ConversationSearchViewModel,
     val loadingViewModel: LoadingViewModel,

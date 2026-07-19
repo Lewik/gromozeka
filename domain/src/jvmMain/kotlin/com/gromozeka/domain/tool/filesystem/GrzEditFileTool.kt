@@ -7,7 +7,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 /**
  * Request parameters for grz_edit_file tool.
  * 
- * @property file_path Path to the file (absolute or relative to project root)
+ * @property file_path Path to the file (absolute or relative to workspace root)
  * @property old_string Exact string to find and replace
  * @property new_string Replacement string
  * @property replace_all Replace all occurrences (default: false, requires unique match)

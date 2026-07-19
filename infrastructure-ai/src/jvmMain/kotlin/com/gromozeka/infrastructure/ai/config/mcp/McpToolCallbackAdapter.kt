@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 
 class McpToolCallbackAdapter(
+    serverName: String,
     private val clientWrapper: McpWrapperInterface,
     private val tool: Tool,
     private val coroutineScope: CoroutineScope
@@ -20,9 +21,10 @@ class McpToolCallbackAdapter(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     override val definition: AiToolDefinition = AiToolDefinition(
-        name = tool.name,
+        name = "mcp__${serverName.toolNamePart()}__${tool.name.toolNamePart()}",
         description = tool.description ?: "",
-        inputSchema = Json.encodeToString(ToolSchema.serializer(), tool.inputSchema)
+        inputSchema = Json.encodeToString(ToolSchema.serializer(), tool.inputSchema),
+        source = "mcp:$serverName",
     )
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String {
@@ -81,4 +83,8 @@ class McpToolCallbackAdapter(
             else -> element.toString()
         }
     }
+
+    private fun String.toolNamePart(): String =
+        map { character -> if (character.isLetterOrDigit() || character == '_') character else '_' }
+            .joinToString("")
 }

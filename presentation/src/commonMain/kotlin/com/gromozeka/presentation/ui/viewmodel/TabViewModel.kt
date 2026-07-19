@@ -11,8 +11,10 @@ import com.gromozeka.presentation.utils.ChatMessageSoundDetector
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceContextReference
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.ConversationDomainService
@@ -40,7 +42,8 @@ import kotlinx.datetime.Clock
 
 class TabViewModel(
     val conversationId: Conversation.Id,
-    val projectPath: String,
+    val projectId: Project.Id,
+    val workspaceId: Workspace.Id,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
@@ -367,7 +370,10 @@ class TabViewModel(
 
     fun addWorkspaceContextReference(reference: WorkspaceContextReference) {
         _uiState.update { currentState ->
-            if (currentState.workspaceContextReferences.any { it.path == reference.path && it.kind == reference.kind }) {
+            if (currentState.workspaceContextReferences.any {
+                    it.relativePath == reference.relativePath && it.kind == reference.kind
+                }
+            ) {
                 currentState
             } else {
                 currentState.copy(
@@ -381,7 +387,7 @@ class TabViewModel(
         _uiState.update { currentState ->
             currentState.copy(
                 workspaceContextReferences = currentState.workspaceContextReferences.filterNot {
-                    it.path == reference.path && it.kind == reference.kind
+                    it.relativePath == reference.relativePath && it.kind == reference.kind
                 }
             )
         }
@@ -1056,7 +1062,6 @@ class TabViewModel(
                 selectedIds = selectedIds.toList(),
                 squashType = squashType,
                 runtimeSelection = runtimeSelection,
-                projectPath = projectPath
             )
 
             val squashedContent = listOf(

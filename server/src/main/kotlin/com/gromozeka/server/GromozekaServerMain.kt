@@ -3,6 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
+import com.gromozeka.domain.tool.Tool
 import io.ktor.http.HttpHeaders
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
@@ -171,7 +172,10 @@ private fun determineLogPath(mode: String?): String {
         ),
         ComponentScan.Filter(
             type = FilterType.ASSIGNABLE_TYPE,
-            classes = [InternalMcpToolsRegistrar::class]
+            classes = [
+                InternalMcpToolsRegistrar::class,
+                Tool::class,
+            ]
         ),
     ]
 )

@@ -31,7 +31,7 @@ import com.gromozeka.application.service.memory.UuidMemoryIdFactory
 import com.gromozeka.application.service.memory.collectMemoryRunTimings
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.memory.MemoryMaintenanceRequest
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryReadResult
@@ -69,7 +69,7 @@ class MemoryApplicationService(
         threadId: Conversation.Thread.Id,
         targetMessage: Conversation.Message,
         threadMessages: List<Conversation.Message>,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         namespaceOverride: MemoryNamespace? = null,
     ): MemoryReadResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val startedAt = Clock.System.now()
@@ -86,7 +86,7 @@ class MemoryApplicationService(
         }
         val namespace = namespaceOverride ?: MemoryNamespace.Global
         recallAccessGuard.ensureRecallSupported(namespace)
-        val runtimes = MemoryServiceStageRuntimes(project)
+        val runtimes = MemoryServiceStageRuntimes(runtimeContext)
         val threadContext = MemoryThreadContext(
             conversationId = conversationId,
             threadId = threadId,
@@ -157,7 +157,7 @@ class MemoryApplicationService(
         threadId: Conversation.Thread.Id,
         targetMessage: Conversation.Message,
         threadMessages: List<Conversation.Message>,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         namespaceOverride: MemoryNamespace? = null,
     ): MemoryQuestionAnswerResult {
@@ -166,12 +166,12 @@ class MemoryApplicationService(
             threadId = threadId,
             targetMessage = targetMessage,
             threadMessages = threadMessages,
-            project = project,
+            runtimeContext = runtimeContext,
             namespaceOverride = namespaceOverride,
         )
         val runtime = aiRuntimeProvider.getRuntime(
             selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
-            projectPath = project.path,
+            workspaceRootPath = runtimeContext.workspaceRootPath,
         )
         return LlmMemoryQuestionAnswerer(
             runtime = runtime,
@@ -184,7 +184,7 @@ class MemoryApplicationService(
     }
 
     private inner class MemoryServiceStageRuntimes(
-        private val project: Project,
+        private val runtimeContext: RuntimeEnvironmentContext,
     ) {
         private val runtimes = mutableMapOf<AiRuntimeAssignment.Purpose, AiRuntime>()
 
@@ -192,7 +192,7 @@ class MemoryApplicationService(
             runtimes.getOrPut(purpose) {
                 aiRuntimeProvider.getRuntime(
                     selection = settingsProvider.runtimeSelectionFor(purpose),
-                    projectPath = project.path,
+                    workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
             }
     }
@@ -222,12 +222,12 @@ class MemoryApplicationService(
     suspend fun runNoteConsolidation(
         conversationId: Conversation.Id,
         agent: AgentDefinition,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = MemoryNamespace.Global,
     ): MemoryNoteConsolidationPipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
-        val runtimes = MemoryServiceStageRuntimes(project)
+        val runtimes = MemoryServiceStageRuntimes(runtimeContext)
         val pipeline = MemoryNoteConsolidationPipeline(
             store = store,
             consolidator = LlmMemoryNoteConsolidator(
@@ -268,12 +268,12 @@ class MemoryApplicationService(
     suspend fun runMemoryRepair(
         conversationId: Conversation.Id,
         agent: AgentDefinition,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = MemoryNamespace.Global,
     ): MemoryRepairPipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
-        val runtimes = MemoryServiceStageRuntimes(project)
+        val runtimes = MemoryServiceStageRuntimes(runtimeContext)
         val pipeline = MemoryRepairPipeline(
             store = store,
             planner = LlmMemoryRepairPlanner(
@@ -313,12 +313,12 @@ class MemoryApplicationService(
     suspend fun runEntityMaintenance(
         conversationId: Conversation.Id,
         agent: AgentDefinition,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = MemoryNamespace.Global,
     ): MemoryEntityMaintenancePipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
-        val runtimes = MemoryServiceStageRuntimes(project)
+        val runtimes = MemoryServiceStageRuntimes(runtimeContext)
         val pipeline = MemoryEntityMaintenancePipeline(
             store = store,
             planner = LlmMemoryEntityMaintenancePlanner(
@@ -358,7 +358,6 @@ class MemoryApplicationService(
 
     suspend fun runRetention(
         conversationId: Conversation.Id,
-        project: Project,
         namespace: MemoryNamespace = MemoryNamespace.Global,
     ): MemoryRetentionPipelineResult {
         val pipeline = MemoryRetentionPipeline(

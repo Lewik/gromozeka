@@ -26,7 +26,7 @@ import kotlinx.serialization.json.buildJsonObject
 class GromozekaMcpServerFactoryMemoryHelpTest {
     @Test
     fun `memory help is exposed by default and returns domain guide`() = withClearedMcpTools {
-        val server = GromozekaMcpServerFactory(DefaultMemoryToolProvider).create()
+        val server = GromozekaMcpServerFactory(DefaultMemoryToolProvider.getTools()).create()
 
         assertTrue(server.tools.containsKey(MCP_MEMORY_HELP_TOOL_NAME))
 
@@ -59,7 +59,7 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
 
     @Test
     fun `memory help is available in explicit MCP tool allowlist`() = withMcpTools(MCP_MEMORY_HELP_TOOL_NAME) {
-        val server = GromozekaMcpServerFactory(EmptyToolProvider).create()
+        val server = GromozekaMcpServerFactory(EmptyToolProvider.getTools()).create()
 
         assertTrue(server.tools.containsKey(MCP_MEMORY_HELP_TOOL_NAME))
         assertFalse(server.tools.containsKey("memory_remember"))

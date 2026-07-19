@@ -2,7 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
@@ -53,7 +53,7 @@ class MemoryMessageRoutingApplicationService(
         threadId: Conversation.Thread.Id,
         message: Conversation.Message,
         agent: AgentDefinition,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         threadContextMessages: List<Conversation.Message>? = null,
@@ -110,7 +110,7 @@ class MemoryMessageRoutingApplicationService(
                 parentSource = source,
                 document = document,
                 agent = agent,
-                project = project,
+                runtimeContext = runtimeContext,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
                 logContext = "conversation=${conversationId.value} message=${message.id.value} role=${message.role}",
@@ -129,7 +129,7 @@ class MemoryMessageRoutingApplicationService(
             threadContext = threadContext,
             parentRunId = parentRunId,
             agent = agent,
-            project = project,
+            runtimeContext = runtimeContext,
             runtimeSystemPrompts = runtimeSystemPrompts,
             runtimeTools = runtimeTools,
             logContext = "conversation=${conversationId.value} message=${message.id.value} role=${message.role}",
@@ -146,7 +146,7 @@ class MemoryMessageRoutingApplicationService(
         parentSource: MemorySource.ChatTurn,
         document: MarkdownDocumentImport,
         agent: AgentDefinition,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         logContext: String,
@@ -233,7 +233,7 @@ class MemoryMessageRoutingApplicationService(
                         threadContext = null,
                         parentRunId = parentRun.id,
                         agent = agent,
-                        project = project,
+                        runtimeContext = runtimeContext,
                         runtimeSystemPrompts = runtimeSystemPrompts,
                         runtimeTools = runtimeTools,
                         logContext = "$logContext documentSection=${effectiveSection.index}/${sections.size}",
@@ -373,7 +373,7 @@ class MemoryMessageRoutingApplicationService(
         namespace: MemoryNamespace,
         source: MemorySource,
         agent: AgentDefinition,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         parentRunId: MemoryRun.Id? = null,
@@ -392,7 +392,7 @@ class MemoryMessageRoutingApplicationService(
             threadContext = null,
             parentRunId = parentRunId,
             agent = agent,
-            project = project,
+            runtimeContext = runtimeContext,
             runtimeSystemPrompts = runtimeSystemPrompts,
             runtimeTools = runtimeTools,
             logContext = "namespace=${namespace.value} source=${source.id.value} sourceType=${source::class.simpleName}",
@@ -407,7 +407,7 @@ class MemoryMessageRoutingApplicationService(
         threadContext: MemoryThreadContext?,
         parentRunId: MemoryRun.Id?,
         agent: AgentDefinition,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         logContext: String,
@@ -415,7 +415,7 @@ class MemoryMessageRoutingApplicationService(
         throwOnError: Boolean = false,
     ): DirectStructuredMemoryWriteResult? = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val startedAt = Clock.System.now()
-        val runtimes = MemoryWriteStageRuntimes(project)
+        val runtimes = MemoryWriteStageRuntimes(runtimeContext)
         val memoryStageTools = emptyList<AiToolCallback>()
         val focusedThreadContext = threadContext?.let {
             MemoryThreadContextCompactor(
@@ -551,7 +551,7 @@ class MemoryMessageRoutingApplicationService(
     }
 
     private inner class MemoryWriteStageRuntimes(
-        private val project: Project,
+        private val runtimeContext: RuntimeEnvironmentContext,
     ) {
         private val runtimes = mutableMapOf<AiRuntimeAssignment.Purpose, AiRuntime>()
 
@@ -559,7 +559,7 @@ class MemoryMessageRoutingApplicationService(
             runtimes.getOrPut(purpose) {
                 aiRuntimeProvider.getRuntime(
                     selection = settingsProvider.runtimeSelectionFor(purpose),
-                    projectPath = project.path,
+                    workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
             }
     }

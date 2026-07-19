@@ -20,7 +20,6 @@ class ExposedProjectRepository : ProjectRepository {
 
         if (exists) {
             Projects.update({ Projects.id eq project.id.value }) {
-                it[path] = project.path
                 it[name] = project.name
                 it[description] = project.description
                 it[lastUsedAt] = project.lastUsedAt.toKotlin()
@@ -28,7 +27,6 @@ class ExposedProjectRepository : ProjectRepository {
         } else {
             Projects.insert {
                 it[id] = project.id.value
-                it[path] = project.path
                 it[name] = project.name
                 it[description] = project.description
                 it[createdAt] = project.createdAt.toKotlin()
@@ -41,12 +39,6 @@ class ExposedProjectRepository : ProjectRepository {
 
     override suspend fun findById(id: Project.Id): Project? = dbQuery {
         Projects.selectAll().where { Projects.id eq id.value }
-            .map { it.toProject() }
-            .singleOrNull()
-    }
-
-    override suspend fun findByPath(path: String): Project? = dbQuery {
-        Projects.selectAll().where { Projects.path eq path }
             .map { it.toProject() }
             .singleOrNull()
     }
@@ -72,7 +64,6 @@ class ExposedProjectRepository : ProjectRepository {
 
     private fun ResultRow.toProject(): Project = Project(
         id = Project.Id(this[Projects.id]),
-        path = this[Projects.path],
         name = this[Projects.name],
         description = this[Projects.description],
         createdAt = this[Projects.createdAt].toKotlinx(),

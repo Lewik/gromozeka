@@ -63,7 +63,7 @@ internal class OpenAiSdkRuntimeBackend(
     override fun createRuntime(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
-        projectPath: String?
+        workspaceRootPath: String?
     ): AiRuntime {
         val connectionKind = connection.kind
         return OpenAiSdkRuntime(

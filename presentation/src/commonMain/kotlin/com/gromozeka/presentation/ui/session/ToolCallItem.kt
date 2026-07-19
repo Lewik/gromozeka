@@ -25,12 +25,13 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.format
 import kotlinx.serialization.json.*
 
-private fun formatPath(path: String, projectPath: String): String {
-    val normalizedProjectPath = projectPath.trimEnd('/')
+private fun formatPath(path: String, workspaceRootPath: String?): String {
     val normalizedPath = path.trim()
     if (normalizedPath.isBlank()) return normalizedPath
-    return if (normalizedPath.startsWith(normalizedProjectPath)) {
-        normalizedPath.removePrefix(normalizedProjectPath).removePrefix("/")
+    val normalizedWorkspaceRootPath = workspaceRootPath?.trimEnd('/')?.takeIf(String::isNotBlank)
+        ?: return normalizedPath
+    return if (normalizedPath.startsWith(normalizedWorkspaceRootPath)) {
+        normalizedPath.removePrefix(normalizedWorkspaceRootPath).removePrefix("/")
     } else {
         normalizedPath
     }
@@ -60,13 +61,13 @@ private fun truncateText(text: String, maxLines: Int = 5): String {
 
 private const val MaxExpandedToolResultChars = 12_000
 
-private fun buildDetailedParameters(toolName: String, input: JsonElement, projectPath: String): String {
+private fun buildDetailedParameters(toolName: String, input: JsonElement, workspaceRootPath: String?): String {
     return try {
         val json = input.jsonObject
         when (toolName) {
             "grz_read_file" -> {
                 val path = json["file_path"]?.jsonPrimitive?.content ?: ""
-                "File: ${formatPath(path, projectPath)}"
+                "File: ${formatPath(path, workspaceRootPath)}"
             }
             "grz_write_file" -> {
                 val path = json["file_path"]?.jsonPrimitive?.content ?: ""
@@ -75,7 +76,7 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
                     if (it < 1) "${content.length} bytes" 
                     else "%.1f KB".format(it) 
                 }
-                "File: ${formatPath(path, projectPath)}\nSize: $size"
+                "File: ${formatPath(path, workspaceRootPath)}\nSize: $size"
             }
             "grz_edit_file" -> {
                 val path = json["file_path"]?.jsonPrimitive?.content ?: ""
@@ -84,7 +85,7 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
                 val replaceAll = json["replace_all"]?.jsonPrimitive?.boolean ?: false
                 
                 buildString {
-                    append("File: ${formatPath(path, projectPath)}\n")
+                    append("File: ${formatPath(path, workspaceRootPath)}\n")
                     append("Replace: \"$oldString\" → \"$newString\"\n")
                     append("Mode: ${if (replaceAll) "Replace all occurrences" else "Replace first occurrence"}")
                 }
@@ -96,7 +97,7 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
                 
                 buildString {
                     append("Command: $command\n")
-                    workingDir?.let { append("Working directory: ${formatPath(it, projectPath)}\n") }
+                    workingDir?.let { append("Working directory: ${formatPath(it, workspaceRootPath)}\n") }
                     timeout?.let { append("Timeout: ${it}s") }
                 }
             }
@@ -111,12 +112,14 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
             }
             "create_agent" -> {
                 val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""
-                val agentProjectPath = json["project_path"]?.jsonPrimitive?.content ?: ""
+                val projectId = json["project_id"]?.jsonPrimitive?.content ?: ""
+                val workspaceId = json["workspace_id"]?.jsonPrimitive?.content ?: ""
                 val initialMessage = json["initial_message"]?.jsonPrimitive?.content
                 
                 buildString {
                     append("Agent: $agentName\n")
-                    append("Project: ${formatPath(agentProjectPath, projectPath)}")
+                    append("Project: $projectId\n")
+                    append("Workspace: $workspaceId")
                     initialMessage?.let { append("\nInitial message: ${it.take(100)}${if (it.length > 100) "..." else ""}") }
                 }
             }
@@ -132,17 +135,6 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
             "switch_tab" -> {
                 val tabId = json["tab_id"]?.jsonPrimitive?.content ?: ""
                 "Tab ID: $tabId"
-            }
-            "list_contexts" -> {
-                val contextProjectPath = json["project_path"]?.jsonPrimitive?.content
-                contextProjectPath?.let { "Project: ${formatPath(it, projectPath)}" } ?: "All contexts"
-            }
-            "delete_context" -> {
-                val contextName = json["context_name"]?.jsonPrimitive?.content ?: ""
-                "Context: $contextName"
-            }
-            "save_contexts" -> {
-                "Saving extracted contexts"
             }
             else -> json.toString()
         }
@@ -163,10 +155,6 @@ private fun getToolDisplayName(toolName: String): String = when (toolName) {
     "tell_agent" -> "Tell Agent"
     "switch_tab" -> "Switch Tab"
     "list_tabs" -> "List Tabs"
-    "list_contexts" -> "List Contexts"
-    "extract_contexts" -> "Extract Contexts"
-    "save_contexts" -> "Save Contexts"
-    "delete_context" -> "Delete Context"
     "hello_world" -> "Test"
     else -> toolName
 }
@@ -183,10 +171,6 @@ private fun getToolIcon(toolName: String): ImageVector = when (toolName) {
     "tell_agent" -> Icons.Default.DeveloperBoard
     "switch_tab" -> Icons.Default.Tab
     "list_tabs" -> Icons.Default.ViewList
-    "list_contexts" -> Icons.Default.ListAlt
-    "extract_contexts" -> Icons.Default.AutoFixHigh
-    "save_contexts" -> Icons.Default.Save
-    "delete_context" -> Icons.Default.DeleteOutline
     "hello_world" -> Icons.Default.BugReport
     else -> Icons.Default.Build
 }
@@ -203,24 +187,24 @@ private fun getToolSecondaryIcon(toolName: String): ImageVector? = when (toolNam
     else -> null
 }
 
-private fun extractKeyParameters(toolName: String, input: JsonElement, projectPath: String): String {
+private fun extractKeyParameters(toolName: String, input: JsonElement, workspaceRootPath: String?): String {
     return try {
         val json = input.jsonObject
         when (toolName) {
             "grz_read_file" -> {
                 val path = json["file_path"]?.jsonPrimitive?.content ?: ""
-                formatPath(path, projectPath)
+                formatPath(path, workspaceRootPath)
             }
             "grz_write_file" -> {
                 val path = json["file_path"]?.jsonPrimitive?.content ?: ""
                 val content = json["content"]?.jsonPrimitive?.content ?: ""
                 val size = (content.length / 1024.0).let { if (it < 1) "${content.length} B" else "%.1f KB".format(it) }
-                "${formatPath(path, projectPath)} ($size)"
+                "${formatPath(path, workspaceRootPath)} ($size)"
             }
             "grz_edit_file" -> {
                 val path = json["file_path"]?.jsonPrimitive?.content ?: ""
                 val replaceAll = json["replace_all"]?.jsonPrimitive?.boolean ?: false
-                "${formatPath(path, projectPath)}${if (replaceAll) " (replace all)" else ""}"
+                "${formatPath(path, workspaceRootPath)}${if (replaceAll) " (replace all)" else ""}"
             }
             "grz_execute_command" -> {
                 val command = json["command"]?.jsonPrimitive?.content ?: ""
@@ -235,8 +219,8 @@ private fun extractKeyParameters(toolName: String, input: JsonElement, projectPa
             }
             "create_agent" -> {
                 val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""
-                val projectPath = json["project_path"]?.jsonPrimitive?.content ?: ""
-                "$agentName (${projectPath.substringAfterLast('/')})"
+                val workspaceId = json["workspace_id"]?.jsonPrimitive?.content ?: ""
+                "$agentName ($workspaceId)"
             }
             "tell_agent" -> {
                 val message = json["message"]?.jsonPrimitive?.content ?: ""
@@ -245,15 +229,6 @@ private fun extractKeyParameters(toolName: String, input: JsonElement, projectPa
             "switch_tab" -> {
                 val tabId = json["tab_id"]?.jsonPrimitive?.content ?: ""
                 "Tab #${tabId.take(8)}"
-            }
-            "list_contexts" -> {
-                json["project_path"]?.jsonPrimitive?.content?.substringAfterLast('/') ?: "all"
-            }
-            "delete_context" -> {
-                json["context_name"]?.jsonPrimitive?.content ?: ""
-            }
-            "save_contexts" -> {
-                "XML contexts"
             }
             else -> ""
         }
@@ -266,7 +241,7 @@ private fun extractKeyParameters(toolName: String, input: JsonElement, projectPa
 fun ToolCallItem(
     toolCall: Conversation.Message.ContentItem.ToolCall.Data,
     toolResult: Conversation.Message.ContentItem.ToolResult?,
-    projectPath: String,
+    workspaceRootPath: String?,
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -282,9 +257,9 @@ fun ToolCallItem(
     val displayName = getToolDisplayName(toolName)
     val toolIcon = getToolIcon(toolName)
     val secondaryIcon = getToolSecondaryIcon(toolName)
-    val keyParameters = extractKeyParameters(toolName, toolCall.input, projectPath)
+    val keyParameters = extractKeyParameters(toolName, toolCall.input, workspaceRootPath)
     val toolDescription = if (keyParameters.isNotEmpty()) "$displayName: $keyParameters" else displayName
-    val detailedParameters = buildDetailedParameters(toolName, toolCall.input, projectPath)
+    val detailedParameters = buildDetailedParameters(toolName, toolCall.input, workspaceRootPath)
 
     Column {
         // Row with main tool button + optional action button

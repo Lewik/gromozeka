@@ -7,10 +7,10 @@ import java.util.concurrent.ConcurrentHashMap
 import jakarta.annotation.PreDestroy
 
 /**
- * Service managing LSP clients for different languages and projects.
+ * Service managing LSP clients for different languages and filesystem workspaces.
  *
  * Features:
- * - One LSP client per language per project
+ * - One LSP client per language per workspace root
  * - Lazy initialization (start server on first use)
  * - Automatic cleanup on shutdown
  * - Support for npx-based and binary-based servers
@@ -23,23 +23,23 @@ class LspClientService {
     private val clients = ConcurrentHashMap<String, LspClient>()
 
     /**
-     * Get or create LSP client for language and project.
+     * Get or create LSP client for language and workspace root.
      */
-    fun getClient(language: String, projectPath: String): LspClient {
-        val key = "$language:$projectPath"
+    fun getClient(language: String, workspaceRootPath: String): LspClient {
+        val key = "$language:$workspaceRootPath"
 
         return clients.computeIfAbsent(key) {
-            log.info { "Creating LSP client for $language in $projectPath" }
-            createClient(language, projectPath)
+            log.info { "Creating LSP client for $language in $workspaceRootPath" }
+            createClient(language, workspaceRootPath)
         }
     }
 
     /**
      * Create LSP client with appropriate server command for language.
      */
-    private fun createClient(language: String, projectPath: String): LspClient {
+    private fun createClient(language: String, workspaceRootPath: String): LspClient {
         val command = getServerCommand(language)
-        val rootUri = Path.of(projectPath)
+        val rootUri = Path.of(workspaceRootPath)
 
         return LspClient(command, rootUri, language)
     }

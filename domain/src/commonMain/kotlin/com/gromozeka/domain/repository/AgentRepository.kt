@@ -37,12 +37,12 @@ interface AgentRepository {
      * Finds all agents, ordered by name (alphabetically).
      *
      * Returns empty list if no agents exist.
-     * Includes BUILTIN + GLOBAL + PROJECT (if projectPath provided) + INLINE agents.
+     * Workspace-local definitions are deliberately excluded because a central
+     * repository has no filesystem authority over worker mounts.
      *
-     * @param projectPath path to current project (for loading PROJECT agents), null for global context
      * @return all agents in ascending alphabetical order
      */
-    suspend fun findAll(projectPath: String? = null): List<AgentDefinition>
+    suspend fun findAll(): List<AgentDefinition>
 
     /**
      * Deletes agent permanently.

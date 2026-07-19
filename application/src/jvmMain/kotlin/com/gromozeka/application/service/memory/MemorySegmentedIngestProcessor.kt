@@ -1,7 +1,7 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service
 
 internal data class MemorySegmentedIngestContext(
     val agent: AgentDefinition,
-    val project: Project,
+    val runtimeContext: RuntimeEnvironmentContext,
     val systemPrompts: List<String>,
     val memoryTools: List<AiToolCallback>,
 )
@@ -83,7 +83,7 @@ internal class MemorySegmentedIngestProcessor(
                     namespace = namespace,
                     source = sectionSourceFactory(effectiveSection),
                     agent = context.agent,
-                    project = context.project,
+                    runtimeContext = context.runtimeContext,
                     runtimeSystemPrompts = context.systemPrompts,
                     runtimeTools = context.memoryTools,
                     parentRunId = rootRun.id,

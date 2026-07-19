@@ -15,23 +15,6 @@ import com.gromozeka.domain.model.Prompt
 interface PromptDomainService {
 
     /**
-     * Assembles system prompts from an ordered list of prompt IDs.
-     *
-     * Loads prompts by IDs and returns their content as separate strings.
-     * Each element in the result list represents one prompt's content.
-     * This allows sending multiple system messages to the model.
-     *
-     * @param promptIds ordered list of prompt IDs to assemble
-     * @param project project context (required for project: prompts and environment info)
-     * @return list of prompt contents (one per prompt)
-     * @throws Prompt.NotFoundException if any referenced prompt doesn't exist
-     */
-    suspend fun assembleSystemPrompt(
-        promptIds: List<Prompt.Id>,
-        project: com.gromozeka.domain.model.Project
-    ): List<String>
-
-    /**
      * Finds prompt by ID.
      *
      * @param id prompt identifier
@@ -100,4 +83,14 @@ interface PromptDomainService {
      * @return success with count of imported prompts, or failure
      */
     suspend fun importAllClaudeMd(): Result<Int>
+}
+
+/**
+ * [SPECIFICATION] Resolves prompts for a logical workspace and runtime worker.
+ */
+interface PromptAssemblyService {
+    suspend fun assembleSystemPrompt(
+        promptIds: List<Prompt.Id>,
+        runtimeContext: com.gromozeka.domain.model.RuntimeEnvironmentContext,
+    ): List<String>
 }

@@ -37,6 +37,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
@@ -55,10 +56,10 @@ class DefaultCommandTaskService(
     private val processRunner: CommandProcessRunner,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
-    runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
+    private val runtimeWorkerDescriptor: ObjectProvider<ConversationRuntimeWorkerDescriptor>,
 ) : CommandTaskService {
     private val log = KLoggers.logger(this)
-    private val workerId = runtimeWorkerDescriptor.id
+    private val workerId get() = runtimeWorkerDescriptor.getObject().id
     private val supervisor = SupervisorJob()
     private val scope = CoroutineScope(supervisor + Dispatchers.IO + CoroutineName("command-tasks"))
     private val activeCommands = ConcurrentHashMap<CommandTask.Id, ActiveCommand>()
@@ -76,7 +77,7 @@ class DefaultCommandTaskService(
     ): CommandTaskOutput {
         validateRequest(request)
         val conversationId = context.requiredConversationId()
-        val workingDirectory = resolveWorkingDirectory(context.requiredProjectPath(), request.working_directory)
+        val workingDirectory = resolveWorkingDirectory(context.requiredWorkspaceRootPath(), request.working_directory)
         val taskId = CommandTask.Id(uuid7())
         val activeCommand = lifecycleMutex.withLock {
             val process = processRunner.start(
@@ -91,6 +92,7 @@ class DefaultCommandTaskService(
                 id = taskId,
                 conversationId = conversationId,
                 workerId = workerId,
+                workspaceId = context.requiredWorkspaceId(),
                 command = request.command,
                 workingDirectory = workingDirectory,
                 status = CommandTask.Status.WORKING,
@@ -607,16 +609,22 @@ class DefaultCommandTaskService(
             ?.let(Conversation::Id)
             ?: error("conversationId is required in tool context")
 
-    private fun ToolExecutionContext.requiredProjectPath(): String =
-        getString("projectPath")?.takeIf { it.isNotBlank() }
-            ?: error("projectPath is required in tool context")
+    private fun ToolExecutionContext.requiredWorkspaceId(): com.gromozeka.domain.model.Workspace.Id =
+        getString("workspaceId")
+            ?.takeIf { it.isNotBlank() }
+            ?.let(com.gromozeka.domain.model.Workspace::Id)
+            ?: error("workspaceId is required in tool context")
 
-    private fun resolveWorkingDirectory(projectPath: String, requested: String?): String {
-        val projectDirectory = File(projectPath).absoluteFile.normalize()
+    private fun ToolExecutionContext.requiredWorkspaceRootPath(): String =
+        getString("workspaceRootPath")?.takeIf { it.isNotBlank() }
+            ?: error("workspaceRootPath is required in tool context")
+
+    private fun resolveWorkingDirectory(workspaceRootPath: String, requested: String?): String {
+        val workspaceDirectory = File(workspaceRootPath).absoluteFile.normalize()
         val directory = requested
             ?.let(::File)
-            ?.let { if (it.isAbsolute) it else File(projectDirectory, requested) }
-            ?: projectDirectory
+            ?.let { if (it.isAbsolute) it else File(workspaceDirectory, requested) }
+            ?: workspaceDirectory
         require(directory.isDirectory) {
             "Command working directory does not exist or is not a directory: ${directory.absolutePath}"
         }

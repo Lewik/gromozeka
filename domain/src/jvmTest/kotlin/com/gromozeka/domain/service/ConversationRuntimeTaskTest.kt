@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
@@ -43,17 +44,19 @@ class ConversationRuntimeTaskTest {
     }
 
     @Test
-    fun `local agent tool requirements need tool execution and affinity`() {
+    fun `local agent tool requirements need tool execution and tool tasks need exact target`() {
         assertFailsWith<IllegalArgumentException> {
             ConversationRuntimeTaskRequirements(
                 capabilities = setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL),
             )
         }
         assertFailsWith<IllegalArgumentException> {
-            ConversationRuntimeTaskRequirements(
-                capabilities = setOf(
-                    ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                    ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+            toolExecutionTask(
+                requirements = ConversationRuntimeTaskRequirements(
+                    capabilities = setOf(
+                        ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
+                        ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+                    ),
                 ),
             )
         }
@@ -87,5 +90,32 @@ class ConversationRuntimeTaskTest {
                 ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                 ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
             ),
+        )
+
+    private fun toolExecutionTask(
+        requirements: ConversationRuntimeTaskRequirements,
+    ): ConversationRuntimeTask =
+        ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("tool-task-1"),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.ToolExecution(
+                rootUserMessageId = Conversation.Message.Id("message-1"),
+                agent = agent,
+                iteration = 1,
+                toolCalls = listOf(
+                    Conversation.Message.ContentItem.ToolCall(
+                        id = Conversation.Message.ContentItem.ToolCall.Id("tool-call-1"),
+                        call = Conversation.Message.ContentItem.ToolCall.Data(
+                            name = "grz_read_file",
+                            input = JsonObject(emptyMap()),
+                        ),
+                    )
+                ),
+                returnDirect = false,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "test:tool-task-1",
+            requirements = requirements,
+            createdAt = Clock.System.now(),
         )
 }

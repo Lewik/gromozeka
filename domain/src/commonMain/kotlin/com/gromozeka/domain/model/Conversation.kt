@@ -26,6 +26,7 @@ import kotlin.jvm.JvmInline
  *
  * @property id unique conversation identifier (UUIDv7)
  * @property projectId project this conversation belongs to
+ * @property workspaceId default workspace used for environment context and filesystem tools
  * @property agentDefinitionId agent definition used for this conversation
  * @property displayName human-readable conversation title (can be blank)
  * @property currentThread currently active thread ID (conversation can switch threads)
@@ -36,6 +37,7 @@ import kotlin.jvm.JvmInline
 data class Conversation(
     val id: Id,
     val projectId: Project.Id,
+    val workspaceId: Workspace.Id,
     val agentDefinitionId: AgentDefinition.Id,
     val displayName: String = "",
     val currentThread: Thread.Id,
@@ -602,7 +604,7 @@ data class Conversation(
                             append("  <reference kind=\"")
                             append(reference.kind.name.lowercase())
                             append("\" path=\"")
-                            append(reference.path.escapeXml())
+                            append(reference.relativePath.escapeXml())
                             append("\">")
                             append(reference.name.escapeXml())
                             appendLine("</reference>")

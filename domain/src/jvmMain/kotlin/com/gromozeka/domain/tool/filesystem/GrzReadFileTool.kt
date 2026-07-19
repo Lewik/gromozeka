@@ -7,7 +7,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 /**
  * Request parameters for grz_read_file tool.
  * 
- * @property file_path Path to the file (absolute or relative to project root)
+ * @property file_path Path to the file (absolute or relative to workspace root)
  * @property limit Maximum lines to read (default: 1000 for safety, -1 for entire file)
  * @property offset Skip first N lines (default: 0, useful for pagination)
  */
@@ -68,7 +68,7 @@ data class ReadFileRequest(
  * 
  * ## file_path: String (required)
  * 
- * Path to the file to read. Can be absolute or relative to project root.
+ * Path to the file to read. Can be absolute or relative to workspace root.
  * 
  * **Examples:**
  * - `"src/main/kotlin/Main.kt"` - Relative path

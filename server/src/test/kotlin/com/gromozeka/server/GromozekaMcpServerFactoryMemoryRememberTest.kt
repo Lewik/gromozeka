@@ -23,7 +23,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
     @Test
     fun `memory remember MCP schema exposes only explicit content inputs`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
         val callback = CapturingToolCallback()
-        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback).getTools()).create()
 
         val tool = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).tool
         val properties = requireNotNull(requireNotNull(tool.inputSchema).properties)
@@ -40,7 +40,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
     @Test
     fun `memory remember MCP call injects provided content target and user consent`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
         val callback = CapturingToolCallback()
-        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback).getTools()).create()
 
         runBlocking {
             val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
@@ -63,7 +63,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
     @Test
     fun `memory remember MCP call treats text with document type as provided document`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
         val callback = CapturingToolCallback()
-        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback).getTools()).create()
 
         runBlocking {
             val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
@@ -87,7 +87,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
     @Test
     fun `memory remember MCP call rejects conversation targets`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
         val callback = CapturingToolCallback()
-        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback).getTools()).create()
 
         val result = runBlocking {
             server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
@@ -108,7 +108,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
     @Test
     fun `memory remember MCP call rejects multiple explicit content inputs before callback`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
         val callback = CapturingToolCallback()
-        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback).getTools()).create()
 
         val result = runBlocking {
             server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(

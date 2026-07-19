@@ -57,7 +57,7 @@ internal class FileClaudeCodeSessionStateRepository : ClaudeCodeSessionStateRepo
                 conversationId.value,
                 threadId.value,
                 projectId.value,
-                projectPathFingerprint,
+                workspaceRootPathFingerprint,
                 connectionId.value,
                 modelConfigurationId.value,
                 modelName,

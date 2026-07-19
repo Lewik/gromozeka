@@ -22,7 +22,7 @@ The project is currently a local research/development application, not a polishe
 The current development shape is split:
 
 - `:server` accepts client commands, persists runtime state, publishes durable work, streams events, and exposes the Ktor remote endpoint.
-- `:worker` claims durable tasks and executes conversation, LLM, tool, and memory work according to its declared capabilities and affinities.
+- `:worker` claims durable tasks and executes conversation, LLM, tool, and memory work according to its declared capabilities and exact task targets.
 - `:presentation` owns UI code and can run either as a JVM desktop client or as a Wasm web client.
 - The server listens on `/ws` for remote UI traffic and serves already-built Wasm static files from `presentation/build/dist/wasmJs/developmentExecutable` by default.
 

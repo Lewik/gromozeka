@@ -16,16 +16,16 @@ import com.gromozeka.application.service.memory.MemoryOperationKind
 import com.gromozeka.application.service.memory.MemoryOperationQueueStatus
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
-import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.shared.uuid.uuid7
-import java.io.File
 import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.contentOrNull
@@ -34,8 +34,8 @@ import org.springframework.stereotype.Service
 
 @Service
 class MemoryToolApplicationService(
-    private val contextResolver: MemoryOperationContextResolver,
-    private val projectService: ProjectDomainService,
+    private val conversationService: ConversationDomainService,
+    private val workspaceService: WorkspaceDomainService,
     private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val memoryEmbeddingIndexer: MemoryEmbeddingIndexer,
     private val memoryStore: MemoryStore,
@@ -213,31 +213,39 @@ class MemoryToolApplicationService(
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?.let { MemoryMaintenanceTarget(MemoryMaintenanceTargetKind.CONVERSATION_ID, it) }
-            ?: defaultStandaloneProjectPath()
-                .let { path -> projectService.getOrCreate(File(path).absolutePath) }
-                .let { project -> MemoryMaintenanceTarget(MemoryMaintenanceTargetKind.PROJECT_ID, project.id.value) }
+            ?: MemoryMaintenanceTarget(MemoryMaintenanceTargetKind.STANDALONE, "standalone")
 
     private suspend fun resolveMaintenanceContext(target: MemoryMaintenanceTarget): MemoryMaintenanceContext =
         when (target.kind) {
-            MemoryMaintenanceTargetKind.CONVERSATION_ID -> contextResolver.resolveConversation(Conversation.Id(target.value))
-                .let {
-                    MemoryMaintenanceContext(
-                        conversationId = Conversation.Id(target.value),
-                        namespace = MemoryNamespace.Global,
-                    )
+            MemoryMaintenanceTargetKind.CONVERSATION_ID -> {
+                val conversationId = Conversation.Id(target.value)
+                requireNotNull(conversationService.findById(conversationId)) {
+                    "Conversation not found: ${conversationId.value}"
                 }
+                MemoryMaintenanceContext(
+                    conversationId = conversationId,
+                    namespace = MemoryNamespace.Global,
+                )
+            }
 
-            MemoryMaintenanceTargetKind.PROJECT_ID -> {
-                contextResolver.resolveProjectId(Project.Id(target.value))
+            MemoryMaintenanceTargetKind.WORKSPACE_ID -> {
+                val workspaceId = Workspace.Id(target.value)
+                requireNotNull(workspaceService.findById(workspaceId)) {
+                    "Workspace not found: ${workspaceId.value}"
+                }
+                MemoryMaintenanceContext(
+                    conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
+                    namespace = MemoryNamespace.Global,
+                )
+            }
+
+            MemoryMaintenanceTargetKind.STANDALONE -> {
                 MemoryMaintenanceContext(
                     conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
                     namespace = MemoryNamespace.Global,
                 )
             }
         }
-
-    private fun defaultStandaloneProjectPath(): String =
-        contextResolver.defaultStandaloneProjectPath()
 
     private fun MemoryNamespace.emptyNamespaceSummaryIfMissing(existing: List<MemoryNamespaceSummary>): List<MemoryNamespaceSummary> {
         if (existing.any { it.namespace == this }) return emptyList()

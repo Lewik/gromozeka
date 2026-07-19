@@ -1,8 +1,9 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.service.PromptDomainService
+import com.gromozeka.domain.service.PromptAssemblyService
 import com.gromozeka.domain.repository.PromptRepository
 import com.gromozeka.domain.service.PromptPersistenceService
 import com.gromozeka.domain.service.ImportedPromptsRegistry
@@ -16,39 +17,34 @@ class PromptApplicationService(
     private val promptPersistenceService: PromptPersistenceService,
     private val systemPromptBuilder: SystemPromptBuilder,
     private val importedPromptsRegistry: ImportedPromptsRegistry,
-) : PromptDomainService {
+) : PromptDomainService, PromptAssemblyService {
 
     override suspend fun assembleSystemPrompt(
         promptIds: List<Prompt.Id>,
-        project: Project,
+        runtimeContext: RuntimeEnvironmentContext,
     ): List<String> {
         return promptIds.map { id ->
             when {
                 id.value == "env" -> {
-                    systemPromptBuilder.buildEnvironmentInfo(project.path)
+                    systemPromptBuilder.buildEnvironmentInfo(runtimeContext)
                 }
 
                 else -> {
-                    val prompt = promptRepository.findById(id, project)
-                    prompt?.content ?: """
-                        ## ⚠️ CRITICAL ERROR: Required prompt not loaded
-                        **Failed to load prompt:** ${id.value}
-                        **Project:** ${project.name} (${project.path})
-                        This prompt is required for agent to function correctly.
-
-                        **Action required:** YOU MUST inform the user about missing file.
-                    """.trimIndent()
+                    val prompt = promptRepository.findById(id, runtimeContext)
+                    checkNotNull(prompt) {
+                        "Required prompt '${id.value}' is unavailable on worker ${runtimeContext.workerId}"
+                    }.content
                 }
             }
         }
     }
 
-    override suspend fun findById(id: Prompt.Id): Prompt? {
-        throw UnsupportedOperationException(
-            "findById without project context is not supported. " +
-            "Use assembleSystemPrompt with project context instead."
-        )
-    }
+    override suspend fun findById(id: Prompt.Id): Prompt? =
+        if (id.value.startsWith("builtin:")) {
+            promptRepository.findBuiltinById(id)
+        } else {
+            promptRepository.findAll().firstOrNull { it.id == id }
+        }
 
     override suspend fun findAll(): List<Prompt> {
         return promptRepository.findAll()

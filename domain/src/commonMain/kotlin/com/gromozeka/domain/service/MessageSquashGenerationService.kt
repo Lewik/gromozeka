@@ -10,6 +10,5 @@ interface MessageSquashGenerationService {
         selectedIds: List<Conversation.Message.Id>,
         squashType: SquashType,
         runtimeSelection: AiRuntimeSelection,
-        projectPath: String?,
     ): String
 }

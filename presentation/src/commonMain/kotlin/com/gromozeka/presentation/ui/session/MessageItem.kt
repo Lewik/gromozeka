@@ -35,7 +35,7 @@ fun MessageItem(
     message: Conversation.Message,
     settings: Settings,
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
-    projectPath: String,
+    workspaceRootPath: String? = null,
     isSelected: Boolean = false,
     collapsedContentItems: Set<Int> = emptySet(), // indices of collapsed content items
     onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
@@ -151,7 +151,7 @@ fun MessageItem(
                             ToolCallItem(
                                 toolCall = content.call,
                                 toolResult = correspondingResult,
-                                projectPath = projectPath
+                                workspaceRootPath = workspaceRootPath,
                             )
                         }
 

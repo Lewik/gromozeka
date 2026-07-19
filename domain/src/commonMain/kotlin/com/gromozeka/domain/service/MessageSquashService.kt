@@ -83,7 +83,7 @@ interface MessageSquashService {
      *
      * **Strategy selection:**
      * - CONCATENATE: No AI, simple text merge
-     * - SUMMARIZE: AI generates summary (uses project path for context)
+     * - SUMMARIZE: AI generates summary
      * - COMPRESS: AI removes redundancy (preserves technical details)
      *
      * **AI model selection:**
@@ -94,7 +94,6 @@ interface MessageSquashService {
      * @param conversationId target conversation
      * @param messageIds messages to squash (must be sequential)
      * @param strategy squashing strategy (CONCATENATE, SUMMARIZE, COMPRESS)
-     * @param projectPath optional project path for context (required for AI strategies)
      * @return result with squashed message or error
      * @throws IllegalArgumentException if messageIds is empty or has single element
      * @throws IllegalStateException if conversation or messages not found
@@ -103,7 +102,6 @@ interface MessageSquashService {
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
         strategy: SquashType,
-        projectPath: String? = null
     ): SquashResult
 
     /**
@@ -153,8 +151,6 @@ interface MessageSquashService {
                 /** AI model failed to generate squashed content */
                 AI_GENERATION_FAILED,
                 
-                /** Project path required for AI strategies but not provided */
-                MISSING_PROJECT_PATH
             }
         }
     }

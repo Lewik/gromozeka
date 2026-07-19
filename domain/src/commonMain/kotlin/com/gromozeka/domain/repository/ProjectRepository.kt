@@ -17,7 +17,7 @@ interface ProjectRepository {
      * Uses upsert semantics: creates if doesn't exist, updates if exists.
      * @param project project to save with all fields populated
      * @return saved project (unchanged, for fluent API)
-     * @throws IllegalArgumentException if project.id is blank or project.path is blank
+     * @throws IllegalArgumentException if project.id or project.name is blank
      */
     suspend fun save(project: Project): Project
 
@@ -28,15 +28,6 @@ interface ProjectRepository {
      * @return project if found, null if doesn't exist
      */
     suspend fun findById(id: Project.Id): Project?
-
-    /**
-     * Finds project by filesystem path.
-     *
-     * Path must be exact match (absolute path).
-     * @param path absolute filesystem path
-     * @return project if found, null if no project with this path exists
-     */
-    suspend fun findByPath(path: String): Project?
 
     /**
      * Finds all projects, ordered by last used (most recent first).

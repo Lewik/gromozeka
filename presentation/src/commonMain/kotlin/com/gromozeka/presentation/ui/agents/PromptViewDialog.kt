@@ -38,7 +38,7 @@ fun PromptViewDialog(
                     text = when (val type = prompt.type) {
                         is Prompt.Type.Builtin -> "Built-in prompt"
                         is Prompt.Type.Global -> "Global prompt"
-                        is Prompt.Type.Project -> "Project prompt"
+                        is Prompt.Type.Workspace -> "Workspace prompt"
                         is Prompt.Type.Environment -> "Inline prompt"
                     },
                     style = MaterialTheme.typography.bodySmall,

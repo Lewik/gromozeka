@@ -3,6 +3,7 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.remote.protocol.AddMessageRequest
 import com.gromozeka.remote.protocol.ConversationResponse
@@ -15,23 +16,26 @@ import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.FindConversationsByProjectRequest
 import com.gromozeka.remote.protocol.ForkConversationRequest
 import com.gromozeka.remote.protocol.GetProjectRequest
+import com.gromozeka.remote.protocol.GetWorkspaceRequest
 import com.gromozeka.remote.protocol.LoadCurrentMessagesRequest
 import com.gromozeka.remote.protocol.MessagesResponse
 import com.gromozeka.remote.protocol.ProjectResponse
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SquashMessagesRequest
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
+import com.gromozeka.remote.protocol.WorkspaceResponse
 
 internal class RemoteConversationService(
     private val client: GromozekaWsClient,
 ) : ConversationDomainService {
     override suspend fun create(
-        projectPath: String,
+        projectId: Project.Id,
+        workspaceId: Workspace.Id,
         displayName: String,
         agentDefinitionId: AgentDefinition.Id,
     ): Conversation =
         client.requestTyped<CreateConversationRequest, ConversationResponse>(
-            CreateConversationRequest(projectPath, agentDefinitionId, displayName)
+            CreateConversationRequest(projectId, workspaceId, agentDefinitionId, displayName)
         ).conversation ?: error("Server returned null conversation after create")
 
     override suspend fun findById(id: Conversation.Id): Conversation? =
@@ -40,9 +44,13 @@ internal class RemoteConversationService(
     override suspend fun getProject(conversationId: Conversation.Id): Project =
         client.requestTyped<GetProjectRequest, ProjectResponse>(GetProjectRequest(conversationId)).project
 
-    override suspend fun findByProject(projectPath: String): List<Conversation> =
+    override suspend fun getWorkspace(conversationId: Conversation.Id): Workspace =
+        client.requestTyped<GetWorkspaceRequest, WorkspaceResponse>(GetWorkspaceRequest(conversationId))
+            .workspace ?: error("Server returned no workspace for conversation ${conversationId.value}")
+
+    override suspend fun findByProject(projectId: Project.Id): List<Conversation> =
         client.requestTyped<FindConversationsByProjectRequest, ConversationsResponse>(
-            FindConversationsByProjectRequest(projectPath)
+            FindConversationsByProjectRequest(projectId)
         ).conversations
 
     override suspend fun delete(id: Conversation.Id) {

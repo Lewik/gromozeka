@@ -7,7 +7,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 /**
  * Request parameters for grz_write_file tool.
  * 
- * @property file_path Path to the file (absolute or relative to project root)
+ * @property file_path Path to the file (absolute or relative to workspace root)
  * @property content Content to write to the file
  */
 data class WriteFileRequest(
@@ -68,7 +68,7 @@ data class WriteFileRequest(
  * 
  * ## file_path: String (required)
  * 
- * Path to the file to write. Can be absolute or relative to project root.
+ * Path to the file to write. Can be absolute or relative to workspace root.
  * 
  * **Examples:**
  * - `"src/main/kotlin/NewFile.kt"` - Create in package structure
@@ -77,7 +77,7 @@ data class WriteFileRequest(
  * - `"config/settings.json"` - Nested in new directory
  * 
  * **Path resolution:**
- * - Relative paths resolved against project root (from ToolExecutionContext)
+ * - Relative paths resolved against workspace root (from ToolExecutionContext)
  * - Absolute paths used as-is
  * - Parent directories created automatically
  * 
@@ -284,11 +284,11 @@ data class WriteFileRequest(
  * **Path traversal risk:**
  * - ⚠️ Tool can write to ANY path accessible to process
  * - No sandboxing or path restrictions
- * - Resolved against project root, but `../` can escape
+ * - Resolved against workspace root, but `../` can escape
  * 
  * **Recommendation for production:**
  * - Validate paths in domain service
- * - Restrict to project directory tree
+ * - Restrict to workspace directory tree
  * - Whitelist allowed directories
  * 
  * **File permissions:**

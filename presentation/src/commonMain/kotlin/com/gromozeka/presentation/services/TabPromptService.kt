@@ -30,13 +30,13 @@ class TabPromptService(
         get() = when (this) {
             is Prompt.Type.Builtin -> "Builtin"
             is Prompt.Type.Global -> "Global"
-            is Prompt.Type.Project -> "Project"
+            is Prompt.Type.Workspace -> "Workspace"
             is Prompt.Type.Environment -> "Environment"
         }
 
     private val Prompt.Type.order: Int
         get() = when (this) {
-            is Prompt.Type.Project -> 0
+            is Prompt.Type.Workspace -> 0
             is Prompt.Type.Global -> 1
             is Prompt.Type.Builtin -> 2
             is Prompt.Type.Environment -> 3

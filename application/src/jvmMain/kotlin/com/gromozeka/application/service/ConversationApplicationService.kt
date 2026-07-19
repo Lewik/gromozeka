@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
@@ -38,6 +39,7 @@ class ConversationApplicationService(
     private val messageRepo: MessageRepository,
     private val threadMessageRepo: ThreadMessageRepository,
     private val projectService: ProjectDomainService,
+    private val workspaceService: com.gromozeka.domain.service.WorkspaceDomainService,
     private val toolCallPairingService: ToolCallPairingService
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
@@ -45,21 +47,27 @@ class ConversationApplicationService(
     /**
      * Creates new conversation with initial empty thread.
      *
-     * Ensures project exists (creates if needed), then creates conversation
-     * with empty initial thread ready for first message.
+     * Validates the project/workspace relation, then creates a conversation
+     * with an empty initial thread.
      *
-     * @param projectPath absolute file system path to project directory
      * @param displayName optional conversation title (empty uses auto-generated name)
      * @param agentDefinitionId agent definition to use for this conversation
      * @return created conversation with new thread
      */
     @Transactional
     override suspend fun create(
-        projectPath: String,
+        projectId: Project.Id,
+        workspaceId: Workspace.Id,
         displayName: String,
         agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id
     ): Conversation {
-        val project = projectService.getOrCreate(projectPath)
+        val project = projectService.findById(projectId)
+            ?: error("Project not found: ${projectId.value}")
+        val workspace = workspaceService.findById(workspaceId)
+            ?: error("Workspace not found: ${workspaceId.value}")
+        require(workspace.projectId == project.id) {
+            "Workspace ${workspaceId.value} does not belong to project ${projectId.value}"
+        }
         val now = Clock.System.now()
 
         val conversationId = Conversation.Id(uuid7())
@@ -75,6 +83,7 @@ class ConversationApplicationService(
         val conversation = Conversation(
             id = conversationId,
             projectId = project.id,
+            workspaceId = workspace.id,
             agentDefinitionId = agentDefinitionId,
             displayName = displayName,
             currentThread = initialThread.id,
@@ -96,14 +105,6 @@ class ConversationApplicationService(
     override suspend fun findById(id: Conversation.Id): Conversation? =
         conversationRepo.findById(id)
 
-    /**
-     * Retrieves project path for conversation.
-     *
-     * Looks up conversation, then resolves project path via ProjectService.
-     *
-     * @param conversationId conversation to query
-     * @return project path
-     */
     override suspend fun getProject(conversationId: Conversation.Id): Project {
         val conversation = findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
@@ -111,16 +112,21 @@ class ConversationApplicationService(
             ?: throw IllegalStateException("Project not found: ${conversation.projectId}")
     }
 
+    override suspend fun getWorkspace(conversationId: Conversation.Id): Workspace {
+        val conversation = findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        return workspaceService.findById(conversation.workspaceId)
+            ?: throw IllegalStateException("Workspace not found: ${conversation.workspaceId}")
+    }
+
     /**
      * Finds all conversations in project.
      *
-     * @param projectPath absolute file system path to project
+     * @param projectId logical project identifier
      * @return list of conversations (empty if project doesn't exist or has no conversations)
      */
-    override suspend fun findByProject(projectPath: String): List<Conversation> {
-        val project = projectService.findByPath(projectPath) ?: return emptyList()
-        return conversationRepo.findByProject(project.id)
-    }
+    override suspend fun findByProject(projectId: Project.Id): List<Conversation> =
+        conversationRepo.findByProject(projectId)
 
     /**
      * Deletes conversation and all associated data.
@@ -185,6 +191,7 @@ class ConversationApplicationService(
         val newConversation = Conversation(
             id = newConversationId,
             projectId = sourceConversation.projectId,
+            workspaceId = sourceConversation.workspaceId,
             agentDefinitionId = sourceConversation.agentDefinitionId,
             displayName = sourceConversation.displayName + " (fork)",
             currentThread = newThread.id,

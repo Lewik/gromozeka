@@ -32,7 +32,6 @@ fun AgentConstructorScreen(
     promptService: PromptDomainService,
     settingsService: SettingsService,
     coroutineScope: CoroutineScope,
-    projectPath: String? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) } // 0 = Agents, 1 = Prompts
@@ -59,7 +58,7 @@ fun AgentConstructorScreen(
         listOf(
             com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Lock, "Builtin"),
             com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Home, "Global"),
-            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Folder, "Project")
+            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Folder, "Workspace")
         )
     }
     
@@ -68,7 +67,7 @@ fun AgentConstructorScreen(
             when (val type = prompt.type) {
                 is Prompt.Type.Builtin -> 0 in selectedPromptTypes
                 is Prompt.Type.Global -> 1 in selectedPromptTypes
-                is Prompt.Type.Project -> 2 in selectedPromptTypes
+                is Prompt.Type.Workspace -> 2 in selectedPromptTypes
                 is Prompt.Type.Environment -> 2 in selectedPromptTypes // Group with "Other"
             }
         }
@@ -78,7 +77,7 @@ fun AgentConstructorScreen(
         isLoading = true
         error = null
         try {
-            agents = agentService.findAll(projectPath)
+            agents = agentService.findAll()
             prompts = promptService.findAll()
             log.info { "Loaded ${agents.size} agents and ${prompts.size} prompts" }
         } catch (e: Exception) {
@@ -377,7 +376,7 @@ fun AgentConstructorScreen(
                             text = when (val type = viewingPrompt!!.type) {
                                 is Prompt.Type.Builtin -> "Built-in prompt"
                                 is Prompt.Type.Global -> "Global prompt"
-                                is Prompt.Type.Project -> "Project prompt"
+                                is Prompt.Type.Workspace -> "Workspace prompt"
                                 is Prompt.Type.Environment -> "Inline prompt"
                             },
                             style = MaterialTheme.typography.bodySmall,

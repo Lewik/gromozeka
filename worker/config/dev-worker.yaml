@@ -9,5 +9,9 @@ gromozeka:
         - TOOL_EXECUTION
         - LOCAL_AGENT_TOOL
         - MEMORY_PIPELINE
-      project-paths:
-        - ${GROMOZEKA_PROJECT_PATH:${gromozeka.project.root}}
+      workspaces:
+        - id: gromozeka-dev
+          project-id: gromozeka
+          project-name: Gromozeka
+          name: Development
+          root-path: ${GROMOZEKA_WORKSPACE_ROOT:${gromozeka.project.root}}

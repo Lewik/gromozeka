@@ -39,7 +39,9 @@ import com.gromozeka.device.telemetry.DeviceLocationSnapshot
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.presentation.AppComponents
 import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
@@ -121,37 +123,49 @@ fun GromozekaAppContent(
         }
     }
 
-    val createNewSession: (String) -> Unit = { projectPath ->
+    val createSession: (Project.Id, Workspace.Id, String?) -> Unit = { projectId, workspaceId, initialText ->
         coroutineScope.launch {
             runCatching {
+                val initialMessage = initialText?.let { text ->
+                    Conversation.Message(
+                        id = Conversation.Message.Id(uuid7()),
+                        conversationId = Conversation.Id(""),
+                        role = Conversation.Message.Role.USER,
+                        content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
+                        createdAt = Clock.System.now(),
+                        instructions = listOf(Conversation.Message.Instruction.Source.User),
+                    )
+                }
                 val tabIndex = appComponents.appViewModel.createTab(
-                    projectPath = projectPath,
-                    initiator = ConversationInitiator.User
+                    projectId = projectId,
+                    workspaceId = workspaceId,
+                    initialMessage = initialMessage,
+                    initiator = ConversationInitiator.User,
                 )
                 appComponents.appViewModel.selectTab(tabIndex)
             }.onFailure { it.printStackTrace() }
         }
     }
 
-    val createNewSessionWithMessage: (String, String) -> Unit = { projectPath, initialMessage ->
-        coroutineScope.launch {
-            runCatching {
-                val chatMessage = Conversation.Message(
-                    id = Conversation.Message.Id(uuid7()),
-                    conversationId = Conversation.Id(""),
-                    role = Conversation.Message.Role.USER,
-                    content = listOf(Conversation.Message.ContentItem.UserMessage(initialMessage)),
-                    createdAt = Clock.System.now(),
-                    instructions = listOf(Conversation.Message.Instruction.Source.User)
-                )
-                val tabIndex = appComponents.appViewModel.createTab(
-                    projectPath = projectPath,
-                    agent = null,
-                    initialMessage = chatMessage,
-                    initiator = ConversationInitiator.User
-                )
-                appComponents.appViewModel.selectTab(tabIndex)
-            }.onFailure { it.printStackTrace() }
+    val createNewSession: (Project, Workspace) -> Unit = { project, workspace ->
+        createSession(project.id, workspace.id, null)
+    }
+
+    val createNewSessionInCurrentWorkspace: () -> Unit = {
+        val tab = currentTab
+        if (tab == null) {
+            log.warn { "Cannot create a session without an explicitly selected workspace" }
+        } else {
+            createSession(tab.projectId, tab.workspaceId, null)
+        }
+    }
+
+    val createNewSessionWithMessage: (String) -> Unit = { initialMessage ->
+        val tab = currentTab
+        if (tab == null) {
+            log.warn { "Cannot create a session without an explicitly selected workspace" }
+        } else {
+            createSession(tab.projectId, tab.workspaceId, initialMessage)
         }
     }
 
@@ -181,9 +195,7 @@ fun GromozekaAppContent(
                 .onPreviewKeyEvent { event ->
                     when {
                         event.key == Key.T && event.isMetaPressed && event.type == KeyEventType.KeyDown -> {
-                            if (currentTab != null) {
-                                createNewSession(currentTab!!.projectPath)
-                            }
+                            createNewSessionInCurrentWorkspace()
                             true
                         }
 
@@ -338,7 +350,7 @@ fun GromozekaAppContent(
                                                     val tabViewModel = currentTab!!
                                                     SessionScreen(
                                                         viewModel = tabViewModel,
-                                                        onNewSession = { createNewSession(currentTab!!.projectPath) },
+                                                        onNewSession = createNewSessionInCurrentWorkspace,
                                                         onForkSession = {
                                                             coroutineScope.launch {
                                                                 runCatching {
@@ -347,7 +359,8 @@ fun GromozekaAppContent(
                                                                     val forkedConversation =
                                                                         appComponents.conversationService.fork(currentConversationId)
                                                                     val tabIndex = appComponents.appViewModel.createTab(
-                                                                        projectPath = currentTab!!.projectPath,
+                                                                        projectId = forkedConversation.projectId,
+                                                                        workspaceId = forkedConversation.workspaceId,
                                                                         conversationId = forkedConversation.id,
                                                                         initiator = ConversationInitiator.User
                                                                     )
@@ -359,10 +372,12 @@ fun GromozekaAppContent(
                                                         },
                                                         onRestartSession = {
                                                             coroutineScope.launch {
-                                                                val projectPath = currentTab!!.projectPath
+                                                                val projectId = currentTab!!.projectId
+                                                                val workspaceId = currentTab!!.workspaceId
                                                                 val oldIndex = currentTabIndex!!
                                                                 appComponents.appViewModel.createTab(
-                                                                    projectPath = projectPath,
+                                                                    projectId = projectId,
+                                                                    workspaceId = workspaceId,
                                                                     initiator = ConversationInitiator.User
                                                                 )
                                                                 appComponents.appViewModel.closeTab(oldIndex)
@@ -377,7 +392,6 @@ fun GromozekaAppContent(
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,
                                                         pttState = pttState,
-                                                        workspaceFileSystemService = appComponents.workspaceFileSystemService,
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,
@@ -458,7 +472,6 @@ fun GromozekaAppContent(
                                                                     promptService = appComponents.promptService,
                                                                     settingsService = appComponents.settingsService,
                                                                     coroutineScope = coroutineScope,
-                                                                    projectPath = currentTab?.uiState?.value?.projectPath
                                                                 )
                                                             }
 
@@ -477,7 +490,7 @@ fun GromozekaAppContent(
                                                                     settingsService = appComponents.settingsService,
                                                                     ollamaModelService = appComponents.ollamaModelService,
                                                                     coroutineScope = coroutineScope,
-                                                                    onOpenTab = createNewSession,
+                                                                    onOpenTab = createNewSessionInCurrentWorkspace,
                                                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                                                     fullScreen = true,
                                                                     contentMode = SettingsPanelContentMode.AiRuntime,
@@ -491,7 +504,7 @@ fun GromozekaAppContent(
                                                                     coroutineScope = coroutineScope,
                                                                     onNewSession = createNewSession,
                                                                     projectService = appComponents.projectService,
-                                                                    workspaceFileSystemService = appComponents.workspaceFileSystemService,
+                                                                    workspaceCatalogService = appComponents.workspaceCatalogService,
                                                                     conversationTreeService = appComponents.conversationService,
                                                                     appViewModel = appComponents.appViewModel,
                                                                     searchViewModel = appComponents.conversationSearchViewModel,
@@ -539,7 +552,6 @@ fun GromozekaAppContent(
 
                                             Box(modifier = Modifier.testTag(UiTestTag.PromptsPanel.value)) {
                                                 AgentPanel(
-                                                    projectPath = tabUiState.projectPath,
                                                     isVisible = showPromptsPanel,
                                                     currentAgent = tabUiState.agent,
                                                     onAgentChange = { tabViewModel.updateAgent(it) },
@@ -572,7 +584,7 @@ fun GromozekaAppContent(
                                     settingsService = appComponents.settingsService,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
-                                    onOpenTab = createNewSession,
+                                    onOpenTab = createNewSessionInCurrentWorkspace,
                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                     contentMode = SettingsPanelContentMode.Quick
                                 )
@@ -639,7 +651,6 @@ fun GromozekaAppContent(
                                         .testTag(UiTestTag.PromptsPanel.value)
                                 ) {
                                     AgentPanel(
-                                        projectPath = tabUiState.projectPath,
                                         isVisible = showPromptsPanel,
                                         currentAgent = tabUiState.agent,
                                         onAgentChange = { tabViewModel.updateAgent(it) },
@@ -672,7 +683,7 @@ fun GromozekaAppContent(
                                     settingsService = appComponents.settingsService,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
-                                    onOpenTab = createNewSession,
+                                    onOpenTab = createNewSessionInCurrentWorkspace,
                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                     fullScreen = true,
                                     slideFromRight = true,

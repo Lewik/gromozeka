@@ -15,7 +15,7 @@ import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.SettingsService
-import com.gromozeka.domain.service.WorkspaceFileSystemService
+import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.infrastructure.ai.openai.SttService
 import com.gromozeka.infrastructure.ai.openai.TtsService
 import com.gromozeka.remote.protocol.*
@@ -46,7 +46,7 @@ class GromozekaRemoteServer(
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
     private val projectDomainService: ProjectDomainService,
-    private val workspaceFileSystemService: WorkspaceFileSystemService,
+    private val workspaceCatalogService: WorkspaceCatalogService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
@@ -121,7 +121,7 @@ class GromozekaRemoteServer(
 
                 GetDefaultAgentRequest -> DefaultAgentResponse(defaultAgentProvider.getDefault())
                 is FindAgentRequest -> AgentResponse(agentDomainService.findById(request.agentId))
-                is FindAgentsRequest -> AgentsResponse(agentDomainService.findAll(request.projectPath))
+                FindAgentsRequest -> AgentsResponse(agentDomainService.findAll())
                 is CreateAgentRequest -> AgentResponse(
                     agentDomainService.createAgent(
                         request.name,
@@ -140,12 +140,6 @@ class GromozekaRemoteServer(
                     SavedResponse
                 }
                 CountAgentsRequest -> CountResponse(agentDomainService.count())
-                is AssembleAgentSystemPromptRequest -> TextListResponse(
-                    agentDomainService.assembleSystemPrompt(request.agent, request.project)
-                )
-                is AssemblePromptSystemPromptRequest -> TextListResponse(
-                    promptDomainService.assembleSystemPrompt(request.promptIds, request.project)
-                )
                 is FindPromptRequest -> PromptResponse(promptDomainService.findById(request.promptId))
                 FindPromptsRequest -> PromptsResponse(promptDomainService.findAll())
                 RefreshPromptsRequest -> {
@@ -160,21 +154,34 @@ class GromozekaRemoteServer(
                 )
                 ResetAllBuiltinPromptsRequest -> countResultResponse(promptDomainService.resetAllBuiltinPrompts())
                 ImportAllClaudeMdRequest -> countResultResponse(promptDomainService.importAllClaudeMd())
-                is GetOrCreateProjectRequest -> ProjectResponse(projectDomainService.getOrCreate(request.path))
-                is BrowseWorkspaceRequest -> WorkspaceDirectoryResponse(
-                    workspaceFileSystemService.browse(request.path, request.includeFiles)
+                is CreateProjectRequest -> ProjectResponse(
+                    projectDomainService.create(request.name, request.description)
                 )
                 is FindProjectByIdRequest -> NullableProjectResponse(projectDomainService.findById(request.projectId))
-                is FindProjectByPathRequest -> NullableProjectResponse(projectDomainService.findByPath(request.path))
                 is UpdateProjectLastUsedRequest -> NullableProjectResponse(projectDomainService.updateLastUsed(request.projectId))
                 is CreateConversationRequest -> ConversationResponse(
-                    conversationDomainService.create(request.projectPath, request.displayName, request.agentDefinitionId)
+                    conversationDomainService.create(
+                        request.projectId,
+                        request.workspaceId,
+                        request.displayName,
+                        request.agentDefinitionId,
+                    )
                 )
 
                 is FindConversationRequest -> ConversationResponse(conversationDomainService.findById(request.conversationId))
                 is GetProjectRequest -> ProjectResponse(conversationDomainService.getProject(request.conversationId))
+                is GetWorkspaceRequest -> WorkspaceResponse(conversationDomainService.getWorkspace(request.conversationId))
                 is FindRecentProjectsRequest -> ProjectsResponse(projectDomainService.findRecent(request.limit))
-                is FindConversationsByProjectRequest -> ConversationsResponse(conversationDomainService.findByProject(request.projectPath))
+                is FindConversationsByProjectRequest -> ConversationsResponse(
+                    conversationDomainService.findByProject(request.projectId)
+                )
+                is FindWorkspaceRequest -> WorkspaceResponse(workspaceCatalogService.findById(request.workspaceId))
+                is FindWorkspacesByProjectRequest -> WorkspacesResponse(
+                    workspaceCatalogService.findByProject(request.projectId)
+                )
+                is FindWorkspaceMountsRequest -> WorkspaceMountsResponse(
+                    workspaceCatalogService.findMounts(request.workspaceId)
+                )
                 is DeleteConversationRequest -> {
                     conversationDomainService.delete(request.conversationId)
                     SavedResponse
@@ -208,7 +215,6 @@ class GromozekaRemoteServer(
                         request.messageIds,
                         request.squashType,
                         request.runtimeSelection,
-                        request.projectPath
                     )
                 )
 

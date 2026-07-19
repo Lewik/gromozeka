@@ -3,7 +3,9 @@ package com.gromozeka.domain.presentation.desktop.component
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.Workspace
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -115,7 +117,8 @@ import kotlinx.coroutines.flow.StateFlow
  * - Tool results lazy-loaded on expand
  *
  * @property conversationId ID of conversation this tab displays
- * @property projectPath Absolute path to project directory
+ * @property projectId Logical project identifier
+ * @property workspaceId Default workspace identifier
  * @property uiState Complete UI state (includes all tab state)
  * @property allMessages All messages in conversation (unfiltered)
  * @property filteredMessages Messages after applying display filters
@@ -128,7 +131,8 @@ import kotlinx.coroutines.flow.StateFlow
 interface TabComponentVM {
     // Immutable properties
     val conversationId: Conversation.Id
-    val projectPath: String
+    val projectId: Project.Id
+    val workspaceId: Workspace.Id
     
     // State (survives recomposition)
     val uiState: StateFlow<TabUIState>
@@ -375,7 +379,8 @@ interface TabComponentVM {
      * Complete UI state for a conversation tab.
      * Includes all transient UI state that should be persisted.
      *
-     * @property projectPath absolute path to project directory
+     * @property projectId logical project identifier
+     * @property workspaceId default workspace identifier
      * @property conversationId ID of conversation being displayed
      * @property activeMessageInstructionIds set of selected message instruction IDs
      * @property userInput current text in input field (unsent)
@@ -391,7 +396,8 @@ interface TabComponentVM {
      * @property editingMessageText text content of message being edited
      */
     data class TabUIState(
-        val projectPath: String,
+        val projectId: Project.Id,
+        val workspaceId: Workspace.Id,
         val conversationId: Conversation.Id,
         val activeMessageInstructionIds: Set<String>,
         val userInput: String,

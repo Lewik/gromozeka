@@ -59,7 +59,7 @@ fun AgentListItem(
                                     enabled = false
                                 )
                             }
-                            is AgentDefinition.Type.Project -> {
+                            is AgentDefinition.Type.Workspace -> {
                                 // No chip for project agents
                             }
                             is AgentDefinition.Type.Inline -> {
