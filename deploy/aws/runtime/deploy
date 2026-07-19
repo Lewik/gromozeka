@@ -103,7 +103,7 @@ printf 'AWS_REGION=%q\nARTIFACT_BUCKET=%q\n' \
   > "$cloud_file"
 chmod 0600 "$cloud_file"
 
-cat > /etc/systemd/system/gromozeka-backup.service <<'EOF'
+cat > /etc/systemd/system/gromozeka-backup.service <<EOF
 [Unit]
 Description=Back up Gromozeka PostgreSQL and home data
 After=docker.service
@@ -127,6 +127,9 @@ Persistent=true
 WantedBy=timers.target
 EOF
 
+chmod 0644 \
+  /etc/systemd/system/gromozeka-backup.service \
+  /etc/systemd/system/gromozeka-backup.timer
 systemctl daemon-reload
 systemctl enable --now gromozeka-backup.timer
 
