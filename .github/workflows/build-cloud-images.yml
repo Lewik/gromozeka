@@ -40,16 +40,16 @@ jobs:
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Test and assemble cloud artifacts
         run: >
@@ -62,7 +62,7 @@ jobs:
           -q
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Configure AWS credentials
         if: inputs.push_images
@@ -142,7 +142,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -184,7 +184,7 @@ jobs:
           )"
 
           status="Pending"
-          for attempt in $(seq 1 180); do
+          for _ in $(seq 1 180); do
             status="$(
               aws ssm get-command-invocation \
                 --command-id "$command_id" \
