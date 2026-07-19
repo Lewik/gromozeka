@@ -57,6 +57,22 @@ export GROMOZEKA_SERVER_IMAGE="$server_image"
 export GROMOZEKA_WORKER_IMAGE="$worker_image"
 export GROMOZEKA_IMAGE_TAG="$image_tag"
 
+tailscale_running="false"
+tailscale_dns_name=""
+if tailscale status --json 2>/dev/null | jq -e '.BackendState == "Running"' >/dev/null; then
+  tailscale_running="true"
+  tailscale_dns_name="$(
+    tailscale status --json \
+      | jq -r '(.Self.DNSName // "") | sub("\\.$"; "")'
+  )"
+fi
+
+export GROMOZEKA_MCP_ALLOWED_HOSTS="localhost,127.0.0.1,[::1]"
+if [[ -n "$tailscale_dns_name" ]]; then
+  GROMOZEKA_MCP_ALLOWED_HOSTS="$GROMOZEKA_MCP_ALLOWED_HOSTS,$tailscale_dns_name"
+  export GROMOZEKA_MCP_ALLOWED_HOSTS
+fi
+
 compose() {
   docker compose \
     --project-name gromozeka \
@@ -89,10 +105,11 @@ done
 }
 
 umask 077
-printf 'GROMOZEKA_SERVER_IMAGE=%q\nGROMOZEKA_WORKER_IMAGE=%q\nGROMOZEKA_IMAGE_TAG=%q\n' \
+printf 'GROMOZEKA_SERVER_IMAGE=%q\nGROMOZEKA_WORKER_IMAGE=%q\nGROMOZEKA_IMAGE_TAG=%q\nGROMOZEKA_MCP_ALLOWED_HOSTS=%q\n' \
   "$server_image" \
   "$worker_image" \
   "$image_tag" \
+  "$GROMOZEKA_MCP_ALLOWED_HOSTS" \
   > "$deployment_file"
 chmod 0600 "$deployment_file"
 
@@ -133,7 +150,7 @@ chmod 0644 \
 systemctl daemon-reload
 systemctl enable --now gromozeka-backup.timer
 
-if tailscale status --json 2>/dev/null | jq -e '.BackendState == "Running"' >/dev/null; then
+if [[ "$tailscale_running" == "true" ]]; then
   tailscale set --accept-dns=false
   tailscale serve --bg --yes http://127.0.0.1:8765
 fi

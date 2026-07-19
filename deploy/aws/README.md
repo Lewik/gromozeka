@@ -72,5 +72,9 @@ sudo tailscale serve --bg --yes http://127.0.0.1:8765
 tailscale serve status
 ```
 
+Run `deploy/aws/bin/deploy` once more after the first Tailscale login. The
+deployment discovers the instance MagicDNS name and adds it to the MCP Host and
+Origin allowlists without hardcoding a tailnet name.
+
 Until Tailscale is connected, `deploy/aws/bin/tunnel` exposes the Server only
 through an authenticated SSM port-forwarding session.

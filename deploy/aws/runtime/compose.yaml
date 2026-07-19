@@ -65,6 +65,7 @@ services:
       - no-new-privileges:true
     environment:
       <<: *app-environment
+      GROMOZEKA_MCP_ALLOWED_HOSTS: ${GROMOZEKA_MCP_ALLOWED_HOSTS:-localhost,127.0.0.1,[::1]}
     volumes:
       - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/home:/var/lib/gromozeka
     ports:

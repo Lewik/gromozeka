@@ -57,11 +57,21 @@ fun main() {
     val mcpServerFactory = context.getBean(GromozekaMcpServerFactory::class.java)
     val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
     val webRoot = resolveWebRoot()
+    val mcpHttpSecurity = resolveMcpHttpSecurityConfiguration(
+        System.getProperty("gromozeka.mcp.allowed-hosts")
+            ?: System.getenv("GROMOZEKA_MCP_ALLOWED_HOSTS"),
+    )
 
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
     val ktorServer = embeddedServer(CIO, port = port, host = host) {
-        mcpStreamableHttp(path = "/mcp") { mcpServerFactory.create() }
+        mcpStreamableHttp(
+            path = "/mcp",
+            allowedHosts = mcpHttpSecurity.allowedHosts,
+            allowedOrigins = mcpHttpSecurity.allowedOrigins,
+        ) {
+            mcpServerFactory.create()
+        }
         install(WebSockets) {
             maxFrameSize = Long.MAX_VALUE
             masking = false
