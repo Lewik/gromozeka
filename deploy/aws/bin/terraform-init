@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+require_backend
+terraform_cli init -upgrade -backend-config="$backend_file"

@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 5 ]]; then
+  echo "Usage: deploy SERVER_IMAGE WORKER_IMAGE IMAGE_TAG AWS_REGION ARTIFACT_BUCKET" >&2
+  exit 2
+fi
+
+server_image="$1"
+worker_image="$2"
+image_tag="$3"
+aws_region="$4"
+artifact_bucket="$5"
+runtime_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+data_dir="${GROMOZEKA_DATA_DIR:-/data/gromozeka}"
+secrets_file="$data_dir/runtime/runtime.env"
+deployment_file="$data_dir/runtime/deployment.env"
+cloud_file="/etc/gromozeka/cloud.env"
+
+[[ "$image_tag" =~ ^[0-9a-f]{40}$ ]] || {
+  echo "IMAGE_TAG must be a full Git commit SHA" >&2
+  exit 2
+}
+
+exec 9>/var/lock/gromozeka-deploy.lock
+flock -n 9 || {
+  echo "Another Gromozeka deployment is already running" >&2
+  exit 1
+}
+
+install -d -m 0700 "$data_dir/runtime" "$data_dir/backups"
+install -d -m 0755 "$data_dir/home" "$data_dir/postgres" "$data_dir/rabbitmq"
+chown 10001:10001 "$data_dir/home"
+chown 999:999 "$data_dir/postgres" "$data_dir/rabbitmq"
+
+if [[ ! -f "$secrets_file" ]]; then
+  umask 077
+  postgres_password="$(openssl rand -hex 32)"
+  rabbitmq_password="$(openssl rand -hex 32)"
+  printf 'POSTGRES_PASSWORD=%s\nRABBITMQ_DEFAULT_PASS=%s\n' \
+    "$postgres_password" \
+    "$rabbitmq_password" \
+    > "$secrets_file"
+fi
+
+chmod 0600 "$secrets_file"
+set -a
+source "$secrets_file"
+set +a
+
+registry="${server_image%%/*}"
+aws ecr get-login-password --region "$aws_region" \
+  | docker login --username AWS --password-stdin "$registry"
+
+export GROMOZEKA_SERVER_IMAGE="$server_image"
+export GROMOZEKA_WORKER_IMAGE="$worker_image"
+export GROMOZEKA_IMAGE_TAG="$image_tag"
+
+compose() {
+  docker compose \
+    --project-name gromozeka \
+    --file "$runtime_dir/compose.yaml" \
+    "$@"
+}
+
+compose config --quiet
+compose pull
+compose up --detach --remove-orphans --wait --wait-timeout 300
+
+worker_registered="false"
+for _ in $(seq 1 60); do
+  registrations="$(
+    compose exec -T postgres \
+      psql -U gromozeka -d gromozeka -Atc \
+      "select count(*) from conversation_runtime_workers where worker_id = 'cloud-primary';"
+  )"
+  if [[ "$registrations" == "1" ]]; then
+    worker_registered="true"
+    break
+  fi
+  sleep 2
+done
+
+[[ "$worker_registered" == "true" ]] || {
+  echo "Cloud Worker did not register in PostgreSQL" >&2
+  compose logs --tail 200 worker >&2
+  exit 1
+}
+
+umask 077
+printf 'GROMOZEKA_SERVER_IMAGE=%q\nGROMOZEKA_WORKER_IMAGE=%q\nGROMOZEKA_IMAGE_TAG=%q\n' \
+  "$server_image" \
+  "$worker_image" \
+  "$image_tag" \
+  > "$deployment_file"
+chmod 0600 "$deployment_file"
+
+install -d -m 0755 /etc/gromozeka
+printf 'AWS_REGION=%q\nARTIFACT_BUCKET=%q\n' \
+  "$aws_region" \
+  "$artifact_bucket" \
+  > "$cloud_file"
+chmod 0600 "$cloud_file"
+
+cat > /etc/systemd/system/gromozeka-backup.service <<'EOF'
+[Unit]
+Description=Back up Gromozeka PostgreSQL and home data
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=$runtime_dir/backup
+EOF
+
+cat > /etc/systemd/system/gromozeka-backup.timer <<'EOF'
+[Unit]
+Description=Nightly Gromozeka backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now gromozeka-backup.timer
+
+if tailscale status --json 2>/dev/null | jq -e '.BackendState == "Running"' >/dev/null; then
+  tailscale set --accept-dns=false
+  tailscale serve --bg --yes http://127.0.0.1:8765
+fi
+
+docker image prune --force --filter until=168h
+compose ps

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+status="$(
+  aws account get-region-opt-status \
+    --region-name "$aws_region" \
+    --query RegionOptStatus \
+    --output text
+)"
+
+printf '%s: %s\n' "$aws_region" "$status"

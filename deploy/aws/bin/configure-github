@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+require_command gh
+
+repository="${GITHUB_REPOSITORY:-Lewik/gromozeka}"
+environment="${GITHUB_DEPLOY_ENVIRONMENT:-aws-production}"
+
+gh api \
+  --method PUT \
+  "repos/$repository/environments/$environment" \
+  >/dev/null
+
+gh variable set AWS_ACCOUNT_ID \
+  --repo "$repository" \
+  --body "$(terraform_output aws_account_id)"
+gh variable set AWS_REGION \
+  --repo "$repository" \
+  --body "$(terraform_output aws_region)"
+gh variable set AWS_GROMOZEKA_BUILD_ROLE_ARN \
+  --repo "$repository" \
+  --body "$(terraform_output github_build_role_arn)"
+gh variable set AWS_GROMOZEKA_DEPLOY_ROLE_ARN \
+  --repo "$repository" \
+  --body "$(terraform_output github_deploy_role_arn)"
+gh variable set AWS_GROMOZEKA_ARTIFACT_BUCKET \
+  --repo "$repository" \
+  --body "$(terraform_output artifact_bucket)"
+gh variable set AWS_GROMOZEKA_INSTANCE_ID \
+  --repo "$repository" \
+  --body "$(terraform_output instance_id)"
+gh variable set AWS_GROMOZEKA_DEPLOY_DOCUMENT \
+  --repo "$repository" \
+  --body "$(terraform_output deploy_document_name)"
+
+printf 'Configured GitHub repository variables and environment %s.\n' "$environment"

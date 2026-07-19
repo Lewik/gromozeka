@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+instance_id="$(terraform_output instance_id)"
+
+aws_cli ec2 describe-instances \
+  --instance-ids "$instance_id" \
+  --query 'Reservations[0].Instances[0].{InstanceId:InstanceId,State:State.Name,Type:InstanceType,PublicIp:PublicIpAddress,LaunchTime:LaunchTime}' \
+  --output table
+
+aws_cli ssm describe-instance-information \
+  --filters "Key=InstanceIds,Values=$instance_id" \
+  --query 'InstanceInformationList[0].{PingStatus:PingStatus,Platform:PlatformName,AgentVersion:AgentVersion,LastPing:LastPingDateTime}' \
+  --output table

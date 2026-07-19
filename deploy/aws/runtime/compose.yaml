@@ -1,0 +1,100 @@
+name: gromozeka
+
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: 50m
+    max-file: "5"
+
+x-app-environment: &app-environment
+  GROMOZEKA_MODE: prod
+  GROMOZEKA_POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/gromozeka
+  GROMOZEKA_POSTGRES_USERNAME: gromozeka
+  GROMOZEKA_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_RABBITMQ_PORT: "5672"
+  SPRING_RABBITMQ_USERNAME: gromozeka
+  SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg16@sha256:33198da2828a14c30348d2ccb4750833d5ed9a44c88d840a0e523d7417120337
+    restart: unless-stopped
+    shm_size: 256m
+    mem_limit: 1280m
+    environment:
+      POSTGRES_DB: gromozeka
+      POSTGRES_USER: gromozeka
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: --data-checksums
+    volumes:
+      - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gromozeka -d gromozeka"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    stop_grace_period: 60s
+    logging: *json-logging
+
+  rabbitmq:
+    image: rabbitmq:4.2-management@sha256:2f5f2d5551a7c11e09c57b00ff6a86f363ddd424e3bde3a54c88a75c742a81e8
+    restart: unless-stopped
+    mem_limit: 640m
+    environment:
+      RABBITMQ_DEFAULT_USER: gromozeka
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    stop_grace_period: 60s
+    logging: *json-logging
+
+  server:
+    image: ${GROMOZEKA_SERVER_IMAGE:?GROMOZEKA_SERVER_IMAGE is required}
+    restart: unless-stopped
+    init: true
+    mem_limit: 1536m
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      <<: *app-environment
+    volumes:
+      - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/home:/var/lib/gromozeka
+    ports:
+      - ${GROMOZEKA_SERVER_BIND:-127.0.0.1:8765}:8765
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    logging: *json-logging
+
+  worker:
+    image: ${GROMOZEKA_WORKER_IMAGE:?GROMOZEKA_WORKER_IMAGE is required}
+    restart: unless-stopped
+    init: true
+    mem_limit: 2560m
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      <<: *app-environment
+      GROMOZEKA_RUNTIME_WORKER_ID: cloud-primary
+      GROMOZEKA_RUNTIME_WORKER_VERSION: ${GROMOZEKA_IMAGE_TAG:?GROMOZEKA_IMAGE_TAG is required}
+      GROMOZEKA_RUNTIME_WORKER_CAPABILITIES: CONVERSATION_TURN,LLM_RUNTIME,TOOL_EXECUTION,MEMORY_PIPELINE
+    volumes:
+      - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/home:/var/lib/gromozeka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      server:
+        condition: service_healthy
+    logging: *json-logging

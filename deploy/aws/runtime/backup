@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+runtime_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+data_dir="${GROMOZEKA_DATA_DIR:-/data/gromozeka}"
+secrets_file="$data_dir/runtime/runtime.env"
+deployment_file="$data_dir/runtime/deployment.env"
+cloud_file="/etc/gromozeka/cloud.env"
+
+for required_file in "$secrets_file" "$deployment_file" "$cloud_file"; do
+  [[ -f "$required_file" ]] || {
+    echo "Required runtime file is missing: $required_file" >&2
+    exit 1
+  }
+done
+
+exec 9>/var/lock/gromozeka-backup.lock
+flock -n 9 || {
+  echo "Another Gromozeka backup is already running" >&2
+  exit 1
+}
+
+set -a
+source "$secrets_file"
+source "$deployment_file"
+source "$cloud_file"
+set +a
+
+compose() {
+  docker compose \
+    --project-name gromozeka \
+    --file "$runtime_dir/compose.yaml" \
+    "$@"
+}
+
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+backup_dir="$(mktemp -d "$data_dir/backups/$timestamp.XXXXXX")"
+trap 'rm -rf "$backup_dir"' EXIT
+
+compose exec -T postgres \
+  pg_dump -U gromozeka -d gromozeka --format=custom \
+  > "$backup_dir/postgres.dump"
+
+tar \
+  --exclude=logs \
+  --exclude=cache \
+  -czf "$backup_dir/home.tar.gz" \
+  -C "$data_dir/home" \
+  .
+
+cat > "$backup_dir/manifest.txt" <<EOF
+created_at=$timestamp
+image_tag=$GROMOZEKA_IMAGE_TAG
+server_image=$GROMOZEKA_SERVER_IMAGE
+worker_image=$GROMOZEKA_WORKER_IMAGE
+EOF
+
+aws s3 cp \
+  "$backup_dir" \
+  "s3://$ARTIFACT_BUCKET/backups/$timestamp/" \
+  --recursive \
+  --sse AES256 \
+  --region "$AWS_REGION"
+
+echo "Backup uploaded to s3://$ARTIFACT_BUCKET/backups/$timestamp/"

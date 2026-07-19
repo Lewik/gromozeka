@@ -100,3 +100,12 @@ release-notes.md
 # Serena LSP integration
 serena-cache/
 .sources/
+
+# Terraform local state and plans
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+deploy/aws/backend.hcl
+deploy/aws/terraform/terraform.tfvars
+deploy/aws/local.env

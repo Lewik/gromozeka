@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+local_port="${GROMOZEKA_AWS_LOCAL_PORT:-18765}"
+parameters="$(
+  jq -nc \
+    --arg portNumber "8765" \
+    --arg localPortNumber "$local_port" \
+    '{portNumber:[$portNumber],localPortNumber:[$localPortNumber]}'
+)"
+
+printf 'Open http://127.0.0.1:%s/ while this session is running.\n' "$local_port"
+aws_cli ssm start-session \
+  --target "$(terraform_output instance_id)" \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters "$parameters"

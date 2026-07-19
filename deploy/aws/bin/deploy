@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+require_command gh
+
+repository="${GITHUB_REPOSITORY:-Lewik/gromozeka}"
+branch="${GITHUB_DEPLOY_BRANCH:-main}"
+
+gh workflow run build-cloud-images.yml \
+  --repo "$repository" \
+  --ref "$branch" \
+  --field push_images=true \
+  --field deploy=true
+
+sleep 3
+run_id="$(
+  gh run list \
+    --repo "$repository" \
+    --workflow build-cloud-images.yml \
+    --branch "$branch" \
+    --event workflow_dispatch \
+    --limit 1 \
+    --json databaseId \
+    --jq '.[0].databaseId'
+)"
+
+printf 'GitHub Actions run: https://github.com/%s/actions/runs/%s\n' "$repository" "$run_id"
+gh run watch "$run_id" --repo "$repository" --exit-status

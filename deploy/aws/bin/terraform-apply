@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+require_backend
+[[ -f "$plan_file" ]] || {
+  echo "Saved Terraform plan is missing. Run deploy/aws/bin/terraform-plan first." >&2
+  exit 1
+}
+
+terraform_cli apply "$plan_file"

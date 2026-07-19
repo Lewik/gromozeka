@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+terraform_dir="$root_dir/deploy/aws/terraform"
+backend_file="$root_dir/deploy/aws/backend.hcl"
+plan_file="$root_dir/deploy/aws/gromozeka.tfplan"
+local_env_file="$root_dir/deploy/aws/local.env"
+
+if [[ -f "$local_env_file" ]]; then
+  set -a
+  source "$local_env_file"
+  set +a
+fi
+
+aws_region="${AWS_REGION:-il-central-1}"
+
+aws_cli() {
+  aws --region "$aws_region" "$@"
+}
+
+terraform_cli() {
+  terraform -chdir="$terraform_dir" "$@"
+}
+
+terraform_output() {
+  terraform_cli output -raw "$1"
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Required command is not installed: $1" >&2
+    exit 1
+  }
+}
+
+require_backend() {
+  [[ -f "$backend_file" ]] || {
+    echo "Terraform backend is not configured. Run deploy/aws/bin/bootstrap-state first." >&2
+    exit 1
+  }
+}

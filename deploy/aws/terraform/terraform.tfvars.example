@@ -1,0 +1,7 @@
+aws_region = "il-central-1"
+
+instance_type           = "t3a.large"
+root_volume_size_gib    = 20
+data_volume_size_gib    = 50
+budget_limit_usd        = 100
+budget_alert_email      = ""

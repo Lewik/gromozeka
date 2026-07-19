@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+exec > >(tee -a /var/log/gromozeka-bootstrap.log) 2>&1
+
+dnf install -y amazon-ssm-agent curl docker gzip jq openssl tar util-linux xfsprogs
+systemctl enable --now docker
+systemctl enable --now amazon-ssm-agent
+
+install -d -m 0755 /usr/local/lib/docker/cli-plugins
+compose_url="https://github.com/docker/compose/releases/download/${docker_compose_version}/docker-compose-linux-x86_64"
+curl -fsSL "$${compose_url}" -o /usr/local/lib/docker/cli-plugins/docker-compose
+echo "${docker_compose_amd64_sha256}  /usr/local/lib/docker/cli-plugins/docker-compose" | sha256sum --check
+chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose
+docker compose version
+
+curl -fsSL https://pkgs.tailscale.com/stable/amazon-linux/2023/tailscale.repo \
+  -o /etc/yum.repos.d/tailscale.repo
+dnf install -y tailscale
+systemctl stop tailscaled || true
+
+volume_serial="${replace(data_volume_id, "-", "")}"
+data_device=""
+for attempt in $(seq 1 180); do
+  candidate="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$volume_serial"
+  if [[ -e "$candidate" ]]; then
+    data_device="$(readlink -f "$candidate")"
+    break
+  fi
+  sleep 2
+done
+
+if [[ -z "$data_device" ]]; then
+  echo "Persistent EBS volume ${data_volume_id} did not appear" >&2
+  exit 1
+fi
+
+if ! blkid "$data_device" >/dev/null 2>&1; then
+  mkfs.xfs "$data_device"
+fi
+
+install -d -m 0755 /data/gromozeka
+data_uuid="$(blkid -s UUID -o value "$data_device")"
+if ! grep -q "UUID=$data_uuid " /etc/fstab; then
+  echo "UUID=$data_uuid /data/gromozeka xfs defaults,nofail,x-systemd.device-timeout=300 0 2" >> /etc/fstab
+fi
+mount /data/gromozeka
+
+install -d -m 0755 /data/gromozeka/runtime
+install -d -m 0700 /data/gromozeka/backups
+install -d -o 10001 -g 10001 /data/gromozeka/home
+install -d -o 999 -g 999 /data/gromozeka/postgres
+install -d -o 999 -g 999 /data/gromozeka/rabbitmq
+install -d -o root -g root /data/gromozeka/tailscale
+
+rm -rf /var/lib/tailscale
+ln -s /data/gromozeka/tailscale /var/lib/tailscale
+systemctl enable --now tailscaled
+
+install -d -m 0755 /opt/gromozeka/releases
+touch /var/lib/cloud/instance/gromozeka-bootstrap-complete

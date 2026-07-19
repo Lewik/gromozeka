@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+require_backend
+require_command terraform
+
+terraform_cli fmt -check -recursive
+terraform_cli init -backend-config="$backend_file"
+terraform_cli validate
+terraform_cli plan -out="$plan_file" "$@"
+
+printf 'Saved plan: %s\n' "$plan_file"

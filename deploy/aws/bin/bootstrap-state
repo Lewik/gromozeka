@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+require_command aws
+require_command terraform
+
+region_status="$(
+  aws account get-region-opt-status \
+    --region-name "$aws_region" \
+    --query RegionOptStatus \
+    --output text
+)"
+
+case "$region_status" in
+  ENABLED|ENABLED_BY_DEFAULT)
+    ;;
+  *)
+    echo "AWS region $aws_region is $region_status." >&2
+    echo "Enable it explicitly before bootstrapping state:" >&2
+    echo "  aws account enable-region --region-name $aws_region" >&2
+    exit 1
+    ;;
+esac
+
+account_id="$(aws sts get-caller-identity --query Account --output text)"
+bucket="gromozeka-terraform-state-$account_id-$aws_region"
+
+if ! aws_cli s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+  if [[ "$aws_region" == "us-east-1" ]]; then
+    aws_cli s3api create-bucket --bucket "$bucket" >/dev/null
+  else
+    aws_cli s3api create-bucket \
+      --bucket "$bucket" \
+      --create-bucket-configuration "LocationConstraint=$aws_region" \
+      >/dev/null
+  fi
+fi
+
+aws_cli s3api put-public-access-block \
+  --bucket "$bucket" \
+  --public-access-block-configuration \
+  'BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true'
+
+aws_cli s3api put-bucket-encryption \
+  --bucket "$bucket" \
+  --server-side-encryption-configuration \
+  '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+
+aws_cli s3api put-bucket-versioning \
+  --bucket "$bucket" \
+  --versioning-configuration Status=Enabled
+
+cat > "$backend_file" <<EOF
+bucket       = "$bucket"
+key          = "primary/terraform.tfstate"
+region       = "$aws_region"
+encrypt      = true
+use_lockfile = true
+EOF
+
+printf 'Terraform state bucket: %s\nBackend config: %s\n' "$bucket" "$backend_file"
