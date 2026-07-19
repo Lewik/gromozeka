@@ -1,0 +1,1 @@
+TRUNCATE TABLE conversation_runtime_workers;
