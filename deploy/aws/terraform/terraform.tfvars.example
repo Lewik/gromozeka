@@ -1,6 +1,6 @@
 aws_region = "il-central-1"
 
-instance_type           = "t3a.large"
+instance_type           = "t3a.medium"
 root_volume_size_gib    = 20
 data_volume_size_gib    = 50
 budget_limit_usd        = 100

@@ -21,7 +21,7 @@ services:
     image: pgvector/pgvector:0.8.1-pg16@sha256:33198da2828a14c30348d2ccb4750833d5ed9a44c88d840a0e523d7417120337
     restart: unless-stopped
     shm_size: 256m
-    mem_limit: 1280m
+    mem_limit: 512m
     environment:
       POSTGRES_DB: gromozeka
       POSTGRES_USER: gromozeka
@@ -60,7 +60,7 @@ services:
     image: ${GROMOZEKA_SERVER_IMAGE:?GROMOZEKA_SERVER_IMAGE is required}
     restart: unless-stopped
     init: true
-    mem_limit: 1536m
+    mem_limit: 768m
     security_opt:
       - no-new-privileges:true
     environment:
@@ -80,7 +80,7 @@ services:
     image: ${GROMOZEKA_WORKER_IMAGE:?GROMOZEKA_WORKER_IMAGE is required}
     restart: unless-stopped
     init: true
-    mem_limit: 2560m
+    mem_limit: 1408m
     security_opt:
       - no-new-privileges:true
     environment:

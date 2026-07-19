@@ -37,7 +37,7 @@ variable "github_deploy_environment" {
 variable "instance_type" {
   description = "EC2 instance type for Server, Cloud Worker, PostgreSQL and RabbitMQ."
   type        = string
-  default     = "t3a.large"
+  default     = "t3a.medium"
 }
 
 variable "root_volume_size_gib" {
