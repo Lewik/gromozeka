@@ -104,8 +104,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
         val topology = RabbitConversationRuntimeWorkTopology(
             connectionFactory = connectionFactory,
             exchangeName = exchangeName,
-            queueName = queueName,
-            shardCount = 1,
+            queueNamePrefix = queueName,
             deadLetterExchangeName = "$exchangeName.dlx",
         )
         val publisher = RabbitConversationRuntimeWorkPublisher(
@@ -194,7 +193,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 add(RabbitRuntimeWorkRoute.from(localToolItem.requirements))
             }
             declaredRoutes
-                .flatMap(topology::queueNames)
+                .map(topology::queueName)
                 .forEach { routeQueueName ->
                     admin.deleteQueue(routeQueueName)
                     admin.deleteQueue("$routeQueueName.dlq")

@@ -19,7 +19,6 @@ gromozeka:
       enabled: ${GROMOZEKA_RUNTIME_RABBIT_ENABLED:true}
       exchange: gromozeka.runtime.work
       queue: gromozeka.runtime.work
-      shards: ${GROMOZEKA_RUNTIME_RABBIT_SHARDS:16}
       dead-letter-exchange: gromozeka.runtime.work.dlx
       max-redeliveries: ${GROMOZEKA_RUNTIME_RABBIT_MAX_REDELIVERIES:8}
       events-exchange: gromozeka.runtime.events

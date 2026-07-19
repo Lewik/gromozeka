@@ -53,11 +53,11 @@ internal class RabbitConversationRuntimeWorkPublisher(
 
     override suspend fun submit(item: ConversationRuntimeWorkItem) {
         val route = RabbitRuntimeWorkRoute.from(item.requirements)
-        topology.declareRouteQueues(route)
+        topology.declareRoute(route)
         rabbitTemplate.publishConfirmed { operations ->
             operations.convertAndSend(
                 topology.exchangeName,
-                topology.routingKey(route, item.conversationId.value),
+                topology.routingKey(route),
                 json.encodeToString(item),
             )
         }
@@ -102,18 +102,15 @@ internal class RabbitConversationRuntimeWorkConsumer(
             return
         }
 
-        consumerRoutes.forEach(topology::declareRouteQueues)
+        consumerRoutes.forEach(topology::declareRoute)
         val listenerQueueNames = consumerRoutes
-            .flatMap(topology::queueNames)
+            .map(topology::queueName)
             .distinct()
         check(listenerQueueNames.isNotEmpty()) {
             "Conversation runtime worker has no Rabbit routes: capabilities=$workerCapabilities affinities=$workerAffinities"
         }
-        val consumerCount = topology.shardCount.coerceAtMost(listenerQueueNames.size).coerceAtLeast(1)
         listenerContainer = SimpleMessageListenerContainer(connectionFactory).apply {
             setQueueNames(*listenerQueueNames.toTypedArray())
-            setConcurrentConsumers(consumerCount)
-            setMaxConcurrentConsumers(consumerCount)
             setPrefetchCount(1)
             acknowledgeMode = AcknowledgeMode.MANUAL
             setMessageListener(ChannelAwareMessageListener { message, rabbitChannel ->
@@ -159,7 +156,7 @@ internal class RabbitConversationRuntimeWorkConsumer(
         running = true
         log.info {
             "Rabbit runtime work consumer started: exchange=${topology.exchangeName} " +
-                "queues=${listenerQueueNames.size} routes=${consumerRoutes.size} consumers=$consumerCount " +
+                "queues=${listenerQueueNames.size} routes=${consumerRoutes.size} " +
                 "workerCapabilities=${workerCapabilities.joinToString()} workerAffinities=${workerAffinities.joinToString()}"
         }
     }
@@ -269,8 +266,7 @@ internal class RabbitConversationRuntimeWorkConsumer(
 internal class RabbitConversationRuntimeWorkTopology(
     private val connectionFactory: ConnectionFactory,
     @Value("\${gromozeka.runtime.rabbit.exchange:gromozeka.runtime.work}") val exchangeName: String,
-    @Value("\${gromozeka.runtime.rabbit.queue:gromozeka.runtime.work}") private val queueName: String,
-    @Value("\${gromozeka.runtime.rabbit.shards:16}") val shardCount: Int,
+    @Value("\${gromozeka.runtime.rabbit.queue:gromozeka.runtime.work}") private val queueNamePrefix: String,
     @Value("\${gromozeka.runtime.rabbit.dead-letter-exchange:gromozeka.runtime.work.dlx}")
     private val deadLetterExchangeName: String,
 ) {
@@ -278,18 +274,12 @@ internal class RabbitConversationRuntimeWorkTopology(
     private val exchangeDeclared = AtomicBoolean(false)
     private val declaredRoutes = ConcurrentHashMap.newKeySet<String>()
 
-    init {
-        require(shardCount > 0) { "Rabbit runtime shard count must be positive" }
-    }
+    fun routingKey(route: RabbitRuntimeWorkRoute): String = route.id
 
-    fun routingKey(route: RabbitRuntimeWorkRoute, conversationId: String): String =
-        route.routingKey(Math.floorMod(conversationId.hashCode(), shardCount))
-
-    fun queueNames(route: RabbitRuntimeWorkRoute): List<String> =
-        List(shardCount) { shardIndex -> "$queueName.${route.id}.$shardIndex" }
+    fun queueName(route: RabbitRuntimeWorkRoute): String = "$queueNamePrefix.${route.id}"
 
     @Synchronized
-    fun declareRouteQueues(route: RabbitRuntimeWorkRoute) {
+    fun declareRoute(route: RabbitRuntimeWorkRoute) {
         declareExchanges()
         if (!declaredRoutes.add(route.id)) {
             return
@@ -297,27 +287,26 @@ internal class RabbitConversationRuntimeWorkTopology(
         repeat(RABBIT_TOPOLOGY_DECLARE_ATTEMPTS) { attempt ->
             try {
                 val admin = RabbitAdmin(connectionFactory)
-                queueNames(route).forEachIndexed { shardIndex, shardQueueName ->
-                    val routingKey = route.routingKey(shardIndex)
-                    val deadLetterQueueName = "$shardQueueName.dlq"
-                    val queue = QueueBuilder.durable(shardQueueName)
-                        .withArgument("x-dead-letter-exchange", deadLetterExchangeName)
-                        .withArgument("x-dead-letter-routing-key", routingKey)
-                        .build()
-                    val deadLetterQueue = QueueBuilder.durable(deadLetterQueueName).build()
-                    admin.declareQueue(queue)
-                    admin.declareQueue(deadLetterQueue)
-                    admin.declareBinding(
-                        BindingBuilder.bind(queue)
-                            .to(DirectExchange(exchangeName, true, false))
-                            .with(routingKey)
-                    )
-                    admin.declareBinding(
-                        BindingBuilder.bind(deadLetterQueue)
-                            .to(DirectExchange(deadLetterExchangeName, true, false))
-                            .with(routingKey)
-                    )
-                }
+                val routeQueueName = queueName(route)
+                val routingKey = routingKey(route)
+                val deadLetterQueueName = "$routeQueueName.dlq"
+                val queue = QueueBuilder.durable(routeQueueName)
+                    .withArgument("x-dead-letter-exchange", deadLetterExchangeName)
+                    .withArgument("x-dead-letter-routing-key", routingKey)
+                    .build()
+                val deadLetterQueue = QueueBuilder.durable(deadLetterQueueName).build()
+                admin.declareQueue(queue)
+                admin.declareQueue(deadLetterQueue)
+                admin.declareBinding(
+                    BindingBuilder.bind(queue)
+                        .to(DirectExchange(exchangeName, true, false))
+                        .with(routingKey)
+                )
+                admin.declareBinding(
+                    BindingBuilder.bind(deadLetterQueue)
+                        .to(DirectExchange(deadLetterExchangeName, true, false))
+                        .with(routingKey)
+                )
                 return
             } catch (error: Throwable) {
                 declaredRoutes.remove(route.id)
@@ -374,8 +363,6 @@ internal data class RabbitRuntimeWorkRoute(
         append(".aff-")
         append(affinity?.let(::affinityRouteId) ?: "global")
     }
-
-    fun routingKey(shardIndex: Int): String = "$id.shard-$shardIndex"
 
     companion object {
         fun from(requirements: ConversationRuntimeTaskRequirements): RabbitRuntimeWorkRoute =
