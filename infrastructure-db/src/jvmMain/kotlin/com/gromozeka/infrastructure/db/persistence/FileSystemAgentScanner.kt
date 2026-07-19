@@ -64,21 +64,22 @@ class FileSystemAgentScanner {
             return explicitProjectRoot
         }
 
-        var current = File(System.getProperty("user.dir"))
+        var current: File? = File(System.getProperty("user.dir"))
         
-        log.debug { "Searching for project root starting from: ${current.absolutePath}" }
+        log.debug { "Searching for project root starting from: ${current?.absolutePath}" }
         
         while (current != null) {
-            val gromozekaDir = File(current, ".gromozeka")
+            val directory = current
+            val gromozekaDir = File(directory, ".gromozeka")
             
-            log.debug { "Checking: ${current.absolutePath} -> .gromozeka exists: ${gromozekaDir.exists()}" }
+            log.debug { "Checking: ${directory.absolutePath} -> .gromozeka exists: ${gromozekaDir.exists()}" }
             
             if (gromozekaDir.exists() && gromozekaDir.isDirectory) {
-                log.info { "Found .gromozeka directory at: ${current.absolutePath}" }
-                return current
+                log.info { "Found .gromozeka directory at: ${directory.absolutePath}" }
+                return directory
             }
             
-            current = current.parentFile
+            current = directory.parentFile
         }
         
         log.warn { "Could not find .gromozeka directory in any parent directories" }

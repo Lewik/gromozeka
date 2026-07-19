@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+run_id="$$"
+network="gromozeka-cloud-smoke-$run_id"
+postgres="gromozeka-smoke-postgres-$run_id"
+rabbitmq="gromozeka-smoke-rabbitmq-$run_id"
+server="gromozeka-smoke-server-$run_id"
+worker="gromozeka-smoke-worker-$run_id"
+platform="${GROMOZEKA_CLOUD_PLATFORM:-linux/amd64}"
+server_image="${GROMOZEKA_SERVER_IMAGE:-gromozeka/server:local}"
+worker_image="${GROMOZEKA_WORKER_IMAGE:-gromozeka/worker:local}"
+log_dir="$root_dir/logs/cloud-image-smoke"
+
+mkdir -p "$log_dir"
+
+capture_logs() {
+  docker logs "$server" > "$log_dir/server.log" 2>&1 || true
+  docker logs "$worker" > "$log_dir/worker.log" 2>&1 || true
+}
+
+cleanup() {
+  status=$?
+  trap - EXIT
+  capture_logs
+  docker rm -f "$postgres" "$rabbitmq" "$server" "$worker" >/dev/null 2>&1 || true
+  docker network rm "$network" >/dev/null 2>&1 || true
+  if [[ "$status" -ne 0 ]]; then
+    tail -100 "$log_dir/server.log" >&2 || true
+    tail -100 "$log_dir/worker.log" >&2 || true
+  fi
+  exit "$status"
+}
+
+trap cleanup EXIT
+
+docker network create "$network" >/dev/null
+docker run -d \
+  --name "$postgres" \
+  --network "$network" \
+  --network-alias postgres \
+  -e POSTGRES_DB=gromozeka \
+  -e POSTGRES_USER=gromozeka \
+  -e POSTGRES_PASSWORD=smoke \
+  pgvector/pgvector:pg16 >/dev/null
+docker run -d \
+  --name "$rabbitmq" \
+  --network "$network" \
+  --network-alias rabbitmq \
+  -e RABBITMQ_DEFAULT_USER=gromozeka \
+  -e RABBITMQ_DEFAULT_PASS=smoke \
+  rabbitmq:4-management >/dev/null
+
+for attempt in {1..60}; do
+  if docker exec "$postgres" pg_isready -U gromozeka -d gromozeka >/dev/null 2>&1 \
+    && docker exec "$rabbitmq" rabbitmq-diagnostics -q ping >/dev/null 2>&1; then
+    break
+  fi
+  [[ "$attempt" != 60 ]] || {
+    echo "Disposable PostgreSQL and RabbitMQ did not become ready." >&2
+    exit 1
+  }
+  sleep 2
+done
+
+common_environment=(
+  -e GROMOZEKA_MODE=prod
+  -e GROMOZEKA_POSTGRES_JDBC_URL=jdbc:postgresql://postgres:5432/gromozeka
+  -e GROMOZEKA_POSTGRES_USERNAME=gromozeka
+  -e GROMOZEKA_POSTGRES_PASSWORD=smoke
+  -e SPRING_RABBITMQ_HOST=rabbitmq
+  -e SPRING_RABBITMQ_PORT=5672
+  -e SPRING_RABBITMQ_USERNAME=gromozeka
+  -e SPRING_RABBITMQ_PASSWORD=smoke
+)
+
+docker run -d \
+  --platform "$platform" \
+  --name "$server" \
+  --network "$network" \
+  --tmpfs /var/lib/gromozeka:uid=10001,gid=10001 \
+  -p 127.0.0.1::8765 \
+  "${common_environment[@]}" \
+  "$server_image" >/dev/null
+docker run -d \
+  --platform "$platform" \
+  --name "$worker" \
+  --network "$network" \
+  --tmpfs /var/lib/gromozeka:uid=10001,gid=10001 \
+  "${common_environment[@]}" \
+  -e GROMOZEKA_RUNTIME_WORKER_ID=cloud-primary \
+  -e GROMOZEKA_RUNTIME_WORKER_VERSION=smoke \
+  -e GROMOZEKA_RUNTIME_WORKER_CAPABILITIES=CONVERSATION_TURN,LLM_RUNTIME,TOOL_EXECUTION,MEMORY_PIPELINE \
+  "$worker_image" >/dev/null
+
+host_port="$(
+  docker inspect "$server" \
+    --format '{{(index (index .NetworkSettings.Ports "8765/tcp") 0).HostPort}}'
+)"
+
+for attempt in {1..90}; do
+  server_state="$(docker inspect "$server" --format '{{.State.Status}}')"
+  worker_state="$(docker inspect "$worker" --format '{{.State.Status}}')"
+  if [[ "$server_state" != "running" || "$worker_state" != "running" ]]; then
+    echo "Container stopped during startup: server=$server_state worker=$worker_state" >&2
+    exit 1
+  fi
+  if curl --fail --silent "http://127.0.0.1:$host_port/" | grep -qi "<html"; then
+    break
+  fi
+  [[ "$attempt" != 90 ]] || {
+    echo "Server did not serve the packaged Web client." >&2
+    exit 1
+  }
+  sleep 2
+done
+
+sleep 5
+
+server_state="$(docker inspect "$server" --format '{{.State.Status}}')"
+server_health="$(docker inspect "$server" --format '{{.State.Health.Status}}')"
+worker_state="$(docker inspect "$worker" --format '{{.State.Status}}')"
+worker_registrations="$(
+  docker exec "$postgres" \
+    psql -U gromozeka -d gromozeka -Atc \
+    "select count(*) from conversation_runtime_workers where worker_id = 'cloud-primary';"
+)"
+
+[[ "$server_state" == "running" && "$server_health" == "healthy" ]]
+[[ "$worker_state" == "running" ]]
+[[ "$worker_registrations" == "1" ]]
+
+printf 'server=%s health=%s worker=%s registrations=%s\n' \
+  "$server_state" \
+  "$server_health" \
+  "$worker_state" \
+  "$worker_registrations"

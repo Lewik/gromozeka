@@ -57,6 +57,10 @@ application {
     )
 }
 
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    archiveFileName.set("gromozeka-server.jar")
+}
+
 val longMemEvalDataFiles = mapOf(
     "longmemeval_oracle.json" to
         "https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_oracle.json",

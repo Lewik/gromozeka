@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+platform="${GROMOZEKA_CLOUD_PLATFORM:-linux/amd64}"
+
+cd "$root_dir"
+
+./gradlew \
+  :server:test \
+  :worker:test \
+  :server:bootJar \
+  :worker:bootJar \
+  :presentation:wasmJsBrowserDistribution \
+  -q
+
+docker buildx build \
+  --platform "$platform" \
+  --load \
+  --file deploy/docker/server.Dockerfile \
+  --tag gromozeka/server:local \
+  .
+
+docker buildx build \
+  --platform "$platform" \
+  --load \
+  --file deploy/docker/worker.Dockerfile \
+  --tag gromozeka/worker:local \
+  .

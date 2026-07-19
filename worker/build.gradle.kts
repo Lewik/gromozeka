@@ -46,6 +46,10 @@ application {
     )
 }
 
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    archiveFileName.set("gromozeka-worker.jar")
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
 }
