@@ -45,7 +45,9 @@ data_uuid="$(blkid -s UUID -o value "$data_device")"
 if ! grep -q "UUID=$data_uuid " /etc/fstab; then
   echo "UUID=$data_uuid /data/gromozeka xfs defaults,nofail,x-systemd.device-timeout=300 0 2" >> /etc/fstab
 fi
-mount /data/gromozeka
+if ! mountpoint -q /data/gromozeka; then
+  mount /data/gromozeka
+fi
 
 install -d -m 0755 /data/gromozeka/runtime
 install -d -m 0700 /data/gromozeka/backups
@@ -54,8 +56,19 @@ install -d -o 999 -g 999 /data/gromozeka/postgres
 install -d -o 999 -g 999 /data/gromozeka/rabbitmq
 install -d -o root -g root /data/gromozeka/tailscale
 
-rm -rf /var/lib/tailscale
-ln -s /data/gromozeka/tailscale /var/lib/tailscale
+if [[ -L /var/lib/tailscale ]]; then
+  rm /var/lib/tailscale
+elif [[ -d /var/lib/tailscale ]] && ! mountpoint -q /var/lib/tailscale; then
+  cp -a /var/lib/tailscale/. /data/gromozeka/tailscale/
+fi
+install -d -o root -g root /var/lib/tailscale
+if ! mountpoint -q /var/lib/tailscale; then
+  mount --bind /data/gromozeka/tailscale /var/lib/tailscale
+fi
+tailscale_mount="/data/gromozeka/tailscale /var/lib/tailscale none bind,nofail,x-systemd.requires-mounts-for=/data/gromozeka 0 0"
+if ! grep -Fqx "$tailscale_mount" /etc/fstab; then
+  echo "$tailscale_mount" >> /etc/fstab
+fi
 systemctl enable --now tailscaled
 
 install -d -m 0755 /opt/gromozeka/releases
