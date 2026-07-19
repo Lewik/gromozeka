@@ -4,7 +4,7 @@ set -euo pipefail
 
 exec > >(tee -a /var/log/gromozeka-bootstrap.log) 2>&1
 
-dnf install -y amazon-ssm-agent curl docker gzip jq openssl tar util-linux xfsprogs
+dnf install -y amazon-ssm-agent docker gzip jq openssl tar util-linux xfsprogs
 systemctl enable --now docker
 systemctl enable --now amazon-ssm-agent
 
@@ -22,7 +22,7 @@ systemctl stop tailscaled || true
 
 volume_serial="${replace(data_volume_id, "-", "")}"
 data_device=""
-for attempt in $(seq 1 180); do
+for _ in $(seq 1 180); do
   candidate="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$volume_serial"
   if [[ -e "$candidate" ]]; then
     data_device="$(readlink -f "$candidate")"
