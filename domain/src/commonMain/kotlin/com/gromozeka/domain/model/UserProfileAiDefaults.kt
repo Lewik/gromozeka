@@ -32,6 +32,7 @@ object UserProfileAiDefaults {
         AiConnection.OpenAiSubscription(
             id = AiConnection.Id("openai-subscription"),
             displayName = "OpenAI Subscription",
+            enabled = false,
         ),
         AiConnection.AnthropicApi(
             id = AiConnection.Id("anthropic-direct"),
@@ -50,6 +51,7 @@ object UserProfileAiDefaults {
         AiConnection.OpenAiApi(
             id = AiConnection.Id("openai-api"),
             displayName = "OpenAI API",
+            enabled = false,
             apiKey = SecretRef.EnvironmentVariable("OPENAI_API_KEY"),
         ),
     )

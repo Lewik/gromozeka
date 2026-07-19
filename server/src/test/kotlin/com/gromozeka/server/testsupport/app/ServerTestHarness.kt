@@ -3,6 +3,7 @@ package com.gromozeka.server.testsupport.app
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.UserProfileAiDefaults
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -142,7 +143,13 @@ class ServerTestHarness(
             val selection = openAiSubscriptionRuntimeSelection()
             return UserProfile(
                 aiSettings = UserProfile.AiSettings(
-                    connections = UserProfileAiDefaults.connections(),
+                    connections = UserProfileAiDefaults.connections().map { connection ->
+                        when (connection) {
+                            is AiConnection.OpenAiApi -> connection.copy(enabled = true)
+                            is AiConnection.OpenAiSubscription -> connection.copy(enabled = true)
+                            else -> connection
+                        }
+                    },
                     modelConfigurations = UserProfileAiDefaults.modelConfigurations().map { configuration ->
                         if (configuration.id == selection.modelConfigurationId) {
                             configuration.copy(

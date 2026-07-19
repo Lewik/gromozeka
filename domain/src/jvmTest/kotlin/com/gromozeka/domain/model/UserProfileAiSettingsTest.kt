@@ -1,11 +1,12 @@
 package com.gromozeka.domain.model
 
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.SettingsProvider
-import kotlin.test.assertEquals
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -13,7 +14,16 @@ import kotlin.test.assertTrue
 class UserProfileAiSettingsTest {
     @Test
     fun checksPurposeSupportFromModelSpecCapabilities() {
-        val aiSettings = UserProfileAiDefaults.aiSettings()
+        val defaults = UserProfileAiDefaults.aiSettings()
+        val aiSettings = defaults.copy(
+            connections = defaults.connections.map { connection ->
+                when (connection) {
+                    is AiConnection.OpenAiApi -> connection.copy(enabled = true)
+                    is AiConnection.OpenAiSubscription -> connection.copy(enabled = true)
+                    else -> connection
+                }
+            },
+        )
         val chatModel = aiSettings.modelConfigurations.first { it.id.value == "openai-subscription-gpt-5.5" }
         val speechModel = aiSettings.modelConfigurations.first { it.id.value == "openai-api-gpt-4o-transcribe" }
         val embeddingModel = aiSettings.modelConfigurations.first { it.id.value == "openai-api-text-embedding-3-large" }
@@ -23,6 +33,20 @@ class UserProfileAiSettingsTest {
         assertTrue(aiSettings.supportsPurpose(speechModel, AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT))
         assertTrue(aiSettings.supportsPurpose(embeddingModel, AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS))
         assertFalse(aiSettings.supportsPurpose(chatModel, AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS))
+    }
+
+    @Test
+    fun disablesOpenAiConnectionsByDefault() {
+        val provider = testSettingsProvider(UserProfile())
+        val openAiConnections = provider.userProfile.aiSettings.connections.filter {
+            it is AiConnection.OpenAiApi || it is AiConnection.OpenAiSubscription
+        }
+
+        assertTrue(openAiConnections.isNotEmpty())
+        assertTrue(openAiConnections.none { it.enabled })
+        assertFailsWith<IllegalArgumentException> {
+            provider.resolveAiRuntime(AiRuntimeAssignment.Purpose.DEFAULT_CHAT)
+        }
     }
 
     @Test

@@ -711,6 +711,7 @@ class AiRuntimeCassetteProxyTest {
                     AiConnection.OpenAiApi(
                         id = connectionId,
                         displayName = "Test OpenAI",
+                        enabled = true,
                     )
                 ),
                 modelSpecs = modelSpecs,

@@ -55,7 +55,7 @@ sealed interface AiConnection {
     data class OpenAiSubscription(
         override val id: Id,
         override val displayName: String,
-        override val enabled: Boolean = true,
+        override val enabled: Boolean = false,
     ) : AiConnection {
         override val kind = Kind.OPENAI_SUBSCRIPTION
 
@@ -69,7 +69,7 @@ sealed interface AiConnection {
     data class OpenAiApi(
         override val id: Id,
         override val displayName: String,
-        override val enabled: Boolean = true,
+        override val enabled: Boolean = false,
         override val baseUrl: String? = null,
         override val apiKey: SecretRef? = null,
     ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {

@@ -3,6 +3,8 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.UserProfileAiDefaults
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.memory.MemoryEmbeddingRecord
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemorySource
@@ -94,7 +96,19 @@ class MemoryEmbeddingIndexerTest {
 }
 
 private object TestSettingsProvider : SettingsProvider {
-    override val userProfile: UserProfile = UserProfile()
+    private val defaultAiSettings = UserProfileAiDefaults.aiSettings()
+
+    override val userProfile: UserProfile = UserProfile(
+        aiSettings = defaultAiSettings.copy(
+            connections = defaultAiSettings.connections.map { connection ->
+                if (connection is AiConnection.OpenAiApi) {
+                    connection.copy(enabled = true)
+                } else {
+                    connection
+                }
+            },
+        ),
+    )
     override val userDeviceSettings: UserDeviceSettings = UserDeviceSettings.Desktop()
     override val mode: AppMode = AppMode.TEST
     override val homeDirectory: String = "/tmp/gromozeka-memory-embedding-test"

@@ -24,12 +24,14 @@ import kotlinx.coroutines.*
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
+@ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class McpConfigurationService(
     @Value("\${GROMOZEKA_HOME:\${user.home}/.gromozeka}")
     private val gromozemkaHome: String,
@@ -58,9 +60,9 @@ class McpConfigurationService(
     @PostConstruct
     fun initialize() {
         loadConfiguration()
-        // MCP clients are NOT started automatically
-        // They must be started explicitly via startMcpClientsWithProgress()
-        // to ensure proper loading screen UX
+        runBlocking {
+            startMcpClientsWithProgress()
+        }
     }
 
     private fun loadConfiguration() {
@@ -331,7 +333,7 @@ class McpConfigurationService(
 
     suspend fun reloadClients() {
         log.info { "Reloading MCP clients..." }
-        shutdown()
+        closeClients()
         loadConfiguration()
         startMcpClientsWithProgress()
     }
@@ -339,10 +341,10 @@ class McpConfigurationService(
     @PreDestroy
     fun shutdown() {
         log.info { "Shutting down MCP configuration service..." }
+        closeClients()
+    }
 
-        // Cancel coroutine scope first to stop all running operations
-        coroutineScope.cancel("MCP service shutdown")
-
+    private fun closeClients() {
         if (mcpClients.isEmpty()) {
             log.info { "No MCP clients to stop" }
             return

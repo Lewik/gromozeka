@@ -76,9 +76,6 @@ data class UserProfile(
                 "Every primary AI runtime purpose must have an assignment"
             }
             modelConfigurations.filter { it.enabled }.forEach { configuration ->
-                require(connectionFor(configuration)?.enabled == true) {
-                    "Enabled AI model configuration ${configuration.id.value} must reference an enabled connection"
-                }
                 require(modelSpecFor(configuration) != null) {
                     "Enabled AI model configuration ${configuration.id.value} must have a model spec for " +
                         "${configuration.providerModelId}"
