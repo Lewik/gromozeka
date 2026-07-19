@@ -370,6 +370,42 @@ class PostgresMemoryStore(
                 ?.let { json.decodeFromString<MemoryRun>(it) }
         }
 
+    override suspend fun replaceRunIfUnchanged(
+        expected: MemoryRun,
+        replacement: MemoryRun,
+    ): Boolean {
+        require(expected.id == replacement.id) { "Memory run replacement must preserve id" }
+        require(expected.namespace == replacement.namespace) { "Memory run replacement must preserve namespace" }
+        require(expected.runType == replacement.runType) { "Memory run replacement must preserve type" }
+        return dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                UPDATE memory_runs
+                SET namespace = ?,
+                    payload = CAST(? AS jsonb),
+                    parent_run_id = ?,
+                    status = ?,
+                    run_type = ?,
+                    search_text = ?,
+                    created_at = ?
+                WHERE id = ?
+                  AND payload = CAST(? AS jsonb)
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, replacement.namespace.value)
+                statement.setString(2, json.encodeToString(replacement))
+                statement.setNullableString(3, replacement.parentRunId?.value)
+                statement.setString(4, replacement.status.name)
+                statement.setString(5, replacement.runType.name)
+                statement.setString(6, replacement.searchTextForStore())
+                statement.setPostgresValue(7, replacement.createdAt)
+                statement.setString(8, replacement.id.value)
+                statement.setString(9, json.encodeToString(expected))
+                statement.executeUpdate() == 1
+            }
+        }
+    }
+
     override suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun> =
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT payload::text FROM memory_runs WHERE parent_run_id = ? ORDER BY created_at ASC, id ASC").use { statement ->

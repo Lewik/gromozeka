@@ -6,12 +6,16 @@ import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.io.File
 import java.io.FileOutputStream
@@ -25,6 +29,13 @@ import kotlin.test.assertTrue
 
 class DefaultCommandTaskServiceTest {
     private val conversationId = Conversation.Id("conversation-1")
+    private val workerDescriptor = ConversationRuntimeWorkerDescriptor(
+        id = ConversationRuntimeWorkerId("command-worker"),
+        capabilities = setOf(
+            ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
+            ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+        ),
+    )
 
     @Test
     fun `short command returns completed task and output`() = runBlocking {
@@ -65,6 +76,27 @@ class DefaultCommandTaskServiceTest {
 
             assertEquals("second\n", second.output)
             assertEquals(CommandTask.Status.WORKING, second.task.status)
+        }
+    }
+
+    @Test
+    fun `follow-up wait may exceed initial yield limit`() = runBlocking {
+        withService { service, runner, _, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(command = "running", yield_time_ms = 0),
+                context(projectDirectory),
+            )
+            val waiting = async {
+                service.get(conversationId, result.task.id, 0, 65_000)
+            }
+
+            delay(150)
+            runner.lastProcess.complete(0)
+
+            assertEquals(
+                CommandTask.Status.COMPLETED,
+                assertNotNull(waiting.await()).task.status,
+            )
         }
     }
 
@@ -132,6 +164,31 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
+    fun `persisted cancellation request is observed by command monitor`() = runBlocking {
+        withService { service, runner, coordinator, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(command = "running", yield_time_ms = 0),
+                context(projectDirectory),
+            )
+
+            assertTrue(
+                coordinator.requestCommandTaskCancellation(
+                    conversationId,
+                    result.task.id,
+                    Clock.System.now(),
+                )
+            )
+            waitUntil(3_000) {
+                coordinator.findCommandTask(conversationId, result.task.id)?.status ==
+                    CommandTask.Status.CANCELLED
+            }
+
+            assertTrue(runner.lastProcess.terminateTreeCalled)
+            assertFalse(runner.lastProcess.isAlive())
+        }
+    }
+
+    @Test
     fun `timeout terminates process and persists failure`() = runBlocking {
         withService { service, runner, coordinator, projectDirectory ->
             val result = service.start(
@@ -154,7 +211,7 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
-    fun `server restart reconnects running command and monitors it to completion`() = runBlocking {
+    fun `worker restart reconnects running command and monitors it to completion`() = runBlocking {
         withService { service, runner, coordinator, projectDirectory ->
             val result = service.start(
                 ExecuteCommandRequest(command = "running", yield_time_ms = 0),
@@ -168,6 +225,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeCoordinator = coordinator,
                 runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+                runtimeWorkerDescriptor = workerDescriptor,
             )
             try {
                 recoveredService.recoverPersistedTasks()
@@ -191,7 +249,7 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
-    fun `server restart finalizes command that completed while offline`() = runBlocking {
+    fun `worker restart finalizes command that completed while offline`() = runBlocking {
         withService { service, runner, coordinator, projectDirectory ->
             val result = service.start(
                 ExecuteCommandRequest(command = "offline", yield_time_ms = 0),
@@ -204,6 +262,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeCoordinator = coordinator,
                 runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+                runtimeWorkerDescriptor = workerDescriptor,
             )
             try {
                 recoveredService.recoverPersistedTasks()
@@ -249,6 +308,7 @@ class DefaultCommandTaskServiceTest {
                     CommandTask(
                         id = CommandTask.Id("retained-$index"),
                         conversationId = conversationId,
+                        workerId = workerDescriptor.id,
                         command = "completed-$index",
                         workingDirectory = projectDirectory.absolutePath,
                         status = CommandTask.Status.COMPLETED,
@@ -289,6 +349,7 @@ class DefaultCommandTaskServiceTest {
             processRunner = runner,
             runtimeCoordinator = coordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            runtimeWorkerDescriptor = workerDescriptor,
         )
         try {
             block(service, runner, coordinator, projectDirectory)

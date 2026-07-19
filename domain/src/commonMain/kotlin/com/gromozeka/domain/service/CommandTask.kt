@@ -9,6 +9,7 @@ import kotlin.jvm.JvmInline
 data class CommandTask(
     val id: Id,
     val conversationId: Conversation.Id,
+    val workerId: ConversationRuntimeWorkerId,
     val command: String,
     val workingDirectory: String,
     val status: Status,
@@ -18,6 +19,7 @@ data class CommandTask(
     val outputFile: String,
     val outputBytes: Long,
     val timeoutAt: Instant? = null,
+    val cancellationRequestedAt: Instant? = null,
     val exitCode: Int? = null,
     val statusMessage: String? = null,
     val createdAt: Instant,

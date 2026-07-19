@@ -21,6 +21,8 @@ import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.activeDefinitions
 import com.gromozeka.domain.model.memory.requireValidEntityIds
 import kotlinx.datetime.Instant
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class InMemoryMemoryStore(
     initialSnapshot: MemoryNamespaceSnapshot = MemoryNamespaceSnapshot(),
@@ -28,6 +30,7 @@ class InMemoryMemoryStore(
     private val predicateDefinitions = initialSnapshot.predicateDefinitions.toMutableList()
     private val sources = initialSnapshot.sources.toMutableList()
     private val runs = initialSnapshot.runs.toMutableList()
+    private val runMutex = Mutex()
     private val entities = initialSnapshot.entities.toMutableList()
     private val claims = initialSnapshot.claims.toMutableList()
     private val notes = initialSnapshot.notes.toMutableList()
@@ -40,7 +43,9 @@ class InMemoryMemoryStore(
         val validBatch = batch.requireValidEntityIds()
         predicateDefinitions.upsertAll(validBatch.predicateDefinitions) { it.id.value }
         sources.upsertAll(validBatch.sources) { it.id.value }
-        runs.upsertAll(validBatch.runs) { it.id.value }
+        runMutex.withLock {
+            runs.upsertAll(validBatch.runs) { it.id.value }
+        }
         entities.upsertAll(validBatch.entities) { it.id.value }
         claims.upsertAll(validBatch.claims) { it.id.value }
         notes.upsertAll(validBatch.notes) { it.id.value }
@@ -240,7 +245,26 @@ class InMemoryMemoryStore(
     }
 
     override suspend fun findRunById(runId: MemoryRun.Id): MemoryRun? =
-        runs.firstOrNull { it.id == runId }
+        runMutex.withLock {
+            runs.firstOrNull { it.id == runId }
+        }
+
+    override suspend fun replaceRunIfUnchanged(
+        expected: MemoryRun,
+        replacement: MemoryRun,
+    ): Boolean =
+        runMutex.withLock {
+            require(expected.id == replacement.id) { "Memory run replacement must preserve id" }
+            require(expected.namespace == replacement.namespace) { "Memory run replacement must preserve namespace" }
+            require(expected.runType == replacement.runType) { "Memory run replacement must preserve type" }
+            val index = runs.indexOfFirst { it.id == expected.id }
+            if (index < 0 || runs[index] != expected) {
+                false
+            } else {
+                runs[index] = replacement
+                true
+            }
+        }
 
     override suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun> =
         runs.filter { it.parentRunId == parentRunId }.sortedBy { it.id.value }

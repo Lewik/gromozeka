@@ -1,0 +1,24 @@
+gromozeka:
+  postgres:
+    jdbc-url: jdbc:postgresql://postgres.internal:5432/gromozeka?sslmode=verify-full
+    username: ${GROMOZEKA_POSTGRES_USERNAME}
+    password: ${GROMOZEKA_POSTGRES_PASSWORD}
+  runtime:
+    worker:
+      id: macbook-primary
+      version: dev
+      capabilities:
+        - TOOL_EXECUTION
+        - LOCAL_AGENT_TOOL
+      project-paths:
+        - ${GROMOZEKA_PROJECT_PATH}
+
+spring:
+  rabbitmq:
+    addresses: amqps://rabbitmq.internal:5671
+    username: ${GROMOZEKA_RABBIT_USERNAME}
+    password: ${GROMOZEKA_RABBIT_PASSWORD}
+    ssl:
+      enabled: true
+      validate-server-certificate: true
+      verify-hostname: true

@@ -12,44 +12,39 @@ class BuiltinPromptLoader {
     private val resourceResolver = PathMatchingResourcePatternResolver()
 
     fun loadBuiltinPrompts(): List<Prompt> {
-        val prompts = mutableListOf<Prompt>()
-        
-        // Load all .md files from /prompts directory
-        try {
-            val resources = resourceResolver.getResources("classpath:/prompts/*.md")
-            
-            resources.forEach { resource ->
-                try {
-                    val fileName = resource.filename ?: return@forEach
-                    val content = resource.inputStream.bufferedReader().use { it.readText() }
-                    val name = fileName.removeSuffix(".md")
-                        .replace("-", " ")
-                        .replaceFirstChar { it.uppercase() }
-                    
-                    val id = Prompt.Id("builtin:$fileName")
-                    
-                    prompts.add(
-                        Prompt(
-                            id = id,
-                            name = name,
-                            content = content,
-                            type = Prompt.Type.Builtin,
-                            createdAt = Clock.System.now(),
-                            updatedAt = Clock.System.now()
-                        )
-                    )
-                    
-                    log.debug { "Loaded builtin prompt: $name ($id)" }
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to load builtin prompt: ${resource.filename}" }
-                }
-            }
-            
-            log.info { "Loaded ${prompts.size} builtin prompts from /prompts directory" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to scan /prompts directory for prompts" }
+        val resources = resourceResolver.getResources("classpath*:/prompts/*.md")
+        check(resources.isNotEmpty()) {
+            "No builtin prompts found in classpath:/prompts"
         }
 
+        val prompts = resources.map { resource ->
+            val fileName = checkNotNull(resource.filename) {
+                "Builtin prompt resource has no filename: $resource"
+            }
+            val content = resource.inputStream.bufferedReader().use { it.readText() }
+            val name = fileName.removeSuffix(".md")
+                .replace("-", " ")
+                .replaceFirstChar { it.uppercase() }
+            val id = Prompt.Id("builtin:$fileName")
+
+            Prompt(
+                id = id,
+                name = name,
+                content = content,
+                type = Prompt.Type.Builtin,
+                createdAt = Clock.System.now(),
+                updatedAt = Clock.System.now()
+            ).also {
+                log.debug { "Loaded builtin prompt: $name ($id)" }
+            }
+        }
+
+        val duplicateIds = prompts.groupBy { it.id }.filterValues { it.size > 1 }.keys
+        check(duplicateIds.isEmpty()) {
+            "Duplicate builtin prompt ids: ${duplicateIds.joinToString { it.value }}"
+        }
+
+        log.info { "Loaded ${prompts.size} builtin prompts from /prompts directory" }
         return prompts
     }
 }

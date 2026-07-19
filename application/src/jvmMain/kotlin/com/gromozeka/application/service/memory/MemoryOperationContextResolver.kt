@@ -77,6 +77,12 @@ class MemoryOperationContextResolver(
         )
     }
 
+    internal suspend fun resolveProjectId(projectId: Project.Id): MemoryOperationContext {
+        val project = projectService.findById(projectId)
+            ?: throw IllegalArgumentException("Project not found: ${projectId.value}")
+        return resolveProject(project)
+    }
+
     internal fun resolveTargetMessage(
         threadMessages: List<Conversation.Message>,
         targetMessageId: String?,

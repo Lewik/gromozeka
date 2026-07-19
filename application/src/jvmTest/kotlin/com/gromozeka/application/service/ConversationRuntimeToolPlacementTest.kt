@@ -6,6 +6,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.AiToolRuntimeAffinityTarget
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test
@@ -25,7 +26,8 @@ class ConversationRuntimeToolPlacementTest {
                 tool(
                     name = "grz_read_file",
                     metadata = AiToolMetadata(
-                        requiredRuntimeCapabilities = setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL)
+                        requiredRuntimeCapabilities = setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL),
+                        runtimeAffinityTarget = AiToolRuntimeAffinityTarget.PROJECT,
                     ),
                 )
             ),
@@ -53,6 +55,60 @@ class ConversationRuntimeToolPlacementTest {
             setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION),
             requirements.capabilities,
         )
+    }
+
+    @Test
+    fun `command task follow-up targets its owning worker`() {
+        val projectAffinity = ConversationRuntimeWorkerAffinity(
+            kind = ConversationRuntimeWorkerAffinity.Kind.PROJECT,
+            value = "project-1",
+        )
+        val ownerAffinity = ConversationRuntimeWorkerAffinity(
+            kind = ConversationRuntimeWorkerAffinity.Kind.WORKER,
+            value = "worker-1",
+        )
+        val call = toolCall("grz_get_command_task")
+
+        val requirements = conversationRuntimeToolExecutionRequirements(
+            toolCalls = listOf(call),
+            availableTools = listOf(
+                tool(
+                    name = "grz_get_command_task",
+                    metadata = AiToolMetadata(
+                        requiredRuntimeCapabilities = setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL),
+                        runtimeAffinityTarget = AiToolRuntimeAffinityTarget.COMMAND_TASK_OWNER,
+                    ),
+                )
+            ),
+            localAgentAffinity = projectAffinity,
+            commandTaskOwnerAffinities = mapOf(call.id to ownerAffinity),
+        )
+
+        assertEquals(ownerAffinity, requirements.affinity)
+    }
+
+    @Test
+    fun `missing command task owner routes follow-up to project for not-found result`() {
+        val projectAffinity = ConversationRuntimeWorkerAffinity(
+            kind = ConversationRuntimeWorkerAffinity.Kind.PROJECT,
+            value = "project-1",
+        )
+
+        val requirements = conversationRuntimeToolExecutionRequirements(
+            toolCalls = listOf(toolCall("grz_get_command_task")),
+            availableTools = listOf(
+                tool(
+                    name = "grz_get_command_task",
+                    metadata = AiToolMetadata(
+                        requiredRuntimeCapabilities = setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL),
+                        runtimeAffinityTarget = AiToolRuntimeAffinityTarget.COMMAND_TASK_OWNER,
+                    ),
+                )
+            ),
+            localAgentAffinity = projectAffinity,
+        )
+
+        assertEquals(projectAffinity, requirements.affinity)
     }
 
     @Test

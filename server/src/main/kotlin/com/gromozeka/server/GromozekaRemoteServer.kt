@@ -93,6 +93,11 @@ class GromozekaRemoteServer(
                         }
                     }
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                log.error(error) { "Remote WebSocket session failed: ${error.message}" }
+                throw error
             } finally {
                 conversationSubscriptions.values.forEach { it.cancel() }
                 conversationSubscriptions.clear()

@@ -21,8 +21,8 @@ import kotlin.jvm.JvmInline
  * - AI configuration (provider, model)
  * - Metadata (name, description, type)
  *
- * Running agent instances (application.actor.Agent) use this definition
- * and can switch between definitions during conversation.
+ * Runtime tasks carry this definition so each independently claimed step uses
+ * the same immutable agent configuration.
  *
  * This is an immutable value type - use copy() to create modified versions.
  *

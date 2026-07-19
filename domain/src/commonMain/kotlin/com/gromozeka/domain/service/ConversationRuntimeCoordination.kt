@@ -23,11 +23,22 @@ data class ConversationRuntimeTask(
     val payload: Payload,
     val placement: QueuedMessagePlacement,
     val idempotencyKey: String,
-    val requirements: ConversationRuntimeTaskRequirements = ConversationRuntimeTaskRequirements(
-        capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
-    ),
+    val requirements: ConversationRuntimeTaskRequirements,
     val createdAt: Instant,
 ) {
+    init {
+        require(id.value.isNotBlank()) { "Conversation runtime task id must not be blank" }
+        require(idempotencyKey.isNotBlank()) { "Conversation runtime task idempotency key must not be blank" }
+        require(requirements.capabilities.containsAll(payload.requiredCapabilities())) {
+            "Conversation runtime task ${id.value} requirements do not satisfy ${payload::class.simpleName}"
+        }
+        if (payload is Payload.UserTurn) {
+            require(payload.userMessage.conversationId == conversationId) {
+                "Conversation runtime task ${id.value} user message belongs to another conversation"
+            }
+        }
+    }
+
     @Serializable
     @JvmInline
     value class Id(val value: String)
@@ -68,6 +79,20 @@ data class ConversationRuntimeTask(
         }
 
         @Serializable
+        @SerialName("tool_result_processing")
+        data class ToolResultProcessing(
+            val rootUserMessageId: Conversation.Message.Id,
+            val toolResultMessageId: Conversation.Message.Id,
+            val agent: AgentDefinition,
+            val iteration: Int,
+            val returnDirect: Boolean,
+        ) : Payload {
+            init {
+                require(iteration >= 1) { "Conversation tool result iteration must be positive" }
+            }
+        }
+
+        @Serializable
         @SerialName("memory_recall")
         data class MemoryRecall(
             val rootUserMessageId: Conversation.Message.Id,
@@ -79,6 +104,12 @@ data class ConversationRuntimeTask(
                 require(followUpIteration >= 1) { "Conversation memory recall follow-up iteration must be positive" }
             }
         }
+
+        @Serializable
+        @SerialName("execution_incident")
+        data class ExecutionIncident(
+            val sourceTaskId: Id,
+        ) : Payload
     }
 
     fun requireUserTurn(): Payload.UserTurn =
@@ -90,6 +121,25 @@ data class ConversationRuntimeTask(
     fun userMessageIdOrNull(): Conversation.Message.Id? = userTurnOrNull()?.userMessage?.id
 
     fun isInternalRuntimeStep(): Boolean = payload !is Payload.UserTurn
+
+    private fun Payload.requiredCapabilities(): Set<ConversationRuntimeWorkerCapability> =
+        when (this) {
+            is Payload.UserTurn -> setOf(
+                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
+                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+            )
+            is Payload.LlmCall -> setOf(
+                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
+                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+            )
+            is Payload.ToolExecution -> setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION)
+            is Payload.ToolResultProcessing -> setOf(
+                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
+                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+            )
+            is Payload.MemoryRecall -> setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE)
+            is Payload.ExecutionIncident -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
+        }
 }
 
 /**
@@ -105,6 +155,14 @@ data class ConversationRuntimeTaskRequirements(
 ) {
     init {
         require(capabilities.isNotEmpty()) { "Conversation runtime task must require at least one worker capability" }
+        if (ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL in capabilities) {
+            require(ConversationRuntimeWorkerCapability.TOOL_EXECUTION in capabilities) {
+                "Local agent tool capability requires tool execution capability"
+            }
+            require(affinity != null) {
+                "Local agent tool execution requires worker affinity"
+            }
+        }
     }
 
     fun isSatisfiedBy(
@@ -124,12 +182,26 @@ enum class ConversationRuntimeWorkerCapability {
     MEMORY_PIPELINE,
 }
 
-val DefaultConversationRuntimeWorkerCapabilities: Set<ConversationRuntimeWorkerCapability> = setOf(
-    ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-    ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-    ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-    ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
-    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+@Serializable
+@JvmInline
+value class ConversationRuntimeWorkerId(val value: String) {
+    init {
+        require(value.isNotBlank()) { "Conversation runtime worker id must not be blank" }
+    }
+}
+
+@Serializable
+@JvmInline
+value class ConversationRuntimeWorkerSessionId(val value: String) {
+    init {
+        require(value.isNotBlank()) { "Conversation runtime worker session id must not be blank" }
+    }
+}
+
+@Serializable
+data class ConversationRuntimeWorkerIdentity(
+    val workerId: ConversationRuntimeWorkerId,
+    val sessionId: ConversationRuntimeWorkerSessionId,
 )
 
 @Serializable
@@ -137,8 +209,13 @@ data class ConversationRuntimeWorkerAffinity(
     val kind: Kind,
     val value: String,
 ) {
+    init {
+        require(value.isNotBlank()) { "Conversation runtime worker affinity value must not be blank" }
+    }
+
     @Serializable
     enum class Kind {
+        WORKER,
         MACHINE,
         PROJECT,
         WORKSPACE,
@@ -148,10 +225,58 @@ data class ConversationRuntimeWorkerAffinity(
 
 @Serializable
 data class ConversationRuntimeWorkerDescriptor(
-    val id: String? = null,
-    val capabilities: Set<ConversationRuntimeWorkerCapability> = DefaultConversationRuntimeWorkerCapabilities,
+    val id: ConversationRuntimeWorkerId,
+    val capabilities: Set<ConversationRuntimeWorkerCapability>,
     val affinities: Set<ConversationRuntimeWorkerAffinity> = emptySet(),
-)
+) {
+    init {
+        require(capabilities.isNotEmpty()) { "Conversation runtime worker must declare at least one capability" }
+    }
+}
+
+@Serializable
+data class ConversationRuntimeWorkerRegistration(
+    val identity: ConversationRuntimeWorkerIdentity,
+    val capabilities: Set<ConversationRuntimeWorkerCapability>,
+    val affinities: Set<ConversationRuntimeWorkerAffinity>,
+    val version: String,
+    val startedAt: Instant,
+    val lastHeartbeatAt: Instant,
+    val stoppedAt: Instant? = null,
+) {
+    init {
+        require(capabilities.isNotEmpty()) { "Conversation runtime worker must declare at least one capability" }
+        require(version.isNotBlank()) { "Conversation runtime worker version must not be blank" }
+        require(lastHeartbeatAt >= startedAt) { "Conversation runtime worker heartbeat cannot precede startup" }
+        require(stoppedAt == null || stoppedAt >= startedAt) {
+            "Conversation runtime worker stop time cannot precede startup"
+        }
+    }
+
+    fun isOnline(staleBefore: Instant): Boolean =
+        stoppedAt == null && lastHeartbeatAt >= staleBefore
+}
+
+interface ConversationRuntimeWorkerRegistry {
+    suspend fun register(
+        registration: ConversationRuntimeWorkerRegistration,
+        staleBefore: Instant,
+    ): Boolean
+
+    suspend fun heartbeat(
+        identity: ConversationRuntimeWorkerIdentity,
+        at: Instant,
+    ): Boolean
+
+    suspend fun unregister(
+        identity: ConversationRuntimeWorkerIdentity,
+        at: Instant,
+    ): Boolean
+
+    suspend fun find(workerId: ConversationRuntimeWorkerId): ConversationRuntimeWorkerRegistration?
+
+    suspend fun list(): List<ConversationRuntimeWorkerRegistration>
+}
 
 @Serializable
 enum class ConversationRuntimeControlAction {
@@ -166,9 +291,22 @@ data class ConversationExecutionState(
     val conversationId: Conversation.Id,
     val controlState: ControlState,
     val activeTaskId: ConversationRuntimeTask.Id?,
-    val activeWorkerId: String? = null,
+    val activeWorker: ConversationRuntimeWorkerIdentity? = null,
+    val activeTaskStartedAt: Instant? = null,
     val updatedAt: Instant,
 ) {
+    init {
+        require(activeTaskId != null || activeWorker == null) {
+            "Conversation runtime cannot have an active worker without an active task"
+        }
+        require(activeTaskId != null || activeTaskStartedAt == null) {
+            "Conversation runtime cannot have an execution start without an active task"
+        }
+        require(activeTaskStartedAt == null || activeWorker != null) {
+            "Conversation runtime cannot start execution without an active worker"
+        }
+    }
+
     @Serializable
     enum class ControlState {
         RUNNING,
@@ -185,7 +323,7 @@ data class ConversationRuntimeToolExecution(
     val toolName: String,
     val status: Status,
     val runtimeTaskId: ConversationRuntimeTask.Id?,
-    val workerId: String? = null,
+    val worker: ConversationRuntimeWorkerIdentity? = null,
     val startedAt: Instant,
     val completedAt: Instant? = null,
     val isError: Boolean? = null,
@@ -199,26 +337,42 @@ data class ConversationRuntimeToolExecution(
 }
 
 @Serializable
-data class ConversationRuntimeTaskFailure(
+data class ConversationRuntimeTaskIncident(
     val task: ConversationRuntimeTask,
-    val reason: Reason,
+    val kind: Kind,
     val message: String,
-    val workerId: String?,
-    val failedAt: Instant,
+    val errorType: String? = null,
+    val worker: ConversationRuntimeWorkerIdentity?,
+    val executionStartedAt: Instant?,
+    val occurredAt: Instant,
 ) {
+    init {
+        require((kind == Kind.OUTCOME_UNKNOWN) == (executionStartedAt != null)) {
+            "Only an execution which crossed its start boundary can have an unknown outcome"
+        }
+    }
+
     @Serializable
-    enum class Reason {
-        EXECUTION_FAILED,
+    enum class Kind {
         DELIVERY_FAILED,
+        OUTCOME_UNKNOWN,
     }
 }
+
+@Serializable
+data class ConversationRuntimeActiveTaskAssignment(
+    val conversationId: Conversation.Id,
+    val task: ConversationRuntimeTask,
+    val worker: ConversationRuntimeWorkerIdentity,
+    val startedAt: Instant?,
+)
 
 @Serializable
 data class ConversationRuntimeTraceEntry(
     val sequence: Long,
     val conversationId: Conversation.Id,
     val taskId: ConversationRuntimeTask.Id?,
-    val workerId: String?,
+    val worker: ConversationRuntimeWorkerIdentity?,
     val kind: Kind,
     val status: Status,
     val message: String? = null,
@@ -228,6 +382,8 @@ data class ConversationRuntimeTraceEntry(
     enum class Kind {
         TASK_SUBMITTED,
         TASK_CLAIMED,
+        TASK_STARTED,
+        TASK_IN_DOUBT,
         TASK_COMPLETED,
         TASK_FAILED,
         TASK_CANCELLED,
@@ -261,7 +417,7 @@ data class ConversationRuntimeSnapshot(
     val pendingTasks: List<ConversationRuntimeTask>,
     val toolExecutions: List<ConversationRuntimeToolExecution> = emptyList(),
     val commandTasks: List<CommandTask> = emptyList(),
-    val failedTasks: List<ConversationRuntimeTaskFailure> = emptyList(),
+    val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
     val lastEventSequence: Long = 0,
 )
@@ -286,20 +442,29 @@ data class ConversationRuntimeWorkOutboxEntry(
     val item: ConversationRuntimeWorkItem,
     val createdAt: Instant,
     val publishedAt: Instant? = null,
-    val publishWorkerId: String? = null,
+    val publishLeaseOwnerId: String? = null,
     val publishLeaseUntil: Instant? = null,
 )
 
 interface ConversationRuntimeWorkDelivery {
     val item: ConversationRuntimeWorkItem
-    val retryCount: Int
-    val isFinalRetry: Boolean
+    val redeliveryCount: Int
+    val isFinalRedelivery: Boolean
 
-    suspend fun ack()
+    /**
+     * Permanently settles the broker delivery. Returns only after the transport accepted the acknowledgement.
+     */
+    suspend fun acknowledge()
 
-    suspend fun retry()
+    /**
+     * Redelivers transport work only while its runtime task is still unclaimed.
+     */
+    suspend fun redeliver()
 
-    suspend fun fail()
+    /**
+     * Permanently rejects an undeliverable transport item.
+     */
+    suspend fun reject()
 }
 
 @Serializable
@@ -349,10 +514,12 @@ interface ConversationRuntimeEventBus {
     suspend fun publish(event: ConversationRuntimeEvent)
 }
 
-interface ConversationRuntimeWorkQueue {
-    val deliveries: Flow<ConversationRuntimeWorkDelivery>
-
+interface ConversationRuntimeWorkPublisher {
     suspend fun submit(item: ConversationRuntimeWorkItem)
+}
+
+interface ConversationRuntimeWorkConsumer {
+    val deliveries: Flow<ConversationRuntimeWorkDelivery>
 }
 
 @Serializable
@@ -362,50 +529,91 @@ data class ConversationRuntimeEventLogEntry(
     val event: ConversationRuntimeEvent,
     val createdAt: Instant,
     val publishedAt: Instant? = null,
-    val publishWorkerId: String? = null,
+    val publishLeaseOwnerId: String? = null,
     val publishLeaseUntil: Instant? = null,
 )
 
 interface ConversationRuntimeCoordinator {
     suspend fun submit(task: ConversationRuntimeTask): Boolean
 
+    /**
+     * Atomically assigns a pending task to one worker session.
+     *
+     * The assignment has no expiry and cannot move to another session. Repeating the claim is idempotent only for
+     * the exact same [worker].
+     */
     suspend fun claimDeliveredTask(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
-        workerCapabilities: Set<ConversationRuntimeWorkerCapability> = setOf(
-            ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-        ),
-        workerAffinities: Set<ConversationRuntimeWorkerAffinity> = emptySet(),
+        worker: ConversationRuntimeWorkerIdentity,
+        workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
+        workerAffinities: Set<ConversationRuntimeWorkerAffinity>,
     ): ConversationRuntimeTask?
 
     suspend fun completeActiveTask(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
+    ): Boolean
+
+    /**
+     * Records the exact boundary after broker acknowledgement and immediately before task code may run.
+     */
+    suspend fun markActiveTaskStarted(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        worker: ConversationRuntimeWorkerIdentity,
+        startedAt: Instant,
     ): Boolean
 
     suspend fun confirmActiveTaskOwner(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
     ): Boolean
 
-    suspend fun failActiveTask(
+    /**
+     * Permanently closes a claimed task whose result cannot be proven.
+     *
+     * This never requeues or re-executes the source task. It records an incident and schedules incident handling so
+     * the user or the main model can decide what to do next.
+     */
+    suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
         message: String,
-        type: String?,
-    ): Boolean
+        errorType: String? = null,
+    ): ConversationRuntimeTaskIncident?
 
-    suspend fun failPendingTask(
+    /**
+     * Permanently closes a claimed task which is known not to have crossed its execution-start boundary.
+     */
+    suspend fun recordClaimedTaskDeliveryFailure(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
         message: String,
-        type: String?,
-    ): Boolean
+        errorType: String? = null,
+    ): ConversationRuntimeTaskIncident?
+
+    /**
+     * Permanently closes a task that could not reach a worker before any durable claim was created.
+     */
+    suspend fun recordPendingTaskDeliveryFailure(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        worker: ConversationRuntimeWorkerIdentity,
+        message: String,
+        errorType: String? = null,
+    ): ConversationRuntimeTaskIncident?
+
+    suspend fun listActiveTaskAssignments(): List<ConversationRuntimeActiveTaskAssignment>
+
+    suspend fun findTaskIncident(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+    ): ConversationRuntimeTaskIncident?
 
     suspend fun finishIfIdle(conversationId: Conversation.Id): Boolean
 
@@ -417,7 +625,7 @@ interface ConversationRuntimeCoordinator {
     suspend fun clearToolExecutions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
     ): Boolean
 
     suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult
@@ -429,12 +637,22 @@ interface ConversationRuntimeCoordinator {
         taskId: CommandTask.Id,
     ): CommandTask?
 
+    suspend fun requestCommandTaskCancellation(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+        requestedAt: Instant,
+    ): Boolean
+
+    suspend fun requestCommandTaskCancellations(
+        conversationId: Conversation.Id,
+        requestedAt: Instant,
+    ): Int
+
     suspend fun requestPause(conversationId: Conversation.Id): Boolean
     suspend fun markPaused(conversationId: Conversation.Id): Boolean
     suspend fun requestResume(conversationId: Conversation.Id): Boolean
     suspend fun requestStop(conversationId: Conversation.Id): Boolean
     suspend fun requestInterrupt(conversationId: Conversation.Id): Boolean
-    suspend fun fail(conversationId: Conversation.Id)
     suspend fun abort(conversationId: Conversation.Id)
     suspend fun find(conversationId: Conversation.Id): ConversationExecutionState?
 
@@ -446,7 +664,7 @@ interface ConversationRuntimeCoordinator {
     suspend fun takeActiveInsertions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
         placement: QueuedMessagePlacement,
     ): List<ConversationRuntimeTask>
 
@@ -463,7 +681,7 @@ interface ConversationRuntimeCoordinator {
     ): List<ConversationRuntimeEventLogEntry>
 
     suspend fun claimUnpublishedEventLogEntries(
-        workerId: String,
+        leaseOwnerId: String,
         now: Instant,
         leaseUntil: Instant,
         limit: Int,
@@ -472,12 +690,12 @@ interface ConversationRuntimeCoordinator {
     suspend fun markEventLogEntryPublished(
         conversationId: Conversation.Id,
         sequence: Long,
-        workerId: String,
+        leaseOwnerId: String,
         publishedAt: Instant,
     ): Boolean
 
     suspend fun claimUnpublishedWorkItems(
-        workerId: String,
+        leaseOwnerId: String,
         now: Instant,
         leaseUntil: Instant,
         limit: Int,
@@ -486,7 +704,7 @@ interface ConversationRuntimeCoordinator {
     suspend fun markWorkItemPublished(
         conversationId: Conversation.Id,
         sequence: Long,
-        workerId: String,
+        leaseOwnerId: String,
         publishedAt: Instant,
     ): Boolean
 

@@ -30,11 +30,11 @@ dependencies {
     implementation(project(":remote-protocol"))
     implementation(project(":application"))
     implementation(project(":infrastructure-db"))
+    implementation(project(":infrastructure-runtime"))
     implementation(project(":infrastructure-ai"))
     implementation(project(":infrastructure-ai:openai-subscription"))
 
     implementation(libs.spring.boot.starter)
-    implementation(libs.spring.boot.starter.amqp)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     implementation(libs.ktor.server.sse)

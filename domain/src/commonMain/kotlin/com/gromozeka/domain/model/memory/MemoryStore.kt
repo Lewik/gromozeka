@@ -48,6 +48,11 @@ interface MemoryStore {
 
     suspend fun findRunById(runId: MemoryRun.Id): MemoryRun?
 
+    suspend fun replaceRunIfUnchanged(
+        expected: MemoryRun,
+        replacement: MemoryRun,
+    ): Boolean
+
     suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun>
 
     suspend fun findRunsByStatuses(

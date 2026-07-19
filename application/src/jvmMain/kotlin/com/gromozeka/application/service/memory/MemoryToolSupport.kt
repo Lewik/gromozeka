@@ -301,12 +301,16 @@ object MemoryToolResultRenderer {
             put("status", "queued")
             put("run_id", result.runId.value)
             put("action", result.action.toolName)
-            put("target_kind", result.targetKind)
+            put("target_kind", result.targetKind.wireName)
             put("target_value", result.targetValue)
             put("namespace", result.namespace.value)
             put("conversation_id", result.conversationId.value)
             put("queue_size", result.queueSize)
-            put("message", "Memory maintenance was accepted and will continue in the memory maintenance queue.")
+            put(
+                "message",
+                "Memory maintenance was queued for asynchronous processing. " +
+                    "Call memory_run_status with this run_id to retrieve its state and completed result."
+            )
         }.toString()
 
     fun runStatusJsonString(
@@ -333,81 +337,47 @@ object MemoryToolResultRenderer {
             put("run", rootRun.toStatusJson(descendants, maxDepth))
         }.toString()
 
-    fun queueStatusJsonString(
-        operationStatus: MemoryOperationQueueStatus,
-        maintenanceStatus: MemoryMaintenanceQueueStatus,
-        embeddingStatus: MemoryEmbeddingIndexStatus,
-    ): String =
+    fun queueStatusJsonString(operationStatus: MemoryOperationQueueStatus): String =
         buildJsonObject {
             put("status", "completed")
-            put("kind", "memory_work_queues")
-            put("pending_jobs", operationStatus.pendingJobs + maintenanceStatus.pendingJobs)
-            put("has_active_job", operationStatus.activeJob != null || maintenanceStatus.activeJob != null)
-            put(
-                "operations",
-                buildJsonObject {
-                    put("pending_jobs", operationStatus.pendingJobs)
-                    put("has_active_job", operationStatus.activeJob != null)
-                    operationStatus.activeJob?.let { active ->
-                        put(
-                            "active_job",
-                            buildJsonObject {
-                                put("run_id", active.runId.value)
-                                put("operation", active.operation.wireName)
-                                put("namespace", active.namespace.value)
-                                put("started_at", active.startedAt.toString())
+            put("kind", "memory_operation_queue")
+            put("queued_jobs", operationStatus.queuedJobs)
+            put("running_jobs", operationStatus.activeJobs.size)
+            put("has_active_job", operationStatus.activeJobs.isNotEmpty())
+            putJsonArray("active_jobs") {
+                operationStatus.activeJobs.forEach { active ->
+                    add(
+                        buildJsonObject {
+                            put("run_id", active.runId.value)
+                            put("run_type", active.runType.name.lowercase())
+                            active.operation?.let { put("operation", it.wireName) }
+                            put("namespace", active.namespace.value)
+                            active.startedAt?.let { put("started_at", it.toString()) }
+                            active.executionLease?.let { lease ->
+                                put("worker_id", lease.ownerId)
+                                put("worker_session_id", lease.ownerSessionId)
+                                put("lease_expires_at", lease.expiresAt.toString())
                             }
-                        )
-                    }
-                    put("total_enqueued_jobs", operationStatus.totalEnqueuedJobs)
-                    put("total_recovered_jobs", operationStatus.totalRecoveredJobs)
-                    put("total_started_jobs", operationStatus.totalStartedJobs)
-                    put("total_completed_jobs", operationStatus.totalCompletedJobs)
-                    put("total_fatally_failed_jobs", operationStatus.totalFatallyFailedJobs)
-                    put("worker_count", 1)
+                            put("lease_expired", active.leaseExpired)
+                        }
+                    )
                 }
-            )
-            put(
-                "maintenance",
-                buildJsonObject {
-                    put("pending_jobs", maintenanceStatus.pendingJobs)
-                    put("has_active_job", maintenanceStatus.activeJob != null)
-                    maintenanceStatus.activeJob?.let { active ->
-                        put(
-                            "active_job",
-                            buildJsonObject {
-                                put("run_id", active.runId.value)
-                                put("action", active.action.toolName)
-                                put("target_kind", active.targetKind)
-                                put("target_value", active.targetValue)
-                                put("namespace", active.namespace.value)
-                                put("conversation_id", active.conversationId.value)
-                                put("started_at", active.startedAt.toString())
-                            }
-                        )
-                    }
-                    put("total_enqueued_jobs", maintenanceStatus.totalEnqueuedJobs)
-                    put("total_started_jobs", maintenanceStatus.totalStartedJobs)
-                    put("total_completed_jobs", maintenanceStatus.totalCompletedJobs)
-                    put("total_fatally_failed_jobs", maintenanceStatus.totalFatallyFailedJobs)
-                    put("worker_count", 1)
+            }
+            put("worker_count", operationStatus.onlineWorkers.size)
+            putJsonArray("online_workers") {
+                operationStatus.onlineWorkers.forEach { worker ->
+                    add(
+                        buildJsonObject {
+                            put("worker_id", worker.identity.workerId.value)
+                            put("worker_session_id", worker.identity.sessionId.value)
+                            put("version", worker.version)
+                            put("last_heartbeat_at", worker.lastHeartbeatAt.toString())
+                        }
+                    )
                 }
-            )
-            put(
-                "embeddings",
-                buildJsonObject {
-                    put("mode", "synchronous_write_path")
-                    put("pending_jobs", 0)
-                    put("has_active_job", false)
-                    put("total_embedding_requests", embeddingStatus.totalEmbeddingRequests)
-                    put("total_embedded_items", embeddingStatus.totalEmbeddedItems)
-                    put("total_rebuilds", embeddingStatus.totalRebuilds)
-                    put("total_failed_requests", embeddingStatus.totalFailedRequests)
-                    put("worker_count", 0)
-                }
-            )
-            put("worker_count", 2)
-            put("process_local", true)
+            }
+            put("source_of_truth", "memory_runs")
+            put("distributed", true)
             put("restart_policy", "resume_queued_fail_interrupted")
         }.toString()
 

@@ -13,37 +13,35 @@ class BuiltinAgentLoader {
     private val json = Json
 
     fun loadBuiltinAgents(): List<AgentDefinition> {
-        val agents = mutableListOf<AgentDefinition>()
-        
-        try {
-            val resources = resourceResolver.getResources("classpath:/agents/*.json")
-            
-            log.info { "Scanning for builtin agents: found ${resources.size} JSON files" }
-            
-            resources.forEach { resource ->
-                try {
-                    val fileName = resource.filename ?: return@forEach
-                    val content = resource.inputStream.bufferedReader().use { it.readText() }
-                    
-                    log.debug { "Loading builtin agent from: $fileName" }
-                    
-                    val id = AgentDefinition.Id("builtin:$fileName")
-                    val agent = json.decodeFromString<AgentDefinition>(content)
-                        .validatedIdentity(id, AgentDefinition.Type.Builtin, fileName)
-                    
-                    agents.add(agent)
-                    log.info { "Loaded builtin agent: ${agent.name} (${agent.id.value})" }
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to load builtin agent: ${resource.filename}" }
-                }
-            }
-            
-            log.info { "Loaded ${agents.size} builtin agents from /agents directory" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to scan /agents directory for agents" }
+        val resources = resourceResolver.getResources("classpath*:/agents/*.json")
+        check(resources.isNotEmpty()) {
+            "No builtin agents found in classpath:/agents"
         }
 
+        log.info { "Scanning for builtin agents: found ${resources.size} JSON files" }
+
+        val agents = resources.map { resource ->
+            val fileName = checkNotNull(resource.filename) {
+                "Builtin agent resource has no filename: $resource"
+            }
+            val content = resource.inputStream.bufferedReader().use { it.readText() }
+
+            log.debug { "Loading builtin agent from: $fileName" }
+
+            val id = AgentDefinition.Id("builtin:$fileName")
+            json.decodeFromString<AgentDefinition>(content)
+                .validatedIdentity(id, AgentDefinition.Type.Builtin, fileName)
+                .also { agent ->
+                    log.info { "Loaded builtin agent: ${agent.name} (${agent.id.value})" }
+                }
+        }
+
+        val duplicateIds = agents.groupBy { it.id }.filterValues { it.size > 1 }.keys
+        check(duplicateIds.isEmpty()) {
+            "Duplicate builtin agent ids: ${duplicateIds.joinToString { it.value }}"
+        }
+
+        log.info { "Loaded ${agents.size} builtin agents from /agents directory" }
         return agents
     }
-
 }

@@ -3,6 +3,9 @@ package com.gromozeka.domain.tool.filesystem
 import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.ToolParameter
+
+const val MAX_COMMAND_INITIAL_YIELD_MILLIS = 30_000L
 
 /**
  * Request parameters for grz_execute_command tool.
@@ -15,7 +18,16 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 data class ExecuteCommandRequest(
     val command: String,
     val working_directory: String? = null,
+    @property:ToolParameter(
+        description = "Initial wait before returning a WORKING task. This is not the command timeout.",
+        minimum = 0,
+        maximum = MAX_COMMAND_INITIAL_YIELD_MILLIS,
+    )
     val yield_time_ms: Long = 10_000,
+    @property:ToolParameter(
+        description = "Hard command timeout in seconds. Omit to allow the command to run until completion or explicit cancellation.",
+        minimum = 1,
+    )
     val timeout_seconds: Long? = null,
 )
 
@@ -149,6 +161,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
     override val description: String
         get() = """
             Execute a shell command as a managed task. Short commands return a terminal result; long commands return status WORKING and task_id after yield_time_ms.
+            yield_time_ms is only the initial wait and may be from 0 to $MAX_COMMAND_INITIAL_YIELD_MILLIS; it is not the command timeout.
             Use grz_get_command_task with next_output_byte until the task is terminal and has_more_output is false. Use grz_cancel_command_task to terminate the process tree.
             Do not append '&' to create unmanaged background processes. Full merged stdout/stderr is saved to output_file.
             Use with caution - has full system access.

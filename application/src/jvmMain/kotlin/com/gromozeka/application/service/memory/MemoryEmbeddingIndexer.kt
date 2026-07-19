@@ -23,7 +23,6 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
-import java.util.concurrent.atomic.AtomicLong
 
 interface MemoryEmbeddingIndexer {
     suspend fun withEmbeddings(batch: MemoryUpdateBatch): MemoryUpdateBatch
@@ -36,8 +35,6 @@ interface MemoryEmbeddingIndexer {
     ): MemoryEmbeddingRebuildResult
 
     suspend fun coverage(namespace: MemoryNamespace): MemoryEmbeddingCoverage
-
-    fun status(): MemoryEmbeddingIndexStatus
 }
 
 enum class MemoryEmbeddingRebuildMode {
@@ -79,8 +76,6 @@ object NoOpMemoryEmbeddingIndexer : MemoryEmbeddingIndexer {
 
     override suspend fun coverage(namespace: MemoryNamespace): MemoryEmbeddingCoverage =
         MemoryEmbeddingCoverage(namespace = namespace)
-
-    override fun status(): MemoryEmbeddingIndexStatus = MemoryEmbeddingIndexStatus()
 }
 
 @Service
@@ -90,10 +85,6 @@ class DefaultMemoryEmbeddingIndexer(
     private val store: MemoryStore,
 ) : MemoryEmbeddingIndexer {
     private val log = KLoggers.logger(this)
-    private val totalEmbeddedItems = AtomicLong(0)
-    private val totalEmbeddingRequests = AtomicLong(0)
-    private val totalRebuilds = AtomicLong(0)
-    private val totalFailedRequests = AtomicLong(0)
 
     override suspend fun withEmbeddings(batch: MemoryUpdateBatch): MemoryUpdateBatch {
         return runCatching {
@@ -207,7 +198,6 @@ class DefaultMemoryEmbeddingIndexer(
         val embeddings = embedEntries(resolved, entries)
         val embeddingBatch = MemoryUpdateBatch(embeddings = embeddings)
         val deletedEmbeddings = store.replaceEmbeddings(namespace, embeddings)
-        totalRebuilds.incrementAndGet()
         log.info {
             "Memory embeddings rebuilt: mode=full namespace=${namespace.value} model=${resolved.modelConfigurationId}/${resolved.providerModelId} " +
                 "deleted=$deletedEmbeddings items=${embeddings.size}/${entries.size} dimensions=${resolved.dimensions}"
@@ -241,7 +231,6 @@ class DefaultMemoryEmbeddingIndexer(
         if (embeddings.isNotEmpty()) {
             store.apply(embeddingBatch)
         }
-        totalRebuilds.incrementAndGet()
         log.info {
             "Memory embeddings rebuilt: mode=missing namespace=${namespace.value} model=${resolved.modelConfigurationId}/${resolved.providerModelId} " +
                 "existing=${existingIds.size} missing=${missingEntries.size} inserted=${embeddings.size} dimensions=${resolved.dimensions}"
@@ -260,14 +249,6 @@ class DefaultMemoryEmbeddingIndexer(
             memoryBatch = embeddingBatch,
         )
     }
-
-    override fun status(): MemoryEmbeddingIndexStatus =
-        MemoryEmbeddingIndexStatus(
-            totalEmbeddedItems = totalEmbeddedItems.get(),
-            totalEmbeddingRequests = totalEmbeddingRequests.get(),
-            totalRebuilds = totalRebuilds.get(),
-            totalFailedRequests = totalFailedRequests.get(),
-        )
 
     private suspend fun embedEntries(
         resolved: ResolvedEmbeddingRuntime,
@@ -297,30 +278,26 @@ class DefaultMemoryEmbeddingIndexer(
                         updatedAt = now,
                     )
                 }
-        }.also { totalEmbeddedItems.addAndGet(it.size.toLong()) }
+        }
     }
 
     private suspend fun requestEmbeddings(
         resolved: ResolvedEmbeddingRuntime,
         inputs: List<String>,
-    ) = runCatching {
-        totalEmbeddingRequests.incrementAndGet()
+    ) =
         embeddingProvider.embed(
             AiEmbeddingRequest(
                 selection = resolved.selection,
                 inputs = inputs,
             )
-        )
-    }.onFailure {
-        totalFailedRequests.incrementAndGet()
-    }.getOrThrow().also { response ->
-        require(response.dimensions == resolved.dimensions) {
-            "AI embedding model ${resolved.providerModelId} returned ${response.dimensions} dimensions, expected ${resolved.dimensions}"
+        ).also { response ->
+            require(response.dimensions == resolved.dimensions) {
+                "AI embedding model ${resolved.providerModelId} returned ${response.dimensions} dimensions, expected ${resolved.dimensions}"
+            }
+            require(response.modelId == resolved.providerModelId) {
+                "AI embedding response model ${response.modelId} differs from configured model ${resolved.providerModelId}"
+            }
         }
-        require(response.modelId == resolved.providerModelId) {
-            "AI embedding response model ${response.modelId} differs from configured model ${resolved.providerModelId}"
-        }
-    }
 
     private fun resolveEmbeddingRuntime(): ResolvedEmbeddingRuntime {
         val selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS)
@@ -355,13 +332,6 @@ class DefaultMemoryEmbeddingIndexer(
         private const val EmbeddingBatchSize = 64
     }
 }
-
-data class MemoryEmbeddingIndexStatus(
-    val totalEmbeddedItems: Long = 0,
-    val totalEmbeddingRequests: Long = 0,
-    val totalRebuilds: Long = 0,
-    val totalFailedRequests: Long = 0,
-)
 
 data class MemoryEmbeddingCoverage(
     val namespace: MemoryNamespace,

@@ -301,7 +301,7 @@ class GromozekaMcpServerFactory(
             "Inspect vector embedding coverage for the global memory namespace under the currently configured embedding model: embeddable items, expected rows, existing rows, and missing rows. Read-only."
 
         const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
-            "Read process-local memory operation, maintenance, and synchronous embedding index status."
+            "Read durable queued/running memory operations and the live Workers capable of processing them."
 
         const val MCP_MEMORY_RUN_STATUS_DESCRIPTION =
             "Read persisted status, result, timings, errors, and child runs for one memory run by run_id."

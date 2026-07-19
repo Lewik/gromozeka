@@ -263,8 +263,8 @@ private fun RuntimeTasksSection(
     val runningTools = runtimeSnapshot?.toolExecutions.orEmpty()
         .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
-    val failedTasks = runtimeSnapshot?.failedTasks.orEmpty()
-    if (activeTask == null && pendingTasks.isEmpty() && runningTools.isEmpty() && activeCommands.isEmpty() && failedTasks.isEmpty()) {
+    val incidents = runtimeSnapshot?.incidents.orEmpty()
+    if (activeTask == null && pendingTasks.isEmpty() && runningTools.isEmpty() && activeCommands.isEmpty() && incidents.isEmpty()) {
         return
     }
 
@@ -280,7 +280,12 @@ private fun RuntimeTasksSection(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                activeTask?.let { task -> RuntimeTaskRow("Active", task.payload.runtimeLabel()) }
+                activeTask?.let { task ->
+                    RuntimeTaskRow(
+                        if (runtimeSnapshot.state?.activeTaskStartedAt == null) "Claimed" else "Running",
+                        task.payload.runtimeLabel(),
+                    )
+                }
                 pendingTasks.forEach { task -> RuntimeTaskRow("Pending", task.payload.runtimeLabel()) }
                 runningTools.forEach { tool -> RuntimeTaskRow("Tool", tool.toolName) }
                 activeCommands.forEach { commandTask ->
@@ -309,8 +314,15 @@ private fun RuntimeTasksSection(
                         }
                     }
                 }
-                failedTasks.forEach { failed ->
-                    RuntimeTaskRow("Failed", failed.message)
+                incidents.forEach { incident ->
+                    RuntimeTaskRow(
+                        if (incident.kind == com.gromozeka.domain.service.ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN) {
+                            "Unknown"
+                        } else {
+                            "Failed"
+                        },
+                        incident.message,
+                    )
                 }
             }
         }
@@ -556,20 +568,24 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(): String = when (this)
     is ConversationRuntimeTask.Payload.UserTurn -> "User turn"
     is ConversationRuntimeTask.Payload.LlmCall -> "LLM call"
     is ConversationRuntimeTask.Payload.ToolExecution -> "Tool execution"
+    is ConversationRuntimeTask.Payload.ToolResultProcessing -> "Tool result processing"
     is ConversationRuntimeTask.Payload.MemoryRecall -> "Memory recall"
+    is ConversationRuntimeTask.Payload.ExecutionIncident -> "Execution incident"
 }
 
 private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(agentName: String): String = when (this) {
     is ConversationRuntimeTask.Payload.UserTurn -> "$agentName работает"
     is ConversationRuntimeTask.Payload.LlmCall -> "Запрос к модели"
     is ConversationRuntimeTask.Payload.ToolExecution -> "Выполняется инструмент"
+    is ConversationRuntimeTask.Payload.ToolResultProcessing -> "Обработка результата инструмента"
     is ConversationRuntimeTask.Payload.MemoryRecall -> "Вспоминание"
+    is ConversationRuntimeTask.Payload.ExecutionIncident -> "Обработка сбоя выполнения"
 }
 
 private fun ConversationRuntimeSnapshot.runtimeDetailsText(): String = buildList {
     activeTask?.payload?.let { add(it.runtimeLabel()) }
     if (pendingTasks.isNotEmpty()) add("pending ${pendingTasks.size}")
-    if (failedTasks.isNotEmpty()) add("failed ${failedTasks.size}")
+    if (incidents.isNotEmpty()) add("incidents ${incidents.size}")
 }.joinToString(" · ")
 
 private fun ConversationRuntimeTraceEntry.runtimeTraceText(): String = buildString {

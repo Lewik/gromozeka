@@ -11,7 +11,7 @@ The project is currently a local research/development application, not a polishe
 ## Current Runtime Reality
 
 - Main dogfooding runtime: `OPEN_AI_SUBSCRIPTION`.
-- Runtime composition root: `:server`.
+- Runtime composition roots: `:server` for the control/API plane and `:worker` for execution.
 - UI clients: `:presentation` JVM Desktop and Wasm web/PWA.
 - Business workflows: `:application`.
 - Domain contracts and memory models: `:domain`.
@@ -21,7 +21,8 @@ The project is currently a local research/development application, not a polishe
 
 The current development shape is split:
 
-- `:server` owns Spring composition, LLM runtimes, tools, persistence, memory, and a Ktor remote endpoint.
+- `:server` accepts client commands, persists runtime state, publishes durable work, streams events, and exposes the Ktor remote endpoint.
+- `:worker` claims durable tasks and executes conversation, LLM, tool, and memory work according to its declared capabilities and affinities.
 - `:presentation` owns UI code and can run either as a JVM desktop client or as a Wasm web client.
 - The server listens on `/ws` for remote UI traffic and serves already-built Wasm static files from `presentation/build/dist/wasmJs/developmentExecutable` by default.
 
@@ -68,7 +69,7 @@ Runtime read path:
 4. Select/rerank final memory context.
 5. Inject the retrieved memory into the main LLM call as runtime-only context.
 
-Maintenance flows are currently explicit/manual and synchronous: note consolidation, repair, entity maintenance, and retention.
+Maintenance flows are explicit/manual durable operations handled asynchronously by a Worker: note consolidation, repair, entity maintenance, retention, and embedding rebuilds.
 
 Useful memory docs:
 
@@ -89,7 +90,7 @@ Useful memory docs:
 
 PostgreSQL and RabbitMQ are intentionally explicit. The app should fail fast if either runtime dependency is not available.
 
-The server and UI clients are separate processes. Start local infrastructure first, then the server, then one of the UI clients.
+The server, Worker, and UI clients are separate processes. Start local infrastructure first, then the server, a Worker, and one of the UI clients.
 
 Start local infrastructure:
 
@@ -112,14 +113,17 @@ The server defaults to `127.0.0.1:8765`. It prints a line like:
 ==== Gromozeka server started: ws://127.0.0.1:8765/ws ====
 ```
 
-Runtime workers default to handling conversation turns, LLM calls, tool execution, memory, and media work. To split work across processes later, constrain a server instance with:
+The Server only accepts commands, persists runtime state, publishes work, and
+streams events. Start the local all-capabilities Worker:
 
 ```bash
-GROMOZEKA_RUNTIME_WORKER_ID="llm-worker-1" \
-GROMOZEKA_RUNTIME_WORKER_CAPABILITIES="LLM_RUNTIME" \
-GROMOZEKA_RUNTIME_WORKER_AFFINITIES="PROJECT=/path/to/project" \
-./gradlew :server:run
+SPRING_CONFIG_ADDITIONAL_LOCATION="file:$PWD/worker/config/dev-worker.yaml" \
+GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
+GROMOZEKA_MODE=dev \
+./gradlew :worker:run
 ```
+
+See `worker/README.md` for split cloud and project-affine Worker configuration.
 
 The default remote client endpoint is local:
 

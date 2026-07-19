@@ -6,33 +6,40 @@ import com.gromozeka.application.service.memory.MEMORY_EMBEDDING_STATUS_TOOL_NAM
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryMaintenanceAction
-import com.gromozeka.application.service.memory.MemoryMaintenanceQueue
-import com.gromozeka.application.service.memory.MemoryOperationContext
+import com.gromozeka.application.service.memory.MemoryAsyncOperationApplicationService
+import com.gromozeka.application.service.memory.MemoryMaintenanceTargetKind
+import com.gromozeka.application.service.memory.ActiveMemoryOperation
+import com.gromozeka.application.service.memory.MEMORY_OPERATION_KIND_METADATA_KEY
+import com.gromozeka.application.service.memory.MEMORY_OPERATION_RUN_TYPES
 import com.gromozeka.application.service.memory.MemoryOperationContextResolver
-import com.gromozeka.application.service.memory.MemoryOperationQueue
+import com.gromozeka.application.service.memory.MemoryOperationKind
+import com.gromozeka.application.service.memory.MemoryOperationQueueStatus
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
+import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.ProjectDomainService
-import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.shared.uuid.uuid7
 import java.io.File
 import klog.KLoggers
+import kotlinx.datetime.Clock
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Service
 
 @Service
 class MemoryToolApplicationService(
     private val contextResolver: MemoryOperationContextResolver,
     private val projectService: ProjectDomainService,
-    private val memoryOperationQueue: MemoryOperationQueue,
-    private val memoryMaintenanceQueue: MemoryMaintenanceQueue,
+    private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val memoryEmbeddingIndexer: MemoryEmbeddingIndexer,
     private val memoryStore: MemoryStore,
+    private val runtimeWorkerRegistry: ConversationRuntimeWorkerRegistry,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -61,12 +68,48 @@ class MemoryToolApplicationService(
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory run status failed.")
         }
 
-    fun memoryQueueStatus(): String =
-        MemoryToolResultRenderer.queueStatusJsonString(
-            operationStatus = memoryOperationQueue.status(),
-            maintenanceStatus = memoryMaintenanceQueue.status(),
-            embeddingStatus = memoryEmbeddingIndexer.status(),
-        )
+    suspend fun memoryQueueStatus(): String =
+        runCatching {
+            val now = Clock.System.now()
+            val unfinishedRuns = memoryStore.findRunsByStatuses(
+                statuses = setOf(MemoryRun.Status.QUEUED, MemoryRun.Status.RUNNING),
+                runTypes = MEMORY_OPERATION_RUN_TYPES,
+            )
+            val onlineWorkers = runtimeWorkerRegistry.list()
+                .filter { registration ->
+                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE in registration.capabilities &&
+                        registration.isOnline(now - ConversationRuntimeTiming.workerRegistrationStaleAfter)
+                }
+                .sortedBy { it.identity.workerId.value }
+            val activeJobs = unfinishedRuns
+                .filter { it.status == MemoryRun.Status.RUNNING }
+                .sortedBy { it.startedAt }
+                .map { run ->
+                    ActiveMemoryOperation(
+                        runId = run.id,
+                        runType = run.runType,
+                        operation = run.metadata[MEMORY_OPERATION_KIND_METADATA_KEY]
+                            ?.jsonPrimitive
+                            ?.contentOrNull
+                            ?.let { operationName ->
+                                MemoryOperationKind.entries.firstOrNull { it.wireName == operationName }
+                            },
+                        namespace = run.namespace,
+                        startedAt = run.startedAt,
+                        executionLease = run.executionLease,
+                        leaseExpired = run.executionLease?.expiresAt?.let { it <= now } ?: true,
+                    )
+                }
+            MemoryToolResultRenderer.queueStatusJsonString(
+                MemoryOperationQueueStatus(
+                    queuedJobs = unfinishedRuns.count { it.status == MemoryRun.Status.QUEUED },
+                    activeJobs = activeJobs,
+                    onlineWorkers = onlineWorkers,
+                )
+            )
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory queue status failed.")
+        }
 
     suspend fun memoryEmbeddingStatus(
         conversationIdValue: String? = null,
@@ -112,22 +155,18 @@ class MemoryToolApplicationService(
             val embeddingRebuildMode = MemoryEmbeddingRebuildMode.from(embeddingRebuildModeValue)
             val target = resolveMaintenanceTarget(conversationIdValue)
             val context = resolveMaintenanceContext(target)
-            val result = memoryMaintenanceQueue.enqueue(
+            val result = memoryOperations.scheduleMaintenance(
                 action = action,
-                targetKind = target.kind.toolName,
+                targetKind = target.kind,
                 targetValue = target.value,
-                conversationId = context.conversationId,
-                agent = context.agent,
-                project = context.project,
+                executionConversationId = context.conversationId,
                 namespace = context.namespace,
-                runtimeSystemPrompts = context.systemPrompts,
-                runtimeTools = context.memoryTools,
                 embeddingRebuildMode = embeddingRebuildMode,
             )
 
             log.info {
                 "Memory maintenance tool queued: run=${result.runId.value} action=${action.toolName} " +
-                    "target=${target.kind.toolName}:${target.value} namespace=${context.namespace.value} " +
+                    "target=${target.kind.wireName}:${target.value} namespace=${context.namespace.value} " +
                     "embeddingMode=${embeddingRebuildMode.name.lowercase()} " +
                     "conversation=${context.conversationId.value} queueSize=${result.queueSize}"
             }
@@ -169,42 +208,33 @@ class MemoryToolApplicationService(
                 run.childRunIds.mapNotNull { childRunId -> memoryStore.findRunById(childRunId) }
             ).distinctBy { it.id }
 
-    private fun resolveMaintenanceTarget(conversationIdValue: String?): MemoryMaintenanceTarget =
+    private suspend fun resolveMaintenanceTarget(conversationIdValue: String?): MemoryMaintenanceTarget =
         conversationIdValue
             ?.trim()
             ?.takeIf { it.isNotBlank() }
-            ?.let { MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.CONVERSATION_ID, it) }
-            ?: MemoryMaintenanceTarget(MemoryMaintenanceTarget.Kind.PROJECT_PATH, defaultStandaloneProjectPath())
+            ?.let { MemoryMaintenanceTarget(MemoryMaintenanceTargetKind.CONVERSATION_ID, it) }
+            ?: defaultStandaloneProjectPath()
+                .let { path -> projectService.getOrCreate(File(path).absolutePath) }
+                .let { project -> MemoryMaintenanceTarget(MemoryMaintenanceTargetKind.PROJECT_ID, project.id.value) }
 
     private suspend fun resolveMaintenanceContext(target: MemoryMaintenanceTarget): MemoryMaintenanceContext =
         when (target.kind) {
-            MemoryMaintenanceTarget.Kind.CONVERSATION_ID -> contextResolver.resolveConversation(Conversation.Id(target.value))
-                .toMaintenanceContext(Conversation.Id(target.value))
+            MemoryMaintenanceTargetKind.CONVERSATION_ID -> contextResolver.resolveConversation(Conversation.Id(target.value))
+                .let {
+                    MemoryMaintenanceContext(
+                        conversationId = Conversation.Id(target.value),
+                        namespace = MemoryNamespace.Global,
+                    )
+                }
 
-            MemoryMaintenanceTarget.Kind.PROJECT_PATH -> {
-                val project = projectService.getOrCreate(File(target.value).absolutePath)
-                project.toStandaloneMaintenanceContext()
+            MemoryMaintenanceTargetKind.PROJECT_ID -> {
+                contextResolver.resolveProjectId(Project.Id(target.value))
+                MemoryMaintenanceContext(
+                    conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
+                    namespace = MemoryNamespace.Global,
+                )
             }
         }
-
-    private suspend fun Project.toStandaloneMaintenanceContext(): MemoryMaintenanceContext {
-        val context = contextResolver.resolveProject(this)
-        return context.toMaintenanceContext(
-            conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
-        )
-    }
-
-    private fun MemoryOperationContext.toMaintenanceContext(
-        conversationId: Conversation.Id,
-    ): MemoryMaintenanceContext =
-        MemoryMaintenanceContext(
-            conversationId = conversationId,
-            agent = agent,
-            project = project,
-            namespace = MemoryNamespace.Global,
-            systemPrompts = systemPrompts,
-            memoryTools = memoryTools,
-        )
 
     private fun defaultStandaloneProjectPath(): String =
         contextResolver.defaultStandaloneProjectPath()
@@ -216,21 +246,12 @@ class MemoryToolApplicationService(
 
     private data class MemoryMaintenanceContext(
         val conversationId: Conversation.Id,
-        val agent: AgentDefinition,
-        val project: Project,
         val namespace: MemoryNamespace,
-        val systemPrompts: List<String>,
-        val memoryTools: List<AiToolCallback>,
     )
 
     private data class MemoryMaintenanceTarget(
-        val kind: Kind,
+        val kind: MemoryMaintenanceTargetKind,
         val value: String,
-    ) {
-        enum class Kind(val toolName: String) {
-            CONVERSATION_ID("conversation_id"),
-            PROJECT_PATH("project_path"),
-        }
-    }
+    )
 
 }

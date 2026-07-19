@@ -64,13 +64,6 @@ class MemoryApplicationService(
     private val log = KLoggers.logger(this)
     private val recallAccessGuard = MemoryNamespaceRecallAccessGuard(store)
 
-    suspend fun ingestCurrentThread(
-        conversationId: Conversation.Id,
-        agent: AgentDefinition? = null,
-    ) {
-        log.info { "Legacy memory ingest disabled: conversation=${conversationId.value} agent=${agent?.name}" }
-    }
-
     suspend fun buildRuntimeMemoryReadResult(
         conversationId: Conversation.Id,
         threadId: Conversation.Thread.Id,

@@ -20,10 +20,12 @@ include(":remote-protocol")
 include(":remote-client")
 include(":application")
 include(":infrastructure-db")
+include(":infrastructure-runtime")
 include(":infrastructure-ai")
 include(":infrastructure-ai:openai-subscription")
 include(":infrastructure-ai:tree-sitter-kotlin-grammar")
 include(":server")
+include(":worker")
 include(":presentation")
 
 // Настройка репозиториев для всех проектов

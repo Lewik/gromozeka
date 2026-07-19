@@ -886,6 +886,7 @@ data class MemoryRun(
     val inputHash: String? = null,
     val output: JsonElement? = null,
     val metadata: JsonObject = JsonObject(emptyMap()),
+    val executionLease: ExecutionLease? = null,
     val appliedOps: JsonArray = JsonArray(emptyList()),
     val repairActions: JsonArray = JsonArray(emptyList()),
     val llmCalls: List<LlmCallTiming> = emptyList(),
@@ -901,6 +902,18 @@ data class MemoryRun(
     @Serializable
     @JvmInline
     value class Id(val value: String)
+
+    @Serializable
+    data class ExecutionLease(
+        val ownerId: String,
+        val ownerSessionId: String,
+        val expiresAt: Instant,
+    ) {
+        init {
+            require(ownerId.isNotBlank()) { "Memory run execution lease owner id must not be blank" }
+            require(ownerSessionId.isNotBlank()) { "Memory run execution lease owner session id must not be blank" }
+        }
+    }
 
     @Serializable
     data class Progress(

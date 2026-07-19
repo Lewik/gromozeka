@@ -1,0 +1,26 @@
+spring:
+  main:
+    web-application-type: none
+  rabbitmq:
+    publisher-confirm-type: simple
+
+logging:
+  file:
+    name: ${logging.file.path}/${gromozeka.runtime.worker.id}.log
+
+gromozeka:
+  runtime:
+    server:
+      enabled: false
+    worker:
+      enabled: true
+      version: ${GROMOZEKA_RUNTIME_WORKER_VERSION:dev}
+    rabbit:
+      enabled: ${GROMOZEKA_RUNTIME_RABBIT_ENABLED:true}
+      exchange: gromozeka.runtime.work
+      queue: gromozeka.runtime.work
+      shards: ${GROMOZEKA_RUNTIME_RABBIT_SHARDS:16}
+      dead-letter-exchange: gromozeka.runtime.work.dlx
+      max-redeliveries: ${GROMOZEKA_RUNTIME_RABBIT_MAX_REDELIVERIES:8}
+      events-exchange: gromozeka.runtime.events
+      events-queue-prefix: gromozeka.runtime.events

@@ -4,6 +4,11 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
+import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
+import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -115,68 +120,56 @@ class MemoryStatusToolRendererTest {
     }
 
     @Test
-    fun queueStatusRendersProcessLocalCounters() {
+    fun queueStatusRendersDurableRunsAndOnlineWorkers() {
+        val workerIdentity = ConversationRuntimeWorkerIdentity(
+            workerId = ConversationRuntimeWorkerId("memory-worker"),
+            sessionId = ConversationRuntimeWorkerSessionId("session-1"),
+        )
         val json = Json.parseToJsonElement(
             MemoryToolResultRenderer.queueStatusJsonString(
-                operationStatus = MemoryOperationQueueStatus(
-                    pendingJobs = 2,
-                    activeJob = ActiveMemoryOperation(
+                MemoryOperationQueueStatus(
+                    queuedJobs = 2,
+                    activeJobs = listOf(
+                        ActiveMemoryOperation(
                         runId = MemoryRun.Id("memory-operation:remember:run:active"),
+                        runType = MemoryRun.Type.REMEMBER,
                         operation = MemoryOperationKind.REMEMBER,
                         namespace = namespace,
                         startedAt = createdAt,
+                            executionLease = MemoryRun.ExecutionLease(
+                                ownerId = workerIdentity.workerId.value,
+                                ownerSessionId = workerIdentity.sessionId.value,
+                                expiresAt = Instant.parse("2026-05-13T20:30:00Z"),
+                            ),
+                            leaseExpired = false,
+                        )
                     ),
-                    totalEnqueuedJobs = 5,
-                    totalRecoveredJobs = 1,
-                    totalStartedJobs = 3,
-                    totalCompletedJobs = 2,
-                    totalFatallyFailedJobs = 1,
-                ),
-                maintenanceStatus = MemoryMaintenanceQueueStatus(
-                    pendingJobs = 1,
-                    activeJob = ActiveMemoryMaintenanceJob(
-                        runId = MemoryRun.Id("maintenance:maintain_entities:run:active"),
-                        action = MemoryMaintenanceAction.MAINTAIN_ENTITIES,
-                        targetKind = "namespace",
-                        targetValue = "project:test",
-                        namespace = namespace,
-                        conversationId = com.gromozeka.domain.model.Conversation.Id("conversation:test"),
-                        startedAt = createdAt,
+                    onlineWorkers = listOf(
+                        ConversationRuntimeWorkerRegistration(
+                            identity = workerIdentity,
+                            capabilities = setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE),
+                            affinities = emptySet(),
+                            version = "test",
+                            startedAt = createdAt,
+                            lastHeartbeatAt = createdAt,
+                        )
                     ),
-                    totalEnqueuedJobs = 4,
-                    totalStartedJobs = 2,
-                    totalCompletedJobs = 1,
-                    totalFatallyFailedJobs = 0,
-                ),
-                embeddingStatus = MemoryEmbeddingIndexStatus(
-                    totalEmbeddedItems = 8,
-                    totalEmbeddingRequests = 3,
-                    totalRebuilds = 1,
-                    totalFailedRequests = 0,
                 ),
             )
         ).jsonObject
 
         assertEquals("completed", json.getValue("status").jsonPrimitive.content)
-        assertEquals("3", json.getValue("pending_jobs").jsonPrimitive.content)
+        assertEquals("2", json.getValue("queued_jobs").jsonPrimitive.content)
         assertEquals("true", json.getValue("has_active_job").jsonPrimitive.content)
         assertEquals(
             "memory-operation:remember:run:active",
-            json.getValue("operations").jsonObject
-                .getValue("active_job").jsonObject
+            json.getValue("active_jobs").jsonArray
+                .single().jsonObject
                 .getValue("run_id").jsonPrimitive.content,
         )
-        assertEquals(
-            "maintenance:maintain_entities:run:active",
-            json.getValue("maintenance").jsonObject
-                .getValue("active_job").jsonObject
-                .getValue("run_id").jsonPrimitive.content,
-        )
-        assertEquals(
-            "8",
-            json.getValue("embeddings").jsonObject
-                .getValue("total_embedded_items").jsonPrimitive.content,
-        )
+        assertEquals("memory-worker", json.getValue("online_workers").jsonArray.single().jsonObject
+            .getValue("worker_id").jsonPrimitive.content)
+        assertEquals("memory_runs", json.getValue("source_of_truth").jsonPrimitive.content)
         assertEquals("resume_queued_fail_interrupted", json.getValue("restart_policy").jsonPrimitive.content)
     }
 
@@ -187,7 +180,7 @@ class MemoryStatusToolRendererTest {
                 MemoryMaintenanceQueuedResult(
                     runId = MemoryRun.Id("maintenance:repair:run:test"),
                     action = MemoryMaintenanceAction.REPAIR,
-                    targetKind = "namespace",
+                    targetKind = MemoryMaintenanceTargetKind.PROJECT_ID,
                     targetValue = "project:test",
                     namespace = namespace,
                     conversationId = com.gromozeka.domain.model.Conversation.Id("conversation:test"),

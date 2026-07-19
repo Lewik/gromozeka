@@ -8,12 +8,17 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
+import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -22,6 +27,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -48,27 +54,35 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.submit(second))
 
         val firstWork = coordinator.claimUnpublishedWorkItems(
-            workerId = "publisher-1",
+            leaseOwnerId = "publisher-1",
             now = Clock.System.now(),
             leaseUntil = Instant.fromEpochMilliseconds(10_000),
             limit = 10,
         )
         assertEquals(listOf(first.id), firstWork.map { it.item.taskId })
         assertTrue(coordinator.markWorkItemPublished(conversationId, firstWork.single().sequence, "publisher-1", Clock.System.now()))
-        assertNull(coordinator.claimDeliveredTask(conversationId, second.id, "worker-1"))
-        assertEquals(first, coordinator.claimDeliveredTask(conversationId, first.id, "worker-2"))
-        assertTrue(coordinator.confirmActiveTaskOwner(conversationId, first.id, "worker-2"))
-        assertFalse(coordinator.confirmActiveTaskOwner(conversationId, first.id, "worker-1"))
+        assertNull(coordinator.claimAsEligibleWorker(second, worker("worker-1")))
+        assertEquals(first, coordinator.claimAsEligibleWorker(first, worker("worker-2")))
+        assertTrue(coordinator.confirmActiveTaskOwner(conversationId, first.id, worker("worker-2")))
+        assertFalse(coordinator.confirmActiveTaskOwner(conversationId, first.id, worker("worker-1")))
 
-        assertTrue(coordinator.completeActiveTask(conversationId, first.id, "worker-2"))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                first.id,
+                worker("worker-2"),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(coordinator.completeActiveTask(conversationId, first.id, worker("worker-2")))
         val secondWork = coordinator.claimUnpublishedWorkItems(
-            workerId = "publisher-1",
+            leaseOwnerId = "publisher-1",
             now = Instant.fromEpochMilliseconds(10_001),
             leaseUntil = Instant.fromEpochMilliseconds(20_000),
             limit = 10,
         )
         assertEquals(listOf(second.id), secondWork.map { it.item.taskId })
-        assertEquals(second, coordinator.claimDeliveredTask(conversationId, second.id, "worker-3"))
+        assertEquals(second, coordinator.claimAsEligibleWorker(second, worker("worker-3")))
     }
 
     @Test
@@ -78,7 +92,7 @@ class InMemoryConversationRuntimeStoresTest {
 
         assertTrue(coordinator.submit(task))
         val work = coordinator.claimUnpublishedWorkItems(
-            workerId = "publisher-1",
+            leaseOwnerId = "publisher-1",
             now = Instant.fromEpochMilliseconds(1_000),
             leaseUntil = Instant.fromEpochMilliseconds(2_000),
             limit = 10,
@@ -89,7 +103,7 @@ class InMemoryConversationRuntimeStoresTest {
         assertEquals(
             listOf(task.id),
             coordinator.claimUnpublishedWorkItems(
-                workerId = "publisher-2",
+                leaseOwnerId = "publisher-2",
                 now = Instant.fromEpochMilliseconds(2_001),
                 leaseUntil = Instant.fromEpochMilliseconds(3_000),
                 limit = 10,
@@ -104,7 +118,7 @@ class InMemoryConversationRuntimeStoresTest {
         val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
 
         assertTrue(coordinator.submit(active))
-        assertEquals(active, coordinator.claimDeliveredTask(conversationId, active.id, "worker-1"))
+        assertEquals(active, coordinator.claimAsEligibleWorker(active, worker("worker-1")))
         assertTrue(coordinator.submit(steering))
 
         assertEquals(
@@ -112,11 +126,11 @@ class InMemoryConversationRuntimeStoresTest {
             coordinator.takeActiveInsertions(
                 conversationId,
                 active.id,
-                "worker-1",
+                worker("worker-1"),
                 QueuedMessagePlacement.AFTER_TOOL_RESULT,
             ).map { it.id },
         )
-        assertNull(coordinator.claimDeliveredTask(conversationId, steering.id, "worker-2"))
+        assertNull(coordinator.claimAsEligibleWorker(steering, worker("worker-2")))
     }
 
     @Test
@@ -127,36 +141,52 @@ class InMemoryConversationRuntimeStoresTest {
         val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
 
         assertTrue(coordinator.submit(active))
-        assertEquals(active, coordinator.claimDeliveredTask(conversationId, active.id, "worker-1"))
+        assertEquals(active, coordinator.claimAsEligibleWorker(active, worker("worker-1")))
         assertTrue(coordinator.submit(queued))
         assertTrue(coordinator.submit(steering))
 
-        assertTrue(coordinator.completeActiveTask(conversationId, active.id, "worker-1"))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                active.id,
+                worker("worker-1"),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(coordinator.completeActiveTask(conversationId, active.id, worker("worker-1")))
 
-        val promoted = coordinator.claimDeliveredTask(conversationId, steering.id, "worker-2")
+        val promoted = coordinator.claimAsEligibleWorker(steering, worker("worker-2"))
         assertEquals(steering.id, promoted?.id)
         assertEquals(QueuedMessagePlacement.END_OF_TURN, promoted?.placement)
-        assertTrue(coordinator.completeActiveTask(conversationId, promoted!!.id, "worker-2"))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                promoted!!.id,
+                worker("worker-2"),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(coordinator.completeActiveTask(conversationId, promoted.id, worker("worker-2")))
 
-        assertEquals(queued.id, coordinator.claimDeliveredTask(conversationId, queued.id, "worker-3")?.id)
+        assertEquals(
+            queued.id,
+            coordinator.claimAsEligibleWorker(queued, worker("worker-3"))?.id,
+        )
     }
 
     @Test
     fun `coordinator gates claim by worker requirements`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val llmTask = task("llm-message", QueuedMessagePlacement.END_OF_TURN).copy(
-            requirements = ConversationRuntimeTaskRequirements(
-                capabilities = setOf(ConversationRuntimeWorkerCapability.LLM_RUNTIME),
-            )
-        )
+        val llmTask = llmTask("llm-message")
 
         assertTrue(coordinator.submit(llmTask))
         assertNull(
             coordinator.claimDeliveredTask(
                 conversationId = conversationId,
                 taskId = llmTask.id,
-                workerId = "turn-worker",
+                worker = worker("turn-worker"),
                 workerCapabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                workerAffinities = emptySet(),
             )
         )
         assertEquals(
@@ -164,9 +194,137 @@ class InMemoryConversationRuntimeStoresTest {
             coordinator.claimDeliveredTask(
                 conversationId = conversationId,
                 taskId = llmTask.id,
-                workerId = "llm-worker",
-                workerCapabilities = setOf(ConversationRuntimeWorkerCapability.LLM_RUNTIME),
+                worker = worker("llm-worker"),
+                workerCapabilities = setOf(
+                    ConversationRuntimeWorkerCapability.LLM_RUNTIME,
+                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ),
+                workerAffinities = emptySet(),
             )
+        )
+    }
+
+    @Test
+    fun `worker registry rejects a second live session for the same worker`() = runBlocking {
+        val registry = InMemoryConversationRuntimeWorkerRegistry()
+        val first = worker("shared-worker", "session-1")
+        val second = worker("shared-worker", "session-2")
+        val firstHeartbeat = Instant.fromEpochMilliseconds(10_000)
+
+        assertTrue(
+            registry.register(
+                registration(first, firstHeartbeat),
+                staleBefore = Instant.fromEpochMilliseconds(0),
+            )
+        )
+        assertFalse(
+            registry.register(
+                registration(second, Instant.fromEpochMilliseconds(20_000)),
+                staleBefore = Instant.fromEpochMilliseconds(5_000),
+            )
+        )
+        assertEquals(first, registry.find(first.workerId)?.identity)
+    }
+
+    @Test
+    fun `worker registry fences the old session after stale takeover`() = runBlocking {
+        val registry = InMemoryConversationRuntimeWorkerRegistry()
+        val first = worker("shared-worker", "session-1")
+        val second = worker("shared-worker", "session-2")
+
+        assertTrue(
+            registry.register(
+                registration(first, Instant.fromEpochMilliseconds(10_000)),
+                staleBefore = Instant.fromEpochMilliseconds(0),
+            )
+        )
+        assertTrue(
+            registry.register(
+                registration(second, Instant.fromEpochMilliseconds(40_000)),
+                staleBefore = Instant.fromEpochMilliseconds(20_000),
+            )
+        )
+
+        assertFalse(registry.heartbeat(first, Instant.fromEpochMilliseconds(41_000)))
+        assertFalse(registry.unregister(first, Instant.fromEpochMilliseconds(41_000)))
+        assertTrue(registry.heartbeat(second, Instant.fromEpochMilliseconds(42_000)))
+        assertEquals(second, registry.find(second.workerId)?.identity)
+        assertEquals(Instant.fromEpochMilliseconds(42_000), registry.find(second.workerId)?.lastHeartbeatAt)
+    }
+
+    @Test
+    fun `coordinator never transfers a claimed task to another worker session`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val task = task("claimed-message", QueuedMessagePlacement.END_OF_TURN)
+        val queued = task("queued-message", QueuedMessagePlacement.END_OF_TURN)
+        val first = worker("shared-worker", "session-1")
+        val second = worker("shared-worker", "session-2")
+
+        assertTrue(coordinator.submit(task))
+        assertEquals(task, coordinator.claimAsEligibleWorker(task, first))
+        assertTrue(coordinator.submit(queued))
+
+        assertNull(coordinator.claimAsEligibleWorker(task, second))
+        assertTrue(coordinator.confirmActiveTaskOwner(conversationId, task.id, first))
+        assertFalse(coordinator.confirmActiveTaskOwner(conversationId, task.id, second))
+        assertEquals(first, coordinator.listActiveTaskAssignments().single().worker)
+
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, task.id, first, Clock.System.now()))
+        val incident = coordinator.markActiveTaskInDoubt(
+            conversationId = conversationId,
+            taskId = task.id,
+            worker = first,
+            message = "Worker session disappeared",
+            errorType = "WorkerUnavailable",
+        )
+        assertEquals(task.id, incident?.task?.id)
+        assertFalse(coordinator.completeActiveTask(conversationId, task.id, first))
+        assertNull(coordinator.claimAsEligibleWorker(task, second))
+
+        val snapshot = coordinator.snapshot(conversationId)
+        assertEquals(ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN, snapshot.incidents.single().kind)
+        assertTrue(snapshot.incidents.single().executionStartedAt != null)
+        assertEquals(
+            listOf(
+                ConversationRuntimeTask.Payload.ExecutionIncident(task.id),
+                queued.payload,
+            ),
+            snapshot.pendingTasks.map { it.payload },
+        )
+    }
+
+    @Test
+    fun `coordinator distinguishes delivery failure from unknown execution outcome`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val task = task("delivery-failed-message", QueuedMessagePlacement.END_OF_TURN)
+        val worker = worker("worker-1")
+
+        assertTrue(coordinator.submit(task))
+        assertEquals(task, coordinator.claimAsEligibleWorker(task, worker))
+        assertNull(coordinator.listActiveTaskAssignments().single().startedAt)
+        assertFalse(coordinator.completeActiveTask(conversationId, task.id, worker))
+        assertFailsWith<IllegalStateException> {
+            coordinator.markActiveTaskInDoubt(
+                conversationId = conversationId,
+                taskId = task.id,
+                worker = worker,
+                message = "Must not be unknown before execution starts",
+            )
+        }
+
+        val incident = coordinator.recordClaimedTaskDeliveryFailure(
+            conversationId = conversationId,
+            taskId = task.id,
+            worker = worker,
+            message = "Worker disappeared before execution",
+        )
+
+        assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, incident?.kind)
+        assertNull(incident?.executionStartedAt)
+        assertNull(coordinator.snapshot(conversationId).activeTask)
+        assertEquals(
+            ConversationRuntimeTask.Payload.ExecutionIncident(task.id),
+            coordinator.snapshot(conversationId).pendingTasks.single().payload,
         )
     }
 
@@ -176,7 +334,7 @@ class InMemoryConversationRuntimeStoresTest {
         val task = task("message-1", QueuedMessagePlacement.END_OF_TURN)
 
         assertTrue(coordinator.submit(task))
-        assertEquals(task, coordinator.claimDeliveredTask(conversationId, task.id, "worker-1"))
+        assertEquals(task, coordinator.claimAsEligibleWorker(task, worker("worker-1")))
 
         assertTrue(coordinator.requestPause(conversationId))
         assertEquals(ConversationExecutionState.ControlState.PAUSE_REQUESTED, coordinator.find(conversationId)?.controlState)
@@ -197,12 +355,12 @@ class InMemoryConversationRuntimeStoresTest {
             toolName = "read_file",
             status = ConversationRuntimeToolExecution.Status.RUNNING,
             runtimeTaskId = task.id,
-            workerId = "worker-1",
+            worker = worker("worker-1"),
             startedAt = Clock.System.now(),
         )
 
         assertTrue(coordinator.submit(task))
-        assertEquals(task, coordinator.claimDeliveredTask(conversationId, task.id, "worker-1"))
+        assertEquals(task, coordinator.claimAsEligibleWorker(task, worker("worker-1")))
         assertTrue(coordinator.upsertToolExecution(conversationId, execution))
 
         val snapshot = coordinator.snapshot(conversationId)
@@ -218,6 +376,7 @@ class InMemoryConversationRuntimeStoresTest {
         val commandTask = CommandTask(
             id = CommandTask.Id("command-task-1"),
             conversationId = conversationId,
+            workerId = ConversationRuntimeWorkerId("worker-1"),
             command = "sleep 30",
             workingDirectory = "/tmp",
             status = CommandTask.Status.WORKING,
@@ -291,7 +450,7 @@ class InMemoryConversationRuntimeStoresTest {
         val now = Instant.fromEpochMilliseconds(1_000)
 
         val firstLease = coordinator.claimUnpublishedEventLogEntries(
-            workerId = "worker-1",
+            leaseOwnerId = "worker-1",
             now = now,
             leaseUntil = Instant.fromEpochMilliseconds(2_000),
             limit = 10,
@@ -300,7 +459,7 @@ class InMemoryConversationRuntimeStoresTest {
         assertEquals(
             emptyList(),
             coordinator.claimUnpublishedEventLogEntries(
-                workerId = "worker-2",
+                leaseOwnerId = "worker-2",
                 now = Instant.fromEpochMilliseconds(1_500),
                 leaseUntil = Instant.fromEpochMilliseconds(2_500),
                 limit = 10,
@@ -309,7 +468,7 @@ class InMemoryConversationRuntimeStoresTest {
         assertEquals(
             listOf(entry.sequence),
             coordinator.claimUnpublishedEventLogEntries(
-                workerId = "worker-2",
+                leaseOwnerId = "worker-2",
                 now = Instant.fromEpochMilliseconds(2_001),
                 leaseUntil = Instant.fromEpochMilliseconds(3_000),
                 limit = 10,
@@ -336,7 +495,7 @@ class InMemoryConversationRuntimeStoresTest {
 
         val delivery = withTimeout(1_000) { queue.deliveries.first() }
         assertEquals(item, delivery.item)
-        delivery.ack()
+        delivery.acknowledge()
     }
 
     private fun commandTask(
@@ -346,6 +505,7 @@ class InMemoryConversationRuntimeStoresTest {
     ): CommandTask = CommandTask(
         id = CommandTask.Id(id),
         conversationId = conversationId,
+        workerId = ConversationRuntimeWorkerId("worker-1"),
         command = id,
         workingDirectory = "/tmp",
         status = status,
@@ -357,6 +517,40 @@ class InMemoryConversationRuntimeStoresTest {
         updatedAt = createdAt,
         completedAt = createdAt.takeIf { status != CommandTask.Status.WORKING },
     )
+
+    private fun worker(
+        id: String,
+        sessionId: String = "$id-session",
+    ): ConversationRuntimeWorkerIdentity =
+        ConversationRuntimeWorkerIdentity(
+            workerId = ConversationRuntimeWorkerId(id),
+            sessionId = ConversationRuntimeWorkerSessionId(sessionId),
+        )
+
+    private fun registration(
+        identity: ConversationRuntimeWorkerIdentity,
+        at: Instant,
+    ): ConversationRuntimeWorkerRegistration =
+        ConversationRuntimeWorkerRegistration(
+            identity = identity,
+            capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+            affinities = emptySet(),
+            version = "test",
+            startedAt = at,
+            lastHeartbeatAt = at,
+        )
+
+    private suspend fun InMemoryConversationRuntimeCoordinator.claimAsEligibleWorker(
+        task: ConversationRuntimeTask,
+        worker: ConversationRuntimeWorkerIdentity,
+    ): ConversationRuntimeTask? =
+        claimDeliveredTask(
+            conversationId = task.conversationId,
+            taskId = task.id,
+            worker = worker,
+            workerCapabilities = task.requirements.capabilities,
+            workerAffinities = task.requirements.affinity?.let(::setOf).orEmpty(),
+        )
 
     private fun task(
         messageId: String,
@@ -379,7 +573,33 @@ class InMemoryConversationRuntimeStoresTest {
             ),
             placement = placement,
             idempotencyKey = "test:$messageId",
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(
+                    ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
+                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ),
+            ),
             createdAt = Clock.System.now(),
         )
     }
+
+    private fun llmTask(messageId: String): ConversationRuntimeTask =
+        ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(messageId),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.LlmCall(
+                rootUserMessageId = Conversation.Message.Id("root-message"),
+                agent = agent,
+                iteration = 1,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "test:$messageId",
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(
+                    ConversationRuntimeWorkerCapability.LLM_RUNTIME,
+                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ),
+            ),
+            createdAt = Clock.System.now(),
+        )
 }

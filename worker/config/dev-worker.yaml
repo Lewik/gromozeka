@@ -1,0 +1,13 @@
+gromozeka:
+  runtime:
+    worker:
+      id: local-dev
+      version: dev
+      capabilities:
+        - CONVERSATION_TURN
+        - LLM_RUNTIME
+        - TOOL_EXECUTION
+        - LOCAL_AGENT_TOOL
+        - MEMORY_PIPELINE
+      project-paths:
+        - ${GROMOZEKA_PROJECT_PATH:${gromozeka.project.root}}

@@ -26,12 +26,22 @@ import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
 import java.io.File
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.util.concurrent.atomic.AtomicBoolean
 
 private val log = KLoggers.logger("GromozekaServer")
 
 fun main() {
     applyServerSystemProperties()
+
+    val host = System.getProperty("gromozeka.remote.host")
+        ?: System.getenv("GROMOZEKA_REMOTE_HOST")
+        ?: "127.0.0.1"
+    val port = System.getProperty("gromozeka.remote.port")?.toIntOrNull()
+        ?: System.getenv("GROMOZEKA_REMOTE_PORT")?.toIntOrNull()
+        ?: 8765
+    checkRemoteEndpointIsFree(host, port)
 
     val springReady = AtomicBoolean(false)
     val context = SpringApplicationBuilder(GromozekaServerApplication::class.java)
@@ -45,12 +55,6 @@ fun main() {
     val remoteServer = context.getBean(GromozekaRemoteServer::class.java)
     val mcpServerFactory = context.getBean(GromozekaMcpServerFactory::class.java)
     val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
-    val host = System.getProperty("gromozeka.remote.host")
-        ?: System.getenv("GROMOZEKA_REMOTE_HOST")
-        ?: "127.0.0.1"
-    val port = System.getProperty("gromozeka.remote.port")?.toIntOrNull()
-        ?: System.getenv("GROMOZEKA_REMOTE_PORT")?.toIntOrNull()
-        ?: 8765
     val webRoot = resolveWebRoot()
 
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
@@ -83,6 +87,22 @@ fun main() {
     println("==== Gromozeka MCP Streamable HTTP: http://$host:$port/mcp ====")
     println("==== Gromozeka memory HTTP: http://$host:$port/memory/status ====")
     Thread.currentThread().join()
+}
+
+private fun checkRemoteEndpointIsFree(host: String, port: Int) {
+    val probeHost = when (host) {
+        "0.0.0.0", "::" -> "127.0.0.1"
+        else -> host
+    }
+    val acceptsConnections = runCatching {
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress(probeHost, port), 500)
+        }
+    }.isSuccess
+
+    check(!acceptsConnections) {
+        "Gromozeka remote endpoint is already accepting connections at ws://$probeHost:$port/ws"
+    }
 }
 
 private fun resolveWebRoot(): File {
@@ -141,6 +161,7 @@ private fun determineLogPath(mode: String?): String {
         "com.gromozeka.server",
         "com.gromozeka.application",
         "com.gromozeka.infrastructure.db",
+        "com.gromozeka.infrastructure.runtime",
         "com.gromozeka.infrastructure.ai"
     ],
     excludeFilters = [

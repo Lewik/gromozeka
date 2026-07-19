@@ -1,18 +1,29 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.application.service.ConversationRuntimeWorker
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
+import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.shared.uuid.uuid7
+import java.util.concurrent.atomic.AtomicReference
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
@@ -22,6 +33,7 @@ class MemoryAsyncOperationApplicationService(
     private val executor: MemoryOperationExecutor,
     private val operationQueue: MemoryOperationQueue,
     private val memoryStore: MemoryStore,
+    private val runtimeWorkerProvider: ObjectProvider<ConversationRuntimeWorker>,
 ) {
     private val log = KLoggers.logger(this)
     private val operationJson = Json {
@@ -31,10 +43,14 @@ class MemoryAsyncOperationApplicationService(
     }
 
     @EventListener(ApplicationReadyEvent::class)
-    fun start() = runBlocking {
+    fun start() {
+        val runtimeWorker = runtimeWorkerProvider.ifAvailable ?: return
+        if (ConversationRuntimeWorkerCapability.MEMORY_PIPELINE !in runtimeWorker.capabilities) {
+            return
+        }
         operationQueue.start(
-            recoveredJobs = recoverJobs(),
-            processor = ::process,
+            jobSource = { discoverJobs(runtimeWorker.identity) },
+            processor = { job -> process(job, runtimeWorker.identity) },
         )
     }
 
@@ -53,6 +69,17 @@ class MemoryAsyncOperationApplicationService(
                 confirmedPreflightRunId = confirmedPreflightRunId,
                 namespaceValue = namespaceValue,
             )
+        }
+
+    suspend fun rememberThread(
+        conversationIdValue: String,
+        namespaceValue: String? = null,
+    ): List<MemoryOperationQueuedResult> =
+        executor.prepareRememberThread(
+            conversationIdValue = conversationIdValue,
+            namespaceValue = namespaceValue,
+        ).map { prepared ->
+            enqueue(prepared)
         }
 
     suspend fun rememberProvidedContent(
@@ -142,11 +169,43 @@ class MemoryAsyncOperationApplicationService(
             )
         }
 
+    suspend fun scheduleMaintenance(
+        action: MemoryMaintenanceAction,
+        targetKind: MemoryMaintenanceTargetKind,
+        targetValue: String,
+        executionConversationId: com.gromozeka.domain.model.Conversation.Id,
+        namespace: com.gromozeka.domain.model.memory.MemoryNamespace,
+        embeddingRebuildMode: MemoryEmbeddingRebuildMode = MemoryEmbeddingRebuildMode.FULL,
+    ): MemoryMaintenanceQueuedResult {
+        val queued = enqueue(
+            PreparedMemoryOperation(
+                request = MemoryOperationRequest.Maintenance(
+                    namespace = namespace,
+                    action = action,
+                    targetKind = targetKind,
+                    targetValue = targetValue,
+                    executionConversationId = executionConversationId,
+                    embeddingRebuildMode = embeddingRebuildMode,
+                ),
+                summary = "${action.displayName} queued",
+            )
+        )
+        return MemoryMaintenanceQueuedResult(
+            runId = queued.runId,
+            action = action,
+            targetKind = targetKind,
+            targetValue = targetValue,
+            namespace = namespace,
+            conversationId = executionConversationId,
+            queueSize = queued.queueSize,
+        )
+    }
+
     private suspend fun schedule(
         operation: MemoryOperationKind,
         prepare: suspend () -> PreparedMemoryOperation,
     ): String = try {
-        enqueue(prepare())
+        MemoryToolResultRenderer.operationQueuedResultJsonString(enqueue(prepare()))
     } catch (error: CancellationException) {
         throw error
     } catch (error: Throwable) {
@@ -158,7 +217,7 @@ class MemoryAsyncOperationApplicationService(
         )
     }
 
-    private suspend fun enqueue(prepared: PreparedMemoryOperation): String {
+    private suspend fun enqueue(prepared: PreparedMemoryOperation): MemoryOperationQueuedResult {
         prepared.request.validate()
         val now = Clock.System.now()
         val run = MemoryRun(
@@ -188,61 +247,50 @@ class MemoryAsyncOperationApplicationService(
             )
         )
 
-        return runCatching {
-            val queueSize = operationQueue.enqueue(
-                MemoryOperationJob(
-                    runId = run.id,
-                    operation = prepared.request.kind,
-                    namespace = prepared.namespace,
-                )
-            )
-            log.info {
-                "Memory operation queued: run=${run.id.value} operation=${prepared.request.kind.wireName} " +
-                    "namespace=${prepared.namespace.value} queueSize=$queueSize"
-            }
-            MemoryToolResultRenderer.operationQueuedResultJsonString(
-                MemoryOperationQueuedResult(
-                    runId = run.id,
-                    operation = prepared.request.kind,
-                    namespace = prepared.namespace,
-                    queueSize = queueSize,
-                )
-            )
-        }.getOrElse { error ->
-            val completedAt = Clock.System.now()
-            memoryStore.apply(
-                MemoryUpdateBatch(
-                    runs = listOf(
-                        run.failed(
-                            summary = "Memory operation could not be queued",
-                            reason = error.message ?: error::class.simpleName.orEmpty(),
-                            completedAt = completedAt,
-                        )
-                    )
-                )
-            )
-            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory operation could not be queued.")
+        val queueSize = memoryStore.findRunsByStatuses(
+            statuses = setOf(MemoryRun.Status.QUEUED),
+            runTypes = MEMORY_OPERATION_RUN_TYPES,
+        ).size
+        log.info {
+            "Memory operation queued: run=${run.id.value} operation=${prepared.request.kind.wireName} " +
+                "namespace=${prepared.namespace.value} queueSize=$queueSize"
         }
+        return MemoryOperationQueuedResult(
+            runId = run.id,
+            operation = prepared.request.kind,
+            namespace = prepared.namespace,
+            queueSize = queueSize,
+        )
     }
 
-    private suspend fun recoverJobs(): List<MemoryOperationJob> {
+    private suspend fun discoverJobs(
+        worker: ConversationRuntimeWorkerIdentity,
+    ): List<MemoryOperationJob> {
+        val now = Clock.System.now()
         val unfinishedRuns = memoryStore.findRunsByStatuses(
             statuses = setOf(MemoryRun.Status.QUEUED, MemoryRun.Status.RUNNING),
-            runTypes = setOf(
-                MemoryRun.Type.REMEMBER,
-                MemoryRun.Type.DOCUMENT_INGEST,
-                MemoryRun.Type.ENRICH_CONTEXT,
-                MemoryRun.Type.ANSWER_QUESTION,
-            ),
+            runTypes = MEMORY_OPERATION_RUN_TYPES,
         )
         return unfinishedRuns.mapNotNull { run ->
             if (run.status == MemoryRun.Status.RUNNING) {
-                failUnrecoverableRun(
-                    run = run,
-                    summary = "Memory operation was interrupted by server shutdown",
-                    reason = "The server stopped while this operation was running; it was not retried to avoid duplicate memory writes.",
-                )
-                log.warn { "Failed interrupted memory operation without retry: run=${run.id.value} type=${run.runType}" }
+                val lease = run.executionLease
+                val previousSessionWasReplaced =
+                    lease?.ownerId == worker.workerId.value &&
+                        lease.ownerSessionId != worker.sessionId.value
+                val leaseExpired = lease == null || lease.expiresAt <= now
+                if (previousSessionWasReplaced || leaseExpired) {
+                    if (failUnrecoverableRun(
+                            run = run,
+                            summary = "Memory operation was interrupted by Worker shutdown",
+                            reason = "The owning Worker stopped before completion; the operation was not retried to avoid duplicate memory writes.",
+                        )
+                    ) {
+                        log.warn {
+                            "Failed interrupted memory operation without retry: " +
+                                "run=${run.id.value} type=${run.runType} owner=${lease?.ownerId}/${lease?.ownerSessionId}"
+                        }
+                    }
+                }
                 return@mapNotNull null
             }
             val encodedRequest = run.metadata[MEMORY_OPERATION_REQUEST_METADATA_KEY]
@@ -294,72 +342,89 @@ class MemoryAsyncOperationApplicationService(
         run: MemoryRun,
         summary: String,
         reason: String,
-    ) {
+    ): Boolean {
         val completedAt = Clock.System.now()
-        memoryStore.apply(
-            MemoryUpdateBatch(
-                runs = listOf(
-                    run.failed(
-                        summary = summary,
-                        reason = reason,
-                        completedAt = completedAt,
-                    )
-                )
-            )
+        return memoryStore.replaceRunIfUnchanged(
+            expected = run,
+            replacement = run.failed(
+                summary = summary,
+                reason = reason,
+                completedAt = completedAt,
+            ),
         )
     }
 
-    private suspend fun process(job: MemoryOperationJob) {
+    private suspend fun process(
+        job: MemoryOperationJob,
+        worker: ConversationRuntimeWorkerIdentity,
+    ) = coroutineScope {
         val storedRun = memoryStore.findRunById(job.runId)
             ?: throw IllegalStateException("Queued memory operation run not found: ${job.runId.value}")
-        if (storedRun.status.isTerminal()) return
-        var currentRun = storedRun
+        if (storedRun.status != MemoryRun.Status.QUEUED) return@coroutineScope
+        val encodedRequest = storedRun.metadata[MEMORY_OPERATION_REQUEST_METADATA_KEY]
+            ?: throw IllegalStateException("Memory operation request is missing: ${job.runId.value}")
+        val request = operationJson.decodeFromJsonElement<MemoryOperationRequest>(encodedRequest)
+        request.validate()
+        require(request.kind == job.operation) {
+            "Memory operation kind mismatch: queued=${job.operation.wireName} persisted=${request.kind.wireName}"
+        }
+        require(request.namespace == storedRun.namespace) {
+            "Memory operation namespace mismatch: request=${request.namespace.value} run=${storedRun.namespace.value}"
+        }
+        require(request.runType == storedRun.runType) {
+            "Memory operation type mismatch: request=${request.runType} run=${storedRun.runType}"
+        }
+
+        val startedAt = Clock.System.now()
+        val claimedRun = storedRun.copy(
+            status = MemoryRun.Status.RUNNING,
+            summary = "${request.kind.displayName()} running",
+            executionLease = worker.memoryExecutionLease(startedAt),
+            startedAt = startedAt,
+            completedAt = null,
+            errorText = null,
+        )
+        if (!memoryStore.replaceRunIfUnchanged(storedRun, claimedRun)) {
+            return@coroutineScope
+        }
+
+        val currentRun = AtomicReference(claimedRun)
+        val leaseHeartbeat = launch {
+            while (currentCoroutineContext().isActive) {
+                delay(MEMORY_OPERATION_LEASE_RENEW_INTERVAL_MILLIS)
+                val expected = currentRun.get()
+                val renewed = expected.copy(executionLease = worker.memoryExecutionLease(Clock.System.now()))
+                check(memoryStore.replaceRunIfUnchanged(expected, renewed)) {
+                    "Memory operation execution ownership was lost: run=${job.runId.value}"
+                }
+                currentRun.set(renewed)
+            }
+        }
         try {
-            val encodedRequest = storedRun.metadata[MEMORY_OPERATION_REQUEST_METADATA_KEY]
-                ?: throw IllegalStateException("Memory operation request is missing: ${job.runId.value}")
-            val request = operationJson.decodeFromJsonElement<MemoryOperationRequest>(encodedRequest)
-            request.validate()
-            require(request.kind == job.operation) {
-                "Memory operation kind mismatch: queued=${job.operation.wireName} persisted=${request.kind.wireName}"
-            }
-            require(request.namespace == storedRun.namespace) {
-                "Memory operation namespace mismatch: request=${request.namespace.value} run=${storedRun.namespace.value}"
-            }
-            require(request.runType == storedRun.runType) {
-                "Memory operation type mismatch: request=${request.runType} run=${storedRun.runType}"
-            }
-
-            val startedAt = Clock.System.now()
-            currentRun = storedRun.copy(
-                status = MemoryRun.Status.RUNNING,
-                summary = "${request.kind.displayName()} running",
-                startedAt = startedAt,
-                completedAt = null,
-                errorText = null,
-            )
-            memoryStore.apply(MemoryUpdateBatch(runs = listOf(currentRun)))
-
-            val execution = executor.execute(currentRun, request)
+            val execution = executor.execute(claimedRun, request)
+            leaseHeartbeat.cancelAndJoin()
             val completedAt = Clock.System.now()
-            val completedRun = currentRun.complete(execution, startedAt, completedAt)
-            memoryStore.apply(MemoryUpdateBatch(runs = listOf(completedRun)))
+            val expected = currentRun.get()
+            val completedRun = expected.complete(execution, startedAt, completedAt)
+                .copy(executionLease = null)
+            check(memoryStore.replaceRunIfUnchanged(expected, completedRun)) {
+                "Memory operation execution ownership was lost before completion: run=${job.runId.value}"
+            }
             log.info {
                 "Memory operation completed: run=${job.runId.value} operation=${request.kind.wireName} " +
                     "status=${execution.status} latencyMs=${completedRun.latencyMs}"
             }
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
+            leaseHeartbeat.cancelAndJoin()
             val completedAt = Clock.System.now()
-            val failedBaseRun = memoryStore.findRunById(job.runId) ?: currentRun
-            memoryStore.apply(
-                MemoryUpdateBatch(
-                    runs = listOf(
-                        failedBaseRun.failed(
-                            summary = "${job.operation.displayName()} failed",
-                            reason = error.message ?: "Memory operation failed.",
-                            completedAt = completedAt,
-                        )
-                    )
+            val expected = currentRun.get()
+            memoryStore.replaceRunIfUnchanged(
+                expected = expected,
+                replacement = expected.failed(
+                    summary = "${job.operation.displayName()} failed",
+                    reason = error.message ?: "Memory operation failed.",
+                    completedAt = completedAt,
                 )
             )
             throw error
@@ -382,6 +447,7 @@ class MemoryAsyncOperationApplicationService(
         return copy(
             status = MemoryRun.Status.FAILED,
             summary = summary,
+            executionLease = null,
             progress = currentProgress.copy(
                 totalUnits = maxOf(currentProgress.totalUnits, 1),
                 failedUnits = maxOf(currentProgress.failedUnits, 1),
@@ -400,5 +466,20 @@ class MemoryAsyncOperationApplicationService(
             MemoryOperationKind.REMEMBER -> "Memory remember"
             MemoryOperationKind.ENRICH_CONTEXT -> "Memory context enrichment"
             MemoryOperationKind.ANSWER_QUESTION -> "Memory question answering"
+            MemoryOperationKind.MAINTENANCE -> "Memory maintenance"
         }
+
+    private fun ConversationRuntimeWorkerIdentity.memoryExecutionLease(now: Instant): MemoryRun.ExecutionLease =
+        MemoryRun.ExecutionLease(
+            ownerId = workerId.value,
+            ownerSessionId = sessionId.value,
+            expiresAt = Instant.fromEpochMilliseconds(
+                now.toEpochMilliseconds() + MEMORY_OPERATION_LEASE_DURATION_MILLIS
+            ),
+        )
+
+    private companion object {
+        const val MEMORY_OPERATION_LEASE_DURATION_MILLIS = 30 * 60 * 1_000L
+        const val MEMORY_OPERATION_LEASE_RENEW_INTERVAL_MILLIS = 60 * 1_000L
+    }
 }

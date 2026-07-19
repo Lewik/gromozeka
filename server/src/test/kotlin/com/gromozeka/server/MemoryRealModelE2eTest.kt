@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
-import com.gromozeka.application.service.ConversationEngineService
+import com.gromozeka.application.service.ConversationRuntimeApplicationService
+import com.gromozeka.application.service.MemoryApplicationService
 import com.gromozeka.application.service.memory.MemoryOperationExecutor
 import com.gromozeka.application.service.memory.MemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
@@ -12,6 +13,7 @@ import com.gromozeka.application.service.memory.MemoryRunLlmCallObserver
 import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.application.service.memory.MemoryWriteTraceSink
 import com.gromozeka.application.service.memory.NoOpMemoryEmbeddingIndexer
+import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserProfile
@@ -42,6 +44,7 @@ import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.PromptDomainService
@@ -150,8 +153,11 @@ class MemoryRealModelE2eTest {
         ).use { harness ->
             val context = harness.context
             val conversationService = context.getBean(ConversationDomainService::class.java)
-            val conversationEngineService = context.getBean(ConversationEngineService::class.java)
+            val conversationEngineService = context.getBean(ConversationRuntimeApplicationService::class.java)
+            val memoryApplicationService = context.getBean(MemoryApplicationService::class.java)
             val memoryOperationExecutor = context.getBean(MemoryOperationExecutor::class.java)
+            val agentDomainService = context.getBean(AgentDomainService::class.java)
+            val aiToolProvider = context.getBean(AiToolProvider::class.java)
             val promptDomainService = context.getBean(PromptDomainService::class.java)
             val store = context.getBean(MemoryStore::class.java)
             val dataSource = context.getBean(DataSource::class.java)
@@ -186,7 +192,10 @@ class MemoryRealModelE2eTest {
                                 harness = harness,
                                 conversationService = conversationService,
                                 conversationEngineService = conversationEngineService,
+                                memoryApplicationService = memoryApplicationService,
                                 memoryOperationExecutor = memoryOperationExecutor,
+                                agentDomainService = agentDomainService,
+                                aiToolProvider = aiToolProvider,
                                 promptDomainService = promptDomainService,
                                 store = store,
                                 case = case,
@@ -341,8 +350,11 @@ class MemoryRealModelE2eTest {
     private suspend fun executeCase(
         harness: ServerTestHarness,
         conversationService: ConversationDomainService,
-        conversationEngineService: ConversationEngineService,
+        conversationEngineService: ConversationRuntimeApplicationService,
+        memoryApplicationService: MemoryApplicationService,
         memoryOperationExecutor: MemoryOperationExecutor,
+        agentDomainService: AgentDomainService,
+        aiToolProvider: AiToolProvider,
         promptDomainService: PromptDomainService,
         store: MemoryStore,
         case: MemoryE2eCase,
@@ -464,10 +476,46 @@ class MemoryRealModelE2eTest {
                 "maintenance_start case=${case.id} action=${maintenanceIndex + 1}/${case.maintenanceAfterSeeds.size} type=$action conversation=${maintenanceConversation.id.value}"
             )
             when (action.trim().lowercase()) {
-                "consolidate_notes", "note_consolidation" -> conversationEngineService.consolidateCurrentMemory(maintenanceConversation.id, agent)
-                "repair_memory", "memory_repair" -> conversationEngineService.repairCurrentMemory(maintenanceConversation.id, agent)
-                "maintain_entities", "entity_maintenance", "maintain_memory_entities" -> conversationEngineService.maintainMemoryEntities(maintenanceConversation.id, agent)
-                "apply_retention", "retention_apply", "memory_retention" -> conversationEngineService.runCurrentMemoryRetention(maintenanceConversation.id)
+                "consolidate_notes", "note_consolidation" ->
+                    runMaintenanceDirectly(
+                        memoryApplicationService,
+                        conversationService,
+                        agentDomainService,
+                        aiToolProvider,
+                        maintenanceConversation,
+                        agent,
+                        MemoryE2eMaintenanceAction.CONSOLIDATE,
+                    )
+                "repair_memory", "memory_repair" ->
+                    runMaintenanceDirectly(
+                        memoryApplicationService,
+                        conversationService,
+                        agentDomainService,
+                        aiToolProvider,
+                        maintenanceConversation,
+                        agent,
+                        MemoryE2eMaintenanceAction.REPAIR,
+                    )
+                "maintain_entities", "entity_maintenance", "maintain_memory_entities" ->
+                    runMaintenanceDirectly(
+                        memoryApplicationService,
+                        conversationService,
+                        agentDomainService,
+                        aiToolProvider,
+                        maintenanceConversation,
+                        agent,
+                        MemoryE2eMaintenanceAction.MAINTAIN_ENTITIES,
+                    )
+                "apply_retention", "retention_apply", "memory_retention" ->
+                    runMaintenanceDirectly(
+                        memoryApplicationService,
+                        conversationService,
+                        agentDomainService,
+                        aiToolProvider,
+                        maintenanceConversation,
+                        agent,
+                        MemoryE2eMaintenanceAction.APPLY_RETENTION,
+                    )
                 else -> error("Unknown memory maintenance action '$action' in case ${case.id}")
             }
             val traces = maintenanceTraceCollector.take(maintenanceConversation.id)
@@ -1134,8 +1182,50 @@ class MemoryRealModelE2eTest {
         runCatching { MemoryNote.Type.valueOf(trim().uppercase()) }
             .getOrElse { error("Unsupported memory note type '$this'") }
 
+    private suspend fun runMaintenanceDirectly(
+        memoryApplicationService: MemoryApplicationService,
+        conversationService: ConversationDomainService,
+        agentDomainService: AgentDomainService,
+        aiToolProvider: AiToolProvider,
+        conversation: Conversation,
+        agent: AgentDefinition,
+        action: MemoryE2eMaintenanceAction,
+    ) {
+        val project = conversationService.getProject(conversation.id)
+        val systemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
+        val tools = aiToolProvider.getTools().withoutMemoryManagementTools()
+        when (action) {
+            MemoryE2eMaintenanceAction.CONSOLIDATE ->
+                memoryApplicationService.runNoteConsolidation(
+                    conversation.id,
+                    agent,
+                    project,
+                    systemPrompts,
+                    tools,
+                )
+            MemoryE2eMaintenanceAction.REPAIR ->
+                memoryApplicationService.runMemoryRepair(
+                    conversation.id,
+                    agent,
+                    project,
+                    systemPrompts,
+                    tools,
+                )
+            MemoryE2eMaintenanceAction.MAINTAIN_ENTITIES ->
+                memoryApplicationService.runEntityMaintenance(
+                    conversation.id,
+                    agent,
+                    project,
+                    systemPrompts,
+                    tools,
+                )
+            MemoryE2eMaintenanceAction.APPLY_RETENTION ->
+                memoryApplicationService.runRetention(conversation.id, project)
+        }
+    }
+
     private suspend fun sendUserTurn(
-        conversationEngineService: ConversationEngineService,
+        conversationEngineService: ConversationRuntimeApplicationService,
         conversation: Conversation,
         agent: AgentDefinition,
         text: String,
@@ -1153,6 +1243,13 @@ class MemoryRealModelE2eTest {
             memoryReadTrace = traceCollector.take(userMessage.id),
             memoryWriteTrace = writeTraceCollector.take(userMessage.id),
         )
+    }
+
+    private enum class MemoryE2eMaintenanceAction {
+        CONSOLIDATE,
+        REPAIR,
+        MAINTAIN_ENTITIES,
+        APPLY_RETENTION,
     }
 
     private suspend fun rememberProvidedSeedTurn(
@@ -1285,7 +1382,7 @@ class MemoryRealModelE2eTest {
         )
 
     private suspend fun collectSubmittedTurn(
-        conversationEngineService: ConversationEngineService,
+        conversationEngineService: ConversationRuntimeApplicationService,
         conversation: Conversation,
         agent: AgentDefinition,
         userMessage: Conversation.Message,

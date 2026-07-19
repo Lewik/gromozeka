@@ -5,21 +5,28 @@ import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
+import com.gromozeka.domain.service.ConversationRuntimeActiveTaskAssignment
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeEventLogEntry
 import com.gromozeka.domain.service.ConversationRuntimeEventSubscription
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
-import com.gromozeka.domain.service.ConversationRuntimeTaskFailure
+import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
+import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationRuntimeWorkDelivery
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkOutboxEntry
-import com.gromozeka.domain.service.ConversationRuntimeWorkQueue
+import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
+import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
 import com.gromozeka.domain.service.ConversationRuntimeWorkerAffinity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
+import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -38,7 +45,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private val toolExecutionsByConversation =
         mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeToolExecution>>()
     private val commandTasksByConversation = mutableMapOf<Conversation.Id, MutableList<CommandTask>>()
-    private val failedTasksByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTaskFailure>>()
+    private val incidentsByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTaskIncident>>()
     private val traceByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTraceEntry>>()
     private val eventLogByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeEventLogEntry>>()
     private val workOutboxByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeWorkOutboxEntry>>()
@@ -94,11 +101,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override suspend fun claimDeliveredTask(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
         workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
         workerAffinities: Set<ConversationRuntimeWorkerAffinity>,
     ): ConversationRuntimeTask? =
         mutex.withLock {
+            val now = Clock.System.now()
             val state = statesByConversation[conversationId]
             if (state != null && state.activeTaskId == taskId) {
                 if (state.controlState == ConversationExecutionState.ControlState.STOPPING ||
@@ -107,23 +115,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                     return@withLock null
                 }
                 val activeTask = activeTasksByConversation[conversationId] ?: return@withLock null
+                if (state.activeWorker != worker) {
+                    return@withLock null
+                }
                 if (!activeTask.requirements.isSatisfiedBy(workerCapabilities, workerAffinities)) {
                     return@withLock null
                 }
-                statesByConversation[conversationId] = state.copy(
-                    controlState = ConversationExecutionState.ControlState.RUNNING,
-                    activeWorkerId = workerId,
-                    updatedAt = Clock.System.now(),
-                )
-                appendTrace(
-                    conversationId = conversationId,
-                    taskId = taskId,
-                    workerId = workerId,
-                    kind = ConversationRuntimeTraceEntry.Kind.TASK_CLAIMED,
-                    status = ConversationRuntimeTraceEntry.Status.STARTED,
-                    message = "Runtime task redelivered to $workerId",
-                )
-                bumpRevision(conversationId)
                 return@withLock activeTask
             }
             if (state != null && (state.controlState != ConversationExecutionState.ControlState.RUNNING || state.activeTaskId != null)) {
@@ -146,7 +143,6 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 tasksByConversation.remove(conversationId)
             }
 
-            val now = Clock.System.now()
             statesByConversation[conversationId] = (state ?: ConversationExecutionState(
                 conversationId = conversationId,
                 controlState = ConversationExecutionState.ControlState.RUNNING,
@@ -155,16 +151,17 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             )).copy(
                 controlState = ConversationExecutionState.ControlState.RUNNING,
                 activeTaskId = task.id,
-                activeWorkerId = workerId,
+                activeWorker = worker,
+                activeTaskStartedAt = null,
                 updatedAt = now,
             )
             appendTrace(
                 conversationId = conversationId,
                 taskId = task.id,
-                workerId = workerId,
+                worker = worker,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_CLAIMED,
                 status = ConversationRuntimeTraceEntry.Status.STARTED,
-                message = "Runtime task claimed by $workerId",
+                message = "Runtime task claimed by ${worker.workerId.value}/${worker.sessionId.value}",
             )
             bumpRevision(conversationId)
             task
@@ -173,11 +170,14 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override suspend fun completeActiveTask(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
     ): Boolean =
         mutex.withLock {
             val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.activeTaskId != taskId || state.activeWorkerId != workerId) {
+            if (state.activeTaskId != taskId ||
+                state.activeWorker != worker ||
+                state.activeTaskStartedAt == null
+            ) {
                 return@withLock false
             }
             val completedControlState = when (state.controlState) {
@@ -187,7 +187,8 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             val completedState = state.copy(
                 controlState = completedControlState,
                 activeTaskId = null,
-                activeWorkerId = null,
+                activeWorker = null,
+                activeTaskStartedAt = null,
                 updatedAt = Clock.System.now(),
             )
             statesByConversation[conversationId] = completedState
@@ -199,7 +200,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             appendTrace(
                 conversationId = conversationId,
                 taskId = taskId,
-                workerId = workerId,
+                worker = worker,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_COMPLETED,
                 status = ConversationRuntimeTraceEntry.Status.COMPLETED,
                 message = "Runtime task completed",
@@ -229,75 +230,163 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             true
         }
 
-    override suspend fun confirmActiveTaskOwner(
+    override suspend fun markActiveTaskStarted(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
+        startedAt: Instant,
     ): Boolean =
         mutex.withLock {
             val state = statesByConversation[conversationId] ?: return@withLock false
-            state.activeTaskId == taskId && state.activeWorkerId == workerId
-        }
-
-    override suspend fun failActiveTask(
-        conversationId: Conversation.Id,
-        taskId: ConversationRuntimeTask.Id,
-        workerId: String,
-        message: String,
-        type: String?,
-    ): Boolean =
-        mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.activeTaskId != taskId || state.activeWorkerId != workerId) {
+            if (state.activeTaskId != taskId || state.activeWorker != worker) {
                 return@withLock false
             }
-            recordActiveTaskFailure(
-                conversationId = conversationId,
-                reason = ConversationRuntimeTaskFailure.Reason.EXECUTION_FAILED,
-                message = if (type.isNullOrBlank()) message else "$type: $message",
+            if (state.activeTaskStartedAt != null) {
+                return@withLock true
+            }
+            statesByConversation[conversationId] = state.copy(
+                activeTaskStartedAt = startedAt,
+                updatedAt = startedAt,
             )
+            appendTrace(
+                conversationId = conversationId,
+                taskId = taskId,
+                worker = worker,
+                kind = ConversationRuntimeTraceEntry.Kind.TASK_STARTED,
+                status = ConversationRuntimeTraceEntry.Status.STARTED,
+                message = "Runtime task execution started",
+            )
+            bumpRevision(conversationId)
             true
         }
 
-    override suspend fun failPendingTask(
+    override suspend fun confirmActiveTaskOwner(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
-        message: String,
-        type: String?,
+        worker: ConversationRuntimeWorkerIdentity,
     ): Boolean =
         mutex.withLock {
-            val tasks = tasksByConversation[conversationId] ?: return@withLock false
-            val task = tasks.firstOrNull { it.id == taskId } ?: return@withLock false
+            val state = statesByConversation[conversationId] ?: return@withLock false
+            state.activeTaskId == taskId && state.activeWorker == worker
+        }
+
+    override suspend fun markActiveTaskInDoubt(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        worker: ConversationRuntimeWorkerIdentity,
+        message: String,
+        errorType: String?,
+    ): ConversationRuntimeTaskIncident? =
+        mutex.withLock {
+            val state = statesByConversation[conversationId] ?: return@withLock null
+            if (state.activeTaskId != taskId || state.activeWorker != worker) {
+                return@withLock null
+            }
+            check(state.activeTaskStartedAt != null) {
+                "Cannot mark a runtime task outcome unknown before execution started: ${taskId.value}"
+            }
+            recordActiveTaskIncidentLocked(
+                conversationId = conversationId,
+                kind = ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN,
+                message = message,
+                errorType = errorType,
+            )
+        }
+
+    override suspend fun recordClaimedTaskDeliveryFailure(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        worker: ConversationRuntimeWorkerIdentity,
+        message: String,
+        errorType: String?,
+    ): ConversationRuntimeTaskIncident? =
+        mutex.withLock {
+            val state = statesByConversation[conversationId] ?: return@withLock null
+            if (state.activeTaskId != taskId || state.activeWorker != worker) {
+                return@withLock null
+            }
+            check(state.activeTaskStartedAt == null) {
+                "Cannot record a delivery failure after runtime task execution started: ${taskId.value}"
+            }
+            recordActiveTaskIncidentLocked(
+                conversationId = conversationId,
+                kind = ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
+                message = message,
+                errorType = errorType,
+            )
+        }
+
+    override suspend fun recordPendingTaskDeliveryFailure(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+        worker: ConversationRuntimeWorkerIdentity,
+        message: String,
+        errorType: String?,
+    ): ConversationRuntimeTaskIncident? =
+        mutex.withLock {
+            val tasks = tasksByConversation[conversationId] ?: return@withLock null
+            val task = tasks.firstOrNull { it.id == taskId } ?: return@withLock null
             tasks.removeAll { it.id == taskId }
             if (tasks.isEmpty()) {
                 tasksByConversation.remove(conversationId)
             }
             removeScheduledWorkItems(conversationId, taskId)
-            val failureMessage = if (type.isNullOrBlank()) message else "$type: $message"
-            failedTasksByConversation.getOrPut(conversationId) { mutableListOf() }.add(
-                ConversationRuntimeTaskFailure(
-                    task = task,
-                    reason = ConversationRuntimeTaskFailure.Reason.DELIVERY_FAILED,
-                    message = failureMessage,
-                    workerId = workerId,
-                    failedAt = Clock.System.now(),
-                )
+            val incident = ConversationRuntimeTaskIncident(
+                task = task,
+                kind = ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
+                message = message,
+                errorType = errorType,
+                worker = worker,
+                executionStartedAt = null,
+                occurredAt = Clock.System.now(),
             )
+            incidentsByConversation.getOrPut(conversationId) { mutableListOf() }.add(incident)
+            completedIdempotencyKeysByConversation
+                .getOrPut(conversationId) { mutableSetOf() }
+                .add(task.idempotencyKey)
             appendTrace(
                 conversationId = conversationId,
                 taskId = task.id,
-                workerId = workerId,
+                worker = worker,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_FAILED,
                 status = ConversationRuntimeTraceEntry.Status.FAILED,
-                message = "${ConversationRuntimeTaskFailure.Reason.DELIVERY_FAILED}: $failureMessage",
+                message = "${ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED}: " +
+                    formatIncidentMessage(errorType, message),
             )
-            val state = statesByConversation[conversationId]
-            if (state != null && state.activeTaskId == null && tasksByConversation[conversationId].isNullOrEmpty()) {
-                statesByConversation.remove(conversationId)
+            enqueueIncidentTaskIfNeeded(incident)
+            if (statesByConversation[conversationId] == null) {
+                statesByConversation[conversationId] = ConversationExecutionState(
+                    conversationId = conversationId,
+                    controlState = ConversationExecutionState.ControlState.RUNNING,
+                    activeTaskId = null,
+                    updatedAt = Clock.System.now(),
+                )
             }
+            scheduleNextRunnableTaskIfReady(conversationId)
             bumpRevision(conversationId)
-            true
+            incident
+        }
+
+    override suspend fun listActiveTaskAssignments(): List<ConversationRuntimeActiveTaskAssignment> =
+        mutex.withLock {
+            activeTasksByConversation.mapNotNull { (conversationId, task) ->
+                val state = statesByConversation[conversationId] ?: return@mapNotNull null
+                val worker = state.activeWorker ?: return@mapNotNull null
+                ConversationRuntimeActiveTaskAssignment(
+                    conversationId = conversationId,
+                    task = task,
+                    worker = worker,
+                    startedAt = state.activeTaskStartedAt,
+                )
+            }
+        }
+
+    override suspend fun findTaskIncident(
+        conversationId: Conversation.Id,
+        taskId: ConversationRuntimeTask.Id,
+    ): ConversationRuntimeTaskIncident? =
+        mutex.withLock {
+            incidentsByConversation[conversationId]?.lastOrNull { it.task.id == taskId }
         }
 
     override suspend fun finishIfIdle(conversationId: Conversation.Id): Boolean =
@@ -330,7 +419,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     ): Boolean =
         mutex.withLock {
             val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.activeTaskId != execution.runtimeTaskId || state.activeWorkerId != execution.workerId) {
+            if (state.activeTaskId != execution.runtimeTaskId || state.activeWorker != execution.worker) {
                 return@withLock false
             }
             val executions = toolExecutionsByConversation.getOrPut(conversationId) { mutableListOf() }
@@ -343,7 +432,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             appendTrace(
                 conversationId = conversationId,
                 taskId = execution.runtimeTaskId,
-                workerId = execution.workerId,
+                worker = execution.worker,
                 kind = ConversationRuntimeTraceEntry.Kind.TOOL_EXECUTION,
                 status = when (execution.status) {
                     ConversationRuntimeToolExecution.Status.RUNNING -> ConversationRuntimeTraceEntry.Status.STARTED
@@ -359,11 +448,11 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override suspend fun clearToolExecutions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
     ): Boolean =
         mutex.withLock {
             val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.activeTaskId != taskId || state.activeWorkerId != workerId) {
+            if (state.activeTaskId != taskId || state.activeWorker != worker) {
                 return@withLock false
             }
             if (toolExecutionsByConversation.remove(conversationId) != null) {
@@ -414,6 +503,28 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     ): CommandTask? = mutex.withLock {
         commandTasksByConversation[conversationId]?.firstOrNull { it.id == taskId }
     }
+
+    override suspend fun requestCommandTaskCancellation(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+        requestedAt: Instant,
+    ): Boolean =
+        mutex.withLock {
+            requestCommandTaskCancellationLocked(conversationId, taskId, requestedAt)
+        }
+
+    override suspend fun requestCommandTaskCancellations(
+        conversationId: Conversation.Id,
+        requestedAt: Instant,
+    ): Int =
+        mutex.withLock {
+            commandTasksByConversation[conversationId]
+                .orEmpty()
+                .filter { it.status == CommandTask.Status.WORKING }
+                .count { task ->
+                    requestCommandTaskCancellationLocked(conversationId, task.id, requestedAt)
+                }
+        }
 
     override suspend fun requestPause(conversationId: Conversation.Id): Boolean =
         mutex.withLock {
@@ -478,13 +589,6 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             requestTerminalStatus(conversationId, ConversationExecutionState.ControlState.INTERRUPTING)
         }
 
-    override suspend fun fail(conversationId: Conversation.Id) {
-        mutex.withLock {
-            clearConversation(conversationId)
-            bumpRevision(conversationId)
-        }
-    }
-
     override suspend fun abort(conversationId: Conversation.Id) {
         mutex.withLock {
             clearConversation(conversationId)
@@ -524,12 +628,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override suspend fun takeActiveInsertions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        workerId: String,
+        worker: ConversationRuntimeWorkerIdentity,
         placement: QueuedMessagePlacement,
     ): List<ConversationRuntimeTask> =
         mutex.withLock {
             val state = statesByConversation[conversationId] ?: return@withLock emptyList()
-            if (state.activeTaskId != taskId || state.activeWorkerId != workerId) {
+            if (state.activeTaskId != taskId || state.activeWorker != worker) {
                 return@withLock emptyList()
             }
             val tasks = tasksByConversation[conversationId] ?: return@withLock emptyList()
@@ -559,7 +663,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 pendingTasks = tasksByConversation[conversationId]?.toList().orEmpty(),
                 toolExecutions = toolExecutionsByConversation[conversationId]?.toList().orEmpty(),
                 commandTasks = commandTasksByConversation[conversationId]?.toList().orEmpty(),
-                failedTasks = failedTasksByConversation[conversationId]?.toList().orEmpty(),
+                incidents = incidentsByConversation[conversationId]?.toList().orEmpty(),
                 trace = traceByConversation[conversationId]?.takeLast(TRACE_SNAPSHOT_LIMIT).orEmpty(),
                 lastEventSequence = eventSequencesByConversation[conversationId] ?: 0L,
             )
@@ -591,7 +695,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         }
 
     override suspend fun claimUnpublishedEventLogEntries(
-        workerId: String,
+        leaseOwnerId: String,
         now: Instant,
         leaseUntil: Instant,
         limit: Int,
@@ -609,7 +713,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 .take(limit)
                 .map { entry ->
                     val leased = entry.copy(
-                        publishWorkerId = workerId,
+                        publishLeaseOwnerId = leaseOwnerId,
                         publishLeaseUntil = leaseUntil,
                     )
                     replaceEventLogEntry(leased)
@@ -621,7 +725,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override suspend fun markEventLogEntryPublished(
         conversationId: Conversation.Id,
         sequence: Long,
-        workerId: String,
+        leaseOwnerId: String,
         publishedAt: Instant,
     ): Boolean =
         mutex.withLock {
@@ -634,12 +738,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             if (entry.publishedAt != null) {
                 return@withLock true
             }
-            if (entry.publishWorkerId != null && entry.publishWorkerId != workerId) {
+            if (entry.publishLeaseOwnerId != null && entry.publishLeaseOwnerId != leaseOwnerId) {
                 return@withLock false
             }
             entries[index] = entry.copy(
                 publishedAt = publishedAt,
-                publishWorkerId = null,
+                publishLeaseOwnerId = null,
                 publishLeaseUntil = null,
             )
             true
@@ -656,19 +760,19 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 return@withLock false
             }
             val entry = entries[index]
-            if (entry.publishedAt == null && entry.publishWorkerId == null && entry.publishLeaseUntil == null) {
+            if (entry.publishedAt == null && entry.publishLeaseOwnerId == null && entry.publishLeaseUntil == null) {
                 return@withLock true
             }
             entries[index] = entry.copy(
                 publishedAt = null,
-                publishWorkerId = null,
+                publishLeaseOwnerId = null,
                 publishLeaseUntil = null,
             )
             true
         }
 
     override suspend fun claimUnpublishedWorkItems(
-        workerId: String,
+        leaseOwnerId: String,
         now: Instant,
         leaseUntil: Instant,
         limit: Int,
@@ -687,7 +791,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 .take(limit)
                 .map { entry ->
                     val leased = entry.copy(
-                        publishWorkerId = workerId,
+                        publishLeaseOwnerId = leaseOwnerId,
                         publishLeaseUntil = leaseUntil,
                     )
                     replaceWorkOutboxEntry(leased)
@@ -699,7 +803,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override suspend fun markWorkItemPublished(
         conversationId: Conversation.Id,
         sequence: Long,
-        workerId: String,
+        leaseOwnerId: String,
         publishedAt: Instant,
     ): Boolean =
         mutex.withLock {
@@ -712,12 +816,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             if (entry.publishedAt != null) {
                 return@withLock true
             }
-            if (entry.publishWorkerId != null && entry.publishWorkerId != workerId) {
+            if (entry.publishLeaseOwnerId != null && entry.publishLeaseOwnerId != leaseOwnerId) {
                 return@withLock false
             }
             entries[index] = entry.copy(
                 publishedAt = publishedAt,
-                publishWorkerId = null,
+                publishLeaseOwnerId = null,
                 publishLeaseUntil = null,
             )
             true
@@ -743,6 +847,38 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         if (index >= 0) {
             entries[index] = entry
         }
+    }
+
+    private fun requestCommandTaskCancellationLocked(
+        conversationId: Conversation.Id,
+        taskId: CommandTask.Id,
+        requestedAt: Instant,
+    ): Boolean {
+        val tasks = commandTasksByConversation[conversationId] ?: return false
+        val index = tasks.indexOfFirst { it.id == taskId }
+        if (index < 0) {
+            return false
+        }
+        val task = tasks[index]
+        if (task.status != CommandTask.Status.WORKING) {
+            return false
+        }
+        if (task.cancellationRequestedAt != null) {
+            return true
+        }
+        tasks[index] = task.copy(
+            cancellationRequestedAt = requestedAt,
+            statusMessage = "Cancellation requested",
+            updatedAt = requestedAt,
+        )
+        appendTrace(
+            conversationId = conversationId,
+            kind = ConversationRuntimeTraceEntry.Kind.COMMAND_TASK,
+            status = ConversationRuntimeTraceEntry.Status.UPDATED,
+            message = "${task.id.value}: cancellation requested",
+        )
+        bumpRevision(conversationId)
+        return true
     }
 
     private fun replaceWorkOutboxEntry(entry: ConversationRuntimeWorkOutboxEntry) {
@@ -862,7 +998,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private fun appendTrace(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id? = null,
-        workerId: String? = null,
+        worker: ConversationRuntimeWorkerIdentity? = null,
         kind: ConversationRuntimeTraceEntry.Kind,
         status: ConversationRuntimeTraceEntry.Status,
         message: String? = null,
@@ -873,7 +1009,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             sequence = sequence,
             conversationId = conversationId,
             taskId = taskId,
-            workerId = workerId,
+            worker = worker,
             kind = kind,
             status = status,
             message = message,
@@ -899,36 +1035,115 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         CommandTask.Status.CANCELLED -> ConversationRuntimeTraceEntry.Status.CANCELLED
     }
 
-    private fun recordActiveTaskFailure(
+    private fun recordActiveTaskIncidentLocked(
         conversationId: Conversation.Id,
-        reason: ConversationRuntimeTaskFailure.Reason,
+        kind: ConversationRuntimeTaskIncident.Kind,
         message: String,
-    ): ConversationRuntimeTaskFailure? {
+        errorType: String?,
+    ): ConversationRuntimeTaskIncident? {
         val state = statesByConversation[conversationId] ?: return null
-        val task = activeTasksByConversation.remove(conversationId) ?: return null
-        statesByConversation.remove(conversationId)
-        tasksByConversation.remove(conversationId)
+        val task = activeTasksByConversation[conversationId] ?: return null
+        check(
+            (kind == ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN) ==
+                (state.activeTaskStartedAt != null)
+        ) {
+            "Runtime incident kind does not match execution start boundary: task=${task.id.value} kind=$kind"
+        }
+        activeTasksByConversation.remove(conversationId)
+        completedIdempotencyKeysByConversation
+            .getOrPut(conversationId) { mutableSetOf() }
+            .add(task.idempotencyKey)
+        tasksByConversation[conversationId]?.removeAll { it.isInternalRuntimeStep() }
+        if (tasksByConversation[conversationId].isNullOrEmpty()) {
+            tasksByConversation.remove(conversationId)
+        }
         workOutboxByConversation.remove(conversationId)
         toolExecutionsByConversation.remove(conversationId)
-        val failure = ConversationRuntimeTaskFailure(
+        val incident = ConversationRuntimeTaskIncident(
             task = task,
-            reason = reason,
+            kind = kind,
             message = message,
-            workerId = state.activeWorkerId,
-            failedAt = Clock.System.now(),
+            errorType = errorType,
+            worker = state.activeWorker,
+            executionStartedAt = state.activeTaskStartedAt,
+            occurredAt = Clock.System.now(),
         )
-        failedTasksByConversation.getOrPut(conversationId) { mutableListOf() }.add(failure)
+        incidentsByConversation.getOrPut(conversationId) { mutableListOf() }.add(incident)
         appendTrace(
             conversationId = conversationId,
             taskId = task.id,
-            workerId = state.activeWorkerId,
-            kind = ConversationRuntimeTraceEntry.Kind.TASK_FAILED,
+            worker = state.activeWorker,
+            kind = when (kind) {
+                ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED ->
+                    ConversationRuntimeTraceEntry.Kind.TASK_FAILED
+                ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN ->
+                    ConversationRuntimeTraceEntry.Kind.TASK_IN_DOUBT
+            },
             status = ConversationRuntimeTraceEntry.Status.FAILED,
-            message = "$reason: $message",
+            message = "$kind: " +
+                formatIncidentMessage(errorType, message),
         )
+
+        if (state.controlState == ConversationExecutionState.ControlState.STOPPING ||
+            state.controlState == ConversationExecutionState.ControlState.INTERRUPTING
+        ) {
+            clearConversation(conversationId)
+            bumpRevision(conversationId)
+            return incident
+        }
+
+        enqueueIncidentTaskIfNeeded(incident)
+        val pendingTasks = tasksByConversation[conversationId].orEmpty()
+        if (pendingTasks.isEmpty()) {
+            statesByConversation.remove(conversationId)
+        } else {
+            statesByConversation[conversationId] = state.copy(
+                controlState = when (state.controlState) {
+                    ConversationExecutionState.ControlState.PAUSE_REQUESTED ->
+                        ConversationExecutionState.ControlState.PAUSED
+                    else -> state.controlState
+                },
+                activeTaskId = null,
+                activeWorker = null,
+                activeTaskStartedAt = null,
+                updatedAt = Clock.System.now(),
+            )
+            scheduleNextRunnableTaskIfReady(conversationId)
+        }
         bumpRevision(conversationId)
-        return failure
+        return incident
     }
+
+    private fun enqueueIncidentTaskIfNeeded(incident: ConversationRuntimeTaskIncident) {
+        if (incident.task.payload is ConversationRuntimeTask.Payload.ExecutionIncident) {
+            return
+        }
+        val task = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("${incident.task.id.value}:incident"),
+            conversationId = incident.task.conversationId,
+            payload = ConversationRuntimeTask.Payload.ExecutionIncident(incident.task.id),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "${incident.task.idempotencyKey}:incident",
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+            ),
+            createdAt = incident.occurredAt,
+        )
+        val tasks = tasksByConversation.getOrPut(task.conversationId) { mutableListOf() }
+        if (tasks.none { it.id == task.id }) {
+            tasks.add(0, task)
+            appendTrace(
+                conversationId = task.conversationId,
+                taskId = task.id,
+                kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
+                status = ConversationRuntimeTraceEntry.Status.STARTED,
+                message = "Execution incident handling task submitted",
+            )
+        }
+    }
+
+    private fun formatIncidentMessage(errorType: String?, message: String): String =
+        if (errorType.isNullOrBlank()) message else "$errorType: $message"
 
     private companion object {
         const val COMMAND_TASK_TERMINAL_RETENTION_LIMIT = 100
@@ -937,7 +1152,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         const val EVENT_LOG_RETENTION_LIMIT = 10_000
     }
 }
-class InMemoryConversationRuntimeWorkQueue : ConversationRuntimeWorkQueue {
+class InMemoryConversationRuntimeWorkQueue : ConversationRuntimeWorkPublisher, ConversationRuntimeWorkConsumer {
     private val channel = Channel<ConversationRuntimeWorkDelivery>(Channel.UNLIMITED)
 
     override val deliveries: Flow<ConversationRuntimeWorkDelivery> = channel.receiveAsFlow()
@@ -949,19 +1164,80 @@ class InMemoryConversationRuntimeWorkQueue : ConversationRuntimeWorkQueue {
     private class InMemoryConversationRuntimeWorkDelivery(
         override val item: ConversationRuntimeWorkItem,
         private val channel: Channel<ConversationRuntimeWorkDelivery>,
-        override val retryCount: Int = 0,
+        override val redeliveryCount: Int = 0,
     ) : ConversationRuntimeWorkDelivery {
-        override val isFinalRetry: Boolean = false
+        override val isFinalRedelivery: Boolean = false
 
-        override suspend fun ack() = Unit
+        override suspend fun acknowledge() = Unit
 
-        override suspend fun retry() {
+        override suspend fun redeliver() {
             delay(ConversationRuntimeTiming.workOutboxScanIntervalMillis)
-            channel.send(InMemoryConversationRuntimeWorkDelivery(item, channel, retryCount + 1))
+            channel.send(InMemoryConversationRuntimeWorkDelivery(item, channel, redeliveryCount + 1))
         }
 
-        override suspend fun fail() = Unit
+        override suspend fun reject() = Unit
     }
+}
+
+class InMemoryConversationRuntimeWorkerRegistry : ConversationRuntimeWorkerRegistry {
+    private val mutex = Mutex()
+    private val registrations = mutableMapOf<ConversationRuntimeWorkerId, ConversationRuntimeWorkerRegistration>()
+
+    override suspend fun register(
+        registration: ConversationRuntimeWorkerRegistration,
+        staleBefore: Instant,
+    ): Boolean =
+        mutex.withLock {
+            val workerId = registration.identity.workerId
+            val existing = registrations[workerId]
+            if (existing != null &&
+                existing.identity != registration.identity &&
+                existing.isOnline(staleBefore)
+            ) {
+                return@withLock false
+            }
+            registrations[workerId] = registration
+            true
+        }
+
+    override suspend fun heartbeat(
+        identity: ConversationRuntimeWorkerIdentity,
+        at: Instant,
+    ): Boolean =
+        mutex.withLock {
+            val existing = registrations[identity.workerId] ?: return@withLock false
+            if (existing.identity != identity || existing.stoppedAt != null || at < existing.lastHeartbeatAt) {
+                return@withLock false
+            }
+            registrations[identity.workerId] = existing.copy(lastHeartbeatAt = at)
+            true
+        }
+
+    override suspend fun unregister(
+        identity: ConversationRuntimeWorkerIdentity,
+        at: Instant,
+    ): Boolean =
+        mutex.withLock {
+            val existing = registrations[identity.workerId] ?: return@withLock false
+            if (existing.identity != identity || at < existing.startedAt) {
+                return@withLock false
+            }
+            registrations[identity.workerId] = existing.copy(
+                lastHeartbeatAt = maxOf(existing.lastHeartbeatAt, at),
+                stoppedAt = at,
+            )
+            true
+        }
+
+    override suspend fun find(workerId: ConversationRuntimeWorkerId): ConversationRuntimeWorkerRegistration? =
+        mutex.withLock {
+            registrations[workerId]
+        }
+
+    override suspend fun list(): List<ConversationRuntimeWorkerRegistration> =
+        mutex.withLock {
+            registrations.values.sortedBy { it.identity.workerId.value }
+        }
 }
 
 class InMemoryConversationRuntimeEventBus : ConversationRuntimeEventBus {

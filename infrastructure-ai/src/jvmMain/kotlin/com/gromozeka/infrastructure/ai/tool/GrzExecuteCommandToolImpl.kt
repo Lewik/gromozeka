@@ -12,9 +12,11 @@ import com.gromozeka.domain.tool.filesystem.GrzCancelCommandTaskTool
 import com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool
 import com.gromozeka.domain.tool.filesystem.GrzGetCommandTaskTool
 import kotlinx.coroutines.runBlocking
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzExecuteCommandToolImpl(
     private val commandTaskService: CommandTaskService,
 ) : GrzExecuteCommandTool {
@@ -25,6 +27,7 @@ class GrzExecuteCommandToolImpl(
 }
 
 @Service
+@ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzGetCommandTaskToolImpl(
     private val commandTaskService: CommandTaskService,
 ) : GrzGetCommandTaskTool {
@@ -44,6 +47,7 @@ class GrzGetCommandTaskToolImpl(
 }
 
 @Service
+@ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzCancelCommandTaskToolImpl(
     private val commandTaskService: CommandTaskService,
 ) : GrzCancelCommandTaskTool {

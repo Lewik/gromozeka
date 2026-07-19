@@ -5,7 +5,6 @@ import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
-import com.gromozeka.shared.utils.findRandomAvailablePort
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,9 +33,6 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
 
     val gromozekaHome: File = determineGromozekaHome()
 
-    val mcpConfigFile = File(gromozekaHome, "mcp-sse-config.json")
-    val mcpPort = findRandomAvailablePort()
-
     @Value("\${logging.file.path}")
     private lateinit var logPath: String
 
@@ -62,8 +58,6 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
         }
 
         _settingsFlow.value = loadSettings()
-
-        generateMcpConfigFile()
 
         log.info("Initialized with mode: ${mode.name}")
         log.info("Gromozeka home: ${gromozekaHome.absolutePath}")
@@ -222,22 +216,4 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
         }
     }
 
-    fun generateMcpConfigFile() {
-        val url = "http://localhost:$mcpPort/sse"
-
-        val configContent = """
-        {
-          "mcpServers": {
-            "gromozeka": {
-              "type": "sse",
-              "url": "$url"
-            }
-          }
-        }
-        """.trimIndent()
-
-        mcpConfigFile.writeText(configContent)
-
-        log.info("Generated global config: ${mcpConfigFile.absolutePath}")
-    }
 }

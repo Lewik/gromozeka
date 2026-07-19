@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.ToolCancellationSignal
 import klog.KLoggers
@@ -45,7 +46,7 @@ class ParallelToolExecutor(
         toolCalls: List<ContentItem.ToolCall>,
         toolContext: ToolExecutionContext,
         runtimeTaskId: ConversationRuntimeTask.Id?,
-        workerId: String?,
+        worker: ConversationRuntimeWorkerIdentity?,
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit = {},
     ): ToolExecutionResult {
         if (toolCalls.isEmpty()) return ToolExecutionResult(emptyList(), false)
@@ -60,7 +61,7 @@ class ParallelToolExecutor(
                         callbackMap = callbackMap,
                         toolContext = toolContext,
                         runtimeTaskId = runtimeTaskId,
-                        workerId = workerId,
+                        worker = worker,
                         onToolExecutionChanged = onToolExecutionChanged,
                     )
                 }
@@ -81,7 +82,7 @@ class ParallelToolExecutor(
         callbackMap: Map<String, AiToolCallback>,
         toolContext: ToolExecutionContext,
         runtimeTaskId: ConversationRuntimeTask.Id?,
-        workerId: String?,
+        worker: ConversationRuntimeWorkerIdentity?,
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit,
     ): ContentItem.ToolResult {
         return try {
@@ -90,7 +91,7 @@ class ParallelToolExecutor(
                 toolName = toolCall.call.name,
                 status = ConversationRuntimeToolExecution.Status.RUNNING,
                 runtimeTaskId = runtimeTaskId,
-                workerId = workerId,
+                worker = worker,
                 startedAt = Clock.System.now(),
             )
             onToolExecutionChanged(started)
@@ -115,7 +116,7 @@ class ParallelToolExecutor(
                 toolName = toolCall.call.name,
                 status = ConversationRuntimeToolExecution.Status.FAILED,
                 runtimeTaskId = runtimeTaskId,
-                workerId = workerId,
+                worker = worker,
                 startedAt = Clock.System.now(),
                 completedAt = Clock.System.now(),
                 isError = true,
@@ -139,6 +140,7 @@ class ParallelToolExecutor(
     ): ContentItem.ToolResult {
         val toolId = toolCall.id
         val toolName = toolCall.call.name
+        val arguments = toolCall.call.input.toString()
 
         log.debug { "Executing tool: $toolName (${toolCall.id.value})" }
 
@@ -169,7 +171,6 @@ class ParallelToolExecutor(
                 )
 
             // Validate JSON arguments before execution
-            val arguments = toolCall.call.input.toString()
             try {
                 kotlinx.serialization.json.Json.parseToJsonElement(arguments)
             } catch (e: Exception) {
@@ -198,14 +199,7 @@ class ParallelToolExecutor(
 
             // Execute on IO dispatcher (blocking call)
             val result = withContext(Dispatchers.IO) {
-                try {
-                    callback.call(arguments, cancellableToolContext)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    log.error(e) { "Tool execution error for $toolName with arguments: $arguments" }
-                    throw e
-                }
+                callback.call(arguments, cancellableToolContext)
             }
 
             log.debug { "Tool $toolName completed successfully" }
@@ -222,7 +216,7 @@ class ParallelToolExecutor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            log.error(e) { "Tool execution failed: $toolName" }
+            log.error(e) { "Tool execution failed: $toolName with arguments: $arguments" }
             return ContentItem.ToolResult(
                 toolUseId = toolId,
                 toolName = toolName,

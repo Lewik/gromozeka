@@ -26,4 +26,10 @@ data class AiToolDefinition(
 data class AiToolMetadata(
     val returnDirect: Boolean = false,
     val requiredRuntimeCapabilities: Set<ConversationRuntimeWorkerCapability> = emptySet(),
+    val runtimeAffinityTarget: AiToolRuntimeAffinityTarget? = null,
 )
+
+enum class AiToolRuntimeAffinityTarget {
+    PROJECT,
+    COMMAND_TASK_OWNER,
+}

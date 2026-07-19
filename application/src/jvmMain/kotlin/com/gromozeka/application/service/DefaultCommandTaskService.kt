@@ -11,9 +11,12 @@ import com.gromozeka.domain.service.CommandTaskService
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
+import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_INITIAL_YIELD_MILLIS
+import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_TASK_WAIT_MILLIS
 import com.gromozeka.shared.uuid.uuid7
 import jakarta.annotation.PreDestroy
 import klog.KLoggers
@@ -33,6 +36,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
@@ -43,12 +47,18 @@ import kotlin.math.min
 import kotlin.time.Duration.Companion.seconds
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "true",
+)
 class DefaultCommandTaskService(
     private val processRunner: CommandProcessRunner,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
+    runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
 ) : CommandTaskService {
     private val log = KLoggers.logger(this)
+    private val workerId = runtimeWorkerDescriptor.id
     private val supervisor = SupervisorJob()
     private val scope = CoroutineScope(supervisor + Dispatchers.IO + CoroutineName("command-tasks"))
     private val activeCommands = ConcurrentHashMap<CommandTask.Id, ActiveCommand>()
@@ -80,6 +90,7 @@ class DefaultCommandTaskService(
             val task = CommandTask(
                 id = taskId,
                 conversationId = conversationId,
+                workerId = workerId,
                 command = request.command,
                 workingDirectory = workingDirectory,
                 status = CommandTask.Status.WORKING,
@@ -133,8 +144,13 @@ class DefaultCommandTaskService(
         waitMillis: Long,
     ): CommandTaskOutput? {
         require(afterByte >= 0) { "after_byte must be non-negative" }
-        require(waitMillis in 0..MAX_WAIT_MILLIS) { "wait_ms must be between 0 and $MAX_WAIT_MILLIS" }
+        require(waitMillis in 0..MAX_COMMAND_TASK_WAIT_MILLIS) {
+            "wait_ms must be between 0 and $MAX_COMMAND_TASK_WAIT_MILLIS"
+        }
         val initial = runtimeCoordinator.findCommandTask(conversationId, taskId) ?: return null
+        check(initial.workerId == workerId) {
+            "Command task ${taskId.value} belongs to worker ${initial.workerId.value}, not ${workerId.value}"
+        }
         require(afterByte <= File(initial.outputFile).length()) {
             "after_byte $afterByte exceeds current output size ${File(initial.outputFile).length()}"
         }
@@ -145,7 +161,7 @@ class DefaultCommandTaskService(
                 if (current.isTerminal || File(current.outputFile).length() > afterByte) {
                     return output(current, afterByte)
                 }
-                delay(POLL_INTERVAL_MILLIS)
+                delay(COMMAND_STATE_POLL_INTERVAL_MILLIS)
             }
         }
         return output(currentTask(conversationId, taskId) ?: initial, afterByte)
@@ -156,6 +172,7 @@ class DefaultCommandTaskService(
         taskId: CommandTask.Id,
     ): Boolean = taskMutex(taskId).withLock {
         val stored = runtimeCoordinator.findCommandTask(conversationId, taskId) ?: return@withLock false
+        if (stored.workerId != workerId) return@withLock false
         if (stored.isTerminal) return@withLock false
 
         val activeCommand = activeCommands[taskId]
@@ -229,12 +246,13 @@ class DefaultCommandTaskService(
 
     override suspend fun cancelAll(conversationId: Conversation.Id): Int {
         val tasks = runtimeCoordinator.snapshot(conversationId).commandTasks
-            .filter { it.status == CommandTask.Status.WORKING }
+            .filter { it.workerId == workerId && it.status == CommandTask.Status.WORKING }
         return tasks.count { cancel(conversationId, it.id) }
     }
 
     internal suspend fun recoverPersistedTasks() = lifecycleMutex.withLock {
         val tasks = runtimeCoordinator.findCommandTasks()
+            .filter { it.workerId == workerId }
         runCatching {
             processRunner.garbageCollectOutputArtifacts(tasks.mapTo(mutableSetOf()) { it.outputFile })
         }.onFailure { error ->
@@ -254,13 +272,21 @@ class DefaultCommandTaskService(
 
             when (val recovery = processRunner.recover(task.recoverySpec())) {
                 is CommandProcessRecovery.Running -> {
-                    if (task.timeoutAt?.let { Clock.System.now() >= it } == true) {
+                    if (task.cancellationRequestedAt != null) {
+                        recovery.process.terminateTree()
+                        completeStoredTask(
+                            task = task,
+                            status = CommandTask.Status.CANCELLED,
+                            exitCode = null,
+                            statusMessage = "Command was cancelled while its worker was restarting",
+                        )
+                    } else if (task.timeoutAt?.let { Clock.System.now() >= it } == true) {
                         recovery.process.terminateTree()
                         completeStoredTask(
                             task = task,
                             status = CommandTask.Status.FAILED,
                             exitCode = null,
-                            statusMessage = "Command timed out while the server was restarting",
+                            statusMessage = "Command timed out while its worker was restarting",
                         )
                     } else {
                         val activeCommand = ActiveCommand(task, recovery.process, taskMutex(task.id))
@@ -275,9 +301,9 @@ class DefaultCommandTaskService(
                     status = recovery.exitCode.toTaskStatus(),
                     exitCode = recovery.exitCode,
                     statusMessage = if (recovery.exitCode == 0) {
-                        "Command completed while the server was restarting"
+                        "Command completed while its worker was restarting"
                     } else {
-                        "Command exited with code ${recovery.exitCode} while the server was restarting"
+                        "Command exited with code ${recovery.exitCode} while its worker was restarting"
                     },
                 )
 
@@ -307,9 +333,20 @@ class DefaultCommandTaskService(
         try {
             var lastPublishedBytes = 0L
             var lastPublishedAt = System.nanoTime()
+            var nextCancellationPollAt = 0L
             while (true) {
                 currentCoroutineContext().ensureActive()
-                val processStopped = activeCommand.process.waitFor(POLL_INTERVAL_MILLIS)
+                val processStopped = activeCommand.process.waitFor(COMMAND_STATE_POLL_INTERVAL_MILLIS)
+                val now = System.nanoTime()
+                val cancellationRequested = if (now >= nextCancellationPollAt) {
+                    nextCancellationPollAt = now + CANCELLATION_POLL_INTERVAL_NANOS
+                    runtimeCoordinator.findCommandTask(
+                        activeCommand.task.conversationId,
+                        activeCommand.task.id,
+                    )?.cancellationRequestedAt != null
+                } else {
+                    false
+                }
                 var stopMonitoring = false
                 activeCommand.mutex.withLock {
                     if (activeCommand.task.isTerminal) {
@@ -317,6 +354,17 @@ class DefaultCommandTaskService(
                         return@withLock
                     }
                     when {
+                        cancellationRequested -> {
+                            activeCommand.process.terminateTree()
+                            complete(
+                                activeCommand = activeCommand,
+                                status = CommandTask.Status.CANCELLED,
+                                exitCode = null,
+                                statusMessage = "Command was cancelled",
+                            )
+                            stopMonitoring = true
+                        }
+
                         processStopped -> {
                             val exitCode = activeCommand.process.exitCode()
                             complete(
@@ -440,7 +488,7 @@ class DefaultCommandTaskService(
         val deadline = System.nanoTime() + yieldMillis * 1_000_000
         while (!activeCommand.completed.isCompleted && System.nanoTime() < deadline) {
             context.cancellationSignal.throwIfCancellationRequested()
-            delay(POLL_INTERVAL_MILLIS)
+            delay(COMMAND_STATE_POLL_INTERVAL_MILLIS)
         }
         context.cancellationSignal.throwIfCancellationRequested()
     }
@@ -545,8 +593,8 @@ class DefaultCommandTaskService(
 
     private fun validateRequest(request: ExecuteCommandRequest) {
         require(request.command.isNotBlank()) { "command must not be blank" }
-        require(request.yield_time_ms in 0..MAX_WAIT_MILLIS) {
-            "yield_time_ms must be between 0 and $MAX_WAIT_MILLIS"
+        require(request.yield_time_ms in 0..MAX_COMMAND_INITIAL_YIELD_MILLIS) {
+            "yield_time_ms must be between 0 and $MAX_COMMAND_INITIAL_YIELD_MILLIS"
         }
         request.timeout_seconds?.let { timeoutSeconds ->
             require(timeoutSeconds > 0) { "timeout_seconds must be positive when provided" }
@@ -587,8 +635,8 @@ class DefaultCommandTaskService(
     }
 
     private companion object {
-        const val MAX_WAIT_MILLIS = 30_000L
-        const val POLL_INTERVAL_MILLIS = 100L
+        const val COMMAND_STATE_POLL_INTERVAL_MILLIS = 100L
+        const val CANCELLATION_POLL_INTERVAL_NANOS = 1_000_000_000L
         const val MAX_OUTPUT_CHUNK_BYTES = 64 * 1024
         const val PROGRESS_PUBLISH_INTERVAL_NANOS = 1_000_000_000L
         const val TASK_MUTEX_STRIPES = 64

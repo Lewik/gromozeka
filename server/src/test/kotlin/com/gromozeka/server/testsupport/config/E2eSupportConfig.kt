@@ -4,7 +4,9 @@ import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
-import com.gromozeka.domain.service.ConversationRuntimeWorkQueue
+import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
 import com.gromozeka.application.service.InMemoryConversationRuntimeWorkQueue
@@ -87,5 +89,13 @@ class E2eSupportConfig {
 
     @Bean
     @Primary
-    fun conversationRuntimeWorkQueue(): ConversationRuntimeWorkQueue = InMemoryConversationRuntimeWorkQueue()
+    fun conversationRuntimeWorkQueue(): InMemoryConversationRuntimeWorkQueue =
+        InMemoryConversationRuntimeWorkQueue()
+
+    @Bean
+    fun conversationRuntimeWorkerDescriptor(): ConversationRuntimeWorkerDescriptor =
+        ConversationRuntimeWorkerDescriptor(
+            id = ConversationRuntimeWorkerId("e2e-worker"),
+            capabilities = ConversationRuntimeWorkerCapability.entries.toSet(),
+        )
 }

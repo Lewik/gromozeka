@@ -47,7 +47,7 @@ class LiveInterpreterApplicationService(
     private val sttService: SttService,
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val settingsService: SettingsService,
-    @param:Qualifier("supervisorScope") private val scope: CoroutineScope,
+    @param:Qualifier("applicationScope") private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
     private val sessions = ConcurrentHashMap<String, LiveInterpreterSession>()

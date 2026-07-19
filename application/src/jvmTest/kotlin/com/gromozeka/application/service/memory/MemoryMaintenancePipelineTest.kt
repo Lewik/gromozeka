@@ -4637,7 +4637,6 @@ private class FixedSearchEmbeddingIndexer : MemoryEmbeddingIndexer {
     override suspend fun coverage(namespace: MemoryNamespace): MemoryEmbeddingCoverage =
         NoOpMemoryEmbeddingIndexer.coverage(namespace)
 
-    override fun status(): MemoryEmbeddingIndexStatus = MemoryEmbeddingIndexStatus()
 }
 
 private class FixedReadPlanner(

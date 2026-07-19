@@ -6,12 +6,14 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.ToolParameter
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure
@@ -72,7 +74,7 @@ class ToolsRegistrationConfig {
 
 class ToolCallbacksRegistrar(val toolCount: Int)
 
-private class JsonSchemaGenerator(
+internal class JsonSchemaGenerator(
     private val objectMapper: ObjectMapper,
 ) {
     fun schemaFor(type: KClass<*>): String =
@@ -92,7 +94,19 @@ private class JsonSchemaGenerator(
             ?: emptySet()
 
         val properties = type.memberProperties.associate { property ->
-            property.name to schemaForType(property.returnType, seen)
+            val schema = schemaForType(property.returnType, seen).toMutableMap()
+            property.findAnnotation<ToolParameter>()?.let { parameter ->
+                if (parameter.description.isNotBlank()) {
+                    schema["description"] = parameter.description
+                }
+                if (parameter.minimum != Long.MIN_VALUE) {
+                    schema["minimum"] = parameter.minimum
+                }
+                if (parameter.maximum != Long.MAX_VALUE) {
+                    schema["maximum"] = parameter.maximum
+                }
+            }
+            property.name to schema
         }
         val required = type.memberProperties
             .filter { property -> property.name !in optionalParameters && !property.returnType.isMarkedNullable }
