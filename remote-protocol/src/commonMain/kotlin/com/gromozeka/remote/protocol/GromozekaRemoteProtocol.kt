@@ -200,6 +200,10 @@ data class FindConversationsByProjectRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("find_pinned_conversations")
+data object FindPinnedConversationsRequest : ClientRequest
+
+@Serializable
 @SerialName("find_workspace")
 data class FindWorkspaceRequest(
     val workspaceId: Workspace.Id,
@@ -228,6 +232,13 @@ data class DeleteConversationRequest(
 data class UpdateConversationDisplayNameRequest(
     val conversationId: Conversation.Id,
     val displayName: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("set_conversation_pinned")
+data class SetConversationPinnedRequest(
+    val conversationId: Conversation.Id,
+    val pinned: Boolean,
 ) : ClientRequest
 
 @Serializable

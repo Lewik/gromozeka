@@ -71,6 +71,11 @@ interface ConversationDomainService {
     suspend fun findByProject(projectId: Project.Id): List<Conversation>
 
     /**
+     * Retrieves all pinned conversations, ordered by pin time (newest first).
+     */
+    suspend fun findPinned(): List<Conversation>
+
+    /**
      * Deletes conversation permanently.
      *
      * Infrastructure should cascade delete threads and thread-message links.
@@ -93,6 +98,20 @@ interface ConversationDomainService {
     suspend fun updateDisplayName(
         conversationId: Conversation.Id,
         displayName: String
+    ): Conversation?
+
+    /**
+     * Pins or unpins a conversation without changing its activity time.
+     *
+     * Repeating the current state is idempotent and preserves the original pin timestamp.
+     *
+     * @param conversationId conversation to update
+     * @param pinned true to pin, false to unpin
+     * @return updated conversation, or null if conversation not found
+     */
+    suspend fun setPinned(
+        conversationId: Conversation.Id,
+        pinned: Boolean,
     ): Conversation?
 
     /**

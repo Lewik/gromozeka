@@ -29,6 +29,11 @@ data class JapaneseTranslation(
 
     override val renameTabTitle: String = "タブ名変更",
     override val tabNameLabel: String = "タブ名",
+    override val renameConversationTitle: String = "会話名を変更",
+    override val conversationNameLabel: String = "会話名",
+    override val pinnedConversationsTitle: String = "ピン留め",
+    override val pinConversationTooltip: String = "会話をピン留め",
+    override val unpinConversationTooltip: String = "ピン留めを解除",
     override val projectsTabTooltip: String = "プロジェクト",
 
     override val refreshSessionsTooltip: String = "セッション一覧を更新",

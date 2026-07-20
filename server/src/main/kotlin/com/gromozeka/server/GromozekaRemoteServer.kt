@@ -175,6 +175,7 @@ class GromozekaRemoteServer(
                 is FindConversationsByProjectRequest -> ConversationsResponse(
                     conversationDomainService.findByProject(request.projectId)
                 )
+                FindPinnedConversationsRequest -> ConversationsResponse(conversationDomainService.findPinned())
                 is FindWorkspaceRequest -> WorkspaceResponse(workspaceCatalogService.findById(request.workspaceId))
                 is FindWorkspacesByProjectRequest -> WorkspacesResponse(
                     workspaceCatalogService.findByProject(request.projectId)
@@ -188,6 +189,9 @@ class GromozekaRemoteServer(
                 }
                 is UpdateConversationDisplayNameRequest -> ConversationResponse(
                     conversationDomainService.updateDisplayName(request.conversationId, request.displayName)
+                )
+                is SetConversationPinnedRequest -> ConversationResponse(
+                    conversationDomainService.setPinned(request.conversationId, request.pinned)
                 )
                 is ForkConversationRequest -> ConversationResponse(conversationDomainService.fork(request.conversationId))
                 is AddMessageRequest -> ConversationResponse(

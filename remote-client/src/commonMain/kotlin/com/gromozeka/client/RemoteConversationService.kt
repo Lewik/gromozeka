@@ -14,6 +14,7 @@ import com.gromozeka.remote.protocol.DeleteMessagesRequest
 import com.gromozeka.remote.protocol.EditMessageRequest
 import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.FindConversationsByProjectRequest
+import com.gromozeka.remote.protocol.FindPinnedConversationsRequest
 import com.gromozeka.remote.protocol.ForkConversationRequest
 import com.gromozeka.remote.protocol.GetProjectRequest
 import com.gromozeka.remote.protocol.GetWorkspaceRequest
@@ -21,6 +22,7 @@ import com.gromozeka.remote.protocol.LoadCurrentMessagesRequest
 import com.gromozeka.remote.protocol.MessagesResponse
 import com.gromozeka.remote.protocol.ProjectResponse
 import com.gromozeka.remote.protocol.SavedResponse
+import com.gromozeka.remote.protocol.SetConversationPinnedRequest
 import com.gromozeka.remote.protocol.SquashMessagesRequest
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
 import com.gromozeka.remote.protocol.WorkspaceResponse
@@ -53,6 +55,11 @@ internal class RemoteConversationService(
             FindConversationsByProjectRequest(projectId)
         ).conversations
 
+    override suspend fun findPinned(): List<Conversation> =
+        client.requestTyped<FindPinnedConversationsRequest, ConversationsResponse>(
+            FindPinnedConversationsRequest
+        ).conversations
+
     override suspend fun delete(id: Conversation.Id) {
         client.requestTyped<DeleteConversationRequest, SavedResponse>(DeleteConversationRequest(id))
     }
@@ -60,6 +67,11 @@ internal class RemoteConversationService(
     override suspend fun updateDisplayName(conversationId: Conversation.Id, displayName: String): Conversation? =
         client.requestTyped<UpdateConversationDisplayNameRequest, ConversationResponse>(
             UpdateConversationDisplayNameRequest(conversationId, displayName)
+        ).conversation
+
+    override suspend fun setPinned(conversationId: Conversation.Id, pinned: Boolean): Conversation? =
+        client.requestTyped<SetConversationPinnedRequest, ConversationResponse>(
+            SetConversationPinnedRequest(conversationId, pinned)
         ).conversation
 
     override suspend fun fork(conversationId: Conversation.Id): Conversation =

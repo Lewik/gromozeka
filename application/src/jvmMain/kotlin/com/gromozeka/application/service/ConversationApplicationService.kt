@@ -128,6 +128,9 @@ class ConversationApplicationService(
     override suspend fun findByProject(projectId: Project.Id): List<Conversation> =
         conversationRepo.findByProject(projectId)
 
+    override suspend fun findPinned(): List<Conversation> =
+        conversationRepo.findPinned()
+
     /**
      * Deletes conversation and all associated data.
      *
@@ -153,7 +156,23 @@ class ConversationApplicationService(
         conversationId: Conversation.Id,
         displayName: String
     ): Conversation? {
+        require(displayName.length <= 255) { "Conversation display name must not exceed 255 characters" }
         conversationRepo.updateDisplayName(conversationId, displayName)
+        return conversationRepo.findById(conversationId)
+    }
+
+    @Transactional
+    override suspend fun setPinned(
+        conversationId: Conversation.Id,
+        pinned: Boolean,
+    ): Conversation? {
+        val conversation = conversationRepo.findById(conversationId) ?: return null
+        val pinnedAt = when {
+            pinned && conversation.pinnedAt == null -> Clock.System.now()
+            pinned -> conversation.pinnedAt
+            else -> null
+        }
+        conversationRepo.updatePinnedAt(conversationId, pinnedAt)
         return conversationRepo.findById(conversationId)
     }
 

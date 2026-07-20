@@ -5,12 +5,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,20 +67,37 @@ fun SessionListScreen(
     refreshTrigger: Int = 0,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
+    var pinnedConversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
     var showWorkspacePicker by remember { mutableStateOf(false) }
     var workspacePickerProjectId by remember { mutableStateOf<Project.Id?>(null) }
+    var conversationToRename by remember { mutableStateOf<Conversation?>(null) }
+    var mutatingConversationIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var operationError by remember { mutableStateOf<String?>(null) }
 
     val searchQuery by searchViewModel.searchQuery.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
     val searchResults by searchViewModel.searchResults.collectAsState()
     val showSearchResults by searchViewModel.showSearchResults.collectAsState()
 
-    suspend fun loadProjects() {
-        isLoading = true
+    suspend fun loadProjects(showLoading: Boolean = true) {
+        if (showLoading) {
+            isLoading = true
+        }
         try {
-            val projects = projectService.findRecent(limit = 100)
+            val recentProjects = projectService.findRecent(limit = 100)
+            val pinned = conversationTreeService.findPinned()
+            val recentProjectIds = recentProjects.mapTo(mutableSetOf()) { it.id }
+            val pinnedProjects = pinned
+                .map { it.projectId }
+                .distinct()
+                .filterNot { it in recentProjectIds }
+                .map { projectId ->
+                    projectService.findById(projectId)
+                        ?: error("Pinned conversation project not found: ${projectId.value}")
+                }
+            val projects = recentProjects + pinnedProjects
 
             val groupedProjects = projects.map { project ->
                 val workspaces = workspaceCatalogService.findByProject(project.id)
@@ -94,12 +115,65 @@ fun SessionListScreen(
             }
 
             projectGroups = groupedProjects.sortedByDescending { it.latestConversation?.updatedAt }
+            pinnedConversations = pinned
+            operationError = null
 
             log.info("Loaded ${projectGroups.sumOf { it.conversations.size }} conversations in ${projectGroups.size} projects")
         } catch (e: Exception) {
             log.warn(e) { "Error loading projects: ${e.message}" }
+            operationError = e.message ?: "Failed to load conversations"
         } finally {
-            isLoading = false
+            if (showLoading) {
+                isLoading = false
+            }
+        }
+    }
+
+    fun refreshSearchResults() {
+        if (showSearchResults) {
+            searchViewModel.performSearch()
+        }
+    }
+
+    fun togglePinned(conversation: Conversation) {
+        if (conversation.id.value in mutatingConversationIds) return
+
+        coroutineScope.launch {
+            mutatingConversationIds += conversation.id.value
+            operationError = null
+            try {
+                conversationTreeService.setPinned(
+                    conversationId = conversation.id,
+                    pinned = conversation.pinnedAt == null,
+                ) ?: error("Conversation not found: ${conversation.id.value}")
+                loadProjects(showLoading = false)
+                refreshSearchResults()
+            } catch (e: Exception) {
+                log.warn(e) { "Failed to update conversation pin: ${e.message}" }
+                operationError = e.message ?: "Failed to update conversation pin"
+            } finally {
+                mutatingConversationIds -= conversation.id.value
+            }
+        }
+    }
+
+    fun renameConversation(conversation: Conversation, displayName: String) {
+        if (conversation.id.value in mutatingConversationIds) return
+
+        coroutineScope.launch {
+            mutatingConversationIds += conversation.id.value
+            operationError = null
+            try {
+                conversationTreeService.updateDisplayName(conversation.id, displayName)
+                    ?: error("Conversation not found: ${conversation.id.value}")
+                loadProjects(showLoading = false)
+                refreshSearchResults()
+            } catch (e: Exception) {
+                log.warn(e) { "Failed to rename conversation: ${e.message}" }
+                operationError = e.message ?: "Failed to rename conversation"
+            } finally {
+                mutatingConversationIds -= conversation.id.value
+            }
         }
     }
 
@@ -157,6 +231,14 @@ fun SessionListScreen(
                 onClear = searchViewModel::clearSearch
             )
 
+            operationError?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             if (isLoading) {
@@ -172,6 +254,29 @@ fun SessionListScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
+                    val pinnedItems = pinnedConversations.mapNotNull { conversation ->
+                        projectGroups
+                            .firstOrNull { it.projectId == conversation.projectId }
+                            ?.let { group -> conversation to group }
+                    }
+                    if (pinnedItems.isNotEmpty()) {
+                        PinnedConversationsSection(
+                            items = pinnedItems,
+                            mutatingConversationIds = mutatingConversationIds,
+                            onConversationClick = { conversation, project ->
+                                coroutineScope.handleConversationClick(
+                                    conversation,
+                                    project,
+                                    onConversationSelected,
+                                    appViewModel,
+                                )
+                            },
+                            onRename = { conversationToRename = it },
+                            onTogglePinned = ::togglePinned,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     if (showSearchResults) {
                         if (searchResults.isEmpty()) {
                             Box(
@@ -214,6 +319,9 @@ fun SessionListScreen(
                                             appViewModel
                                         )
                                     },
+                                    onRename = { conversationToRename = it },
+                                    onTogglePinned = ::togglePinned,
+                                    isMutating = conversation.id.value in mutatingConversationIds,
                                     isGrouped = false,
                                     modifier = Modifier.padding(vertical = 2.dp)
                                 )
@@ -276,7 +384,10 @@ fun SessionListScreen(
                                             onConversationSelected,
                                             appViewModel
                                         )
-                                    }
+                                    },
+                                    onRename = { conversationToRename = it },
+                                    onTogglePinned = ::togglePinned,
+                                    mutatingConversationIds = mutatingConversationIds,
                                 )
                             }
                         }
@@ -298,6 +409,56 @@ fun SessionListScreen(
             onDismiss = { showWorkspacePicker = false },
         )
     }
+
+    conversationToRename?.let { conversation ->
+        NameEditDialog(
+            isOpen = true,
+            currentName = conversation.displayName,
+            title = LocalTranslation.current.renameConversationTitle,
+            label = LocalTranslation.current.conversationNameLabel,
+            maxLength = 255,
+            onRename = { displayName -> renameConversation(conversation, displayName) },
+            onDismiss = { conversationToRename = null },
+        )
+    }
+}
+
+@Composable
+private fun PinnedConversationsSection(
+    items: List<Pair<Conversation, ProjectGroup>>,
+    mutatingConversationIds: Set<String>,
+    onConversationClick: (Conversation, Project) -> Unit,
+    onRename: (Conversation) -> Unit,
+    onTogglePinned: (Conversation) -> Unit,
+) {
+    Row(
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Star,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = LocalTranslation.current.pinnedConversationsTitle,
+            style = MaterialTheme.typography.titleMedium,
+        )
+    }
+
+    items.forEach { (conversation, group) ->
+        ConversationItem(
+            conversation = conversation,
+            project = group.project,
+            workspaceName = group.workspaceName(conversation.workspaceId),
+            onConversationClick = onConversationClick,
+            onRename = onRename,
+            onTogglePinned = onTogglePinned,
+            isMutating = conversation.id.value in mutatingConversationIds,
+            modifier = Modifier.padding(vertical = 2.dp),
+        )
+    }
 }
 
 @Composable
@@ -307,6 +468,9 @@ private fun ProjectGroupHeader(
     onToggleExpanded: () -> Unit,
     onNewSessionClick: () -> Unit,
     onConversationClick: (Conversation) -> Unit,
+    onRename: (Conversation) -> Unit,
+    onTogglePinned: (Conversation) -> Unit,
+    mutatingConversationIds: Set<String>,
 ) {
     CompactCard(
         modifier = Modifier.padding(vertical = 4.dp)
@@ -367,7 +531,7 @@ private fun ProjectGroupHeader(
                 Column(
                     modifier = Modifier.padding(start = 32.dp, end = 12.dp, bottom = 8.dp)
                 ) {
-                    group.conversations.forEach { conversation ->
+                    group.conversations.filter { it.pinnedAt == null }.forEach { conversation ->
                         ConversationItem(
                             conversation = conversation,
                             project = group.project,
@@ -375,6 +539,9 @@ private fun ProjectGroupHeader(
                             onConversationClick = { clickedConversation, _ ->
                                 onConversationClick(clickedConversation)
                             },
+                            onRename = onRename,
+                            onTogglePinned = onTogglePinned,
+                            isMutating = conversation.id.value in mutatingConversationIds,
                             isGrouped = true,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
@@ -391,6 +558,9 @@ private fun ConversationItem(
     project: Project,
     workspaceName: String? = null,
     onConversationClick: (Conversation, Project) -> Unit,
+    onRename: (Conversation) -> Unit,
+    onTogglePinned: (Conversation) -> Unit,
+    isMutating: Boolean,
     isGrouped: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -438,8 +608,55 @@ private fun ConversationItem(
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            if (isMutating) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                OptionalTooltip(
+                    tooltip = if (conversation.pinnedAt == null) {
+                        LocalTranslation.current.pinConversationTooltip
+                    } else {
+                        LocalTranslation.current.unpinConversationTooltip
+                    },
+                ) {
+                    IconButton(onClick = { onTogglePinned(conversation) }) {
+                        Icon(
+                            imageVector = if (conversation.pinnedAt == null) {
+                                Icons.Default.StarBorder
+                            } else {
+                                Icons.Default.Star
+                            },
+                            contentDescription = if (conversation.pinnedAt == null) {
+                                LocalTranslation.current.pinConversationTooltip
+                            } else {
+                                LocalTranslation.current.unpinConversationTooltip
+                            },
+                            tint = if (conversation.pinnedAt == null) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                        )
+                    }
+                }
+
+                OptionalTooltip(tooltip = LocalTranslation.current.renameConversationTitle) {
+                    IconButton(onClick = { onRename(conversation) }) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = LocalTranslation.current.renameConversationTitle,
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
             CompactButton(
-                onClick = { onConversationClick(conversation, project) }
+                onClick = { onConversationClick(conversation, project) },
+                enabled = !isMutating,
             ) {
                 Text(LocalTranslation.current.continueButton)
             }

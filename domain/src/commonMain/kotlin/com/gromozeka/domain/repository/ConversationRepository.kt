@@ -2,6 +2,7 @@ package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import kotlinx.datetime.Instant
 
 /**
  * Repository for managing conversation entities.
@@ -46,6 +47,11 @@ interface ConversationRepository {
     suspend fun findByProject(projectId: Project.Id): List<Conversation>
 
     /**
+     * Finds all pinned conversations, ordered by pin time (newest first).
+     */
+    suspend fun findPinned(): List<Conversation>
+
+    /**
      * Deletes conversation permanently.
      *
      * Cascades to threads and messages (all conversation data deleted).
@@ -74,13 +80,19 @@ interface ConversationRepository {
      *
      * This operation is NOT transactional - caller must handle transaction boundaries.
      *
-     * Side effect: Updates conversation.updatedAt to current timestamp.
-     *
      * @param id conversation to update
      * @param displayName new display name (can be empty)
      * @throws IllegalStateException if conversation doesn't exist
      */
     suspend fun updateDisplayName(id: Conversation.Id, displayName: String)
+
+    /**
+     * Updates pin metadata without changing conversation activity time.
+     *
+     * @param id conversation to update
+     * @param pinnedAt pin timestamp, or null to unpin
+     */
+    suspend fun updatePinnedAt(id: Conversation.Id, pinnedAt: Instant?)
     
     /**
      * Updates conversation's agent definition.

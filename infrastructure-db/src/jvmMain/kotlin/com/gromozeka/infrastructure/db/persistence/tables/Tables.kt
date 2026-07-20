@@ -73,6 +73,7 @@ internal object Conversations : Table("conversations") {
     val workspaceId = varchar("workspace_id", 255).references(Workspaces.id, onDelete = ReferenceOption.RESTRICT)
     val agentDefinitionId = varchar("agent_definition_id", 255)
     val displayName = varchar("display_name", 255)
+    val pinnedAt = timestamp("pinned_at").nullable()
     val currentThreadId = varchar("current_thread_id", 255)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")

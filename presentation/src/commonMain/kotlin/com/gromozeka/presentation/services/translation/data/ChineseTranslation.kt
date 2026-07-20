@@ -29,6 +29,11 @@ data class ChineseTranslation(
 
     override val renameTabTitle: String = "重命名标签页",
     override val tabNameLabel: String = "标签页名称",
+    override val renameConversationTitle: String = "重命名对话",
+    override val conversationNameLabel: String = "对话名称",
+    override val pinnedConversationsTitle: String = "已置顶",
+    override val pinConversationTooltip: String = "置顶对话",
+    override val unpinConversationTooltip: String = "取消置顶",
     override val projectsTabTooltip: String = "项目",
 
     override val refreshSessionsTooltip: String = "刷新会话列表",

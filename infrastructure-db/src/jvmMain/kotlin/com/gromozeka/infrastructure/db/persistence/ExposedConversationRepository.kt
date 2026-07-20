@@ -7,6 +7,7 @@ import com.gromozeka.domain.repository.ConversationRepository
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -22,6 +23,7 @@ class ExposedConversationRepository : ConversationRepository {
             it[workspaceId] = conversation.workspaceId.value
             it[agentDefinitionId] = conversation.agentDefinitionId.value
             it[displayName] = conversation.displayName
+            it[pinnedAt] = conversation.pinnedAt?.toKotlin()
             it[currentThreadId] = conversation.currentThread.value
             it[createdAt] = conversation.createdAt.toKotlin()
             it[updatedAt] = conversation.updatedAt.toKotlin()
@@ -43,6 +45,13 @@ class ExposedConversationRepository : ConversationRepository {
             .map { it.toConversation() }
     }
 
+    override suspend fun findPinned(): List<Conversation> = dbQuery {
+        Conversations.selectAll()
+            .where { Conversations.pinnedAt.isNotNull() }
+            .orderBy(Conversations.pinnedAt, SortOrder.DESC)
+            .map { it.toConversation() }
+    }
+
     override suspend fun delete(id: Conversation.Id): Unit = dbQuery {
         Conversations.deleteWhere { Conversations.id eq id.value }
     }
@@ -57,7 +66,12 @@ class ExposedConversationRepository : ConversationRepository {
     override suspend fun updateDisplayName(id: Conversation.Id, displayName: String): Unit = dbQuery {
         Conversations.update({ Conversations.id eq id.value }) {
             it[Conversations.displayName] = displayName
-            it[updatedAt] = Clock.System.now().toKotlin()
+        }
+    }
+
+    override suspend fun updatePinnedAt(id: Conversation.Id, pinnedAt: Instant?): Unit = dbQuery {
+        Conversations.update({ Conversations.id eq id.value }) {
+            it[Conversations.pinnedAt] = pinnedAt?.toKotlin()
         }
     }
 
@@ -80,6 +94,7 @@ class ExposedConversationRepository : ConversationRepository {
         workspaceId = com.gromozeka.domain.model.Workspace.Id(this[Conversations.workspaceId]),
         agentDefinitionId = com.gromozeka.domain.model.AgentDefinition.Id(this[Conversations.agentDefinitionId]),
         displayName = this[Conversations.displayName],
+        pinnedAt = this[Conversations.pinnedAt]?.toKotlinx(),
         currentThread = Conversation.Thread.Id(this[Conversations.currentThreadId]),
         createdAt = this[Conversations.createdAt].toKotlinx(),
         updatedAt = this[Conversations.updatedAt].toKotlinx()

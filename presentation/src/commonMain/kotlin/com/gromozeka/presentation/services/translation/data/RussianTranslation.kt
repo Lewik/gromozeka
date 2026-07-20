@@ -29,6 +29,11 @@ data class RussianTranslation(
 
     override val renameTabTitle: String = "Переименовать таб",
     override val tabNameLabel: String = "Название таба",
+    override val renameConversationTitle: String = "Переименовать обсуждение",
+    override val conversationNameLabel: String = "Название обсуждения",
+    override val pinnedConversationsTitle: String = "Избранное",
+    override val pinConversationTooltip: String = "Добавить в избранное",
+    override val unpinConversationTooltip: String = "Убрать из избранного",
     override val projectsTabTooltip: String = "Проекты",
 
     override val refreshSessionsTooltip: String = "Обновить список сессий",

@@ -29,6 +29,11 @@ data class EnglishTranslation(
 
     override val renameTabTitle: String = "Rename Tab",
     override val tabNameLabel: String = "Tab Name",
+    override val renameConversationTitle: String = "Rename Conversation",
+    override val conversationNameLabel: String = "Conversation Name",
+    override val pinnedConversationsTitle: String = "Pinned",
+    override val pinConversationTooltip: String = "Pin conversation",
+    override val unpinConversationTooltip: String = "Unpin conversation",
     override val projectsTabTooltip: String = "Projects",
 
     override val refreshSessionsTooltip: String = "Refresh session list",

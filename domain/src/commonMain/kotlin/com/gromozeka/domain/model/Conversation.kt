@@ -29,9 +29,10 @@ import kotlin.jvm.JvmInline
  * @property workspaceId default workspace used for environment context and filesystem tools
  * @property agentDefinitionId agent definition used for this conversation
  * @property displayName human-readable conversation title (can be blank)
+ * @property pinnedAt timestamp when the conversation was pinned, or null when it is not pinned
  * @property currentThread currently active thread ID (conversation can switch threads)
  * @property createdAt timestamp when conversation was created
- * @property updatedAt timestamp of last modification
+ * @property updatedAt timestamp of last conversation activity
  */
 @Serializable
 data class Conversation(
@@ -40,6 +41,7 @@ data class Conversation(
     val workspaceId: Workspace.Id,
     val agentDefinitionId: AgentDefinition.Id,
     val displayName: String = "",
+    val pinnedAt: Instant? = null,
     val currentThread: Thread.Id,
     val createdAt: Instant,
     val updatedAt: Instant,

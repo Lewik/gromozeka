@@ -1,19 +1,6 @@
 package com.gromozeka.presentation.ui
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
-import com.gromozeka.presentation.ui.session.BasicGromozekaDialog
-import kotlinx.coroutines.delay
+import androidx.compose.runtime.Composable
 
 /**
  * Modal dialog for renaming a tab
@@ -30,95 +17,12 @@ fun TabRenameDialog(
     onRename: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (isOpen) {
-        var editingText by remember { mutableStateOf(currentName) }
-        val focusRequester = remember { FocusRequester() }
-
-        // Auto-focus when dialog opens
-        LaunchedEffect(isOpen) {
-            if (isOpen) {
-                delay(100) // Small delay to ensure TextField is composed
-                focusRequester.requestFocus()
-            }
-        }
-
-        // Reset text when dialog opens
-        LaunchedEffect(isOpen, currentName) {
-            if (isOpen) {
-                editingText = currentName
-            }
-        }
-
-        fun confirmRename() {
-            val newName = editingText.trim()
-            val finalName = newName.takeIf { it.isNotBlank() } ?: ""
-            onRename(finalName)
-            onDismiss()
-        }
-
-        BasicGromozekaDialog(
-            onDismissRequest = onDismiss,
-        ) {
-            Card(
-                modifier = Modifier.padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = LocalTranslation.current.renameTabTitle,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-
-                    OutlinedTextField(
-                        value = editingText,
-                        onValueChange = { editingText = it },
-                        label = { Text(LocalTranslation.current.tabNameLabel) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                            .onKeyEvent { event ->
-                                when {
-                                    event.key == Key.Enter && event.type == KeyEventType.KeyDown -> {
-                                        confirmRename()
-                                        true
-                                    }
-
-                                    event.key == Key.Escape && event.type == KeyEventType.KeyDown -> {
-                                        onDismiss()
-                                        true
-                                    }
-
-                                    else -> false
-                                }
-                            },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(
-                            onDone = { confirmRename() }
-                        ),
-                        singleLine = true
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
-                    ) {
-                        TextButton(
-                            onClick = onDismiss
-                        ) {
-                            Text(LocalTranslation.current.cancelButton)
-                        }
-
-                        Button(
-                            onClick = { confirmRename() }
-                        ) {
-                            Text(LocalTranslation.current.saveButton)
-                        }
-                    }
-                }
-            }
-        }
-    }
+    NameEditDialog(
+        isOpen = isOpen,
+        currentName = currentName,
+        title = LocalTranslation.current.renameTabTitle,
+        label = LocalTranslation.current.tabNameLabel,
+        onRename = onRename,
+        onDismiss = onDismiss,
+    )
 }
