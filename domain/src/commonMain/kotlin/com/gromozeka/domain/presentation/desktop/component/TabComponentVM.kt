@@ -211,14 +211,6 @@ interface TabComponentVM {
      */
     fun updateAgent(agent: AgentDefinition)
     
-    /**
-     * Update custom tab display name.
-     * NOT TRANSACTIONAL - only updates UI state.
-     *
-     * @param customName new custom name (null = use default)
-     */
-    fun updateCustomName(customName: String?)
-    
     // Actions - Edit Mode & Selection
     /**
      * Toggle edit mode (show/hide message selection checkboxes).
@@ -385,7 +377,6 @@ interface TabComponentVM {
      * @property activeMessageInstructionIds set of selected message instruction IDs
      * @property userInput current text in input field (unsent)
      * @property isWaitingForResponse whether AI is currently responding
-     * @property customName custom tab display name (null = use default)
      * @property tabId stable tab identifier for MCP
      * @property parentTabId ID of tab that spawned this tab (null if user-created)
      * @property agent agent handling this conversation
@@ -402,7 +393,6 @@ interface TabComponentVM {
         val activeMessageInstructionIds: Set<String>,
         val userInput: String,
         val isWaitingForResponse: Boolean,
-        val customName: String?,
         val tabId: String,
         val parentTabId: String?,
         val agent: AgentDefinition,

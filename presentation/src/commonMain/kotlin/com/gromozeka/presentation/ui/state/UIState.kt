@@ -35,7 +35,6 @@ data class UIState(
         val userInput: String = "",
         val workspaceContextReferences: List<WorkspaceContextReference> = emptyList(),
         val isWaitingForResponse: Boolean = false,
-        val customName: String? = null,
         val tabId: String,
         val parentTabId: String? = null,
         val agent: AgentDefinition,

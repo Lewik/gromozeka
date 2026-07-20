@@ -35,6 +35,9 @@ open class AppViewModel(
     private val _tabs = MutableStateFlow<List<TabViewModel>>(emptyList())
     val tabs: StateFlow<List<TabViewModel>> = _tabs.asStateFlow()
 
+    private val _conversations = MutableStateFlow<Map<Conversation.Id, Conversation>>(emptyMap())
+    val conversations: StateFlow<Map<Conversation.Id, Conversation>> = _conversations.asStateFlow()
+
     private val _currentTabIndex = MutableStateFlow<Int?>(null)
     val currentTabIndex: StateFlow<Int?> = _currentTabIndex.asStateFlow()
 
@@ -73,6 +76,7 @@ open class AppViewModel(
                 agentDefinitionId = tabAgent.id,
             )
         }
+        mergeConversationSnapshots(listOf(conversation))
 
         val parentTabId =
             initialMessage?.instructions?.filterIsInstance<Conversation.Message.Instruction.Source.Agent>()
@@ -237,6 +241,7 @@ open class AppViewModel(
             try {
                 val conversation = conversationService.findById(tabUiState.conversationId)
                     ?: error("Conversation not found: ${tabUiState.conversationId.value}")
+                mergeConversationSnapshots(listOf(conversation))
                 require(conversation.projectId == tabUiState.projectId) {
                     "Saved tab project does not match conversation ${conversation.id.value}"
                 }
@@ -280,20 +285,25 @@ open class AppViewModel(
             currentTabIndex = _currentTabIndex.value
         )
 
-    suspend fun renameTab(tabIndex: Int, newName: String?) = mutex.withLock {
-        val tabList = _tabs.value
-        val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock
+    fun mergeConversationSnapshots(conversations: Iterable<Conversation>) {
+        val updates = conversations.associateBy(Conversation::id)
+        if (updates.isEmpty()) return
 
-        sessionViewModel.updateCustomName(newName?.takeIf { it.isNotBlank() })
-        log.info("Renamed tab at index $tabIndex to: ${newName ?: "default"}")
+        _conversations.update { current -> current + updates }
     }
 
-    suspend fun resetTabName(tabIndex: Int) = mutex.withLock {
-        val tabList = _tabs.value
-        val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock
+    suspend fun renameConversation(
+        conversationId: Conversation.Id,
+        displayName: String,
+    ): Conversation {
+        val updatedConversation = conversationService.updateDisplayName(
+            conversationId = conversationId,
+            displayName = displayName.trim(),
+        ) ?: error("Conversation not found: ${conversationId.value}")
 
-        sessionViewModel.updateCustomName(null)
-        log.info("Reset tab name at index $tabIndex to default")
+        mergeConversationSnapshots(listOf(updatedConversation))
+        log.info("Renamed conversation ${conversationId.value} to: ${updatedConversation.displayName}")
+        return updatedConversation
     }
 
     suspend fun rememberCurrentThread() {
@@ -363,6 +373,7 @@ open class AppViewModel(
     suspend fun cleanup() {
         mutex.withLock {
             _tabs.value = emptyList()
+            _conversations.value = emptyMap()
             _currentTabIndex.value = null
         }
     }

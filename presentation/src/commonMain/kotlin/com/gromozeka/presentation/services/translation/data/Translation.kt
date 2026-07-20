@@ -149,8 +149,6 @@ sealed class Translation {
 
     abstract val viewOriginalJson: String
 
-    abstract val renameTabTitle: String
-    abstract val tabNameLabel: String
     abstract val renameConversationTitle: String
     abstract val conversationNameLabel: String
     abstract val pinnedConversationsTitle: String

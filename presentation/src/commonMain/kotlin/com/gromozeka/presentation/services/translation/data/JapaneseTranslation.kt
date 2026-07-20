@@ -27,8 +27,6 @@ data class JapaneseTranslation(
 
     override val viewOriginalJson: String = "元のJSON",
 
-    override val renameTabTitle: String = "タブ名変更",
-    override val tabNameLabel: String = "タブ名",
     override val renameConversationTitle: String = "会話名を変更",
     override val conversationNameLabel: String = "会話名",
     override val pinnedConversationsTitle: String = "ピン留め",

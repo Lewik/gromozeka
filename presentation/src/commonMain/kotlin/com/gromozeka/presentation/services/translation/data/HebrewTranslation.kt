@@ -27,8 +27,6 @@ data class HebrewTranslation(
 
     override val viewOriginalJson: String = "JSON מקורי",
 
-    override val renameTabTitle: String = "שנה שם לשונית",
-    override val tabNameLabel: String = "שם שונית",
     override val renameConversationTitle: String = "שנה שם שיחה",
     override val conversationNameLabel: String = "שם השיחה",
     override val pinnedConversationsTitle: String = "מועדפים",

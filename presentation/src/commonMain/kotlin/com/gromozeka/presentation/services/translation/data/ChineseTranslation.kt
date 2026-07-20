@@ -27,8 +27,6 @@ data class ChineseTranslation(
 
     override val viewOriginalJson: String = "原始JSON",
 
-    override val renameTabTitle: String = "重命名标签页",
-    override val tabNameLabel: String = "标签页名称",
     override val renameConversationTitle: String = "重命名对话",
     override val conversationNameLabel: String = "对话名称",
     override val pinnedConversationsTitle: String = "已置顶",

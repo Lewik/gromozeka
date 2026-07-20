@@ -393,12 +393,6 @@ class TabViewModel(
         }
     }
 
-    fun updateCustomName(customName: String?) {
-        _uiState.update { currentState ->
-            currentState.copy(customName = customName)
-        }
-    }
-
     fun updateAgent(agent: AgentDefinition) {
         _uiState.update { currentState ->
             currentState.copy(agent = agent)

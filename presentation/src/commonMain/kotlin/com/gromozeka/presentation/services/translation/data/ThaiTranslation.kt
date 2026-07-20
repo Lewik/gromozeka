@@ -27,8 +27,6 @@ data class ThaiTranslation(
 
     override val viewOriginalJson: String = "JSON ต้นฉบับ",
 
-    override val renameTabTitle: String = "เปลี่ยนชื่อแท็บ",
-    override val tabNameLabel: String = "ชื่อแท็บ",
     override val renameConversationTitle: String = "เปลี่ยนชื่อการสนทนา",
     override val conversationNameLabel: String = "ชื่อการสนทนา",
     override val pinnedConversationsTitle: String = "ปักหมุด",

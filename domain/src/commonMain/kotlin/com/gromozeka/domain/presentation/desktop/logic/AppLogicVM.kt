@@ -19,7 +19,7 @@ import kotlin.jvm.JvmInline
  * - Manage lifecycle of conversation tabs (create, close, switch)
  * - Track current tab selection and navigation
  * - Restore application state from previous session
- * - Coordinate tab operations (rename, duplicate, interrupt)
+ * - Coordinate conversation operations (rename, duplicate, interrupt)
  * - Integrate with long-term memory operations (remember thread, maintain memory)
  *
  * ## Tab Lifecycle Flow
@@ -41,7 +41,7 @@ import kotlin.jvm.JvmInline
  * ## State Persistence
  * - Current tabs and active tab saved to UIState
  * - Restored on app restart via [restoreTabs]
- * - Tab order and custom names preserved
+ * - Tab order, drafts, and presentation preferences preserved
  *
  * ## Tab Identification
  * - **Tab Index** - position in [tabs] list (0-based, changes on close)
@@ -49,12 +49,14 @@ import kotlin.jvm.JvmInline
  * - **Conversation ID** - links to persistent Conversation entity
  *
  * @property tabs All open conversation tabs (ordered, reactive)
+ * @property conversations Normalized frontend projection of conversations referenced by the UI
  * @property currentTabIndex Index of currently selected tab (null = no tab selected)
  * @property currentTab Currently active tab (null = no tab selected, derived from tabs + currentTabIndex)
  */
 interface AppLogicVM {
     // State (survives recomposition)
     val tabs: StateFlow<List<TabComponentVM>>
+    val conversations: StateFlow<Map<Conversation.Id, Conversation>>
     val currentTabIndex: StateFlow<Int?>
     val currentTab: StateFlow<TabComponentVM?>
     
@@ -155,22 +157,17 @@ interface AppLogicVM {
     suspend fun restoreTabs(uiState: UIState)
     
     /**
-     * Rename tab with custom display name.
-     * NOT TRANSACTIONAL - caller must handle transaction boundaries.
-     *
-     * @param tabIndex Tab index to rename
-     * @param newName Custom display name (null or blank = clear custom name)
+     * Merge server-provided conversation snapshots into the normalized frontend state.
      */
-    suspend fun renameTab(tabIndex: Int, newName: String?)
-    
+    fun mergeConversationSnapshots(conversations: Iterable<Conversation>)
+
     /**
-     * Reset tab name to its generated default.
-     * Equivalent to renameTab(tabIndex, null).
-     * NOT TRANSACTIONAL - caller must handle transaction boundaries.
-     *
-     * @param tabIndex Tab index to reset
+     * Persist a conversation name and update its frontend snapshot from the server response.
      */
-    suspend fun resetTabName(tabIndex: Int)
+    suspend fun renameConversation(
+        conversationId: Conversation.Id,
+        displayName: String,
+    ): Conversation
     
     /**
      * Remember current thread in typed long-term memory.
@@ -184,7 +181,7 @@ interface AppLogicVM {
     /**
      * Cleanup all tabs and reset state.
      * Used during app shutdown or full reset.
-     * Clears [tabs] list and resets [currentTabIndex] to null.
+     * Clears [tabs], [conversations], and resets [currentTabIndex] to null.
      */
     suspend fun cleanup()
     
@@ -215,7 +212,6 @@ interface AppLogicVM {
          * @property conversationId ID of conversation to load
          * @property activeMessageInstructionIds Set of active message tag IDs (e.g., "mode_readonly")
          * @property userInput Unsent text in input field
-         * @property customName Custom tab display name (null = use default)
          * @property tabId Stable tab identifier for MCP
          * @property parentTabId ID of tab that spawned this tab (null = user created)
          * @property agent Agent handling this conversation
@@ -230,7 +226,6 @@ interface AppLogicVM {
             val conversationId: Conversation.Id,
             val activeMessageInstructionIds: Set<String>,
             val userInput: String,
-            val customName: String?,
             val tabId: String,
             val parentTabId: String?,
             val agent: AgentDefinition,

@@ -27,8 +27,6 @@ data class RussianTranslation(
 
     override val viewOriginalJson: String = "Оригинальный JSON",
 
-    override val renameTabTitle: String = "Переименовать таб",
-    override val tabNameLabel: String = "Название таба",
     override val renameConversationTitle: String = "Переименовать обсуждение",
     override val conversationNameLabel: String = "Название обсуждения",
     override val pinnedConversationsTitle: String = "Избранное",

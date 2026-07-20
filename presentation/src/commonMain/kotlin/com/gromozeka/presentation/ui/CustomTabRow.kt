@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.presentation.getTabDisplayName
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -28,15 +28,15 @@ fun CustomTabRow(
     showTabsAtBottom: Boolean,
     isCompactLayout: Boolean = false,
     tabs: List<TabViewModel>,
+    conversations: Map<Conversation.Id, Conversation>,
     hoveredTabIndex: Int,
     onTabSelect: (Int?) -> Unit,
     onTabHover: (Int) -> Unit,
     onTabHoverExit: () -> Unit,
-    onRenameTab: (Int, String) -> Unit,
+    onRenameConversation: (Conversation.Id, String) -> Unit,
     coroutineScope: CoroutineScope,
 ) {
-    var renameDialogOpen by remember { mutableStateOf(false) }
-    var renameTabIndex by remember { mutableStateOf(-1) }
+    var conversationIdToRename by remember { mutableStateOf<Conversation.Id?>(null) }
     var renameCurrentName by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.testTag(UiTestTag.TabRow.value)) {
@@ -133,6 +133,8 @@ fun CustomTabRow(
             tabs.forEachIndexed { index, tab ->
                 val isLoading = tab.isWaitingForResponse.collectAsState().value
                 val tabUiState = tab.uiState.collectAsState().value
+                val conversation = conversations[tab.conversationId]
+                val tabTitle = conversation?.effectiveDisplayName() ?: tabUiState.agent.name
                 val tabIndex = index + 4
 
                 Tab(
@@ -169,7 +171,7 @@ fun CustomTabRow(
                                 )
                                 if (!isCompactLayout) {
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(getTabDisplayName(tabUiState, index))
+                                    Text(tabTitle)
                                 }
                             }
 
@@ -177,9 +179,8 @@ fun CustomTabRow(
                             if (hoveredTabIndex == index) {
                                 IconButton(
                                     onClick = {
-                                        renameTabIndex = index
-                                        renameCurrentName = getTabDisplayName(tabUiState, index)
-                                        renameDialogOpen = true
+                                        conversationIdToRename = tab.conversationId
+                                        renameCurrentName = conversation?.displayName.orEmpty()
                                     },
                                     modifier = Modifier.Companion
                                         .size(16.dp)
@@ -203,22 +204,20 @@ fun CustomTabRow(
                 )
             }
 
-            // Rename dialog
-            TabRenameDialog(
-                isOpen = renameDialogOpen,
-                currentName = renameCurrentName,
-                onRename = { newName ->
-                    val tabIndexToRename = renameTabIndex
-                    coroutineScope.launch {
-                        onRenameTab(tabIndexToRename, newName)
-                    }
-                },
-                onDismiss = {
-                    renameDialogOpen = false
-                    renameTabIndex = -1
-                    renameCurrentName = ""
-                }
-            )
+            conversationIdToRename?.let { conversationId ->
+                NameEditDialog(
+                    isOpen = true,
+                    currentName = renameCurrentName,
+                    title = LocalTranslation.current.renameConversationTitle,
+                    label = LocalTranslation.current.conversationNameLabel,
+                    maxLength = 255,
+                    onRename = { newName -> onRenameConversation(conversationId, newName) },
+                    onDismiss = {
+                        conversationIdToRename = null
+                        renameCurrentName = ""
+                    },
+                )
+            }
         }
     }
 }

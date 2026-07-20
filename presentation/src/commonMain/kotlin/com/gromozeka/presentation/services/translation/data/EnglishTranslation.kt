@@ -27,8 +27,6 @@ data class EnglishTranslation(
 
     override val viewOriginalJson: String = "Original JSON",
 
-    override val renameTabTitle: String = "Rename Tab",
-    override val tabNameLabel: String = "Tab Name",
     override val renameConversationTitle: String = "Rename Conversation",
     override val conversationNameLabel: String = "Conversation Name",
     override val pinnedConversationsTitle: String = "Pinned",

@@ -41,8 +41,8 @@ private val log = KLoggers.logger("SessionListScreen")
 private data class ProjectGroup(
     val project: Project,
     val workspaces: List<Workspace>,
-    val conversations: List<Conversation>,
-    val latestConversation: Conversation?,
+    val conversationIds: List<Conversation.Id>,
+    val latestConversationId: Conversation.Id?,
     val formattedTime: String,
 ) {
     val projectId get() = project.id
@@ -67,7 +67,7 @@ fun SessionListScreen(
     refreshTrigger: Int = 0,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
-    var pinnedConversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
+    var pinnedConversationIds by remember { mutableStateOf<List<Conversation.Id>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
     var showWorkspacePicker by remember { mutableStateOf(false) }
@@ -80,6 +80,10 @@ fun SessionListScreen(
     val isSearching by searchViewModel.isSearching.collectAsState()
     val searchResults by searchViewModel.searchResults.collectAsState()
     val showSearchResults by searchViewModel.showSearchResults.collectAsState()
+    val conversationsById by appViewModel.conversations.collectAsState()
+    val currentSearchResults = searchResults.map { (conversation, project) ->
+        (conversationsById[conversation.id] ?: conversation) to project
+    }
 
     suspend fun loadProjects(showLoading: Boolean = true) {
         if (showLoading) {
@@ -99,26 +103,31 @@ fun SessionListScreen(
                 }
             val projects = recentProjects + pinnedProjects
 
+            val loadedConversations = mutableListOf<Conversation>()
             val groupedProjects = projects.map { project ->
                 val workspaces = workspaceCatalogService.findByProject(project.id)
                 val conversations = conversationTreeService.findByProject(project.id)
+                loadedConversations += conversations
                 val latestConversation = conversations.maxByOrNull { it.updatedAt }
                 val formattedTime = latestConversation?.let { formatRelativeTime(it.updatedAt) } ?: ""
 
                 ProjectGroup(
                     project = project,
                     workspaces = workspaces,
-                    conversations = conversations,
-                    latestConversation = latestConversation,
+                    conversationIds = conversations.map(Conversation::id),
+                    latestConversationId = latestConversation?.id,
                     formattedTime = formattedTime
                 )
             }
 
-            projectGroups = groupedProjects.sortedByDescending { it.latestConversation?.updatedAt }
-            pinnedConversations = pinned
+            appViewModel.mergeConversationSnapshots(loadedConversations + pinned)
+            projectGroups = groupedProjects.sortedByDescending { group ->
+                group.latestConversationId?.let { appViewModel.conversations.value[it]?.updatedAt }
+            }
+            pinnedConversationIds = pinned.map(Conversation::id)
             operationError = null
 
-            log.info("Loaded ${projectGroups.sumOf { it.conversations.size }} conversations in ${projectGroups.size} projects")
+            log.info("Loaded ${projectGroups.sumOf { it.conversationIds.size }} conversations in ${projectGroups.size} projects")
         } catch (e: Exception) {
             log.warn(e) { "Error loading projects: ${e.message}" }
             operationError = e.message ?: "Failed to load conversations"
@@ -142,10 +151,11 @@ fun SessionListScreen(
             mutatingConversationIds += conversation.id.value
             operationError = null
             try {
-                conversationTreeService.setPinned(
+                val updatedConversation = conversationTreeService.setPinned(
                     conversationId = conversation.id,
                     pinned = conversation.pinnedAt == null,
                 ) ?: error("Conversation not found: ${conversation.id.value}")
+                appViewModel.mergeConversationSnapshots(listOf(updatedConversation))
                 loadProjects(showLoading = false)
                 refreshSearchResults()
             } catch (e: Exception) {
@@ -164,9 +174,7 @@ fun SessionListScreen(
             mutatingConversationIds += conversation.id.value
             operationError = null
             try {
-                conversationTreeService.updateDisplayName(conversation.id, displayName)
-                    ?: error("Conversation not found: ${conversation.id.value}")
-                loadProjects(showLoading = false)
+                appViewModel.renameConversation(conversation.id, displayName)
                 refreshSearchResults()
             } catch (e: Exception) {
                 log.warn(e) { "Failed to rename conversation: ${e.message}" }
@@ -179,6 +187,10 @@ fun SessionListScreen(
 
     LaunchedEffect(refreshTrigger) {
         loadProjects()
+    }
+
+    LaunchedEffect(searchResults) {
+        appViewModel.mergeConversationSnapshots(searchResults.map { it.first })
     }
 
     Row(modifier = Modifier.fillMaxSize()) {
@@ -254,7 +266,8 @@ fun SessionListScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    val pinnedItems = pinnedConversations.mapNotNull { conversation ->
+                    val pinnedItems = pinnedConversationIds.mapNotNull { conversationId ->
+                        val conversation = conversationsById[conversationId] ?: return@mapNotNull null
                         projectGroups
                             .firstOrNull { it.projectId == conversation.projectId }
                             ?.let { group -> conversation to group }
@@ -278,7 +291,7 @@ fun SessionListScreen(
                     }
 
                     if (showSearchResults) {
-                        if (searchResults.isEmpty()) {
+                        if (currentSearchResults.isEmpty()) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
@@ -307,7 +320,7 @@ fun SessionListScreen(
                                 text = LocalTranslation.current.foundSessionsText.format(searchResults.size),
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
-                            searchResults.forEach { (conversation, project) ->
+                            currentSearchResults.forEach { (conversation, project) ->
                                 ConversationItem(
                                     conversation = conversation,
                                     project = project,
@@ -365,6 +378,7 @@ fun SessionListScreen(
                             projectGroups.forEach { group ->
                                 ProjectGroupHeader(
                                     group = group,
+                                    conversationsById = conversationsById,
                                     isExpanded = expandedProjects.contains(group.projectId.value),
                                     onToggleExpanded = {
                                         expandedProjects = if (expandedProjects.contains(group.projectId.value)) {
@@ -411,13 +425,14 @@ fun SessionListScreen(
     }
 
     conversationToRename?.let { conversation ->
+        val currentConversation = conversationsById[conversation.id] ?: conversation
         NameEditDialog(
             isOpen = true,
-            currentName = conversation.displayName,
+            currentName = currentConversation.displayName,
             title = LocalTranslation.current.renameConversationTitle,
             label = LocalTranslation.current.conversationNameLabel,
             maxLength = 255,
-            onRename = { displayName -> renameConversation(conversation, displayName) },
+            onRename = { displayName -> renameConversation(currentConversation, displayName) },
             onDismiss = { conversationToRename = null },
         )
     }
@@ -464,6 +479,7 @@ private fun PinnedConversationsSection(
 @Composable
 private fun ProjectGroupHeader(
     group: ProjectGroup,
+    conversationsById: Map<Conversation.Id, Conversation>,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     onNewSessionClick: () -> Unit,
@@ -472,6 +488,9 @@ private fun ProjectGroupHeader(
     onTogglePinned: (Conversation) -> Unit,
     mutatingConversationIds: Set<String>,
 ) {
+    val conversations = group.conversationIds.mapNotNull(conversationsById::get)
+    val latestConversation = group.latestConversationId?.let(conversationsById::get)
+
     CompactCard(
         modifier = Modifier.padding(vertical = 4.dp)
     ) {
@@ -493,7 +512,7 @@ private fun ProjectGroupHeader(
                 ) {
                     Text(text = group.projectName)
                     Text(text = "${group.workspaces.size} workspaces")
-                    Text(text = "${group.conversations.size} conversations")
+                    Text(text = "${group.conversationIds.size} conversations")
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -504,7 +523,7 @@ private fun ProjectGroupHeader(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                group.latestConversation?.let { latestConversation ->
+                latestConversation?.let {
                     Column(
                         modifier = Modifier.weight(1f)
                     ) {
@@ -531,7 +550,7 @@ private fun ProjectGroupHeader(
                 Column(
                     modifier = Modifier.padding(start = 32.dp, end = 12.dp, bottom = 8.dp)
                 ) {
-                    group.conversations.filter { it.pinnedAt == null }.forEach { conversation ->
+                    conversations.filter { it.pinnedAt == null }.forEach { conversation ->
                         ConversationItem(
                             conversation = conversation,
                             project = group.project,

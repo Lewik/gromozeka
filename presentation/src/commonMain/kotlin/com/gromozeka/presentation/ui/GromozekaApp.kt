@@ -103,6 +103,7 @@ fun GromozekaAppContent(
     val remoteClientSettings by appComponents.remoteClientSettingsService.settingsFlow.collectAsState()
     val remoteConnectionState by appComponents.remoteConnectionState.collectAsState()
     val tabs by appComponents.appViewModel.tabs.collectAsState()
+    val conversations by appComponents.appViewModel.conversations.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
     val pttState by appComponents.pttService.state.collectAsState()
@@ -310,6 +311,7 @@ fun GromozekaAppContent(
                                         showTabsAtBottom = currentUiSettings.showTabsAtBottom,
                                         isCompactLayout = isCompactLayout,
                                         tabs = tabs,
+                                        conversations = conversations,
                                         hoveredTabIndex = hoveredTabIndex,
                                         onTabSelect = { tabIndex ->
                                             coroutineScope.launch {
@@ -318,9 +320,9 @@ fun GromozekaAppContent(
                                         },
                                         onTabHover = { index -> hoveredTabIndex = index },
                                         onTabHoverExit = { hoveredTabIndex = -1 },
-                                        onRenameTab = { tabIndexToRename, newName ->
+                                        onRenameConversation = { conversationId, newName ->
                                             coroutineScope.launch {
-                                                appComponents.appViewModel.renameTab(tabIndexToRename, newName)
+                                                appComponents.appViewModel.renameConversation(conversationId, newName)
                                             }
                                         },
                                         coroutineScope = coroutineScope
