@@ -1,8 +1,11 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.repository.PromptRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.PromptAssemblyService
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AgentApplicationService(
     private val agentRepository: AgentRepository,
+    private val promptRepository: PromptRepository,
     private val promptAssemblyService: PromptAssemblyService,
 ) : AgentDomainService, AgentPromptAssemblyService {
     private val log = KLoggers.logger(this)
@@ -39,33 +43,94 @@ class AgentApplicationService(
      * @param runtimeSelection model binding selected for this agent
      * @param tools list of tool names available to this agent
      * @param description optional human-readable description of capabilities
-     * @param type agent storage scope
      * @return created agent
      */
     @Transactional
     override suspend fun createAgent(
+        projectId: Project.Id,
         name: String,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>,
         runtimeSelection: AiRuntimeSelection,
         tools: List<String>,
         description: String?,
-        type: AgentDefinition.Type,
     ): AgentDefinition {
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
         val agent = AgentDefinition(
-            id = AgentDefinition.Id(uuid7()),
+            id = AgentDefinition.Id("project:${projectId.value}:agent:${uuid7()}"),
+            projectId = projectId,
             name = name,
             prompts = prompts,
             runtimeSelection = runtimeSelection,
             tools = tools,
             description = description,
-            type = type,
+            type = AgentDefinition.Type.Project,
             createdAt = now,
             updatedAt = now
         )
 
         return agentRepository.save(agent)
+    }
+
+    override suspend fun copyBuiltinAgent(
+        projectId: Project.Id,
+        sourceAgentId: AgentDefinition.Id,
+        name: String,
+        prompts: List<Prompt.Id>,
+        description: String?,
+    ): AgentDefinition {
+        require(name.isNotBlank()) { "Agent name must not be blank" }
+        require(prompts.isNotEmpty()) { "Agent must contain at least one prompt" }
+        require(prompts.distinct().size == prompts.size) { "Agent prompts must not contain duplicates" }
+
+        val source = agentRepository.findById(sourceAgentId)
+            ?: error("Builtin agent not found: ${sourceAgentId.value}")
+        require(source.type is AgentDefinition.Type.Builtin) {
+            "Only a builtin agent can be copied into a project"
+        }
+
+        val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
+        val copiedPrompts = mutableListOf<Prompt>()
+        val resolvedPromptIds = prompts.map { promptId ->
+            if (promptId.value == ENV_PROMPT_ID) {
+                promptId
+            } else {
+                val prompt = promptRepository.findById(promptId)
+                    ?: error("Prompt not found: ${promptId.value}")
+                when (prompt.type) {
+                    is Prompt.Type.Builtin -> {
+                        val copy = prompt.copy(
+                            id = Prompt.Id("project:${projectId.value}:prompt:${uuid7()}"),
+                            projectId = projectId,
+                            type = Prompt.Type.Project,
+                            createdAt = now,
+                            updatedAt = now,
+                        )
+                        copiedPrompts += copy
+                        copy.id
+                    }
+
+                    is Prompt.Type.Project -> {
+                        require(prompt.projectId == projectId) {
+                            "Prompt ${prompt.id.value} belongs to another project"
+                        }
+                        prompt.id
+                    }
+                }
+            }
+        }
+
+        val copy = source.copy(
+            id = AgentDefinition.Id("project:${projectId.value}:agent:${uuid7()}"),
+            projectId = projectId,
+            name = name.trim(),
+            prompts = resolvedPromptIds,
+            description = description,
+            type = AgentDefinition.Type.Project,
+            createdAt = now,
+            updatedAt = now,
+        )
+        return agentRepository.createWithPrompts(copy, copiedPrompts)
     }
 
     override suspend fun assembleSystemPrompt(
@@ -91,6 +156,9 @@ class AgentApplicationService(
      */
     override suspend fun findAll(): List<AgentDefinition> =
         agentRepository.findAll()
+
+    override suspend fun findByProject(projectId: Project.Id): List<AgentDefinition> =
+        agentRepository.findByProject(projectId)
 
     /**
      * Updates agent configuration.
@@ -125,7 +193,7 @@ class AgentApplicationService(
      * Deletes agent.
      *
      * Prevents deletion of builtin agents - logs warning and returns without error.
-     * Global and project agents are deleted normally.
+     * Project agents are deleted normally.
      *
      * @param id agent identifier
      */
@@ -142,8 +210,12 @@ class AgentApplicationService(
     /**
      * Returns total agent count.
      *
-     * @return number of agents (includes builtin, global, and project agents)
+     * @return number of agents (includes builtin and project agents)
      */
     override suspend fun count(): Int =
         agentRepository.count()
+
+    private companion object {
+        const val ENV_PROMPT_ID = "env"
+    }
 }

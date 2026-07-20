@@ -18,6 +18,7 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.presentation.ui.CompactButton
 import klog.KLoggers
@@ -28,6 +29,7 @@ private val log = KLoggers.logger("AgentConstructorScreen")
 
 @Composable
 fun AgentConstructorScreen(
+    projectId: Project.Id?,
     agentService: AgentDomainService,
     promptService: PromptDomainService,
     settingsService: SettingsService,
@@ -44,6 +46,7 @@ fun AgentConstructorScreen(
     // Agent dialogs
     var showAgentEditorDialog by remember { mutableStateOf(false) }
     var editingAgent by remember { mutableStateOf<AgentDefinition?>(null) }
+    var copyingAgent by remember { mutableStateOf<AgentDefinition?>(null) }
     var showAgentDeleteConfirmation by remember { mutableStateOf(false) }
     var deletingAgent by remember { mutableStateOf<AgentDefinition?>(null) }
 
@@ -52,13 +55,12 @@ fun AgentConstructorScreen(
     var showPromptCreateDialog by remember { mutableStateOf(false) }
     
     // Prompt filters
-    var selectedPromptTypes by remember { mutableStateOf(setOf(0, 1, 2)) } // All types selected by default
+    var selectedPromptTypes by remember { mutableStateOf(setOf(0, 1)) }
     
     val filterOptions = remember {
         listOf(
             com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Lock, "Builtin"),
-            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Home, "Global"),
-            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Folder, "Workspace")
+            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Folder, "Project")
         )
     }
     
@@ -66,9 +68,7 @@ fun AgentConstructorScreen(
         prompts.filter { prompt ->
             when (val type = prompt.type) {
                 is Prompt.Type.Builtin -> 0 in selectedPromptTypes
-                is Prompt.Type.Global -> 1 in selectedPromptTypes
-                is Prompt.Type.Workspace -> 2 in selectedPromptTypes
-                is Prompt.Type.Environment -> 2 in selectedPromptTypes // Group with "Other"
+                is Prompt.Type.Project -> 1 in selectedPromptTypes
             }
         }
     }
@@ -77,8 +77,10 @@ fun AgentConstructorScreen(
         isLoading = true
         error = null
         try {
-            agents = agentService.findAll()
-            prompts = promptService.findAll()
+            agents = projectId?.let { agentService.findByProject(it) }
+                ?: agentService.findAll().filter { it.type is AgentDefinition.Type.Builtin }
+            prompts = projectId?.let { promptService.findByProject(it) }
+                ?: promptService.findAll().filter { it.type is Prompt.Type.Builtin }
             log.info { "Loaded ${agents.size} agents and ${prompts.size} prompts" }
         } catch (e: Exception) {
             error = "Failed to load data: ${e.message}"
@@ -125,6 +127,7 @@ fun AgentConstructorScreen(
                         when (selectedTab) {
                             0 -> {
                                 editingAgent = null
+                                copyingAgent = null
                                 showAgentEditorDialog = true
                             }
                             1 -> {
@@ -139,62 +142,6 @@ fun AgentConstructorScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Add new")
                         Text(if (selectedTab == 0) "New Agent" else "New Prompt")
-                    }
-                }
-                
-                // Prompts tab buttons
-                if (selectedTab == 1) {
-                    CompactButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                try {
-                                    val result = promptService.importAllClaudeMd()
-                                    result.fold(
-                                        onSuccess = { count ->
-                                            log.info { "Imported $count CLAUDE.md files" }
-                                            promptService.refresh()
-                                            loadData()
-                                        },
-                                        onFailure = { e ->
-                                            error = "Failed to import: ${e.message}"
-                                            log.error(e) { "Error importing CLAUDE.md files" }
-                                        }
-                                    )
-                                } catch (e: Exception) {
-                                    error = "Failed to import: ${e.message}"
-                                    log.error(e) { "Error importing CLAUDE.md files" }
-                                }
-                            }
-                        },
-                        tooltip = "Find and import all CLAUDE.md files from disk"
-                    ) {
-                        Text("Find all CLAUDE.md")
-                    }
-                    
-                    CompactButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                try {
-                                    val result = promptService.resetAllBuiltinPrompts()
-                                    result.fold(
-                                        onSuccess = { count ->
-                                            log.info { "Reset $count builtin prompts to user directory" }
-                                            promptService.refresh()
-                                            loadData()
-                                        },
-                                        onFailure = { e ->
-                                            error = "Failed to reset prompts: ${e.message}"
-                                            log.error(e) { "Error resetting prompts" }
-                                        }
-                                    )
-                                } catch (e: Exception) {
-                                    error = "Failed to reset prompts: ${e.message}"
-                                    log.error(e) { "Error resetting prompts" }
-                                }
-                            }
-                        }
-                    ) {
-                        Text("Reset All")
                     }
                 }
             }
@@ -286,6 +233,7 @@ fun AgentConstructorScreen(
                             Button(
                                 onClick = {
                                     editingAgent = null
+                                    copyingAgent = null
                                     showAgentEditorDialog = true
                                 }
                             ) {
@@ -309,6 +257,12 @@ fun AgentConstructorScreen(
                                 agent = agent,
                                 onEdit = {
                                     editingAgent = agent
+                                    copyingAgent = null
+                                    showAgentEditorDialog = true
+                                },
+                                onCopy = {
+                                    editingAgent = null
+                                    copyingAgent = agent
                                     showAgentEditorDialog = true
                                 },
                                 onDelete = {
@@ -375,9 +329,7 @@ fun AgentConstructorScreen(
                         Text(
                             text = when (val type = viewingPrompt!!.type) {
                                 is Prompt.Type.Builtin -> "Built-in prompt"
-                                is Prompt.Type.Global -> "Global prompt"
-                                is Prompt.Type.Workspace -> "Workspace prompt"
-                                is Prompt.Type.Environment -> "Inline prompt"
+                                is Prompt.Type.Project -> "Project prompt"
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -430,7 +382,6 @@ fun AgentConstructorScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(filteredPrompts) { prompt ->
-                            val isBuiltinPrompt = prompt.type is Prompt.Type.Builtin
                             val isEditablePrompt = prompt.type !is Prompt.Type.Builtin
                             
                             PromptListItem(
@@ -444,29 +395,6 @@ fun AgentConstructorScreen(
                                     }
                                 } else null,
                                 onDelete = null,
-                                onCopyToUser = if (isBuiltinPrompt) {
-                                    {
-                                        coroutineScope.launch {
-                                            try {
-                                                val result = promptService.copyBuiltinPromptToUser(prompt.id)
-                                                result.fold(
-                                                    onSuccess = {
-                                                        log.info { "Copied builtin prompt to user: ${prompt.name}" }
-                                                        promptService.refresh() // Re-scan file system
-                                                        loadData() // Refresh UI
-                                                    },
-                                                    onFailure = { e ->
-                                                        error = "Failed to copy prompt: ${e.message}"
-                                                        log.error(e) { "Error copying prompt" }
-                                                    }
-                                                )
-                                            } catch (e: Exception) {
-                                                error = "Failed to copy prompt: ${e.message}"
-                                                log.error(e) { "Error copying prompt" }
-                                            }
-                                        }
-                                    }
-                                } else null
                             )
                         }
                     }
@@ -478,20 +406,37 @@ fun AgentConstructorScreen(
     // Agent Editor Dialog
     if (showAgentEditorDialog) {
         AgentEditorDialog(
-            agent = editingAgent,
+            agent = editingAgent ?: copyingAgent,
+            copyMode = copyingAgent != null,
             prompts = prompts,
             onSave = { name, selectedPrompts, description ->
                 coroutineScope.launch {
                     try {
-                        if (editingAgent == null) {
+                        val sourceAgent = copyingAgent
+                        if (sourceAgent != null) {
+                            val targetProjectId = checkNotNull(projectId) {
+                                "Open a project conversation before copying an agent"
+                            }
+                            agentService.copyBuiltinAgent(
+                                projectId = targetProjectId,
+                                sourceAgentId = sourceAgent.id,
+                                name = name,
+                                prompts = selectedPrompts,
+                                description = description,
+                            )
+                            log.info { "Copied builtin agent ${sourceAgent.name} into project" }
+                        } else if (editingAgent == null) {
+                            val targetProjectId = checkNotNull(projectId) {
+                                "Open a project conversation before creating an agent"
+                            }
                             agentService.createAgent(
+                                projectId = targetProjectId,
                                 name = name,
                                 prompts = selectedPrompts,
                                 runtimeSelection = settingsService.runtimeSelectionFor(
                                     AiRuntimeAssignment.Purpose.DEFAULT_CHAT
                                 ),
                                 description = description,
-                                type = AgentDefinition.Type.Inline
                             )
                             log.info { "Created new agent: $name" }
                         } else {
@@ -504,6 +449,8 @@ fun AgentConstructorScreen(
                         }
                         loadData()
                         showAgentEditorDialog = false
+                        editingAgent = null
+                        copyingAgent = null
                     } catch (e: Exception) {
                         error = "Failed to save agent: ${e.message}"
                         log.error(e) { "Error saving agent" }
@@ -513,6 +460,7 @@ fun AgentConstructorScreen(
             onDismiss = {
                 showAgentEditorDialog = false
                 editingAgent = null
+                copyingAgent = null
             }
         )
     }
@@ -573,8 +521,11 @@ fun AgentConstructorScreen(
             onSave = { name, content ->
                 coroutineScope.launch {
                     try {
-                        promptService.createEnvironmentPrompt(name, content)
-                        log.info { "Created inline prompt: $name" }
+                        val targetProjectId = checkNotNull(projectId) {
+                            "Open a project conversation before creating a prompt"
+                        }
+                        promptService.createProjectPrompt(targetProjectId, name, content)
+                        log.info { "Created project prompt: $name" }
                         loadData()
                         showPromptCreateDialog = false
                     } catch (e: Exception) {

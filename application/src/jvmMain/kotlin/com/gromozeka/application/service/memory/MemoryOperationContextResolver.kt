@@ -55,15 +55,15 @@ class MemoryOperationContextResolver(
             ?: throw IllegalStateException(
                 "Agent not found for conversation ${conversationId.value}: ${conversation.agentDefinitionId.value}"
             )
-        val workspaceContext = workspaceService.resolveRuntime(
-            conversation.workspaceId,
-            runtimeWorkerDescriptor.id.value,
+        val runtimeContext = RuntimeEnvironmentContext.ProjectBound(
+            project = conversationService.getProject(conversationId),
+            workerId = runtimeWorkerDescriptor.id.value,
         )
         return MemoryOperationContext(
             conversation = conversation,
             agent = agent,
-            runtimeContext = workspaceContext,
-            systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, workspaceContext),
+            runtimeContext = runtimeContext,
+            systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext),
             memoryTools = memoryTools(),
             threadMessages = threadId
                 ?.let { threadMessageRepository.getMessagesByThread(it) }

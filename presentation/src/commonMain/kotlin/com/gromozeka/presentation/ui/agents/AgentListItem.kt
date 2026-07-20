@@ -2,6 +2,7 @@ package com.gromozeka.presentation.ui.agents
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -17,6 +18,7 @@ import com.gromozeka.domain.model.AgentDefinition
 fun AgentListItem(
     agent: AgentDefinition,
     onEdit: () -> Unit,
+    onCopy: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -51,24 +53,8 @@ fun AgentListItem(
                                     enabled = false
                                 )
                             }
-                            is AgentDefinition.Type.Global -> {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                AssistChip(
-                                    onClick = {},
-                                    label = { Text("Global") },
-                                    enabled = false
-                                )
-                            }
-                            is AgentDefinition.Type.Workspace -> {
+                            is AgentDefinition.Type.Project -> {
                                 // No chip for project agents
-                            }
-                            is AgentDefinition.Type.Inline -> {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                AssistChip(
-                                    onClick = {},
-                                    label = { Text("Inline") },
-                                    enabled = false
-                                )
                             }
                         }
                     }
@@ -84,20 +70,28 @@ fun AgentListItem(
                 }
                 
                 Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Edit agent"
-                        )
-                    }
-                    
-                    if (agent.type !is AgentDefinition.Type.Builtin) {
-                        IconButton(onClick = onDelete) {
+                    when (agent.type) {
+                        is AgentDefinition.Type.Builtin -> IconButton(onClick = onCopy) {
                             Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete agent",
-                                tint = MaterialTheme.colorScheme.error
+                                Icons.Default.ContentCopy,
+                                contentDescription = "Create project copy"
                             )
+                        }
+
+                        is AgentDefinition.Type.Project -> {
+                            IconButton(onClick = onEdit) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Edit agent"
+                                )
+                            }
+                            IconButton(onClick = onDelete) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete agent",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }

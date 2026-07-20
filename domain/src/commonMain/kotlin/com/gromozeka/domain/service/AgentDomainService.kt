@@ -2,6 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 
 /**
@@ -28,16 +29,29 @@ interface AgentDomainService {
      * @param runtimeSelection model binding selected for this agent
      * @param tools list of tool names available to this agent (default: empty)
      * @param description optional human-readable agent description
-     * @param type agent storage scope
      * @return created agent with assigned ID
      */
     suspend fun createAgent(
+        projectId: Project.Id,
         name: String,
         prompts: List<Prompt.Id>,
         runtimeSelection: AiRuntimeSelection,
         tools: List<String> = emptyList(),
         description: String? = null,
-        type: AgentDefinition.Type
+    ): AgentDefinition
+
+    /**
+     * Creates an independent project copy of a builtin agent.
+     *
+     * Selected builtin prompts are copied into the project. Existing prompts
+     * from the target project and the runtime `env` prompt remain references.
+     */
+    suspend fun copyBuiltinAgent(
+        projectId: Project.Id,
+        sourceAgentId: AgentDefinition.Id,
+        name: String,
+        prompts: List<Prompt.Id>,
+        description: String? = null,
     ): AgentDefinition
 
     /**
@@ -49,14 +63,13 @@ interface AgentDomainService {
     suspend fun findById(id: AgentDefinition.Id): AgentDefinition?
 
     /**
-     * Retrieves all agents in system.
-     *
-     * Workspace-local files are not part of the central catalog. They are resolved
-     * by the target worker while assembling a conversation runtime.
+     * Retrieves all centrally available agents.
      *
      * @return all centrally available agents
      */
     suspend fun findAll(): List<AgentDefinition>
+
+    suspend fun findByProject(projectId: Project.Id): List<AgentDefinition>
 
     /**
      * Updates agent prompts or description.
@@ -98,7 +111,7 @@ interface AgentDomainService {
 }
 
 /**
- * [SPECIFICATION] Resolves an agent's prompts for the current runtime worker.
+ * [SPECIFICATION] Resolves an agent's prompts for the current runtime context.
  */
 interface AgentPromptAssemblyService {
     suspend fun assembleSystemPrompt(

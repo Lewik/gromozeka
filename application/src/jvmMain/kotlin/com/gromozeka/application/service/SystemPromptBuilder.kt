@@ -31,6 +31,14 @@ class SystemPromptBuilder {
                 is RuntimeEnvironmentContext.Standalone ->
                     appendLine("Runtime scope: standalone; no Project or Filesystem Workspace is selected")
 
+                is RuntimeEnvironmentContext.ProjectBound -> {
+                    appendLine(
+                        "Project: ${runtimeContext.project.name} " +
+                            "(${runtimeContext.project.id.value})"
+                    )
+                    appendLine("Runtime scope: project; no default Filesystem Workspace is selected")
+                }
+
                 is RuntimeEnvironmentContext.WorkspaceBound -> {
                     appendLine(
                         "Project: ${runtimeContext.project.name} " +

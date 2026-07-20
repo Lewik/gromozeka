@@ -19,6 +19,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
@@ -78,6 +79,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 class ConversationEngineService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val aiToolProvider: AiToolProvider,
+    private val agentDomainService: AgentDomainService,
     private val agentPromptAssemblyService: AgentPromptAssemblyService,
     private val toolApprovalService: ToolApprovalService,
     private val parallelToolExecutor: ParallelToolExecutor,
@@ -119,13 +121,13 @@ class ConversationEngineService(
         ensureRuntimeTaskOwner(conversationId, task.id, worker)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        val context = buildConversationRuntimeContext(payload.agent, conversation, worker)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, worker)
         appendUserMessageWithAutomaticMemory(
             conversationId = conversationId,
             conversation = conversation,
-            workspaceContext = context.workspaceContext,
+            runtimeContext = context.runtimeContext,
             userMessage = payload.userMessage,
-            agent = payload.agent,
+            agent = context.agent,
             memorySystemPrompts = context.memorySystemPrompts,
             memoryPipelineTools = context.memoryPipelineTools,
             automaticMemoryRememberEnabled = context.automaticMemoryRememberEnabled,
@@ -146,7 +148,7 @@ class ConversationEngineService(
                 llmCallTask(
                     conversationId = conversationId,
                     rootUserMessageId = payload.userMessage.id,
-                    agent = payload.agent,
+                    agentDefinitionId = payload.agentDefinitionId,
                     iteration = 1,
                 )
             )
@@ -165,7 +167,7 @@ class ConversationEngineService(
 
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        val context = buildConversationRuntimeContext(payload.agent, conversation, worker)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, worker)
 
         if (payload.iteration > MAX_TOOL_LOOP_ITERATIONS) {
             val errorMessage = AiConversationMessageMapper.createErrorMessage(
@@ -182,8 +184,8 @@ class ConversationEngineService(
                     conversationId,
                     conversation.currentThread,
                     errorMessage,
-                    payload.agent,
-                    context.workspaceContext,
+                    context.agent,
+                    context.runtimeContext,
                     context.memorySystemPrompts,
                     context.memoryPipelineTools,
                 )
@@ -198,8 +200,8 @@ class ConversationEngineService(
             messages = currentMessages,
             tools = context.availableTools,
             options = AiRuntimeOptions(
-                maxOutputTokens = payload.agent.runtimeOverrides.maxOutputTokens,
-                reasoning = payload.agent.runtimeOverrides.reasoning,
+                maxOutputTokens = context.agent.runtimeOverrides.maxOutputTokens,
+                reasoning = context.agent.runtimeOverrides.reasoning,
                 autoCompactionThresholdTokens = context.autoCompactionThresholdTokens,
                 toolChoice = AiToolChoice.Auto,
                 responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(context.assistantResponseFormat),
@@ -208,13 +210,9 @@ class ConversationEngineService(
                     put("conversationId", conversationId.value)
                     put("threadId", conversation.currentThread.value)
                     put("projectId", context.project.id.value)
-                    put("workspaceId", context.workspaceContext.workspace.id.value)
                     put("workerId", worker.workerId.value)
                     put("aiProvider", context.provider.name)
                     put("modelName", context.modelName)
-                    context.workspaceContext.workspaceRootPath?.let {
-                        put("workspaceRootPath", it)
-                    }
                 }
             )
         )
@@ -243,8 +241,8 @@ class ConversationEngineService(
                     conversationId,
                     conversation.currentThread,
                     errorMessage,
-                    payload.agent,
-                    context.workspaceContext,
+                    context.agent,
+                    context.runtimeContext,
                     context.memorySystemPrompts,
                     context.memoryPipelineTools,
                 )
@@ -283,8 +281,8 @@ class ConversationEngineService(
                     conversationId,
                     conversation.currentThread,
                     message,
-                    payload.agent,
-                    context.workspaceContext,
+                    context.agent,
+                    context.runtimeContext,
                     context.memorySystemPrompts,
                     context.memoryPipelineTools,
                 )
@@ -306,7 +304,7 @@ class ConversationEngineService(
                         toolExecutionTask(
                             conversationId = conversationId,
                             rootUserMessageId = payload.rootUserMessageId,
-                            agent = payload.agent,
+                            agentDefinitionId = payload.agentDefinitionId,
                             iteration = payload.iteration,
                             toolCalls = allToolCalls,
                             routing = routing,
@@ -342,7 +340,7 @@ class ConversationEngineService(
                             conversationId = conversationId,
                             rootUserMessageId = payload.rootUserMessageId,
                             toolResultMessageId = toolResultMessageId,
-                            agent = payload.agent,
+                            agentDefinitionId = payload.agentDefinitionId,
                             iteration = payload.iteration,
                             returnDirect = false,
                         )
@@ -353,7 +351,7 @@ class ConversationEngineService(
             submitPendingMemoryRecallIfNeeded(
                 conversationId = conversationId,
                 rootUserMessageId = payload.rootUserMessageId,
-                agent = payload.agent,
+                agentDefinitionId = payload.agentDefinitionId,
                 nextLlmIteration = payload.iteration + 1,
                 automaticMemoryRecallEnabled = context.automaticMemoryRecallEnabled,
             )
@@ -445,7 +443,7 @@ class ConversationEngineService(
                 conversationId = conversationId,
                 rootUserMessageId = payload.rootUserMessageId,
                 toolResultMessageId = toolResultMessageId,
-                agent = payload.agent,
+                agentDefinitionId = payload.agentDefinitionId,
                 iteration = payload.iteration,
                 returnDirect = payload.returnDirect,
             )
@@ -464,7 +462,7 @@ class ConversationEngineService(
 
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        val context = buildConversationRuntimeContext(payload.agent, conversation, worker)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, worker)
         val toolResultMessage = conversationService.loadCurrentMessages(conversationId)
             .firstOrNull { it.id == payload.toolResultMessageId }
             ?: throw IllegalStateException(
@@ -478,8 +476,8 @@ class ConversationEngineService(
                 conversationId,
                 conversation.currentThread,
                 toolResultMessage,
-                payload.agent,
-                context.workspaceContext,
+                context.agent,
+                context.runtimeContext,
                 context.memorySystemPrompts,
                 context.memoryPipelineTools,
             )
@@ -494,7 +492,7 @@ class ConversationEngineService(
             worker = worker,
             placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
             conversation = conversation,
-            workspaceContext = context.workspaceContext,
+            runtimeContext = context.runtimeContext,
             memorySystemPrompts = context.memorySystemPrompts,
             memoryPipelineTools = context.memoryPipelineTools,
             automaticMemoryRememberEnabled = context.automaticMemoryRememberEnabled,
@@ -508,7 +506,7 @@ class ConversationEngineService(
                 llmCallTask(
                     conversationId = conversationId,
                     rootUserMessageId = payload.rootUserMessageId,
-                    agent = payload.agent,
+                    agentDefinitionId = payload.agentDefinitionId,
                     iteration = payload.iteration + 1,
                 )
             )
@@ -528,7 +526,7 @@ class ConversationEngineService(
         ensureRuntimeTaskOwner(conversationId, task.id, worker)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        val context = buildConversationRuntimeContext(payload.agent, conversation, worker)
+        val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, worker)
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
         if (!currentMessages.hasPendingMemoryRecall(payload.targetMessageId)) {
             log.info {
@@ -551,7 +549,7 @@ class ConversationEngineService(
                 threadId = conversation.currentThread,
                 targetMessage = targetMessage,
                 threadMessages = currentMessages,
-                runtimeContext = context.workspaceContext,
+                runtimeContext = context.runtimeContext,
             )
         }.onFailure { error ->
             if (error is CancellationException) {
@@ -597,7 +595,7 @@ class ConversationEngineService(
                 llmCallTask(
                     conversationId = conversationId,
                     rootUserMessageId = payload.rootUserMessageId,
-                    agent = payload.agent,
+                    agentDefinitionId = payload.agentDefinitionId,
                     iteration = payload.followUpIteration,
                 )
             )
@@ -656,7 +654,7 @@ class ConversationEngineService(
                             conversationId = conversationId,
                             rootUserMessageId = sourcePayload.rootUserMessageId,
                             toolResultMessageId = toolResultMessageId,
-                            agent = sourcePayload.agent,
+                            agentDefinitionId = sourcePayload.agentDefinitionId,
                             iteration = sourcePayload.iteration,
                             returnDirect = false,
                         )
@@ -737,7 +735,8 @@ class ConversationEngineService(
         }
 
     private data class ConversationRuntimeStepContext(
-        val workspaceContext: RuntimeEnvironmentContext.WorkspaceBound,
+        val runtimeContext: RuntimeEnvironmentContext.ProjectBound,
+        val agent: AgentDefinition,
         val runtime: AiRuntime,
         val provider: AiProvider,
         val modelName: String,
@@ -751,23 +750,26 @@ class ConversationEngineService(
         val automaticMemoryRememberEnabled: Boolean,
         val automaticMemoryRecallEnabled: Boolean,
     ) {
-        val project get() = workspaceContext.project
+        val project get() = runtimeContext.project
     }
 
     private suspend fun buildConversationRuntimeContext(
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         conversation: Conversation,
         worker: ConversationRuntimeWorkerIdentity,
     ): ConversationRuntimeStepContext {
-        val workspaceContext = workspaceService.resolveRuntime(
-            workspaceId = conversation.workspaceId,
+        val agent = agentDomainService.findById(agentDefinitionId)
+            ?: throw IllegalStateException(
+                "Agent not found for conversation ${conversation.id.value}: ${agentDefinitionId.value}"
+            )
+        require(agent.type is AgentDefinition.Type.Builtin || agent.projectId == conversation.projectId) {
+            "Agent ${agentDefinitionId.value} does not belong to conversation project ${conversation.projectId.value}"
+        }
+        val project = conversationService.getProject(conversation.id)
+        val runtimeContext = RuntimeEnvironmentContext.ProjectBound(
+            project = project,
             workerId = worker.workerId.value,
         )
-        require(workspaceContext.project.id == conversation.projectId) {
-            "Conversation ${conversation.id.value} belongs to project ${conversation.projectId.value}, " +
-                "but workspace ${conversation.workspaceId.value} belongs to ${workspaceContext.project.id.value}"
-        }
-        val project = workspaceContext.project
         val resolvedRuntime = settingsProvider.resolveAiRuntime(agent.runtimeSelection)
         val provider = resolvedRuntime.connection.kind.provider
         val modelName = resolvedRuntime.modelConfiguration.providerModelId
@@ -778,7 +780,7 @@ class ConversationEngineService(
 
         val runtime = aiRuntimeProvider.getRuntime(
             agent.runtimeSelection,
-            workspaceContext.workspaceRootPath,
+            null,
         )
         val autoCompactionThresholdTokens = if (runtime.capabilities.supportsAutoCompaction) {
             aiModelSpecRepository.find(provider, modelName)?.autoCompactionThresholdTokens.also { threshold ->
@@ -791,12 +793,12 @@ class ConversationEngineService(
         } else {
             null
         }
-        val toolCatalog = distributedToolCatalog.snapshot(project, workspaceContext.workspace)
+        val toolCatalog = distributedToolCatalog.snapshot(project)
         val availableTools = toolCatalog.tools
         val memoryPipelineTools = aiToolProvider.getTools()
             .supportedBy(runtimeWorkerDescriptor.capabilities)
             .withoutMemoryManagementTools()
-        val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, workspaceContext)
+        val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
         val runtimeSystemPrompts = buildList {
             addAll(baseSystemPrompts)
@@ -805,7 +807,8 @@ class ConversationEngineService(
         }
 
         return ConversationRuntimeStepContext(
-            workspaceContext = workspaceContext,
+            runtimeContext = runtimeContext,
+            agent = agent,
             runtime = runtime,
             provider = provider,
             modelName = modelName,
@@ -824,7 +827,7 @@ class ConversationEngineService(
     private suspend fun appendUserMessageWithAutomaticMemory(
         conversationId: Conversation.Id,
         conversation: Conversation,
-        workspaceContext: RuntimeEnvironmentContext.WorkspaceBound,
+        runtimeContext: RuntimeEnvironmentContext,
         userMessage: Conversation.Message,
         agent: AgentDefinition,
         memorySystemPrompts: List<String>,
@@ -849,7 +852,7 @@ class ConversationEngineService(
                 conversation.currentThread,
                 userMessage,
                 agent,
-                workspaceContext,
+                runtimeContext,
                 memorySystemPrompts,
                 memoryPipelineTools,
             )
@@ -960,7 +963,7 @@ class ConversationEngineService(
     private suspend fun submitPendingMemoryRecallIfNeeded(
         conversationId: Conversation.Id,
         rootUserMessageId: Conversation.Message.Id,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         nextLlmIteration: Int,
         automaticMemoryRecallEnabled: Boolean,
     ) {
@@ -975,7 +978,7 @@ class ConversationEngineService(
                 conversationId = conversationId,
                 rootUserMessageId = rootUserMessageId,
                 targetMessageId = targetMessageId,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 followUpIteration = nextLlmIteration,
             )
         )
@@ -984,7 +987,7 @@ class ConversationEngineService(
     private fun llmCallTask(
         conversationId: Conversation.Id,
         rootUserMessageId: Conversation.Message.Id,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         iteration: Int,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
@@ -992,7 +995,7 @@ class ConversationEngineService(
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.LlmCall(
                 rootUserMessageId = rootUserMessageId,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 iteration = iteration,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
@@ -1010,7 +1013,7 @@ class ConversationEngineService(
         conversationId: Conversation.Id,
         rootUserMessageId: Conversation.Message.Id,
         targetMessageId: Conversation.Message.Id,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         followUpIteration: Int,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
@@ -1019,7 +1022,7 @@ class ConversationEngineService(
             payload = ConversationRuntimeTask.Payload.MemoryRecall(
                 rootUserMessageId = rootUserMessageId,
                 targetMessageId = targetMessageId,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 followUpIteration = followUpIteration,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
@@ -1033,7 +1036,7 @@ class ConversationEngineService(
     private suspend fun toolExecutionTask(
         conversationId: Conversation.Id,
         rootUserMessageId: Conversation.Message.Id,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         iteration: Int,
         toolCalls: List<ContentItem.ToolCall>,
         routing: ConversationRuntimeToolRoutingResult.Accepted,
@@ -1043,7 +1046,7 @@ class ConversationEngineService(
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.ToolExecution(
                 rootUserMessageId = rootUserMessageId,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 iteration = iteration,
                 toolCalls = toolCalls,
                 returnDirect = routing.returnDirect,
@@ -1058,7 +1061,7 @@ class ConversationEngineService(
         conversationId: Conversation.Id,
         rootUserMessageId: Conversation.Message.Id,
         toolResultMessageId: Conversation.Message.Id,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         iteration: Int,
         returnDirect: Boolean,
     ): ConversationRuntimeTask =
@@ -1068,7 +1071,7 @@ class ConversationEngineService(
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
                 rootUserMessageId = rootUserMessageId,
                 toolResultMessageId = toolResultMessageId,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 iteration = iteration,
                 returnDirect = returnDirect,
             ),
@@ -1096,7 +1099,7 @@ class ConversationEngineService(
         threadId: Conversation.Thread.Id,
         message: Conversation.Message,
         agent: AgentDefinition,
-        workspaceContext: RuntimeEnvironmentContext.WorkspaceBound,
+        runtimeContext: RuntimeEnvironmentContext,
         systemPrompts: List<String>,
         tools: List<AiToolCallback>,
     ): DirectStructuredMemoryWriteResult? {
@@ -1106,7 +1109,7 @@ class ConversationEngineService(
                 threadId = threadId,
                 message = message,
                 agent = agent,
-                runtimeContext = workspaceContext,
+                runtimeContext = runtimeContext,
                 runtimeSystemPrompts = systemPrompts,
                 runtimeTools = tools,
             )
@@ -1220,7 +1223,7 @@ class ConversationEngineService(
         worker: ConversationRuntimeWorkerIdentity,
         placement: QueuedMessagePlacement,
         conversation: Conversation,
-        workspaceContext: RuntimeEnvironmentContext.WorkspaceBound,
+        runtimeContext: RuntimeEnvironmentContext,
         memorySystemPrompts: List<String>,
         memoryPipelineTools: List<AiToolCallback>,
         automaticMemoryRememberEnabled: Boolean,
@@ -1235,7 +1238,7 @@ class ConversationEngineService(
             appendQueuedUserMessage(
                 conversationId = conversationId,
                 conversation = conversation,
-                workspaceContext = workspaceContext,
+                runtimeContext = runtimeContext,
                 queued = queued,
                 memorySystemPrompts = memorySystemPrompts,
                 memoryPipelineTools = memoryPipelineTools,
@@ -1248,7 +1251,7 @@ class ConversationEngineService(
     private suspend fun appendQueuedUserMessage(
         conversationId: Conversation.Id,
         conversation: Conversation,
-        workspaceContext: RuntimeEnvironmentContext.WorkspaceBound,
+        runtimeContext: RuntimeEnvironmentContext,
         queued: ConversationRuntimeTask,
         memorySystemPrompts: List<String>,
         memoryPipelineTools: List<AiToolCallback>,
@@ -1258,7 +1261,10 @@ class ConversationEngineService(
         val emittedMessages = mutableListOf<Conversation.Message>()
         val userTurn = queued.requireUserTurn()
         val userMessage = userTurn.userMessage
-        val agent = userTurn.agent
+        val agent = agentDomainService.findById(userTurn.agentDefinitionId)
+            ?: throw IllegalStateException(
+                "Agent not found for queued message ${userMessage.id.value}: ${userTurn.agentDefinitionId.value}"
+            )
 
         val userMessageAdded = addRuntimeMessageIfMissing(conversationId, userMessage)
         if (!userMessageAdded) {
@@ -1279,7 +1285,7 @@ class ConversationEngineService(
                 conversation.currentThread,
                 userMessage,
                 agent,
-                workspaceContext,
+                runtimeContext,
                 memorySystemPrompts,
                 memoryPipelineTools,
             )

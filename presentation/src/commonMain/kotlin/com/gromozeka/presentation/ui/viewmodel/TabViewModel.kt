@@ -14,7 +14,6 @@ import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
-import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceContextReference
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.ConversationDomainService
@@ -43,7 +42,6 @@ import kotlinx.datetime.Clock
 class TabViewModel(
     val conversationId: Conversation.Id,
     val projectId: Project.Id,
-    val workspaceId: Workspace.Id,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
@@ -394,8 +392,16 @@ class TabViewModel(
     }
 
     fun updateAgent(agent: AgentDefinition) {
-        _uiState.update { currentState ->
-            currentState.copy(agent = agent)
+        scope.launch {
+            val updatedConversation = conversationService.updateAgentDefinition(conversationId, agent.id)
+                ?: error("Conversation not found: ${conversationId.value}")
+            _uiState.update { currentState ->
+                currentState.copy(agent = agent)
+            }
+            log.info {
+                "Updated conversation agent: conversation=${conversationId.value} " +
+                    "agent=${updatedConversation.agentDefinitionId.value}"
+            }
         }
     }
 
@@ -475,7 +481,7 @@ class TabViewModel(
                 conversationRuntimeService.enqueueMessage(
                     conversationId = conversationId,
                     userMessage = steeredMessage.userMessage,
-                    agent = steeredMessage.agent,
+                    agentDefinitionId = steeredMessage.agentDefinitionId,
                     placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
                 )
             }.onFailure { error ->
@@ -535,7 +541,7 @@ class TabViewModel(
 
         return PendingUserMessage(
             userMessage = userMessage,
-            agent = currentState.agent,
+            agentDefinitionId = currentState.agent.id,
             placement = QueuedMessagePlacement.END_OF_TURN,
         )
     }
@@ -569,7 +575,11 @@ class TabViewModel(
         currentRequestJob = scope.launch {
             try {
                 log.debug { "Submitting message to conversation $conversationId" }
-                val accepted = conversationRuntimeService.submitMessage(conversationId, userMessage, pendingMessage.agent)
+                val accepted = conversationRuntimeService.submitMessage(
+                    conversationId,
+                    userMessage,
+                    pendingMessage.agentDefinitionId,
+                )
                 if (!accepted) {
                     _allMessages.update { messages ->
                         messages.filterNot { it.id == userMessage.id }
@@ -608,7 +618,7 @@ class TabViewModel(
             conversationRuntimeService.submitMessage(
                 conversationId = conversationId,
                 userMessage = pendingMessage.userMessage,
-                agent = pendingMessage.agent
+                agentDefinitionId = pendingMessage.agentDefinitionId,
             )
         }.onFailure { error ->
             log.warn(error) {
@@ -1102,7 +1112,7 @@ class TabViewModel(
 
 data class PendingUserMessage(
     val userMessage: Conversation.Message,
-    val agent: AgentDefinition,
+    val agentDefinitionId: AgentDefinition.Id,
     val placement: QueuedMessagePlacement,
 ) {
     val id: String get() = userMessage.id.value
@@ -1122,7 +1132,7 @@ private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMes
     userTurnOrNull()?.let { userTurn ->
         PendingUserMessage(
             userMessage = userTurn.userMessage,
-            agent = userTurn.agent,
+            agentDefinitionId = userTurn.agentDefinitionId,
             placement = placement,
         )
     }

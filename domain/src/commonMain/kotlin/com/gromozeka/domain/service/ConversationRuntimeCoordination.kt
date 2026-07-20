@@ -58,14 +58,14 @@ data class ConversationRuntimeTask(
         @SerialName("user_turn")
         data class UserTurn(
             val userMessage: Conversation.Message,
-            val agent: AgentDefinition,
+            val agentDefinitionId: AgentDefinition.Id,
         ) : Payload
 
         @Serializable
         @SerialName("llm_call")
         data class LlmCall(
             val rootUserMessageId: Conversation.Message.Id,
-            val agent: AgentDefinition,
+            val agentDefinitionId: AgentDefinition.Id,
             val iteration: Int,
         ) : Payload {
             init {
@@ -77,7 +77,7 @@ data class ConversationRuntimeTask(
         @SerialName("tool_execution")
         data class ToolExecution(
             val rootUserMessageId: Conversation.Message.Id,
-            val agent: AgentDefinition,
+            val agentDefinitionId: AgentDefinition.Id,
             val iteration: Int,
             val toolCalls: List<ContentItem.ToolCall>,
             val returnDirect: Boolean,
@@ -93,7 +93,7 @@ data class ConversationRuntimeTask(
         data class ToolResultProcessing(
             val rootUserMessageId: Conversation.Message.Id,
             val toolResultMessageId: Conversation.Message.Id,
-            val agent: AgentDefinition,
+            val agentDefinitionId: AgentDefinition.Id,
             val iteration: Int,
             val returnDirect: Boolean,
         ) : Payload {
@@ -107,7 +107,7 @@ data class ConversationRuntimeTask(
         data class MemoryRecall(
             val rootUserMessageId: Conversation.Message.Id,
             val targetMessageId: Conversation.Message.Id,
-            val agent: AgentDefinition,
+            val agentDefinitionId: AgentDefinition.Id,
             val followUpIteration: Int,
         ) : Payload {
             init {

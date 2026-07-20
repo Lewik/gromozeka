@@ -6,6 +6,7 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.ScreenCaptureController
@@ -27,6 +28,7 @@ open class AppViewModel(
     private val scope: CoroutineScope,
     private val screenCaptureController: ScreenCaptureController,
     private val defaultAgentProvider: DefaultAgentProvider,
+    private val agentService: AgentDomainService,
     private val tokenStatsService: ConversationTokenStatsService,
 ) : TabManager {
     private val log = KLoggers.logger(this)
@@ -47,7 +49,6 @@ open class AppViewModel(
 
     override suspend fun createTab(
         projectId: Project.Id,
-        workspaceId: Workspace.Id,
         agent: AgentDefinition?,
         conversationId: Conversation.Id?,
         initialMessage: Conversation.Message?,
@@ -57,24 +58,29 @@ open class AppViewModel(
 
         val tabId = Tab.Id(uuid7())
 
-        val tabAgent = agent ?: defaultAgentProvider.getDefault()
-
         val conversation = if (conversationId != null) {
             val existing = conversationService.findById(conversationId)
                 ?: error("Conversation not found: $conversationId")
             require(existing.projectId == projectId) {
                 "Conversation ${conversationId.value} belongs to project ${existing.projectId.value}, not ${projectId.value}"
             }
-            require(existing.workspaceId == workspaceId) {
-                "Conversation ${conversationId.value} belongs to workspace ${existing.workspaceId.value}, not ${workspaceId.value}"
-            }
             existing
         } else {
+            val newConversationAgent = agent ?: defaultAgentProvider.getDefault()
             conversationService.create(
                 projectId = projectId,
-                workspaceId = workspaceId,
-                agentDefinitionId = tabAgent.id,
+                agentDefinitionId = newConversationAgent.id,
             )
+        }
+        val tabAgent = agentService.findById(conversation.agentDefinitionId)
+            ?: error(
+                "Agent not found for conversation ${conversation.id.value}: " +
+                    conversation.agentDefinitionId.value
+            )
+        if (agent != null) {
+            require(agent.id == tabAgent.id) {
+                "Conversation ${conversation.id.value} uses agent ${tabAgent.id.value}, not ${agent.id.value}"
+            }
         }
         mergeConversationSnapshots(listOf(conversation))
 
@@ -84,7 +90,6 @@ open class AppViewModel(
 
         val initialTabUiState = UIState.Tab(
             projectId = projectId,
-            workspaceId = workspaceId,
             conversationId = conversation.id,
             activeMessageInstructionIds = settingsService.settingsFlow.value.userProfile.messageInstructionGroups
                 .map { group -> group.controls[group.selectedByDefault].data.id }
@@ -98,7 +103,6 @@ open class AppViewModel(
         val tabViewModel = TabViewModel(
             conversationId = conversation.id,
             projectId = projectId,
-            workspaceId = workspaceId,
             conversationRuntimeService = conversationRuntimeService,
             conversationService = conversationService,
             messageSquashGenerationService = messageSquashGenerationService,
@@ -114,7 +118,7 @@ open class AppViewModel(
         _tabs.value = updatedTabs
 
         val newTabIndex = updatedTabs.size - 1
-        log.info("Created tab at index $newTabIndex for project=${projectId.value}, workspace=${workspaceId.value}")
+        log.info("Created tab at index $newTabIndex for project=${projectId.value}")
 
         if (setAsCurrent) {
             _currentTabIndex.value = newTabIndex
@@ -203,7 +207,6 @@ open class AppViewModel(
             conversationId = this.conversationId,
             agentId = uiState.agent.id,
             projectId = this.projectId,
-            workspaceId = this.workspaceId,
             isWaitingForResponse = uiState.isWaitingForResponse,
             parentTabId = uiState.parentTabId?.let { Tab.Id(it) }
         )
@@ -245,21 +248,26 @@ open class AppViewModel(
                 require(conversation.projectId == tabUiState.projectId) {
                     "Saved tab project does not match conversation ${conversation.id.value}"
                 }
-                require(conversation.workspaceId == tabUiState.workspaceId) {
-                    "Saved tab workspace does not match conversation ${conversation.id.value}"
-                }
+                val agent = agentService.findById(conversation.agentDefinitionId)
+                    ?: error(
+                        "Agent not found for conversation ${conversation.id.value}: " +
+                            conversation.agentDefinitionId.value
+                    )
+                val restoredUiState = tabUiState.copy(
+                    projectId = conversation.projectId,
+                    agent = agent,
+                )
 
                 val tabViewModel = TabViewModel(
                     conversationId = conversation.id,
                     projectId = tabUiState.projectId,
-                    workspaceId = tabUiState.workspaceId,
                     conversationRuntimeService = conversationRuntimeService,
                     conversationService = conversationService,
                     messageSquashGenerationService = messageSquashGenerationService,
                     soundNotificationService = soundNotificationService,
                     settingsService = settingsService,
                     scope = scope,
-                    initialTabUiState = tabUiState,
+                    initialTabUiState = restoredUiState,
                     screenCaptureController = screenCaptureController,
                     tokenStatsService = tokenStatsService,
                 )

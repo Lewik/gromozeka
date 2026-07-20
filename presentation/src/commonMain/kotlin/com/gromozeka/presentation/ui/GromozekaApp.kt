@@ -41,7 +41,6 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
-import com.gromozeka.domain.model.Workspace
 import com.gromozeka.presentation.AppComponents
 import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
@@ -124,7 +123,7 @@ fun GromozekaAppContent(
         }
     }
 
-    val createSession: (Project.Id, Workspace.Id, String?) -> Unit = { projectId, workspaceId, initialText ->
+    val createSession: (Project.Id, String?) -> Unit = { projectId, initialText ->
         coroutineScope.launch {
             runCatching {
                 val initialMessage = initialText?.let { text ->
@@ -139,7 +138,6 @@ fun GromozekaAppContent(
                 }
                 val tabIndex = appComponents.appViewModel.createTab(
                     projectId = projectId,
-                    workspaceId = workspaceId,
                     initialMessage = initialMessage,
                     initiator = ConversationInitiator.User,
                 )
@@ -148,25 +146,25 @@ fun GromozekaAppContent(
         }
     }
 
-    val createNewSession: (Project, Workspace) -> Unit = { project, workspace ->
-        createSession(project.id, workspace.id, null)
+    val createNewSession: (Project) -> Unit = { project ->
+        createSession(project.id, null)
     }
 
-    val createNewSessionInCurrentWorkspace: () -> Unit = {
+    val createNewSessionInCurrentProject: () -> Unit = {
         val tab = currentTab
         if (tab == null) {
-            log.warn { "Cannot create a session without an explicitly selected workspace" }
+            log.warn { "Cannot create a session without an explicitly selected project" }
         } else {
-            createSession(tab.projectId, tab.workspaceId, null)
+            createSession(tab.projectId, null)
         }
     }
 
     val createNewSessionWithMessage: (String) -> Unit = { initialMessage ->
         val tab = currentTab
         if (tab == null) {
-            log.warn { "Cannot create a session without an explicitly selected workspace" }
+            log.warn { "Cannot create a session without an explicitly selected project" }
         } else {
-            createSession(tab.projectId, tab.workspaceId, initialMessage)
+            createSession(tab.projectId, initialMessage)
         }
     }
 
@@ -196,7 +194,7 @@ fun GromozekaAppContent(
                 .onPreviewKeyEvent { event ->
                     when {
                         event.key == Key.T && event.isMetaPressed && event.type == KeyEventType.KeyDown -> {
-                            createNewSessionInCurrentWorkspace()
+                            createNewSessionInCurrentProject()
                             true
                         }
 
@@ -350,7 +348,7 @@ fun GromozekaAppContent(
                                                     val tabViewModel = currentTab!!
                                                     SessionScreen(
                                                         viewModel = tabViewModel,
-                                                        onNewSession = createNewSessionInCurrentWorkspace,
+                                                        onNewSession = createNewSessionInCurrentProject,
                                                         onForkSession = {
                                                             coroutineScope.launch {
                                                                 runCatching {
@@ -360,7 +358,6 @@ fun GromozekaAppContent(
                                                                         appComponents.conversationService.fork(currentConversationId)
                                                                     val tabIndex = appComponents.appViewModel.createTab(
                                                                         projectId = forkedConversation.projectId,
-                                                                        workspaceId = forkedConversation.workspaceId,
                                                                         conversationId = forkedConversation.id,
                                                                         initiator = ConversationInitiator.User
                                                                     )
@@ -373,11 +370,9 @@ fun GromozekaAppContent(
                                                         onRestartSession = {
                                                             coroutineScope.launch {
                                                                 val projectId = currentTab!!.projectId
-                                                                val workspaceId = currentTab!!.workspaceId
                                                                 val oldIndex = currentTabIndex!!
                                                                 appComponents.appViewModel.createTab(
                                                                     projectId = projectId,
-                                                                    workspaceId = workspaceId,
                                                                     initiator = ConversationInitiator.User
                                                                 )
                                                                 appComponents.appViewModel.closeTab(oldIndex)
@@ -468,6 +463,7 @@ fun GromozekaAppContent(
                                                         when (selectedTabIndex) {
                                                             1 -> {
                                                                 AgentConstructorScreen(
+                                                                    projectId = tabs.firstOrNull()?.projectId,
                                                                     agentService = appComponents.agentService,
                                                                     promptService = appComponents.promptService,
                                                                     settingsService = appComponents.settingsService,
@@ -490,7 +486,7 @@ fun GromozekaAppContent(
                                                                     settingsService = appComponents.settingsService,
                                                                     ollamaModelService = appComponents.ollamaModelService,
                                                                     coroutineScope = coroutineScope,
-                                                                    onOpenTab = createNewSessionInCurrentWorkspace,
+                                                                    onOpenTab = createNewSessionInCurrentProject,
                                                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                                                     fullScreen = true,
                                                                     contentMode = SettingsPanelContentMode.AiRuntime,
@@ -504,7 +500,6 @@ fun GromozekaAppContent(
                                                                     coroutineScope = coroutineScope,
                                                                     onNewSession = createNewSession,
                                                                     projectService = appComponents.projectService,
-                                                                    workspaceCatalogService = appComponents.workspaceCatalogService,
                                                                     conversationTreeService = appComponents.conversationService,
                                                                     appViewModel = appComponents.appViewModel,
                                                                     searchViewModel = appComponents.conversationSearchViewModel,
@@ -530,7 +525,9 @@ fun GromozekaAppContent(
                                             Box(modifier = Modifier.testTag(UiTestTag.RuntimePanel.value)) {
                                                 ConversationRuntimePanel(
                                                     isVisible = showRuntimePanel,
+                                                    projectId = tabViewModel.projectId,
                                                     currentAgent = tabUiState.agent,
+                                                    agentCatalogImportService = appComponents.agentCatalogImportService,
                                                     settings = currentSettings,
                                                     tokenStats = tokenStats,
                                                     isWaitingForResponse = isWaitingForResponse,
@@ -554,6 +551,7 @@ fun GromozekaAppContent(
                                             Box(modifier = Modifier.testTag(UiTestTag.PromptsPanel.value)) {
                                                 AgentPanel(
                                                     isVisible = showPromptsPanel,
+                                                    projectId = tabViewModel.projectId,
                                                     currentAgent = tabUiState.agent,
                                                     onAgentChange = { tabViewModel.updateAgent(it) },
                                                     onClose = { setPromptsPanel(false) },
@@ -585,7 +583,7 @@ fun GromozekaAppContent(
                                     settingsService = appComponents.settingsService,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
-                                    onOpenTab = createNewSessionInCurrentWorkspace,
+                                    onOpenTab = createNewSessionInCurrentProject,
                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                     contentMode = SettingsPanelContentMode.Quick
                                 )
@@ -623,7 +621,9 @@ fun GromozekaAppContent(
                                 ) {
                                     ConversationRuntimePanel(
                                         isVisible = showRuntimePanel,
+                                        projectId = tabViewModel.projectId,
                                         currentAgent = tabUiState.agent,
+                                        agentCatalogImportService = appComponents.agentCatalogImportService,
                                         settings = currentSettings,
                                         tokenStats = tokenStats,
                                         isWaitingForResponse = isWaitingForResponse,
@@ -654,6 +654,7 @@ fun GromozekaAppContent(
                                 ) {
                                     AgentPanel(
                                         isVisible = showPromptsPanel,
+                                        projectId = tabViewModel.projectId,
                                         currentAgent = tabUiState.agent,
                                         onAgentChange = { tabViewModel.updateAgent(it) },
                                         onClose = { setPromptsPanel(false) },
@@ -685,7 +686,7 @@ fun GromozekaAppContent(
                                     settingsService = appComponents.settingsService,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
-                                    onOpenTab = createNewSessionInCurrentWorkspace,
+                                    onOpenTab = createNewSessionInCurrentProject,
                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                     fullScreen = true,
                                     slideFromRight = true,

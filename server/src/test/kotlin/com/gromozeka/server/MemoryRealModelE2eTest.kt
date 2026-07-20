@@ -45,6 +45,7 @@ import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
+import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.ConversationDomainService
@@ -165,6 +166,7 @@ class MemoryRealModelE2eTest {
             val aiToolProvider = context.getBean(AiToolProvider::class.java)
             val projectDomainService = context.getBean(ProjectDomainService::class.java)
             val promptDomainService = context.getBean(PromptDomainService::class.java)
+            val agentRepository = context.getBean(AgentRepository::class.java)
             val workspaceDomainService = context.getBean(WorkspaceDomainService::class.java)
             val store = context.getBean(MemoryStore::class.java)
             val dataSource = context.getBean(DataSource::class.java)
@@ -206,6 +208,7 @@ class MemoryRealModelE2eTest {
                                 aiToolProvider = aiToolProvider,
                                 projectDomainService = projectDomainService,
                                 promptDomainService = promptDomainService,
+                                agentRepository = agentRepository,
                                 workspaceDomainService = workspaceDomainService,
                                 store = store,
                                 case = case,
@@ -368,6 +371,7 @@ class MemoryRealModelE2eTest {
         aiToolProvider: AiToolProvider,
         projectDomainService: ProjectDomainService,
         promptDomainService: PromptDomainService,
+        agentRepository: AgentRepository,
         workspaceDomainService: WorkspaceDomainService,
         store: MemoryStore,
         case: MemoryE2eCase,
@@ -392,7 +396,8 @@ class MemoryRealModelE2eTest {
             rootPath = workspaceRootPath.absolutePathString(),
         ).toRuntimeContext()
 
-        val prompt = promptDomainService.createEnvironmentPrompt(
+        val prompt = promptDomainService.createProjectPrompt(
+            projectId = project.id,
             name = "Memory E2E system prompt",
             content = """
                 You are a concise assistant inside a Gromozeka memory e2e test.
@@ -401,14 +406,13 @@ class MemoryRealModelE2eTest {
                 If the question asks for only a short value, return only that value.
             """.trimIndent(),
         )
-        val agent = buildAgent(modelName, prompt.id)
+        val agent = agentRepository.save(buildAgent(project.id, prompt.id))
         val conversations = mutableMapOf<String, Conversation>()
         val seedResults = mutableListOf<ExecutedSeedTurn>()
         suspend fun conversation(sessionId: String): Conversation {
             conversations[sessionId]?.let { return it }
             val created = conversationService.create(
                 projectId = project.id,
-                workspaceId = workspaceContext.workspace.id,
                 displayName = "${case.id}::$sessionId",
                 agentDefinitionId = agent.id,
             )
@@ -1445,7 +1449,7 @@ class MemoryRealModelE2eTest {
                 conversationEngineService.submitMessage(
                     conversationId = conversation.id,
                     userMessage = userMessage,
-                    agent = agent,
+                    agentDefinitionId = agent.id,
                 ),
                 "Runtime rejected submitted E2E message ${userMessage.id.value}",
             )
@@ -1485,19 +1489,20 @@ class MemoryRealModelE2eTest {
         ).toLong()
 
     private fun buildAgent(
-        modelName: String,
+        projectId: com.gromozeka.domain.model.Project.Id,
         promptId: com.gromozeka.domain.model.Prompt.Id,
     ): AgentDefinition {
         val now = Clock.System.now()
         return AgentDefinition(
-            id = AgentDefinition.Id("memory-e2e-${uuid7()}"),
+            id = AgentDefinition.Id("project:${projectId.value}:agent:memory-e2e"),
+            projectId = projectId,
             name = "Memory E2E",
             prompts = listOf(promptId),
             runtimeSelection = ServerTestHarness.openAiSubscriptionRuntimeSelection(),
             runtimeOverrides = AiRuntimeOverrides(maxOutputTokens = 2_048),
             tools = emptyList(),
-            description = "Inline agent used only for real-model memory e2e tests",
-            type = AgentDefinition.Type.Inline,
+            description = "Project agent used only for real-model memory e2e tests",
+            type = AgentDefinition.Type.Project,
             createdAt = now,
             updatedAt = now,
         )

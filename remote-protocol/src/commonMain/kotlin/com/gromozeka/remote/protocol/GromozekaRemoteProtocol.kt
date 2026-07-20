@@ -2,6 +2,8 @@
 
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.AgentCatalogImportProposal
+import com.gromozeka.domain.model.AgentCatalogImportResult
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MemoryAction
@@ -74,17 +76,29 @@ data class FindAgentRequest(
 
 @Serializable
 @SerialName("find_agents")
-data object FindAgentsRequest : ClientRequest
+data class FindAgentsRequest(
+    val projectId: Project.Id? = null,
+) : ClientRequest
 
 @Serializable
 @SerialName("create_agent")
 data class CreateAgentRequest(
+    val projectId: Project.Id,
     val name: String,
     val prompts: List<Prompt.Id>,
     val runtimeSelection: AiRuntimeSelection,
     val tools: List<String> = emptyList(),
     val description: String? = null,
-    val type: AgentDefinition.Type,
+) : ClientRequest
+
+@Serializable
+@SerialName("copy_builtin_agent")
+data class CopyBuiltinAgentRequest(
+    val projectId: Project.Id,
+    val sourceAgentId: AgentDefinition.Id,
+    val name: String,
+    val prompts: List<Prompt.Id>,
+    val description: String? = null,
 ) : ClientRequest
 
 @Serializable
@@ -106,6 +120,28 @@ data class DeleteAgentRequest(
 data object CountAgentsRequest : ClientRequest
 
 @Serializable
+@SerialName("find_pending_agent_catalog_imports")
+data class FindPendingAgentCatalogImportsRequest(
+    val projectId: Project.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("import_agent_catalog")
+data class ImportAgentCatalogRequest(
+    val workspaceId: Workspace.Id,
+    val workerId: String,
+    val catalogHash: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("skip_agent_catalog_import")
+data class SkipAgentCatalogImportRequest(
+    val workspaceId: Workspace.Id,
+    val workerId: String,
+    val catalogHash: String,
+) : ClientRequest
+
+@Serializable
 @SerialName("find_prompt")
 data class FindPromptRequest(
     val promptId: Prompt.Id,
@@ -113,32 +149,17 @@ data class FindPromptRequest(
 
 @Serializable
 @SerialName("find_prompts")
-data object FindPromptsRequest : ClientRequest
+data class FindPromptsRequest(
+    val projectId: Project.Id? = null,
+) : ClientRequest
 
 @Serializable
-@SerialName("refresh_prompts")
-data object RefreshPromptsRequest : ClientRequest
-
-@Serializable
-@SerialName("create_environment_prompt")
-data class CreateEnvironmentPromptRequest(
+@SerialName("create_project_prompt")
+data class CreateProjectPromptRequest(
+    val projectId: Project.Id,
     val name: String,
     val content: String,
 ) : ClientRequest
-
-@Serializable
-@SerialName("copy_builtin_prompt_to_user")
-data class CopyBuiltinPromptToUserRequest(
-    val promptId: Prompt.Id,
-) : ClientRequest
-
-@Serializable
-@SerialName("reset_all_builtin_prompts")
-data object ResetAllBuiltinPromptsRequest : ClientRequest
-
-@Serializable
-@SerialName("import_all_claude_md")
-data object ImportAllClaudeMdRequest : ClientRequest
 
 @Serializable
 @SerialName("create_project")
@@ -164,7 +185,6 @@ data class UpdateProjectLastUsedRequest(
 @SerialName("create_conversation")
 data class CreateConversationRequest(
     val projectId: Project.Id,
-    val workspaceId: Workspace.Id,
     val agentDefinitionId: AgentDefinition.Id,
     val displayName: String = "",
 ) : ClientRequest
@@ -178,12 +198,6 @@ data class FindConversationRequest(
 @Serializable
 @SerialName("get_project")
 data class GetProjectRequest(
-    val conversationId: Conversation.Id,
-) : ClientRequest
-
-@Serializable
-@SerialName("get_workspace")
-data class GetWorkspaceRequest(
     val conversationId: Conversation.Id,
 ) : ClientRequest
 
@@ -232,6 +246,13 @@ data class DeleteConversationRequest(
 data class UpdateConversationDisplayNameRequest(
     val conversationId: Conversation.Id,
     val displayName: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("update_conversation_agent")
+data class UpdateConversationAgentRequest(
+    val conversationId: Conversation.Id,
+    val agentDefinitionId: AgentDefinition.Id,
 ) : ClientRequest
 
 @Serializable
@@ -392,7 +413,7 @@ data class StopObserveConversationCommand(
 data class SubmitMessageRequest(
     val conversationId: Conversation.Id,
     val userMessage: Conversation.Message,
-    val agent: AgentDefinition,
+    val agentDefinitionId: AgentDefinition.Id,
 ) : ClientRequest
 
 @Serializable
@@ -400,7 +421,7 @@ data class SubmitMessageRequest(
 data class EnqueueMessageRequest(
     val conversationId: Conversation.Id,
     val userMessage: Conversation.Message,
-    val agent: AgentDefinition,
+    val agentDefinitionId: AgentDefinition.Id,
     val placement: QueuedMessagePlacement,
 ) : ClientRequest
 
@@ -485,6 +506,18 @@ data class AgentsResponse(
 @SerialName("count")
 data class CountResponse(
     val count: Int,
+) : ServerResponse
+
+@Serializable
+@SerialName("agent_catalog_import_proposals")
+data class AgentCatalogImportProposalsResponse(
+    val proposals: List<AgentCatalogImportProposal>,
+) : ServerResponse
+
+@Serializable
+@SerialName("agent_catalog_import_result")
+data class AgentCatalogImportResultResponse(
+    val result: AgentCatalogImportResult,
 ) : ServerResponse
 
 @Serializable

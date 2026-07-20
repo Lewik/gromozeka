@@ -2,10 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Workspace
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -35,15 +32,7 @@ import kotlin.test.assertTrue
 
 class InMemoryConversationRuntimeStoresTest {
     private val conversationId = Conversation.Id("conversation-1")
-    private val agent = AgentDefinition(
-        id = AgentDefinition.Id("agent-1"),
-        name = "Test Agent",
-        prompts = listOf(Prompt.Id("prompt-1")),
-        runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
-        type = AgentDefinition.Type.Inline,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now(),
-    )
+    private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
     fun `coordinator claims only head delivered task pointer`() = runBlocking {
@@ -572,7 +561,7 @@ class InMemoryConversationRuntimeStoresTest {
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.UserTurn(
                 userMessage = message,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
             ),
             placement = placement,
             idempotencyKey = "test:$messageId",
@@ -592,7 +581,7 @@ class InMemoryConversationRuntimeStoresTest {
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.LlmCall(
                 rootUserMessageId = Conversation.Message.Id("root-message"),
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 iteration = 1,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,

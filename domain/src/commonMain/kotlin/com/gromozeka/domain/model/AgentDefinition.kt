@@ -11,37 +11,32 @@ import kotlin.jvm.JvmInline
 /**
  * Agent definition - reusable configuration template for AI agent behavior.
  *
- * AgentDefinition is a data class representing agent configuration that can be:
- * - Stored as files (builtin, global, workspace-specific)
- * - Created dynamically (inline)
- * - Reused across multiple conversations
+ * Builtin definitions are immutable blueprints. Project definitions are mutable
+ * runtime entities that may be imported from a worker workspace or created in UI.
  *
  * Definition includes:
  * - Behavior (prompts, tools)
  * - AI configuration (provider, model)
  * - Metadata (name, description, type)
  *
- * Runtime tasks carry this definition so each independently claimed step uses
- * the same immutable agent configuration.
- *
  * This is an immutable value type - use copy() to create modified versions.
  *
- * @property id unique agent identifier. File-backed agents store it in JSON,
- * and loaders verify it against the expected storage-derived id.
+ * @property id unique agent identifier
+ * @property projectId owning project for project definitions, null for builtins
  * @property name agent role name displayed in UI (e.g., "Code Reviewer", "Researcher")
  * @property prompts ordered list of prompt IDs defining agent behavior
  * @property runtimeSelection model configuration used to create the runtime for this agent.
  * @property runtimeOverrides optional per-agent overrides on top of the selected model configuration.
  * @property tools list of available tool names for this agent
  * @property description optional human-readable explanation of agent's purpose
- * @property type agent location type. File-backed agents store it in JSON,
- * and loaders verify it against the place where the file was found.
+ * @property type definition scope
  * @property createdAt timestamp when agent was created (immutable)
  * @property updatedAt timestamp of last modification (name, prompts, or description change)
  */
 @Serializable
 data class AgentDefinition(
     val id: Id,
+    val projectId: Project.Id? = null,
     val name: String,
     val prompts: List<Prompt.Id>,
     val runtimeSelection: AiRuntimeSelection,
@@ -52,6 +47,12 @@ data class AgentDefinition(
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
+    init {
+        require((type is Type.Builtin) == (projectId == null)) {
+            "Builtin agents must not belong to a project and project agents must have a project"
+        }
+    }
+
     /**
      * Unique agent identifier.
      */
@@ -60,9 +61,7 @@ data class AgentDefinition(
     value class Id(val value: String)
 
     /**
-     * Agent location type.
-     * Type determines where agent is stored and how its ID is resolved.
-     * ID contains relative path specific to each type.
+     * Agent definition scope.
      */
     @Serializable
     @JsonClassDiscriminator("kind")
@@ -77,31 +76,10 @@ data class AgentDefinition(
         object Builtin : Type()
 
         /**
-         * Global agent stored in user's home directory.
-         * Available across all projects for this user.
-         * ID format: "agents/my-agent.json" (relative to ~/.gromozeka/)
+         * Mutable agent owned by one logical project.
          */
         @Serializable
-        @SerialName("global")
-        object Global : Type()
-
-        /**
-         * Workspace-specific agent stored in the mounted filesystem tree.
-         * Versioned with workspace code.
-         * ID format: "workspace:architect.agent.json"
-         */
-        @Serializable
-        @SerialName("workspace")
-        object Workspace : Type()
-
-        /**
-         * Inline agent created dynamically (e.g., via MCP).
-         * Persisted by the runtime repository, not as a filesystem agent file.
-         * ID format: UUID string
-         */
-        @Serializable
-        @SerialName("inline")
-        object Inline : Type()
+        @SerialName("project")
+        object Project : Type()
     }
-
 }

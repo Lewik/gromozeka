@@ -29,8 +29,8 @@ Typical code-writing specialist:
   "builtin:common.knowledge.md",
   "builtin:memory.knowledge.md",
   "builtin:developer.role.md",
-  "workspace:project-common.knowledge.md",
-  "workspace:<specialist>.role.md",
+  "project:project-common.knowledge.md",
+  "project:<specialist>.role.md",
   "env"
 ]
 ```
@@ -68,12 +68,12 @@ Rules:
 Builtin:
 
 ```text
-server/src/main/resources/
+application/src/jvmMain/resources/
 ├── agents/
 └── prompts/
 ```
 
-Project:
+Project source catalog:
 
 ```text
 .gromozeka/
@@ -81,37 +81,41 @@ Project:
 └── prompts/
 ```
 
-Global user prompts and agents live in `~/.gromozeka/`.
+The worker scans direct files in the project source catalog. When its content
+hash changes, the Runtime panel offers one atomic import of all prompts and
+agents into the logical project on the server.
 
 ## Scope Rules
 
 - `builtin:` → shipped with the application
-- `global:` → user-wide local customization
-- `workspace:` → workspace-specific, versioned with the filesystem checkout
+- `project:` → a source file from the current project's imported catalog
+- `env` → runtime-generated environment context
 
 Prompt references are concatenated in the order listed in the agent JSON.
+Builtin agents may reference only builtin prompts and `env`. Project agents may
+also reference prompts from their own project.
 
 ## Agent Definition Rules
 
-Agent ids for builtin and filesystem-backed agents are derived from file names.
+Builtin IDs are derived from resource file names. Imported project IDs are
+derived from the logical project ID and source file name.
 
 Implications:
 - file name stability matters
-- renaming an `.agent.json` file changes the persisted id
+- renaming an imported `.agent.json` file creates another logical agent
+- an import updates matching agents and prompts but does not delete sources
+  missing from a later catalog
 - prefer changing prompt content, display name, and description before renaming the file itself
 
-Minimal fields:
-- `id`
+Required project source fields:
 - `name`
 - `prompts`
+- `runtimeSelection`
 
-Common optional fields:
+Optional project source fields:
 - `description`
-- `aiProvider`
-- `modelName`
-- `maxTokens`
-- `thinking`
-- `outputConfig`
+- `runtimeOverrides`
+- `tools`
 
 ## Ownership Rules
 

@@ -24,10 +24,10 @@ internal class RemoteConversationRuntimeService(
     override suspend fun submitMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
     ): Boolean =
         client.requestTyped<SubmitMessageRequest, OperationResultResponse>(
-            SubmitMessageRequest(conversationId, userMessage, agent)
+            SubmitMessageRequest(conversationId, userMessage, agentDefinitionId)
         ).success
 
     override fun observeConversation(
@@ -39,11 +39,11 @@ internal class RemoteConversationRuntimeService(
     override suspend fun enqueueMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
     ): Boolean =
         client.requestTyped<EnqueueMessageRequest, OperationResultResponse>(
-            EnqueueMessageRequest(conversationId, userMessage, agent, placement)
+            EnqueueMessageRequest(conversationId, userMessage, agentDefinitionId, placement)
         ).success
 
     override suspend fun cancelQueuedMessage(

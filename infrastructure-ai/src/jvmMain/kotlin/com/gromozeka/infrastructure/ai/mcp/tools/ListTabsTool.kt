@@ -37,7 +37,7 @@ class ListTabsTool(
                         val status = if (tab.isWaitingForResponse) "(waiting)" else "(ready)"
                         val parentInfo = tab.parentTabId?.let { " parent:${it.value}" } ?: ""
 
-                        "[$index] project=${tab.projectId.value} workspace=${tab.workspaceId.value} $status\n" +
+                        "[$index] project=${tab.projectId.value} $status\n" +
                                 "    Tab ID: ${tab.tabId.value} | Conversation: ${tab.conversationId.value}$parentInfo"
                     }.joinToString("\n")
         }

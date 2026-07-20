@@ -33,6 +33,7 @@ dependencies {
 
     implementation(libs.spring.boot.starter)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.klog)
 
     testImplementation(libs.spring.boot.starter.test)

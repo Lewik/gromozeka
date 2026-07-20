@@ -110,18 +110,27 @@ data class WorkspaceExecutionContext(
 }
 
 /**
- * Environment available to non-filesystem runtime work.
+ * Environment available to runtime work.
  *
- * Standalone operations such as global memory work have no project or
- * workspace. Conversation work is workspace-bound, but its current worker may
- * still have no local mount. Filesystem operations use
- * [WorkspaceExecutionContext] instead.
+ * Conversations are project-bound without selecting a default filesystem tree.
+ * Filesystem operations resolve an exact [WorkspaceExecutionContext].
  */
 sealed interface RuntimeEnvironmentContext {
     val workerId: String
     val workspaceRootPath: String?
 
     data class Standalone(
+        override val workerId: String,
+    ) : RuntimeEnvironmentContext {
+        init {
+            require(workerId.isNotBlank()) { "Runtime worker id must not be blank" }
+        }
+
+        override val workspaceRootPath: String? = null
+    }
+
+    data class ProjectBound(
+        val project: Project,
         override val workerId: String,
     ) : RuntimeEnvironmentContext {
         init {

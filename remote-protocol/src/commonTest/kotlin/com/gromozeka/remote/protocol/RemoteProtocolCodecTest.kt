@@ -2,16 +2,15 @@ package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SpeechAudioFormat
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.datetime.Instant
@@ -189,22 +188,14 @@ class RemoteProtocolCodecTest {
             content = listOf(Conversation.Message.ContentItem.UserMessage("Continue after the current tool result")),
             createdAt = Instant.parse("2026-05-20T00:00:00Z"),
         )
-        val agent = AgentDefinition(
-            id = AgentDefinition.Id("agent-queued-1"),
-            name = "Queued Agent",
-            prompts = listOf(Prompt.Id("prompt-1")),
-            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
-            type = AgentDefinition.Type.Inline,
-            createdAt = Instant.parse("2026-05-20T00:00:00Z"),
-            updatedAt = Instant.parse("2026-05-20T00:00:00Z"),
-        )
+        val agentDefinitionId = AgentDefinition.Id("agent-queued-1")
 
         val enqueueEnvelope = GromozekaClientEnvelope(
             id = "enqueue-1",
             payload = EnqueueMessageRequest(
                 conversationId = Conversation.Id("conversation-queued-1"),
                 userMessage = userMessage,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
             )
         )
@@ -214,7 +205,7 @@ class RemoteProtocolCodecTest {
 
         assertEquals(QueuedMessagePlacement.AFTER_TOOL_RESULT, decodedEnqueue.placement)
         assertEquals("message-queued-1", decodedEnqueue.userMessage.id.value)
-        assertEquals("Queued Agent", decodedEnqueue.agent.name)
+        assertEquals(agentDefinitionId, decodedEnqueue.agentDefinitionId)
 
         val cancelEnvelope = GromozekaClientEnvelope(
             id = "cancel-queued-1",
@@ -239,22 +230,14 @@ class RemoteProtocolCodecTest {
             content = listOf(Conversation.Message.ContentItem.UserMessage("Submit this")),
             createdAt = Instant.parse("2026-05-20T00:00:00Z"),
         )
-        val agent = AgentDefinition(
-            id = AgentDefinition.Id("agent-submit-1"),
-            name = "Submit Agent",
-            prompts = listOf(Prompt.Id("prompt-1")),
-            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
-            type = AgentDefinition.Type.Inline,
-            createdAt = Instant.parse("2026-05-20T00:00:00Z"),
-            updatedAt = Instant.parse("2026-05-20T00:00:00Z"),
-        )
+        val agentDefinitionId = AgentDefinition.Id("agent-submit-1")
 
         val submitEnvelope = GromozekaClientEnvelope(
             id = "submit-1",
             payload = SubmitMessageRequest(
                 conversationId = Conversation.Id("conversation-submit-1"),
                 userMessage = userMessage,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
             )
         )
         val decodedSubmit = RemoteProtocolCodec.decodeClientBinary(
@@ -263,7 +246,7 @@ class RemoteProtocolCodecTest {
 
         assertEquals("conversation-submit-1", decodedSubmit.conversationId.value)
         assertEquals("message-submit-1", decodedSubmit.userMessage.id.value)
-        assertEquals("Submit Agent", decodedSubmit.agent.name)
+        assertEquals(agentDefinitionId, decodedSubmit.agentDefinitionId)
 
         val observeEnvelope = GromozekaClientEnvelope(
             id = "observe-1",
@@ -359,6 +342,8 @@ class RemoteProtocolCodecTest {
         val commandTask = CommandTask(
             id = CommandTask.Id("command-task-1"),
             conversationId = Conversation.Id("conversation-command-1"),
+            workerId = ConversationRuntimeWorkerId("worker-command-1"),
+            workspaceId = Workspace.Id("workspace-command-1"),
             command = "./gradlew build",
             workingDirectory = "/workspace",
             status = CommandTask.Status.WORKING,

@@ -1,10 +1,12 @@
 package com.gromozeka.infrastructure.db.persistence.tables
 
+import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.datetime.timestamp
 
 internal object Prompts : Table("prompts") {
     val id = varchar("id", 255)
+    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
     val name = varchar("name", 255)
     val content = text("content")
     val sourceType = varchar("source_type", 50)

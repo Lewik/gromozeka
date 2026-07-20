@@ -20,7 +20,6 @@ class ExposedConversationRepository : ConversationRepository {
         Conversations.insert {
             it[id] = conversation.id.value
             it[projectId] = conversation.projectId.value
-            it[workspaceId] = conversation.workspaceId.value
             it[agentDefinitionId] = conversation.agentDefinitionId.value
             it[displayName] = conversation.displayName
             it[pinnedAt] = conversation.pinnedAt?.toKotlin()
@@ -91,7 +90,6 @@ class ExposedConversationRepository : ConversationRepository {
     private fun ResultRow.toConversation() = Conversation(
         id = Conversation.Id(this[Conversations.id]),
         projectId = Project.Id(this[Conversations.projectId]),
-        workspaceId = com.gromozeka.domain.model.Workspace.Id(this[Conversations.workspaceId]),
         agentDefinitionId = com.gromozeka.domain.model.AgentDefinition.Id(this[Conversations.agentDefinitionId]),
         displayName = this[Conversations.displayName],
         pinnedAt = this[Conversations.pinnedAt]?.toKotlinx(),

@@ -4,7 +4,6 @@ import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
-import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceContextReference
 import kotlinx.serialization.Serializable
 
@@ -29,7 +28,6 @@ data class UIState(
     @Serializable
     data class Tab(
         val projectId: Project.Id,
-        val workspaceId: Workspace.Id,
         val conversationId: Conversation.Id,
         val activeMessageInstructionIds: Set<String> = emptySet(),
         val userInput: String = "",

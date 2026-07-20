@@ -9,7 +9,7 @@ interface ConversationRuntimeService {
     suspend fun submitMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
     ): Boolean
 
     fun observeConversation(
@@ -20,7 +20,7 @@ interface ConversationRuntimeService {
     suspend fun enqueueMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
     ): Boolean
 

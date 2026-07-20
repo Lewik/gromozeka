@@ -57,7 +57,7 @@ class SwitchTabTool(
             content = listOf(
                 TextContent(
                     "Successfully switched to tab $tabIndex (${input.tab_id}): " +
-                        "project=${selectedTab.projectId.value}, workspace=${selectedTab.workspaceId.value}, " +
+                        "project=${selectedTab.projectId.value}, " +
                         "conversation=${threadId.value}"
                 )
             ),

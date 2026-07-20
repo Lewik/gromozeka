@@ -1,13 +1,12 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.Project
 
 /**
  * Domain service for managing prompt templates.
  *
- * Coordinates prompt discovery and system prompt assembly.
- * Prompts edited in external editor (IDEA) - service provides
- * file discovery and prompt assembly only.
+ * Coordinates the builtin and project prompt catalogs.
  *
  * @see Prompt for domain model
  * @see PromptRepository for persistence operations
@@ -25,19 +24,14 @@ interface PromptDomainService {
     /**
      * Finds all available prompts.
      *
-     * @return all prompts (builtin, file, remote)
+     * @return all builtin and project prompts
      */
     suspend fun findAll(): List<Prompt>
 
-    /**
-     * Refreshes prompt list from filesystem.
-     *
-     * Re-scans prompt directories to detect changes made in external editor.
-     */
-    suspend fun refresh()
+    suspend fun findByProject(projectId: Project.Id): List<Prompt>
 
     /**
-     * Creates environment prompt for ad-hoc use.
+     * Creates a mutable project prompt.
      *
      * Used for dynamically created prompts (e.g., via MCP tools).
      * Generates UUIDv7 for time-based ordering.
@@ -47,46 +41,12 @@ interface PromptDomainService {
      * @param content markdown text of the prompt
      * @return created prompt with assigned ID
      */
-    suspend fun createEnvironmentPrompt(name: String, content: String): Prompt
+    suspend fun createProjectPrompt(projectId: Project.Id, name: String, content: String): Prompt
     
-    /**
-     * Copies single builtin prompt to user prompts directory.
-     *
-     * Creates ${GROMOZEKA_HOME}/prompts/ if doesn't exist.
-     * Overwrites existing user prompt file if present.
-     * This is manual operation triggered by user.
-     *
-     * @param id builtin prompt identifier
-     * @return success or failure result
-     */
-    suspend fun copyBuiltinPromptToUser(id: Prompt.Id): Result<Unit>
-    
-    /**
-     * Resets all builtin prompts to user prompts directory.
-     *
-     * Copies all builtin prompts from resources to ${GROMOZEKA_HOME}/prompts/.
-     * Creates directory if doesn't exist.
-     * Overwrites existing user prompt files.
-     * This is manual operation triggered by user.
-     *
-     * @return success with count of copied prompts, or failure
-     */
-    suspend fun resetAllBuiltinPrompts(): Result<Int>
-    
-    /**
-     * Imports all CLAUDE.md files found on disk.
-     *
-     * Uses mdfind (Spotlight) on macOS for fast search.
-     * Fallback to find in home directory on other platforms.
-     * Skips already imported files.
-     *
-     * @return success with count of imported prompts, or failure
-     */
-    suspend fun importAllClaudeMd(): Result<Int>
 }
 
 /**
- * [SPECIFICATION] Resolves prompts for a logical workspace and runtime worker.
+ * [SPECIFICATION] Resolves prompts for the current runtime context.
  */
 interface PromptAssemblyService {
     suspend fun assembleSystemPrompt(

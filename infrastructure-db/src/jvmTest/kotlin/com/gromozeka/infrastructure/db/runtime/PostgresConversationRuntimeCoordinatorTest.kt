@@ -2,9 +2,6 @@ package com.gromozeka.infrastructure.db.runtime
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Prompt
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
@@ -199,7 +196,7 @@ class PostgresConversationRuntimeCoordinatorTest {
         return ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(messageId),
             conversationId = conversationId,
-            payload = ConversationRuntimeTask.Payload.UserTurn(message, agent),
+            payload = ConversationRuntimeTask.Payload.UserTurn(message, AGENT_DEFINITION_ID),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "test:$messageId",
             requirements = ConversationRuntimeTaskRequirements(
@@ -257,14 +254,6 @@ class PostgresConversationRuntimeCoordinatorTest {
     }
 
     private companion object {
-        val agent = AgentDefinition(
-            id = AgentDefinition.Id("agent-1"),
-            name = "Test Agent",
-            prompts = listOf(Prompt.Id("prompt-1")),
-            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
-            type = AgentDefinition.Type.Inline,
-            createdAt = Instant.fromEpochMilliseconds(0),
-            updatedAt = Instant.fromEpochMilliseconds(0),
-        )
+        val AGENT_DEFINITION_ID = AgentDefinition.Id("agent-1")
     }
 }

@@ -26,8 +26,8 @@ For code-writing project agents, the default stack should usually be:
   "builtin:common.knowledge.md",
   "builtin:memory.knowledge.md",
   "builtin:developer.role.md",
-  "workspace:project-common.knowledge.md",
-  "workspace:<specialist>.role.md",
+  "project:project-common.knowledge.md",
+  "project:<specialist>.role.md",
   "env"
 ]
 ```
@@ -41,9 +41,9 @@ For non-domain module implementation agents, the preferred stack usually inserts
   "builtin:common.knowledge.md",
   "builtin:memory.knowledge.md",
   "builtin:developer.role.md",
-  "workspace:project-common.knowledge.md",
-  "workspace:module-implementation.knowledge.md",
-  "workspace:<specialist>.role.md",
+  "project:project-common.knowledge.md",
+  "project:module-implementation.knowledge.md",
+  "project:<specialist>.role.md",
   "env"
 ]
 ```

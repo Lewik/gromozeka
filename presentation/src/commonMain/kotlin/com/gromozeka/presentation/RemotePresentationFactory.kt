@@ -73,6 +73,7 @@ suspend fun createRemoteAppComponents(
         scope = scope,
         screenCaptureController = screenCaptureController,
         defaultAgentProvider = remoteServices.defaultAgentProvider,
+        agentService = remoteServices.agentService,
         tokenStatsService = remoteServices.conversationTokenStatsService,
     )
 
@@ -130,6 +131,7 @@ suspend fun createRemoteAppComponents(
             loadingViewModel = LoadingViewModel(),
             tabPromptService = TabPromptService(remoteServices.promptService),
             agentService = remoteServices.agentService,
+            agentCatalogImportService = remoteServices.agentCatalogImportService,
             promptService = remoteServices.promptService,
             deviceLocationService = deviceLocationService,
         ),

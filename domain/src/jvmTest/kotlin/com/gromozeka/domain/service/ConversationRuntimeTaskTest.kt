@@ -2,9 +2,6 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Prompt
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test
@@ -12,15 +9,7 @@ import kotlin.test.assertFailsWith
 
 class ConversationRuntimeTaskTest {
     private val conversationId = Conversation.Id("conversation-1")
-    private val agent = AgentDefinition(
-        id = AgentDefinition.Id("agent-1"),
-        name = "Test Agent",
-        prompts = listOf(Prompt.Id("prompt-1")),
-        runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
-        type = AgentDefinition.Type.Inline,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now(),
-    )
+    private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
     fun `task rejects requirements that cannot execute its payload`() {
@@ -76,7 +65,7 @@ class ConversationRuntimeTaskTest {
         return ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(message.id.value),
             conversationId = conversationId,
-            payload = ConversationRuntimeTask.Payload.UserTurn(message, agent),
+            payload = ConversationRuntimeTask.Payload.UserTurn(message, agentDefinitionId),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "test:${message.id.value}",
             requirements = requirements,
@@ -100,7 +89,7 @@ class ConversationRuntimeTaskTest {
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.ToolExecution(
                 rootUserMessageId = Conversation.Message.Id("message-1"),
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 iteration = 1,
                 toolCalls = listOf(
                     Conversation.Message.ContentItem.ToolCall(

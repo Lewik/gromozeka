@@ -54,6 +54,7 @@ internal object Contexts : Table("contexts") {
 
 internal object Agents : Table("agents") {
     val id = varchar("id", 255)
+    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
     val name = varchar("name", 255)
     val promptsJson = text("prompts_json")  // JSON array of Prompt IDs
     val runtimeSelectionJson = text("runtime_selection_json")
@@ -67,10 +68,25 @@ internal object Agents : Table("agents") {
     override val primaryKey = PrimaryKey(id)
 }
 
+internal object AgentCatalogImportProposals : Table("agent_catalog_import_proposals") {
+    val workspaceId = varchar("workspace_id", 255).references(Workspaces.id, onDelete = ReferenceOption.CASCADE)
+    val workerId = varchar("worker_id", 255)
+    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val workspaceName = varchar("workspace_name", 255)
+    val catalogHash = varchar("catalog_hash", 64)
+    val promptsJson = text("prompts_json")
+    val agentsJson = text("agents_json")
+    val validationError = text("validation_error").nullable()
+    val status = varchar("status", 50)
+    val detectedAt = timestamp("detected_at")
+    val decidedAt = timestamp("decided_at").nullable()
+
+    override val primaryKey = PrimaryKey(workspaceId, workerId)
+}
+
 internal object Conversations : Table("conversations") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
-    val workspaceId = varchar("workspace_id", 255).references(Workspaces.id, onDelete = ReferenceOption.RESTRICT)
     val agentDefinitionId = varchar("agent_definition_id", 255)
     val displayName = varchar("display_name", 255)
     val pinnedAt = timestamp("pinned_at").nullable()

@@ -9,6 +9,7 @@ import com.gromozeka.remote.protocol.AgentResponse
 import com.gromozeka.remote.protocol.AgentsResponse
 import com.gromozeka.remote.protocol.CountAgentsRequest
 import com.gromozeka.remote.protocol.CountResponse
+import com.gromozeka.remote.protocol.CopyBuiltinAgentRequest
 import com.gromozeka.remote.protocol.CreateAgentRequest
 import com.gromozeka.remote.protocol.DefaultAgentResponse
 import com.gromozeka.remote.protocol.DeleteAgentRequest
@@ -28,19 +29,33 @@ internal class RemoteAgentService(
         client.requestTyped<FindAgentRequest, AgentResponse>(FindAgentRequest(id)).agent
 
     override suspend fun findAll(): List<AgentDefinition> =
-        client.requestTyped<FindAgentsRequest, AgentsResponse>(FindAgentsRequest).agents
+        client.requestTyped<FindAgentsRequest, AgentsResponse>(FindAgentsRequest()).agents
+
+    override suspend fun findByProject(projectId: com.gromozeka.domain.model.Project.Id): List<AgentDefinition> =
+        client.requestTyped<FindAgentsRequest, AgentsResponse>(FindAgentsRequest(projectId)).agents
 
     override suspend fun createAgent(
+        projectId: com.gromozeka.domain.model.Project.Id,
         name: String,
         prompts: List<Prompt.Id>,
         runtimeSelection: AiRuntimeSelection,
         tools: List<String>,
         description: String?,
-        type: AgentDefinition.Type,
     ): AgentDefinition =
         client.requestTyped<CreateAgentRequest, AgentResponse>(
-            CreateAgentRequest(name, prompts, runtimeSelection, tools, description, type)
+            CreateAgentRequest(projectId, name, prompts, runtimeSelection, tools, description)
         ).agent ?: error("Server returned null agent after create")
+
+    override suspend fun copyBuiltinAgent(
+        projectId: com.gromozeka.domain.model.Project.Id,
+        sourceAgentId: AgentDefinition.Id,
+        name: String,
+        prompts: List<Prompt.Id>,
+        description: String?,
+    ): AgentDefinition =
+        client.requestTyped<CopyBuiltinAgentRequest, AgentResponse>(
+            CopyBuiltinAgentRequest(projectId, sourceAgentId, name, prompts, description)
+        ).agent ?: error("Server returned null agent after builtin copy")
 
     override suspend fun update(
         id: AgentDefinition.Id,

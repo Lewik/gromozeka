@@ -1,9 +1,10 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
-import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.repository.ConversationRepository
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import klog.KLoggers
@@ -39,7 +40,7 @@ class ConversationApplicationService(
     private val messageRepo: MessageRepository,
     private val threadMessageRepo: ThreadMessageRepository,
     private val projectService: ProjectDomainService,
-    private val workspaceService: com.gromozeka.domain.service.WorkspaceDomainService,
+    private val agentService: AgentDomainService,
     private val toolCallPairingService: ToolCallPairingService
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
@@ -47,8 +48,7 @@ class ConversationApplicationService(
     /**
      * Creates new conversation with initial empty thread.
      *
-     * Validates the project/workspace relation, then creates a conversation
-     * with an empty initial thread.
+     * Validates the project, then creates a conversation with an empty initial thread.
      *
      * @param displayName optional conversation title (empty uses auto-generated name)
      * @param agentDefinitionId agent definition to use for this conversation
@@ -57,17 +57,12 @@ class ConversationApplicationService(
     @Transactional
     override suspend fun create(
         projectId: Project.Id,
-        workspaceId: Workspace.Id,
         displayName: String,
         agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id
     ): Conversation {
         val project = projectService.findById(projectId)
             ?: error("Project not found: ${projectId.value}")
-        val workspace = workspaceService.findById(workspaceId)
-            ?: error("Workspace not found: ${workspaceId.value}")
-        require(workspace.projectId == project.id) {
-            "Workspace ${workspaceId.value} does not belong to project ${projectId.value}"
-        }
+        requireAgentAvailableToProject(agentDefinitionId, project.id)
         val now = Clock.System.now()
 
         val conversationId = Conversation.Id(uuid7())
@@ -83,7 +78,6 @@ class ConversationApplicationService(
         val conversation = Conversation(
             id = conversationId,
             projectId = project.id,
-            workspaceId = workspace.id,
             agentDefinitionId = agentDefinitionId,
             displayName = displayName,
             currentThread = initialThread.id,
@@ -110,13 +104,6 @@ class ConversationApplicationService(
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         return projectService.findById(conversation.projectId)
             ?: throw IllegalStateException("Project not found: ${conversation.projectId}")
-    }
-
-    override suspend fun getWorkspace(conversationId: Conversation.Id): Workspace {
-        val conversation = findById(conversationId)
-            ?: throw IllegalStateException("Conversation not found: $conversationId")
-        return workspaceService.findById(conversation.workspaceId)
-            ?: throw IllegalStateException("Workspace not found: ${conversation.workspaceId}")
     }
 
     /**
@@ -159,6 +146,28 @@ class ConversationApplicationService(
         require(displayName.length <= 255) { "Conversation display name must not exceed 255 characters" }
         conversationRepo.updateDisplayName(conversationId, displayName)
         return conversationRepo.findById(conversationId)
+    }
+
+    @Transactional
+    override suspend fun updateAgentDefinition(
+        conversationId: Conversation.Id,
+        agentDefinitionId: AgentDefinition.Id,
+    ): Conversation? {
+        val conversation = conversationRepo.findById(conversationId) ?: return null
+        requireAgentAvailableToProject(agentDefinitionId, conversation.projectId)
+        conversationRepo.updateAgentDefinition(conversationId, agentDefinitionId)
+        return conversationRepo.findById(conversationId)
+    }
+
+    private suspend fun requireAgentAvailableToProject(
+        agentDefinitionId: AgentDefinition.Id,
+        projectId: Project.Id,
+    ) {
+        val agent = agentService.findById(agentDefinitionId)
+            ?: error("Agent not found: ${agentDefinitionId.value}")
+        require(agent.type is AgentDefinition.Type.Builtin || agent.projectId == projectId) {
+            "Agent ${agentDefinitionId.value} does not belong to project ${projectId.value}"
+        }
     }
 
     @Transactional
@@ -210,7 +219,6 @@ class ConversationApplicationService(
         val newConversation = Conversation(
             id = newConversationId,
             projectId = sourceConversation.projectId,
-            workspaceId = sourceConversation.workspaceId,
             agentDefinitionId = sourceConversation.agentDefinitionId,
             displayName = sourceConversation.displayName + " (fork)",
             currentThread = newThread.id,

@@ -58,20 +58,13 @@ class DistributedAiToolCatalog(
 
     suspend fun snapshot(
         project: Project,
-        workspace: Workspace,
     ): DistributedAiToolCatalogSnapshot {
-        require(workspace.projectId == project.id) {
-            "Current workspace '${workspace.id.value}' does not belong to project '${project.id.value}'"
-        }
         val now = Clock.System.now()
         val registrations = workerRegistry.list()
             .filter { it.isOnline(now - ConversationRuntimeTiming.workerRegistrationStaleAfter) }
             .sortedBy { it.identity.workerId.value }
         val projectWorkspaces = workspaceService.findByProject(project.id)
             .associateBy { it.id }
-        check(workspace.id in projectWorkspaces) {
-            "Current workspace '${workspace.id.value}' is not present in project '${project.id.value}'"
-        }
         val mountsByWorker = registrations.associate { registration ->
             registration.identity.workerId to workspaceService
                 .findMountsByWorker(registration.identity.workerId.value)
@@ -116,7 +109,6 @@ class DistributedAiToolCatalog(
             registrations = registrations,
             environmentPrompt = buildEnvironmentPrompt(
                 project = project,
-                currentWorkspace = workspace,
                 registrations = registrations,
                 projectWorkspaces = projectWorkspaces,
                 mountsByWorker = mountsByWorker,
@@ -252,7 +244,6 @@ class DistributedAiToolCatalog(
 
     private suspend fun buildEnvironmentPrompt(
         project: Project,
-        currentWorkspace: Workspace,
         registrations: List<ConversationRuntimeWorkerRegistration>,
         projectWorkspaces: Map<Workspace.Id, Workspace>,
         mountsByWorker: Map<ConversationRuntimeWorkerId, List<WorkspaceMount>>,
@@ -265,12 +256,6 @@ class DistributedAiToolCatalog(
             append(project.id.value)
             append(" name=")
             append(project.name)
-            append("\nCurrent workspace: id=")
-            append(currentWorkspace.id.value)
-            append(" name=")
-            append(currentWorkspace.name)
-            append(" kind=")
-            append(currentWorkspace.kind.name)
             append("\nOnline workers:\n")
             if (registrations.isEmpty()) {
                 append("- none\n")

@@ -33,9 +33,9 @@ class ConversationRuntimeApplicationService(
     override suspend fun enqueueMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
-    ): Boolean = runtimeDispatcher.enqueueMessage(conversationId, userMessage, agent, placement)
+    ): Boolean = runtimeDispatcher.enqueueMessage(conversationId, userMessage, agentDefinitionId, placement)
 
     override suspend fun cancelQueuedMessage(
         conversationId: Conversation.Id,
@@ -55,8 +55,8 @@ class ConversationRuntimeApplicationService(
     override suspend fun submitMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
-    ): Boolean = runtimeDispatcher.submitMessage(conversationId, userMessage, agent)
+        agentDefinitionId: AgentDefinition.Id,
+    ): Boolean = runtimeDispatcher.submitMessage(conversationId, userMessage, agentDefinitionId)
 
     override fun observeConversation(
         conversationId: Conversation.Id,

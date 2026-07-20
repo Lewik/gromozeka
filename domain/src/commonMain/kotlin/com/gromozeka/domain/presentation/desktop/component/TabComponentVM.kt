@@ -118,7 +118,6 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * @property conversationId ID of conversation this tab displays
  * @property projectId Logical project identifier
- * @property workspaceId Default workspace identifier
  * @property uiState Complete UI state (includes all tab state)
  * @property allMessages All messages in conversation (unfiltered)
  * @property filteredMessages Messages after applying display filters
@@ -132,7 +131,6 @@ interface TabComponentVM {
     // Immutable properties
     val conversationId: Conversation.Id
     val projectId: Project.Id
-    val workspaceId: Workspace.Id
     
     // State (survives recomposition)
     val uiState: StateFlow<TabUIState>
@@ -372,7 +370,6 @@ interface TabComponentVM {
      * Includes all transient UI state that should be persisted.
      *
      * @property projectId logical project identifier
-     * @property workspaceId default workspace identifier
      * @property conversationId ID of conversation being displayed
      * @property activeMessageInstructionIds set of selected message instruction IDs
      * @property userInput current text in input field (unsent)
@@ -388,7 +385,6 @@ interface TabComponentVM {
      */
     data class TabUIState(
         val projectId: Project.Id,
-        val workspaceId: Workspace.Id,
         val conversationId: Conversation.Id,
         val activeMessageInstructionIds: Set<String>,
         val userInput: String,

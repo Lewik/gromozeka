@@ -66,7 +66,7 @@ class DistributedAiToolRoutingTest {
         )
 
         val snapshot = DistributedAiToolCatalog(workerRegistry, workspaceService)
-            .snapshot(project, workspaceA)
+            .snapshot(project)
 
         val entry = snapshot.entries.getValue(workspaceTool.definition.name)
         assertEquals(
@@ -135,12 +135,12 @@ class DistributedAiToolRoutingTest {
             ),
         )
         val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService)
-            .snapshot(project, workspaceA)
+            .snapshot(project)
         val routing = ConversationRuntimeToolRoutingService(
             runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
             workspaceService = workspaceService,
         )
-        val conversation = conversation(project.id, workspaceA.id)
+        val conversation = conversation(project.id)
 
         val rejected = routing.route(
             conversation = conversation,
@@ -225,14 +225,10 @@ class DistributedAiToolRoutingTest {
             updatedAt = now,
         )
 
-    private fun conversation(
-        projectId: Project.Id,
-        workspaceId: Workspace.Id,
-    ): Conversation =
+    private fun conversation(projectId: Project.Id): Conversation =
         Conversation(
             id = Conversation.Id("conversation-1"),
             projectId = projectId,
-            workspaceId = workspaceId,
             agentDefinitionId = AgentDefinition.Id("agent-1"),
             currentThread = Conversation.Thread.Id("thread-1"),
             createdAt = now,

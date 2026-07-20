@@ -110,8 +110,7 @@ class TellAgentTool(
         return CallToolResult(
             content = listOf(
                 TextContent(
-                    "Successfully sent message to agent in project ${targetTab.projectId.value}, " +
-                            "workspace ${targetTab.workspaceId.value}$switchInfo\n" +
+                    "Successfully sent message to agent in project ${targetTab.projectId.value}$switchInfo\n" +
                             "Agent ID: $tabIdInfo\n" +
                             "Message: ${input.message.take(100)}${if (input.message.length > 100) "..." else ""}"
                 )

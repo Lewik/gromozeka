@@ -20,6 +20,7 @@ import com.gromozeka.presentation.ui.session.BasicGromozekaDialog
 @Composable
 fun AgentEditorDialog(
     agent: AgentDefinition? = null,
+    copyMode: Boolean = false,
     prompts: List<Prompt>,
     onSave: (name: String, selectedPrompts: List<Prompt.Id>, description: String?) -> Unit,
     onDismiss: () -> Unit
@@ -41,7 +42,11 @@ fun AgentEditorDialog(
                 modifier = Modifier.padding(24.dp)
             ) {
                 Text(
-                    text = if (agent == null) "Create New Agent" else "Edit Agent",
+                    text = when {
+                        copyMode -> "Create Project Copy"
+                        agent == null -> "Create New Agent"
+                        else -> "Edit Agent"
+                    },
                     style = MaterialTheme.typography.headlineSmall
                 )
 
@@ -123,9 +128,7 @@ fun AgentEditorDialog(
                                         Text(
                                             text = when (val type = prompt.type) {
                                                 is Prompt.Type.Builtin -> "Built-in"
-                                                is Prompt.Type.Global -> "Global"
-                                                is Prompt.Type.Workspace -> "Workspace"
-                                                is Prompt.Type.Environment -> "Inline"
+                                                is Prompt.Type.Project -> "Project"
                                             },
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -269,7 +272,7 @@ fun AgentEditorDialog(
                             )
                         }
                     ) {
-                        Text(if (agent == null) "Create" else "Save")
+                        Text(if (agent == null || copyMode) "Create" else "Save")
                     }
                 }
             }

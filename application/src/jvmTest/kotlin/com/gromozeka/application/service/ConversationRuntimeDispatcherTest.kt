@@ -3,13 +3,10 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
-import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -59,15 +56,7 @@ private const val TEST_EVENT_TIMEOUT_MS = 10_000L
 
 class ConversationRuntimeDispatcherTest {
     private val conversationId = Conversation.Id("conversation-runtime-dispatcher-test")
-    private val agent = AgentDefinition(
-        id = AgentDefinition.Id("agent-1"),
-        name = "Test Agent",
-        prompts = listOf(Prompt.Id("prompt-1")),
-        runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
-        type = AgentDefinition.Type.Inline,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now(),
-    )
+    private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
     fun `worker terminates when its registry session is lost`() = runBlocking {
@@ -117,7 +106,7 @@ class ConversationRuntimeDispatcherTest {
                 harness.dispatcher.enqueueMessage(
                     conversationId = conversationId,
                     userMessage = message,
-                    agent = agent,
+                    agentDefinitionId = agentDefinitionId,
                     placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
                 )
             )
@@ -140,14 +129,14 @@ class ConversationRuntimeDispatcherTest {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agent))
+            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
 
             assertTrue(
                 harness.dispatcher.enqueueMessage(
                     conversationId = conversationId,
                     userMessage = secondMessage,
-                    agent = agent,
+                    agentDefinitionId = agentDefinitionId,
                     placement = QueuedMessagePlacement.END_OF_TURN,
                 )
             )
@@ -173,13 +162,13 @@ class ConversationRuntimeDispatcherTest {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agent))
+            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
             assertTrue(
                 harness.dispatcher.enqueueMessage(
                     conversationId = conversationId,
                     userMessage = secondMessage,
-                    agent = agent,
+                    agentDefinitionId = agentDefinitionId,
                     placement = QueuedMessagePlacement.END_OF_TURN,
                 )
             )
@@ -206,13 +195,13 @@ class ConversationRuntimeDispatcherTest {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agent))
+            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
             assertTrue(
                 harness.dispatcher.enqueueMessage(
                     conversationId = conversationId,
                     userMessage = secondMessage,
-                    agent = agent,
+                    agentDefinitionId = agentDefinitionId,
                     placement = QueuedMessagePlacement.END_OF_TURN,
                 )
             )
@@ -234,13 +223,13 @@ class ConversationRuntimeDispatcherTest {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agent))
+            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
             assertTrue(
                 harness.dispatcher.enqueueMessage(
                     conversationId = conversationId,
                     userMessage = secondMessage,
-                    agent = agent,
+                    agentDefinitionId = agentDefinitionId,
                     placement = QueuedMessagePlacement.END_OF_TURN,
                 )
             )
@@ -520,7 +509,7 @@ class ConversationRuntimeDispatcherTest {
         try {
             val message = userMessage("message-1")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, message, agent))
+            assertTrue(harness.dispatcher.submitMessage(conversationId, message, agentDefinitionId))
             assertEquals(message.id.value, harness.runner.awaitStarted().id.value)
             harness.runner.releaseCurrentTask()
             waitUntil { harness.coordinator.find(conversationId) == null }
@@ -673,7 +662,7 @@ class ConversationRuntimeDispatcherTest {
         try {
             cloudWorker.start()
             workspaceWorker.start()
-            assertTrue(dispatcher.submitMessage(conversationId, firstMessage, agent))
+            assertTrue(dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
 
             val executions = withTimeout(TEST_EVENT_TIMEOUT_MS) {
                 List(5) { executionOrder.receive() }
@@ -721,13 +710,13 @@ class ConversationRuntimeDispatcherTest {
             ),
         )
         try {
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agent))
+            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
             assertTrue(
                 harness.dispatcher.enqueueMessage(
                     conversationId = conversationId,
                     userMessage = secondMessage,
-                    agent = agent,
+                    agentDefinitionId = agentDefinitionId,
                     placement = QueuedMessagePlacement.END_OF_TURN,
                 )
             )
@@ -802,7 +791,7 @@ class ConversationRuntimeDispatcherTest {
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.UserTurn(
                 userMessage = userMessage,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
             ),
             placement = placement,
             idempotencyKey = "conversation:${conversationId.value}:message:${userMessage.id.value}",
@@ -824,7 +813,7 @@ class ConversationRuntimeDispatcherTest {
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.LlmCall(
                 rootUserMessageId = rootUserMessageId,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 iteration = iteration,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
@@ -848,7 +837,7 @@ class ConversationRuntimeDispatcherTest {
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.ToolExecution(
                 rootUserMessageId = rootUserMessageId,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 iteration = iteration,
                 toolCalls = listOf(
                     Conversation.Message.ContentItem.ToolCall(
@@ -883,7 +872,7 @@ class ConversationRuntimeDispatcherTest {
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
                 rootUserMessageId = rootUserMessageId,
                 toolResultMessageId = Conversation.Message.Id("tool-result-$iteration"),
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
                 iteration = iteration,
                 returnDirect = false,
             ),

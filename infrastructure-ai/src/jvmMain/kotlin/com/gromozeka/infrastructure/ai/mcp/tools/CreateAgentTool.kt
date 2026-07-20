@@ -6,7 +6,6 @@ import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
-import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -37,7 +36,6 @@ class CreateAgentTool(
     @Serializable
     data class Input(
         val project_id: String,
-        val workspace_id: String,
         val initial_message: String? = null,
         val set_as_current: Boolean = true,
         val parent_tab_id: String,
@@ -49,16 +47,12 @@ class CreateAgentTool(
 
     override val definition = Tool(
         name = "create_agent",
-        description = "Create a new agent colleague in an explicit logical project and filesystem workspace. The agent appears in a new conversation tab.",
+        description = "Create a new agent colleague in an explicit logical project. The agent appears in a new conversation tab.",
         inputSchema = ToolSchema(
             properties = buildJsonObject {
                 put("project_id", buildJsonObject {
                     put("type", "string")
                     put("description", "Logical project ID for the new conversation")
-                })
-                put("workspace_id", buildJsonObject {
-                    put("type", "string")
-                    put("description", "Filesystem workspace ID for the new conversation")
                 })
                 put("initial_message", buildJsonObject {
                     put("type", "string")
@@ -93,7 +87,6 @@ class CreateAgentTool(
             },
             required = listOf(
                 "project_id",
-                "workspace_id",
                 "parent_tab_id",
                 "agent_name",
             )
@@ -104,20 +97,22 @@ class CreateAgentTool(
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
         val input = Json.decodeFromJsonElement<Input>(request.argumentsOrEmpty())
+        val projectId = Project.Id(input.project_id)
 
         val agent = if (input.agent_prompt != null) {
-            val inlinePrompt = promptService.createEnvironmentPrompt(
+            val inlinePrompt = promptService.createProjectPrompt(
+                projectId = projectId,
                 name = "${input.agent_name} prompt",
                 content = input.agent_prompt
             )
             agentService.createAgent(
+                projectId = projectId,
                 name = input.agent_name,
                 prompts = listOf(inlinePrompt.id),
                 runtimeSelection = input.model_configuration_id?.let {
                     AiRuntimeSelection(AiModelConfiguration.Id(it))
                 } ?: settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.DEFAULT_CHAT),
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
-                type = AgentDefinition.Type.Inline
             )
         } else {
             agentService.findAll()
@@ -148,8 +143,7 @@ class CreateAgentTool(
         )
 
         val newTabIndex = tabManager.createTab(
-            projectId = Project.Id(input.project_id),
-            workspaceId = Workspace.Id(input.workspace_id),
+            projectId = projectId,
             agent = agent,
             conversationId = null,
             initialMessage = chatMessage,
@@ -168,7 +162,6 @@ class CreateAgentTool(
                 TextContent(
                     "Successfully created agent '$agentInfo'\n" +
                             "Project ID: ${input.project_id}\n" +
-                            "Workspace ID: ${input.workspace_id}\n" +
                             "Agent ID: ${tabId.value} (${if (input.set_as_current) "focused" else "background"})\n" +
                             if (input.expects_response) "Expecting response back to parent agent\n" else "" +
                             if (baseMessageText.isNotBlank()) "\nInitial message sent: ${baseMessageText.take(150)}${if (baseMessageText.length > 150) "..." else ""}" else ""

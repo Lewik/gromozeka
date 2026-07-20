@@ -18,7 +18,6 @@ fun PromptListItem(
     onView: () -> Unit,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
-    onCopyToUser: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -43,9 +42,7 @@ fun PromptListItem(
                         // Type icon
                         val typeIcon = when (val type = prompt.type) {
                             is Prompt.Type.Builtin -> Icons.Default.Lock
-                            is Prompt.Type.Global -> Icons.Default.Home
-                            is Prompt.Type.Workspace -> Icons.Default.Folder
-                            is Prompt.Type.Environment -> Icons.Default.Description
+                            is Prompt.Type.Project -> Icons.Default.Folder
                         }
                         
                         Icon(
@@ -67,9 +64,7 @@ fun PromptListItem(
                     Text(
                         text = when (val type = prompt.type) {
                             is Prompt.Type.Builtin -> "Built-in prompt"
-                            is Prompt.Type.Global -> "Global prompt"
-                            is Prompt.Type.Workspace -> "Workspace prompt"
-                            is Prompt.Type.Environment -> "Inline prompt"
+                            is Prompt.Type.Project -> "Project prompt"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -82,15 +77,6 @@ fun PromptListItem(
                             Icons.Default.Visibility,
                             contentDescription = "View prompt"
                         )
-                    }
-                    
-                    onCopyToUser?.let { copyAction ->
-                        IconButton(onClick = copyAction) {
-                            Icon(
-                                Icons.Default.ContentCopy,
-                                contentDescription = "Copy to User"
-                            )
-                        }
                     }
                     
                     onEdit?.let { editAction ->

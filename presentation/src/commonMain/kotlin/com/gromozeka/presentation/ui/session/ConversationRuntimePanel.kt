@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.PlaylistAddCheck
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -27,7 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -35,9 +36,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteConnectionState
+import com.gromozeka.domain.model.AgentCatalogImportProposal
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.service.AgentCatalogImportService
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
@@ -52,11 +56,16 @@ import com.gromozeka.presentation.ui.RemoteConnectionStatus
 import com.gromozeka.presentation.ui.TokenStatisticsTable
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun ConversationRuntimePanel(
     isVisible: Boolean,
+    projectId: Project.Id,
     currentAgent: AgentDefinition,
+    agentCatalogImportService: AgentCatalogImportService,
     settings: Settings,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     isWaitingForResponse: Boolean,
@@ -122,6 +131,11 @@ fun ConversationRuntimePanel(
                         settings = settings,
                         tokenStats = tokenStats,
                     )
+                    AgentCatalogImportsSection(
+                        isVisible = isVisible,
+                        projectId = projectId,
+                        service = agentCatalogImportService,
+                    )
                     TokenStatisticsTable(
                         tokenStats = tokenStats,
                         modifier = Modifier.fillMaxWidth(),
@@ -154,6 +168,178 @@ fun ConversationRuntimePanel(
                     onResume = onResume,
                     onStop = onStop,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgentCatalogImportsSection(
+    isVisible: Boolean,
+    projectId: Project.Id,
+    service: AgentCatalogImportService,
+) {
+    val translation = LocalTranslation.current.runtime
+    val scope = rememberCoroutineScope()
+    var proposals by remember(projectId) { mutableStateOf(emptyList<AgentCatalogImportProposal>()) }
+    var loadError by remember(projectId) { mutableStateOf<String?>(null) }
+    var actionError by remember(projectId) { mutableStateOf<String?>(null) }
+    var activeAction by remember(projectId) { mutableStateOf<String?>(null) }
+
+    suspend fun refresh() {
+        runCatching { service.findPending(projectId) }
+            .onSuccess {
+                proposals = it
+                loadError = null
+            }
+            .onFailure { loadError = it.message ?: it::class.simpleName }
+    }
+
+    fun launchAction(
+        actionKey: String,
+        action: suspend () -> Unit,
+    ) {
+        scope.launch {
+            activeAction = actionKey
+            actionError = null
+            try {
+                action()
+                refresh()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                actionError = error.message ?: error::class.simpleName
+            } finally {
+                activeAction = null
+            }
+        }
+    }
+
+    LaunchedEffect(isVisible, projectId) {
+        if (!isVisible) {
+            return@LaunchedEffect
+        }
+        while (true) {
+            refresh()
+            delay(CATALOG_REFRESH_INTERVAL_MS)
+        }
+    }
+
+    (actionError ?: loadError)?.let { error ->
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
+            ),
+        ) {
+            Text(
+                text = error,
+                modifier = Modifier.padding(12.dp),
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+
+    proposals.forEach { proposal ->
+        val actionKey = "${proposal.workspaceId.value}:${proposal.workerId}:${proposal.catalogHash}"
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (proposal.validationError == null) {
+                    MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.48f)
+                } else {
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.48f)
+                }
+            ),
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (proposal.validationError == null) {
+                            Icons.Default.PlaylistAddCheck
+                        } else {
+                            Icons.Default.ErrorOutline
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = translation.catalogChangesTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Text(
+                    text = translation.catalogChangesDescription,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = "${translation.catalogSourceLabel}: ${proposal.workspaceName} · ${proposal.workerId}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${translation.catalogContentsLabel}: " +
+                        "${proposal.prompts.size} ${translation.catalogPromptsLabel} · " +
+                        "${proposal.agents.size} ${translation.catalogAgentsLabel} · " +
+                        proposal.catalogHash.take(12),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                proposal.validationError?.let { error ->
+                    Text(
+                        text = "${translation.catalogInvalidLabel}: $error",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (activeAction == actionKey) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    TextButton(
+                        enabled = activeAction == null,
+                        onClick = {
+                            launchAction(actionKey) {
+                                service.skip(
+                                    proposal.workspaceId,
+                                    proposal.workerId,
+                                    proposal.catalogHash,
+                                )
+                            }
+                        },
+                    ) {
+                        Text(translation.catalogSkipButton)
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Button(
+                        enabled = activeAction == null && proposal.validationError == null,
+                        onClick = {
+                            launchAction(actionKey) {
+                                service.import(
+                                    proposal.workspaceId,
+                                    proposal.workerId,
+                                    proposal.catalogHash,
+                                )
+                            }
+                        },
+                    ) {
+                        Text(translation.catalogImportButton)
+                    }
+                }
             }
         }
     }
@@ -667,3 +853,5 @@ private fun Long.formatBytes(): String = when {
 
 private fun Int.formatWithCommas(): String =
     toString().reversed().chunked(3).joinToString(",").reversed()
+
+private const val CATALOG_REFRESH_INTERVAL_MS = 5_000L

@@ -63,7 +63,7 @@ class ConversationRuntimeDispatcher(
     suspend fun enqueueMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
     ): Boolean {
         val state = runtimeCoordinator.find(conversationId)
@@ -95,7 +95,7 @@ class ConversationRuntimeDispatcher(
             return false
         }
 
-        val task = queuedRuntimeTask(conversationId, userMessage, agent, effectivePlacement)
+        val task = queuedRuntimeTask(conversationId, userMessage, agentDefinitionId, effectivePlacement)
         val accepted = submitRuntimeTask(task)
         if (accepted) {
             log.info {
@@ -162,9 +162,9 @@ class ConversationRuntimeDispatcher(
     suspend fun submitMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
     ): Boolean {
-        val task = queuedRuntimeTask(conversationId, userMessage, agent, QueuedMessagePlacement.END_OF_TURN)
+        val task = queuedRuntimeTask(conversationId, userMessage, agentDefinitionId, QueuedMessagePlacement.END_OF_TURN)
         return submitRuntimeTask(task)
     }
 
@@ -412,7 +412,7 @@ class ConversationRuntimeDispatcher(
     private fun queuedRuntimeTask(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
@@ -420,7 +420,7 @@ class ConversationRuntimeDispatcher(
             conversationId = conversationId,
             payload = ConversationRuntimeTask.Payload.UserTurn(
                 userMessage = userMessage,
-                agent = agent,
+                agentDefinitionId = agentDefinitionId,
             ),
             placement = placement,
             idempotencyKey = "conversation:${conversationId.value}:message:${userMessage.id.value}",

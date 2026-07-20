@@ -29,9 +29,7 @@ import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.WorkspaceCatalogService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -40,25 +38,20 @@ private val log = KLoggers.logger("SessionListScreen")
 
 private data class ProjectGroup(
     val project: Project,
-    val workspaces: List<Workspace>,
     val conversationIds: List<Conversation.Id>,
     val latestConversationId: Conversation.Id?,
     val formattedTime: String,
 ) {
     val projectId get() = project.id
     val projectName get() = project.name
-
-    fun workspaceName(workspaceId: Workspace.Id): String =
-        workspaces.firstOrNull { it.id == workspaceId }?.name ?: workspaceId.value
 }
 
 @Composable
 fun SessionListScreen(
     onConversationSelected: (Conversation, Project) -> Unit,
     coroutineScope: CoroutineScope,
-    onNewSession: (Project, Workspace) -> Unit,
+    onNewSession: (Project) -> Unit,
     projectService: ProjectDomainService,
-    workspaceCatalogService: WorkspaceCatalogService,
     conversationTreeService: ConversationDomainService,
     appViewModel: AppViewModel,
     searchViewModel: ConversationSearchViewModel,
@@ -70,8 +63,7 @@ fun SessionListScreen(
     var pinnedConversationIds by remember { mutableStateOf<List<Conversation.Id>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
-    var showWorkspacePicker by remember { mutableStateOf(false) }
-    var workspacePickerProjectId by remember { mutableStateOf<Project.Id?>(null) }
+    var showProjectPicker by remember { mutableStateOf(false) }
     var conversationToRename by remember { mutableStateOf<Conversation?>(null) }
     var mutatingConversationIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var operationError by remember { mutableStateOf<String?>(null) }
@@ -105,7 +97,6 @@ fun SessionListScreen(
 
             val loadedConversations = mutableListOf<Conversation>()
             val groupedProjects = projects.map { project ->
-                val workspaces = workspaceCatalogService.findByProject(project.id)
                 val conversations = conversationTreeService.findByProject(project.id)
                 loadedConversations += conversations
                 val latestConversation = conversations.maxByOrNull { it.updatedAt }
@@ -113,7 +104,6 @@ fun SessionListScreen(
 
                 ProjectGroup(
                     project = project,
-                    workspaces = workspaces,
                     conversationIds = conversations.map(Conversation::id),
                     latestConversationId = latestConversation?.id,
                     formattedTime = formattedTime
@@ -215,10 +205,7 @@ fun SessionListScreen(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 CompactButton(
-                    onClick = {
-                        workspacePickerProjectId = null
-                        showWorkspacePicker = true
-                    }
+                    onClick = { showProjectPicker = true }
                 ) {
                     Text(LocalTranslation.current.newSessionButton)
                 }
@@ -388,8 +375,7 @@ fun SessionListScreen(
                                         }
                                     },
                                     onNewSessionClick = {
-                                        workspacePickerProjectId = group.project.id
-                                        showWorkspacePicker = true
+                                        onNewSession(group.project)
                                     },
                                     onConversationClick = { clickedConversation ->
                                         coroutineScope.handleConversationClick(
@@ -411,16 +397,14 @@ fun SessionListScreen(
         }
     }
 
-    if (showWorkspacePicker) {
-        LogicalWorkspacePickerDialog(
-            projectGroups = projectGroups.filter { group ->
-                workspacePickerProjectId == null || group.project.id == workspacePickerProjectId
+    if (showProjectPicker) {
+        ProjectPickerDialog(
+            projectGroups = projectGroups,
+            onSelect = { project ->
+                showProjectPicker = false
+                onNewSession(project)
             },
-            onSelect = { project, workspace ->
-                showWorkspacePicker = false
-                onNewSession(project, workspace)
-            },
-            onDismiss = { showWorkspacePicker = false },
+            onDismiss = { showProjectPicker = false },
         )
     }
 
@@ -466,7 +450,6 @@ private fun PinnedConversationsSection(
         ConversationItem(
             conversation = conversation,
             project = group.project,
-            workspaceName = group.workspaceName(conversation.workspaceId),
             onConversationClick = onConversationClick,
             onRename = onRename,
             onTogglePinned = onTogglePinned,
@@ -511,13 +494,12 @@ private fun ProjectGroupHeader(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(text = group.projectName)
-                    Text(text = "${group.workspaces.size} workspaces")
                     Text(text = "${group.conversationIds.size} conversations")
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                CompactButton(onClick = onNewSessionClick, enabled = group.workspaces.isNotEmpty()) {
+                CompactButton(onClick = onNewSessionClick) {
                     Text(LocalTranslation.current.newButton)
                 }
 
@@ -554,7 +536,6 @@ private fun ProjectGroupHeader(
                         ConversationItem(
                             conversation = conversation,
                             project = group.project,
-                            workspaceName = group.workspaceName(conversation.workspaceId),
                             onConversationClick = { clickedConversation, _ ->
                                 onConversationClick(clickedConversation)
                             },
@@ -575,7 +556,6 @@ private fun ProjectGroupHeader(
 private fun ConversationItem(
     conversation: Conversation,
     project: Project,
-    workspaceName: String? = null,
     onConversationClick: (Conversation, Project) -> Unit,
     onRename: (Conversation) -> Unit,
     onTogglePinned: (Conversation) -> Unit,
@@ -607,21 +587,13 @@ private fun ConversationItem(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (!isGrouped) {
+                if (!isGrouped) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = workspaceName ?: project.name,
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else {
-                        Text(
-                            text = workspaceName ?: conversation.workspaceId.value,
+                            text = project.name,
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    // Message count removed - messages are loaded separately via ConversationService
                 }
             }
 
@@ -693,7 +665,6 @@ private fun CoroutineScope.handleConversationClick(
         try {
             val tabIndex = appViewModel.createTab(
                 projectId = clickedConversation.projectId,
-                workspaceId = clickedConversation.workspaceId,
                 conversationId = clickedConversation.id,
                 initiator = ConversationInitiator.System
             )
@@ -710,17 +681,17 @@ private fun CoroutineScope.handleConversationClick(
 }
 
 @Composable
-private fun LogicalWorkspacePickerDialog(
+private fun ProjectPickerDialog(
     projectGroups: List<ProjectGroup>,
-    onSelect: (Project, Workspace) -> Unit,
+    onSelect: (Project) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose workspace") },
+        title = { Text("Choose project") },
         text = {
-            if (projectGroups.none { it.workspaces.isNotEmpty() }) {
-                Text("No filesystem workspace is registered on a worker.")
+            if (projectGroups.isEmpty()) {
+                Text("No project is available.")
             } else {
                 Column(
                     modifier = Modifier
@@ -729,19 +700,11 @@ private fun LogicalWorkspacePickerDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     projectGroups.forEach { group ->
-                        if (group.workspaces.isNotEmpty()) {
-                            Text(
-                                text = group.project.name,
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                            group.workspaces.forEach { workspace ->
-                                CompactButton(
-                                    onClick = { onSelect(group.project, workspace) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(workspace.name)
-                                }
-                            }
+                        CompactButton(
+                            onClick = { onSelect(group.project) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(group.project.name)
                         }
                     }
                 }

@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.service.AgentCatalogImportService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
@@ -43,6 +44,7 @@ class GromozekaRemoteServer(
     private val settingsService: SettingsService,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val agentDomainService: AgentDomainService,
+    private val agentCatalogImportService: AgentCatalogImportService,
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
     private val projectDomainService: ProjectDomainService,
@@ -121,15 +123,27 @@ class GromozekaRemoteServer(
 
                 GetDefaultAgentRequest -> DefaultAgentResponse(defaultAgentProvider.getDefault())
                 is FindAgentRequest -> AgentResponse(agentDomainService.findById(request.agentId))
-                FindAgentsRequest -> AgentsResponse(agentDomainService.findAll())
+                is FindAgentsRequest -> AgentsResponse(
+                    request.projectId?.let { agentDomainService.findByProject(it) }
+                        ?: agentDomainService.findAll()
+                )
                 is CreateAgentRequest -> AgentResponse(
                     agentDomainService.createAgent(
+                        request.projectId,
                         request.name,
                         request.prompts,
                         request.runtimeSelection,
                         request.tools,
                         request.description,
-                        request.type
+                    )
+                )
+                is CopyBuiltinAgentRequest -> AgentResponse(
+                    agentDomainService.copyBuiltinAgent(
+                        request.projectId,
+                        request.sourceAgentId,
+                        request.name,
+                        request.prompts,
+                        request.description,
                     )
                 )
                 is UpdateAgentRequest -> AgentResponse(
@@ -140,20 +154,32 @@ class GromozekaRemoteServer(
                     SavedResponse
                 }
                 CountAgentsRequest -> CountResponse(agentDomainService.count())
-                is FindPromptRequest -> PromptResponse(promptDomainService.findById(request.promptId))
-                FindPromptsRequest -> PromptsResponse(promptDomainService.findAll())
-                RefreshPromptsRequest -> {
-                    promptDomainService.refresh()
+                is FindPendingAgentCatalogImportsRequest -> AgentCatalogImportProposalsResponse(
+                    agentCatalogImportService.findPending(request.projectId)
+                )
+                is ImportAgentCatalogRequest -> AgentCatalogImportResultResponse(
+                    agentCatalogImportService.import(
+                        request.workspaceId,
+                        request.workerId,
+                        request.catalogHash,
+                    )
+                )
+                is SkipAgentCatalogImportRequest -> {
+                    agentCatalogImportService.skip(
+                        request.workspaceId,
+                        request.workerId,
+                        request.catalogHash,
+                    )
                     SavedResponse
                 }
-                is CreateEnvironmentPromptRequest -> PromptResponse(
-                    promptDomainService.createEnvironmentPrompt(request.name, request.content)
+                is FindPromptRequest -> PromptResponse(promptDomainService.findById(request.promptId))
+                is FindPromptsRequest -> PromptsResponse(
+                    request.projectId?.let { promptDomainService.findByProject(it) }
+                        ?: promptDomainService.findAll()
                 )
-                is CopyBuiltinPromptToUserRequest -> resultResponse(
-                    promptDomainService.copyBuiltinPromptToUser(request.promptId)
+                is CreateProjectPromptRequest -> PromptResponse(
+                    promptDomainService.createProjectPrompt(request.projectId, request.name, request.content)
                 )
-                ResetAllBuiltinPromptsRequest -> countResultResponse(promptDomainService.resetAllBuiltinPrompts())
-                ImportAllClaudeMdRequest -> countResultResponse(promptDomainService.importAllClaudeMd())
                 is CreateProjectRequest -> ProjectResponse(
                     projectDomainService.create(request.name, request.description)
                 )
@@ -162,7 +188,6 @@ class GromozekaRemoteServer(
                 is CreateConversationRequest -> ConversationResponse(
                     conversationDomainService.create(
                         request.projectId,
-                        request.workspaceId,
                         request.displayName,
                         request.agentDefinitionId,
                     )
@@ -170,7 +195,6 @@ class GromozekaRemoteServer(
 
                 is FindConversationRequest -> ConversationResponse(conversationDomainService.findById(request.conversationId))
                 is GetProjectRequest -> ProjectResponse(conversationDomainService.getProject(request.conversationId))
-                is GetWorkspaceRequest -> WorkspaceResponse(conversationDomainService.getWorkspace(request.conversationId))
                 is FindRecentProjectsRequest -> ProjectsResponse(projectDomainService.findRecent(request.limit))
                 is FindConversationsByProjectRequest -> ConversationsResponse(
                     conversationDomainService.findByProject(request.projectId)
@@ -189,6 +213,12 @@ class GromozekaRemoteServer(
                 }
                 is UpdateConversationDisplayNameRequest -> ConversationResponse(
                     conversationDomainService.updateDisplayName(request.conversationId, request.displayName)
+                )
+                is UpdateConversationAgentRequest -> ConversationResponse(
+                    conversationDomainService.updateAgentDefinition(
+                        request.conversationId,
+                        request.agentDefinitionId,
+                    )
                 )
                 is SetConversationPinnedRequest -> ConversationResponse(
                     conversationDomainService.setPinned(request.conversationId, request.pinned)
@@ -235,14 +265,14 @@ class GromozekaRemoteServer(
                     conversationRuntimeService.submitMessage(
                         request.conversationId,
                         request.userMessage,
-                        request.agent,
+                        request.agentDefinitionId,
                     )
                 )
                 is EnqueueMessageRequest -> OperationResultResponse(
                     conversationRuntimeService.enqueueMessage(
                         request.conversationId,
                         request.userMessage,
-                        request.agent,
+                        request.agentDefinitionId,
                         request.placement
                     )
                 )
@@ -476,18 +506,6 @@ class GromozekaRemoteServer(
         val digest = MessageDigest.getInstance("SHA-256").digest(json.encodeToByteArray())
         return digest.joinToString("") { byte -> "%02x".format(byte) }
     }
-
-    private fun resultResponse(result: Result<Unit>): OperationResultResponse =
-        result.fold(
-            onSuccess = { OperationResultResponse(success = true) },
-            onFailure = { OperationResultResponse(success = false, error = it.message ?: it::class.simpleName) }
-        )
-
-    private fun countResultResponse(result: Result<Int>): OperationResultResponse =
-        result.fold(
-            onSuccess = { OperationResultResponse(success = true, count = it) },
-            onFailure = { OperationResultResponse(success = false, error = it.message ?: it::class.simpleName) }
-        )
 
     private companion object {
         val closedMemoryActionItemStatuses = setOf(MemoryActionItem.Status.DONE, MemoryActionItem.Status.CANCELLED)
