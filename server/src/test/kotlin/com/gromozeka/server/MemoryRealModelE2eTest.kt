@@ -149,9 +149,7 @@ class MemoryRealModelE2eTest {
                     systemProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, DIRECT_MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, "1200000"),
                 "gromozeka.ai.openai-subscription.http-response-timeout-ms" to
                     systemProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, DIRECT_OPENAI_SUBSCRIPTION_HTTP_RESPONSE_TIMEOUT_MS_PROPERTY, "1200000"),
-                "gromozeka.memory.read.parallelism" to
-                    System.getProperty(MEMORY_PARALLELISM_PROPERTY, "2"),
-                "gromozeka.memory.write.parallelism" to
+                "gromozeka.memory.parallelism" to
                     System.getProperty(MEMORY_PARALLELISM_PROPERTY, "2"),
                 "gromozeka.memory.routing.failFast" to "true",
             ),
