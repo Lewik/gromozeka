@@ -50,6 +50,19 @@ class UserProfileAiSettingsTest {
     }
 
     @Test
+    fun allowsExplicitRuntimeConnectionActivationWithoutMutatingProfile() {
+        val profile = UserProfile()
+        val connectionId = AiConnection.Id("openai-subscription")
+        val provider = testSettingsProvider(
+            profile = profile,
+            runtimeEnabledAiConnectionIds = setOf(connectionId),
+        )
+
+        assertEquals(connectionId, provider.resolveAiRuntime(AiRuntimeAssignment.Purpose.DEFAULT_CHAT).connection.id)
+        assertFalse(profile.aiSettings.connections.single { it.id == connectionId }.enabled)
+    }
+
+    @Test
     fun rejectsAssignmentToModelWithoutRequiredCapability() {
         val speechSelection = AiRuntimeSelection(AiModelConfiguration.Id("openai-api-gpt-4o-transcribe"))
 
@@ -100,10 +113,14 @@ class UserProfileAiSettingsTest {
         )
     }
 
-    private fun testSettingsProvider(profile: UserProfile): SettingsProvider =
+    private fun testSettingsProvider(
+        profile: UserProfile,
+        runtimeEnabledAiConnectionIds: Set<AiConnection.Id> = emptySet(),
+    ): SettingsProvider =
         object : SettingsProvider {
             override val userProfile: UserProfile = profile
             override val userDeviceSettings: UserDeviceSettings = UserDeviceSettings.Desktop()
+            override val runtimeEnabledAiConnectionIds: Set<AiConnection.Id> = runtimeEnabledAiConnectionIds
             override val mode: AppMode = AppMode.TEST
             override val homeDirectory: String = "/tmp/gromozeka-test"
         }

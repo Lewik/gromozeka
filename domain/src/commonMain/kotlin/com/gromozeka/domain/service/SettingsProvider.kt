@@ -21,6 +21,9 @@ interface SettingsProvider {
 
     val userDeviceSettings: UserDeviceSettings
 
+    val runtimeEnabledAiConnectionIds: Set<AiConnection.Id>
+        get() = emptySet()
+
     /**
      * Application operating mode.
      *
@@ -51,7 +54,9 @@ interface SettingsProvider {
         } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
         val connection = userProfile.aiSettings.connections.firstOrNull { it.id == modelConfiguration.connectionId }
             ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
-        require(connection.enabled) { "AI connection is disabled: ${connection.id.value}" }
+        require(connection.enabled || connection.id in runtimeEnabledAiConnectionIds) {
+            "AI connection is disabled: ${connection.id.value}"
+        }
         require(modelConfiguration.enabled) { "AI model configuration is disabled: ${modelConfiguration.id.value}" }
         return ResolvedAiRuntime(connection, modelConfiguration)
     }

@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiConnection
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +34,9 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
 
     val gromozekaHome: File = determineGromozekaHome()
 
+    override val runtimeEnabledAiConnectionIds: Set<AiConnection.Id> =
+        configuredRuntimeEnabledAiConnectionIds()
+
     @Value("\${logging.file.path}")
     private lateinit var logPath: String
 
@@ -57,10 +61,16 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
             log.info("Created gromozeka home directory: ${gromozekaHome.absolutePath}")
         }
 
-        _settingsFlow.value = loadSettings()
+        _settingsFlow.value = loadSettings().also(::validateRuntimeAiConnectionIds)
 
         log.info("Initialized with mode: ${mode.name}")
         log.info("Gromozeka home: ${gromozekaHome.absolutePath}")
+        if (runtimeEnabledAiConnectionIds.isNotEmpty()) {
+            log.info(
+                "Runtime-enabled AI connections: " +
+                    runtimeEnabledAiConnectionIds.joinToString { it.value }
+            )
+        }
     }
 
     private fun determineMode(): AppMode {
@@ -151,6 +161,7 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
 
     override fun saveSettings(settings: Settings) {
         validateSettings(settings)
+        validateRuntimeAiConnectionIds(settings)
         settingsFile.writeText(json.encodeToString(settings))
         _settingsFlow.value = settings
         log.info("Settings saved to: ${settingsFile.absolutePath}")
@@ -162,7 +173,7 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
     }
 
     override fun reloadSettings() {
-        _settingsFlow.value = loadSettings()
+        _settingsFlow.value = loadSettings().also(::validateRuntimeAiConnectionIds)
         log.info("Settings reloaded from file")
     }
 
@@ -186,6 +197,15 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
     private fun validateSettings(settings: Settings) {
         validateLanguageCode(settings.userProfile.speechSettings.speechToText.mainLanguageCode)
         validateTtsSpeed(settings.userProfile.speechSettings.textToSpeech.speed)
+    }
+
+    private fun validateRuntimeAiConnectionIds(settings: Settings) {
+        val configuredConnectionIds = settings.userProfile.aiSettings.connections.mapTo(mutableSetOf()) { it.id }
+        val unknownConnectionIds = runtimeEnabledAiConnectionIds - configuredConnectionIds
+        require(unknownConnectionIds.isEmpty()) {
+            "Runtime-enabled AI connections are not configured: " +
+                unknownConnectionIds.joinToString { it.value }
+        }
     }
 
     private fun validateLanguageCode(languageCode: String) {
@@ -216,4 +236,31 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
         }
     }
 
+    companion object {
+        internal fun parseRuntimeEnabledAiConnectionIds(configuredValue: String?): Set<AiConnection.Id> {
+            if (configuredValue == null) return emptySet()
+            require(configuredValue.isNotBlank()) {
+                "$RUNTIME_ENABLED_AI_CONNECTION_IDS_PROPERTY must not be blank when configured"
+            }
+            val rawIds = configuredValue.split(',').map(String::trim)
+            require(rawIds.none(String::isBlank)) {
+                "$RUNTIME_ENABLED_AI_CONNECTION_IDS_PROPERTY must contain comma-separated connection ids"
+            }
+            require(rawIds.distinct().size == rawIds.size) {
+                "$RUNTIME_ENABLED_AI_CONNECTION_IDS_PROPERTY must not contain duplicate connection ids"
+            }
+            return rawIds.mapTo(linkedSetOf(), AiConnection::Id)
+        }
+
+        private fun configuredRuntimeEnabledAiConnectionIds(): Set<AiConnection.Id> =
+            parseRuntimeEnabledAiConnectionIds(
+                System.getProperty(RUNTIME_ENABLED_AI_CONNECTION_IDS_PROPERTY)
+                    ?: System.getenv(RUNTIME_ENABLED_AI_CONNECTION_IDS_ENV)
+            )
+
+        private const val RUNTIME_ENABLED_AI_CONNECTION_IDS_PROPERTY =
+            "gromozeka.ai.runtime-enabled-connection-ids"
+        private const val RUNTIME_ENABLED_AI_CONNECTION_IDS_ENV =
+            "GROMOZEKA_AI_RUNTIME_ENABLED_CONNECTION_IDS"
+    }
 }
