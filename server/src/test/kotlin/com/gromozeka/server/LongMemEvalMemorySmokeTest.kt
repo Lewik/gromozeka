@@ -259,6 +259,7 @@ class LongMemEvalMemorySmokeTest {
                         judgeRuntime = judgeRuntime,
                         readTraceCollector = readTraceCollector,
                         writeTraceCollector = writeTraceCollector,
+                        llmCallProgressCollector = llmCallProgressCollector,
                         entry = entry,
                         namespace = namespace,
                         progressPath = progressPath,
@@ -476,6 +477,7 @@ class LongMemEvalMemorySmokeTest {
         judgeRuntime: AiRuntime,
         readTraceCollector: MemoryE2eReadTraceCollector,
         writeTraceCollector: MemoryE2eWriteTraceCollector,
+        llmCallProgressCollector: MemoryE2eLlmCallProgressCollector,
         entry: LongMemEvalEntry,
         namespace: MemoryNamespace,
         progressPath: Path,
@@ -532,6 +534,7 @@ class LongMemEvalMemorySmokeTest {
         val expectedEvidenceSourceIds = expectedEvidenceSourceIds(entry, rememberedSessions)
 
         appendProgress(progressPath, "answer_from_memory_start id=${entry.questionId}")
+        llmCallProgressCollector.drainCompletedCalls()
         val answerStartedAt = System.currentTimeMillis()
         val enrichResult = parseToolResult(
             memoryExecutor.executeSynchronously(
@@ -544,6 +547,7 @@ class LongMemEvalMemorySmokeTest {
             )
         )
         val answerDurationMs = System.currentTimeMillis() - answerStartedAt
+        val answerOperationLlmCalls = llmCallProgressCollector.drainCompletedCalls()
         if (enrichResult.status != "completed") {
             appendProgress(
                 progressPath,
@@ -566,7 +570,7 @@ class LongMemEvalMemorySmokeTest {
             "answer_from_memory_done id=${entry.questionId} durationMs=$answerDurationMs status=${enrichResult.status} " +
                 "retrieved=${enrichResult.retrievedCount ?: 0} sufficiency=${enrichResult.sufficiency.orEmpty()} " +
                 "memoryContextChars=${memoryContext.length} answer=${enrichResult.answer.orEmpty().oneLineForArtifact(180)} " +
-                readTrace?.llmCalls.orEmpty().renderLlmCallsForProgress()
+                answerOperationLlmCalls.renderLlmCallsForProgress()
         )
         val expectedAnswer = entry.answerText()
         val exactAnswerTextVisible = memoryContext.contains(expectedAnswer, ignoreCase = true)
@@ -619,7 +623,7 @@ class LongMemEvalMemorySmokeTest {
             remembered.writeTrace?.llmCalls.orEmpty().map { call ->
                 call.toLongMemEvalMemoryLlmCallResult(scope = "remember:${remembered.haystackSessionId}")
             }
-        } + readTrace?.llmCalls.orEmpty().map { call ->
+        } + answerOperationLlmCalls.map { call ->
             call.toLongMemEvalMemoryLlmCallResult(scope = "read")
         }
         val memorySmokePassReason = if (answerJudgement.supported) {

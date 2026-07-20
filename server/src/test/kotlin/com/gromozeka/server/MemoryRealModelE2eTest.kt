@@ -3292,12 +3292,14 @@ class MemoryE2eWriteTraceCollector : MemoryWriteTraceSink {
 
 class MemoryE2eLlmCallProgressCollector : MemoryRunLlmCallObserver {
     private val lock = Any()
+    private val completedCalls = ConcurrentLinkedQueue<MemoryRun.LlmCallTiming>()
 
     @Volatile
     private var progressPath: Path? = null
 
     fun bind(progressPath: Path) {
         synchronized(lock) {
+            completedCalls.clear()
             this.progressPath = progressPath
         }
     }
@@ -3305,12 +3307,16 @@ class MemoryE2eLlmCallProgressCollector : MemoryRunLlmCallObserver {
     fun clear() {
         synchronized(lock) {
             progressPath = null
+            completedCalls.clear()
         }
     }
 
     override fun onMemoryRunLlmCall(event: MemoryRunLlmCallEvent) {
-        val path = progressPath ?: return
         synchronized(lock) {
+            val path = progressPath ?: return
+            if (event is MemoryRunLlmCallEvent.Completed) {
+                completedCalls.add(event.timing)
+            }
             Files.writeString(
                 path,
                 "${Clock.System.now()} ${event.toProgressLine()}\n",
@@ -3319,6 +3325,15 @@ class MemoryE2eLlmCallProgressCollector : MemoryRunLlmCallObserver {
             )
         }
     }
+
+    fun drainCompletedCalls(): List<MemoryRun.LlmCallTiming> =
+        synchronized(lock) {
+            buildList {
+                while (true) {
+                    add(completedCalls.poll() ?: break)
+                }
+            }
+        }
 
     private fun MemoryRunLlmCallEvent.toProgressLine(): String {
         return when (this) {

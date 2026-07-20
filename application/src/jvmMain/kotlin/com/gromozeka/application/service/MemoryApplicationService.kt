@@ -173,14 +173,16 @@ class MemoryApplicationService(
             selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
             workspaceRootPath = runtimeContext.workspaceRootPath,
         )
-        return LlmMemoryQuestionAnswerer(
-            runtime = runtime,
-            runtimeSystemPrompts = runtimeSystemPrompts,
-        ).answer(
-            question = targetMessage.memoryQuestionText(),
-            readResult = readResult,
-            conversationId = conversationId,
-        )
+        return collectMemoryRunTimings(llmCallObservers) {
+            LlmMemoryQuestionAnswerer(
+                runtime = runtime,
+                runtimeSystemPrompts = runtimeSystemPrompts,
+            ).answer(
+                question = targetMessage.memoryQuestionText(),
+                readResult = readResult,
+                conversationId = conversationId,
+            )
+        }
     }
 
     private inner class MemoryServiceStageRuntimes(
