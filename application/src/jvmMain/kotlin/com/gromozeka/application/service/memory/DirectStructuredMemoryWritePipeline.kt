@@ -148,7 +148,7 @@ class DirectStructuredMemoryWritePipeline(
     private val forgetPipeline: ExplicitMemoryForgetPipeline? = null,
     private val embeddingIndexer: MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer,
     private val clock: MemoryClock = SystemMemoryClock,
-    branchParallelism: Int = MemoryPipelineParallelism.configuredParallelism(),
+    branchParallelism: Int = MemoryPipelineParallelism.configuredWriteParallelism(),
 ) : DirectStructuredMemoryWriteService {
     private val log = KLoggers.logger(this)
     private val branchParallelism = MemoryPipelineParallelism.normalizeParallelism(branchParallelism)

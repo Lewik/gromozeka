@@ -34,7 +34,7 @@ import kotlinx.serialization.json.Json
 class LlmMemoryReadSelector(
     private val runtime: AiRuntime,
     private val json: Json = Json { ignoreUnknownKeys = true },
-    batchParallelism: Int = MemoryPipelineParallelism.configuredParallelism(),
+    batchParallelism: Int = MemoryPipelineParallelism.configuredReadParallelism(),
 ) : MemoryReadSelector {
     private val log = KLoggers.logger(this)
     private val batchParallelism = MemoryPipelineParallelism.normalizeParallelism(batchParallelism)
