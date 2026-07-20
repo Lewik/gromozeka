@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.TokenUsageStatistics
@@ -45,6 +46,9 @@ import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.presentation.services.PttState
+import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.presentation.ui.LocalTranslation
+import com.gromozeka.presentation.ui.RemoteConnectionStatus
 import com.gromozeka.presentation.ui.TokenStatisticsTable
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
@@ -61,6 +65,7 @@ fun ConversationRuntimePanel(
     pttStatusMessage: String?,
     pendingMessages: List<PendingUserMessage>,
     runtimeSnapshot: ConversationRuntimeSnapshot?,
+    remoteConnectionState: RemoteConnectionState,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
@@ -73,6 +78,8 @@ fun ConversationRuntimePanel(
     fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
 ) {
+    val translation = LocalTranslation.current.runtime
+
     AnimatedVisibility(
         visible = isVisible,
         enter = if (slideFromRight) slideInHorizontally(initialOffsetX = { it }) else expandHorizontally(),
@@ -95,12 +102,12 @@ fun ConversationRuntimePanel(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Runtime",
+                        text = translation.title,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close runtime panel")
+                        Icon(Icons.Default.Close, contentDescription = translation.closePanelDescription)
                     }
                 }
 
@@ -142,6 +149,7 @@ fun ConversationRuntimePanel(
                     pttStatusMessage = pttStatusMessage,
                     pendingMessages = pendingMessages,
                     runtimeSnapshot = runtimeSnapshot,
+                    remoteConnectionState = remoteConnectionState,
                     onPause = onPause,
                     onResume = onResume,
                     onStop = onStop,
@@ -157,6 +165,7 @@ private fun RuntimeConfigurationCard(
     settings: Settings,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
 ) {
+    val translation = LocalTranslation.current.runtime
     val aiSettings = settings.userProfile.aiSettings
     val configuration = aiSettings.modelConfigurations.firstOrNull {
         it.id == agent.runtimeSelection.modelConfigurationId
@@ -223,7 +232,8 @@ private fun RuntimeConfigurationCard(
                     },
                 )
                 Text(
-                    text = "Context $percentage% · ${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()}",
+                    text = "${translation.contextLabel} $percentage% · " +
+                        "${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()}",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -231,10 +241,12 @@ private fun RuntimeConfigurationCard(
             tokenStats?.let { stats ->
                 Text(
                     text = buildList {
-                        stats.lastCallTokens?.let { add("last ${it.formatWithCommas()}") }
-                        add("thread ${stats.totalTokens.formatWithCommas()}")
+                        stats.lastCallTokens?.let {
+                            add("${translation.lastUsageLabel} ${it.formatWithCommas()}")
+                        }
+                        add("${translation.threadUsageLabel} ${stats.totalTokens.formatWithCommas()}")
                         if (stats.totalCacheReadTokens > 0) {
-                            add("cache read ${stats.totalCacheReadTokens.formatWithCommas()}")
+                            add("${translation.cacheReadUsageLabel} ${stats.totalCacheReadTokens.formatWithCommas()}")
                         }
                     }.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
@@ -243,7 +255,7 @@ private fun RuntimeConfigurationCard(
                 val observedRuntime = listOfNotNull(stats.provider, stats.modelId).joinToString(" · ")
                 if (observedRuntime.isNotBlank() && observedRuntime != configuredRuntime) {
                     Text(
-                        text = "Last call: $observedRuntime",
+                        text = "${translation.lastCallLabel}: $observedRuntime",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -258,6 +270,7 @@ private fun RuntimeTasksSection(
     runtimeSnapshot: ConversationRuntimeSnapshot?,
     onCancelCommandTask: (CommandTask.Id) -> Unit,
 ) {
+    val translation = LocalTranslation.current.runtime
     val activeTask = runtimeSnapshot?.activeTask
     val pendingTasks = runtimeSnapshot?.pendingTasks.orEmpty()
     val runningTools = runtimeSnapshot?.toolExecutions.orEmpty()
@@ -274,7 +287,11 @@ private fun RuntimeTasksSection(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Text("Tasks", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                translation.tasksTitle,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
             Spacer(modifier = Modifier.height(6.dp))
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -282,12 +299,18 @@ private fun RuntimeTasksSection(
             ) {
                 activeTask?.let { task ->
                     RuntimeTaskRow(
-                        if (runtimeSnapshot.state?.activeTaskStartedAt == null) "Claimed" else "Running",
-                        task.payload.runtimeLabel(),
+                        if (runtimeSnapshot.state?.activeTaskStartedAt == null) {
+                            translation.claimedTaskLabel
+                        } else {
+                            translation.runningTaskLabel
+                        },
+                        task.payload.runtimeLabel(translation),
                     )
                 }
-                pendingTasks.forEach { task -> RuntimeTaskRow("Pending", task.payload.runtimeLabel()) }
-                runningTools.forEach { tool -> RuntimeTaskRow("Tool", tool.toolName) }
+                pendingTasks.forEach { task ->
+                    RuntimeTaskRow(translation.pendingTaskLabel, task.payload.runtimeLabel(translation))
+                }
+                runningTools.forEach { tool -> RuntimeTaskRow(translation.toolTaskLabel, tool.toolName) }
                 activeCommands.forEach { commandTask ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -310,16 +333,16 @@ private fun RuntimeTasksSection(
                             )
                         }
                         TextButton(onClick = { onCancelCommandTask(commandTask.id) }) {
-                            Text("Kill")
+                            Text(translation.killButton)
                         }
                     }
                 }
                 incidents.forEach { incident ->
                     RuntimeTaskRow(
                         if (incident.kind == com.gromozeka.domain.service.ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN) {
-                            "Unknown"
+                            translation.unknownTaskLabel
                         } else {
-                            "Failed"
+                            translation.failedTaskLabel
                         },
                         incident.message,
                     )
@@ -358,6 +381,7 @@ private fun PendingMessagesSection(
 ) {
     if (pendingMessages.isEmpty()) return
 
+    val translation = LocalTranslation.current.runtime
     val orderedMessages = pendingMessages.orderedForDisplay()
     val steeringMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
     val queuedMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.END_OF_TURN }
@@ -372,7 +396,7 @@ private fun PendingMessagesSection(
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Text(
-                text = "Queue ${pendingMessages.size}",
+                text = "${translation.queueTitle} ${pendingMessages.size}",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -382,7 +406,7 @@ private fun PendingMessagesSection(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 PendingMessageGroup(
-                    title = "Current turn",
+                    title = translation.currentTurnLabel,
                     messages = steeringMessages,
                     isWaitingForResponse = isWaitingForResponse,
                     onSendInCurrentTurn = onSendInCurrentTurn,
@@ -390,7 +414,7 @@ private fun PendingMessagesSection(
                     onCancel = onCancel,
                 )
                 PendingMessageGroup(
-                    title = "After response",
+                    title = translation.afterResponseLabel,
                     messages = queuedMessages,
                     isWaitingForResponse = isWaitingForResponse,
                     onSendInCurrentTurn = onSendInCurrentTurn,
@@ -413,6 +437,8 @@ private fun PendingMessageGroup(
 ) {
     if (messages.isEmpty()) return
 
+    val translation = LocalTranslation.current
+
     Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     messages.forEach { message ->
         Column {
@@ -423,7 +449,7 @@ private fun PendingMessageGroup(
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
-                text = queuePlacementDescription(message.placement),
+                text = queuePlacementDescription(message.placement, translation.runtime),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelSmall,
@@ -432,14 +458,14 @@ private fun PendingMessageGroup(
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (isWaitingForResponse && message.placement == QueuedMessagePlacement.END_OF_TURN) {
                     TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
-                        Text("Current turn")
+                        Text(translation.runtime.currentTurnLabel)
                     }
                 }
                 TextButton(onClick = { onEdit(message.id) }) {
-                    Text("Edit")
+                    Text(translation.runtime.editButton)
                 }
                 TextButton(onClick = { onCancel(message.id) }) {
-                    Text("Cancel")
+                    Text(translation.cancelButton)
                 }
             }
             HorizontalDivider()
@@ -456,10 +482,12 @@ private fun RuntimeStatusFooter(
     pttStatusMessage: String?,
     pendingMessages: List<PendingUserMessage>,
     runtimeSnapshot: ConversationRuntimeSnapshot?,
+    remoteConnectionState: RemoteConnectionState,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
 ) {
+    val translation = LocalTranslation.current.runtime
     val voiceError = pttStatusMessage?.takeIf { it.isNotBlank() }
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
     val runningTools = runtimeSnapshot?.toolExecutions.orEmpty()
@@ -479,22 +507,23 @@ private fun RuntimeStatusFooter(
         pttState == PttState.IDLE && voiceError == null
     val statusText = when {
         voiceError != null -> voiceError
-        pttState == PttState.TRANSCRIBING -> "Расшифровываю голос…"
-        pttState == PttState.RECORDING -> "Идёт запись голоса"
-        controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED -> "Пауза запрошена"
-        controlState == ConversationExecutionState.ControlState.PAUSED -> "На паузе"
-        controlState == ConversationExecutionState.ControlState.STOPPING -> "Останавливается"
-        controlState == ConversationExecutionState.ControlState.INTERRUPTING -> "Прерывается"
-        executionPauseRequested -> "Пауза запрошена"
-        activeCommands.size == 1 -> "Команда выполняется"
-        activeCommands.size > 1 -> "Выполняются команды: ${activeCommands.size}"
-        runningTools.isNotEmpty() -> "Инструменты: ${runningTools.joinToString(", ")}"
-        activeTask != null -> activeTask.payload.runtimeStatusLabel(agentName)
-        isWaitingForResponse -> "$agentName работает"
-        pendingMessages.isNotEmpty() -> "В очереди ${pendingMessages.size}"
-        else -> "Готов"
+        pttState == PttState.TRANSCRIBING -> translation.transcribingVoiceStatus
+        pttState == PttState.RECORDING -> translation.recordingVoiceStatus
+        controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED ->
+            translation.pauseRequestedStatus
+        controlState == ConversationExecutionState.ControlState.PAUSED -> translation.pausedStatus
+        controlState == ConversationExecutionState.ControlState.STOPPING -> translation.stoppingStatus
+        controlState == ConversationExecutionState.ControlState.INTERRUPTING -> translation.interruptingStatus
+        executionPauseRequested -> translation.pauseRequestedStatus
+        activeCommands.size == 1 -> translation.commandRunningStatus
+        activeCommands.size > 1 -> "${translation.commandsRunningStatus}: ${activeCommands.size}"
+        runningTools.isNotEmpty() -> "${translation.toolsRunningStatus}: ${runningTools.joinToString(", ")}"
+        activeTask != null -> activeTask.payload.runtimeStatusLabel(agentName, translation)
+        isWaitingForResponse -> "$agentName ${translation.agentWorkingStatus}"
+        pendingMessages.isNotEmpty() -> "${translation.queuedStatus} ${pendingMessages.size}"
+        else -> translation.readyStatus
     }
-    val detailText = runtimeSnapshot?.runtimeDetailsText()
+    val detailText = runtimeSnapshot?.runtimeDetailsText(translation)
         ?.takeIf { it.isNotBlank() }
         ?: runtimeSnapshot?.trace?.lastOrNull()?.runtimeTraceText()
     val containerColor = when {
@@ -524,68 +553,84 @@ private fun RuntimeStatusFooter(
         color = containerColor,
         shape = MaterialTheme.shapes.small,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (pttState == PttState.TRANSCRIBING) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            } else {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = statusText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = contentColor,
-                )
-                if (!detailText.isNullOrBlank() && !isReady && voiceError == null) {
+        Column {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (pttState == PttState.TRANSCRIBING) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = detailText,
+                        text = statusText,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = contentColor.copy(alpha = 0.78f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor,
                     )
+                    if (!detailText.isNullOrBlank() && !isReady && voiceError == null) {
+                        Text(
+                            text = detailText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = contentColor.copy(alpha = 0.78f),
+                        )
+                    }
+                }
+                if ((isWaitingForResponse || runtimeHasWork) && !isStopping) {
+                    TextButton(onClick = if (isPaused) onResume else onPause) {
+                        Text(if (isPaused) translation.resumeButton else translation.pauseButton)
+                    }
+                    TextButton(onClick = onStop) {
+                        Text(translation.stopButton)
+                    }
                 }
             }
-            if ((isWaitingForResponse || runtimeHasWork) && !isStopping) {
-                TextButton(onClick = if (isPaused) onResume else onPause) {
-                    Text(if (isPaused) "Resume" else "Pause")
-                }
-                TextButton(onClick = onStop) {
-                    Text("Stop")
-                }
-            }
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 10.dp),
+                color = contentColor.copy(alpha = 0.15f),
+            )
+            RemoteConnectionStatus(
+                state = remoteConnectionState,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            )
         }
     }
 }
 
-private fun ConversationRuntimeTask.Payload.runtimeLabel(): String = when (this) {
-    is ConversationRuntimeTask.Payload.UserTurn -> "User turn"
-    is ConversationRuntimeTask.Payload.LlmCall -> "LLM call"
-    is ConversationRuntimeTask.Payload.ToolExecution -> "Tool execution"
-    is ConversationRuntimeTask.Payload.ToolResultProcessing -> "Tool result processing"
-    is ConversationRuntimeTask.Payload.MemoryRecall -> "Memory recall"
-    is ConversationRuntimeTask.Payload.ExecutionIncident -> "Execution incident"
+private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translation.RuntimeTranslation): String =
+    when (this) {
+        is ConversationRuntimeTask.Payload.UserTurn -> translation.userTurnTask
+        is ConversationRuntimeTask.Payload.LlmCall -> translation.llmCallTask
+        is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionTask
+        is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingTask
+        is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallTask
+        is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentTask
+    }
+
+private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
+    agentName: String,
+    translation: Translation.RuntimeTranslation,
+): String = when (this) {
+    is ConversationRuntimeTask.Payload.UserTurn -> "$agentName ${translation.agentWorkingStatus}"
+    is ConversationRuntimeTask.Payload.LlmCall -> translation.modelRequestStatus
+    is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionStatus
+    is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingStatus
+    is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallStatus
+    is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentStatus
 }
 
-private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(agentName: String): String = when (this) {
-    is ConversationRuntimeTask.Payload.UserTurn -> "$agentName работает"
-    is ConversationRuntimeTask.Payload.LlmCall -> "Запрос к модели"
-    is ConversationRuntimeTask.Payload.ToolExecution -> "Выполняется инструмент"
-    is ConversationRuntimeTask.Payload.ToolResultProcessing -> "Обработка результата инструмента"
-    is ConversationRuntimeTask.Payload.MemoryRecall -> "Вспоминание"
-    is ConversationRuntimeTask.Payload.ExecutionIncident -> "Обработка сбоя выполнения"
-}
-
-private fun ConversationRuntimeSnapshot.runtimeDetailsText(): String = buildList {
-    activeTask?.payload?.let { add(it.runtimeLabel()) }
-    if (pendingTasks.isNotEmpty()) add("pending ${pendingTasks.size}")
-    if (incidents.isNotEmpty()) add("incidents ${incidents.size}")
+private fun ConversationRuntimeSnapshot.runtimeDetailsText(
+    translation: Translation.RuntimeTranslation,
+): String = buildList {
+    activeTask?.payload?.let { add(it.runtimeLabel(translation)) }
+    if (pendingTasks.isNotEmpty()) add("${translation.pendingDetailsLabel} ${pendingTasks.size}")
+    if (incidents.isNotEmpty()) add("${translation.incidentsDetailsLabel} ${incidents.size}")
 }.joinToString(" · ")
 
 private fun ConversationRuntimeTraceEntry.runtimeTraceText(): String = buildString {
@@ -596,9 +641,12 @@ private fun ConversationRuntimeTraceEntry.runtimeTraceText(): String = buildStri
     }
 }
 
-private fun queuePlacementDescription(placement: QueuedMessagePlacement): String = when (placement) {
-    QueuedMessagePlacement.AFTER_TOOL_RESULT -> "After the nearest tool result"
-    QueuedMessagePlacement.END_OF_TURN -> "After the current response"
+private fun queuePlacementDescription(
+    placement: QueuedMessagePlacement,
+    translation: Translation.RuntimeTranslation,
+): String = when (placement) {
+    QueuedMessagePlacement.AFTER_TOOL_RESULT -> translation.nearestToolResultPlacement
+    QueuedMessagePlacement.END_OF_TURN -> translation.currentResponsePlacement
 }
 
 private fun List<PendingUserMessage>.orderedForDisplay(): List<PendingUserMessage> =

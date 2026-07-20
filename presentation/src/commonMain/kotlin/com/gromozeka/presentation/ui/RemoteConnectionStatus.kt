@@ -1,11 +1,8 @@
 package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -21,10 +18,11 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteConnectionState
 
 @Composable
-fun RemoteConnectionStatusBar(
+fun RemoteConnectionStatus(
     state: RemoteConnectionState,
     modifier: Modifier = Modifier,
 ) {
+    val translation = LocalTranslation.current.runtime
     val statusColor = when (state.status) {
         RemoteConnectionState.Status.CONNECTED -> MaterialTheme.colorScheme.primary
         RemoteConnectionState.Status.CONNECTING,
@@ -34,13 +32,14 @@ fun RemoteConnectionStatusBar(
         RemoteConnectionState.Status.CLOSED -> MaterialTheme.colorScheme.outline
     }
     val label = when (state.status) {
-        RemoteConnectionState.Status.DISCONNECTED -> "Disconnected"
-        RemoteConnectionState.Status.CONNECTING -> "Connecting"
-        RemoteConnectionState.Status.CONNECTED -> "Connected"
+        RemoteConnectionState.Status.DISCONNECTED -> translation.disconnectedStatus
+        RemoteConnectionState.Status.CONNECTING -> translation.connectingStatus
+        RemoteConnectionState.Status.CONNECTED -> translation.connectedStatus
         RemoteConnectionState.Status.RECONNECTING ->
-            "Reconnecting${state.reconnectAttempt.takeIf { it > 0 }?.let { " ($it)" }.orEmpty()}"
-        RemoteConnectionState.Status.OFFLINE -> "Offline"
-        RemoteConnectionState.Status.CLOSED -> "Closed"
+            translation.reconnectingStatus +
+                state.reconnectAttempt.takeIf { it > 0 }?.let { " ($it)" }.orEmpty()
+        RemoteConnectionState.Status.OFFLINE -> translation.offlineStatus
+        RemoteConnectionState.Status.CLOSED -> translation.closedStatus
     }
     val details = state.lastError
         ?.takeIf { state.status == RemoteConnectionState.Status.OFFLINE && it.isNotBlank() }
@@ -49,12 +48,7 @@ fun RemoteConnectionStatusBar(
 
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 28.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 12.dp, vertical = 4.dp)
             .testTag(UiTestTag.ConnectionStatus.value),
-        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

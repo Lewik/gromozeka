@@ -126,11 +126,86 @@ sealed class Translation {
         abstract val closeSettingsText: String
     }
 
+    @Serializable
+    data class RuntimeTranslation(
+        val title: String = "Runtime",
+        val closePanelDescription: String = "Close runtime panel",
+        val contextLabel: String = "Context",
+        val lastUsageLabel: String = "last",
+        val threadUsageLabel: String = "thread",
+        val cacheReadUsageLabel: String = "cache read",
+        val lastCallLabel: String = "Last call",
+        val tokenUsageTitle: String = "Token Usage Statistics",
+        val collapseDescription: String = "Collapse",
+        val expandDescription: String = "Expand",
+        val contextWindowLabel: String = "Context Window",
+        val tokensLabel: String = "tokens",
+        val recentTurnsLabel: String = "Recent turns",
+        val inputLabel: String = "INPUT",
+        val outputLabel: String = "OUTPUT",
+        val totalLabel: String = "Total",
+        val promptLabel: String = "Prompt",
+        val cacheLabel: String = "Cache",
+        val completionLabel: String = "Completion",
+        val thinkingLabel: String = "Thinking",
+        val createLabel: String = "Create",
+        val readLabel: String = "Read",
+        val tasksTitle: String = "Tasks",
+        val claimedTaskLabel: String = "Claimed",
+        val runningTaskLabel: String = "Running",
+        val pendingTaskLabel: String = "Pending",
+        val toolTaskLabel: String = "Tool",
+        val killButton: String = "Kill",
+        val unknownTaskLabel: String = "Unknown",
+        val failedTaskLabel: String = "Failed",
+        val queueTitle: String = "Queue",
+        val currentTurnLabel: String = "Current turn",
+        val afterResponseLabel: String = "After response",
+        val editButton: String = "Edit",
+        val nearestToolResultPlacement: String = "After the nearest tool result",
+        val currentResponsePlacement: String = "After the current response",
+        val transcribingVoiceStatus: String = "Transcribing voice...",
+        val recordingVoiceStatus: String = "Recording voice",
+        val pauseRequestedStatus: String = "Pause requested",
+        val pausedStatus: String = "Paused",
+        val stoppingStatus: String = "Stopping",
+        val interruptingStatus: String = "Interrupting",
+        val commandRunningStatus: String = "Command is running",
+        val commandsRunningStatus: String = "Commands are running",
+        val toolsRunningStatus: String = "Tools",
+        val agentWorkingStatus: String = "is working",
+        val queuedStatus: String = "Queued",
+        val readyStatus: String = "Ready",
+        val pauseButton: String = "Pause",
+        val resumeButton: String = "Resume",
+        val stopButton: String = "Stop",
+        val userTurnTask: String = "User turn",
+        val llmCallTask: String = "LLM call",
+        val toolExecutionTask: String = "Tool execution",
+        val toolResultProcessingTask: String = "Tool result processing",
+        val memoryRecallTask: String = "Memory recall",
+        val executionIncidentTask: String = "Execution incident",
+        val modelRequestStatus: String = "Model request",
+        val toolExecutionStatus: String = "Tool is running",
+        val toolResultProcessingStatus: String = "Processing tool result",
+        val memoryRecallStatus: String = "Recalling memory",
+        val executionIncidentStatus: String = "Handling execution incident",
+        val pendingDetailsLabel: String = "pending",
+        val incidentsDetailsLabel: String = "incidents",
+        val disconnectedStatus: String = "Disconnected",
+        val connectingStatus: String = "Connecting",
+        val connectedStatus: String = "Connected",
+        val reconnectingStatus: String = "Reconnecting",
+        val offlineStatus: String = "Offline",
+        val closedStatus: String = "Closed",
+    )
+
     abstract val languageCode: String
     abstract val languageName: String
     abstract val textDirection: TextDirection
 
     abstract val settings: SettingsTranslation
+    abstract val runtime: RuntimeTranslation
 
     abstract val appName: String
     abstract val helloWorld: String

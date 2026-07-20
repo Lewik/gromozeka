@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.presentation.services.translation.data.Translation
 
 @Composable
 fun TokenStatisticsTable(
@@ -23,6 +24,7 @@ fun TokenStatisticsTable(
         return
     }
 
+    val translation = LocalTranslation.current.runtime
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -43,14 +45,18 @@ fun TokenStatisticsTable(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Token Usage Statistics",
+                    translation.tokenUsageTitle,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
 
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (isExpanded) "Collapse" else "Expand"
+                    contentDescription = if (isExpanded) {
+                        translation.collapseDescription
+                    } else {
+                        translation.expandDescription
+                    }
                 )
             }
 
@@ -64,13 +70,14 @@ fun TokenStatisticsTable(
             if (currentContext != null && contextWindow != null) {
                 val percentage = (currentContext.toFloat() / contextWindow * 100).toInt()
                 Text(
-                    "Context Window: $percentage% (${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()})",
+                    "${translation.contextWindowLabel}: $percentage% " +
+                        "(${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()})",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             } else if (currentContext != null) {
                 Text(
-                    "Context Window: ${currentContext.formatWithCommas()} tokens",
+                    "${translation.contextWindowLabel}: ${currentContext.formatWithCommas()} ${translation.tokensLabel}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -78,7 +85,7 @@ fun TokenStatisticsTable(
 
             if (tokenStats.recentCalls.isNotEmpty()) {
                 Text(
-                    "Recent ${tokenStats.recentCalls.size} Turns:",
+                    "${translation.recentTurnsLabel}: ${tokenStats.recentCalls.size}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -91,7 +98,8 @@ fun TokenStatisticsTable(
                 TokenTable(
                     calls = tokenStats.recentCalls,
                     totals = tokenStats,
-                    hasThinking = hasThinking
+                    hasThinking = hasThinking,
+                    translation = translation,
                 )
             }
             }
@@ -104,10 +112,11 @@ private fun TokenTable(
     calls: List<TokenUsageStatistics>,
     totals: TokenUsageStatistics.ThreadTotals,
     hasThinking: Boolean,
+    translation: Translation.RuntimeTranslation,
 ) {
     Column {
         // Header
-        TokenTableHeader(hasThinking)
+        TokenTableHeader(hasThinking, translation)
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
@@ -138,7 +147,10 @@ private fun TokenTable(
 }
 
 @Composable
-private fun TokenTableHeader(hasThinking: Boolean) {
+private fun TokenTableHeader(
+    hasThinking: Boolean,
+    translation: Translation.RuntimeTranslation,
+) {
     // Level 1: Main sections (INPUT | OUTPUT | Total)
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -147,7 +159,7 @@ private fun TokenTableHeader(hasThinking: Boolean) {
         // INPUT section
         Row(modifier = Modifier.weight(1f)) {
             Text(
-                "INPUT",
+                translation.inputLabel,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
@@ -160,7 +172,7 @@ private fun TokenTableHeader(hasThinking: Boolean) {
         // OUTPUT section
         Row(modifier = Modifier.weight(0.6f)) {
             Text(
-                "OUTPUT",
+                translation.outputLabel,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
@@ -172,7 +184,7 @@ private fun TokenTableHeader(hasThinking: Boolean) {
 
         // Total column
         Text(
-            "Total",
+            translation.totalLabel,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.width(60.dp),
@@ -190,13 +202,13 @@ private fun TokenTableHeader(hasThinking: Boolean) {
         // INPUT subsections
         Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
             Text(
-                "Prompt",
+                translation.promptLabel,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.End
             )
             Text(
-                "Cache",
+                translation.cacheLabel,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(2f),
@@ -209,14 +221,14 @@ private fun TokenTableHeader(hasThinking: Boolean) {
         // OUTPUT subsections (just labels, no grouping needed)
         Row(modifier = Modifier.weight(0.6f), horizontalArrangement = Arrangement.SpaceEvenly) {
             Text(
-                "Completion",
+                translation.completionLabel,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.End
             )
             if (hasThinking) {
                 Text(
-                    "Thinking",
+                    translation.thinkingLabel,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.End
@@ -241,13 +253,13 @@ private fun TokenTableHeader(hasThinking: Boolean) {
         Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
             Spacer(modifier = Modifier.weight(1f)) // Prompt space
             Text(
-                "Create",
+                translation.createLabel,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.End
             )
             Text(
-                "Read",
+                translation.readLabel,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.End

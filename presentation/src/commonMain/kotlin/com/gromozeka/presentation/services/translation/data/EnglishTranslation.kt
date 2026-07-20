@@ -198,6 +198,7 @@ data class EnglishTranslation(
     ) : SettingsTranslation()
 
     override val settings: SettingsTranslation = EnglishSettingsTranslation()
+    override val runtime: RuntimeTranslation = RuntimeTranslation()
 
     companion object {
         const val LANGUAGE_CODE = "en"

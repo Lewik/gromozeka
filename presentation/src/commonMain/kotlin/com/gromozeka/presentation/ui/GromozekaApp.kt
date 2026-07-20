@@ -333,8 +333,6 @@ fun GromozekaAppContent(
                                     tabRowComponent()
                                 }
 
-                                RemoteConnectionStatusBar(remoteConnectionState)
-
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(modifier = Modifier.weight(1f)) {
                                         Column(modifier = Modifier.weight(1f).padding(contentPadding)) {
@@ -541,6 +539,7 @@ fun GromozekaAppContent(
                                                     pttStatusMessage = pttStatusMessage,
                                                     pendingMessages = pendingMessages,
                                                     runtimeSnapshot = runtimeSnapshot,
+                                                    remoteConnectionState = remoteConnectionState,
                                                     onPause = tabViewModel::pauseExecution,
                                                     onResume = tabViewModel::resumeExecution,
                                                     onStop = tabViewModel::stopExecution,
@@ -633,6 +632,7 @@ fun GromozekaAppContent(
                                         pttStatusMessage = pttStatusMessage,
                                         pendingMessages = pendingMessages,
                                         runtimeSnapshot = runtimeSnapshot,
+                                        remoteConnectionState = remoteConnectionState,
                                         onPause = tabViewModel::pauseExecution,
                                         onResume = tabViewModel::resumeExecution,
                                         onStop = tabViewModel::stopExecution,
