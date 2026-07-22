@@ -8,5 +8,5 @@ enum class ClientPlatform(
     ANDROID(showSoftwareKeyboardControls = true, usePlatformDensity = true),
     IOS(showSoftwareKeyboardControls = true, usePlatformDensity = true),
     WEB_DESKTOP(showSoftwareKeyboardControls = false, usePlatformDensity = false),
-    WEB_TOUCH(showSoftwareKeyboardControls = true, usePlatformDensity = false),
+    WEB_TOUCH(showSoftwareKeyboardControls = true, usePlatformDensity = true),
 }

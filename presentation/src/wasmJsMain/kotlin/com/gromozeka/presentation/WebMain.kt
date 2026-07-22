@@ -103,13 +103,13 @@ private fun resolveWebLayoutHints(): WebLayoutHints {
 
     return when {
         compactScreen -> WebLayoutHints(
-            uiScaleMultiplier = 1.25f,
+            uiScaleMultiplier = if (clientPlatform == ClientPlatform.WEB_TOUCH) 1.0f else 1.25f,
             showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         hasTouch && tabletScreen -> WebLayoutHints(
-            uiScaleMultiplier = 1.15f,
+            uiScaleMultiplier = 1.0f,
             showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
