@@ -41,6 +41,11 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.supportedBy
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -207,10 +212,11 @@ class ConversationEngineService(
                 responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(context.assistantResponseFormat),
                 assistantResponseFormat = context.assistantResponseFormat,
                 toolContext = buildMap {
-                    put("conversationId", conversationId.value)
-                    put("threadId", conversation.currentThread.value)
-                    put("projectId", context.project.id.value)
-                    put("workerId", worker.workerId.value)
+                    put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
+                    put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
+                    put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
+                    put(TOOL_CONTEXT_PROJECT_ID, context.project.id.value)
+                    put(TOOL_CONTEXT_WORKER_ID, worker.workerId.value)
                     put("aiProvider", context.provider.name)
                     put("modelName", context.modelName)
                 }
@@ -396,10 +402,11 @@ class ConversationEngineService(
         if (existingToolResult == null) {
             val toolContext = ToolExecutionContext(
                 buildMap {
-                    put("conversationId", conversationId.value)
-                    put("threadId", conversation.currentThread.value)
-                    put("projectId", project.id.value)
-                    put("workerId", worker.workerId.value)
+                    put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
+                    put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
+                    put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
+                    put(TOOL_CONTEXT_PROJECT_ID, project.id.value)
+                    put(TOOL_CONTEXT_WORKER_ID, worker.workerId.value)
                     workspaceContext?.let { resolved ->
                         put("workspaceId", resolved.workspace.id.value)
                         put("workspaceMountId", resolved.mount.id.value)

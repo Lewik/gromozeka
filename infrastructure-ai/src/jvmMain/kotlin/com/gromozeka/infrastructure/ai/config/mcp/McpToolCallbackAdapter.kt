@@ -2,6 +2,9 @@ package com.gromozeka.infrastructure.ai.config.mcp
 
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.types.Tool
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
@@ -14,7 +17,8 @@ class McpToolCallbackAdapter(
     serverName: String,
     private val clientWrapper: McpWrapperInterface,
     private val tool: Tool,
-    private val coroutineScope: CoroutineScope
+    private val coroutineScope: CoroutineScope,
+    private val forwardGrzConversationContext: Boolean = false,
 ) : AiToolCallback {
 
     private val log = KLoggers.logger {}
@@ -48,7 +52,13 @@ class McpToolCallbackAdapter(
                     }
                 }
 
-                val result = clientWrapper.callTool(tool.name, arguments)
+                val result = clientWrapper.callTool(
+                    tool.name,
+                    arguments.withGrzConversationContext(
+                        context = context,
+                        enabled = forwardGrzConversationContext,
+                    ),
+                )
 
                 log.debug { "MCP tool ${tool.name} result: $result" }
                 result
@@ -87,4 +97,27 @@ class McpToolCallbackAdapter(
     private fun String.toolNamePart(): String =
         map { character -> if (character.isLetterOrDigit() || character == '_') character else '_' }
             .joinToString("")
+}
+
+internal fun Map<String, Any>.withGrzConversationContext(
+    context: ToolExecutionContext?,
+    enabled: Boolean,
+): Map<String, Any?> {
+    if (!enabled || context == null) {
+        return this
+    }
+
+    val forwardedContext = listOf(
+        TOOL_CONTEXT_CONVERSATION_ID,
+        TOOL_CONTEXT_THREAD_ID,
+        TOOL_CONTEXT_TARGET_MESSAGE_ID,
+    ).mapNotNull { key ->
+        context.getString(key)?.takeIf { it.isNotBlank() }?.let { key to it }
+    }.toMap()
+
+    return if (forwardedContext.isEmpty()) {
+        this
+    } else {
+        this + ("_context" to forwardedContext)
+    }
 }

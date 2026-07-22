@@ -290,7 +290,15 @@ class McpConfigurationService(
                         log.info { "```" }
                         log.info { "" }
 
-                        callbacks.add(McpToolCallbackAdapter(wrapper.name, wrapper, tool, coroutineScope))
+                        callbacks.add(
+                            McpToolCallbackAdapter(
+                                serverName = wrapper.name,
+                                clientWrapper = wrapper,
+                                tool = tool,
+                                coroutineScope = coroutineScope,
+                                forwardGrzConversationContext = serverConfig?.forwardGrzConversationContext == true,
+                            )
+                        )
                     }
                     log.debug { "Registered ${tools.size} tools from ${wrapper.name}" }
                 } catch (e: Exception) {

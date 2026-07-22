@@ -6,6 +6,8 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 
 const val TOOL_CONTEXT_CONVERSATION_ID = "conversationId"
+const val TOOL_CONTEXT_THREAD_ID = "threadId"
+const val TOOL_CONTEXT_TARGET_MESSAGE_ID = "targetMessageId"
 const val TOOL_CONTEXT_PROJECT_ID = "projectId"
 const val TOOL_CONTEXT_WORKSPACE_ID = "workspaceId"
 const val TOOL_CONTEXT_WORKSPACE_MOUNT_ID = "workspaceMountId"

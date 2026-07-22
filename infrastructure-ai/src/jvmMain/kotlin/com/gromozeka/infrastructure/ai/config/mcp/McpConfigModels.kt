@@ -37,6 +37,9 @@ data class ServerConfig(
 
     @JsonProperty("workerIds")
     val workerIds: Set<String> = emptySet(),
+
+    @JsonProperty("forwardGrzConversationContext")
+    val forwardGrzConversationContext: Boolean = false,
 ) {
     val transportType: TransportType
         get() = when {

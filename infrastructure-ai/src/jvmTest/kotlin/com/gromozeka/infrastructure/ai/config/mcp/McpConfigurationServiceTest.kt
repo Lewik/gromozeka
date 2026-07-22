@@ -25,6 +25,7 @@ class McpConfigurationServiceTest {
                   "command": "claude",
                   "args": ["mcp", "serve"],
                   "allowedTools": ["WebSearch", "WebFetch"],
+                  "forwardGrzConversationContext": true,
                   "workerIds": ["test-worker"]
                 }
               }
@@ -34,6 +35,7 @@ class McpConfigurationServiceTest {
         )
 
         assertEquals(listOf("WebSearch", "WebFetch"), config.mcpServers["claude-code"]?.allowedTools)
+        assertEquals(true, config.mcpServers["claude-code"]?.forwardGrzConversationContext)
         assertEquals(setOf("test-worker"), config.mcpServers["claude-code"]?.workerIds)
     }
 

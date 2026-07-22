@@ -61,6 +61,35 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
     }
 
     @Test
+    fun `MCP call extracts hidden Gromozeka conversation context`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
+        val callback = CapturingToolCallback()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback).getTools()).create()
+
+        runBlocking {
+            val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
+                CallToolRequest(CallToolRequestParams(
+                    name = MEMORY_REMEMBER_TOOL_NAME,
+                    arguments = buildJsonObject {
+                        put("text", "Remember this")
+                        put("_context", buildJsonObject {
+                            put("conversationId", "conversation-1")
+                            put("threadId", "thread-1")
+                            put("targetMessageId", "message-1")
+                        })
+                    },
+                ))
+            )
+
+            assertFalse(result.isError == true)
+        }
+
+        assertFalse(callback.lastToolInput.orEmpty().contains("_context"))
+        assertEquals("conversation-1", callback.lastContext?.getString("conversationId"))
+        assertEquals("thread-1", callback.lastContext?.getString("threadId"))
+        assertEquals("message-1", callback.lastContext?.getString("targetMessageId"))
+    }
+
+    @Test
     fun `memory remember MCP call treats text with document type as provided document`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
         val callback = CapturingToolCallback()
         val server = GromozekaMcpServerFactory(FakeToolProvider(callback).getTools()).create()

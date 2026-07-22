@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -78,7 +79,7 @@ class MemoryEnrichContextToolCallback(
 
         memoryOperations.enrichMessage(
             conversationIdValue = conversationId,
-            targetMessageId = input.target_message_id,
+            targetMessageId = input.target_message_id ?: context.getString(TOOL_CONTEXT_TARGET_MESSAGE_ID),
         )
     }
 
