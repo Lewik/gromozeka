@@ -150,8 +150,8 @@ fun GromozekaAppContent(
         }
     }
 
-    val createNewSessionWithAgent: (Project, AgentDefinition) -> Unit = { project, agent ->
-        createSession(project.id, agent, null)
+    val createNewSessionForProject: (Project) -> Unit = { project ->
+        createSession(project.id, null, null)
     }
 
     val createNewSessionInCurrentProject: () -> Unit = {
@@ -503,10 +503,9 @@ fun GromozekaAppContent(
                                                                 ProjectArea.CONVERSATIONS -> SessionListScreen(
                                                                     onConversationSelected = { _, _ -> refreshTrigger++ },
                                                                     coroutineScope = coroutineScope,
-                                                                    onNewSession = createNewSessionWithAgent,
+                                                                    onNewSession = createNewSessionForProject,
                                                                     projectService = appComponents.projectService,
                                                                     conversationTreeService = appComponents.conversationService,
-                                                                    agentService = appComponents.agentService,
                                                                     appViewModel = appComponents.appViewModel,
                                                                     searchViewModel = appComponents.conversationSearchViewModel,
                                                                     showSettingsPanel = showSettingsPanel,

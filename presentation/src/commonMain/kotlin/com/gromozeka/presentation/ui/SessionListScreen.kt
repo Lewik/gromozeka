@@ -9,25 +9,21 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.service.ProjectDomainService
-import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.domain.model.Project
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.ConversationDomainService
 import klog.KLoggers
@@ -50,10 +46,9 @@ private data class ProjectGroup(
 fun SessionListScreen(
     onConversationSelected: (Conversation, Project) -> Unit,
     coroutineScope: CoroutineScope,
-    onNewSession: (Project, AgentDefinition) -> Unit,
+    onNewSession: (Project) -> Unit,
     projectService: ProjectDomainService,
     conversationTreeService: ConversationDomainService,
-    agentService: AgentDomainService,
     appViewModel: AppViewModel,
     searchViewModel: ConversationSearchViewModel,
     showSettingsPanel: Boolean,
@@ -65,8 +60,6 @@ fun SessionListScreen(
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
-    var showProjectPicker by remember { mutableStateOf(false) }
-    var projectPickerInitialProject by remember { mutableStateOf<Project?>(null) }
     var conversationToRename by remember { mutableStateOf<Conversation?>(null) }
     var mutatingConversationIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var operationError by remember { mutableStateOf<String?>(null) }
@@ -178,17 +171,6 @@ fun SessionListScreen(
                     tooltip = LocalTranslation.current.refreshSessionsTooltip
                 ) {
                     Text("🔄")
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                CompactButton(
-                    onClick = {
-                        projectPickerInitialProject = null
-                        showProjectPicker = true
-                    }
-                ) {
-                    Text(LocalTranslation.current.newSessionButton)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -330,10 +312,7 @@ fun SessionListScreen(
                                             expandedProjects + group.projectId.value
                                         }
                                     },
-                                    onNewSessionClick = {
-                                        projectPickerInitialProject = group.project
-                                        showProjectPicker = true
-                                    },
+                                    onNewSessionClick = { onNewSession(group.project) },
                                     onConversationClick = { clickedConversation ->
                                         coroutineScope.handleConversationClick(
                                             clickedConversation,
@@ -351,19 +330,6 @@ fun SessionListScreen(
                 }
             }
         }
-    }
-
-    if (showProjectPicker) {
-        NewConversationPickerDialog(
-            projectGroups = projectGroups,
-            initialProject = projectPickerInitialProject,
-            agentService = agentService,
-            onSelect = { project, agent ->
-                showProjectPicker = false
-                onNewSession(project, agent)
-            },
-            onDismiss = { showProjectPicker = false },
-        )
     }
 
     conversationToRename?.let { conversation ->
@@ -568,91 +534,4 @@ private fun CoroutineScope.handleConversationClick(
             log.warn(e) { "Failed to create tab: ${e.message}" }
         }
     }
-}
-
-@Composable
-private fun NewConversationPickerDialog(
-    projectGroups: List<ProjectGroup>,
-    initialProject: Project?,
-    agentService: AgentDomainService,
-    onSelect: (Project, AgentDefinition) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var selectedProject by remember(initialProject?.id) { mutableStateOf(initialProject) }
-    var agents by remember { mutableStateOf<List<AgentDefinition>>(emptyList()) }
-    var loadingAgents by remember { mutableStateOf(false) }
-    var loadError by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(selectedProject?.id) {
-        val project = selectedProject ?: return@LaunchedEffect
-        loadingAgents = true
-        runCatching {
-            agentService.findAll().filter { agent ->
-                agent.type is AgentDefinition.Type.Builtin || agent.projectId == project.id
-            }
-        }.onSuccess {
-            agents = it
-            loadError = null
-        }.onFailure {
-            agents = emptyList()
-            loadError = it.message ?: "Failed to load agents"
-        }
-        loadingAgents = false
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New conversation") },
-        text = {
-            if (projectGroups.isEmpty()) {
-                Text("No project is available.")
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("Project", style = MaterialTheme.typography.labelLarge)
-                        projectGroups.forEach { group ->
-                            CompactButton(
-                                onClick = { selectedProject = group.project },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(group.project.name)
-                            }
-                        }
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("Agent", style = MaterialTheme.typography.labelLarge)
-                        when {
-                            selectedProject == null -> Text("Choose a project first")
-                            loadingAgents -> CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            loadError != null -> Text(loadError.orEmpty(), color = MaterialTheme.colorScheme.error)
-                            agents.isEmpty() -> Text("No agents are available for this project")
-                            else -> agents.forEach { agent ->
-                                CompactButton(
-                                    onClick = { onSelect(requireNotNull(selectedProject), agent) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(agent.name)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
 }
