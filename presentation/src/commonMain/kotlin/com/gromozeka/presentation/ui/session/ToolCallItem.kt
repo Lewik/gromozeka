@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.domain.model.Conversation
@@ -350,19 +351,34 @@ fun ToolCallItem(
                         // Show result content - now it's a list of Data items
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             result.result.forEach { dataItem ->
-                                    when (dataItem) {
-                                        is Conversation.Message.ContentItem.ToolResult.Data.Text -> {
-                                            val displayText = truncateText(dataItem.content)
-                                            Text(
-                                                text = displayText,
-                                                modifier = Modifier.fillMaxWidth(),
-                                                style = MaterialTheme.typography.bodySmall
-                                            )
+                                when (dataItem) {
+                                    is Conversation.Message.ContentItem.ToolResult.Data.Text -> {
+                                        val prettyJsonContent = remember(dataItem.content) {
+                                            val firstNonWhitespace = dataItem.content.firstOrNull { !it.isWhitespace() }
+                                            if (firstNonWhitespace == '{' || firstNonWhitespace == '[') {
+                                                jsonPrettyPrintOrNull(dataItem.content)
+                                            } else {
+                                                null
+                                            }
                                         }
+                                        val displayText = truncateText(
+                                            text = prettyJsonContent ?: dataItem.content,
+                                            maxLines = if (prettyJsonContent == null) 5 else 40,
+                                        )
+                                        Text(
+                                            text = displayText,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            style = if (prettyJsonContent == null) {
+                                                MaterialTheme.typography.bodySmall
+                                            } else {
+                                                MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+                                            },
+                                        )
+                                    }
 
-                                        is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> {
-                                            when {
-                                                dataItem.mediaType.type == "image" -> {
+                                    is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> {
+                                        when {
+                                            dataItem.mediaType.type == "image" -> {
                                                     // Base64 image - show placeholder with truncation
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically,

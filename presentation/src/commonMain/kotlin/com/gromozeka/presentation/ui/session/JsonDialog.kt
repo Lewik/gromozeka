@@ -55,8 +55,9 @@ private val prettyJson = Json {
 }
 
 private fun jsonPrettyPrint(json: String): String =
+    jsonPrettyPrintOrNull(json) ?: json
+
+internal fun jsonPrettyPrintOrNull(json: String): String? =
     runCatching {
         prettyJson.encodeToString(JsonElement.serializer(), Json.parseToJsonElement(json))
-    }.getOrElse {
-        json
-    }
+    }.getOrNull()
