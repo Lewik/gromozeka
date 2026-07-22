@@ -1,7 +1,7 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
@@ -11,7 +11,7 @@ data class CommandTask(
     val id: Id,
     val conversationId: Conversation.Id,
     val workerId: ConversationRuntimeWorkerId,
-    val workspaceId: Workspace.Id,
+    val workspaceMountId: WorkspaceMount.Id,
     val command: String,
     val workingDirectory: String,
     val status: Status,

@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.TabManager
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeService
+import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.AgentDomainService
@@ -30,6 +31,7 @@ open class AppViewModel(
     private val defaultAgentProvider: DefaultAgentProvider,
     private val agentService: AgentDomainService,
     private val tokenStatsService: ConversationTokenStatsService,
+    private val conversationTabLayoutService: ConversationTabLayoutService,
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -55,6 +57,19 @@ open class AppViewModel(
         setAsCurrent: Boolean,
         initiator: ConversationInitiator,
     ): Int = mutex.withLock {
+        if (conversationId != null) {
+            val existingIndex = _tabs.value.indexOfFirst { it.conversationId == conversationId }
+            if (existingIndex >= 0) {
+                conversationTabLayoutService.open(conversationId)
+                if (setAsCurrent) {
+                    _currentTabIndex.value = existingIndex
+                }
+                initialMessage?.let { message ->
+                    _tabs.value[existingIndex].sendInitialMessage(message)
+                }
+                return existingIndex
+            }
+        }
 
         val tabId = Tab.Id(uuid7())
 
@@ -88,31 +103,16 @@ open class AppViewModel(
             initialMessage?.instructions?.filterIsInstance<Conversation.Message.Instruction.Source.Agent>()
                 ?.firstOrNull()?.tabId
 
-        val initialTabUiState = UIState.Tab(
-            projectId = projectId,
-            conversationId = conversation.id,
-            activeMessageInstructionIds = settingsService.settingsFlow.value.userProfile.messageInstructionGroups
-                .map { group -> group.controls[group.selectedByDefault].data.id }
-                .toSet(),
+        val initialTabUiState = newTabUiState(
+            conversation = conversation,
+            agent = tabAgent,
             tabId = tabId.value,
             parentTabId = parentTabId,
-            agent = tabAgent,
-            initiator = initiator
+            initiator = initiator,
         )
+        val tabViewModel = createTabViewModel(conversation, initialTabUiState)
 
-        val tabViewModel = TabViewModel(
-            conversationId = conversation.id,
-            projectId = projectId,
-            conversationRuntimeService = conversationRuntimeService,
-            conversationService = conversationService,
-            messageSquashGenerationService = messageSquashGenerationService,
-            soundNotificationService = soundNotificationService,
-            settingsService = settingsService,
-            scope = scope,
-            initialTabUiState = initialTabUiState,
-            screenCaptureController = screenCaptureController,
-            tokenStatsService = tokenStatsService,
-        )
+        conversationTabLayoutService.open(conversation.id)
 
         val updatedTabs = _tabs.value + tabViewModel
         _tabs.value = updatedTabs
@@ -126,15 +126,7 @@ open class AppViewModel(
         }
 
         if (initialMessage != null) {
-            val messageContent = initialMessage.content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-                .firstOrNull()?.text ?: "Ready to work on this project"
-            log.debug("Initial message preview: ${messageContent.take(100)}...")
-            try {
-                tabViewModel.sendMessageToSession(messageContent, initialMessage.instructions)
-                log.info("Initial message sent successfully")
-            } catch (e: Exception) {
-                log.warn(e, "Failed to send initial message: ${e.message}")
-            }
+            tabViewModel.sendInitialMessage(initialMessage)
         }
 
         return newTabIndex
@@ -144,32 +136,15 @@ open class AppViewModel(
         currentTab.value?.interrupt()
     }
 
-    suspend fun closeTab(index: Int) = mutex.withLock {
-        val tabList = _tabs.value
-        val tab = tabList.getOrNull(index) ?: return@withLock
+    suspend fun closeTab(index: Int) {
+        val conversationId = mutex.withLock {
+            _tabs.value.getOrNull(index)?.conversationId
+        } ?: return
 
-        _tabs.value = tabList.filterIndexed { i, _ -> i != index }
-
-        if (_currentTabIndex.value == index) {
-            val newIndex = when {
-                index > 1 -> {
-                    index - 1
-                }
-
-                index == 1 && tabList.size > 2 -> {
-                    1
-                }
-
-                else -> {
-                    null
-                }
-            }
-            _currentTabIndex.value = newIndex
-        } else if (_currentTabIndex.value != null && _currentTabIndex.value!! > index) {
-            _currentTabIndex.value = _currentTabIndex.value!! - 1
+        conversationTabLayoutService.close(conversationId)
+        mutex.withLock {
+            removeLocalTab(conversationId)
         }
-
-        log.info("Closed tab at index $index")
     }
 
     suspend fun selectTab(index: Int?) = mutex.withLock {
@@ -235,56 +210,16 @@ open class AppViewModel(
         return findTabByTabId(tabId)?.toTabInfo()
     }
 
-    suspend fun restoreTabs(uiState: UIState) {
-        log.info("Restoring ${uiState.tabs.size} tabs from UIState")
+    suspend fun restoreTabs(uiState: UIState, layout: ConversationTabLayout) {
+        _currentTabIndex.value = uiState.currentTabIndex?.takeIf { it in systemTabIndexes }
+        val preferredConversationId = uiState.currentTabIndex
+            ?.let(uiState.tabs::getOrNull)
+            ?.conversationId
+        applyConversationTabLayout(layout, uiState.tabs.associateBy(UIState.Tab::conversationId), preferredConversationId)
+    }
 
-        val restoredTabs = mutableListOf<TabViewModel>()
-
-        uiState.tabs.forEach { tabUiState ->
-            try {
-                val conversation = conversationService.findById(tabUiState.conversationId)
-                    ?: error("Conversation not found: ${tabUiState.conversationId.value}")
-                mergeConversationSnapshots(listOf(conversation))
-                require(conversation.projectId == tabUiState.projectId) {
-                    "Saved tab project does not match conversation ${conversation.id.value}"
-                }
-                val agent = agentService.findById(conversation.agentDefinitionId)
-                    ?: error(
-                        "Agent not found for conversation ${conversation.id.value}: " +
-                            conversation.agentDefinitionId.value
-                    )
-                val restoredUiState = tabUiState.copy(
-                    projectId = conversation.projectId,
-                    agent = agent,
-                )
-
-                val tabViewModel = TabViewModel(
-                    conversationId = conversation.id,
-                    projectId = tabUiState.projectId,
-                    conversationRuntimeService = conversationRuntimeService,
-                    conversationService = conversationService,
-                    messageSquashGenerationService = messageSquashGenerationService,
-                    soundNotificationService = soundNotificationService,
-                    settingsService = settingsService,
-                    scope = scope,
-                    initialTabUiState = restoredUiState,
-                    screenCaptureController = screenCaptureController,
-                    tokenStatsService = tokenStatsService,
-                )
-
-                restoredTabs.add(tabViewModel)
-                log.info("Successfully restored tab for conversation: ${conversation.id.value}")
-            } catch (e: Exception) {
-                log.warn("Failed to restore tab for conversation ${tabUiState.conversationId.value}: ${e.message}")
-            }
-        }
-
-        _tabs.value = restoredTabs.toList()
-        log.info("Restore completed: ${_tabs.value.size}/${uiState.tabs.size} tabs restored")
-
-        if (uiState.currentTabIndex != null && uiState.currentTabIndex < _tabs.value.size) {
-            selectTab(uiState.currentTabIndex)
-        }
+    suspend fun applyConversationTabLayout(layout: ConversationTabLayout) {
+        applyConversationTabLayout(layout, emptyMap(), null)
     }
 
     fun snapshotUIState(): UIState =
@@ -292,6 +227,115 @@ open class AppViewModel(
             tabs = _tabs.value.map { it.uiState.value },
             currentTabIndex = _currentTabIndex.value
         )
+
+    private suspend fun applyConversationTabLayout(
+        layout: ConversationTabLayout,
+        savedTabs: Map<Conversation.Id, UIState.Tab>,
+        preferredConversationId: Conversation.Id?,
+    ) = mutex.withLock {
+        val currentSystemTab = _currentTabIndex.value?.takeIf { it in systemTabIndexes }
+        val currentConversationId = _currentTabIndex.value
+            ?.let(_tabs.value::getOrNull)
+            ?.conversationId
+            ?: preferredConversationId
+        val existingTabs = _tabs.value.associateBy(TabViewModel::conversationId)
+        val synchronizedTabs = layout.conversationIds.mapNotNull { conversationId ->
+            existingTabs[conversationId] ?: restoreTab(conversationId, savedTabs[conversationId])
+        }
+
+        _tabs.value = synchronizedTabs
+        _currentTabIndex.value = currentSystemTab ?: currentConversationId?.let { conversationId ->
+            synchronizedTabs.indexOfFirst { it.conversationId == conversationId }.takeIf { it >= 0 }
+        }
+        log.info("Applied shared conversation tab layout revision=${layout.revision} tabs=${synchronizedTabs.size}")
+    }
+
+    private suspend fun restoreTab(
+        conversationId: Conversation.Id,
+        savedTab: UIState.Tab?,
+    ): TabViewModel? = runCatching {
+        val conversation = conversationService.findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+        val agent = agentService.findById(conversation.agentDefinitionId)
+            ?: error("Agent not found for conversation ${conversation.id.value}: ${conversation.agentDefinitionId.value}")
+        mergeConversationSnapshots(listOf(conversation))
+        val uiState = savedTab?.copy(
+            projectId = conversation.projectId,
+            conversationId = conversation.id,
+            agent = agent,
+        ) ?: newTabUiState(
+            conversation = conversation,
+            agent = agent,
+            tabId = uuid7(),
+            parentTabId = null,
+            initiator = ConversationInitiator.User,
+        )
+        createTabViewModel(conversation, uiState)
+    }.onFailure { error ->
+        log.warn("Failed to restore shared tab for conversation ${conversationId.value}: ${error.message}")
+    }.getOrNull()
+
+    private fun newTabUiState(
+        conversation: Conversation,
+        agent: AgentDefinition,
+        tabId: String,
+        parentTabId: String?,
+        initiator: ConversationInitiator,
+    ): UIState.Tab = UIState.Tab(
+        projectId = conversation.projectId,
+        conversationId = conversation.id,
+        activeMessageInstructionIds = settingsService.settingsFlow.value.userProfile.messageInstructionGroups
+            .map { group -> group.controls[group.selectedByDefault].data.id }
+            .toSet(),
+        tabId = tabId,
+        parentTabId = parentTabId,
+        agent = agent,
+        initiator = initiator,
+    )
+
+    private fun createTabViewModel(
+        conversation: Conversation,
+        initialTabUiState: UIState.Tab,
+    ): TabViewModel = TabViewModel(
+        conversationId = conversation.id,
+        projectId = conversation.projectId,
+        conversationRuntimeService = conversationRuntimeService,
+        conversationService = conversationService,
+        messageSquashGenerationService = messageSquashGenerationService,
+        soundNotificationService = soundNotificationService,
+        settingsService = settingsService,
+        scope = scope,
+        initialTabUiState = initialTabUiState,
+        screenCaptureController = screenCaptureController,
+        tokenStatsService = tokenStatsService,
+    )
+
+    private suspend fun TabViewModel.sendInitialMessage(message: Conversation.Message) {
+        val messageContent = message.content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+            .firstOrNull()?.text ?: "Ready to work on this project"
+        log.debug("Initial message preview: ${messageContent.take(100)}...")
+        try {
+            sendMessageToSession(messageContent, message.instructions)
+            log.info("Initial message sent successfully")
+        } catch (error: Exception) {
+            log.warn(error, "Failed to send initial message: ${error.message}")
+        }
+    }
+
+    private fun removeLocalTab(conversationId: Conversation.Id) {
+        val tabList = _tabs.value
+        val index = tabList.indexOfFirst { it.conversationId == conversationId }
+        if (index < 0) return
+        val currentIndex = _currentTabIndex.value
+        _tabs.value = tabList.filterIndexed { tabIndex, _ -> tabIndex != index }
+        _currentTabIndex.value = when {
+            currentIndex == null || currentIndex in systemTabIndexes -> currentIndex
+            currentIndex == index -> (index - 1).takeIf { it >= 0 }
+            currentIndex > index -> currentIndex - 1
+            else -> currentIndex
+        }
+        log.info("Closed tab for conversation ${conversationId.value}")
+    }
 
     fun mergeConversationSnapshots(conversations: Iterable<Conversation>) {
         val updates = conversations.associateBy(Conversation::id)

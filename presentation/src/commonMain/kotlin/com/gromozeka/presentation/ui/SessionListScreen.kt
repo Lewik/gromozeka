@@ -9,8 +9,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -24,10 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.ConversationDomainService
 import klog.KLoggers
@@ -50,20 +50,23 @@ private data class ProjectGroup(
 fun SessionListScreen(
     onConversationSelected: (Conversation, Project) -> Unit,
     coroutineScope: CoroutineScope,
-    onNewSession: (Project) -> Unit,
+    onNewSession: (Project, AgentDefinition) -> Unit,
     projectService: ProjectDomainService,
     conversationTreeService: ConversationDomainService,
+    agentService: AgentDomainService,
     appViewModel: AppViewModel,
     searchViewModel: ConversationSearchViewModel,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
+    onManageProjects: () -> Unit,
+    onManageWorkspaces: () -> Unit,
     refreshTrigger: Int = 0,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
-    var pinnedConversationIds by remember { mutableStateOf<List<Conversation.Id>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
     var showProjectPicker by remember { mutableStateOf(false) }
+    var projectPickerInitialProject by remember { mutableStateOf<Project?>(null) }
     var conversationToRename by remember { mutableStateOf<Conversation?>(null) }
     var mutatingConversationIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var operationError by remember { mutableStateOf<String?>(null) }
@@ -82,18 +85,7 @@ fun SessionListScreen(
             isLoading = true
         }
         try {
-            val recentProjects = projectService.findRecent(limit = 100)
-            val pinned = conversationTreeService.findPinned()
-            val recentProjectIds = recentProjects.mapTo(mutableSetOf()) { it.id }
-            val pinnedProjects = pinned
-                .map { it.projectId }
-                .distinct()
-                .filterNot { it in recentProjectIds }
-                .map { projectId ->
-                    projectService.findById(projectId)
-                        ?: error("Pinned conversation project not found: ${projectId.value}")
-                }
-            val projects = recentProjects + pinnedProjects
+            val projects = projectService.findRecent(limit = 100)
 
             val loadedConversations = mutableListOf<Conversation>()
             val groupedProjects = projects.map { project ->
@@ -110,11 +102,10 @@ fun SessionListScreen(
                 )
             }
 
-            appViewModel.mergeConversationSnapshots(loadedConversations + pinned)
+            appViewModel.mergeConversationSnapshots(loadedConversations)
             projectGroups = groupedProjects.sortedByDescending { group ->
                 group.latestConversationId?.let { appViewModel.conversations.value[it]?.updatedAt }
             }
-            pinnedConversationIds = pinned.map(Conversation::id)
             operationError = null
 
             log.info("Loaded ${projectGroups.sumOf { it.conversationIds.size }} conversations in ${projectGroups.size} projects")
@@ -131,29 +122,6 @@ fun SessionListScreen(
     fun refreshSearchResults() {
         if (showSearchResults) {
             searchViewModel.performSearch()
-        }
-    }
-
-    fun togglePinned(conversation: Conversation) {
-        if (conversation.id.value in mutatingConversationIds) return
-
-        coroutineScope.launch {
-            mutatingConversationIds += conversation.id.value
-            operationError = null
-            try {
-                val updatedConversation = conversationTreeService.setPinned(
-                    conversationId = conversation.id,
-                    pinned = conversation.pinnedAt == null,
-                ) ?: error("Conversation not found: ${conversation.id.value}")
-                appViewModel.mergeConversationSnapshots(listOf(updatedConversation))
-                loadProjects(showLoading = false)
-                refreshSearchResults()
-            } catch (e: Exception) {
-                log.warn(e) { "Failed to update conversation pin: ${e.message}" }
-                operationError = e.message ?: "Failed to update conversation pin"
-            } finally {
-                mutatingConversationIds -= conversation.id.value
-            }
         }
     }
 
@@ -189,6 +157,16 @@ fun SessionListScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                CompactButton(onClick = onManageProjects) {
+                    Text("Projects")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                CompactButton(onClick = onManageWorkspaces) {
+                    Text("Workspaces")
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
 
                 CompactButton(
@@ -205,7 +183,10 @@ fun SessionListScreen(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 CompactButton(
-                    onClick = { showProjectPicker = true }
+                    onClick = {
+                        projectPickerInitialProject = null
+                        showProjectPicker = true
+                    }
                 ) {
                     Text(LocalTranslation.current.newSessionButton)
                 }
@@ -253,30 +234,6 @@ fun SessionListScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    val pinnedItems = pinnedConversationIds.mapNotNull { conversationId ->
-                        val conversation = conversationsById[conversationId] ?: return@mapNotNull null
-                        projectGroups
-                            .firstOrNull { it.projectId == conversation.projectId }
-                            ?.let { group -> conversation to group }
-                    }
-                    if (pinnedItems.isNotEmpty()) {
-                        PinnedConversationsSection(
-                            items = pinnedItems,
-                            mutatingConversationIds = mutatingConversationIds,
-                            onConversationClick = { conversation, project ->
-                                coroutineScope.handleConversationClick(
-                                    conversation,
-                                    project,
-                                    onConversationSelected,
-                                    appViewModel,
-                                )
-                            },
-                            onRename = { conversationToRename = it },
-                            onTogglePinned = ::togglePinned,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
                     if (showSearchResults) {
                         if (currentSearchResults.isEmpty()) {
                             Box(
@@ -320,7 +277,6 @@ fun SessionListScreen(
                                         )
                                     },
                                     onRename = { conversationToRename = it },
-                                    onTogglePinned = ::togglePinned,
                                     isMutating = conversation.id.value in mutatingConversationIds,
                                     isGrouped = false,
                                     modifier = Modifier.padding(vertical = 2.dp)
@@ -375,7 +331,8 @@ fun SessionListScreen(
                                         }
                                     },
                                     onNewSessionClick = {
-                                        onNewSession(group.project)
+                                        projectPickerInitialProject = group.project
+                                        showProjectPicker = true
                                     },
                                     onConversationClick = { clickedConversation ->
                                         coroutineScope.handleConversationClick(
@@ -386,7 +343,6 @@ fun SessionListScreen(
                                         )
                                     },
                                     onRename = { conversationToRename = it },
-                                    onTogglePinned = ::togglePinned,
                                     mutatingConversationIds = mutatingConversationIds,
                                 )
                             }
@@ -398,11 +354,13 @@ fun SessionListScreen(
     }
 
     if (showProjectPicker) {
-        ProjectPickerDialog(
+        NewConversationPickerDialog(
             projectGroups = projectGroups,
-            onSelect = { project ->
+            initialProject = projectPickerInitialProject,
+            agentService = agentService,
+            onSelect = { project, agent ->
                 showProjectPicker = false
-                onNewSession(project)
+                onNewSession(project, agent)
             },
             onDismiss = { showProjectPicker = false },
         )
@@ -423,43 +381,6 @@ fun SessionListScreen(
 }
 
 @Composable
-private fun PinnedConversationsSection(
-    items: List<Pair<Conversation, ProjectGroup>>,
-    mutatingConversationIds: Set<String>,
-    onConversationClick: (Conversation, Project) -> Unit,
-    onRename: (Conversation) -> Unit,
-    onTogglePinned: (Conversation) -> Unit,
-) {
-    Row(
-        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Star,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = LocalTranslation.current.pinnedConversationsTitle,
-            style = MaterialTheme.typography.titleMedium,
-        )
-    }
-
-    items.forEach { (conversation, group) ->
-        ConversationItem(
-            conversation = conversation,
-            project = group.project,
-            onConversationClick = onConversationClick,
-            onRename = onRename,
-            onTogglePinned = onTogglePinned,
-            isMutating = conversation.id.value in mutatingConversationIds,
-            modifier = Modifier.padding(vertical = 2.dp),
-        )
-    }
-}
-
-@Composable
 private fun ProjectGroupHeader(
     group: ProjectGroup,
     conversationsById: Map<Conversation.Id, Conversation>,
@@ -468,7 +389,6 @@ private fun ProjectGroupHeader(
     onNewSessionClick: () -> Unit,
     onConversationClick: (Conversation) -> Unit,
     onRename: (Conversation) -> Unit,
-    onTogglePinned: (Conversation) -> Unit,
     mutatingConversationIds: Set<String>,
 ) {
     val conversations = group.conversationIds.mapNotNull(conversationsById::get)
@@ -532,7 +452,7 @@ private fun ProjectGroupHeader(
                 Column(
                     modifier = Modifier.padding(start = 32.dp, end = 12.dp, bottom = 8.dp)
                 ) {
-                    conversations.filter { it.pinnedAt == null }.forEach { conversation ->
+                    conversations.forEach { conversation ->
                         ConversationItem(
                             conversation = conversation,
                             project = group.project,
@@ -540,7 +460,6 @@ private fun ProjectGroupHeader(
                                 onConversationClick(clickedConversation)
                             },
                             onRename = onRename,
-                            onTogglePinned = onTogglePinned,
                             isMutating = conversation.id.value in mutatingConversationIds,
                             isGrouped = true,
                             modifier = Modifier.padding(vertical = 4.dp)
@@ -558,7 +477,6 @@ private fun ConversationItem(
     project: Project,
     onConversationClick: (Conversation, Project) -> Unit,
     onRename: (Conversation) -> Unit,
-    onTogglePinned: (Conversation) -> Unit,
     isMutating: Boolean,
     isGrouped: Boolean = false,
     modifier: Modifier = Modifier,
@@ -605,34 +523,6 @@ private fun ConversationItem(
                     strokeWidth = 2.dp,
                 )
             } else {
-                OptionalTooltip(
-                    tooltip = if (conversation.pinnedAt == null) {
-                        LocalTranslation.current.pinConversationTooltip
-                    } else {
-                        LocalTranslation.current.unpinConversationTooltip
-                    },
-                ) {
-                    IconButton(onClick = { onTogglePinned(conversation) }) {
-                        Icon(
-                            imageVector = if (conversation.pinnedAt == null) {
-                                Icons.Default.StarBorder
-                            } else {
-                                Icons.Default.Star
-                            },
-                            contentDescription = if (conversation.pinnedAt == null) {
-                                LocalTranslation.current.pinConversationTooltip
-                            } else {
-                                LocalTranslation.current.unpinConversationTooltip
-                            },
-                            tint = if (conversation.pinnedAt == null) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.primary
-                            },
-                        )
-                    }
-                }
-
                 OptionalTooltip(tooltip = LocalTranslation.current.renameConversationTitle) {
                     IconButton(onClick = { onRename(conversation) }) {
                         Icon(
@@ -681,30 +571,78 @@ private fun CoroutineScope.handleConversationClick(
 }
 
 @Composable
-private fun ProjectPickerDialog(
+private fun NewConversationPickerDialog(
     projectGroups: List<ProjectGroup>,
-    onSelect: (Project) -> Unit,
+    initialProject: Project?,
+    agentService: AgentDomainService,
+    onSelect: (Project, AgentDefinition) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var selectedProject by remember(initialProject?.id) { mutableStateOf(initialProject) }
+    var agents by remember { mutableStateOf<List<AgentDefinition>>(emptyList()) }
+    var loadingAgents by remember { mutableStateOf(false) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(selectedProject?.id) {
+        val project = selectedProject ?: return@LaunchedEffect
+        loadingAgents = true
+        runCatching {
+            agentService.findAll().filter { agent ->
+                agent.type is AgentDefinition.Type.Builtin || agent.projectId == project.id
+            }
+        }.onSuccess {
+            agents = it
+            loadError = null
+        }.onFailure {
+            agents = emptyList()
+            loadError = it.message ?: "Failed to load agents"
+        }
+        loadingAgents = false
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose project") },
+        title = { Text("New conversation") },
         text = {
             if (projectGroups.isEmpty()) {
                 Text("No project is available.")
             } else {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 480.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    projectGroups.forEach { group ->
-                        CompactButton(
-                            onClick = { onSelect(group.project) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(group.project.name)
+                    Column(
+                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("Project", style = MaterialTheme.typography.labelLarge)
+                        projectGroups.forEach { group ->
+                            CompactButton(
+                                onClick = { selectedProject = group.project },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(group.project.name)
+                            }
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("Agent", style = MaterialTheme.typography.labelLarge)
+                        when {
+                            selectedProject == null -> Text("Choose a project first")
+                            loadingAgents -> CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            loadError != null -> Text(loadError.orEmpty(), color = MaterialTheme.colorScheme.error)
+                            agents.isEmpty() -> Text("No agents are available for this project")
+                            else -> agents.forEach { agent ->
+                                CompactButton(
+                                    onClick = { onSelect(requireNotNull(selectedProject), agent) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(agent.name)
+                                }
+                            }
                         }
                     }
                 }

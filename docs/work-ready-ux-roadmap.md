@@ -10,7 +10,7 @@ The immediate priority is supervision UX rather than visual polish: the user mus
 
 - Gromozeka is a professional power-user tool. Useful capabilities should remain discoverable.
 - Tools may stay visible, but inactive tools must not compete with the active task.
-- UI controls must describe real guarantees. A prompt instruction must not look like an enforced permission boundary.
+- UI controls must describe real guarantees. `Readonly` and `Writable` are behavioral model instructions, not permission boundaries, and the UI must say so plainly.
 - User-facing state should use domain language. Worker IDs, payload types, and raw traces belong in expandable diagnostics.
 - Long-running work must not require continuously watching the conversation.
 - Reliability and recovery take priority over cosmetic redesign.
@@ -27,21 +27,7 @@ The immediate priority is supervision UX rather than visual polish: the user mus
 
 ## Priority 0: required for daily work
 
-### 1. Enforced execution modes
-
-**Current problem:** `Readonly` and `Writable` are user instructions sent to the model. `Readonly` looks like a permission boundary in the UI but does not technically prevent a mutating tool call.
-
-**Target behavior:** execution mode is enforced before a tool with side effects reaches a worker. The model receives the same mode as context, but correctness does not depend on model compliance.
-
-**Acceptance criteria:**
-
-- Tools declare machine-readable effects or required permissions.
-- Read-only mode rejects mutating tools deterministically.
-- Rejection is visible to both the model and user.
-- UI wording distinguishes enforced permissions from behavioral instructions.
-- The policy applies equally to local and remote workers.
-
-### 2. Connection recovery and resubscription
+### 1. Connection recovery and resubscription
 
 **Current problem:** after a WebSocket read-loop failure, active conversation subscriptions are closed. A later request can reconnect the socket, but existing observations are not automatically restored.
 
@@ -55,7 +41,7 @@ The immediate priority is supervision UX rather than visual polish: the user mus
 - Draft input and queued messages remain intact.
 - A failed reconnect produces an actionable error instead of silent staleness.
 
-### 3. Conversation attention model
+### 2. Conversation attention model
 
 **Current problem:** conversations are difficult to distinguish and require opening them to discover whether work is active, complete, failed, or waiting for the user.
 
@@ -75,9 +61,9 @@ The immediate priority is supervision UX rather than visual polish: the user mus
 - Blank conversations receive a useful automatic title derived from their first request.
 - Tabs and the conversation list show status without opening the conversation.
 - The user can jump to the first unread result.
-- Important conversations can be pinned; inactive ones can be archived.
+- Open conversations stay available as synchronized tabs; inactive conversations remain searchable.
 
-### 4. Attention notifications
+### 3. Attention notifications
 
 **Target behavior:** notify only when the user can or should act.
 
@@ -90,7 +76,7 @@ The immediate priority is supervision UX rather than visual polish: the user mus
 
 Routine tool progress should remain inside the application.
 
-### 5. User-facing recovery
+### 4. User-facing recovery
 
 **Target behavior:** failures expose relevant recovery actions instead of only logs or internal retries.
 
@@ -103,7 +89,7 @@ Routine tool progress should remain inside the application.
 
 ## Priority 1: high-value professional workflows
 
-### 6. Human-readable progress and return recap
+### 5. Human-readable progress and return recap
 
 - Show meaningful stages such as memory recall, model request, tool execution, verification, and memory write.
 - Show elapsed time for the active stage.
@@ -111,7 +97,7 @@ Routine tool progress should remain inside the application.
 - When the user returns, summarize what happened and what currently needs attention.
 - For long goals, expose the agent's task list or milestones.
 
-### 7. Context-aware composer and command palette
+### 6. Context-aware composer and command palette
 
 - `@` references for files, folders, conversations, memory sources, and other context.
 - `/` command palette for discoverable professional actions.
@@ -120,21 +106,21 @@ Routine tool progress should remain inside the application.
 
 This should complement visible tools, not become a menu used only to hide them.
 
-### 8. Outcome and side-effect review
+### 7. Outcome and side-effect review
 
 - Summarize files changed, commands run, tests executed, artifacts created, and external side effects.
 - Keep raw tool calls expandable beneath the summary.
 - Open changed files or diffs in the appropriate local tool.
 - Do not claim reversibility unless the underlying worker provides it.
 
-### 9. Memory transparency and control
+### 8. Memory transparency and control
 
 - Show which memory context was used for a turn.
 - Show memory write status and a concise summary of created or changed records.
 - Allow inspection, correction, forgetting, and later rollback where supported.
 - Keep memory pipeline diagnostics separate from the ordinary user summary.
 
-### 10. Message-level recovery and branching
+### 9. Message-level recovery and branching
 
 - Edit and resend a previous request.
 - Retry an assistant response.
@@ -149,18 +135,22 @@ This should complement visible tools, not become a menu used only to hide them.
 - Generic checkpoint machinery that cannot restore external side effects.
 - Hiding professional tools solely to make the interface look minimal.
 
+## Explicitly out of scope
+
+- Enforcing `Readonly` or `Writable` as application-level permissions.
+- Per-command approval prompts, command denylists, or a second filesystem sandbox inside Gromozeka. Deployments requiring a hard boundary must provide it through the operating system, a dedicated account, container, virtual machine, credential scope, and network policy.
+
 ## Recommended implementation order
 
-1. Enforced execution modes.
-2. Connection recovery and resubscription.
-3. Conversation titles and attention state.
-4. Notifications.
-5. User-facing recovery.
-6. Human-readable progress and return recap.
-7. Context composer and command palette.
-8. Outcome review.
-9. Memory transparency.
-10. Message-level branching and checkpoints.
+1. Connection recovery and resubscription.
+2. Conversation titles and attention state.
+3. Notifications.
+4. User-facing recovery.
+5. Human-readable progress and return recap.
+6. Context composer and command palette.
+7. Outcome review.
+8. Memory transparency.
+9. Message-level branching and checkpoints.
 
 ## Reference patterns
 

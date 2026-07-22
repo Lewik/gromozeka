@@ -377,11 +377,15 @@ class ConversationEngineService(
             "Tool execution task ${task.id.value} targets worker ${target.workerId.value}, " +
                 "but is running on ${worker.workerId.value}"
         }
-        val workspaceContext = target.workspaceId?.let { workspaceId ->
-            workspaceService.resolveExecution(workspaceId, worker.workerId.value).also { resolved ->
+        val workspaceContext = target.workspaceMountId?.let { mountId ->
+            workspaceService.resolveExecution(mountId).also { resolved ->
                 require(resolved.project.id == project.id) {
-                    "Tool execution workspace ${workspaceId.value} belongs to project " +
+                    "Tool execution workspace mount ${mountId.value} belongs to project " +
                         "${resolved.project.id.value}, not ${project.id.value}"
+                }
+                require(resolved.mount.workerId == worker.workerId.value) {
+                    "Tool execution workspace mount ${mountId.value} belongs to worker " +
+                        "${resolved.mount.workerId}, not ${worker.workerId.value}"
                 }
             }
         }
@@ -398,6 +402,7 @@ class ConversationEngineService(
                     put("workerId", worker.workerId.value)
                     workspaceContext?.let { resolved ->
                         put("workspaceId", resolved.workspace.id.value)
+                        put("workspaceMountId", resolved.mount.id.value)
                         put("workspaceRootPath", resolved.mount.rootPath)
                     }
                 }

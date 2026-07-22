@@ -1,7 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
@@ -310,7 +310,7 @@ class DefaultCommandTaskServiceTest {
                         id = CommandTask.Id("retained-$index"),
                         conversationId = conversationId,
                         workerId = workerDescriptor.id,
-                        workspaceId = Workspace.Id("workspace-1"),
+                        workspaceMountId = WorkspaceMount.Id("mount-1"),
                         command = "completed-$index",
                         workingDirectory = projectDirectory.absolutePath,
                         status = CommandTask.Status.COMPLETED,
@@ -366,6 +366,7 @@ class DefaultCommandTaskServiceTest {
             "conversationId" to conversationId.value,
             "projectId" to "project-1",
             "workspaceId" to "workspace-1",
+            "workspaceMountId" to "mount-1",
             "workspaceRootPath" to projectDirectory.absolutePath,
             "workerId" to workerDescriptor.id.value,
         )

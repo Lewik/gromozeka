@@ -2,7 +2,9 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ProjectRepository
+import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.ConversationTabLayoutService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
@@ -20,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class ProjectApplicationService(
     private val projectRepository: ProjectRepository,
+    private val conversationRepository: ConversationRepository,
+    private val conversationTabLayoutService: ConversationTabLayoutService,
 ) : ProjectDomainService {
     private val log = KLoggers.logger(this)
 
@@ -64,6 +68,34 @@ class ProjectApplicationService(
      */
     override suspend fun findRecent(limit: Int): List<Project> =
         projectRepository.findRecent(limit)
+
+    override suspend fun findAll(): List<Project> = projectRepository.findAll()
+
+    @Transactional
+    override suspend fun update(
+        id: Project.Id,
+        name: String,
+        description: String?,
+    ): Project {
+        val project = projectRepository.findById(id) ?: error("Project not found: ${id.value}")
+        val normalizedName = name.trim()
+        require(normalizedName.isNotEmpty()) { "Project name must not be blank" }
+        return projectRepository.save(
+            project.copy(
+                name = normalizedName,
+                description = description?.trim()?.takeIf(String::isNotEmpty),
+            )
+        )
+    }
+
+    @Transactional
+    override suspend fun delete(id: Project.Id) {
+        require(projectRepository.findById(id) != null) { "Project not found: ${id.value}" }
+        conversationRepository.findByProject(id).forEach { conversation ->
+            conversationTabLayoutService.close(conversation.id)
+        }
+        projectRepository.delete(id)
+    }
 
     /**
      * Updates project's last-used timestamp to current time.

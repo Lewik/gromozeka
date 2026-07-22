@@ -53,11 +53,11 @@ Rules:
 - load `common.multi-agent.knowledge.md` only for agents that actually coordinate or create other agents
 - each prompt in the stack should add unique value
 
-## File Types
+## Builtin Source Files
 
 | File type | Purpose | Example |
 |-----------|---------|---------|
-| `.agent.json` | Agent definition | `architect.agent.json` |
+| `.json` | Builtin Agent blueprint | `architect.json` |
 | `.identity.md` | Shared identity | `common.identity.md` |
 | `.role.md` | Role and responsibility | `developer.role.md` |
 | `.knowledge.md` | Reference knowledge | `architecture.knowledge.md` |
@@ -73,22 +73,14 @@ application/src/jvmMain/resources/
 └── prompts/
 ```
 
-Project source catalog:
-
-```text
-.gromozeka/
-├── agents/
-└── prompts/
-```
-
-The worker scans direct files in the project source catalog. When its content
-hash changes, the Runtime panel offers one atomic import of all prompts and
-agents into the logical project on the server.
+Project Agents and Prompts are server-managed entities. They are created and
+edited through the Gromozeka UI or API and are not discovered from a Worker's
+filesystem. Repository markdown is documentation, not live Agent configuration.
 
 ## Scope Rules
 
 - `builtin:` → shipped with the application
-- `project:` → a source file from the current project's imported catalog
+- `project:` → a server-managed Prompt owned by the current Project
 - `env` → runtime-generated environment context
 
 Prompt references are concatenated in the order listed in the agent JSON.
@@ -97,22 +89,16 @@ also reference prompts from their own project.
 
 ## Agent Definition Rules
 
-Builtin IDs are derived from resource file names. Imported project IDs are
-derived from the logical project ID and source file name.
+Builtin IDs are derived from application resource names. A builtin is a
+blueprint: copying it creates an independent project-owned Agent and copies the
+selected builtin Prompts into that Project.
 
-Implications:
-- file name stability matters
-- renaming an imported `.agent.json` file creates another logical agent
-- an import updates matching agents and prompts but does not delete sources
-  missing from a later catalog
-- prefer changing prompt content, display name, and description before renaming the file itself
-
-Required project source fields:
+Required project Agent fields:
 - `name`
 - `prompts`
 - `runtimeSelection`
 
-Optional project source fields:
+Optional project Agent fields:
 - `description`
 - `runtimeOverrides`
 - `tools`
@@ -121,10 +107,9 @@ Optional project source fields:
 
 Keep concepts in one place:
 - shared behavior across projects → builtin prompts
-- current project reality → `project-common.knowledge.md`
-- project-specific responsibilities and workflows → specialist `.role.md`
-- agent roster → `agents-roster.knowledge.md`
-- architecture reference → `architecture.knowledge.md`
+- current project reality → a focused project Prompt
+- project-specific responsibilities and workflows → focused project Prompts
+- architecture reference → ordinary repository documentation when it is for humans, or a project Prompt when the model needs it at runtime
 
 If mutable information is duplicated across prompts, prompt drift is inevitable.
 

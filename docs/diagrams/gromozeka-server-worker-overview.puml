@@ -1,0 +1,47 @@
+@startuml
+!pragma layout smetana
+
+title Gromozeka: Who Does What?
+
+left to right direction
+
+skinparam backgroundColor #FCFCFA
+skinparam shadowing false
+skinparam roundcorner 14
+skinparam defaultTextAlignment center
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.5
+skinparam actorStyle awesome
+
+actor "User" as User
+
+rectangle "Gromozeka Server\n<size:12>Control center</size>\n\nReceives requests\nKeeps conversations and state\nAssigns work\nReturns progress and results" as Server #DCEBFF
+
+node "Computer or virtual machine" as Host #F4F4F0 {
+    rectangle "Gromozeka Worker\n<size:12>Trusted executor</size>\n\nReceives assigned work\nCalls an AI model when needed\nRuns available tools" as Worker #FFE9B8
+    folder "Resources available on this machine\n\nFiles\nShell commands\nApplications and services" as Resources #DCF4DF
+
+    Worker --> Resources : uses
+}
+
+User --> Server : asks for work
+Server --> User : shows status and results
+Server --> Worker : sends work to perform
+Worker --> Server : returns progress and results
+
+note bottom of Server
+The Server coordinates work.
+It does not execute the machine's tools itself.
+end note
+
+note bottom of Worker
+The Worker can do whatever its operating-system account can do.
+Gromozeka does not give it extra access to the machine.
+end note
+
+legend bottom left
+One Server can coordinate several Workers.
+Each Worker runs on a particular computer or virtual machine.
+endlegend
+
+@enduml

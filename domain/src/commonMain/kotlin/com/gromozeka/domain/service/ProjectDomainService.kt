@@ -44,6 +44,16 @@ interface ProjectDomainService {
      */
     suspend fun findRecent(limit: Int = 10): List<Project>
 
+    suspend fun findAll(): List<Project>
+
+    suspend fun update(
+        id: Project.Id,
+        name: String,
+        description: String? = null,
+    ): Project
+
+    suspend fun delete(id: Project.Id)
+
     /**
      * Updates project's last used timestamp to current time.
      *

@@ -37,6 +37,7 @@ import androidx.compose.ui.zIndex
 import com.gromozeka.device.telemetry.DeviceLocationResult
 import com.gromozeka.device.telemetry.DeviceLocationSnapshot
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Project
@@ -97,6 +98,8 @@ fun GromozekaAppContent(
     var showMemoryActionItemsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var hoveredTabIndex by remember { mutableStateOf(-1) }
+    var projectArea by remember { mutableStateOf(ProjectArea.CONVERSATIONS) }
+    var workspaceManagerProjectId by remember { mutableStateOf<Project.Id?>(null) }
 
     val currentSettings by appComponents.settingsService.settingsFlow.collectAsState()
     val remoteClientSettings by appComponents.remoteClientSettingsService.settingsFlow.collectAsState()
@@ -123,7 +126,7 @@ fun GromozekaAppContent(
         }
     }
 
-    val createSession: (Project.Id, String?) -> Unit = { projectId, initialText ->
+    val createSession: (Project.Id, AgentDefinition?, String?) -> Unit = { projectId, agent, initialText ->
         coroutineScope.launch {
             runCatching {
                 val initialMessage = initialText?.let { text ->
@@ -138,6 +141,7 @@ fun GromozekaAppContent(
                 }
                 val tabIndex = appComponents.appViewModel.createTab(
                     projectId = projectId,
+                    agent = agent,
                     initialMessage = initialMessage,
                     initiator = ConversationInitiator.User,
                 )
@@ -146,8 +150,8 @@ fun GromozekaAppContent(
         }
     }
 
-    val createNewSession: (Project) -> Unit = { project ->
-        createSession(project.id, null)
+    val createNewSessionWithAgent: (Project, AgentDefinition) -> Unit = { project, agent ->
+        createSession(project.id, agent, null)
     }
 
     val createNewSessionInCurrentProject: () -> Unit = {
@@ -155,7 +159,7 @@ fun GromozekaAppContent(
         if (tab == null) {
             log.warn { "Cannot create a session without an explicitly selected project" }
         } else {
-            createSession(tab.projectId, null)
+            createSession(tab.projectId, tab.uiState.value.agent, null)
         }
     }
 
@@ -164,7 +168,7 @@ fun GromozekaAppContent(
         if (tab == null) {
             log.warn { "Cannot create a session without an explicitly selected project" }
         } else {
-            createSession(tab.projectId, initialMessage)
+            createSession(tab.projectId, tab.uiState.value.agent, initialMessage)
         }
     }
 
@@ -373,6 +377,7 @@ fun GromozekaAppContent(
                                                                 val oldIndex = currentTabIndex!!
                                                                 appComponents.appViewModel.createTab(
                                                                     projectId = projectId,
+                                                                    agent = currentTab!!.uiState.value.agent,
                                                                     initiator = ConversationInitiator.User
                                                                 )
                                                                 appComponents.appViewModel.closeTab(oldIndex)
@@ -494,18 +499,43 @@ fun GromozekaAppContent(
                                                                 )
                                                             }
 
-                                                            else -> {
-                                                                SessionListScreen(
+                                                            else -> when (projectArea) {
+                                                                ProjectArea.CONVERSATIONS -> SessionListScreen(
                                                                     onConversationSelected = { _, _ -> refreshTrigger++ },
                                                                     coroutineScope = coroutineScope,
-                                                                    onNewSession = createNewSession,
+                                                                    onNewSession = createNewSessionWithAgent,
                                                                     projectService = appComponents.projectService,
                                                                     conversationTreeService = appComponents.conversationService,
+                                                                    agentService = appComponents.agentService,
                                                                     appViewModel = appComponents.appViewModel,
                                                                     searchViewModel = appComponents.conversationSearchViewModel,
                                                                     showSettingsPanel = showSettingsPanel,
                                                                     onShowSettingsPanelChange = setSettingsPanel,
-                                                                    refreshTrigger = refreshTrigger
+                                                                    onManageProjects = { projectArea = ProjectArea.PROJECTS },
+                                                                    onManageWorkspaces = {
+                                                                        workspaceManagerProjectId = null
+                                                                        projectArea = ProjectArea.WORKSPACES
+                                                                    },
+                                                                    refreshTrigger = refreshTrigger,
+                                                                )
+
+                                                                ProjectArea.PROJECTS -> ProjectManagerScreen(
+                                                                    projectService = appComponents.projectService,
+                                                                    onBack = { projectArea = ProjectArea.CONVERSATIONS },
+                                                                    onManageWorkspaces = { projectId ->
+                                                                        workspaceManagerProjectId = projectId
+                                                                        projectArea = ProjectArea.WORKSPACES
+                                                                    },
+                                                                    onChanged = { refreshTrigger++ },
+                                                                )
+
+                                                                ProjectArea.WORKSPACES -> WorkspaceManagerScreen(
+                                                                    initialProjectId = workspaceManagerProjectId,
+                                                                    projectService = appComponents.projectService,
+                                                                    workspaceCatalogService = appComponents.workspaceCatalogService,
+                                                                    workspaceManagementService = appComponents.workspaceManagementService,
+                                                                    onBack = { projectArea = ProjectArea.CONVERSATIONS },
+                                                                    onManageProjects = { projectArea = ProjectArea.PROJECTS },
                                                                 )
                                                             }
                                                         }
@@ -525,9 +555,7 @@ fun GromozekaAppContent(
                                             Box(modifier = Modifier.testTag(UiTestTag.RuntimePanel.value)) {
                                                 ConversationRuntimePanel(
                                                     isVisible = showRuntimePanel,
-                                                    projectId = tabViewModel.projectId,
                                                     currentAgent = tabUiState.agent,
-                                                    agentCatalogImportService = appComponents.agentCatalogImportService,
                                                     settings = currentSettings,
                                                     tokenStats = tokenStats,
                                                     isWaitingForResponse = isWaitingForResponse,
@@ -621,9 +649,7 @@ fun GromozekaAppContent(
                                 ) {
                                     ConversationRuntimePanel(
                                         isVisible = showRuntimePanel,
-                                        projectId = tabViewModel.projectId,
                                         currentAgent = tabUiState.agent,
-                                        agentCatalogImportService = appComponents.agentCatalogImportService,
                                         settings = currentSettings,
                                         tokenStats = tokenStats,
                                         isWaitingForResponse = isWaitingForResponse,
@@ -720,6 +746,12 @@ fun GromozekaAppContent(
             }
         }
     }
+}
+
+private enum class ProjectArea {
+    CONVERSATIONS,
+    PROJECTS,
+    WORKSPACES,
 }
 
 private fun DeviceLocationResult.toInputText(): String =

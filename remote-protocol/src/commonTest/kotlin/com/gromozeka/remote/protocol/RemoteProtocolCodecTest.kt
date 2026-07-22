@@ -2,8 +2,11 @@ package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationTabLayout
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryActionItem
@@ -23,6 +26,44 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RemoteProtocolCodecTest {
+    @Test
+    fun roundTripSupportsProjectWorkspaceAndSharedTabManagement() {
+        val updateProject = GromozekaClientEnvelope(
+            id = "update-project-1",
+            payload = UpdateProjectRequest(Project.Id("project-1"), "Renamed", "Description"),
+        )
+        val decodedProject = RemoteProtocolCodec.decodeClientText(
+            RemoteProtocolCodec.encodeClientText(updateProject)
+        ).payload as UpdateProjectRequest
+        assertEquals("Renamed", decodedProject.name)
+
+        val updateWorkspace = GromozekaClientEnvelope(
+            id = "update-workspace-1",
+            payload = UpdateWorkspaceRequest(Workspace.Id("workspace-1"), "Mac checkout"),
+        )
+        val decodedWorkspace = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(updateWorkspace)
+        ).payload as UpdateWorkspaceRequest
+        assertEquals("Mac checkout", decodedWorkspace.name)
+
+        val layoutEvent = GromozekaServerEnvelope(
+            id = "layout-event-1",
+            payload = ConversationTabLayoutSnapshotEvent(
+                subscriptionId = "layout-subscription-1",
+                layout = ConversationTabLayout(
+                    conversationIds = listOf(Conversation.Id("conversation-1")),
+                    revision = 7,
+                    updatedAt = Instant.parse("2026-07-22T00:00:00Z"),
+                ),
+            ),
+        )
+        val decodedLayout = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(layoutEvent)
+        ).payload as ConversationTabLayoutSnapshotEvent
+        assertEquals(7, decodedLayout.layout.revision)
+        assertEquals("conversation-1", decodedLayout.layout.conversationIds.single().value)
+    }
+
     @Test
     fun jsonEncodesByteArrayAsBase64String() {
         val envelope = audioEnvelope(byteArrayOf(0, 1, 2, 3, 4))
@@ -343,7 +384,7 @@ class RemoteProtocolCodecTest {
             id = CommandTask.Id("command-task-1"),
             conversationId = Conversation.Id("conversation-command-1"),
             workerId = ConversationRuntimeWorkerId("worker-command-1"),
-            workspaceId = Workspace.Id("workspace-command-1"),
+            workspaceMountId = WorkspaceMount.Id("mount-command-1"),
             command = "./gradlew build",
             workingDirectory = "/workspace",
             status = CommandTask.Status.WORKING,

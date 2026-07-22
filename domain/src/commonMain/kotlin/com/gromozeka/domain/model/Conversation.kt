@@ -28,7 +28,6 @@ import kotlin.jvm.JvmInline
  * @property projectId project this conversation belongs to
  * @property agentDefinitionId agent definition used for this conversation
  * @property displayName human-readable conversation title (can be blank)
- * @property pinnedAt timestamp when the conversation was pinned, or null when it is not pinned
  * @property currentThread currently active thread ID (conversation can switch threads)
  * @property createdAt timestamp when conversation was created
  * @property updatedAt timestamp of last conversation activity
@@ -39,7 +38,6 @@ data class Conversation(
     val projectId: Project.Id,
     val agentDefinitionId: AgentDefinition.Id,
     val displayName: String = "",
-    val pinnedAt: Instant? = null,
     val currentThread: Thread.Id,
     val createdAt: Instant,
     val updatedAt: Instant,

@@ -9,41 +9,38 @@ import com.gromozeka.domain.repository.ProjectRepository
 import com.gromozeka.domain.repository.WorkspaceRepository
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkspaceCatalogService
+import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.nio.file.Files
-import java.nio.file.Path
 
 @Service
 class WorkspaceApplicationService(
     private val projectRepository: ProjectRepository,
     private val workspaceRepository: WorkspaceRepository,
-) : WorkspaceDomainService, WorkspaceCatalogService {
+) : WorkspaceDomainService, WorkspaceCatalogService, WorkspaceManagementService {
+
+    override suspend fun create(projectId: Project.Id, name: String): Workspace =
+        createFilesystemWorkspace(projectId, name)
 
     @Transactional
-    override suspend fun createFilesystem(
+    override suspend fun createFilesystemWorkspace(
         projectId: Project.Id,
         name: String,
-        workerId: String,
-        rootPath: String,
         id: Workspace.Id?,
-    ): WorkspaceExecutionContext {
-        val project = projectRepository.findById(projectId)
-            ?: error("Project not found: ${projectId.value}")
+    ): Workspace {
+        require(projectRepository.findById(projectId) != null) {
+            "Project not found: ${projectId.value}"
+        }
         val workspaceName = name.trim()
         require(workspaceName.isNotEmpty()) { "Workspace name must not be blank" }
         val workspaceId = id ?: Workspace.Id(uuid7())
         require(workspaceRepository.findById(workspaceId) == null) {
             "Workspace already exists: ${workspaceId.value}"
         }
-        val normalizedPath = normalizeExistingDirectory(rootPath)
-        require(workspaceRepository.findMountByPath(workerId, normalizedPath) == null) {
-            "Worker $workerId already mounts a workspace at $normalizedPath"
-        }
         val now = Clock.System.now()
-        val workspace = workspaceRepository.save(
+        return workspaceRepository.save(
             Workspace(
                 id = workspaceId,
                 projectId = projectId,
@@ -53,16 +50,19 @@ class WorkspaceApplicationService(
                 updatedAt = now,
             )
         )
-        val mount = workspaceRepository.saveMount(
-            WorkspaceMount(
-                workspaceId = workspace.id,
-                workerId = normalizedWorkerId(workerId),
-                rootPath = normalizedPath,
-                createdAt = now,
-                updatedAt = now,
-            )
-        )
-        return WorkspaceExecutionContext(project, workspace, mount)
+    }
+
+    @Transactional
+    override suspend fun createAndMountFilesystemWorkspace(
+        projectId: Project.Id,
+        name: String,
+        workerId: String,
+        rootPath: String,
+        workspaceId: Workspace.Id?,
+        mountId: WorkspaceMount.Id?,
+    ): WorkspaceExecutionContext {
+        val workspace = createFilesystemWorkspace(projectId, name, workspaceId)
+        return attachFilesystem(workspace.id, workerId, rootPath, mountId)
     }
 
     @Transactional
@@ -70,6 +70,7 @@ class WorkspaceApplicationService(
         workspaceId: Workspace.Id,
         workerId: String,
         rootPath: String,
+        mountId: WorkspaceMount.Id?,
     ): WorkspaceExecutionContext {
         val workspace = workspaceRepository.findById(workspaceId)
             ?: error("Workspace not found: ${workspaceId.value}")
@@ -79,7 +80,7 @@ class WorkspaceApplicationService(
         val project = projectRepository.findById(workspace.projectId)
             ?: error("Project not found: ${workspace.projectId.value}")
         val normalizedWorkerId = normalizedWorkerId(workerId)
-        val normalizedPath = normalizeExistingDirectory(rootPath)
+        val normalizedPath = normalizedRootPath(rootPath)
         val pathOwner = workspaceRepository.findMountByPath(normalizedWorkerId, normalizedPath)
         require(pathOwner == null || pathOwner.workspaceId == workspaceId) {
             "Worker $normalizedWorkerId already mounts another workspace at $normalizedPath"
@@ -91,6 +92,7 @@ class WorkspaceApplicationService(
         val now = Clock.System.now()
         val mount = existing ?: workspaceRepository.saveMount(
             WorkspaceMount(
+                id = mountId ?: WorkspaceMount.Id(uuid7()),
                 workspaceId = workspaceId,
                 workerId = normalizedWorkerId,
                 rootPath = normalizedPath,
@@ -107,11 +109,41 @@ class WorkspaceApplicationService(
     override suspend fun findByProject(projectId: Project.Id): List<Workspace> =
         workspaceRepository.findByProject(projectId)
 
+    override suspend fun findMount(id: WorkspaceMount.Id): WorkspaceMount? =
+        workspaceRepository.findMount(id)
+
     override suspend fun findMount(workspaceId: Workspace.Id, workerId: String): WorkspaceMount? =
         workspaceRepository.findMount(workspaceId, normalizedWorkerId(workerId))
 
     override suspend fun findMounts(workspaceId: Workspace.Id): List<WorkspaceMount> =
         workspaceRepository.findMounts(workspaceId)
+
+    @Transactional
+    override suspend fun update(workspaceId: Workspace.Id, name: String): Workspace {
+        val workspace = workspaceRepository.findById(workspaceId)
+            ?: error("Workspace not found: ${workspaceId.value}")
+        val normalizedName = name.trim()
+        require(normalizedName.isNotEmpty()) { "Workspace name must not be blank" }
+        return workspaceRepository.save(
+            workspace.copy(name = normalizedName, updatedAt = Clock.System.now())
+        )
+    }
+
+    @Transactional
+    override suspend fun delete(workspaceId: Workspace.Id) {
+        require(workspaceRepository.findById(workspaceId) != null) {
+            "Workspace not found: ${workspaceId.value}"
+        }
+        workspaceRepository.delete(workspaceId)
+    }
+
+    @Transactional
+    override suspend fun deleteMount(mountId: WorkspaceMount.Id) {
+        require(workspaceRepository.findMount(mountId) != null) {
+            "Workspace mount not found: ${mountId.value}"
+        }
+        workspaceRepository.deleteMount(mountId)
+    }
 
     override suspend fun findMountsByWorker(workerId: String): List<WorkspaceMount> =
         workspaceRepository.findMountsByWorker(normalizedWorkerId(workerId))
@@ -119,21 +151,21 @@ class WorkspaceApplicationService(
     override suspend fun findByWorkerPath(workerId: String, rootPath: String): WorkspaceExecutionContext? {
         val mount = workspaceRepository.findMountByPath(
             normalizedWorkerId(workerId),
-            normalizeExistingDirectory(rootPath),
+            normalizedRootPath(rootPath),
         ) ?: return null
-        return resolveExecution(mount.workspaceId, mount.workerId)
+        return resolveExecution(mount.id)
     }
 
     override suspend fun resolveExecution(
-        workspaceId: Workspace.Id,
-        workerId: String,
+        mountId: WorkspaceMount.Id,
     ): WorkspaceExecutionContext {
+        val mount = workspaceRepository.findMount(mountId)
+            ?: error("Workspace mount not found: ${mountId.value}")
+        val workspaceId = mount.workspaceId
         val workspace = workspaceRepository.findById(workspaceId)
             ?: error("Workspace not found: ${workspaceId.value}")
         val project = projectRepository.findById(workspace.projectId)
             ?: error("Project not found: ${workspace.projectId.value}")
-        val mount = workspaceRepository.findMount(workspaceId, normalizedWorkerId(workerId))
-            ?: error("Workspace ${workspaceId.value} is not mounted by worker ${normalizedWorkerId(workerId)}")
         return WorkspaceExecutionContext(project, workspace, mount)
     }
 
@@ -157,10 +189,6 @@ class WorkspaceApplicationService(
     private fun normalizedWorkerId(workerId: String): String =
         workerId.trim().also { require(it.isNotEmpty()) { "Worker id must not be blank" } }
 
-    private fun normalizeExistingDirectory(rootPath: String): String {
-        require(rootPath.isNotBlank()) { "Workspace root path must not be blank" }
-        val resolved = Path.of(rootPath).toRealPath()
-        require(Files.isDirectory(resolved)) { "Workspace root path is not a directory: $resolved" }
-        return resolved.toString()
-    }
+    private fun normalizedRootPath(rootPath: String): String =
+        rootPath.trim().also { require(it.isNotEmpty()) { "Workspace root path must not be blank" } }
 }

@@ -2,6 +2,12 @@
 
 The Worker is a standalone process. The Server never starts an embedded Worker.
 
+## Trust Model
+
+A Gromozeka Worker is a trusted, unsandboxed executor. Enrolling a Worker authorizes the Gromozeka control plane and its selected models to invoke configured tools with the effective permissions of the Worker process.
+
+The Worker is not an autonomous agent and does not decide goals or policy. It executes durable tasks assigned by the control plane, including LLM, memory, and tool work when those capabilities are enabled. Gromozeka does not add per-command approvals, command denylists, or a filesystem sandbox. Run the Worker under the operating-system account, container, or virtual machine whose permissions represent the intended hard boundary. See [Always YOLO](../README.md#always-yolo) for the complete execution trust model.
+
 Start a Worker with an external YAML file:
 
 ```bash
@@ -34,15 +40,17 @@ RabbitMQ acknowledgement, the Server records the execution-start boundary. If
 the session disappears before that boundary, the task is recorded as not
 started; after it, the outcome is unknown. Neither case is rerun automatically.
 
-Configure `workspaces` for filesystem trees visible on that Worker. Each entry
-declares the logical Project id, stable Workspace id, display names, and the
-Worker-local root path. Two different checkouts of one Project are different
-Workspaces. Multiple Workers may mount one Workspace only when they see the
-same underlying tree.
+Worker YAML declares only stable identity, version, capabilities, and transport
+credentials. Projects, Workspaces, and Workspace Mounts are central
+server-managed data, not Worker startup configuration.
 
-At startup the Worker creates or validates the central Project and Workspace,
-then attaches its local mount. Tool calls carry an exact Worker and Workspace
-target. They are never reassigned or retried on another Worker automatically.
+Creating or attaching a filesystem mount is an explicit tool operation routed
+to the selected Worker. The Worker validates that the requested root path is an
+existing local directory before persisting the mount. Two different checkouts
+of one Project are different Workspaces. Multiple Workers may mount one
+Workspace only when they see the same underlying tree. Later tool calls carry
+an exact Worker or Workspace Mount target and are never reassigned or retried
+automatically.
 
 The current deployment contract gives Workers direct access to PostgreSQL and
 RabbitMQ. These endpoints must stay on a private network and use TLS. A future

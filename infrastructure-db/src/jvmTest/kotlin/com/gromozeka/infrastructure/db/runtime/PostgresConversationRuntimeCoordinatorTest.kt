@@ -218,7 +218,7 @@ class PostgresConversationRuntimeCoordinatorTest {
             taskId = task.id,
             worker = worker,
             workerCapabilities = task.requirements.capabilities,
-            workerWorkspaceIds = emptySet(),
+            workerWorkspaceMountIds = emptySet(),
         )
 
     private fun worker(

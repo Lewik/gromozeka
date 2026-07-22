@@ -150,15 +150,6 @@ sealed class Translation {
         val thinkingLabel: String = "Thinking",
         val createLabel: String = "Create",
         val readLabel: String = "Read",
-        val catalogChangesTitle: String = "Repository agents changed",
-        val catalogChangesDescription: String = "Import all prompts and agents from this workspace into the project.",
-        val catalogSourceLabel: String = "Source",
-        val catalogContentsLabel: String = "Catalog",
-        val catalogPromptsLabel: String = "prompts",
-        val catalogAgentsLabel: String = "agents",
-        val catalogImportButton: String = "Import all",
-        val catalogSkipButton: String = "Skip",
-        val catalogInvalidLabel: String = "Cannot import",
         val tasksTitle: String = "Tasks",
         val claimedTaskLabel: String = "Claimed",
         val runningTaskLabel: String = "Running",
@@ -235,9 +226,6 @@ sealed class Translation {
 
     abstract val renameConversationTitle: String
     abstract val conversationNameLabel: String
-    abstract val pinnedConversationsTitle: String
-    abstract val pinConversationTooltip: String
-    abstract val unpinConversationTooltip: String
     abstract val projectsTabTooltip: String
 
     abstract val refreshSessionsTooltip: String

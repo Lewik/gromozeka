@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ProjectDomainService
 import klog.KLoggers
 import com.gromozeka.domain.repository.MessageRepository
@@ -13,7 +14,6 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -41,7 +41,8 @@ class ConversationApplicationService(
     private val threadMessageRepo: ThreadMessageRepository,
     private val projectService: ProjectDomainService,
     private val agentService: AgentDomainService,
-    private val toolCallPairingService: ToolCallPairingService
+    private val toolCallPairingService: ToolCallPairingService,
+    private val conversationTabLayoutService: ConversationTabLayoutService,
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
 
@@ -115,9 +116,6 @@ class ConversationApplicationService(
     override suspend fun findByProject(projectId: Project.Id): List<Conversation> =
         conversationRepo.findByProject(projectId)
 
-    override suspend fun findPinned(): List<Conversation> =
-        conversationRepo.findPinned()
-
     /**
      * Deletes conversation and all associated data.
      *
@@ -128,6 +126,7 @@ class ConversationApplicationService(
      */
     @Transactional
     override suspend fun delete(id: Conversation.Id) {
+        conversationTabLayoutService.close(id)
         conversationRepo.delete(id)
     }
 
@@ -168,21 +167,6 @@ class ConversationApplicationService(
         require(agent.type is AgentDefinition.Type.Builtin || agent.projectId == projectId) {
             "Agent ${agentDefinitionId.value} does not belong to project ${projectId.value}"
         }
-    }
-
-    @Transactional
-    override suspend fun setPinned(
-        conversationId: Conversation.Id,
-        pinned: Boolean,
-    ): Conversation? {
-        val conversation = conversationRepo.findById(conversationId) ?: return null
-        val pinnedAt = when {
-            pinned && conversation.pinnedAt == null -> Clock.System.now()
-            pinned -> conversation.pinnedAt
-            else -> null
-        }
-        conversationRepo.updatePinnedAt(conversationId, pinnedAt)
-        return conversationRepo.findById(conversationId)
     }
 
     /**

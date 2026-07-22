@@ -13,6 +13,7 @@ import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.shared.utils.sha256
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -30,7 +31,7 @@ import org.springframework.stereotype.Service
 
 const val AI_TOOL_EXECUTION_TARGET_FIELD = "execution_target"
 const val AI_TOOL_EXECUTION_WORKER_ID_FIELD = "worker_id"
-const val AI_TOOL_EXECUTION_WORKSPACE_ID_FIELD = "workspace_id"
+const val AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD = "workspace_mount_id"
 
 data class DistributedAiTool(
     val descriptor: AiToolDescriptor,
@@ -39,13 +40,14 @@ data class DistributedAiTool(
 
 data class DistributedAiToolWorker(
     val workerId: ConversationRuntimeWorkerId,
-    val workspaceIds: Set<Workspace.Id>,
+    val workspaceMounts: List<WorkspaceMount>,
 )
 
 data class DistributedAiToolCatalogSnapshot(
     val tools: List<AiToolCallback>,
     val entries: Map<String, DistributedAiTool>,
     val registrations: List<ConversationRuntimeWorkerRegistration>,
+    val environmentRevision: String,
     val environmentPrompt: String,
 )
 
@@ -60,17 +62,20 @@ class DistributedAiToolCatalog(
         project: Project,
     ): DistributedAiToolCatalogSnapshot {
         val now = Clock.System.now()
-        val registrations = workerRegistry.list()
-            .filter { it.isOnline(now - ConversationRuntimeTiming.workerRegistrationStaleAfter) }
+        val staleBefore = now - ConversationRuntimeTiming.workerRegistrationStaleAfter
+        val knownRegistrations = workerRegistry.list()
             .sortedBy { it.identity.workerId.value }
+        val onlineRegistrations = knownRegistrations.filter { it.isOnline(staleBefore) }
         val projectWorkspaces = workspaceService.findByProject(project.id)
             .associateBy { it.id }
-        val mountsByWorker = registrations.associate { registration ->
-            registration.identity.workerId to workspaceService
-                .findMountsByWorker(registration.identity.workerId.value)
-                .filter { it.workspaceId in projectWorkspaces }
+        val projectMounts = projectWorkspaces.keys
+            .flatMap { workspaceService.findMounts(it) }
+            .sortedBy { it.id.value }
+        val mountsByOnlineWorker = onlineRegistrations.associate { registration ->
+            registration.identity.workerId to projectMounts
+                .filter { it.workerId == registration.identity.workerId.value }
         }
-        val entries = registrations
+        val entries = onlineRegistrations
             .flatMap { registration ->
                 registration.tools.map { descriptor -> descriptor.definition.name to (registration to descriptor) }
             }
@@ -86,14 +91,13 @@ class DistributedAiToolCatalog(
                     .map { (registration, _) ->
                         DistributedAiToolWorker(
                             workerId = registration.identity.workerId,
-                            workspaceIds = mountsByWorker
-                                .getValue(registration.identity.workerId)
-                                .mapTo(mutableSetOf()) { it.workspaceId },
+                            workspaceMounts = mountsByOnlineWorker.getValue(registration.identity.workerId),
                         )
                     }
                     .filter {
                         descriptor.metadata.executionScope == AiToolExecutionScope.WORKER ||
-                            it.workspaceIds.isNotEmpty()
+                            descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
+                            it.workspaceMounts.isNotEmpty()
                     }
                     .sortedBy { it.workerId.value }
                 workers.takeIf { it.isNotEmpty() }
@@ -102,16 +106,23 @@ class DistributedAiToolCatalog(
             .toMap()
             .toSortedMap()
         val callbacks = entries.values.map(::modelCallback)
+        val environmentTopology = buildEnvironmentTopology(
+            project = project,
+            knownRegistrations = knownRegistrations,
+            staleBefore = staleBefore,
+            projectWorkspaces = projectWorkspaces,
+            projectMounts = projectMounts,
+        )
+        val environmentRevision = environmentTopology.toString().sha256()
 
         return DistributedAiToolCatalogSnapshot(
             tools = callbacks,
             entries = entries,
-            registrations = registrations,
+            registrations = onlineRegistrations,
+            environmentRevision = environmentRevision,
             environmentPrompt = buildEnvironmentPrompt(
-                project = project,
-                registrations = registrations,
-                projectWorkspaces = projectWorkspaces,
-                mountsByWorker = mountsByWorker,
+                revision = environmentRevision,
+                topology = environmentTopology,
             ),
         )
     }
@@ -135,10 +146,9 @@ class DistributedAiToolCatalog(
             AiToolExecutionScope.WORKER ->
                 "Select the exact online worker in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.WORKSPACE ->
-                "Select the exact online worker and filesystem workspace in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
+                "Select the exact online filesystem mount in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.COMMAND_TASK_OWNER ->
-                "Select the exact worker and filesystem workspace that own the command task in " +
-                    "`$AI_TOOL_EXECUTION_TARGET_FIELD`."
+                "The command task ID routes this call to the worker and mount that own the task."
         }
         return "$this\n\n$targetDescription"
     }
@@ -150,84 +160,46 @@ class DistributedAiToolCatalog(
             "Tool '${tool.descriptor.definition.name}' already declares reserved field " +
                 "'$AI_TOOL_EXECUTION_TARGET_FIELD'"
         }
+        if (tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER) {
+            return schema.toString()
+        }
         val required = schema["required"]?.jsonArray.orEmpty()
             .map { it.jsonPrimitive.content }
             .toMutableSet()
             .apply { add(AI_TOOL_EXECUTION_TARGET_FIELD) }
-        val workspaceRequired = tool.descriptor.metadata.executionScope != AiToolExecutionScope.WORKER
-        val workerIds = tool.workers.map { it.workerId.value }.distinct().sorted()
-        val workspaceIds = tool.workers.flatMap { it.workspaceIds }.map { it.value }.distinct().sorted()
-        val exactTargets = tool.workers.flatMap { worker ->
-            if (workspaceRequired) {
-                worker.workspaceIds
-                    .sortedBy { it.value }
-                    .map { workspaceId -> worker.workerId.value to workspaceId.value }
-            } else {
-                listOf(worker.workerId.value to null)
-            }
-        }
-        check(exactTargets.isNotEmpty()) {
-            "Tool '${tool.descriptor.definition.name}' has no valid execution targets"
-        }
+        val workspaceRequired = tool.descriptor.metadata.executionScope == AiToolExecutionScope.WORKSPACE
 
         val targetSchema = buildJsonObject {
             put("type", "object")
             put(
                 "description",
                 if (workspaceRequired) {
-                    "Exact worker and filesystem workspace pair for this call."
+                    "Exact filesystem workspace mount for this call."
                 } else {
                     "Exact worker for this call."
                 }
             )
             putJsonObject("properties") {
-                putJsonObject(AI_TOOL_EXECUTION_WORKER_ID_FIELD) {
-                    put("type", "string")
-                    put("description", "Exact ID of the worker that must execute this tool call.")
-                    putJsonArray("enum") {
-                        workerIds.sorted().forEach { add(JsonPrimitive(it)) }
-                    }
-                }
                 if (workspaceRequired) {
-                    putJsonObject(AI_TOOL_EXECUTION_WORKSPACE_ID_FIELD) {
+                    putJsonObject(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD) {
                         put("type", "string")
                         put(
                             "description",
-                            "Exact filesystem workspace ID mounted by the selected worker."
+                            "Exact workspace mount ID from the current execution environment."
                         )
-                        putJsonArray("enum") {
-                            workspaceIds.forEach { add(JsonPrimitive(it)) }
-                        }
                     }
-                }
-            }
-            if (workspaceRequired) {
-                putJsonArray("oneOf") {
-                    exactTargets.forEach { (workerId, workspaceId) ->
-                        add(
-                            buildJsonObject {
-                                put("type", "object")
-                                putJsonObject("properties") {
-                                    putJsonObject(AI_TOOL_EXECUTION_WORKER_ID_FIELD) {
-                                        putJsonArray("enum") { add(JsonPrimitive(workerId)) }
-                                    }
-                                    putJsonObject(AI_TOOL_EXECUTION_WORKSPACE_ID_FIELD) {
-                                        putJsonArray("enum") { add(JsonPrimitive(checkNotNull(workspaceId))) }
-                                    }
-                                }
-                                putJsonArray("required") {
-                                    add(JsonPrimitive(AI_TOOL_EXECUTION_WORKER_ID_FIELD))
-                                    add(JsonPrimitive(AI_TOOL_EXECUTION_WORKSPACE_ID_FIELD))
-                                }
-                            }
-                        )
+                } else {
+                    putJsonObject(AI_TOOL_EXECUTION_WORKER_ID_FIELD) {
+                        put("type", "string")
+                        put("description", "Exact worker ID from the current execution environment.")
                     }
                 }
             }
             putJsonArray("required") {
-                add(JsonPrimitive(AI_TOOL_EXECUTION_WORKER_ID_FIELD))
                 if (workspaceRequired) {
-                    add(JsonPrimitive(AI_TOOL_EXECUTION_WORKSPACE_ID_FIELD))
+                    add(JsonPrimitive(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD))
+                } else {
+                    add(JsonPrimitive(AI_TOOL_EXECUTION_WORKER_ID_FIELD))
                 }
             }
             put("additionalProperties", false)
@@ -242,66 +214,91 @@ class DistributedAiToolCatalog(
         return rewritten.toString()
     }
 
-    private suspend fun buildEnvironmentPrompt(
+    private fun buildEnvironmentTopology(
         project: Project,
-        registrations: List<ConversationRuntimeWorkerRegistration>,
+        knownRegistrations: List<ConversationRuntimeWorkerRegistration>,
+        staleBefore: kotlinx.datetime.Instant,
         projectWorkspaces: Map<Workspace.Id, Workspace>,
-        mountsByWorker: Map<ConversationRuntimeWorkerId, List<WorkspaceMount>>,
-    ): String {
-        return buildString {
-            append("<execution_environment>\n")
-            append("A Project is a logical container. A Filesystem Workspace is one concrete checkout or tree ")
-            append("inside a project. A Worker is a named, shared execution process. Paths are worker-local mount paths.\n")
-            append("Current project: id=")
-            append(project.id.value)
-            append(" name=")
-            append(project.name)
-            append("\nOnline workers:\n")
-            if (registrations.isEmpty()) {
-                append("- none\n")
-            } else {
-                registrations.forEach { registration ->
-                    val mounts = mountsByWorker.getValue(registration.identity.workerId)
-                    append("- worker_id=")
-                    append(registration.identity.workerId.value)
-                    append(" version=")
-                    append(registration.version)
-                    append(" workspaces=")
-                    if (mounts.isEmpty()) {
-                        append("none")
-                    } else {
-                        append(
-                            mounts
-                                .sortedBy { it.workspaceId.value }
-                                .joinToString(prefix = "[", postfix = "]") { mount ->
-                                    val workspace = projectWorkspaces[mount.workspaceId]
-                                    buildString {
-                                        append("{workspace_id=")
-                                        append(mount.workspaceId.value)
-                                        workspace?.let {
-                                            append(", project_id=")
-                                            append(it.projectId.value)
-                                            append(", name=")
-                                            append(it.name)
-                                        }
-                                        append(", root_path=")
-                                        append(mount.rootPath)
-                                        append("}")
-                                    }
-                                }
-                        )
-                    }
-                    append("\n")
+        projectMounts: List<WorkspaceMount>,
+    ): JsonObject {
+        val registrationsByWorker = knownRegistrations.associateBy { it.identity.workerId.value }
+        val workerIds = (registrationsByWorker.keys + projectMounts.map { it.workerId }).sorted()
+        return buildJsonObject {
+            putJsonObject("project") {
+                put("id", project.id.value)
+                put("name", project.name)
+                project.description?.let { put("description", it) }
+            }
+            putJsonArray("workers") {
+                workerIds.forEach { workerId ->
+                    val registration = registrationsByWorker[workerId]
+                    add(buildJsonObject {
+                        put("worker_id", workerId)
+                        put("status", if (registration?.isOnline(staleBefore) == true) "online" else "offline")
+                        registration?.let {
+                            put("version", it.version)
+                            putJsonArray("capabilities") {
+                                it.capabilities.map { capability -> capability.name }
+                                    .sorted()
+                                    .forEach { capability -> add(JsonPrimitive(capability)) }
+                            }
+                        }
+                    })
                 }
             }
-            append("Every tool call must include `$AI_TOOL_EXECUTION_TARGET_FIELD`. ")
-            append("Use only worker/workspace pairs shown by the tool schema and this environment. ")
+            putJsonArray("workspaces") {
+                projectWorkspaces.values.sortedBy { it.id.value }.forEach { workspace ->
+                    add(buildJsonObject {
+                        put("workspace_id", workspace.id.value)
+                        put("name", workspace.name)
+                        put("kind", workspace.kind.name.lowercase())
+                        putJsonArray("mounts") {
+                            projectMounts.filter { it.workspaceId == workspace.id }.forEach { mount ->
+                                add(buildJsonObject {
+                                    put("workspace_mount_id", mount.id.value)
+                                    put("worker_id", mount.workerId)
+                                    put(
+                                        "status",
+                                        if (registrationsByWorker[mount.workerId]?.isOnline(staleBefore) == true) {
+                                            "online"
+                                        } else {
+                                            "offline"
+                                        },
+                                    )
+                                    put("root_path", mount.rootPath)
+                                })
+                            }
+                        }
+                    })
+                }
+            }
+        }
+    }
+
+    private fun buildEnvironmentPrompt(
+        revision: String,
+        topology: JsonObject,
+    ): String =
+        buildString {
+            append("<execution_environment revision=\"")
+            append(revision)
+            append("\">\n")
+            append("Server is the canonical control plane and data store; it is not implicitly a Worker and exposes no local filesystem.\n")
+            append("Project is the logical scope for conversations, agents, prompts, and workspaces; it is not a filesystem path.\n")
+            append("Conversation belongs to one Project and is not bound to a Workspace. Agent is its selected model and instruction configuration.\n")
+            append("Worker is a named executor. Workspace is a logical filesystem resource. WorkspaceMount binds a Workspace to one worker-local root path and is the filesystem execution target.\n")
+            append("Topology: ")
+            append(topology)
+            append("\n")
+            append("Worker-scoped and workspace-scoped tool calls must include `$AI_TOOL_EXECUTION_TARGET_FIELD`; ")
+            append("command-task operations route by task_id. ")
+            append("Use only online worker IDs and online workspace mount IDs shown by this environment. ")
+            append("If a required target is absent, offline, or ambiguous, explain that instead of guessing. ")
             append("Never infer that equal paths on different workers are the same workspace. ")
-            append("Calls in one assistant response must target the same worker/workspace; use separate responses otherwise. ")
+            append("Calls in one assistant response must target the same worker/mount; use separate responses otherwise. ")
             append("Failed or unavailable targets are never retried or reassigned automatically.\n")
             append("</execution_environment>")
         }
-    }
 }
 
 private fun JsonObject?.orEmpty(): JsonObject = this ?: JsonObject(emptyMap())

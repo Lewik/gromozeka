@@ -29,9 +29,6 @@ data class HebrewTranslation(
 
     override val renameConversationTitle: String = "שנה שם שיחה",
     override val conversationNameLabel: String = "שם השיחה",
-    override val pinnedConversationsTitle: String = "מועדפים",
-    override val pinConversationTooltip: String = "הוסף למועדפים",
-    override val unpinConversationTooltip: String = "הסר מהמועדפים",
     override val projectsTabTooltip: String = "פרויקטים",
 
     override val refreshSessionsTooltip: String = "רענן רשימת סשנים",

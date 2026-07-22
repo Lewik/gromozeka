@@ -44,7 +44,9 @@ class ExposedProjectRepository : ProjectRepository {
     }
 
     override suspend fun findAll(): List<Project> = dbQuery {
-        Projects.selectAll().map { it.toProject() }
+        Projects.selectAll()
+            .orderBy(Projects.lastUsedAt, SortOrder.DESC)
+            .map { it.toProject() }
     }
 
     override suspend fun findRecent(limit: Int): List<Project> = dbQuery {

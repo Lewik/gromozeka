@@ -28,6 +28,31 @@ The current development shape is split:
 
 Legacy and auxiliary integrations still exist in the codebase, but the current default development path is the OpenAI subscription runtime plus PostgreSQL-backed typed memory.
 
+## Always YOLO
+
+Gromozeka intentionally does not implement per-command approvals, command denylists, filesystem sandboxes, or a second application-level permission system. Isolation, when required, must be provided by the operating system, a dedicated account, container, virtual machine, credential scope, network policy, and backups.
+
+A Gromozeka Worker is a trusted, unsandboxed executor. Enrolling a Worker authorizes the Gromozeka control plane and its selected models to invoke configured tools with the effective permissions of the Worker process. The Worker is not an autonomous agent and does not choose goals or policy. It executes durable tasks assigned by the control plane; depending on its declared capabilities, those tasks can include conversation orchestration, LLM calls, memory pipelines, and tool execution.
+
+`Readonly` and `Writable` are behavioral instructions for supported models, not security boundaries. A model that cannot reliably follow these instructions is unsupported.
+
+The Server is a control plane whose authority is explicitly delegated by its enrolled Workers. It does not elevate a Worker beyond the effective permissions of its process or enlarge the underlying permissions of its machines; it provides another path for exercising authority that already exists. Authentication, transport security, private network access, narrowly scoped infrastructure credentials, and auditability protect that path; they are infrastructure requirements, not model-facing per-command permissions.
+
+### Prompt Injection and Phishing
+
+This trust model does not make external content trustworthy. [Indirect prompt injection](https://openai.com/safety/prompt-injections/) is a social-engineering and confused-deputy attack: attacker-controlled text in a file, repository, web page, email, or tool result tries to make an already-authorized model use its existing authority against the user's intent. It is closer to phishing than to an operating-system privilege escalation.
+
+The important difference is how the target receives information. A human usually sees the channel, sender, and content as distinct signals. An LLM reasons over instructions and data in the same context, even when the API labels their roles. Modern models are trained with an explicit [instruction hierarchy](https://openai.com/index/instruction-hierarchy-challenge/) to prioritize higher-authority instructions and ignore malicious tool content, but this remains learned model behavior rather than a kernel-enforced boundary.
+
+Available measurements show that neither humans nor models are reliably immune, but the numbers describe different populations and must not be treated as one comparable prevalence rate:
+
+- The [FBI 2025 IC3 report](https://www.ic3.gov/AnnualReport/Reports/2025_IC3Report.pdf) recorded 191,561 phishing/spoofing complaints and $215.8 million in reported losses. These are real-world reports, not a click or attack-success rate.
+- A [controlled spear-phishing study](https://arxiv.org/abs/2412.00586) with 101 participants measured a 12% click-through rate for arbitrary phishing emails and 54% for both human-expert and fully AI-automated personalized emails.
+- The 2026 [LivePI preprint](https://arxiv.org/abs/2605.17986) measured 10.7% to 29.6% total attack success across five frontier agent systems in a live but test-controlled environment.
+- A [NAACL 2025 adaptive-attack study](https://aclanthology.org/2025.findings-naacl.395/) bypassed all eight evaluated indirect-prompt-injection defenses with attack success rates above 50%, demonstrating that results against static attacks do not establish a hard boundary.
+
+Gromozeka accepts this residual risk explicitly instead of presenting command filters or approval dialogs as a complete solution. It relies on supported models' instruction-hierarchy behavior, explicit source and role context, observable execution, and infrastructure-level isolation chosen by the operator. Logs and backups support detection and recovery; they do not prevent prompt injection.
+
 ## What Gromozeka Does
 
 - Runs Compose chat UI with tabs and project-aware sessions.
@@ -123,7 +148,7 @@ GROMOZEKA_MODE=dev \
 ./gradlew :worker:run
 ```
 
-See `worker/README.md` for split cloud and project-affine Worker configuration.
+See `worker/README.md` for cloud/local Worker configuration and the trusted executor contract.
 
 The default remote client endpoint is local:
 

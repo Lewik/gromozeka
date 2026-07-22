@@ -2,7 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -176,7 +176,7 @@ class InMemoryConversationRuntimeStoresTest {
                 taskId = llmTask.id,
                 worker = worker("turn-worker"),
                 workerCapabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
-                workerWorkspaceIds = emptySet(),
+                workerWorkspaceMountIds = emptySet(),
             )
         )
         assertEquals(
@@ -189,7 +189,7 @@ class InMemoryConversationRuntimeStoresTest {
                     ConversationRuntimeWorkerCapability.LLM_RUNTIME,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
-                workerWorkspaceIds = emptySet(),
+                workerWorkspaceMountIds = emptySet(),
             )
         )
     }
@@ -367,7 +367,7 @@ class InMemoryConversationRuntimeStoresTest {
             id = CommandTask.Id("command-task-1"),
             conversationId = conversationId,
             workerId = ConversationRuntimeWorkerId("worker-1"),
-            workspaceId = Workspace.Id("workspace-1"),
+            workspaceMountId = WorkspaceMount.Id("mount-1"),
             command = "sleep 30",
             workingDirectory = "/tmp",
             status = CommandTask.Status.WORKING,
@@ -497,7 +497,7 @@ class InMemoryConversationRuntimeStoresTest {
         id = CommandTask.Id(id),
         conversationId = conversationId,
         workerId = ConversationRuntimeWorkerId("worker-1"),
-        workspaceId = Workspace.Id("workspace-1"),
+        workspaceMountId = WorkspaceMount.Id("mount-1"),
         command = id,
         workingDirectory = "/tmp",
         status = status,
@@ -541,7 +541,7 @@ class InMemoryConversationRuntimeStoresTest {
             taskId = task.id,
             worker = worker,
             workerCapabilities = task.requirements.capabilities,
-            workerWorkspaceIds = task.requirements.target?.workspaceId?.let(::setOf).orEmpty(),
+            workerWorkspaceMountIds = task.requirements.target?.workspaceMountId?.let(::setOf).orEmpty(),
         )
 
     private fun task(

@@ -3,7 +3,6 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
-import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -175,19 +174,19 @@ data class ConversationRuntimeTaskRequirements(
     fun isSatisfiedBy(
         workerId: ConversationRuntimeWorkerId,
         workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
-        workerWorkspaceIds: Set<Workspace.Id>,
+        workerWorkspaceMountIds: Set<WorkspaceMount.Id>,
     ): Boolean =
         workerCapabilities.containsAll(capabilities) &&
             (target == null || (
                 target.workerId == workerId &&
-                    (target.workspaceId == null || target.workspaceId in workerWorkspaceIds)
+                    (target.workspaceMountId == null || target.workspaceMountId in workerWorkspaceMountIds)
                 ))
 }
 
 @Serializable
 data class ConversationRuntimeTaskTarget(
     val workerId: ConversationRuntimeWorkerId,
-    val workspaceId: Workspace.Id? = null,
+    val workspaceMountId: WorkspaceMount.Id? = null,
 )
 
 @Serializable
@@ -563,7 +562,7 @@ interface ConversationRuntimeCoordinator {
         taskId: ConversationRuntimeTask.Id,
         worker: ConversationRuntimeWorkerIdentity,
         workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
-        workerWorkspaceIds: Set<Workspace.Id>,
+        workerWorkspaceMountIds: Set<WorkspaceMount.Id>,
     ): ConversationRuntimeTask?
 
     suspend fun completeActiveTask(

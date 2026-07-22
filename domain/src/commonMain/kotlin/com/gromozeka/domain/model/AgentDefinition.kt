@@ -11,8 +11,8 @@ import kotlin.jvm.JvmInline
 /**
  * Agent definition - reusable configuration template for AI agent behavior.
  *
- * Builtin definitions are immutable blueprints. Project definitions are mutable
- * runtime entities that may be imported from a worker workspace or created in UI.
+ * Builtin definitions are immutable blueprints. Project definitions are mutable,
+ * server-managed runtime entities created through the UI or API.
  *
  * Definition includes:
  * - Behavior (prompts, tools)

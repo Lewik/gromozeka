@@ -464,7 +464,7 @@ class ConversationRuntimeDispatcherTest {
                     taskId = task.id,
                     worker = assignedWorker,
                     workerCapabilities = task.requirements.capabilities,
-                    workerWorkspaceIds = emptySet(),
+                    workerWorkspaceMountIds = emptySet(),
                 )
             )
             assertTrue(
@@ -595,10 +595,11 @@ class ConversationRuntimeDispatcherTest {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val workspaceId = Workspace.Id("workspace-1")
+        val workspaceMountId = WorkspaceMount.Id("mount-1")
         val workspaceWorkerId = ConversationRuntimeWorkerId("workspace-worker")
         val toolTarget = ConversationRuntimeTaskTarget(
             workerId = workspaceWorkerId,
-            workspaceId = workspaceId,
+            workspaceMountId = workspaceMountId,
         )
         val firstMessage = userMessage("message-1")
         val llmTask1 = runtimeLlmTask(firstMessage.id, iteration = 1)
@@ -656,7 +657,7 @@ class ConversationRuntimeDispatcherTest {
                 ),
             ),
             scope = scope,
-            workspaceIds = setOf(workspaceId),
+            workspaceMounts = mapOf(workspaceMountId to workspaceId),
         )
 
         try {
@@ -975,7 +976,7 @@ class ConversationRuntimeDispatcherTest {
         runner: ConversationRuntimeTaskRunner,
         descriptor: ConversationRuntimeWorkerDescriptor,
         scope: CoroutineScope,
-        workspaceIds: Set<Workspace.Id> = emptySet(),
+        workspaceMounts: Map<WorkspaceMount.Id, Workspace.Id> = emptyMap(),
         heartbeatIntervalMillis: Long = ConversationRuntimeTiming.workerHeartbeatIntervalMillis,
     ): ConversationRuntimeWorker =
         ConversationRuntimeWorker(
@@ -983,7 +984,7 @@ class ConversationRuntimeDispatcherTest {
             runtimeEventBus = eventBus,
             runtimeWorkConsumer = workQueue,
             runtimeWorkerRegistry = registry,
-            workspaceService = StaticWorkspaceDomainService(descriptor.id.value, workspaceIds),
+            workspaceService = StaticWorkspaceDomainService(descriptor.id.value, workspaceMounts),
             taskRunnerProvider = objectProvider(runner),
             runtimeWorkerDescriptor = descriptor,
             workerVersion = "test",
@@ -993,27 +994,38 @@ class ConversationRuntimeDispatcherTest {
 
     private class StaticWorkspaceDomainService(
         private val workerId: String,
-        private val workspaceIds: Set<Workspace.Id> = emptySet(),
+        private val workspaceMounts: Map<WorkspaceMount.Id, Workspace.Id> = emptyMap(),
     ) : WorkspaceDomainService {
         private val now = Clock.System.now()
 
-        override suspend fun createFilesystem(
+        override suspend fun createFilesystemWorkspace(
+            projectId: Project.Id,
+            name: String,
+            id: Workspace.Id?,
+        ): Workspace = error("Workspace creation is outside this test")
+
+        override suspend fun createAndMountFilesystemWorkspace(
             projectId: Project.Id,
             name: String,
             workerId: String,
             rootPath: String,
-            id: Workspace.Id?,
+            workspaceId: Workspace.Id?,
+            mountId: WorkspaceMount.Id?,
         ): WorkspaceExecutionContext = error("Workspace creation is outside this test")
 
         override suspend fun attachFilesystem(
             workspaceId: Workspace.Id,
             workerId: String,
             rootPath: String,
+            mountId: WorkspaceMount.Id?,
         ): WorkspaceExecutionContext = error("Workspace attachment is outside this test")
 
         override suspend fun findById(id: Workspace.Id): Workspace? = null
 
         override suspend fun findByProject(projectId: Project.Id): List<Workspace> = emptyList()
+
+        override suspend fun findMount(id: WorkspaceMount.Id): WorkspaceMount? =
+            mountsFor(workerId).singleOrNull { it.id == id }
 
         override suspend fun findMount(
             workspaceId: Workspace.Id,
@@ -1033,8 +1045,7 @@ class ConversationRuntimeDispatcherTest {
         ): WorkspaceExecutionContext? = null
 
         override suspend fun resolveExecution(
-            workspaceId: Workspace.Id,
-            workerId: String,
+            mountId: WorkspaceMount.Id,
         ): WorkspaceExecutionContext = error("Workspace resolution is outside this test")
 
         override suspend fun resolveRuntime(
@@ -1045,8 +1056,9 @@ class ConversationRuntimeDispatcherTest {
 
         private fun mountsFor(requestedWorkerId: String): List<WorkspaceMount> =
             if (requestedWorkerId == workerId) {
-                workspaceIds.map { workspaceId ->
+                workspaceMounts.map { (mountId, workspaceId) ->
                     WorkspaceMount(
+                        id = mountId,
                         workspaceId = workspaceId,
                         workerId = workerId,
                         rootPath = "/workspace/${workspaceId.value}",

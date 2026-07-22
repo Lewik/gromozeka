@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool
 
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
-import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.serialization.Serializable
 
@@ -55,6 +55,12 @@ data class AiToolDescriptor(
 
 @Serializable
 data class AiToolExecutionTarget(
-    val workerId: ConversationRuntimeWorkerId,
-    val workspaceId: Workspace.Id? = null,
-)
+    val workerId: ConversationRuntimeWorkerId? = null,
+    val workspaceMountId: WorkspaceMount.Id? = null,
+) {
+    init {
+        require((workerId == null) != (workspaceMountId == null)) {
+            "AI tool execution target must select exactly one worker or workspace mount"
+        }
+    }
+}

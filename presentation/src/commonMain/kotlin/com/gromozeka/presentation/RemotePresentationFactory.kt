@@ -75,9 +75,10 @@ suspend fun createRemoteAppComponents(
         defaultAgentProvider = remoteServices.defaultAgentProvider,
         agentService = remoteServices.agentService,
         tokenStatsService = remoteServices.conversationTokenStatsService,
+        conversationTabLayoutService = remoteServices.conversationTabLayoutService,
     )
 
-    val uiStateService = UIStateService(scope, uiStateStore)
+    val uiStateService = UIStateService(scope, remoteServices.conversationTabLayoutService, uiStateStore)
     uiStateService.initialize(appViewModel)
 
     val translationService = TranslationService().also { it.init(remoteServices.settingsService) }
@@ -126,12 +127,12 @@ suspend fun createRemoteAppComponents(
             ollamaModelService = OllamaModelService(),
             projectService = remoteServices.projectService,
             workspaceCatalogService = remoteServices.workspaceCatalogService,
+            workspaceManagementService = remoteServices.workspaceManagementService,
             conversationService = remoteServices.conversationService,
             conversationSearchViewModel = ConversationSearchViewModel(remoteServices.conversationNameSearchService, scope),
             loadingViewModel = LoadingViewModel(),
             tabPromptService = TabPromptService(remoteServices.promptService),
             agentService = remoteServices.agentService,
-            agentCatalogImportService = remoteServices.agentCatalogImportService,
             promptService = remoteServices.promptService,
             deviceLocationService = deviceLocationService,
         ),

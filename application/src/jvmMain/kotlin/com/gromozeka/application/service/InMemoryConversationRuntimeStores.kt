@@ -21,7 +21,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkOutboxEntry
 import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
 import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
-import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
@@ -103,7 +103,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         taskId: ConversationRuntimeTask.Id,
         worker: ConversationRuntimeWorkerIdentity,
         workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
-        workerWorkspaceIds: Set<Workspace.Id>,
+        workerWorkspaceMountIds: Set<WorkspaceMount.Id>,
     ): ConversationRuntimeTask? =
         mutex.withLock {
             val now = Clock.System.now()
@@ -118,7 +118,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 if (state.activeWorker != worker) {
                     return@withLock null
                 }
-                if (!activeTask.requirements.isSatisfiedBy(worker.workerId, workerCapabilities, workerWorkspaceIds)) {
+                if (!activeTask.requirements.isSatisfiedBy(worker.workerId, workerCapabilities, workerWorkspaceMountIds)) {
                     return@withLock null
                 }
                 return@withLock activeTask
@@ -133,7 +133,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 return@withLock null
             }
             val task = tasks[taskIndex]
-            if (!task.requirements.isSatisfiedBy(worker.workerId, workerCapabilities, workerWorkspaceIds)) {
+            if (!task.requirements.isSatisfiedBy(worker.workerId, workerCapabilities, workerWorkspaceMountIds)) {
                 return@withLock null
             }
             tasks.removeAt(taskIndex)

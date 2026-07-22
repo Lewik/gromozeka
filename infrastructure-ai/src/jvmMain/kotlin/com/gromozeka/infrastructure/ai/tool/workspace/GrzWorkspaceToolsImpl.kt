@@ -12,6 +12,8 @@ import com.gromozeka.domain.tool.workspace.GrzCreateFilesystemWorkspaceTool
 import kotlinx.coroutines.runBlocking
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
+import java.nio.file.Files
+import java.nio.file.Path
 
 @Service
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
@@ -24,12 +26,13 @@ class GrzCreateFilesystemWorkspaceToolImpl(
     ): Map<String, Any> {
         val projectId = context.requiredProjectId()
         val workerId = context.requiredWorkerId()
+        val rootPath = normalizeExistingDirectory(request.root_path)
         val workspaceContext = runBlocking {
-            workspaceService.createFilesystem(
+            workspaceService.createAndMountFilesystemWorkspace(
                 projectId = projectId,
                 name = request.name,
                 workerId = workerId.value,
-                rootPath = request.root_path,
+                rootPath = rootPath,
             )
         }
         return workspaceContext.toToolResult()
@@ -47,6 +50,7 @@ class GrzAttachFilesystemWorkspaceToolImpl(
     ): Map<String, Any> {
         val projectId = context.requiredProjectId()
         val workerId = context.requiredWorkerId()
+        val rootPath = normalizeExistingDirectory(request.root_path)
         val workspaceId = Workspace.Id(request.workspace_id)
         val workspace = runBlocking {
             workspaceService.findById(workspaceId)
@@ -58,7 +62,7 @@ class GrzAttachFilesystemWorkspaceToolImpl(
             workspaceService.attachFilesystem(
                 workspaceId = workspaceId,
                 workerId = workerId.value,
-                rootPath = request.root_path,
+                rootPath = rootPath,
             )
         }
         return workspaceContext.toToolResult()
@@ -72,6 +76,14 @@ private fun com.gromozeka.domain.model.WorkspaceExecutionContext.toToolResult():
         "workspace_id" to workspace.id.value,
         "workspace_name" to workspace.name,
         "workspace_kind" to workspace.kind.name,
+        "workspace_mount_id" to mount.id.value,
         "worker_id" to mount.workerId,
         "root_path" to mount.rootPath,
     )
+
+private fun normalizeExistingDirectory(rootPath: String): String {
+    require(rootPath.isNotBlank()) { "Workspace root path must not be blank" }
+    val resolved = Path.of(rootPath).toRealPath()
+    require(Files.isDirectory(resolved)) { "Workspace root path is not a directory: $resolved" }
+    return resolved.toString()
+}

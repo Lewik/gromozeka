@@ -29,9 +29,6 @@ data class ThaiTranslation(
 
     override val renameConversationTitle: String = "เปลี่ยนชื่อการสนทนา",
     override val conversationNameLabel: String = "ชื่อการสนทนา",
-    override val pinnedConversationsTitle: String = "ปักหมุด",
-    override val pinConversationTooltip: String = "ปักหมุดการสนทนา",
-    override val unpinConversationTooltip: String = "เลิกปักหมุดการสนทนา",
     override val projectsTabTooltip: String = "โปรเจกต์",
 
     override val refreshSessionsTooltip: String = "รีเฟรชรายการเซสชัน",

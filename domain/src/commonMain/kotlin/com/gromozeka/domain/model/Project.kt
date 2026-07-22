@@ -78,6 +78,7 @@ data class Workspace(
  */
 @Serializable
 data class WorkspaceMount(
+    val id: Id,
     val workspaceId: Workspace.Id,
     val workerId: String,
     val rootPath: String,
@@ -87,6 +88,14 @@ data class WorkspaceMount(
     init {
         require(workerId.isNotBlank()) { "Workspace mount worker id must not be blank" }
         require(rootPath.isNotBlank()) { "Workspace mount root path must not be blank" }
+    }
+
+    @Serializable
+    @JvmInline
+    value class Id(val value: String) {
+        init {
+            require(value.isNotBlank()) { "Workspace mount id must not be blank" }
+        }
     }
 }
 

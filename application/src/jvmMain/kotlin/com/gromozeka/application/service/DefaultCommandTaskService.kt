@@ -14,6 +14,7 @@ import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.requiredWorkspaceMountId
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_INITIAL_YIELD_MILLIS
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_TASK_WAIT_MILLIS
@@ -92,7 +93,7 @@ class DefaultCommandTaskService(
                 id = taskId,
                 conversationId = conversationId,
                 workerId = workerId,
-                workspaceId = context.requiredWorkspaceId(),
+                workspaceMountId = context.requiredWorkspaceMountId(),
                 command = request.command,
                 workingDirectory = workingDirectory,
                 status = CommandTask.Status.WORKING,
@@ -608,12 +609,6 @@ class DefaultCommandTaskService(
             ?.takeIf { it.isNotBlank() }
             ?.let(Conversation::Id)
             ?: error("conversationId is required in tool context")
-
-    private fun ToolExecutionContext.requiredWorkspaceId(): com.gromozeka.domain.model.Workspace.Id =
-        getString("workspaceId")
-            ?.takeIf { it.isNotBlank() }
-            ?.let(com.gromozeka.domain.model.Workspace::Id)
-            ?: error("workspaceId is required in tool context")
 
     private fun ToolExecutionContext.requiredWorkspaceRootPath(): String =
         getString("workspaceRootPath")?.takeIf { it.isNotBlank() }

@@ -389,7 +389,7 @@ class MemoryRealModelE2eTest {
             name = "Memory E2E ${case.id}",
             description = case.description,
         )
-        val workspaceContext = workspaceDomainService.createFilesystem(
+        val workspaceContext = workspaceDomainService.createAndMountFilesystemWorkspace(
             projectId = project.id,
             name = "${case.id} workspace",
             workerId = E2E_WORKER_ID,

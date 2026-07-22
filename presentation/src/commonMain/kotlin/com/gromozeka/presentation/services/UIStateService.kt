@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -12,17 +13,23 @@ import kotlinx.coroutines.launch
 
 class UIStateService(
     private val scope: CoroutineScope,
+    private val conversationTabLayoutService: ConversationTabLayoutService,
     private val store: UIStateStore = InMemoryUIStateStore(),
 ) {
     private var appViewModel: AppViewModel? = null
     private var autoSaveJob: Job? = null
+    private var sharedTabsJob: Job? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun initialize(appViewModel: AppViewModel) {
         this.appViewModel = appViewModel
 
-        store.load()?.let { savedState ->
-            appViewModel.restoreTabs(savedState)
+        val savedState = store.load() ?: UIState()
+        appViewModel.restoreTabs(savedState, conversationTabLayoutService.snapshot())
+
+        sharedTabsJob?.cancel()
+        sharedTabsJob = scope.launch {
+            conversationTabLayoutService.observe().collect(appViewModel::applyConversationTabLayout)
         }
 
         autoSaveJob?.cancel()
@@ -49,5 +56,7 @@ class UIStateService(
     fun disableAutoSave() {
         autoSaveJob?.cancel()
         autoSaveJob = null
+        sharedTabsJob?.cancel()
+        sharedTabsJob = null
     }
 }

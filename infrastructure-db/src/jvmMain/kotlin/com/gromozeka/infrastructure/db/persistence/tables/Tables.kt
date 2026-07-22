@@ -28,13 +28,14 @@ internal object Workspaces : Table("workspaces") {
 }
 
 internal object WorkspaceMounts : Table("workspace_mounts") {
+    val id = varchar("id", 255)
     val workspaceId = varchar("workspace_id", 255).references(Workspaces.id, onDelete = ReferenceOption.CASCADE)
     val workerId = varchar("worker_id", 255)
     val rootPath = varchar("root_path", 1000)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 
-    override val primaryKey = PrimaryKey(workspaceId, workerId)
+    override val primaryKey = PrimaryKey(id)
 }
 
 internal object Contexts : Table("contexts") {
@@ -68,31 +69,23 @@ internal object Agents : Table("agents") {
     override val primaryKey = PrimaryKey(id)
 }
 
-internal object AgentCatalogImportProposals : Table("agent_catalog_import_proposals") {
-    val workspaceId = varchar("workspace_id", 255).references(Workspaces.id, onDelete = ReferenceOption.CASCADE)
-    val workerId = varchar("worker_id", 255)
-    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
-    val workspaceName = varchar("workspace_name", 255)
-    val catalogHash = varchar("catalog_hash", 64)
-    val promptsJson = text("prompts_json")
-    val agentsJson = text("agents_json")
-    val validationError = text("validation_error").nullable()
-    val status = varchar("status", 50)
-    val detectedAt = timestamp("detected_at")
-    val decidedAt = timestamp("decided_at").nullable()
-
-    override val primaryKey = PrimaryKey(workspaceId, workerId)
-}
-
 internal object Conversations : Table("conversations") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
     val agentDefinitionId = varchar("agent_definition_id", 255)
     val displayName = varchar("display_name", 255)
-    val pinnedAt = timestamp("pinned_at").nullable()
     val currentThreadId = varchar("current_thread_id", 255)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object ConversationTabLayouts : Table("conversation_tab_layouts") {
+    val id = varchar("id", 64)
+    val conversationIdsJson = text("conversation_ids_json")
+    val revision = long("revision")
+    val updatedAt = timestamp("updated_at").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }

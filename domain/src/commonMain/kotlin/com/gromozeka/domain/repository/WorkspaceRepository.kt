@@ -18,6 +18,8 @@ interface WorkspaceRepository {
 
     suspend fun saveMount(mount: WorkspaceMount): WorkspaceMount
 
+    suspend fun findMount(id: WorkspaceMount.Id): WorkspaceMount?
+
     suspend fun findMount(workspaceId: Workspace.Id, workerId: String): WorkspaceMount?
 
     suspend fun findMountByPath(workerId: String, rootPath: String): WorkspaceMount?
@@ -26,5 +28,5 @@ interface WorkspaceRepository {
 
     suspend fun findMountsByWorker(workerId: String): List<WorkspaceMount>
 
-    suspend fun deleteMount(workspaceId: Workspace.Id, workerId: String)
+    suspend fun deleteMount(id: WorkspaceMount.Id)
 }

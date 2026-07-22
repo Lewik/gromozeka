@@ -63,21 +63,23 @@ class ParallelToolExecutor(
         toolCalls.forEach { toolCall ->
             val callback = callbackMap[toolCall.call.name]
                 ?: error("Worker does not advertise requested tool: ${toolCall.call.name}")
-            val requestedTarget = toolCall.call.input.parseExecutionTarget()
-            require(requestedTarget.workerId == expectedTarget.workerId) {
-                "Tool ${toolCall.call.name} targets worker ${requestedTarget.workerId.value}, " +
-                    "but runtime task targets ${expectedTarget.workerId.value}"
-            }
             when (callback.metadata.executionScope) {
-                AiToolExecutionScope.WORKER -> require(requestedTarget.workspaceId == null) {
-                    "Worker-scoped tool ${toolCall.call.name} must not target a workspace"
+                AiToolExecutionScope.WORKER -> {
+                    val requestedTarget = toolCall.call.input.parseExecutionTarget()
+                    require(requestedTarget.workerId == expectedTarget.workerId) {
+                        "Tool ${toolCall.call.name} targets worker ${requestedTarget.workerId?.value}, " +
+                            "but runtime task targets ${expectedTarget.workerId.value}"
+                    }
                 }
-                AiToolExecutionScope.WORKSPACE,
-                AiToolExecutionScope.COMMAND_TASK_OWNER,
-                -> require(requestedTarget.workspaceId == expectedTarget.workspaceId) {
-                    "Tool ${toolCall.call.name} targets workspace ${requestedTarget.workspaceId?.value}, " +
-                        "but runtime task targets ${expectedTarget.workspaceId?.value}"
+                AiToolExecutionScope.WORKSPACE -> {
+                    val requestedTarget = toolCall.call.input.parseExecutionTarget()
+                    require(requestedTarget.workspaceMountId == expectedTarget.workspaceMountId) {
+                        "Tool ${toolCall.call.name} targets workspace mount " +
+                            "${requestedTarget.workspaceMountId?.value}, but runtime task targets " +
+                            "${expectedTarget.workspaceMountId?.value}"
+                    }
                 }
+                AiToolExecutionScope.COMMAND_TASK_OWNER -> Unit
             }
         }
 

@@ -4,12 +4,12 @@ import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
-import com.gromozeka.domain.service.AgentCatalogImportService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
+import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
@@ -17,6 +17,7 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.WorkspaceCatalogService
+import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.infrastructure.ai.openai.SttService
 import com.gromozeka.infrastructure.ai.openai.TtsService
 import com.gromozeka.remote.protocol.*
@@ -44,11 +45,12 @@ class GromozekaRemoteServer(
     private val settingsService: SettingsService,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val agentDomainService: AgentDomainService,
-    private val agentCatalogImportService: AgentCatalogImportService,
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
+    private val conversationTabLayoutService: ConversationTabLayoutService,
     private val projectDomainService: ProjectDomainService,
     private val workspaceCatalogService: WorkspaceCatalogService,
+    private val workspaceManagementService: WorkspaceManagementService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
@@ -67,6 +69,7 @@ class GromozekaRemoteServer(
     suspend fun handle(session: DefaultWebSocketServerSession) {
         val sender = RemoteSessionSender(session)
         val conversationSubscriptions = mutableMapOf<String, Job>()
+        val conversationTabLayoutSubscriptions = mutableMapOf<String, Job>()
         coroutineScope {
             try {
                 for (frame in session.incoming) {
@@ -86,6 +89,14 @@ class GromozekaRemoteServer(
                                 }
                             }
                             is StopObserveConversationCommand -> conversationSubscriptions.remove(payload.subscriptionId)?.cancel()
+                            is ObserveConversationTabLayoutCommand -> {
+                                conversationTabLayoutSubscriptions[payload.subscriptionId]?.cancel()
+                                conversationTabLayoutSubscriptions[payload.subscriptionId] = launch {
+                                    observeConversationTabLayout(sender, payload, encoding)
+                                }
+                            }
+                            is StopObserveConversationTabLayoutCommand ->
+                                conversationTabLayoutSubscriptions.remove(payload.subscriptionId)?.cancel()
                             is SynthesizeSpeechStreamCommand -> launch {
                                 handleSynthesizeSpeechStream(sender, envelope.id, payload, encoding)
                             }
@@ -103,6 +114,8 @@ class GromozekaRemoteServer(
             } finally {
                 conversationSubscriptions.values.forEach { it.cancel() }
                 conversationSubscriptions.clear()
+                conversationTabLayoutSubscriptions.values.forEach { it.cancel() }
+                conversationTabLayoutSubscriptions.clear()
             }
         }
     }
@@ -154,24 +167,6 @@ class GromozekaRemoteServer(
                     SavedResponse
                 }
                 CountAgentsRequest -> CountResponse(agentDomainService.count())
-                is FindPendingAgentCatalogImportsRequest -> AgentCatalogImportProposalsResponse(
-                    agentCatalogImportService.findPending(request.projectId)
-                )
-                is ImportAgentCatalogRequest -> AgentCatalogImportResultResponse(
-                    agentCatalogImportService.import(
-                        request.workspaceId,
-                        request.workerId,
-                        request.catalogHash,
-                    )
-                )
-                is SkipAgentCatalogImportRequest -> {
-                    agentCatalogImportService.skip(
-                        request.workspaceId,
-                        request.workerId,
-                        request.catalogHash,
-                    )
-                    SavedResponse
-                }
                 is FindPromptRequest -> PromptResponse(promptDomainService.findById(request.promptId))
                 is FindPromptsRequest -> PromptsResponse(
                     request.projectId?.let { promptDomainService.findByProject(it) }
@@ -183,6 +178,13 @@ class GromozekaRemoteServer(
                 is CreateProjectRequest -> ProjectResponse(
                     projectDomainService.create(request.name, request.description)
                 )
+                is UpdateProjectRequest -> ProjectResponse(
+                    projectDomainService.update(request.projectId, request.name, request.description)
+                )
+                is DeleteProjectRequest -> {
+                    projectDomainService.delete(request.projectId)
+                    SavedResponse
+                }
                 is FindProjectByIdRequest -> NullableProjectResponse(projectDomainService.findById(request.projectId))
                 is UpdateProjectLastUsedRequest -> NullableProjectResponse(projectDomainService.updateLastUsed(request.projectId))
                 is CreateConversationRequest -> ConversationResponse(
@@ -196,10 +198,19 @@ class GromozekaRemoteServer(
                 is FindConversationRequest -> ConversationResponse(conversationDomainService.findById(request.conversationId))
                 is GetProjectRequest -> ProjectResponse(conversationDomainService.getProject(request.conversationId))
                 is FindRecentProjectsRequest -> ProjectsResponse(projectDomainService.findRecent(request.limit))
+                FindProjectsRequest -> ProjectsResponse(projectDomainService.findAll())
                 is FindConversationsByProjectRequest -> ConversationsResponse(
                     conversationDomainService.findByProject(request.projectId)
                 )
-                FindPinnedConversationsRequest -> ConversationsResponse(conversationDomainService.findPinned())
+                GetConversationTabLayoutRequest -> ConversationTabLayoutResponse(
+                    conversationTabLayoutService.snapshot()
+                )
+                is OpenConversationTabRequest -> ConversationTabLayoutResponse(
+                    conversationTabLayoutService.open(request.conversationId)
+                )
+                is CloseConversationTabRequest -> ConversationTabLayoutResponse(
+                    conversationTabLayoutService.close(request.conversationId)
+                )
                 is FindWorkspaceRequest -> WorkspaceResponse(workspaceCatalogService.findById(request.workspaceId))
                 is FindWorkspacesByProjectRequest -> WorkspacesResponse(
                     workspaceCatalogService.findByProject(request.projectId)
@@ -207,6 +218,20 @@ class GromozekaRemoteServer(
                 is FindWorkspaceMountsRequest -> WorkspaceMountsResponse(
                     workspaceCatalogService.findMounts(request.workspaceId)
                 )
+                is CreateFilesystemWorkspaceRequest -> WorkspaceResponse(
+                    workspaceManagementService.create(request.projectId, request.name)
+                )
+                is UpdateWorkspaceRequest -> WorkspaceResponse(
+                    workspaceManagementService.update(request.workspaceId, request.name)
+                )
+                is DeleteWorkspaceRequest -> {
+                    workspaceManagementService.delete(request.workspaceId)
+                    SavedResponse
+                }
+                is DeleteWorkspaceMountRequest -> {
+                    workspaceManagementService.deleteMount(request.mountId)
+                    SavedResponse
+                }
                 is DeleteConversationRequest -> {
                     conversationDomainService.delete(request.conversationId)
                     SavedResponse
@@ -219,9 +244,6 @@ class GromozekaRemoteServer(
                         request.conversationId,
                         request.agentDefinitionId,
                     )
-                )
-                is SetConversationPinnedRequest -> ConversationResponse(
-                    conversationDomainService.setPinned(request.conversationId, request.pinned)
                 )
                 is ForkConversationRequest -> ConversationResponse(conversationDomainService.fork(request.conversationId))
                 is AddMessageRequest -> ConversationResponse(
@@ -363,6 +385,20 @@ class GromozekaRemoteServer(
                     type = error::class.simpleName,
                     cursorSequence = null,
                 ),
+                encoding,
+            )
+        }
+    }
+
+    private suspend fun observeConversationTabLayout(
+        sender: RemoteSessionSender,
+        command: ObserveConversationTabLayoutCommand,
+        encoding: RemoteProtocolEncoding,
+    ) {
+        conversationTabLayoutService.observe().collect { layout ->
+            sender.send(
+                command.subscriptionId,
+                ConversationTabLayoutSnapshotEvent(command.subscriptionId, layout),
                 encoding,
             )
         }

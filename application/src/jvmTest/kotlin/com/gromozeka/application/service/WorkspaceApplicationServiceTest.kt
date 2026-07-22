@@ -12,6 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertNotNull
 
 class WorkspaceApplicationServiceTest {
     private val now = Instant.parse("2026-01-01T00:00:00Z")
@@ -56,9 +57,36 @@ class WorkspaceApplicationServiceTest {
         )
 
         assertFailsWith<IllegalStateException> {
-            service.resolveExecution(workspace.id, "cloud-llm")
+            service.resolveExecution(WorkspaceMount.Id("missing-mount"))
         }
         Unit
+    }
+
+    @Test
+    fun `management lifecycle keeps logical workspace separate from worker mount`() = runBlocking {
+        val repository = TestWorkspaceRepository()
+        val service = WorkspaceApplicationService(
+            projectRepository = TestProjectRepository(project),
+            workspaceRepository = repository,
+        )
+
+        val created = service.create(project.id, " Mac checkout ")
+        assertEquals("Mac checkout", created.name)
+        assertEquals(Workspace.Kind.FILESYSTEM, created.kind)
+        assertNull(service.findMount(created.id, "mac-worker"))
+
+        val mounted = service.attachFilesystem(created.id, " mac-worker ", " /repo ")
+        assertEquals("mac-worker", mounted.mount.workerId)
+        assertEquals("/repo", mounted.mount.rootPath)
+        assertNotNull(service.findMount(mounted.mount.id))
+
+        val renamed = service.update(created.id, "Primary checkout")
+        assertEquals("Primary checkout", renamed.name)
+
+        service.deleteMount(mounted.mount.id)
+        assertNull(service.findMount(mounted.mount.id))
+        service.delete(created.id)
+        assertNull(service.findById(created.id))
     }
 }
 
@@ -83,9 +111,9 @@ private class TestProjectRepository(
 }
 
 private class TestWorkspaceRepository(
-    workspace: Workspace,
+    vararg workspaces: Workspace,
 ) : WorkspaceRepository {
-    private val workspaces = mutableMapOf(workspace.id to workspace)
+    private val workspaces = workspaces.associateBy(Workspace::id).toMutableMap()
     private val mounts = mutableMapOf<Pair<Workspace.Id, String>, WorkspaceMount>()
 
     override suspend fun save(workspace: Workspace): Workspace =
@@ -103,6 +131,9 @@ private class TestWorkspaceRepository(
     override suspend fun saveMount(mount: WorkspaceMount): WorkspaceMount =
         mount.also { mounts[it.workspaceId to it.workerId] = it }
 
+    override suspend fun findMount(id: WorkspaceMount.Id): WorkspaceMount? =
+        mounts.values.singleOrNull { it.id == id }
+
     override suspend fun findMount(workspaceId: Workspace.Id, workerId: String): WorkspaceMount? =
         mounts[workspaceId to workerId]
 
@@ -115,7 +146,7 @@ private class TestWorkspaceRepository(
     override suspend fun findMountsByWorker(workerId: String): List<WorkspaceMount> =
         mounts.values.filter { it.workerId == workerId }
 
-    override suspend fun deleteMount(workspaceId: Workspace.Id, workerId: String) {
-        mounts.remove(workspaceId to workerId)
+    override suspend fun deleteMount(id: WorkspaceMount.Id) {
+        mounts.entries.removeAll { it.value.id == id }
     }
 }

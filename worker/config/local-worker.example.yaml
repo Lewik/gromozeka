@@ -10,12 +10,6 @@ gromozeka:
       capabilities:
         - TOOL_EXECUTION
         - LOCAL_AGENT_TOOL
-      workspaces:
-        - id: gromozeka-local
-          project-id: gromozeka
-          project-name: Gromozeka
-          name: Local checkout
-          root-path: ${GROMOZEKA_WORKSPACE_ROOT}
 
 spring:
   rabbitmq:

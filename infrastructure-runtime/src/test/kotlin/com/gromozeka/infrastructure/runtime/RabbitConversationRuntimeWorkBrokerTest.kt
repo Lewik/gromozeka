@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.runtime
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
@@ -91,7 +91,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
             ),
             target = ConversationRuntimeTaskTarget(
                 workerId = ConversationRuntimeWorkerId("local-worker"),
-                workspaceId = Workspace.Id("workspace-1"),
+                workspaceMountId = WorkspaceMount.Id("mount-1"),
             ),
         )
         val topology = RabbitConversationRuntimeWorkTopology(

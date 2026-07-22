@@ -30,6 +30,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class DistributedAiToolRoutingTest {
@@ -49,7 +50,7 @@ class DistributedAiToolRoutingTest {
     )
 
     @Test
-    fun `catalog exposes only exact worker and workspace pairs from current project`() = runBlocking {
+    fun `catalog exposes only workspace mounts from current project`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         registerWorker(workerRegistry, "worker-a", listOf(workspaceTool))
         registerWorker(workerRegistry, "worker-b", listOf(workspaceTool))
@@ -71,11 +72,11 @@ class DistributedAiToolRoutingTest {
         val entry = snapshot.entries.getValue(workspaceTool.definition.name)
         assertEquals(
             mapOf(
-                "worker-a" to setOf("workspace-a"),
-                "worker-b" to setOf("workspace-b"),
+                "worker-a" to setOf("mount-workspace-a-worker-a"),
+                "worker-b" to setOf("mount-workspace-b-worker-b"),
             ),
             entry.workers.associate { worker ->
-                worker.workerId.value to worker.workspaceIds.mapTo(mutableSetOf()) { it.value }
+                worker.workerId.value to worker.workspaceMounts.mapTo(mutableSetOf()) { it.id.value }
             },
         )
         assertFalse(snapshot.environmentPrompt.contains("workspace-foreign"))
@@ -87,52 +88,25 @@ class DistributedAiToolRoutingTest {
             ?.get(AI_TOOL_EXECUTION_TARGET_FIELD)
             ?.jsonObject
             ?: error("Execution target schema is missing")
-        val exactPairs = targetSchema["oneOf"]
-            ?.jsonArray
-            ?.map { option ->
-                val properties = option.jsonObject.getValue("properties").jsonObject
-                val workerId = properties
-                    .getValue(AI_TOOL_EXECUTION_WORKER_ID_FIELD)
-                    .jsonObject
-                    .getValue("enum")
-                    .jsonArray
-                    .single()
-                    .jsonPrimitive
-                    .content
-                val workspaceId = properties
-                    .getValue(AI_TOOL_EXECUTION_WORKSPACE_ID_FIELD)
-                    .jsonObject
-                    .getValue("enum")
-                    .jsonArray
-                    .single()
-                    .jsonPrimitive
-                    .content
-                workerId to workspaceId
-            }
-            ?.toSet()
-            ?: error("Exact target alternatives are missing")
-
         assertEquals(
-            setOf(
-                "worker-a" to "workspace-a",
-                "worker-b" to "workspace-b",
-            ),
-            exactPairs,
+            setOf(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD),
+            targetSchema.getValue("properties").jsonObject.keys,
         )
+        assertFalse(targetSchema.toString().contains("mount-workspace-a-worker-a"))
     }
 
     @Test
-    fun `routing rejects a workspace mounted by another worker and accepts the exact pair`() = runBlocking {
+    fun `routing rejects a foreign mount and derives worker from an accepted mount`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         registerWorker(workerRegistry, "worker-a", listOf(workspaceTool))
         registerWorker(workerRegistry, "worker-b", listOf(workspaceTool))
+        val mountA = mount(workspaceA.id, "worker-a", "/checkout/a")
+        val mountB = mount(workspaceB.id, "worker-b", "/checkout/b")
+        val foreignMount = mount(foreignWorkspace.id, "worker-a", "/foreign")
         val workspaceService = TestWorkspaceDomainService(
             projects = listOf(project),
-            workspaces = listOf(workspaceA, workspaceB),
-            mounts = listOf(
-                mount(workspaceA.id, "worker-a", "/checkout/a"),
-                mount(workspaceB.id, "worker-b", "/checkout/b"),
-            ),
+            workspaces = listOf(workspaceA, workspaceB, foreignWorkspace),
+            mounts = listOf(mountA, mountB, foreignMount),
         )
         val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService)
             .snapshot(project)
@@ -145,23 +119,51 @@ class DistributedAiToolRoutingTest {
         val rejected = routing.route(
             conversation = conversation,
             project = project,
-            toolCalls = listOf(toolCall("worker-a", workspaceB.id)),
+            toolCalls = listOf(toolCall(foreignMount.id)),
             catalog = catalog,
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)
-        assertTrue(rejected.errors.single().message.contains("does not mount workspace 'workspace-b'"))
+        assertTrue(rejected.errors.single().message.contains("offline"))
 
         val accepted = routing.route(
             conversation = conversation,
             project = project,
-            toolCalls = listOf(toolCall("worker-b", workspaceB.id)),
+            toolCalls = listOf(toolCall(mountB.id)),
             catalog = catalog,
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
         assertEquals(ConversationRuntimeWorkerId("worker-b"), accepted.requirements.target?.workerId)
-        assertEquals(workspaceB.id, accepted.requirements.target?.workspaceId)
+        assertEquals(mountB.id, accepted.requirements.target?.workspaceMountId)
+    }
+
+    @Test
+    fun `environment revision ignores heartbeats and changes when a worker goes offline`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(workspaceTool))
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = listOf(workspaceA),
+            mounts = listOf(mount(workspaceA.id, "worker-a", "/checkout/a")),
+        )
+        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService)
+
+        val online = catalog.snapshot(project)
+        val identity = workerRegistry.find(ConversationRuntimeWorkerId("worker-a"))!!.identity
+        assertTrue(workerRegistry.heartbeat(identity, Clock.System.now()))
+        val afterHeartbeat = catalog.snapshot(project)
+
+        assertEquals(online.environmentRevision, afterHeartbeat.environmentRevision)
+        assertEquals(online.environmentPrompt, afterHeartbeat.environmentPrompt)
+
+        assertTrue(workerRegistry.unregister(identity, Clock.System.now()))
+        val offline = catalog.snapshot(project)
+
+        assertNotEquals(online.environmentRevision, offline.environmentRevision)
+        assertTrue(offline.entries.isEmpty())
+        assertTrue(offline.environmentPrompt.contains("\"status\":\"offline\""))
+        assertTrue(offline.environmentPrompt.contains("mount-workspace-a-worker-a"))
     }
 
     private suspend fun registerWorker(
@@ -218,6 +220,7 @@ class DistributedAiToolRoutingTest {
         rootPath: String,
     ): WorkspaceMount =
         WorkspaceMount(
+            id = WorkspaceMount.Id("mount-${workspaceId.value}-$workerId"),
             workspaceId = workspaceId,
             workerId = workerId,
             rootPath = rootPath,
@@ -235,20 +238,16 @@ class DistributedAiToolRoutingTest {
             updatedAt = now,
         )
 
-    private fun toolCall(
-        workerId: String,
-        workspaceId: Workspace.Id,
-    ): Conversation.Message.ContentItem.ToolCall =
+    private fun toolCall(mountId: WorkspaceMount.Id): Conversation.Message.ContentItem.ToolCall =
         Conversation.Message.ContentItem.ToolCall(
-            id = Conversation.Message.ContentItem.ToolCall.Id("call-$workerId-${workspaceId.value}"),
+            id = Conversation.Message.ContentItem.ToolCall.Id("call-${mountId.value}"),
             call = Conversation.Message.ContentItem.ToolCall.Data(
                 name = workspaceTool.definition.name,
                 input = JsonObject(
                     mapOf(
                         "path" to JsonPrimitive("README.md"),
                         AI_TOOL_EXECUTION_TARGET_FIELD to buildJsonObject {
-                            put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, workerId)
-                            put(AI_TOOL_EXECUTION_WORKSPACE_ID_FIELD, workspaceId.value)
+                            put(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD, mountId.value)
                         },
                     )
                 ),
@@ -263,24 +262,35 @@ class DistributedAiToolRoutingTest {
         private val projectsById = projects.associateBy { it.id }
         private val workspacesById = workspaces.associateBy { it.id }
 
-        override suspend fun createFilesystem(
+        override suspend fun createFilesystemWorkspace(
+            projectId: Project.Id,
+            name: String,
+            id: Workspace.Id?,
+        ): Workspace = error("Workspace creation is outside this test")
+
+        override suspend fun createAndMountFilesystemWorkspace(
             projectId: Project.Id,
             name: String,
             workerId: String,
             rootPath: String,
-            id: Workspace.Id?,
+            workspaceId: Workspace.Id?,
+            mountId: WorkspaceMount.Id?,
         ): WorkspaceExecutionContext = error("Workspace creation is outside this test")
 
         override suspend fun attachFilesystem(
             workspaceId: Workspace.Id,
             workerId: String,
             rootPath: String,
+            mountId: WorkspaceMount.Id?,
         ): WorkspaceExecutionContext = error("Workspace attachment is outside this test")
 
         override suspend fun findById(id: Workspace.Id): Workspace? = workspacesById[id]
 
         override suspend fun findByProject(projectId: Project.Id): List<Workspace> =
             workspacesById.values.filter { it.projectId == projectId }
+
+        override suspend fun findMount(id: WorkspaceMount.Id): WorkspaceMount? =
+            mounts.singleOrNull { it.id == id }
 
         override suspend fun findMount(
             workspaceId: Workspace.Id,
@@ -302,12 +312,11 @@ class DistributedAiToolRoutingTest {
                 ?.toContext()
 
         override suspend fun resolveExecution(
-            workspaceId: Workspace.Id,
-            workerId: String,
+            mountId: WorkspaceMount.Id,
         ): WorkspaceExecutionContext =
-            findMount(workspaceId, workerId)
+            findMount(mountId)
                 ?.toContext()
-                ?: error("Worker '$workerId' does not mount workspace '${workspaceId.value}'")
+                ?: error("Workspace mount '${mountId.value}' does not exist")
 
         override suspend fun resolveRuntime(
             workspaceId: Workspace.Id,

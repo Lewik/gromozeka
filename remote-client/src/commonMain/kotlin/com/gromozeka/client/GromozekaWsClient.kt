@@ -1,12 +1,14 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.remote.protocol.ClientPayload
 import com.gromozeka.remote.protocol.ClientRequest
 import com.gromozeka.remote.protocol.ConversationExecutionCompletedEvent
 import com.gromozeka.remote.protocol.ConversationExecutionFailedEvent
 import com.gromozeka.remote.protocol.ConversationRuntimeSnapshotEvent
+import com.gromozeka.remote.protocol.ConversationTabLayoutSnapshotEvent
 import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
@@ -21,6 +23,7 @@ import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptChunkCommand
 import com.gromozeka.remote.protocol.MessageUpsertedEvent
 import com.gromozeka.remote.protocol.ObserveConversationCommand
+import com.gromozeka.remote.protocol.ObserveConversationTabLayoutCommand
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import com.gromozeka.remote.protocol.RemoteProtocolCodec
@@ -34,6 +37,7 @@ import com.gromozeka.remote.protocol.SpeechSynthesisStartedEvent
 import com.gromozeka.remote.protocol.StartLiveInterpreterRequest
 import com.gromozeka.remote.protocol.StopLiveInterpreterCommand
 import com.gromozeka.remote.protocol.StopObserveConversationCommand
+import com.gromozeka.remote.protocol.StopObserveConversationTabLayoutCommand
 import com.gromozeka.remote.protocol.SynthesizeSpeechStreamCommand
 import com.gromozeka.shared.uuid.uuid7
 import io.ktor.client.HttpClient
@@ -84,6 +88,7 @@ internal class GromozekaWsClient(
     private val streams = mutableMapOf<String, Channel<ServerPayload>>()
     private val conversationSubscriptions = mutableMapOf<String, ConversationSubscription>()
     private val conversationEventSequences = mutableMapOf<Conversation.Id, Long>()
+    private val conversationTabLayoutSubscriptions = mutableMapOf<String, Channel<ConversationTabLayout>>()
     private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
 
     suspend fun request(payload: ClientRequest): ServerResponse {
@@ -190,6 +195,42 @@ internal class GromozekaWsClient(
                 conversationSubscriptions.remove(subscriptionId)
             }
             runCatching { sendIfConnected(StopObserveConversationCommand(subscriptionId)) }
+            channel.close()
+        }
+    }
+
+    fun observeConversationTabLayout(): Flow<ConversationTabLayout> = flow {
+        val subscriptionId = uuid7()
+        val channel = Channel<ConversationTabLayout>(Channel.CONFLATED)
+        registryMutex.withLock {
+            conversationTabLayoutSubscriptions[subscriptionId] = channel
+        }
+
+        runCatching {
+            val connection = ensureConnected()
+            if (!connection.newlyConnected) {
+                sendEnvelope(
+                    connection.session,
+                    GromozekaClientEnvelope(
+                        id = uuid7(),
+                        payload = ObserveConversationTabLayoutCommand(subscriptionId),
+                    ),
+                )
+            }
+        }.onFailure { error ->
+            if (error is CancellationException) throw error
+            scheduleReconnect()
+        }
+
+        try {
+            for (layout in channel) {
+                emit(layout)
+            }
+        } finally {
+            registryMutex.withLock {
+                conversationTabLayoutSubscriptions.remove(subscriptionId)
+            }
+            runCatching { sendIfConnected(StopObserveConversationTabLayoutCommand(subscriptionId)) }
             channel.close()
         }
     }
@@ -340,7 +381,7 @@ internal class GromozekaWsClient(
                 readerJob = scope.launch {
                     readLoop(newSession)
                 }
-                resubscribeConversations(newSession)
+                resubscribe(newSession)
                 hasConnected = true
                 _connectionState.value = RemoteConnectionState(RemoteConnectionState.Status.CONNECTED)
                 ActiveConnection(newSession, newlyConnected = true)
@@ -374,6 +415,7 @@ internal class GromozekaWsClient(
                     is MessageUpsertedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionCompletedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionFailedEvent -> routeConversationEvent(payload.subscriptionId, payload)
+                    is ConversationTabLayoutSnapshotEvent -> routeConversationTabLayoutEvent(payload)
                     is SpeechSynthesisStartedEvent -> routeStreamEvent(payload.streamId, payload)
                     is SpeechSynthesisChunkEvent -> routeStreamEvent(payload.streamId, payload)
                     is SpeechSynthesisCompletedEvent -> routeStreamEvent(payload.streamId, payload)
@@ -408,12 +450,21 @@ internal class GromozekaWsClient(
         }
     }
 
-    private suspend fun resubscribeConversations(activeSession: DefaultClientWebSocketSession) {
-        val subscriptions = registryMutex.withLock {
-            conversationSubscriptions.values.toList()
+    private suspend fun resubscribe(activeSession: DefaultClientWebSocketSession) {
+        val (conversationSubscriptionsSnapshot, tabLayoutSubscriptionIds) = registryMutex.withLock {
+            conversationSubscriptions.values.toList() to conversationTabLayoutSubscriptions.keys.toList()
         }
-        subscriptions.forEach { subscription ->
+        conversationSubscriptionsSnapshot.forEach { subscription ->
             sendObserveConversationRaw(activeSession, subscription)
+        }
+        tabLayoutSubscriptionIds.forEach { subscriptionId ->
+            sendEnvelopeRaw(
+                activeSession,
+                GromozekaClientEnvelope(
+                    id = uuid7(),
+                    payload = ObserveConversationTabLayoutCommand(subscriptionId),
+                ),
+            )
         }
     }
 
@@ -499,7 +550,7 @@ internal class GromozekaWsClient(
     }
 
     private suspend fun scheduleReconnect() {
-        if (!hasConversationSubscriptions()) {
+        if (!hasResumableSubscriptions()) {
             return
         }
         connectMutex.withLock {
@@ -515,9 +566,9 @@ internal class GromozekaWsClient(
     private suspend fun reconnectLoop() {
         var attempt = 1
         try {
-            while (scope.isActive && !closed && hasConversationSubscriptions()) {
+            while (scope.isActive && !closed && hasResumableSubscriptions()) {
                 delay(reconnectDelayMillis(attempt))
-                if (!hasConversationSubscriptions()) {
+                if (!hasResumableSubscriptions()) {
                     return
                 }
                 try {
@@ -542,15 +593,21 @@ internal class GromozekaWsClient(
             .coerceAtMost(RECONNECT_MAX_DELAY_MILLIS)
     }
 
-    private suspend fun hasConversationSubscriptions(): Boolean =
+    private suspend fun hasResumableSubscriptions(): Boolean =
         registryMutex.withLock {
-            conversationSubscriptions.isNotEmpty()
+            conversationSubscriptions.isNotEmpty() || conversationTabLayoutSubscriptions.isNotEmpty()
         }
 
     private suspend fun routeConversationEvent(subscriptionId: String, payload: ServerPayload) {
         registryMutex.withLock {
             conversationSubscriptions[subscriptionId]?.channel
         }?.send(payload)
+    }
+
+    private suspend fun routeConversationTabLayoutEvent(event: ConversationTabLayoutSnapshotEvent) {
+        registryMutex.withLock {
+            conversationTabLayoutSubscriptions[event.subscriptionId]
+        }?.send(event.layout)
     }
 
     private suspend fun routeStreamEvent(streamId: String, payload: ServerPayload) {

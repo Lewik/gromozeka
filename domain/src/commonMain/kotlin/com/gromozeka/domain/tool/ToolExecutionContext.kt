@@ -2,11 +2,13 @@ package com.gromozeka.domain.tool
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 
 const val TOOL_CONTEXT_CONVERSATION_ID = "conversationId"
 const val TOOL_CONTEXT_PROJECT_ID = "projectId"
 const val TOOL_CONTEXT_WORKSPACE_ID = "workspaceId"
+const val TOOL_CONTEXT_WORKSPACE_MOUNT_ID = "workspaceMountId"
 const val TOOL_CONTEXT_WORKSPACE_ROOT_PATH = "workspaceRootPath"
 const val TOOL_CONTEXT_WORKER_ID = "workerId"
 
@@ -34,6 +36,9 @@ fun ToolExecutionContext?.requiredProjectId(): Project.Id =
 
 fun ToolExecutionContext?.requiredWorkspaceId(): Workspace.Id =
     requiredString(TOOL_CONTEXT_WORKSPACE_ID, "Workspace id").let(Workspace::Id)
+
+fun ToolExecutionContext?.requiredWorkspaceMountId(): WorkspaceMount.Id =
+    requiredString(TOOL_CONTEXT_WORKSPACE_MOUNT_ID, "Workspace mount id").let(WorkspaceMount::Id)
 
 fun ToolExecutionContext?.requiredWorkspaceRootPath(): String =
     requiredString(TOOL_CONTEXT_WORKSPACE_ROOT_PATH, "Workspace root path")

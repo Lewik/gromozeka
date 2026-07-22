@@ -370,8 +370,8 @@ class ConversationRuntimeWorker(
             taskId = item.taskId,
             worker = runtimeWorker,
             workerCapabilities = runtimeWorkerCapabilities,
-            workerWorkspaceIds = workspaceService.findMountsByWorker(runtimeWorker.workerId.value)
-                .mapTo(mutableSetOf()) { it.workspaceId },
+            workerWorkspaceMountIds = workspaceService.findMountsByWorker(runtimeWorker.workerId.value)
+                .mapTo(mutableSetOf()) { it.id },
         )
 
         if (task == null) {

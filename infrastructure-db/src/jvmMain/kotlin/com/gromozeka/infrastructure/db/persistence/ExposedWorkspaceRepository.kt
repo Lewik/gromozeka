@@ -57,16 +57,18 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
     }
 
     override suspend fun saveMount(mount: WorkspaceMount): WorkspaceMount = dbQuery {
-        val predicate = (WorkspaceMounts.workspaceId eq mount.workspaceId.value) and
-            (WorkspaceMounts.workerId eq mount.workerId)
+        val predicate = WorkspaceMounts.id eq mount.id.value
         val exists = WorkspaceMounts.selectAll().where { predicate }.count() > 0
         if (exists) {
             WorkspaceMounts.update({ predicate }) {
+                it[workspaceId] = mount.workspaceId.value
+                it[workerId] = mount.workerId
                 it[rootPath] = mount.rootPath
                 it[updatedAt] = mount.updatedAt.toKotlin()
             }
         } else {
             WorkspaceMounts.insert {
+                it[id] = mount.id.value
                 it[workspaceId] = mount.workspaceId.value
                 it[workerId] = mount.workerId
                 it[rootPath] = mount.rootPath
@@ -75,6 +77,13 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
             }
         }
         mount
+    }
+
+    override suspend fun findMount(id: WorkspaceMount.Id): WorkspaceMount? = dbQuery {
+        WorkspaceMounts.selectAll()
+            .where { WorkspaceMounts.id eq id.value }
+            .singleOrNull()
+            ?.toWorkspaceMount()
     }
 
     override suspend fun findMount(workspaceId: Workspace.Id, workerId: String): WorkspaceMount? = dbQuery {
@@ -109,11 +118,8 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
             .map { it.toWorkspaceMount() }
     }
 
-    override suspend fun deleteMount(workspaceId: Workspace.Id, workerId: String): Unit = dbQuery {
-        WorkspaceMounts.deleteWhere {
-            (WorkspaceMounts.workspaceId eq workspaceId.value) and
-                (WorkspaceMounts.workerId eq workerId)
-        }
+    override suspend fun deleteMount(id: WorkspaceMount.Id): Unit = dbQuery {
+        WorkspaceMounts.deleteWhere { WorkspaceMounts.id eq id.value }
     }
 
     private fun ResultRow.toWorkspace(): Workspace =
@@ -128,6 +134,7 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
 
     private fun ResultRow.toWorkspaceMount(): WorkspaceMount =
         WorkspaceMount(
+            id = WorkspaceMount.Id(this[WorkspaceMounts.id]),
             workspaceId = Workspace.Id(this[WorkspaceMounts.workspaceId]),
             workerId = this[WorkspaceMounts.workerId],
             rootPath = this[WorkspaceMounts.rootPath],
