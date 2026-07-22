@@ -5,6 +5,8 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.MemoryRunLifecycleEvent
+import com.gromozeka.domain.service.MemoryRunLifecycleEventPublisher
 import java.util.concurrent.atomic.AtomicReference
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -33,6 +35,7 @@ class MemoryOperationWorker(
     private val operationQueue: MemoryOperationQueue,
     private val memoryStore: MemoryStore,
     private val runtimeWorker: ConversationRuntimeWorker,
+    private val lifecycleEventPublisher: MemoryRunLifecycleEventPublisher,
 ) {
     private val log = KLoggers.logger(this)
     private val operationJson = Json {
@@ -133,14 +136,17 @@ class MemoryOperationWorker(
         reason: String,
     ): Boolean {
         val completedAt = Clock.System.now()
-        return memoryStore.replaceRunIfUnchanged(
-            expected = run,
-            replacement = run.failed(
-                summary = summary,
-                reason = reason,
-                completedAt = completedAt,
-            ),
+        val failedRun = run.failed(
+            summary = summary,
+            reason = reason,
+            completedAt = completedAt,
         )
+        val replaced = memoryStore.replaceRunIfUnchanged(
+            expected = run,
+            replacement = failedRun,
+        )
+        if (replaced) publishLifecycleEvent(failedRun)
+        return replaced
     }
 
     private suspend fun process(
@@ -176,6 +182,7 @@ class MemoryOperationWorker(
         if (!memoryStore.replaceRunIfUnchanged(storedRun, claimedRun)) {
             return@coroutineScope
         }
+        publishLifecycleEvent(claimedRun)
 
         val currentRun = AtomicReference(claimedRun)
         val leaseHeartbeat = launch {
@@ -199,6 +206,7 @@ class MemoryOperationWorker(
             check(memoryStore.replaceRunIfUnchanged(expected, completedRun)) {
                 "Memory operation execution ownership was lost before completion: run=${job.runId.value}"
             }
+            publishLifecycleEvent(completedRun)
             log.info {
                 "Memory operation completed: run=${job.runId.value} operation=${request.kind.wireName} " +
                     "status=${execution.status} latencyMs=${completedRun.latencyMs}"
@@ -208,15 +216,34 @@ class MemoryOperationWorker(
             leaseHeartbeat.cancelAndJoin()
             val completedAt = Clock.System.now()
             val expected = currentRun.get()
-            memoryStore.replaceRunIfUnchanged(
+            val failedRun = expected.failed(
+                summary = "${job.operation.displayName()} failed",
+                reason = error.message ?: "Memory operation failed.",
+                completedAt = completedAt,
+            )
+            val replaced = memoryStore.replaceRunIfUnchanged(
                 expected = expected,
-                replacement = expected.failed(
-                    summary = "${job.operation.displayName()} failed",
-                    reason = error.message ?: "Memory operation failed.",
-                    completedAt = completedAt,
+                replacement = failedRun,
+            )
+            if (replaced) publishLifecycleEvent(failedRun)
+            throw error
+        }
+    }
+
+    private suspend fun publishLifecycleEvent(run: MemoryRun) {
+        runCatching {
+            lifecycleEventPublisher.publish(
+                MemoryRunLifecycleEvent(
+                    runId = run.id,
+                    status = run.status,
+                    occurredAt = Clock.System.now(),
                 )
             )
-            throw error
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory lifecycle event publish failed; server reconciliation will recover it: " +
+                    "run=${run.id.value} status=${run.status} error=${error.message}"
+            }
         }
     }
 

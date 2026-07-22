@@ -9,6 +9,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.ToolCancellationSignal
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
 import klog.KLoggers
 import kotlinx.coroutines.*
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -219,13 +220,15 @@ class ParallelToolExecutor(
             log.info { "Executing tool: $toolName with arguments: $arguments" }
 
             val parentJob = coroutineContext[Job]
-            val cancellableToolContext = toolContext.withCancellationSignal(
-                ToolCancellationSignal {
-                    if (parentJob?.isActive == false) {
-                        throw CancellationException("Tool execution cancelled: $toolName")
+            val cancellableToolContext = toolContext
+                .withValue(TOOL_CONTEXT_TOOL_NAME, toolName)
+                .withCancellationSignal(
+                    ToolCancellationSignal {
+                        if (parentJob?.isActive == false) {
+                            throw CancellationException("Tool execution cancelled: $toolName")
+                        }
                     }
-                }
-            )
+                )
 
             // Execute on IO dispatcher (blocking call)
             val result = withContext(Dispatchers.IO) {

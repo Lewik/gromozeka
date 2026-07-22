@@ -25,7 +25,7 @@ class MemoryAnswerQuestionToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ANSWER_QUESTION_TOOL_NAME,
-        description = "Queue a direct question answered from persisted memory in the global namespace and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final answer. Use this when the user asks what Gromozeka remembers or asks a factual question whose answer should come from memory. For normal chat where the assistant should reason over returned context itself, use memory_enrich_context instead.",
+        description = "Queue a direct question answered from persisted memory in the global namespace and return a run_id immediately. Follow the returned result_delivery contract: Gromozeka delivers the final answer automatically, while external callers poll memory_run_status. Use this when the user asks what Gromozeka remembers or asks a factual question whose answer should come from memory. For normal chat where the assistant should reason over returned context itself, use memory_enrich_context instead.",
         inputSchema = """
             {
               "type": "object",
@@ -54,6 +54,7 @@ class MemoryAnswerQuestionToolCallback(
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = parseInput(toolInput)
+        val resultDelivery = context.memoryOperationResultDeliveryOrNull()
         val providedQuestion = input.question?.trim().orEmpty()
         if (input.target == "provided_question" || providedQuestion.isNotBlank()) {
             if (providedQuestion.isBlank()) {
@@ -65,6 +66,7 @@ class MemoryAnswerQuestionToolCallback(
                 conversationIdValue = context?.getString("conversationId"),
                 questionText = providedQuestion,
                 mode = input.mode,
+                resultDelivery = resultDelivery,
             )
         }
 
@@ -80,6 +82,7 @@ class MemoryAnswerQuestionToolCallback(
         memoryOperations.answerMessage(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id ?: context.getString(TOOL_CONTEXT_TARGET_MESSAGE_ID),
+            resultDelivery = resultDelivery,
         )
     }
 

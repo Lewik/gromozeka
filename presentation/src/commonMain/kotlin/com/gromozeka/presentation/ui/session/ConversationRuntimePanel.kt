@@ -39,9 +39,11 @@ import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
@@ -129,6 +131,8 @@ fun ConversationRuntimePanel(
                     )
                 }
 
+                RuntimeMemorySection(runtimeSnapshot)
+
                 RuntimeTasksSection(
                     runtimeSnapshot = runtimeSnapshot,
                     onCancelCommandTask = onCancelCommandTask,
@@ -155,6 +159,82 @@ fun ConversationRuntimePanel(
                     onResume = onResume,
                     onStop = onStop,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RuntimeMemorySection(runtimeSnapshot: ConversationRuntimeSnapshot?) {
+    val operations = runtimeSnapshot?.memoryOperations.orEmpty()
+    if (operations.isEmpty()) return
+
+    val translation = LocalTranslation.current.runtime
+    val visibleOperations = operations
+        .sortedWith(
+            compareByDescending<ConversationRuntimeMemoryOperation> {
+                it.status == MemoryRun.Status.QUEUED || it.status == MemoryRun.Status.RUNNING
+            }.thenByDescending { it.updatedAt }
+        )
+        .take(4)
+
+    Spacer(modifier = Modifier.height(12.dp))
+    Card(
+        modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        ),
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Text(
+                translation.memoryTitle,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                visibleOperations.forEach { operation ->
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = operation.operation.replace('_', ' '),
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Text(
+                                text = operation.status.runtimeMemoryStatusLabel(translation),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        operation.progress?.let { progress ->
+                            if (progress.totalUnits > 0 &&
+                                (operation.status == MemoryRun.Status.QUEUED ||
+                                    operation.status == MemoryRun.Status.RUNNING)
+                            ) {
+                                val completed = progress.completedUnits + progress.failedUnits
+                                LinearProgressIndicator(
+                                    progress = {
+                                        (completed.toFloat() / progress.totalUnits).coerceIn(0f, 1f)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                        Text(
+                            text = operation.summary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
@@ -611,6 +691,7 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translatio
         is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionTask
         is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingTask
         is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallTask
+        is ConversationRuntimeTask.Payload.MemoryRunCompletion -> translation.memoryRunCompletionTask
         is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentTask
     }
 
@@ -623,8 +704,19 @@ private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
     is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionStatus
     is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingStatus
     is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallStatus
+    is ConversationRuntimeTask.Payload.MemoryRunCompletion -> translation.memoryRunCompletionStatus
     is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentStatus
 }
+
+private fun MemoryRun.Status.runtimeMemoryStatusLabel(translation: Translation.RuntimeTranslation): String =
+    when (this) {
+        MemoryRun.Status.QUEUED -> translation.memoryQueuedStatus
+        MemoryRun.Status.RUNNING -> translation.memoryRunningStatus
+        MemoryRun.Status.NEEDS_INPUT -> translation.memoryNeedsInputStatus
+        MemoryRun.Status.SUCCESS, MemoryRun.Status.PARTIAL -> translation.memoryCompletedStatus
+        MemoryRun.Status.FAILED -> translation.memoryFailedStatus
+        MemoryRun.Status.CANCELLED -> translation.memoryCancelledStatus
+    }
 
 private fun ConversationRuntimeSnapshot.runtimeDetailsText(
     translation: Translation.RuntimeTranslation,

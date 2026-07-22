@@ -3,6 +3,8 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
+import com.gromozeka.domain.service.MemoryRunLifecycleEvent
+import com.gromozeka.domain.service.MemoryRunLifecycleEventPublisher
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service
 class MemoryAsyncOperationApplicationService(
     private val preparer: MemoryOperationPreparer,
     private val memoryStore: MemoryStore,
+    private val lifecycleEventPublisher: MemoryRunLifecycleEventPublisher,
 ) {
     private val log = KLoggers.logger(this)
     private val operationJson = Json {
@@ -31,8 +34,9 @@ class MemoryAsyncOperationApplicationService(
         forceWrite: Boolean? = null,
         confirmedPreflightRunId: String? = null,
         namespaceValue: String? = null,
+        resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
-        schedule(MemoryOperationKind.REMEMBER) {
+        schedule(MemoryOperationKind.REMEMBER, resultDelivery) {
             preparer.prepareRememberMessage(
                 conversationIdValue = conversationIdValue,
                 targetMessageId = targetMessageId,
@@ -66,8 +70,9 @@ class MemoryAsyncOperationApplicationService(
         mode: String? = null,
         namespaceValue: String? = null,
         writeSurface: MemoryWriteSurface = MemoryWriteSurface.CHAT_TOOL,
+        resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
-        schedule(MemoryOperationKind.REMEMBER) {
+        schedule(MemoryOperationKind.REMEMBER, resultDelivery) {
             preparer.prepareRememberProvidedContent(
                 conversationIdValue = conversationIdValue,
                 text = text,
@@ -88,8 +93,9 @@ class MemoryAsyncOperationApplicationService(
         conversationIdValue: String,
         targetMessageId: String? = null,
         namespaceValue: String? = null,
+        resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
-        schedule(MemoryOperationKind.ENRICH_CONTEXT) {
+        schedule(MemoryOperationKind.ENRICH_CONTEXT, resultDelivery) {
             preparer.prepareEnrichMessage(
                 conversationIdValue = conversationIdValue,
                 targetMessageId = targetMessageId,
@@ -102,8 +108,9 @@ class MemoryAsyncOperationApplicationService(
         contextText: String,
         mode: String? = null,
         namespaceValue: String? = null,
+        resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
-        schedule(MemoryOperationKind.ENRICH_CONTEXT) {
+        schedule(MemoryOperationKind.ENRICH_CONTEXT, resultDelivery) {
             preparer.prepareEnrichProvidedContext(
                 conversationIdValue = conversationIdValue,
                 contextText = contextText,
@@ -116,8 +123,9 @@ class MemoryAsyncOperationApplicationService(
         conversationIdValue: String,
         targetMessageId: String? = null,
         namespaceValue: String? = null,
+        resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
-        schedule(MemoryOperationKind.ANSWER_QUESTION) {
+        schedule(MemoryOperationKind.ANSWER_QUESTION, resultDelivery) {
             preparer.prepareAnswerMessage(
                 conversationIdValue = conversationIdValue,
                 targetMessageId = targetMessageId,
@@ -130,8 +138,9 @@ class MemoryAsyncOperationApplicationService(
         questionText: String,
         mode: String? = null,
         namespaceValue: String? = null,
+        resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
-        schedule(MemoryOperationKind.ANSWER_QUESTION) {
+        schedule(MemoryOperationKind.ANSWER_QUESTION, resultDelivery) {
             preparer.prepareAnswerProvidedQuestion(
                 conversationIdValue = conversationIdValue,
                 questionText = questionText,
@@ -174,9 +183,10 @@ class MemoryAsyncOperationApplicationService(
 
     private suspend fun schedule(
         operation: MemoryOperationKind,
+        resultDelivery: MemoryOperationResultDelivery?,
         prepare: suspend () -> PreparedMemoryOperation,
     ): String = try {
-        MemoryToolResultRenderer.operationQueuedResultJsonString(enqueue(prepare()))
+        MemoryToolResultRenderer.operationQueuedResultJsonString(enqueue(prepare(), resultDelivery))
     } catch (error: CancellationException) {
         throw error
     } catch (error: Throwable) {
@@ -188,7 +198,10 @@ class MemoryAsyncOperationApplicationService(
         )
     }
 
-    private suspend fun enqueue(prepared: PreparedMemoryOperation): MemoryOperationQueuedResult {
+    private suspend fun enqueue(
+        prepared: PreparedMemoryOperation,
+        resultDelivery: MemoryOperationResultDelivery? = null,
+    ): MemoryOperationQueuedResult {
         prepared.request.validate()
         val now = Clock.System.now()
         val run = MemoryRun(
@@ -207,6 +220,12 @@ class MemoryAsyncOperationApplicationService(
                     MEMORY_OPERATION_REQUEST_METADATA_KEY,
                     operationJson.encodeToJsonElement(MemoryOperationRequest.serializer(), prepared.request),
                 )
+                resultDelivery?.let { delivery ->
+                    put(
+                        MEMORY_OPERATION_RESULT_DELIVERY_METADATA_KEY,
+                        operationJson.encodeToJsonElement(MemoryOperationResultDelivery.serializer(), delivery),
+                    )
+                }
             },
             status = MemoryRun.Status.QUEUED,
             createdAt = now,
@@ -217,6 +236,7 @@ class MemoryAsyncOperationApplicationService(
                 runs = listOf(run),
             )
         )
+        publishLifecycleEvent(run)
 
         val queueSize = memoryStore.findRunsByStatuses(
             statuses = setOf(MemoryRun.Status.QUEUED),
@@ -231,7 +251,25 @@ class MemoryAsyncOperationApplicationService(
             operation = prepared.request.kind,
             namespace = prepared.namespace,
             queueSize = queueSize,
+            resultDelivery = resultDelivery,
         )
+    }
+
+    private suspend fun publishLifecycleEvent(run: MemoryRun) {
+        runCatching {
+            lifecycleEventPublisher.publish(
+                MemoryRunLifecycleEvent(
+                    runId = run.id,
+                    status = run.status,
+                    occurredAt = Clock.System.now(),
+                )
+            )
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory lifecycle event publish failed; server reconciliation will recover it: " +
+                    "run=${run.id.value} status=${run.status} error=${error.message}"
+            }
+        }
     }
 
 }

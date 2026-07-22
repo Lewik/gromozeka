@@ -32,7 +32,7 @@ class MemoryRememberToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_REMEMBER_TOOL_NAME,
-        description = "Queue persistence of memory-worthy information into typed memory and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and the final result. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. Memory is written to the global namespace. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
+        description = "Queue persistence of memory-worthy information into typed memory and return a run_id immediately. Follow the returned result_delivery contract: Gromozeka delivers the final result automatically, while external callers poll memory_run_status. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. Memory is written to the global namespace. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
         inputSchema = """
             {
               "type": "object",
@@ -93,6 +93,7 @@ class MemoryRememberToolCallback(
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = parseInput(toolInput)
+        val resultDelivery = context.memoryOperationResultDeliveryOrNull()
         val writeSurface = MemoryWriteSurface.fromContextValue(context?.getString(MEMORY_WRITE_SURFACE_CONTEXT_KEY))
         val providedText = input.text?.trim().orEmpty()
         val providedFilePath = input.file_path?.trim().orEmpty()
@@ -121,6 +122,7 @@ class MemoryRememberToolCallback(
                 confirmedPreflightRunId = input.confirmed_preflight_run_id,
                 mode = input.mode,
                 writeSurface = writeSurface,
+                resultDelivery = resultDelivery,
             )
         }
 
@@ -141,6 +143,7 @@ class MemoryRememberToolCallback(
             targetMessageId = input.target_message_id,
             forceWrite = input.force_write,
             confirmedPreflightRunId = input.confirmed_preflight_run_id,
+            resultDelivery = resultDelivery,
         )
     }
 

@@ -3,8 +3,10 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
@@ -357,6 +359,25 @@ class InMemoryConversationRuntimeStoresTest {
         assertEquals(task.id, snapshot.state?.activeTaskId)
         assertEquals(listOf(execution), snapshot.toolExecutions)
         assertTrue(snapshot.trace.isNotEmpty())
+    }
+
+    @Test
+    fun `coordinator retains memory operation after conversation runtime is cleared`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val now = Clock.System.now()
+        val operation = ConversationRuntimeMemoryOperation(
+            runId = MemoryRun.Id("memory-run-1"),
+            operation = "answer_question",
+            status = MemoryRun.Status.RUNNING,
+            summary = "Memory question answering running",
+            updatedAt = now,
+        )
+
+        assertTrue(coordinator.upsertMemoryOperation(conversationId, operation))
+        assertTrue(coordinator.submit(task("message-1", QueuedMessagePlacement.END_OF_TURN)))
+        coordinator.abort(conversationId)
+
+        assertEquals(listOf(operation), coordinator.snapshot(conversationId).memoryOperations)
     }
 
     @Test

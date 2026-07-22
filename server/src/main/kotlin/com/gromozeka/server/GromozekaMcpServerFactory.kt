@@ -278,13 +278,13 @@ class GromozekaMcpServerFactory(
         """.trimIndent()
 
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
-            "Queue persistence of explicit user-approved text or a raw markdown/text document in the global namespace and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_run_status until poll_again=false, then consume the final result or follow next_action. Use memory_help for typed-memory concepts and workflow."
+            "Queue persistence of explicit user-approved text or a raw markdown/text document in the global namespace and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Follow the returned result_delivery contract: poll memory_run_status only when poll_required=true. Use memory_help for typed-memory concepts and workflow."
 
         const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
-            "Queue retrieval of persisted memory relevant to a supplied context and return a run_id. This enriches a topic/action item/current turn; it is not a question-answering tool. Use memory_run_status until poll_again=false, then consume memory_context."
+            "Queue retrieval of persisted memory relevant to a supplied context and return a run_id. This enriches a topic/action item/current turn; it is not a question-answering tool. Follow the returned result_delivery contract and poll memory_run_status only when poll_required=true."
 
         const val MCP_MEMORY_ANSWER_QUESTION_DESCRIPTION =
-            "Queue a direct question answered from persisted memory only and return a run_id. Use memory_run_status until poll_again=false, then consume the compact answer, sufficiency, reasoning, evidence refs, and selected refs."
+            "Queue a direct question answered from persisted memory only and return a run_id. Follow the returned result_delivery contract and poll memory_run_status only when poll_required=true. The final result contains the compact answer, sufficiency, reasoning, evidence refs, and selected refs."
 
         const val MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION =
             "Inspect the global memory namespace, item counts, and any unexpected stored namespaces. This runtime does not support selecting a namespace per operation."

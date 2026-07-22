@@ -1,6 +1,7 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
@@ -200,7 +201,19 @@ data class MemoryOperationQueuedResult(
     val operation: MemoryOperationKind,
     val namespace: MemoryNamespace,
     val queueSize: Int,
+    val resultDelivery: MemoryOperationResultDelivery? = null,
 )
+
+@Serializable
+data class MemoryOperationResultDelivery(
+    val conversationId: Conversation.Id,
+    val agentDefinitionId: AgentDefinition.Id,
+    val statusToolName: String,
+) {
+    init {
+        require(statusToolName.isNotBlank()) { "Memory result status tool name must not be blank" }
+    }
+}
 
 data class MemoryOperationQueueStatus(
     val queuedJobs: Int,
@@ -287,6 +300,10 @@ class MemoryOperationQueue(
 
 internal const val MEMORY_OPERATION_REQUEST_METADATA_KEY = "operationRequest"
 internal const val MEMORY_OPERATION_KIND_METADATA_KEY = "memoryOperation"
+internal const val MEMORY_OPERATION_RESULT_DELIVERY_METADATA_KEY = "resultDelivery"
+internal const val MEMORY_OPERATION_RESULT_DELIVERY_STATE_METADATA_KEY = "resultDeliveryState"
+internal const val MEMORY_OPERATION_RESULT_DELIVERY_SCHEDULED = "scheduled"
+internal const val MEMORY_OPERATION_RESULT_DELIVERY_CANCELLED = "cancelled"
 internal val MEMORY_OPERATION_RUN_TYPES = setOf(
     MemoryRun.Type.REMEMBER,
     MemoryRun.Type.DOCUMENT_INGEST,

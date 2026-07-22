@@ -282,9 +282,19 @@ object MemoryToolResultRenderer {
             put("namespace", result.namespace.value)
             put("queue_size", result.queueSize)
             put(
+                "result_delivery",
+                if (result.resultDelivery == null) "poll" else "conversation_runtime",
+            )
+            put("poll_required", result.resultDelivery == null)
+            put(
                 "message",
-                "Memory ${result.operation.wireName} was queued for asynchronous processing. " +
-                    "Call memory_run_status with this run_id to retrieve its state and completed result."
+                if (result.resultDelivery == null) {
+                    "Memory ${result.operation.wireName} is running. " +
+                        "Call memory_run_status with this run_id to retrieve its state and completed result."
+                } else {
+                    "Memory ${result.operation.wireName} is running. Its final result will be delivered " +
+                        "automatically to this conversation. Do not poll memory_run_status."
+                }
             )
         }.toString()
 

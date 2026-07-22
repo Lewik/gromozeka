@@ -449,6 +449,39 @@ class PostgresMemoryStore(
         }
     }
 
+    override suspend fun findRunsByMetadataKeys(
+        statuses: Set<MemoryRun.Status>,
+        runTypes: Set<MemoryRun.Type>,
+        requiredKey: String,
+        absentKey: String?,
+    ): List<MemoryRun> {
+        if (statuses.isEmpty() || runTypes.isEmpty()) return emptyList()
+        require(requiredKey.isNotBlank()) { "Required memory run metadata key must not be blank" }
+        val statusValues = statuses.map { it.name }.sorted()
+        val typeValues = runTypes.map { it.name }.sorted()
+        val statusPlaceholders = statusValues.joinToString(",") { "?" }
+        val typePlaceholders = typeValues.joinToString(",") { "?" }
+        val absentClause = if (absentKey == null) "" else " AND NOT jsonb_exists(payload -> 'metadata', ?)"
+        val sql =
+            "SELECT payload::text FROM memory_runs " +
+                "WHERE status IN ($statusPlaceholders) AND run_type IN ($typePlaceholders) " +
+                "AND jsonb_exists(payload -> 'metadata', ?)$absentClause " +
+                "ORDER BY created_at ASC, id ASC"
+        return dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                val parameters = statusValues + typeValues + requiredKey + listOfNotNull(absentKey)
+                parameters.forEachIndexed { index, value -> statement.setString(index + 1, value) }
+                statement.executeQuery().use { resultSet ->
+                    buildList {
+                        while (resultSet.next()) {
+                            add(json.decodeFromString<MemoryRun>(resultSet.getString(1)))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override suspend fun findProfile(
         namespace: MemoryNamespace,
         ownerEntityId: MemoryEntity.Id?,

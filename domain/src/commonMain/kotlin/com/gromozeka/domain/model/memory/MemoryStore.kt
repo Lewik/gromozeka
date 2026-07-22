@@ -60,6 +60,13 @@ interface MemoryStore {
         runTypes: Set<MemoryRun.Type>,
     ): List<MemoryRun>
 
+    suspend fun findRunsByMetadataKeys(
+        statuses: Set<MemoryRun.Status>,
+        runTypes: Set<MemoryRun.Type>,
+        requiredKey: String,
+        absentKey: String? = null,
+    ): List<MemoryRun>
+
     suspend fun findProfile(
         namespace: MemoryNamespace,
         ownerEntityId: MemoryEntity.Id? = null,

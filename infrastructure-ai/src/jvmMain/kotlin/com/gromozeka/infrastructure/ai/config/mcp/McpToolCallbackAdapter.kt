@@ -3,8 +3,11 @@ package com.gromozeka.infrastructure.ai.config.mcp
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
 import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.types.Tool
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
@@ -111,6 +114,9 @@ internal fun Map<String, Any>.withGrzConversationContext(
         TOOL_CONTEXT_CONVERSATION_ID,
         TOOL_CONTEXT_THREAD_ID,
         TOOL_CONTEXT_TARGET_MESSAGE_ID,
+        TOOL_CONTEXT_AGENT_DEFINITION_ID,
+        TOOL_CONTEXT_TOOL_NAME,
+        TOOL_CONTEXT_MEMORY_RESULT_DELIVERY,
     ).mapNotNull { key ->
         context.getString(key)?.takeIf { it.isNotBlank() }?.let { key to it }
     }.toMap()

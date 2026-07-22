@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationExecutionState
@@ -10,6 +11,7 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeEventLogEntry
 import com.gromozeka.domain.service.ConversationRuntimeEventSubscription
+import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
@@ -44,6 +46,8 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private val statesByConversation = mutableMapOf<Conversation.Id, ConversationExecutionState>()
     private val toolExecutionsByConversation =
         mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeToolExecution>>()
+    private val memoryOperationsByConversation =
+        mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeMemoryOperation>>()
     private val commandTasksByConversation = mutableMapOf<Conversation.Id, MutableList<CommandTask>>()
     private val incidentsByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTaskIncident>>()
     private val traceByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTraceEntry>>()
@@ -461,6 +465,26 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             true
         }
 
+    override suspend fun upsertMemoryOperation(
+        conversationId: Conversation.Id,
+        operation: ConversationRuntimeMemoryOperation,
+    ): Boolean =
+        mutex.withLock {
+            val operations = memoryOperationsByConversation.getOrPut(conversationId) { mutableListOf() }
+            val existingIndex = operations.indexOfFirst { it.runId == operation.runId }
+            if (existingIndex >= 0 && operations[existingIndex] == operation) {
+                return@withLock false
+            }
+            if (existingIndex >= 0) {
+                operations[existingIndex] = operation
+            } else {
+                operations.add(operation)
+            }
+            memoryOperationsByConversation[conversationId] = operations.retainedMemoryOperations().toMutableList()
+            bumpRevision(conversationId)
+            true
+        }
+
     override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult =
         mutex.withLock {
             val tasks = commandTasksByConversation.getOrPut(task.conversationId) { mutableListOf() }
@@ -662,6 +686,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 activeTask = activeTasksByConversation[conversationId],
                 pendingTasks = tasksByConversation[conversationId]?.toList().orEmpty(),
                 toolExecutions = toolExecutionsByConversation[conversationId]?.toList().orEmpty(),
+                memoryOperations = memoryOperationsByConversation[conversationId]?.toList().orEmpty(),
                 commandTasks = commandTasksByConversation[conversationId]?.toList().orEmpty(),
                 incidents = incidentsByConversation[conversationId]?.toList().orEmpty(),
                 trace = traceByConversation[conversationId]?.takeLast(TRACE_SNAPSHOT_LIMIT).orEmpty(),
@@ -1146,6 +1171,15 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         if (errorType.isNullOrBlank()) message else "$errorType: $message"
 
     private companion object {
+        fun List<ConversationRuntimeMemoryOperation>.retainedMemoryOperations(): List<ConversationRuntimeMemoryOperation> {
+            val (active, terminal) = partition {
+                it.status == MemoryRun.Status.QUEUED || it.status == MemoryRun.Status.RUNNING
+            }
+            return (active + terminal.sortedBy { it.updatedAt }.takeLast(MEMORY_OPERATION_TERMINAL_RETENTION_LIMIT))
+                .sortedBy { it.updatedAt }
+        }
+
+        const val MEMORY_OPERATION_TERMINAL_RETENTION_LIMIT = 20
         const val COMMAND_TASK_TERMINAL_RETENTION_LIMIT = 100
         const val TRACE_SNAPSHOT_LIMIT = 200
         const val TRACE_RETENTION_LIMIT = 2_000

@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.runtime
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationExecutionState
@@ -8,6 +9,7 @@ import com.gromozeka.domain.service.ConversationRuntimeActiveTaskAssignment
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventLogEntry
+import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
@@ -426,6 +428,26 @@ class PostgresConversationRuntimeCoordinator(
                 record.toolExecutions = emptyList()
                 record.bumpRevision()
             }
+            true
+        }
+
+    override suspend fun upsertMemoryOperation(
+        conversationId: Conversation.Id,
+        operation: ConversationRuntimeMemoryOperation,
+    ): Boolean =
+        mutateRecord(conversationId, createIfMissing = true) { record ->
+            val operations = record.memoryOperations.toMutableList()
+            val existingIndex = operations.indexOfFirst { it.runId == operation.runId }
+            if (existingIndex >= 0 && operations[existingIndex] == operation) {
+                return@mutateRecord false
+            }
+            if (existingIndex >= 0) {
+                operations[existingIndex] = operation
+            } else {
+                operations += operation
+            }
+            record.memoryOperations = operations.retainedMemoryOperations()
+            record.bumpRevision()
             true
         }
 
@@ -981,6 +1003,7 @@ class PostgresConversationRuntimeCoordinator(
         var activeTask: ConversationRuntimeTask? = null,
         var pendingTasks: List<ConversationRuntimeTask> = emptyList(),
         var toolExecutions: List<ConversationRuntimeToolExecution> = emptyList(),
+        var memoryOperations: List<ConversationRuntimeMemoryOperation> = emptyList(),
         var commandTasks: List<CommandTask> = emptyList(),
         var incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
         var trace: List<ConversationRuntimeTraceEntry> = emptyList(),
@@ -999,6 +1022,7 @@ class PostgresConversationRuntimeCoordinator(
                 activeTask = activeTask,
                 pendingTasks = pendingTasks,
                 toolExecutions = toolExecutions,
+                memoryOperations = memoryOperations,
                 commandTasks = commandTasks,
                 incidents = incidents,
                 trace = trace.takeLast(TRACE_SNAPSHOT_LIMIT),
@@ -1278,6 +1302,15 @@ class PostgresConversationRuntimeCoordinator(
     }
 
     private companion object {
+        fun List<ConversationRuntimeMemoryOperation>.retainedMemoryOperations(): List<ConversationRuntimeMemoryOperation> {
+            val (active, terminal) = partition {
+                it.status == MemoryRun.Status.QUEUED || it.status == MemoryRun.Status.RUNNING
+            }
+            return (active + terminal.sortedBy { it.updatedAt }.takeLast(MEMORY_OPERATION_TERMINAL_RETENTION_LIMIT))
+                .sortedBy { it.updatedAt }
+        }
+
+        const val MEMORY_OPERATION_TERMINAL_RETENTION_LIMIT = 20
         const val COMMAND_TASK_TERMINAL_RETENTION_LIMIT = 100
         const val TRACE_SNAPSHOT_LIMIT = 200
         const val TRACE_RETENTION_LIMIT = 2_000

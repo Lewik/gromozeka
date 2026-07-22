@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import kotlinx.coroutines.flow.Flow
@@ -115,6 +116,18 @@ data class ConversationRuntimeTask(
         }
 
         @Serializable
+        @SerialName("memory_run_completion")
+        data class MemoryRunCompletion(
+            val runId: MemoryRun.Id,
+            val agentDefinitionId: AgentDefinition.Id,
+            val statusToolName: String,
+        ) : Payload {
+            init {
+                require(statusToolName.isNotBlank()) { "Memory run status tool name must not be blank" }
+            }
+        }
+
+        @Serializable
         @SerialName("execution_incident")
         data class ExecutionIncident(
             val sourceTaskId: Id,
@@ -147,6 +160,10 @@ data class ConversationRuntimeTask(
                 ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
             )
             is Payload.MemoryRecall -> setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE)
+            is Payload.MemoryRunCompletion -> setOf(
+                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
+                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+            )
             is Payload.ExecutionIncident -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
         }
 }
@@ -352,6 +369,18 @@ data class ConversationRuntimeToolExecution(
 }
 
 @Serializable
+data class ConversationRuntimeMemoryOperation(
+    val runId: MemoryRun.Id,
+    val operation: String,
+    val status: MemoryRun.Status,
+    val summary: String,
+    val progress: MemoryRun.Progress? = null,
+    val startedAt: Instant? = null,
+    val completedAt: Instant? = null,
+    val updatedAt: Instant,
+)
+
+@Serializable
 data class ConversationRuntimeTaskIncident(
     val task: ConversationRuntimeTask,
     val kind: Kind,
@@ -431,6 +460,7 @@ data class ConversationRuntimeSnapshot(
     val activeTask: ConversationRuntimeTask? = null,
     val pendingTasks: List<ConversationRuntimeTask>,
     val toolExecutions: List<ConversationRuntimeToolExecution> = emptyList(),
+    val memoryOperations: List<ConversationRuntimeMemoryOperation> = emptyList(),
     val commandTasks: List<CommandTask> = emptyList(),
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
@@ -641,6 +671,11 @@ interface ConversationRuntimeCoordinator {
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
         worker: ConversationRuntimeWorkerIdentity,
+    ): Boolean
+
+    suspend fun upsertMemoryOperation(
+        conversationId: Conversation.Id,
+        operation: ConversationRuntimeMemoryOperation,
     ): Boolean
 
     suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult

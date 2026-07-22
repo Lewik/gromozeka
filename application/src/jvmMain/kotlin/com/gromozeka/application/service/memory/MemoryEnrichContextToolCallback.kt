@@ -25,7 +25,7 @@ class MemoryEnrichContextToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
-        description = "Queue enrichment of a target context with relevant persisted memory from the global namespace and return a run_id immediately. Use memory_run_status with that run_id to retrieve completion and memory_context. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched.",
+        description = "Queue enrichment of a target context with relevant persisted memory from the global namespace and return a run_id immediately. Follow the returned result_delivery contract: Gromozeka delivers memory_context automatically, while external callers poll memory_run_status. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched.",
         inputSchema = """
             {
               "type": "object",
@@ -54,6 +54,7 @@ class MemoryEnrichContextToolCallback(
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = parseInput(toolInput)
+        val resultDelivery = context.memoryOperationResultDeliveryOrNull()
         val providedContext = input.context?.trim().orEmpty()
         if (input.target == "provided_context" || providedContext.isNotBlank()) {
             if (providedContext.isBlank()) {
@@ -65,6 +66,7 @@ class MemoryEnrichContextToolCallback(
                 conversationIdValue = context?.getString("conversationId"),
                 contextText = providedContext,
                 mode = input.mode,
+                resultDelivery = resultDelivery,
             )
         }
 
@@ -80,6 +82,7 @@ class MemoryEnrichContextToolCallback(
         memoryOperations.enrichMessage(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id ?: context.getString(TOOL_CONTEXT_TARGET_MESSAGE_ID),
+            resultDelivery = resultDelivery,
         )
     }
 

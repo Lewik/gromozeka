@@ -6,6 +6,8 @@ import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.postgresql.ds.PGSimpleDataSource
 import java.util.UUID
 import kotlin.test.Test
@@ -68,6 +70,68 @@ class PostgresMemoryRunCasTest {
             assertTrue(store.replaceRunIfUnchanged(queued, firstClaim))
             assertFalse(store.replaceRunIfUnchanged(queued, competingClaim))
             assertEquals(firstClaim, store.findRunById(queued.id))
+        } finally {
+            adminDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("DROP SCHEMA $schema CASCADE")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `metadata key query returns only runs awaiting delivery`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
+            return@runBlocking
+        }
+
+        val schema = "memory_run_metadata_test_${UUID.randomUUID().toString().replace("-", "")}"
+        val adminDataSource = dataSource()
+        adminDataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE SCHEMA $schema")
+            }
+        }
+
+        try {
+            val storeDataSource = dataSource(schema)
+            createMemoryRunsTable(storeDataSource)
+            val store = PostgresMemoryStore(
+                dataSource = storeDataSource,
+                json = Json { ignoreUnknownKeys = true },
+            )
+            val createdAt = Instant.fromEpochMilliseconds(1_000)
+            val awaitingDelivery = MemoryRun(
+                id = MemoryRun.Id("awaiting-delivery"),
+                namespace = MemoryNamespace.Global,
+                runType = MemoryRun.Type.ANSWER_QUESTION,
+                summary = "Completed",
+                metadata = buildJsonObject { put("resultDelivery", "conversation_runtime") },
+                status = MemoryRun.Status.SUCCESS,
+                createdAt = createdAt,
+                completedAt = createdAt,
+            )
+            val alreadyScheduled = awaitingDelivery.copy(
+                id = MemoryRun.Id("already-scheduled"),
+                metadata = buildJsonObject {
+                    put("resultDelivery", "conversation_runtime")
+                    put("resultDeliveryState", "scheduled")
+                },
+            )
+            val externalRun = awaitingDelivery.copy(
+                id = MemoryRun.Id("external-run"),
+                metadata = buildJsonObject {},
+            )
+            store.apply(MemoryUpdateBatch(runs = listOf(awaitingDelivery, alreadyScheduled, externalRun)))
+
+            val runs = store.findRunsByMetadataKeys(
+                statuses = setOf(MemoryRun.Status.SUCCESS),
+                runTypes = setOf(MemoryRun.Type.ANSWER_QUESTION),
+                requiredKey = "resultDelivery",
+                absentKey = "resultDeliveryState",
+            )
+
+            assertEquals(listOf(awaitingDelivery.id), runs.map { it.id })
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->

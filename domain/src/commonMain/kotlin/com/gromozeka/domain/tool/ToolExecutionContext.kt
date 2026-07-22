@@ -13,6 +13,11 @@ const val TOOL_CONTEXT_WORKSPACE_ID = "workspaceId"
 const val TOOL_CONTEXT_WORKSPACE_MOUNT_ID = "workspaceMountId"
 const val TOOL_CONTEXT_WORKSPACE_ROOT_PATH = "workspaceRootPath"
 const val TOOL_CONTEXT_WORKER_ID = "workerId"
+const val TOOL_CONTEXT_AGENT_DEFINITION_ID = "agentDefinitionId"
+const val TOOL_CONTEXT_TOOL_NAME = "toolName"
+const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY = "memoryResultDelivery"
+
+const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC = "conversation_runtime"
 
 /**
  * Framework-agnostic execution context for AI tools.
@@ -31,6 +36,9 @@ data class ToolExecutionContext(
 
     fun withCancellationSignal(signal: ToolCancellationSignal): ToolExecutionContext =
         copy(cancellationSignal = signal)
+
+    fun withValue(key: String, value: Any?): ToolExecutionContext =
+        copy(values = values + (key to value))
 }
 
 fun ToolExecutionContext?.requiredProjectId(): Project.Id =

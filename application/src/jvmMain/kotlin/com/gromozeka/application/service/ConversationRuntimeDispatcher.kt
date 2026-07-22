@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -166,6 +167,37 @@ class ConversationRuntimeDispatcher(
     ): Boolean {
         val task = queuedRuntimeTask(conversationId, userMessage, agentDefinitionId, QueuedMessagePlacement.END_OF_TURN)
         return submitRuntimeTask(task)
+    }
+
+    suspend fun submitMemoryRunCompletion(
+        conversationId: Conversation.Id,
+        runId: MemoryRun.Id,
+        agentDefinitionId: AgentDefinition.Id,
+        statusToolName: String,
+    ): Boolean =
+        submitRuntimeTask(
+            ConversationRuntimeTask(
+                id = ConversationRuntimeTask.Id("${runId.value}:conversation-delivery"),
+                conversationId = conversationId,
+                payload = ConversationRuntimeTask.Payload.MemoryRunCompletion(
+                    runId = runId,
+                    agentDefinitionId = agentDefinitionId,
+                    statusToolName = statusToolName,
+                ),
+                placement = QueuedMessagePlacement.END_OF_TURN,
+                idempotencyKey = "conversation:${conversationId.value}:memory-run:${runId.value}:delivery",
+                requirements = ConversationRuntimeTaskRequirements(
+                    capabilities = setOf(
+                        ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
+                        ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                    ),
+                ),
+                createdAt = Clock.System.now(),
+            )
+        )
+
+    suspend fun publishSnapshot(conversationId: Conversation.Id) {
+        publishRuntimeSnapshot(conversationId)
     }
 
     fun observeConversation(

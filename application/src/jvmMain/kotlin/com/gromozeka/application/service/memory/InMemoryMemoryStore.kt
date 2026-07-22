@@ -276,6 +276,19 @@ class InMemoryMemoryStore(
         runs.filter { it.status in statuses && it.runType in runTypes }
             .sortedWith(compareBy<MemoryRun> { it.createdAt }.thenBy { it.id.value })
 
+    override suspend fun findRunsByMetadataKeys(
+        statuses: Set<MemoryRun.Status>,
+        runTypes: Set<MemoryRun.Type>,
+        requiredKey: String,
+        absentKey: String?,
+    ): List<MemoryRun> =
+        runs.filter { run ->
+            run.status in statuses &&
+                run.runType in runTypes &&
+                requiredKey in run.metadata &&
+                (absentKey == null || absentKey !in run.metadata)
+        }.sortedWith(compareBy<MemoryRun> { it.createdAt }.thenBy { it.id.value })
+
     override suspend fun findProfile(
         namespace: MemoryNamespace,
         ownerEntityId: MemoryEntity.Id?,

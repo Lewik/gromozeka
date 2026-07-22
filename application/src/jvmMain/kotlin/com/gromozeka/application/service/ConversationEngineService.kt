@@ -42,6 +42,9 @@ import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
+import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC
 import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
@@ -91,6 +94,7 @@ class ConversationEngineService(
     private val conversationService: ConversationDomainService,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val memoryApplicationService: MemoryApplicationService,
+    private val memoryToolApplicationService: MemoryToolApplicationService,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
@@ -114,6 +118,7 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.ToolExecution -> runToolExecutionStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.ToolResultProcessing -> runToolResultProcessingStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.MemoryRecall -> runMemoryRecallStep(task, worker, payload)
+            is ConversationRuntimeTask.Payload.MemoryRunCompletion -> runMemoryRunCompletionStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.ExecutionIncident -> runExecutionIncidentStep(task, worker, payload)
         }
 
@@ -407,6 +412,11 @@ class ConversationEngineService(
                     put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
                     put(TOOL_CONTEXT_PROJECT_ID, project.id.value)
                     put(TOOL_CONTEXT_WORKER_ID, worker.workerId.value)
+                    put(TOOL_CONTEXT_AGENT_DEFINITION_ID, payload.agentDefinitionId.value)
+                    put(
+                        TOOL_CONTEXT_MEMORY_RESULT_DELIVERY,
+                        TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC,
+                    )
                     workspaceContext?.let { resolved ->
                         put("workspaceId", resolved.workspace.id.value)
                         put("workspaceMountId", resolved.mount.id.value)
@@ -701,6 +711,48 @@ class ConversationEngineService(
                     emit(notification)
                 }
             }
+        }
+    }
+
+    private fun runMemoryRunCompletionStep(
+        task: ConversationRuntimeTask,
+        worker: ConversationRuntimeWorkerIdentity,
+        payload: ConversationRuntimeTask.Payload.MemoryRunCompletion,
+    ): Flow<Conversation.Message> = flow {
+        val conversationId = task.conversationId
+        if (!awaitExecutionCanContinue(conversationId)) return@flow
+        ensureRuntimeTaskOwner(conversationId, task.id, worker)
+
+        val statusResult = memoryToolApplicationService.memoryRunStatus(payload.runId.value)
+        val syntheticMessages = buildSyntheticMemoryToolPair(
+            conversationId = conversationId,
+            syntheticTargetId = payload.runId.value,
+            targetMetadataName = "runId",
+            toolName = payload.statusToolName,
+            arguments = buildJsonObject {
+                put("run_id", payload.runId.value)
+                put("include_children", true)
+            },
+            resultText = statusResult,
+            syntheticPhase = SYNTHETIC_MEMORY_PHASE_COMPLETED_ASYNC,
+        )
+        syntheticMessages.forEach { syntheticMessage ->
+            ensureRuntimeTaskOwner(conversationId, task.id, worker)
+            if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
+                emit(syntheticMessage)
+            }
+        }
+
+        if (awaitExecutionCanContinue(conversationId)) {
+            val resultMessage = syntheticMessages.last()
+            submitContinuationTask(
+                llmCallTask(
+                    conversationId = conversationId,
+                    rootUserMessageId = resultMessage.id,
+                    agentDefinitionId = payload.agentDefinitionId,
+                    iteration = 1,
+                )
+            )
         }
     }
 
@@ -1384,15 +1436,34 @@ class ConversationEngineService(
         arguments: JsonObject,
         resultText: String,
         syntheticPhase: String = SYNTHETIC_MEMORY_PHASE_COMPLETED,
+    ): List<Conversation.Message> =
+        buildSyntheticMemoryToolPair(
+            conversationId = conversationId,
+            syntheticTargetId = targetMessage.id.value,
+            targetMetadataName = "targetMessageId",
+            toolName = toolName,
+            arguments = arguments,
+            resultText = resultText,
+            syntheticPhase = syntheticPhase,
+        )
+
+    private fun buildSyntheticMemoryToolPair(
+        conversationId: Conversation.Id,
+        syntheticTargetId: String,
+        targetMetadataName: String,
+        toolName: String,
+        arguments: JsonObject,
+        resultText: String,
+        syntheticPhase: String,
     ): List<Conversation.Message> {
         val phaseIdSuffix = if (syntheticPhase == SYNTHETIC_MEMORY_PHASE_COMPLETED) "" else ":$syntheticPhase"
         val phaseToolCallSuffix = if (syntheticPhase == SYNTHETIC_MEMORY_PHASE_COMPLETED) "" else "_${stableIdentifierSlug(syntheticPhase)}"
         val toolCallId = ContentItem.ToolCall.Id(
-            "mem_${stableIdentifierSlug(targetMessage.id.value)}_${stableIdentifierSlug(toolName)}$phaseToolCallSuffix"
+            "mem_${stableIdentifierSlug(syntheticTargetId)}_${stableIdentifierSlug(toolName)}$phaseToolCallSuffix"
         )
         val createdAt = Clock.System.now()
         val toolCallMessage = Conversation.Message(
-            id = Conversation.Message.Id("${targetMessage.id.value}:memory:$toolName$phaseIdSuffix:call"),
+            id = Conversation.Message.Id("$syntheticTargetId:memory:$toolName$phaseIdSuffix:call"),
             conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
             content = listOf(
@@ -1410,13 +1481,13 @@ class ConversationEngineService(
                 put("syntheticKind", "memory")
                 put("syntheticToolName", toolName)
                 put("syntheticPhase", syntheticPhase)
-                put("targetMessageId", targetMessage.id.value)
+                put(targetMetadataName, syntheticTargetId)
             },
             createdAt = createdAt,
         )
 
         val toolResultMessage = Conversation.Message(
-            id = Conversation.Message.Id("${targetMessage.id.value}:memory:$toolName$phaseIdSuffix:result"),
+            id = Conversation.Message.Id("$syntheticTargetId:memory:$toolName$phaseIdSuffix:result"),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
             content = listOf(
@@ -1433,7 +1504,7 @@ class ConversationEngineService(
                 put("syntheticKind", "memory")
                 put("syntheticToolName", toolName)
                 put("syntheticPhase", syntheticPhase)
-                put("targetMessageId", targetMessage.id.value)
+                put(targetMetadataName, syntheticTargetId)
             },
             createdAt = createdAt,
         )
