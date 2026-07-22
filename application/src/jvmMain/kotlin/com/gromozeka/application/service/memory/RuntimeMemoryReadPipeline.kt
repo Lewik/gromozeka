@@ -862,6 +862,78 @@ object RuntimeMemoryPromptComposer {
     }
 }
 
+internal object RuntimeMemoryToolContextComposer {
+    data class Result(
+        val text: String,
+        val originalChars: Int,
+        val truncated: Boolean,
+    )
+
+    fun compose(result: MemoryReadResult): Result {
+        val plan = result.plan
+        val hits = result.retrievedHits
+        val rawContext = if (hits.isEmpty()) {
+            """
+                MEMORY CONTEXT
+                No relevant persisted memory was retrieved for the current request.
+                Context mode: ${plan.contextMode.name}
+                Coverage mode: ${plan.coverageMode.name}
+            """.trimIndent()
+        } else {
+            val sourceQuery = buildList {
+                result.trace.targetText.takeIf { it.isNotBlank() }?.let(::add)
+                plan.retrievalRequests.mapTo(this) { it.query }
+            }.distinct().joinToString("\n")
+
+            """
+                MEMORY CONTEXT
+                This is selected persisted memory for the current request, not a conversation message.
+                Prefer active typed memory for facts and use raw source excerpts only as supporting evidence or when exact wording matters.
+                Reject memory that is clearly irrelevant, stale, conflicting, or insufficient instead of guessing.
+                Context mode: ${plan.contextMode.name}
+                Coverage mode: ${plan.coverageMode.name}
+
+                Profile:
+                ${hits.renderProfiles()}
+
+                Action items:
+                ${hits.renderTasks()}
+
+                Claims:
+                ${hits.renderClaims(includeEvidence = plan.shouldRenderEvidenceInPrompt())}
+
+                Notes:
+                ${hits.renderNotes(includeEvidence = plan.shouldRenderEvidenceInPrompt())}
+
+                Source excerpts:
+                ${hits.renderSources(
+                    includeEvidence = plan.shouldRenderEvidenceInPrompt(),
+                    query = sourceQuery,
+                    maxSources = MAX_MEMORY_TOOL_CONTEXT_SOURCES,
+                    maxCharsPerSource = MAX_MEMORY_TOOL_CONTEXT_SOURCE_CHARS,
+                    fullTextMaxChars = MAX_MEMORY_TOOL_CONTEXT_SOURCE_CHARS,
+                )}
+
+                Entities:
+                ${hits.renderEntities()}
+
+                Episodes:
+                ${hits.renderEpisodes()}
+            """.trimIndent()
+        }
+
+        if (rawContext.length <= MAX_MEMORY_TOOL_CONTEXT_CHARS) {
+            return Result(rawContext, rawContext.length, truncated = false)
+        }
+
+        val suffix = "\n\n[Additional selected memory omitted. Refine the memory query if more detail is required.]"
+        val text = rawContext
+            .take(MAX_MEMORY_TOOL_CONTEXT_CHARS - suffix.length)
+            .trimEnd() + suffix
+        return Result(text, rawContext.length, truncated = true)
+    }
+}
+
 private fun MemoryReadRequest.targetQueryText(): String {
     val target = threadContext.messages.firstOrNull { it.id == threadContext.targetMessageId }
         ?: return ""
@@ -1717,7 +1789,13 @@ private fun List<MemoryStore.SearchHit>.renderNotes(includeEvidence: Boolean): S
         }
         .ifBlank { "none" }
 
-private fun List<MemoryStore.SearchHit>.renderSources(includeEvidence: Boolean, query: String): String {
+private fun List<MemoryStore.SearchHit>.renderSources(
+    includeEvidence: Boolean,
+    query: String,
+    maxSources: Int = Int.MAX_VALUE,
+    maxCharsPerSource: Int = 4_000,
+    fullTextMaxChars: Int = MAX_RUNTIME_FULL_SOURCE_CHARS,
+): String {
     val selectedSources = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
     if (selectedSources.isEmpty() && !includeEvidence) {
         return "not requested for this context mode"
@@ -1728,18 +1806,23 @@ private fun List<MemoryStore.SearchHit>.renderSources(includeEvidence: Boolean, 
         useCase = if (includeEvidence) MemorySourceRetrievalUseCase.READ_EVIDENCE else MemorySourceRetrievalUseCase.READ_RETRIEVAL,
     ).hits
         .filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+        .take(maxSources)
         .joinToString("\n") {
-            "- source ${it.source.id.value} [${it.source.sourceLabelForMemoryPrompt()}]: ${it.source.contentText.queryFocusedExcerptForMemoryPrompt(query)}"
+            "- source ${it.source.id.value} [${it.source.sourceLabelForMemoryPrompt()}]: ${it.source.contentText.queryFocusedExcerptForMemoryPrompt(query, maxCharsPerSource, fullTextMaxChars)}"
         }
         .ifBlank { "none" }
 }
 
-private fun String.queryFocusedExcerptForMemoryPrompt(query: String, maxChars: Int = 4_000): String =
+private fun String.queryFocusedExcerptForMemoryPrompt(
+    query: String,
+    maxChars: Int = 4_000,
+    fullTextMaxChars: Int = MAX_RUNTIME_FULL_SOURCE_CHARS,
+): String =
     RuntimeMemorySourceExcerpt.queryFocused(
         text = this,
         query = query,
         maxChars = maxChars,
-        fullTextMaxChars = MAX_RUNTIME_FULL_SOURCE_CHARS,
+        fullTextMaxChars = fullTextMaxChars,
     )
 
 private fun List<MemoryStore.SearchHit>.renderEntities(): String =
@@ -2056,6 +2139,9 @@ private fun String.truncateForRuntimeMemoryPrompt(maxChars: Int): String {
 
 private const val MAX_RUNTIME_CLAIM_CONTEXT_CHARS = 700
 private const val MAX_RUNTIME_FULL_SOURCE_CHARS = 12_000
+internal const val MAX_MEMORY_TOOL_CONTEXT_CHARS = 32_000
+private const val MAX_MEMORY_TOOL_CONTEXT_SOURCES = 4
+private const val MAX_MEMORY_TOOL_CONTEXT_SOURCE_CHARS = 2_000
 private const val READ_COMPLETE_SET_TYPED_CANDIDATE_COVERAGE_LIMIT = 80
 
 private fun MemorySource.sourceLabelForMemoryPrompt(): String =

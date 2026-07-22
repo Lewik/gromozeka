@@ -240,7 +240,7 @@ class GromozekaMcpServerFactory(
 
             If `memory_run_status` returns top-level `status=needs_user_input` (`run_status=needs_input`), follow the result's `required_action`. Never approve a proposed structure yourself. Ask the user, and only after explicit approval repeat `memory_remember` with `confirmed_preflight_run_id` set to that run id and the same source content.
 
-            `memory_remember` returns a queued `run_id` immediately. The accepted operation continues locally in the background. Call `memory_run_status` with that id until `run_status` is terminal; the completed payload is returned in `result`.
+            `memory_remember` returns a queued `run_id` immediately. The accepted operation continues locally in the background. Call `memory_run_status` with that id until `poll_again=false`, then stop polling and consume `result` or follow `next_action`.
 
             ## Reading memory
 
@@ -253,9 +253,9 @@ class GromozekaMcpServerFactory(
             - `what I know about Lewik's Toyota RunX`
             - `current action item: debug Bedrock JSON schema errors in memory note constructor`
 
-            Both read tools return a queued `run_id` immediately. Call `memory_run_status` with that id until `run_status` is terminal. The `result` then contains the structured payload. For enrichment, inject the returned `memory_context` into your reasoning or answer only when it is relevant. Treat selected memory as strong remembered context, but still reject it if it is clearly stale, contradicted, irrelevant, or insufficient.
+            Both read tools return a queued `run_id` immediately. Call `memory_run_status` with that id until `poll_again=false`, then stop polling. The terminal `result` contains the structured payload. For enrichment, inject the returned `memory_context` into your reasoning or answer only when it is relevant. Treat selected memory as strong remembered context, but still reject it if it is clearly stale, contradicted, irrelevant, or insufficient.
 
-            `memory_answer_question` returns structured JSON containing `answer`, `sufficiency`, evidence refs, and the same selected `memory_context`. Use it for "what do you remember / what do you know about..." style questions when the answer itself should be produced by the memory subsystem.
+            `memory_answer_question` returns a compact structured result containing `answer`, `sufficiency`, reasoning, and evidence refs. Use it for "what do you remember / what do you know about..." style questions when the answer itself should be produced by the memory subsystem.
 
             ## Maintenance and status
 
@@ -265,7 +265,7 @@ class GromozekaMcpServerFactory(
             - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, targeted repairs, or embedding rebuild.
             - `memory_rebuild_embeddings`: rebuild vector embeddings for the global namespace (`full` reset/replace or `missing` fill-only).
 
-            Memory remember/read operations and maintenance tools return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Prefer status tools before starting broad maintenance if a run is already active.
+            Memory remember/read operations and maintenance tools return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Stop polling a run when `poll_again=false`. Prefer status tools before starting broad maintenance if a run is already active.
 
             ## Practical workflow
 
@@ -274,17 +274,17 @@ class GromozekaMcpServerFactory(
             3. Call `memory_answer_question` for direct memory-only questions.
             4. Call `memory_enrich_context` before answering or acting when remembered context may matter.
             5. Call `memory_remember` only for explicit user-approved content.
-            6. Call `memory_run_status` with the returned run id to retrieve the completed result.
+            6. Call `memory_run_status` with the returned run id until `poll_again=false`, then consume the completed result or follow `next_action`.
         """.trimIndent()
 
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
-            "Queue persistence of explicit user-approved text or a raw markdown/text document in the global namespace and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_run_status to retrieve completion and the final result. Use memory_help for typed-memory concepts and workflow."
+            "Queue persistence of explicit user-approved text or a raw markdown/text document in the global namespace and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_run_status until poll_again=false, then consume the final result or follow next_action. Use memory_help for typed-memory concepts and workflow."
 
         const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
-            "Queue retrieval of persisted memory relevant to a supplied context and return a run_id. This enriches a topic/action item/current turn; it is not a question-answering tool. Use memory_run_status to retrieve memory_context."
+            "Queue retrieval of persisted memory relevant to a supplied context and return a run_id. This enriches a topic/action item/current turn; it is not a question-answering tool. Use memory_run_status until poll_again=false, then consume memory_context."
 
         const val MCP_MEMORY_ANSWER_QUESTION_DESCRIPTION =
-            "Queue a direct question answered from persisted memory only and return a run_id. Use memory_run_status to retrieve answer, sufficiency, evidence refs, selected refs, and memory_context."
+            "Queue a direct question answered from persisted memory only and return a run_id. Use memory_run_status until poll_again=false, then consume the compact answer, sufficiency, reasoning, evidence refs, and selected refs."
 
         const val MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION =
             "Inspect the global memory namespace, item counts, and any unexpected stored namespaces. This runtime does not support selecting a namespace per operation."
@@ -302,7 +302,7 @@ class GromozekaMcpServerFactory(
             "Read durable queued/running memory operations and the live Workers capable of processing them."
 
         const val MCP_MEMORY_RUN_STATUS_DESCRIPTION =
-            "Read persisted status, result, timings, errors, and child runs for one memory run by run_id."
+            "Read persisted status, public operation result, timings, errors, and child runs for one memory run by run_id. Internal child-run working payloads are omitted. Stop polling when poll_again=false."
 
         val MCP_MEMORY_REMEMBER_INPUT_SCHEMA = """
             {

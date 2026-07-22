@@ -25,7 +25,9 @@ class MemoryRunStatusToolCallback(
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_RUN_STATUS_TOOL_NAME,
         description = "Read persisted status for one memory run. " +
-            "Use this to inspect document ingest progress, child write runs, timings, errors, and final state by run_id.",
+            "Use this to inspect document ingest progress, child write runs, timings, errors, and final state by run_id. " +
+            "Internal child-run working payloads are intentionally omitted. " +
+            "Stop polling when poll_again=false.",
         inputSchema = """
             {
               "type": "object",

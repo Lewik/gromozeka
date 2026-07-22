@@ -18,6 +18,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class MemoryStatusToolRendererTest {
     private val namespace = MemoryNamespace("project:test")
@@ -25,6 +26,7 @@ class MemoryStatusToolRendererTest {
 
     @Test
     fun runStatusRendersParentChildTree() {
+        val internalPayloadMarker = "internal-child-payload"
         val parent = MemoryRun(
             id = MemoryRun.Id("document-ingest:run:parent"),
             namespace = namespace,
@@ -65,17 +67,21 @@ class MemoryStatusToolRendererTest {
                     latencyMs = 700,
                 ),
             ),
+            output = buildJsonObject {
+                put("rawCandidates", internalPayloadMarker + "x".repeat(200_000))
+            },
             status = MemoryRun.Status.SUCCESS,
             createdAt = createdAt,
             completedAt = createdAt,
         )
 
-        val json = Json.parseToJsonElement(
-            MemoryToolResultRenderer.runStatusJsonString(parent, listOf(child), maxDepth = 4)
-        ).jsonObject
+        val rendered = MemoryToolResultRenderer.runStatusJsonString(parent, listOf(child), maxDepth = 4)
+        val json = Json.parseToJsonElement(rendered).jsonObject
         val run = json.getValue("run").jsonObject
         val children = run.getValue("children").jsonArray
 
+        assertTrue(internalPayloadMarker !in rendered)
+        assertTrue(rendered.length < 10_000)
         assertEquals("running", json.getValue("status").jsonPrimitive.content)
         assertEquals("document-ingest:run:parent", json.getValue("run_id").jsonPrimitive.content)
         assertEquals("RUNNING", run.getValue("run_status").jsonPrimitive.content)
@@ -113,10 +119,71 @@ class MemoryStatusToolRendererTest {
 
         assertEquals("needs_user_input", json.getValue("status").jsonPrimitive.content)
         assertEquals("needs_input", json.getValue("run_status").jsonPrimitive.content)
+        assertEquals("false", json.getValue("poll_again").jsonPrimitive.content)
+        assertEquals("follow_required_action", json.getValue("next_action").jsonPrimitive.content)
         assertEquals(
             "Ask the user to approve the proposed structure.",
             json.getValue("result").jsonObject.getValue("required_action").jsonPrimitive.content,
         )
+        assertEquals(
+            json.getValue("result").toString().length.toString(),
+            json.getValue("result_chars").jsonPrimitive.content,
+        )
+        assertTrue("output" !in json.getValue("run").jsonObject)
+        assertTrue("output_chars" in json.getValue("run").jsonObject)
+    }
+
+    @Test
+    fun terminalRunStatusIncludesLargeResultOnlyOnce() {
+        val marker = "large-memory-result-marker"
+        val output = buildJsonObject {
+            put("payload", marker + "x".repeat(100_000))
+        }
+        val run = MemoryRun(
+            id = MemoryRun.Id("memory-operation:answer:large-result"),
+            namespace = namespace,
+            runType = MemoryRun.Type.ANSWER_QUESTION,
+            summary = "Memory answer completed",
+            output = output,
+            status = MemoryRun.Status.SUCCESS,
+            createdAt = createdAt,
+            completedAt = createdAt,
+        )
+
+        val rendered = MemoryToolResultRenderer.runStatusJsonString(run, emptyList(), maxDepth = 0)
+        val json = Json.parseToJsonElement(rendered).jsonObject
+
+        assertEquals(1, rendered.split(marker).size - 1)
+        assertTrue(rendered.length < output.toString().length + 5_000)
+        assertEquals(output.toString().length.toString(), json.getValue("result_chars").jsonPrimitive.content)
+        assertTrue("output" !in json.getValue("run").jsonObject)
+    }
+
+    @Test
+    fun internalRunStatusDoesNotExposeWorkingPayload() {
+        val marker = "internal-memory-working-payload"
+        val output = buildJsonObject {
+            put("rawClaimOps", marker + "x".repeat(500_000))
+        }
+        val run = MemoryRun(
+            id = MemoryRun.Id("hot-path:reconcile-claims:large-result"),
+            namespace = namespace,
+            runType = MemoryRun.Type.RECONCILE_CLAIMS,
+            summary = "Claims reconciled",
+            output = output,
+            status = MemoryRun.Status.SUCCESS,
+            createdAt = createdAt,
+            completedAt = createdAt,
+        )
+
+        val rendered = MemoryToolResultRenderer.runStatusJsonString(run, emptyList(), maxDepth = 0)
+        val json = Json.parseToJsonElement(rendered).jsonObject
+
+        assertTrue(marker !in rendered)
+        assertTrue(rendered.length < 5_000)
+        assertEquals("true", json.getValue("result_omitted").jsonPrimitive.content)
+        assertEquals("internal_run_output", json.getValue("result_omitted_reason").jsonPrimitive.content)
+        assertEquals(output.toString().length.toString(), json.getValue("stored_output_chars").jsonPrimitive.content)
     }
 
     @Test

@@ -125,6 +125,7 @@ object MemoryToolResultRenderer {
             }.toString()
         }
 
+        val memoryContext = RuntimeMemoryToolContextComposer.compose(result)
         return buildJsonObject {
             put("status", "completed")
             put("need_memory", result.plan.needMemory)
@@ -132,9 +133,12 @@ object MemoryToolResultRenderer {
             put("retrieved_count", result.retrievedHits.size)
             put(
                 "usage_guidance",
-                "Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts."
+                "Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. Source entries are query-focused excerpts; refine the memory query when an exact detail is not present."
             )
-            put("memory_context", result.runtimePrompt ?: "No relevant persisted memory was retrieved for the target context.")
+            put("memory_context", memoryContext.text)
+            put("memory_context_chars", memoryContext.text.length)
+            put("memory_context_original_chars", memoryContext.originalChars)
+            put("memory_context_truncated", memoryContext.truncated)
             putJsonArray("selected_refs") {
                 result.selectedToolRefs(limit = 16).forEach { selectedRef ->
                     val hit = selectedRef.hit
@@ -155,17 +159,6 @@ object MemoryToolResultRenderer {
                                 }
                             }
                         }
-                    })
-                }
-            }
-            putJsonArray("selector_decisions") {
-                result.trace.selectorDecisions.take(16).forEach { decision ->
-                    add(buildJsonObject {
-                        put("type", decision.ref.type.name)
-                        put("id", decision.ref.id)
-                        put("selected", decision.selected)
-                        put("rank", decision.rank)
-                        put("reason", decision.reason.shortForMemoryToolResult())
                     })
                 }
             }
@@ -202,7 +195,6 @@ object MemoryToolResultRenderer {
             put("sufficiency", result.sufficiency.name.lowercase())
             put("answer", result.answer)
             put("reasoning", result.reasoning)
-            put("memory_context", readResult.runtimePrompt ?: "No relevant persisted memory was retrieved for the question.")
             putJsonArray("evidence_refs") {
                 result.evidenceRefs.forEach { add(JsonPrimitive(it)) }
             }
@@ -329,10 +321,28 @@ object MemoryToolResultRenderer {
             )
             put("run_id", rootRun.id.value)
             put("run_status", rootRun.status.name.lowercase())
+            put("poll_again", !rootRun.status.isTerminal())
+            put(
+                "next_action",
+                when {
+                    rootRun.status == MemoryRun.Status.NEEDS_INPUT -> "follow_required_action"
+                    rootRun.status.isTerminal() -> "consume_result"
+                    else -> "poll_status"
+                }
+            )
             put("max_depth", maxDepth)
             put("descendant_count", descendants.size)
             if (rootRun.status.isTerminal()) {
-                rootRun.output?.let { put("result", it) }
+                rootRun.output?.let {
+                    if (rootRun.runType in MEMORY_OPERATION_RUN_TYPES) {
+                        put("result", it)
+                        put("result_chars", it.toString().length)
+                    } else {
+                        put("result_omitted", true)
+                        put("result_omitted_reason", "internal_run_output")
+                        put("stored_output_chars", it.toString().length)
+                    }
+                }
             }
             put("run", rootRun.toStatusJson(descendants, maxDepth))
         }.toString()
@@ -499,7 +509,7 @@ private fun MemoryRun.toStatusJson(
         if (visibleMetadata.isNotEmpty()) {
             put("metadata", visibleMetadata)
         }
-        output?.let { put("output", it) }
+        output?.let { put("output_chars", it.toString().length) }
         put("applied_ops_count", appliedOps.size)
         put("repair_actions_count", repairActions.size)
         latencyMs?.let { put("latency_ms", it) }

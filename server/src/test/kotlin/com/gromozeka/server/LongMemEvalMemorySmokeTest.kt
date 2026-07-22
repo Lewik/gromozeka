@@ -562,7 +562,7 @@ class LongMemEvalMemorySmokeTest {
         val readTrace = readTraceCollector.takeLatest(namespace)
         val enrichDurationMs = readTrace?.latencyMs ?: 0L
 
-        val memoryContext = enrichResult.memoryContext.orEmpty()
+        val memoryContext = readTrace?.result?.runtimePrompt.orEmpty()
         appendProgress(
             progressPath,
             "answer_from_memory_done id=${entry.questionId} durationMs=$answerDurationMs status=${enrichResult.status} " +
