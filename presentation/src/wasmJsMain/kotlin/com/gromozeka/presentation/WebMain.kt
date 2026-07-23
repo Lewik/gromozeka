@@ -25,6 +25,7 @@ import com.gromozeka.presentation.services.BrowserRemoteClientSettingsStore
 import com.gromozeka.presentation.services.BrowserUIStateStore
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
+import com.gromozeka.presentation.ui.GromozekaTheme
 import kotlinx.browser.document
 import kotlinx.browser.window
 
@@ -84,8 +85,12 @@ private fun GromozekaWebApp() {
             forceCompactLayout = layoutHints.forceCompactLayout,
             clientPlatform = layoutHints.clientPlatform,
         )
-        startupError != null -> StartupError(startupError!!)
-        else -> StartupLoading()
+        startupError != null -> GromozekaTheme {
+            StartupError(startupError!!)
+        }
+        else -> GromozekaTheme {
+            StartupLoading()
+        }
     }
 }
 
