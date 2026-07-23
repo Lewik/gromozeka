@@ -17,7 +17,7 @@ data class CommandTask(
     val status: Status,
     val processId: Long?,
     val processStartedAt: Instant?,
-    val processGroupId: Long? = null,
+    val processTreeId: Long? = null,
     val outputFile: String,
     val outputBytes: Long,
     val timeoutAt: Instant? = null,

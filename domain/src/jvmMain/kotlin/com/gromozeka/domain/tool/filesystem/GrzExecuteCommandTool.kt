@@ -10,7 +10,7 @@ const val MAX_COMMAND_INITIAL_YIELD_MILLIS = 30_000L
 /**
  * Request parameters for grz_execute_command tool.
  * 
- * @property command Shell command to execute
+ * @property command Native shell command to execute
  * @property working_directory Working directory (optional, defaults to workspace root)
  * @property yield_time_ms Time to wait before returning a running task
  * @property timeout_seconds Optional hard timeout in seconds
@@ -52,7 +52,8 @@ data class ExecuteCommandRequest(
  * ## Core Features
  * 
  * **Shell execution:**
- * - Runs commands via `sh -c` (Unix shell)
+ * - Runs commands via `/bin/sh -c` on macOS/Linux
+ * - Runs commands via `cmd.exe` on Windows
  * - Supports pipes, redirects, and compound commands
  * - Environment variables inherited from process
  * - Working directory configurable
@@ -161,9 +162,10 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
     override val description: String
         get() = """
             Execute a shell command as a managed task. Short commands return a terminal result; long commands return status WORKING and task_id after yield_time_ms.
+            The target Worker uses its native shell: /bin/sh on macOS/Linux and cmd.exe on Windows. Match command syntax to the target WorkspaceMount and Worker.
             yield_time_ms is only the initial wait and may be from 0 to $MAX_COMMAND_INITIAL_YIELD_MILLIS; it is not the command timeout.
             Use grz_get_command_task with next_output_byte until the task is terminal and has_more_output is false. Use grz_cancel_command_task to terminate the process tree.
-            Do not append '&' to create unmanaged background processes. Full merged stdout/stderr is saved to output_file.
+            Do not create unmanaged background processes with '&' on macOS/Linux or 'start' without '/WAIT' on Windows. Full merged stdout/stderr is saved to output_file.
             Use with caution - has full system access.
             
             Common use cases:

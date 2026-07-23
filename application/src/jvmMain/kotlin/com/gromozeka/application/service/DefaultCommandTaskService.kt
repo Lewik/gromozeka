@@ -99,7 +99,7 @@ class DefaultCommandTaskService(
                 status = CommandTask.Status.WORKING,
                 processId = process.processId,
                 processStartedAt = process.processStartedAt,
-                processGroupId = process.processGroupId,
+                processTreeId = process.processTreeId,
                 outputFile = process.outputFile,
                 outputBytes = 0,
                 timeoutAt = request.timeout_seconds?.let { now + it.seconds },
@@ -568,7 +568,7 @@ class DefaultCommandTaskService(
     private fun CommandTask.recoverySpec(): CommandProcessRecoverySpec = CommandProcessRecoverySpec(
         processId = processId,
         processStartedAt = processStartedAt,
-        processGroupId = processGroupId,
+        processTreeId = processTreeId,
         outputFile = outputFile,
     )
 

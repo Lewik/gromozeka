@@ -7,12 +7,15 @@ import com.gromozeka.domain.service.CommandTask
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class LocalCommandProcessRunnerTest {
     private val runner = LocalCommandProcessRunner()
+    private val isWindows = System.getProperty("os.name").lowercase().contains("windows")
 
     @Test
     fun `runner drains large merged output into artifact`() {
@@ -20,7 +23,10 @@ class LocalCommandProcessRunnerTest {
             val process = runner.start(
                 CommandProcessSpec(
                     taskId = CommandTask.Id("large-output-task"),
-                    command = "i=0; while [ ${'$'}i -lt 20000 ]; do echo line-${'$'}i; i=${'$'}((i+1)); done",
+                    command = platformCommand(
+                        posix = "i=0; while [ ${'$'}i -lt 20000 ]; do echo line-${'$'}i; i=${'$'}((i+1)); done",
+                        windows = "for /L %%i in (0,1,19999) do @echo line-%%i",
+                    ),
                     workingDirectory = home.absolutePath,
                 )
             )
@@ -40,7 +46,10 @@ class LocalCommandProcessRunnerTest {
             val process = runner.start(
                 CommandProcessSpec(
                     taskId = CommandTask.Id("process-tree-task"),
-                    command = "sleep 30 & child=${'$'}!; echo ${'$'}child > '${childPidFile.absolutePath}'; wait",
+                    command = platformCommand(
+                        posix = "sleep 30 & child=${'$'}!; echo ${'$'}child > '${childPidFile.absolutePath}'; wait",
+                        windows = windowsProcessTreeCommand(childPidFile),
+                    ),
                     workingDirectory = home.absolutePath,
                 )
             )
@@ -63,6 +72,7 @@ class LocalCommandProcessRunnerTest {
 
     @Test
     fun `runner terminates descendant created while handling termination`() {
+        if (isWindows) return
         withTemporaryGromozekaHome { home ->
             val readyFile = File(home, "ready")
             val lateChildPidFile = File(home, "late-child.pid")
@@ -90,7 +100,10 @@ class LocalCommandProcessRunnerTest {
             val process = runner.start(
                 CommandProcessSpec(
                     taskId = CommandTask.Id("completed-recovery-task"),
-                    command = "printf recovered; exit 7",
+                    command = platformCommand(
+                        posix = "printf recovered; exit 7",
+                        windows = "<NUL set /P =recovered & exit /B 7",
+                    ),
                     workingDirectory = home.absolutePath,
                 )
             )
@@ -101,7 +114,7 @@ class LocalCommandProcessRunnerTest {
                     CommandProcessRecoverySpec(
                         processId = process.processId,
                         processStartedAt = process.processStartedAt,
-                        processGroupId = process.processGroupId,
+                        processTreeId = process.processTreeId,
                         outputFile = process.outputFile,
                     )
                 )
@@ -118,7 +131,10 @@ class LocalCommandProcessRunnerTest {
             val process = runner.start(
                 CommandProcessSpec(
                     taskId = CommandTask.Id("live-recovery-task"),
-                    command = "sleep 30",
+                    command = platformCommand(
+                        posix = "sleep 30",
+                        windows = "ping.exe -n 31 127.0.0.1 >NUL",
+                    ),
                     workingDirectory = home.absolutePath,
                 )
             )
@@ -128,7 +144,7 @@ class LocalCommandProcessRunnerTest {
                     CommandProcessRecoverySpec(
                         processId = process.processId,
                         processStartedAt = process.processStartedAt,
-                        processGroupId = process.processGroupId,
+                        processTreeId = process.processTreeId,
                         outputFile = process.outputFile,
                     )
                 )
@@ -145,14 +161,20 @@ class LocalCommandProcessRunnerTest {
             val retained = runner.start(
                 CommandProcessSpec(
                     taskId = CommandTask.Id("retained-output-task"),
-                    command = "printf retained",
+                    command = platformCommand(
+                        posix = "printf retained",
+                        windows = "<NUL set /P =retained",
+                    ),
                     workingDirectory = home.absolutePath,
                 )
             )
             val orphaned = runner.start(
                 CommandProcessSpec(
                     taskId = CommandTask.Id("orphaned-output-task"),
-                    command = "printf orphaned",
+                    command = platformCommand(
+                        posix = "printf orphaned",
+                        windows = "<NUL set /P =orphaned",
+                    ),
                     workingDirectory = home.absolutePath,
                 )
             )
@@ -163,9 +185,47 @@ class LocalCommandProcessRunnerTest {
 
             assertTrue(File(retained.outputFile).isFile)
             assertFalse(File(orphaned.outputFile).exists())
-            assertFalse(File("${orphaned.outputFile}.pgid").exists())
+            assertFalse(File("${orphaned.outputFile}.tree").exists())
             assertFalse(File("${orphaned.outputFile}.exit").exists())
+            assertFalse(File("${orphaned.outputFile}.command.cmd").exists())
+            assertFalse(File("${orphaned.outputFile}.wrapper.cmd").exists())
         }
+    }
+
+    @Test
+    fun `windows host keeps long command out of cmd arguments`() {
+        val directory = Files.createTempDirectory("gromozeka-windows-command-test-").toFile()
+        try {
+            val outputFile = File(directory, "command-test.log").apply { createNewFile() }
+            val exitCodeFile = File("${outputFile.absolutePath}.exit")
+            val command = "echo " + "x".repeat(12_000)
+            val processBuilder = WindowsLocalCommandHost(
+                commandInterpreter = "cmd.exe",
+                taskkillExecutable = "taskkill.exe",
+            ).prepareProcessBuilder(
+                command = command,
+                workingDirectory = directory,
+                outputFile = outputFile,
+                exitCodeFile = exitCodeFile,
+            )
+
+            val commandFile = File("${outputFile.absolutePath}.command.cmd")
+            val wrapperFile = File("${outputFile.absolutePath}.wrapper.cmd")
+            assertEquals("cmd.exe", processBuilder.command().first())
+            assertEquals(wrapperFile.absolutePath, processBuilder.command().last())
+            assertFalse(processBuilder.command().joinToString(" ").contains(command))
+            assertEquals(command.toWindowsCommandFile(), commandFile.readText(Charsets.UTF_8))
+            assertContains(wrapperFile.readText(Charsets.UTF_8), "%GROMOZEKA_COMMAND_FILE%")
+            assertEquals(commandFile.absolutePath, processBuilder.environment()["GROMOZEKA_COMMAND_FILE"])
+            assertEquals(exitCodeFile.absolutePath, processBuilder.environment()["GROMOZEKA_EXIT_FILE"])
+        } finally {
+            assertTrue(directory.deleteRecursively())
+        }
+    }
+
+    @Test
+    fun `windows platform selects windows command host`() {
+        assertIs<WindowsLocalCommandHost>(currentLocalCommandHost("Windows 11"))
     }
 
     private fun waitUntil(timeoutMillis: Long, condition: () -> Boolean) {
@@ -190,5 +250,17 @@ class LocalCommandProcessRunnerTest {
             }
             assertTrue(home.deleteRecursively())
         }
+    }
+
+    private fun platformCommand(posix: String, windows: String): String =
+        if (isWindows) windows else posix
+
+    private fun windowsProcessTreeCommand(childPidFile: File): String {
+        val escapedPath = childPidFile.absolutePath.replace("'", "''")
+        return "powershell.exe -NoProfile -NonInteractive -Command " +
+            "\"${'$'}child = Start-Process powershell.exe " +
+            "-ArgumentList '-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 30' -PassThru; " +
+            "Set-Content -NoNewline -LiteralPath '$escapedPath' -Value ${'$'}child.Id; " +
+            "Wait-Process -Id ${'$'}child.Id\""
     }
 }

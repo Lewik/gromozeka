@@ -407,7 +407,7 @@ class DefaultCommandTaskServiceTest {
             val process = lastProcess.takeIf {
                 it.processId == spec.processId &&
                     it.processStartedAt == spec.processStartedAt &&
-                    it.processGroupId == spec.processGroupId
+                    it.processTreeId == spec.processTreeId
             } ?: return CommandProcessRecovery.Unavailable("Fake process is unavailable")
             return if (process.isAlive()) {
                 CommandProcessRecovery.Running(process)
@@ -431,7 +431,7 @@ class DefaultCommandTaskServiceTest {
         private val outputArtifact: File,
     ) : RunningCommandProcess {
         override val processStartedAt: Instant = Instant.fromEpochMilliseconds(processId)
-        override val processGroupId: Long = processId + 10_000
+        override val processTreeId: Long = processId + 10_000
         override val outputFile: String
             get() = outputArtifact.absolutePath
         @Volatile

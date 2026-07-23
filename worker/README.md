@@ -47,6 +47,11 @@ The archive in `worker/build/distributions/` contains `bin/worker` and
 launcher does not expand the runtime dependency classpath into the `cmd.exe`
 command line.
 
+Managed commands use the native host shell: `/bin/sh` on macOS/Linux and
+`cmd.exe` on Windows. Windows commands are staged in managed batch artifacts
+instead of being embedded in the `cmd.exe` argument list, and process-tree
+cancellation uses `taskkill /T /F`.
+
 A Worker durably claims a runtime task before acknowledging its RabbitMQ
 delivery. The claim never expires or moves to another Worker session. After the
 RabbitMQ acknowledgement, the Server records the execution-start boundary. If

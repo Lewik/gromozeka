@@ -35,7 +35,7 @@ data class CommandProcessSpec(
 data class CommandProcessRecoverySpec(
     val processId: Long?,
     val processStartedAt: Instant?,
-    val processGroupId: Long?,
+    val processTreeId: Long?,
     val outputFile: String,
 )
 
@@ -62,7 +62,7 @@ interface CommandProcessRunner {
 interface RunningCommandProcess {
     val processId: Long
     val processStartedAt: Instant
-    val processGroupId: Long
+    val processTreeId: Long
     val outputFile: String
 
     fun isAlive(): Boolean

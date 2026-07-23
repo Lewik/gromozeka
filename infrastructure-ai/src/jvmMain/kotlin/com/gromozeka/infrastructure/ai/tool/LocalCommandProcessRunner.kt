@@ -9,53 +9,47 @@ import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 @Service
 class LocalCommandProcessRunner : CommandProcessRunner {
+    private val host: LocalCommandHost by lazy(::currentLocalCommandHost)
+
     override fun start(spec: CommandProcessSpec): RunningCommandProcess {
-        requireSupportedPlatform()
         val workingDirectory = File(spec.workingDirectory)
         require(workingDirectory.isDirectory) {
             "Command working directory does not exist or is not a directory: ${workingDirectory.absolutePath}"
         }
         val outputFile = commandOutputFile(spec)
-        val processGroupFile = processGroupFile(outputFile)
+        val processTreeFile = processTreeFile(outputFile)
         val exitCodeFile = exitCodeFile(outputFile)
-        val groupLauncher = processGroupLauncher()
-        val process = ProcessBuilder(
-            SHELL_PATH,
-            "-c",
-            COMMAND_WRAPPER,
-            "gromozeka-command",
-            spec.command,
-            processGroupFile.absolutePath,
-            exitCodeFile.absolutePath,
-            groupLauncher.mode,
-            groupLauncher.executable.orEmpty(),
-        )
-            .directory(workingDirectory)
-            .redirectErrorStream(true)
-            .redirectOutput(outputFile)
-            .start()
-        val processHandle = process.toHandle()
+        var process: Process? = null
         try {
+            process = host.launch(
+                spec = spec,
+                workingDirectory = workingDirectory,
+                outputFile = outputFile,
+                processTreeFile = processTreeFile,
+                exitCodeFile = exitCodeFile,
+            )
+            val processHandle = process.toHandle()
             val startedAt = processHandle.info().startInstant().orElseThrow {
                 IllegalStateException("OS did not expose start time for command process ${process.pid()}")
             }
-            val processGroupId = awaitPositiveLong(processGroupFile, STARTUP_HANDSHAKE_MILLIS)
+            val processTreeId = host.resolveProcessTreeId(process, processTreeFile)
             return LocalRunningCommandProcess(
                 process = process,
                 processHandle = processHandle,
                 startedAt = startedAt.toKotlinInstant(),
-                processGroupId = processGroupId,
+                processTree = host.processTree(processTreeId),
                 outputArtifact = outputFile,
                 exitCodeArtifact = exitCodeFile,
-                killExecutable = killExecutable(),
             )
         } catch (error: Throwable) {
-            terminateStartupFailure(processHandle, processGroupFile)
+            process?.toHandle()?.let { terminateStartupFailure(it, processTreeFile) }
             runCatching { deleteOutputArtifacts(outputFile.absolutePath) }
                 .onFailure(error::addSuppressed)
             throw error
@@ -63,7 +57,6 @@ class LocalCommandProcessRunner : CommandProcessRunner {
     }
 
     override fun recover(spec: CommandProcessRecoverySpec): CommandProcessRecovery {
-        requireSupportedPlatform()
         val outputFile = runCatching { managedOutputFile(spec.outputFile) }
             .getOrElse { return CommandProcessRecovery.Unavailable(it.message ?: "Invalid command output artifact") }
         val exitCode = runCatching { readExitCode(outputFile) }
@@ -75,9 +68,9 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             ?: return CommandProcessRecovery.Unavailable("Persisted command process id is missing")
         val processStartedAt = spec.processStartedAt
             ?: return CommandProcessRecovery.Unavailable("Persisted command process start time is missing")
-        val processGroupId = spec.processGroupId
+        val processTreeId = spec.processTreeId
             ?.takeIf { it > 0 }
-            ?: return CommandProcessRecovery.Unavailable("Persisted command process group id is missing")
+            ?: return CommandProcessRecovery.Unavailable("Persisted command process tree id is missing")
         val processHandle = ProcessHandle.of(processId).orElse(null)
             ?: return CommandProcessRecovery.Unavailable("Command process $processId is no longer running")
         val actualStartedAt = processHandle.info().startInstant().orElse(null)?.toKotlinInstant()
@@ -90,14 +83,19 @@ class LocalCommandProcessRunner : CommandProcessRunner {
                 ?.let(CommandProcessRecovery::Completed)
                 ?: CommandProcessRecovery.Unavailable("Command process $processId stopped without an exit artifact")
         }
+        val processTree = runCatching { host.processTree(processTreeId) }
+            .getOrElse {
+                return CommandProcessRecovery.Unavailable(
+                    it.message ?: "Command process tree $processTreeId cannot be recovered"
+                )
+            }
         val runningProcess = LocalRunningCommandProcess(
             process = null,
             processHandle = processHandle,
             startedAt = actualStartedAt,
-            processGroupId = processGroupId,
+            processTree = processTree,
             outputArtifact = outputFile,
             exitCodeArtifact = exitCodeFile(outputFile),
-            killExecutable = killExecutable(),
         )
         return if (outputFile.isFile) {
             CommandProcessRecovery.Running(runningProcess)
@@ -129,17 +127,14 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             .forEach { deleteOutputArtifacts(it.absolutePath) }
     }
 
-    private fun terminateStartupFailure(processHandle: ProcessHandle, processGroupFile: File) {
-        val processGroupId = sequenceOf(processGroupFile, File("${processGroupFile.absolutePath}.tmp"))
-            .mapNotNull { artifact -> artifact.takeIf(File::isFile)?.readText()?.trim()?.toLongOrNull() }
-            .firstOrNull { it > 0 }
-        if (processGroupId != null) {
-            runCatching { signalProcessGroup(killExecutable(), processGroupId, "KILL") }
-        }
-        processHandle.descendants().toList().asReversed().forEach { descendant ->
-            if (descendant.isAlive) descendant.destroyForcibly()
-        }
-        if (processHandle.isAlive) processHandle.destroyForcibly()
+    private fun terminateStartupFailure(processHandle: ProcessHandle, processTreeFile: File) {
+        sequenceOf(processTreeFile, File("${processTreeFile.absolutePath}.tmp"))
+            .mapNotNull(::readPositiveLong)
+            .firstOrNull()
+            ?.let { processTreeId ->
+                runCatching { host.processTree(processTreeId).terminate(processHandle) }
+            }
+        forceTerminateHandleTree(processHandle)
     }
 
     private fun commandOutputFile(spec: CommandProcessSpec): File = File(
@@ -172,30 +167,19 @@ class LocalCommandProcessRunner : CommandProcessRunner {
 
     private fun outputArtifacts(outputFile: File): List<File> = listOf(
         outputFile,
-        processGroupFile(outputFile),
-        File("${processGroupFile(outputFile).absolutePath}.tmp"),
+        processTreeFile(outputFile),
+        File("${processTreeFile(outputFile).absolutePath}.tmp"),
         exitCodeFile(outputFile),
         File("${exitCodeFile(outputFile).absolutePath}.tmp"),
+        windowsCommandFile(outputFile),
+        windowsWrapperFile(outputFile),
     )
-
-    private fun processGroupFile(outputFile: File): File = File("${outputFile.absolutePath}.pgid")
-
-    private fun exitCodeFile(outputFile: File): File = File("${outputFile.absolutePath}.exit")
 
     private fun readExitCode(outputFile: File): Int? {
         val artifact = exitCodeFile(outputFile)
         if (!artifact.isFile) return null
         return artifact.readText().trim().toIntOrNull()
             ?: error("Command exit artifact is invalid: ${artifact.absolutePath}")
-    }
-
-    private fun awaitPositiveLong(file: File, timeoutMillis: Long): Long {
-        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
-        while (System.nanoTime() < deadline) {
-            file.takeIf(File::isFile)?.readText()?.trim()?.toLongOrNull()?.takeIf { it > 0 }?.let { return it }
-            Thread.sleep(STARTUP_POLL_MILLIS)
-        }
-        error("Command process-group handshake timed out: ${file.absolutePath}")
     }
 
     private fun gromozekaHome(): File {
@@ -207,28 +191,6 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             ?: File(System.getProperty("user.home"), ".gromozeka")
     }
 
-    private fun requireSupportedPlatform() {
-        val osName = System.getProperty("os.name").lowercase()
-        require(osName.contains("mac") || osName.contains("linux")) {
-            "Managed command execution is supported only on macOS and Linux, current OS: $osName"
-        }
-    }
-
-    private fun processGroupLauncher(): ProcessGroupLauncher {
-        val osName = System.getProperty("os.name").lowercase()
-        if (osName.contains("mac")) return ProcessGroupLauncher("job-control", null)
-        val setsid = SETSID_EXECUTABLE_CANDIDATES
-            .map(::File)
-            .firstOrNull { it.isFile && it.canExecute() }
-            ?: error("Linux managed command execution requires the setsid executable")
-        return ProcessGroupLauncher("setsid", setsid.absolutePath)
-    }
-
-    private fun killExecutable(): File = KILL_EXECUTABLE_CANDIDATES
-        .map(::File)
-        .firstOrNull { it.isFile && it.canExecute() }
-        ?: error("POSIX kill executable was not found")
-
     private fun String.sha256Prefix(): String {
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(toByteArray(StandardCharsets.UTF_8))
@@ -239,16 +201,18 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         private val process: Process?,
         private val processHandle: ProcessHandle,
         private val startedAt: Instant,
-        override val processGroupId: Long,
+        private val processTree: LocalProcessTree,
         private val outputArtifact: File,
         private val exitCodeArtifact: File,
-        private val killExecutable: File,
     ) : RunningCommandProcess {
         override val processId: Long
             get() = processHandle.pid()
 
         override val processStartedAt: Instant
             get() = startedAt
+
+        override val processTreeId: Long
+            get() = processTree.id
 
         override val outputFile: String
             get() = outputArtifact.absolutePath
@@ -279,89 +243,376 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         }
 
         override fun terminateTree() {
-            signalProcessGroup(killExecutable, processGroupId, "TERM")
-            waitUntilStopped(TERMINATION_GRACE_MILLIS)
-            if (processGroupIsAlive(killExecutable, processGroupId)) {
-                signalProcessGroup(killExecutable, processGroupId, "KILL")
-            }
-            waitUntilStopped(FORCE_TERMINATION_GRACE_MILLIS)
-            if (processHandle.isAlive) {
-                processHandle.destroyForcibly()
-            }
-            waitUntilStopped(FORCE_TERMINATION_GRACE_MILLIS)
-            check(!processGroupIsAlive(killExecutable, processGroupId) && !processHandle.isAlive) {
-                "Failed to terminate command process group $processGroupId"
-            }
-        }
-
-        private fun waitUntilStopped(timeoutMillis: Long) {
-            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
-            while ((processHandle.isAlive || processGroupIsAlive(killExecutable, processGroupId)) &&
-                System.nanoTime() < deadline
-            ) {
-                Thread.sleep(TERMINATION_POLL_MILLIS)
-            }
+            processTree.terminate(processHandle)
         }
     }
 
-    private data class ProcessGroupLauncher(
-        val mode: String,
-        val executable: String?,
-    )
-
     private companion object {
-        const val SHELL_PATH = "/bin/sh"
         const val OUTPUT_DIRECTORY_NAME = "tool-outputs"
-        const val STARTUP_HANDSHAKE_MILLIS = 2_000L
-        const val STARTUP_POLL_MILLIS = 10L
-        const val EXIT_ARTIFACT_WAIT_MILLIS = 2_000L
-        const val TERMINATION_GRACE_MILLIS = 1_000L
-        const val FORCE_TERMINATION_GRACE_MILLIS = 1_000L
-        const val TERMINATION_POLL_MILLIS = 25L
-        val KILL_EXECUTABLE_CANDIDATES = listOf("/bin/kill", "/usr/bin/kill")
-        val SETSID_EXECUTABLE_CANDIDATES = listOf("/usr/bin/setsid", "/bin/setsid")
         val OUTPUT_FILE_NAME = Regex("command-[A-Za-z0-9-]+\\.log")
-        val OUTPUT_ARTIFACT_NAME = Regex("(command-[A-Za-z0-9-]+\\.log)(?:\\.(?:pgid|exit)(?:\\.tmp)?)?")
-        val COMMAND_WRAPPER = """
-            case "${'$'}4" in
-                job-control)
-                    set -m || exit 125
-                    /bin/sh -c "${'$'}1" &
-                    command_pid=${'$'}!
-                    set +m
-                    ;;
-                setsid)
-                    "${'$'}5" /bin/sh -c "${'$'}1" &
-                    command_pid=${'$'}!
-                    ;;
-                *)
-                    exit 125
-                    ;;
-            esac
-            printf '%s\n' "${'$'}command_pid" > "${'$'}2.tmp"
-            /bin/mv "${'$'}2.tmp" "${'$'}2"
-            wait "${'$'}command_pid" 2>/dev/null
-            exit_code=${'$'}?
-            printf '%s\n' "${'$'}exit_code" > "${'$'}3.tmp"
-            /bin/mv "${'$'}3.tmp" "${'$'}3"
-            exit "${'$'}exit_code"
-        """.trimIndent()
+        val OUTPUT_ARTIFACT_NAME = Regex(
+            "(command-[A-Za-z0-9-]+\\.log)" +
+                "(?:\\.(?:(?:tree|exit)(?:\\.tmp)?|(?:command|wrapper)\\.cmd))?"
+        )
     }
 }
 
-private fun signalProcessGroup(killExecutable: File, processGroupId: Long, signal: String): Boolean =
-    ProcessBuilder(killExecutable.absolutePath, "-$signal", "-$processGroupId")
+internal interface LocalCommandHost {
+    fun launch(
+        spec: CommandProcessSpec,
+        workingDirectory: File,
+        outputFile: File,
+        processTreeFile: File,
+        exitCodeFile: File,
+    ): Process
+
+    fun resolveProcessTreeId(process: Process, processTreeFile: File): Long
+
+    fun processTree(id: Long): LocalProcessTree
+}
+
+internal interface LocalProcessTree {
+    val id: Long
+
+    fun isAlive(processHandle: ProcessHandle): Boolean
+
+    fun terminate(processHandle: ProcessHandle)
+}
+
+internal fun currentLocalCommandHost(
+    osName: String = System.getProperty("os.name"),
+): LocalCommandHost {
+    val normalized = osName.lowercase()
+    return when {
+        normalized.contains("windows") -> WindowsLocalCommandHost()
+        normalized.contains("mac") -> PosixLocalCommandHost.forMacOS()
+        normalized.contains("linux") -> PosixLocalCommandHost.forLinux()
+        else -> error("Managed command execution is not supported on $osName")
+    }
+}
+
+internal class PosixLocalCommandHost private constructor(
+    private val launcherMode: String,
+    private val launcherExecutable: String?,
+    private val killExecutable: File,
+) : LocalCommandHost {
+    override fun launch(
+        spec: CommandProcessSpec,
+        workingDirectory: File,
+        outputFile: File,
+        processTreeFile: File,
+        exitCodeFile: File,
+    ): Process = ProcessBuilder(
+        POSIX_SHELL_PATH,
+        "-c",
+        POSIX_COMMAND_WRAPPER,
+        "gromozeka-command",
+        spec.command,
+        processTreeFile.absolutePath,
+        exitCodeFile.absolutePath,
+        launcherMode,
+        launcherExecutable.orEmpty(),
+    )
+        .directory(workingDirectory)
+        .redirectErrorStream(true)
+        .redirectOutput(outputFile)
+        .start()
+
+    override fun resolveProcessTreeId(process: Process, processTreeFile: File): Long =
+        awaitPositiveLong(processTreeFile, STARTUP_HANDSHAKE_MILLIS)
+
+    override fun processTree(id: Long): LocalProcessTree =
+        PosixProcessTree(id, killExecutable)
+
+    companion object {
+        fun forMacOS(): PosixLocalCommandHost =
+            PosixLocalCommandHost(
+                launcherMode = "job-control",
+                launcherExecutable = null,
+                killExecutable = findExecutable(POSIX_KILL_EXECUTABLE_CANDIDATES, "POSIX kill"),
+            )
+
+        fun forLinux(): PosixLocalCommandHost =
+            PosixLocalCommandHost(
+                launcherMode = "setsid",
+                launcherExecutable = findExecutable(SETSID_EXECUTABLE_CANDIDATES, "setsid").absolutePath,
+                killExecutable = findExecutable(POSIX_KILL_EXECUTABLE_CANDIDATES, "POSIX kill"),
+            )
+    }
+}
+
+internal class WindowsLocalCommandHost(
+    private val commandInterpreter: String = windowsCommandInterpreter(),
+    private val taskkillExecutable: String = windowsTaskkillExecutable(),
+) : LocalCommandHost {
+    override fun launch(
+        spec: CommandProcessSpec,
+        workingDirectory: File,
+        outputFile: File,
+        processTreeFile: File,
+        exitCodeFile: File,
+    ): Process = prepareProcessBuilder(
+        command = spec.command,
+        workingDirectory = workingDirectory,
+        outputFile = outputFile,
+        exitCodeFile = exitCodeFile,
+    ).start()
+
+    internal fun prepareProcessBuilder(
+        command: String,
+        workingDirectory: File,
+        outputFile: File,
+        exitCodeFile: File,
+    ): ProcessBuilder {
+        val commandFile = windowsCommandFile(outputFile)
+        val wrapperFile = windowsWrapperFile(outputFile)
+        commandFile.writeText(command.toWindowsCommandFile(), StandardCharsets.UTF_8)
+        wrapperFile.writeText(WINDOWS_COMMAND_WRAPPER, StandardCharsets.UTF_8)
+        return ProcessBuilder(
+            commandInterpreter,
+            "/D",
+            "/Q",
+            "/V:OFF",
+            "/C",
+            wrapperFile.absolutePath,
+        )
+            .directory(workingDirectory)
+            .redirectErrorStream(true)
+            .redirectOutput(outputFile)
+            .apply {
+                environment()[WINDOWS_COMMAND_FILE_ENV] = commandFile.absolutePath
+                environment()[WINDOWS_EXIT_FILE_ENV] = exitCodeFile.absolutePath
+            }
+    }
+
+    override fun resolveProcessTreeId(process: Process, processTreeFile: File): Long =
+        process.pid().also { processTreeId ->
+            writePositiveLongAtomically(processTreeFile, processTreeId)
+        }
+
+    override fun processTree(id: Long): LocalProcessTree =
+        WindowsProcessTree(id, taskkillExecutable)
+}
+
+private class PosixProcessTree(
+    override val id: Long,
+    private val killExecutable: File,
+) : LocalProcessTree {
+    override fun isAlive(processHandle: ProcessHandle): Boolean =
+        processHandle.isAlive || processGroupIsAlive(killExecutable, id)
+
+    override fun terminate(processHandle: ProcessHandle) {
+        signalProcessGroup(killExecutable, id, "TERM")
+        waitUntilStopped(processHandle, TERMINATION_GRACE_MILLIS)
+        if (processGroupIsAlive(killExecutable, id)) {
+            signalProcessGroup(killExecutable, id, "KILL")
+        }
+        waitUntilStopped(processHandle, FORCE_TERMINATION_GRACE_MILLIS)
+        if (processHandle.isAlive) {
+            processHandle.destroyForcibly()
+        }
+        waitUntilStopped(processHandle, FORCE_TERMINATION_GRACE_MILLIS)
+        check(!isAlive(processHandle)) {
+            "Failed to terminate command process tree $id"
+        }
+    }
+
+    private fun waitUntilStopped(processHandle: ProcessHandle, timeoutMillis: Long) {
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
+        while (isAlive(processHandle) && System.nanoTime() < deadline) {
+            Thread.sleep(TERMINATION_POLL_MILLIS)
+        }
+    }
+}
+
+private class WindowsProcessTree(
+    override val id: Long,
+    private val taskkillExecutable: String,
+) : LocalProcessTree {
+    override fun isAlive(processHandle: ProcessHandle): Boolean =
+        processHandle.isAlive
+
+    override fun terminate(processHandle: ProcessHandle) {
+        require(processHandle.pid() == id) {
+            "Windows command process tree $id does not match root process ${processHandle.pid()}"
+        }
+        val descendants = processHandle.descendants().toList()
+        if (processHandle.isAlive) {
+            runCatching { taskkill() }
+        }
+        waitUntilStopped(processHandle, descendants, FORCE_TERMINATION_GRACE_MILLIS)
+        if (processHandle.isAlive || descendants.any(ProcessHandle::isAlive)) {
+            descendants.asReversed().forEach { descendant ->
+                if (descendant.isAlive) descendant.destroyForcibly()
+            }
+            if (processHandle.isAlive) processHandle.destroyForcibly()
+        }
+        waitUntilStopped(processHandle, descendants, FORCE_TERMINATION_GRACE_MILLIS)
+        check(!processHandle.isAlive && descendants.none(ProcessHandle::isAlive)) {
+            "Failed to terminate Windows command process tree $id"
+        }
+    }
+
+    private fun taskkill(): Boolean =
+        ProcessBuilder(taskkillExecutable, "/PID", id.toString(), "/T", "/F")
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start()
+            .let { process ->
+                check(process.waitFor(TASKKILL_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    process.destroyForcibly()
+                    "Timed out while terminating Windows command process tree $id"
+                }
+                process.exitValue() == 0
+            }
+
+    private fun waitUntilStopped(
+        processHandle: ProcessHandle,
+        descendants: List<ProcessHandle>,
+        timeoutMillis: Long,
+    ) {
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
+        while (
+            (processHandle.isAlive || descendants.any(ProcessHandle::isAlive)) &&
+            System.nanoTime() < deadline
+        ) {
+            Thread.sleep(TERMINATION_POLL_MILLIS)
+        }
+    }
+}
+
+internal fun String.toWindowsCommandFile(): String {
+    val normalized = replace("\r\n", "\n").replace('\r', '\n')
+    val terminated = if (normalized.endsWith('\n')) normalized else "$normalized\n"
+    return terminated.replace("\n", "\r\n")
+}
+
+private fun processTreeFile(outputFile: File): File = File("${outputFile.absolutePath}.tree")
+
+private fun exitCodeFile(outputFile: File): File = File("${outputFile.absolutePath}.exit")
+
+private fun windowsCommandFile(outputFile: File): File = File("${outputFile.absolutePath}.command.cmd")
+
+private fun windowsWrapperFile(outputFile: File): File = File("${outputFile.absolutePath}.wrapper.cmd")
+
+private fun awaitPositiveLong(file: File, timeoutMillis: Long): Long {
+    val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
+    while (System.nanoTime() < deadline) {
+        readPositiveLong(file)?.let { return it }
+        Thread.sleep(STARTUP_POLL_MILLIS)
+    }
+    error("Command process-tree handshake timed out: ${file.absolutePath}")
+}
+
+private fun readPositiveLong(file: File): Long? =
+    file.takeIf(File::isFile)
+        ?.readText()
+        ?.trim()
+        ?.toLongOrNull()
+        ?.takeIf { it > 0 }
+
+private fun writePositiveLongAtomically(file: File, value: Long) {
+    require(value > 0) { "Command process tree id must be positive" }
+    val temporaryFile = File("${file.absolutePath}.tmp")
+    temporaryFile.writeText("$value\n", StandardCharsets.UTF_8)
+    Files.move(
+        temporaryFile.toPath(),
+        file.toPath(),
+        StandardCopyOption.ATOMIC_MOVE,
+        StandardCopyOption.REPLACE_EXISTING,
+    )
+}
+
+private fun findExecutable(candidates: List<String>, description: String): File =
+    candidates
+        .map(::File)
+        .firstOrNull { it.isFile && it.canExecute() }
+        ?: error("$description executable was not found")
+
+private fun windowsCommandInterpreter(): String =
+    System.getenv("ComSpec")
+        ?.takeIf(String::isNotBlank)
+        ?: "cmd.exe"
+
+private fun windowsTaskkillExecutable(): String =
+    System.getenv("SystemRoot")
+        ?.takeIf(String::isNotBlank)
+        ?.let { File(it, "System32/taskkill.exe") }
+        ?.takeIf(File::isFile)
+        ?.absolutePath
+        ?: "taskkill.exe"
+
+private fun signalProcessGroup(killExecutable: File, processTreeId: Long, signal: String): Boolean =
+    ProcessBuilder(killExecutable.absolutePath, "-$signal", "-$processTreeId")
         .redirectErrorStream(true)
         .start()
         .let { process ->
-            check(process.waitFor(5, TimeUnit.SECONDS)) {
+            check(process.waitFor(TASKKILL_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 process.destroyForcibly()
-                "Timed out while sending SIG$signal to process group $processGroupId"
+                "Timed out while sending SIG$signal to process group $processTreeId"
             }
             process.exitValue() == 0
         }
 
-private fun processGroupIsAlive(killExecutable: File, processGroupId: Long): Boolean =
-    signalProcessGroup(killExecutable, processGroupId, "0")
+private fun processGroupIsAlive(killExecutable: File, processTreeId: Long): Boolean =
+    signalProcessGroup(killExecutable, processTreeId, "0")
 
-private fun java.time.Instant.toKotlinInstant(): Instant = Instant.fromEpochMilliseconds(toEpochMilli())
+private fun forceTerminateHandleTree(processHandle: ProcessHandle) {
+    val descendants = processHandle.descendants().toList()
+    descendants.asReversed().forEach { descendant ->
+        if (descendant.isAlive) descendant.destroyForcibly()
+    }
+    if (processHandle.isAlive) processHandle.destroyForcibly()
+}
+
+private fun java.time.Instant.toKotlinInstant(): Instant =
+    Instant.fromEpochMilliseconds(toEpochMilli())
+
+private const val POSIX_SHELL_PATH = "/bin/sh"
+private const val STARTUP_HANDSHAKE_MILLIS = 2_000L
+private const val STARTUP_POLL_MILLIS = 10L
+private const val EXIT_ARTIFACT_WAIT_MILLIS = 2_000L
+private const val TERMINATION_GRACE_MILLIS = 1_000L
+private const val FORCE_TERMINATION_GRACE_MILLIS = 1_000L
+private const val TERMINATION_POLL_MILLIS = 25L
+private const val TASKKILL_TIMEOUT_SECONDS = 5L
+private const val WINDOWS_COMMAND_FILE_ENV = "GROMOZEKA_COMMAND_FILE"
+private const val WINDOWS_EXIT_FILE_ENV = "GROMOZEKA_EXIT_FILE"
+private val POSIX_KILL_EXECUTABLE_CANDIDATES = listOf("/bin/kill", "/usr/bin/kill")
+private val SETSID_EXECUTABLE_CANDIDATES = listOf("/usr/bin/setsid", "/bin/setsid")
+private val POSIX_COMMAND_WRAPPER = """
+    case "${'$'}4" in
+        job-control)
+            set -m || exit 125
+            /bin/sh -c "${'$'}1" &
+            command_pid=${'$'}!
+            set +m
+            ;;
+        setsid)
+            "${'$'}5" /bin/sh -c "${'$'}1" &
+            command_pid=${'$'}!
+            ;;
+        *)
+            exit 125
+            ;;
+    esac
+    printf '%s\n' "${'$'}command_pid" > "${'$'}2.tmp"
+    /bin/mv "${'$'}2.tmp" "${'$'}2"
+    wait "${'$'}command_pid" 2>/dev/null
+    exit_code=${'$'}?
+    printf '%s\n' "${'$'}exit_code" > "${'$'}3.tmp"
+    /bin/mv "${'$'}3.tmp" "${'$'}3"
+    exit "${'$'}exit_code"
+""".trimIndent()
+private val WINDOWS_COMMAND_WRAPPER = """
+    @echo off
+    setlocal DisableDelayedExpansion
+    chcp 65001 >NUL
+    "%ComSpec%" /D /Q /V:OFF /C call "%GROMOZEKA_COMMAND_FILE%"
+    set "GROMOZEKA_COMMAND_EXIT_CODE=%ERRORLEVEL%"
+    > "%GROMOZEKA_EXIT_FILE%.tmp" echo %GROMOZEKA_COMMAND_EXIT_CODE%
+    move /Y "%GROMOZEKA_EXIT_FILE%.tmp" "%GROMOZEKA_EXIT_FILE%" >NUL || exit /B 125
+    del /Q "%GROMOZEKA_COMMAND_FILE%" >NUL 2>&1
+    del /Q "%~f0" >NUL 2>&1
+    exit /B %GROMOZEKA_COMMAND_EXIT_CODE%
+""".trimIndent().replace("\n", "\r\n") + "\r\n"
