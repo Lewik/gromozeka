@@ -217,10 +217,9 @@ private fun RuntimeMemorySection(runtimeSnapshot: ConversationRuntimeSnapshot?) 
                                 (operation.status == MemoryRun.Status.QUEUED ||
                                     operation.status == MemoryRun.Status.RUNNING)
                             ) {
-                                val completed = progress.completedUnits + progress.failedUnits
                                 LinearProgressIndicator(
                                     progress = {
-                                        (completed.toFloat() / progress.totalUnits).coerceIn(0f, 1f)
+                                        (progress.completedUnits.toFloat() / progress.totalUnits).coerceIn(0f, 1f)
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                 )

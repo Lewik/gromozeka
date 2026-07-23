@@ -49,7 +49,8 @@ class MemoryOperationExecutor internal constructor(
     internal suspend fun execute(
         rootRun: MemoryRun,
         request: MemoryOperationRequest,
-    ): MemoryOperationExecution = executeRequest(rootRun, request)
+        reportProgress: MemoryOperationProgressReporter,
+    ): MemoryOperationExecution = executeRequest(rootRun, request, reportProgress)
 
     suspend fun executeSynchronously(prepared: PreparedMemoryOperation): String {
         if (prepared.request.kind != MemoryOperationKind.REMEMBER) {
@@ -112,10 +113,12 @@ class MemoryOperationExecutor internal constructor(
     private suspend fun executeRequest(
         rootRun: MemoryRun?,
         request: MemoryOperationRequest,
+        reportProgress: MemoryOperationProgressReporter = {},
     ): MemoryOperationExecution =
         when (request) {
-            is MemoryOperationRequest.RememberMessage -> executeRememberMessage(rootRun, request)
-            is MemoryOperationRequest.RememberProvidedContent -> executeRememberProvidedContent(rootRun, request)
+            is MemoryOperationRequest.RememberMessage -> executeRememberMessage(rootRun, request, reportProgress)
+            is MemoryOperationRequest.RememberProvidedContent ->
+                executeRememberProvidedContent(rootRun, request, reportProgress)
             is MemoryOperationRequest.EnrichMessage -> executeEnrichMessage(request)
             is MemoryOperationRequest.EnrichProvidedContext -> executeEnrichProvidedContext(request)
             is MemoryOperationRequest.AnswerMessage -> executeAnswerMessage(request)
@@ -243,6 +246,7 @@ class MemoryOperationExecutor internal constructor(
     private suspend fun executeRememberMessage(
         rootRun: MemoryRun?,
         request: MemoryOperationRequest.RememberMessage,
+        reportProgress: MemoryOperationProgressReporter,
     ): MemoryOperationExecution {
         val context = contextResolver.resolveConversation(request.conversationId, request.threadId)
         val targetMessage = contextResolver.loadTargetMessage(request.conversationId, request.targetMessageId)
@@ -279,6 +283,7 @@ class MemoryOperationExecutor internal constructor(
                 effectiveForceWrite = effectiveForceWrite,
                 document = document,
                 context = context,
+                reportProgress = reportProgress,
             )
         }
 
@@ -304,6 +309,7 @@ class MemoryOperationExecutor internal constructor(
     private suspend fun executeRememberProvidedContent(
         rootRun: MemoryRun?,
         request: MemoryOperationRequest.RememberProvidedContent,
+        reportProgress: MemoryOperationProgressReporter,
     ): MemoryOperationExecution {
         val resolvedContent = rememberContentResolver.resolve(request.content)
         val contentText = resolvedContent.text
@@ -333,6 +339,7 @@ class MemoryOperationExecutor internal constructor(
                 preflight = preflight,
                 effectiveForceWrite = effectiveForceWrite,
                 context = context,
+                reportProgress = reportProgress,
             )
         }
         return executeAtomicProvidedContent(
@@ -416,6 +423,7 @@ class MemoryOperationExecutor internal constructor(
         preflight: MemoryIngestPreflightResult,
         effectiveForceWrite: Boolean,
         context: MemoryOperationContext,
+        reportProgress: MemoryOperationProgressReporter,
     ): MemoryOperationExecution {
         val now = Clock.System.now()
         val documentType = resolvedContent.documentType
@@ -458,7 +466,8 @@ class MemoryOperationExecutor internal constructor(
             sourceRef = resolvedContent.sourceRef,
             title = resolvedContent.title,
         )
-        memoryStore.apply(MemoryUpdateBatch(sources = listOf(parentSource), runs = listOf(preparedRootRun)))
+        memoryStore.apply(MemoryUpdateBatch(sources = listOf(parentSource)))
+        reportProgress(preparedRootRun.toProgressUpdate())
 
         return segmentedIngestProcessor.process(
             rootRun = preparedRootRun,
@@ -475,6 +484,7 @@ class MemoryOperationExecutor internal constructor(
                 systemPrompts = context.systemPrompts,
                 memoryTools = context.memoryTools,
             ),
+            reportProgress = reportProgress,
             sectionSourceFactory = { section ->
                 providedSectionSource(
                     rootRun = preparedRootRun,
@@ -500,6 +510,7 @@ class MemoryOperationExecutor internal constructor(
         effectiveForceWrite: Boolean,
         document: MarkdownDocumentImport?,
         context: MemoryOperationContext,
+        reportProgress: MemoryOperationProgressReporter,
     ): MemoryOperationExecution {
         val auditParent = parentSource.copy(
             usagePolicy = MemorySourceUsagePolicy.AUDIT_ONLY.copy(reason = "segmented chat message parent; section sources are processed"),
@@ -513,7 +524,8 @@ class MemoryOperationExecutor internal constructor(
             sourceRef = sourceRef,
             title = document?.title,
         )
-        memoryStore.apply(MemoryUpdateBatch(sources = listOf(auditParent), runs = listOf(preparedRootRun)))
+        memoryStore.apply(MemoryUpdateBatch(sources = listOf(auditParent)))
+        reportProgress(preparedRootRun.toProgressUpdate())
 
         return segmentedIngestProcessor.process(
             rootRun = preparedRootRun,
@@ -530,6 +542,7 @@ class MemoryOperationExecutor internal constructor(
                 systemPrompts = context.systemPrompts,
                 memoryTools = context.memoryTools,
             ),
+            reportProgress = reportProgress,
             sectionSourceFactory = { section ->
                 parentSource.toSegmentSource(
                     rootRun = preparedRootRun,
@@ -647,6 +660,17 @@ class MemoryOperationExecutor internal constructor(
             put("preflight_reason", preflight.plan.reason)
         },
     )
+
+    private fun MemoryRun.toProgressUpdate(): MemoryOperationProgressUpdate =
+        MemoryOperationProgressUpdate(
+            summary = summary,
+            progress = requireNotNull(progress),
+            sourceIds = sourceIds,
+            childRunIds = childRunIds,
+            inputHash = inputHash,
+            output = output,
+            errorText = errorText,
+        )
 
     private fun providedSectionSource(
         rootRun: MemoryRun,

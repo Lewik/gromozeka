@@ -4,8 +4,6 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
-import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.serialization.json.JsonPrimitive
@@ -29,7 +27,6 @@ internal data class MemorySegmentedIngestRequest(
 
 @Service
 internal class MemorySegmentedIngestProcessor(
-    private val memoryStore: MemoryStore,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
 ) {
     private val log = KLoggers.logger(this)
@@ -40,21 +37,23 @@ internal class MemorySegmentedIngestProcessor(
         parentSource: MemorySource,
         sections: List<MemoryIngestSection>,
         context: MemorySegmentedIngestContext,
+        reportProgress: MemoryOperationProgressReporter,
         sectionSourceFactory: (MemoryIngestSection) -> MemorySource,
     ): MemoryOperationExecution {
         val namespace = rootRun.namespace
         require(sections.isNotEmpty()) { "Segmented memory ingest has no sections." }
 
-        var currentRun = rootRun.copy(
-            summary = "Memory ${request.kind} ingest running: 0/${sections.size} sections",
-            progress = MemoryRun.Progress(totalUnits = sections.size),
-        )
         val childRunIds = mutableListOf<MemoryRun.Id>()
         val sectionFailures = mutableListOf<SectionFailure>()
         var processedSections = 0
         var totalSections = sections.size
         var adaptiveSplits = 0
-        persist(currentRun)
+        reportProgress(
+            MemoryOperationProgressUpdate(
+                summary = "Memory ${request.kind} ingest running: 0/${sections.size} sections",
+                progress = MemoryRun.Progress(totalUnits = sections.size),
+            )
+        )
 
         log.info {
             "Memory segmented ingest started: run=${rootRun.id.value} namespace=${namespace.value} " +
@@ -63,17 +62,21 @@ internal class MemorySegmentedIngestProcessor(
 
         sections.forEach { section ->
             val sectionSource = sectionSourceFactory(section)
-            currentRun = currentRun.copy(
-                progress = MemoryRun.Progress(
-                    totalUnits = totalSections,
-                    completedUnits = processedSections + sectionFailures.size,
-                    failedUnits = sectionFailures.size,
-                    currentUnitLabel = section.headingLabel,
-                    currentSourceId = sectionSource.id,
-                ),
-                summary = "Memory ${request.kind} ingest running: ${processedSections + sectionFailures.size}/$totalSections sections",
+            reportProgress(
+                MemoryOperationProgressUpdate(
+                    summary = "Memory ${request.kind} ingest running: " +
+                        "${processedSections + sectionFailures.size}/$totalSections sections",
+                    progress = MemoryRun.Progress(
+                        totalUnits = totalSections,
+                        completedUnits = processedSections + sectionFailures.size,
+                        failedUnits = sectionFailures.size,
+                        currentUnitLabel = section.headingLabel,
+                        currentSourceId = sectionSource.id,
+                    ),
+                    childRunIds = childRunIds.distinct(),
+                    errorText = sectionFailures.lastOrNull()?.message,
+                )
             )
-            persist(currentRun)
 
             val sectionResult = MemoryAdaptiveIngest.processSection(
                 section = section,
@@ -112,19 +115,21 @@ internal class MemorySegmentedIngestProcessor(
                 }
             }
 
-            currentRun = currentRun.copy(
-                childRunIds = childRunIds.distinct(),
-                progress = MemoryRun.Progress(
-                    totalUnits = totalSections,
-                    completedUnits = processedSections + sectionFailures.size,
-                    failedUnits = sectionFailures.size,
-                    currentUnitLabel = section.headingLabel,
-                    currentSourceId = sectionSource.id,
-                ),
-                summary = "Memory ${request.kind} ingest running: ${processedSections + sectionFailures.size}/$totalSections sections",
-                errorText = sectionFailures.lastOrNull()?.message,
+            reportProgress(
+                MemoryOperationProgressUpdate(
+                    summary = "Memory ${request.kind} ingest running: " +
+                        "${processedSections + sectionFailures.size}/$totalSections sections",
+                    progress = MemoryRun.Progress(
+                        totalUnits = totalSections,
+                        completedUnits = processedSections + sectionFailures.size,
+                        failedUnits = sectionFailures.size,
+                        currentUnitLabel = section.headingLabel,
+                        currentSourceId = sectionSource.id,
+                    ),
+                    childRunIds = childRunIds.distinct(),
+                    errorText = sectionFailures.lastOrNull()?.message,
+                )
             )
-            persist(currentRun)
         }
 
         val successfulSections = processedSections
@@ -191,10 +196,6 @@ internal class MemorySegmentedIngestProcessor(
             progress = progress,
             errorText = sectionFailures.firstOrNull()?.message,
         )
-    }
-
-    private suspend fun persist(run: MemoryRun) {
-        memoryStore.apply(MemoryUpdateBatch(runs = listOf(run)))
     }
 
     private data class SectionFailure(

@@ -190,6 +190,18 @@ internal data class MemoryOperationExecution(
     val errorText: String? = null,
 )
 
+internal data class MemoryOperationProgressUpdate(
+    val summary: String,
+    val progress: MemoryRun.Progress,
+    val sourceIds: List<MemorySource.Id> = emptyList(),
+    val childRunIds: List<MemoryRun.Id> = emptyList(),
+    val inputHash: String? = null,
+    val output: JsonElement? = null,
+    val errorText: String? = null,
+)
+
+internal typealias MemoryOperationProgressReporter = suspend (MemoryOperationProgressUpdate) -> Unit
+
 internal data class MemoryOperationJob(
     val runId: MemoryRun.Id,
     val operation: MemoryOperationKind,

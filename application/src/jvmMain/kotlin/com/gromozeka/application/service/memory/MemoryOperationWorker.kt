@@ -16,6 +16,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
@@ -185,19 +187,41 @@ class MemoryOperationWorker(
         publishLifecycleEvent(claimedRun)
 
         val currentRun = AtomicReference(claimedRun)
+        val runUpdateMutex = Mutex()
+        suspend fun updateOwnedRun(transform: (MemoryRun) -> MemoryRun): MemoryRun =
+            runUpdateMutex.withLock {
+                val expected = currentRun.get()
+                val replacement = transform(expected)
+                check(memoryStore.replaceRunIfUnchanged(expected, replacement)) {
+                    "Memory operation execution ownership was lost: run=${job.runId.value}"
+                }
+                currentRun.set(replacement)
+                replacement
+            }
+
         val leaseHeartbeat = launch {
             while (currentCoroutineContext().isActive) {
                 delay(MEMORY_OPERATION_LEASE_RENEW_INTERVAL_MILLIS)
-                val expected = currentRun.get()
-                val renewed = expected.copy(executionLease = worker.memoryExecutionLease(Clock.System.now()))
-                check(memoryStore.replaceRunIfUnchanged(expected, renewed)) {
-                    "Memory operation execution ownership was lost: run=${job.runId.value}"
+                updateOwnedRun { current ->
+                    current.copy(executionLease = worker.memoryExecutionLease(Clock.System.now()))
                 }
-                currentRun.set(renewed)
             }
         }
         try {
-            val execution = executor.execute(claimedRun, request)
+            val execution = executor.execute(claimedRun, request) { update ->
+                val updatedRun = updateOwnedRun { current ->
+                    current.copy(
+                        summary = update.summary,
+                        sourceIds = (current.sourceIds + update.sourceIds).distinct(),
+                        childRunIds = (current.childRunIds + update.childRunIds).distinct(),
+                        progress = update.progress,
+                        inputHash = update.inputHash ?: current.inputHash,
+                        output = update.output ?: current.output,
+                        errorText = update.errorText ?: current.errorText,
+                    )
+                }
+                publishLifecycleEvent(updatedRun)
+            }
             leaseHeartbeat.cancelAndJoin()
             val completedAt = Clock.System.now()
             val expected = currentRun.get()
@@ -259,6 +283,7 @@ class MemoryOperationWorker(
             executionLease = null,
             progress = currentProgress.copy(
                 totalUnits = maxOf(currentProgress.totalUnits, 1),
+                completedUnits = maxOf(currentProgress.completedUnits, 1),
                 failedUnits = maxOf(currentProgress.failedUnits, 1),
             ),
             errorText = reason,

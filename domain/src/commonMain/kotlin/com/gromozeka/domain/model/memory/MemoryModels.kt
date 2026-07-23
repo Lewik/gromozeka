@@ -918,6 +918,7 @@ data class MemoryRun(
     @Serializable
     data class Progress(
         val totalUnits: Int = 0,
+        // Completed units include failed terminal units; failedUnits is the failed subset.
         val completedUnits: Int = 0,
         val failedUnits: Int = 0,
         val currentUnitLabel: String? = null,

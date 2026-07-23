@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -51,7 +52,7 @@ class MemoryRunLifecycleApplicationService(
             eventConsumer.deliveries.collect { delivery ->
                 try {
                     memoryStore.findRunById(delivery.event.runId)?.let { run ->
-                        handle(run)
+                        handle(run, delivery.event.occurredAt)
                     }
                     delivery.acknowledge()
                 } catch (error: CancellationException) {
@@ -90,7 +91,10 @@ class MemoryRunLifecycleApplicationService(
         }
     }
 
-    private suspend fun handle(run: MemoryRun) {
+    private suspend fun handle(
+        run: MemoryRun,
+        observedAt: Instant? = null,
+    ) {
         val delivery = run.resultDeliveryOrNull() ?: return
         val operation = run.metadata[MEMORY_OPERATION_KIND_METADATA_KEY]
             ?.jsonPrimitive
@@ -106,7 +110,7 @@ class MemoryRunLifecycleApplicationService(
                 progress = run.progress,
                 startedAt = run.startedAt,
                 completedAt = run.completedAt,
-                updatedAt = run.completedAt ?: run.startedAt ?: run.createdAt,
+                updatedAt = observedAt ?: run.completedAt ?: run.startedAt ?: run.createdAt,
             ),
         )
         if (projectionChanged) {
