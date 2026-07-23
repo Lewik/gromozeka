@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -170,7 +171,7 @@ fun SessionListScreen(
                     },
                     tooltip = LocalTranslation.current.refreshSessionsTooltip
                 ) {
-                    Text("🔄")
+                    Icon(Icons.Default.Refresh, contentDescription = LocalTranslation.current.refreshSessionsTooltip)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))

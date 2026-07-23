@@ -31,7 +31,7 @@ fun DevButtons(
                 onSendMessage("Расскажи скороговорку")
             }
         }) {
-            Text("🗣 Скороговорка")
+            Text("Скороговорка")
         }
 
         CompactButton(onClick = {
@@ -39,7 +39,7 @@ fun DevButtons(
                 onSendMessage("Создай таблицу с примерами разных типов данных в программировании")
             }
         }) {
-            Text("📊 Таблица")
+            Text("Таблица")
         }
 
         CompactButton(onClick = {
@@ -47,7 +47,7 @@ fun DevButtons(
                 onSendMessage("Загугли последние новости про Google")
             }
         }) {
-            Text("🔍 Загугли про гугл")
+            Text("Загугли про Google")
         }
 
         CompactButton(onClick = {
@@ -55,7 +55,7 @@ fun DevButtons(
                 onSendMessage("Выполни ls")
             }
         }) {
-            Text("📁 выполни ls")
+            Text("Выполни ls")
         }
     }
 }

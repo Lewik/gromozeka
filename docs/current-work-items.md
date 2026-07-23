@@ -31,12 +31,13 @@ Status: implemented; awaiting manual verification.
 
 ## Glyph coverage and font licensing
 
-Status: pending.
+Status: implemented and verified on JVM and web builds.
 
-- Identify characters that currently render as missing glyphs.
-- Audit the font fallback behavior on JVM, browser, and mobile surfaces.
-- If a bundled font is needed, use a license suitable for commercial and
-  corporate distribution and retain the required notices.
+- UI-owned emoji markers were replaced with Material vector icons or plain
+  localized labels so their rendering no longer depends on color-emoji fonts.
+- Arbitrary message text continues to use platform font fallback; Compose web
+  loads script-specific Noto fallback fonts on demand.
+- No font was bundled, avoiding unnecessary binary growth and licensing notices.
 
 ## Memory progress accuracy
 
@@ -74,5 +75,4 @@ Status: complete.
 ## Working order
 
 1. Verify the startup background, memory progress, and conversation scrolling.
-2. Glyph coverage and font licensing.
-3. MCP configuration migration after its architecture is agreed.
+2. MCP configuration migration after its architecture is agreed.

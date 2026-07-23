@@ -161,7 +161,9 @@ fun MessageItem(
                         is Conversation.Message.ContentItem.ImageItem -> {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
+                                Icon(Icons.Default.Image, contentDescription = "Image")
                                 Column(
                                     modifier = Modifier.weight(1f),
                                     verticalArrangement = Arrangement.Center,
@@ -180,8 +182,6 @@ fun MessageItem(
                                         is Conversation.Message.ImageSource.UrlImageSource -> {
                                             // URL can be shown in full
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Image, contentDescription = "Image")
-                                                Spacer(modifier = Modifier.width(4.dp))
                                                 Text(source.url)
                                             }
                                         }
@@ -330,7 +330,13 @@ fun MessageItem(
                         is Conversation.Message.ContentItem.UnknownJson -> {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Parse error",
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
                                 Column(
                                     modifier = Modifier.weight(1f),
                                     verticalArrangement = Arrangement.Center,

@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -395,13 +396,22 @@ fun SettingsPanel(
                                 }
                             )
 
-                            // Warning about disabled global hotkeys
-                            Text(
-                                text = "⚠️ Global hotkeys temporarily disabled - UI PTT button available",
-                                color = MaterialTheme.colorScheme.secondary,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp)
-                            )
+                            Row(
+                                modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                )
+                                Text(
+                                    text = "Global hotkeys temporarily disabled - UI PTT button available",
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
 
                             // Applies to both global hotkey and UI PTT button.
                             SwitchSettingItem(
