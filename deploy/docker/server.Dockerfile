@@ -1,3 +1,21 @@
+FROM eclipse-temurin:21-jre-noble AS web-assets
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends brotli gzip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY presentation/build/dist/wasmJs/productionExecutable /app/web
+
+RUN find /app/web -type f \( \
+        -name "*.wasm.br" -o \
+        -name "*.wasm.gz" -o \
+        -name "gromozeka.js.br" -o \
+        -name "gromozeka.js.gz" \
+    \) -delete \
+    && find /app/web -type f \( -name "*.wasm" -o -name "gromozeka.js" \) \
+    -exec brotli --force --quality=11 --no-copy-stat {} \; \
+    -exec gzip --force --keep --best --no-name {} \;
+
 FROM eclipse-temurin:21-jre-noble
 
 RUN groupadd --gid 10001 gromozeka \
@@ -6,7 +24,7 @@ RUN groupadd --gid 10001 gromozeka \
 WORKDIR /app
 
 COPY --chown=gromozeka:gromozeka server/build/libs/gromozeka-server.jar /app/gromozeka-server.jar
-COPY --chown=gromozeka:gromozeka presentation/build/dist/wasmJs/productionExecutable /app/web
+COPY --from=web-assets --chown=gromozeka:gromozeka /app/web /app/web
 
 ENV GROMOZEKA_MODE=prod \
     GROMOZEKA_HOME=/var/lib/gromozeka \

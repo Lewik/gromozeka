@@ -93,6 +93,35 @@
             background: #111318;
         }
 
+        #bootstrapLoader {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+        }
+
+        #bootstrapLoader::after {
+            width: 28px;
+            height: 28px;
+            content: "";
+            border: 3px solid rgba(117, 172, 255, 0.2);
+            border-top-color: #75acff;
+            border-radius: 50%;
+            animation: bootstrap-loader-spin 800ms linear infinite;
+        }
+
+        @keyframes bootstrap-loader-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #bootstrapLoader::after {
+                animation-duration: 1600ms;
+            }
+        }
+
         #composeApp {
             width: 100%;
             height: 100%;
@@ -101,6 +130,7 @@
 </head>
 <body>
 <div id="gromozekaViewport">
+    <div id="bootstrapLoader" role="status" aria-label="Loading Gromozeka"></div>
     <div id="composeApp"></div>
 </div>
 </body>

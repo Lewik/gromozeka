@@ -4,12 +4,10 @@ import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import com.gromozeka.domain.tool.Tool
-import io.ktor.http.HttpHeaders
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
-import io.ktor.server.http.content.default
-import io.ktor.server.http.content.staticFiles
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.plugins.conditionalheaders.ConditionalHeaders
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
@@ -76,17 +74,13 @@ fun main() {
             maxFrameSize = Long.MAX_VALUE
             masking = false
         }
+        install(ConditionalHeaders)
         routing {
             webSocket("/ws") {
                 remoteServer.handle(this)
             }
             gromozekaMemoryHttp(memoryToolApplicationService)
-            staticFiles("/", webRoot) {
-                modify { _, call ->
-                    call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-                }
-                default("index.html")
-            }
+            gromozekaWeb(webRoot)
         }
     }.start(wait = false)
 

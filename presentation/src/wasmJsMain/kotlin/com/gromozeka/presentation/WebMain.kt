@@ -24,6 +24,7 @@ import com.gromozeka.presentation.services.BrowserRemoteClientSettingsStore
 import com.gromozeka.presentation.services.BrowserUIStateStore
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
+import kotlinx.browser.document
 import kotlinx.browser.window
 
 private data class WebLayoutHints(
@@ -35,6 +36,7 @@ private data class WebLayoutHints(
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
+    document.getElementById("bootstrapLoader")?.remove()
     ComposeViewport("composeApp") {
         GromozekaWebApp()
     }
