@@ -42,13 +42,26 @@ dependencies {
 
 application {
     mainClass.set("com.gromozeka.worker.GromozekaWorkerMainKt")
-    applicationDefaultJvmArgs = listOf(
-        "-Dgromozeka.project.root=${rootProject.projectDir.absolutePath}"
-    )
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     archiveFileName.set("gromozeka-worker.jar")
+}
+
+tasks.withType<JavaExec>().matching { it.name == "run" || it.name == "bootRun" }.configureEach {
+    systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
+}
+
+distributions {
+    named("boot") {
+        distributionBaseName.set(project.name)
+    }
+}
+
+listOf("startScripts", "installDist", "distZip", "distTar").forEach { taskName ->
+    tasks.named(taskName) {
+        enabled = false
+    }
 }
 
 tasks.withType<Test> {

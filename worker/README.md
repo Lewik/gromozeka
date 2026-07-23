@@ -34,6 +34,19 @@ identity, so two live processes cannot own the same Worker id.
 Each Worker writes to a separate `<worker-id>.log` file under the mode-specific
 Worker log directory.
 
+## Distribution
+
+Build the standalone Spring Boot distribution:
+
+```bash
+./gradlew :worker:bootDistZip
+```
+
+The archive in `worker/build/distributions/` contains `bin/worker` and
+`bin/worker.bat`. Both launch the executable `gromozeka-worker.jar`; the Windows
+launcher does not expand the runtime dependency classpath into the `cmd.exe`
+command line.
+
 A Worker durably claims a runtime task before acknowledging its RabbitMQ
 delivery. The claim never expires or moves to another Worker session. After the
 RabbitMQ acknowledgement, the Server records the execution-start boundary. If
