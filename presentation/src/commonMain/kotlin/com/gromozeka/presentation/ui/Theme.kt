@@ -10,7 +10,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.gromozeka.presentation.services.theming.data.DarkTheme
 import com.gromozeka.presentation.services.theming.data.Theme
@@ -18,6 +21,7 @@ import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.highlightedCodeBlock
 import com.mikepenz.markdown.compose.elements.highlightedCodeFence
 import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.markdownPadding
 
 @Composable
@@ -31,7 +35,8 @@ fun GromozekaTheme(
         onPrimary = currentTheme.onPrimary.toComposeColor(),
         primaryContainer = currentTheme.primaryContainer.toComposeColor(),
         onPrimaryContainer = currentTheme.onPrimaryContainer.toComposeColor(),
-        inversePrimary = Color(0xFFBEA6FF), // fallback
+        inversePrimary = currentTheme.inversePrimary?.toComposeColor()
+            ?: currentTheme.primaryContainer.toComposeColor(),
 
         secondary = currentTheme.secondary.toComposeColor(),
         onSecondary = currentTheme.onSecondary.toComposeColor(),
@@ -52,8 +57,10 @@ fun GromozekaTheme(
         surfaceVariant = currentTheme.surfaceVariant.toComposeColor(),
         onSurfaceVariant = currentTheme.onSurfaceVariant.toComposeColor(),
         surfaceTint = currentTheme.primary.toComposeColor(),
-        inverseSurface = Color(0xFF313030),
-        inverseOnSurface = Color(0xFFF1F0F0),
+        inverseSurface = currentTheme.inverseSurface?.toComposeColor()
+            ?: currentTheme.onSurface.toComposeColor(),
+        inverseOnSurface = currentTheme.inverseOnSurface?.toComposeColor()
+            ?: currentTheme.surface.toComposeColor(),
 
         error = currentTheme.error.toComposeColor(),
         onError = currentTheme.onError.toComposeColor(),
@@ -61,9 +68,10 @@ fun GromozekaTheme(
         onErrorContainer = currentTheme.onErrorContainer.toComposeColor(),
 
         outline = currentTheme.outline.toComposeColor(),
-        outlineVariant = Color(0xFF444746),
+        outlineVariant = currentTheme.outlineVariant?.toComposeColor()
+            ?: currentTheme.outline.toComposeColor().copy(alpha = 0.55f),
 
-        scrim = Color(0xFF000000),
+        scrim = currentTheme.scrim?.toComposeColor() ?: Color.Black,
 
         surfaceDim = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.87f),
         surfaceBright = currentTheme.surface.toComposeColor().copy(alpha = 1.0f),
@@ -185,9 +193,30 @@ fun GromozekaMarkdown(
     content: String,
     modifier: Modifier = Modifier,
 ) {
+    val bodyStyle = MaterialTheme.typography.bodyMedium
+
     Markdown(
         content = content,
         modifier = modifier,
+        typography = markdownTypography(
+            h1 = MaterialTheme.typography.headlineLarge,
+            h2 = MaterialTheme.typography.headlineMedium,
+            h3 = MaterialTheme.typography.headlineSmall,
+            h4 = MaterialTheme.typography.titleLarge,
+            h5 = MaterialTheme.typography.titleMedium,
+            h6 = MaterialTheme.typography.titleSmall,
+            text = bodyStyle,
+            paragraph = bodyStyle,
+            ordered = bodyStyle,
+            bullet = bodyStyle,
+            list = bodyStyle,
+            textLink = TextLinkStyles(
+                style = bodyStyle.copy(
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = TextDecoration.Underline,
+                ).toSpanStyle(),
+            ),
+        ),
         padding = markdownPadding(
             block = 0.dp
         )

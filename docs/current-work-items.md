@@ -13,12 +13,13 @@ Status: design pending.
 
 ## UI typography and themes
 
-Status: pending.
+Status: implemented and verified in the web client.
 
-- Compare conversation typography with the surrounding application UI.
-- Verify that message rendering, including Markdown, follows the active theme's
-  typography and colors.
-- Check the built-in themes on desktop and web instead of tuning only one theme.
+- Conversation Markdown now uses the application's compact Material typography
+  scale instead of the renderer's oversized defaults.
+- Material inverse, outline, and scrim colors now follow the active theme rather
+  than dark-only hardcoded fallbacks.
+- Dark and Light built-in themes were verified in the web client.
 
 ## Web startup background
 
@@ -73,6 +74,5 @@ Status: complete.
 ## Working order
 
 1. Verify the startup background, memory progress, and conversation scrolling.
-2. Typography and theme consistency.
-3. Glyph coverage and font licensing.
-4. MCP configuration migration after its architecture is agreed.
+2. Glyph coverage and font licensing.
+3. MCP configuration migration after its architecture is agreed.
