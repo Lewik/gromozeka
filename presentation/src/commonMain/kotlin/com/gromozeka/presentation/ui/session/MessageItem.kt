@@ -1,6 +1,9 @@
 package com.gromozeka.presentation.ui.session
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.DisableSelection
@@ -8,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -65,6 +70,7 @@ fun MessageItem(
     }
 
     val selectionBorderColor = MaterialTheme.colorScheme.primary
+    val collapseAnimationTargets = remember(message.id) { mutableStateMapOf<Int, Boolean>() }
 
     Box(
         modifier = Modifier
@@ -211,7 +217,12 @@ fun MessageItem(
                                             shape = MaterialTheme.shapes.small
                                         )
                                         .padding(8.dp)
-                                        .animateContentSize()
+                                        .animateContentSizeOnExplicitToggle(
+                                            shouldAnimate = collapseAnimationTargets[contentIndex] == isContentCollapsed,
+                                            onAnimationFinished = {
+                                                collapseAnimationTargets.remove(contentIndex)
+                                            },
+                                        )
                                         .then(
                                             if (isContentCollapsed) {
                                                 Modifier
@@ -240,7 +251,10 @@ fun MessageItem(
                                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                             ) {
                                                 Box(
-                                                    modifier = Modifier.clickable { onToggleContentItemCollapse(message.id, contentIndex) }
+                                                    modifier = Modifier.clickable {
+                                                        collapseAnimationTargets[contentIndex] = !isContentCollapsed
+                                                        onToggleContentItemCollapse(message.id, contentIndex)
+                                                    }
                                                         .padding(8.dp)
                                                 ) {
                                                     Icon(
@@ -276,7 +290,12 @@ fun MessageItem(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(bottom = 8.dp)
-                                        .animateContentSize()
+                                        .animateContentSizeOnExplicitToggle(
+                                            shouldAnimate = collapseAnimationTargets[contentIndex] == isContentCollapsed,
+                                            onAnimationFinished = {
+                                                collapseAnimationTargets.remove(contentIndex)
+                                            },
+                                        )
                                         .then(
                                             if (isContentCollapsed) {
                                                 Modifier
@@ -306,7 +325,10 @@ fun MessageItem(
                                             ) {
                                                 // Chevron for collapse/expand
                                                 Box(
-                                                    modifier = Modifier.clickable { onToggleContentItemCollapse(message.id, contentIndex) }
+                                                    modifier = Modifier.clickable {
+                                                        collapseAnimationTargets[contentIndex] = !isContentCollapsed
+                                                        onToggleContentItemCollapse(message.id, contentIndex)
+                                                    }
                                                         .padding(8.dp)
                                                 ) {
                                                     Icon(
@@ -367,6 +389,22 @@ fun MessageItem(
             }
         }
 }
+
+private fun Modifier.animateContentSizeOnExplicitToggle(
+    shouldAnimate: Boolean,
+    onAnimationFinished: () -> Unit,
+): Modifier = animateContentSize(
+    animationSpec = if (shouldAnimate) {
+        spring(stiffness = Spring.StiffnessMediumLow)
+    } else {
+        snap()
+    },
+    finishedListener = { _, _ ->
+        if (shouldAnimate) {
+            onAnimationFinished()
+        }
+    },
+)
 
 @Composable
 private fun ContextCompactionResultItem(

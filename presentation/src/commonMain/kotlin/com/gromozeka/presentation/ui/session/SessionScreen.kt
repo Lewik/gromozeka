@@ -533,7 +533,10 @@ fun SessionScreen(
                     state = lazyListState,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items(filteredHistory) { message ->
+                    items(
+                        items = filteredHistory,
+                        key = { message -> message.id.value },
+                    ) { message ->
                         MessageItem(
                             message = message,
                             settings = settings,
