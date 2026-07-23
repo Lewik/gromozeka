@@ -1,11 +1,13 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.repository.PromptRepository
+import com.gromozeka.domain.repository.AgentSkillRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.PromptAssemblyService
@@ -29,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional
 class AgentApplicationService(
     private val agentRepository: AgentRepository,
     private val promptRepository: PromptRepository,
+    private val skillRepository: AgentSkillRepository,
     private val promptAssemblyService: PromptAssemblyService,
 ) : AgentDomainService, AgentPromptAssemblyService {
     private val log = KLoggers.logger(this)
@@ -53,7 +56,9 @@ class AgentApplicationService(
         runtimeSelection: AiRuntimeSelection,
         tools: List<String>,
         description: String?,
+        skills: List<AgentSkill.Id>,
     ): AgentDefinition {
+        validateSkills(projectId, skills)
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
         val agent = AgentDefinition(
@@ -61,6 +66,7 @@ class AgentApplicationService(
             projectId = projectId,
             name = name,
             prompts = prompts,
+            skills = skills,
             runtimeSelection = runtimeSelection,
             tools = tools,
             description = description,
@@ -78,10 +84,12 @@ class AgentApplicationService(
         name: String,
         prompts: List<Prompt.Id>,
         description: String?,
+        skills: List<AgentSkill.Id>,
     ): AgentDefinition {
         require(name.isNotBlank()) { "Agent name must not be blank" }
         require(prompts.isNotEmpty()) { "Agent must contain at least one prompt" }
         require(prompts.distinct().size == prompts.size) { "Agent prompts must not contain duplicates" }
+        validateSkills(projectId, skills)
 
         val source = agentRepository.findById(sourceAgentId)
             ?: error("Builtin agent not found: ${sourceAgentId.value}")
@@ -125,6 +133,7 @@ class AgentApplicationService(
             projectId = projectId,
             name = name.trim(),
             prompts = resolvedPromptIds,
+            skills = skills,
             description = description,
             type = AgentDefinition.Type.Project,
             createdAt = now,
@@ -176,13 +185,17 @@ class AgentApplicationService(
         id: AgentDefinition.Id,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>?,
         description: String?,
+        skills: List<AgentSkill.Id>?,
     ): AgentDefinition? {
         val agent = agentRepository.findById(id) ?: return null
+        val projectId = checkNotNull(agent.projectId) { "Builtin agents are immutable" }
+        skills?.let { validateSkills(projectId, it) }
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
         val updated = agent.copy(
             prompts = prompts ?: agent.prompts,
             description = description ?: agent.description,
+            skills = skills ?: agent.skills,
             updatedAt = now
         )
 
@@ -214,6 +227,24 @@ class AgentApplicationService(
      */
     override suspend fun count(): Int =
         agentRepository.count()
+
+    private suspend fun validateSkills(
+        projectId: Project.Id,
+        skillIds: List<AgentSkill.Id>,
+    ) {
+        require(skillIds.distinct().size == skillIds.size) {
+            "Agent skills must not contain duplicates"
+        }
+        val skills = skillRepository.findByIds(skillIds)
+        require(skills.size == skillIds.size) {
+            val foundIds = skills.mapTo(mutableSetOf()) { it.id }
+            val missing = skillIds.filterNot { it in foundIds }
+            "Agent skills not found: ${missing.joinToString { it.value }}"
+        }
+        require(skills.all { it.projectId == projectId }) {
+            "Agent skills must belong to project ${projectId.value}"
+        }
+    }
 
     private companion object {
         const val ENV_PROMPT_ID = "env"

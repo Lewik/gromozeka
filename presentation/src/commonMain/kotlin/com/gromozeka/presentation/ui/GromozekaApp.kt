@@ -470,6 +470,7 @@ fun GromozekaAppContent(
                                                                 AgentConstructorScreen(
                                                                     projectId = tabs.firstOrNull()?.projectId,
                                                                     agentService = appComponents.agentService,
+                                                                    agentSkillService = appComponents.agentSkillService,
                                                                     promptService = appComponents.promptService,
                                                                     settingsService = appComponents.settingsService,
                                                                     coroutineScope = coroutineScope,

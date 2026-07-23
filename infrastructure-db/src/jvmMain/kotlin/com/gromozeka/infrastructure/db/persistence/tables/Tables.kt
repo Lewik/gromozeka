@@ -58,6 +58,7 @@ internal object Agents : Table("agents") {
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
     val name = varchar("name", 255)
     val promptsJson = text("prompts_json")  // JSON array of Prompt IDs
+    val skillsJson = text("skills_json")
     val runtimeSelectionJson = text("runtime_selection_json")
     val runtimeOverridesJson = text("runtime_overrides_json")
     val toolsJson = text("tools_json")
@@ -67,6 +68,31 @@ internal object Agents : Table("agents") {
     val updatedAt = timestamp("updated_at")
 
     override val primaryKey = PrimaryKey(id)
+}
+
+internal object AgentSkills : Table("agent_skills") {
+    val id = varchar("id", 255)
+    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val name = varchar("name", 64)
+    val description = text("description")
+    val instructions = text("instructions")
+    val license = text("license").nullable()
+    val compatibility = text("compatibility").nullable()
+    val metadataJson = text("metadata_json")
+    val allowedTools = text("allowed_tools").nullable()
+    val contentHash = varchar("content_hash", 64)
+    val createdAt = timestamp("created_at")
+    val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object AgentSkillFiles : Table("agent_skill_files") {
+    val skillId = varchar("skill_id", 255).references(AgentSkills.id, onDelete = ReferenceOption.CASCADE)
+    val path = varchar("path", 1000)
+    val content = binary("content")
+
+    override val primaryKey = PrimaryKey(skillId, path)
 }
 
 internal object Conversations : Table("conversations") {

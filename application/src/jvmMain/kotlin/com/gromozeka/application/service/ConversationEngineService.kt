@@ -103,6 +103,7 @@ class ConversationEngineService(
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val workspaceService: WorkspaceDomainService,
     private val distributedToolCatalog: DistributedAiToolCatalog,
+    private val agentSkillRuntimeCatalogService: AgentSkillRuntimeCatalogService,
     private val toolRoutingService: ConversationRuntimeToolRoutingService,
     private val runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
 ) : ConversationRuntimeTaskRunner {
@@ -308,6 +309,7 @@ class ConversationEngineService(
                     project = context.project,
                     toolCalls = allToolCalls,
                     catalog = context.toolCatalog,
+                    runtimeWorkerId = worker.workerId,
                 )
             ) {
                 is ConversationRuntimeToolRoutingResult.Accepted -> {
@@ -857,7 +859,14 @@ class ConversationEngineService(
         } else {
             null
         }
-        val toolCatalog = distributedToolCatalog.snapshot(project)
+        val baseToolCatalog = distributedToolCatalog.snapshot(project)
+        val agentSkillRuntime = agentSkillRuntimeCatalogService.prepare(
+            agent = agent,
+            projectId = project.id,
+            runtimeWorkerId = worker.workerId,
+            toolCatalog = baseToolCatalog,
+        )
+        val toolCatalog = agentSkillRuntime.toolCatalog
         val availableTools = toolCatalog.tools
         val memoryPipelineTools = aiToolProvider.getTools()
             .supportedBy(runtimeWorkerDescriptor.capabilities)
@@ -867,6 +876,7 @@ class ConversationEngineService(
         val runtimeSystemPrompts = buildList {
             addAll(baseSystemPrompts)
             add(toolCatalog.environmentPrompt)
+            agentSkillRuntime.systemPrompt?.let(::add)
             AssistantResponseFormatContract.instruction(assistantResponseFormat)?.let(::add)
         }
 

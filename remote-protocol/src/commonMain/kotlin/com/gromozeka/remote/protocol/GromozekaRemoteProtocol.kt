@@ -3,6 +3,9 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkill
+import com.gromozeka.domain.model.AgentSkillPackage
+import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.MemoryAction
@@ -88,6 +91,7 @@ data class CreateAgentRequest(
     val runtimeSelection: AiRuntimeSelection,
     val tools: List<String> = emptyList(),
     val description: String? = null,
+    val skills: List<AgentSkill.Id> = emptyList(),
 ) : ClientRequest
 
 @Serializable
@@ -98,6 +102,7 @@ data class CopyBuiltinAgentRequest(
     val name: String,
     val prompts: List<Prompt.Id>,
     val description: String? = null,
+    val skills: List<AgentSkill.Id> = emptyList(),
 ) : ClientRequest
 
 @Serializable
@@ -106,6 +111,7 @@ data class UpdateAgentRequest(
     val agentId: AgentDefinition.Id,
     val prompts: List<Prompt.Id>? = null,
     val description: String? = null,
+    val skills: List<AgentSkill.Id>? = null,
 ) : ClientRequest
 
 @Serializable
@@ -117,6 +123,37 @@ data class DeleteAgentRequest(
 @Serializable
 @SerialName("count_agents")
 data object CountAgentsRequest : ClientRequest
+
+@Serializable
+@SerialName("find_agent_skills")
+data class FindAgentSkillsRequest(
+    val projectId: Project.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("find_agent_skill")
+data class FindAgentSkillRequest(
+    val skillId: AgentSkill.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("import_agent_skill")
+data class ImportAgentSkillRequest(
+    val projectId: Project.Id,
+    val source: AgentSkillPackageSource,
+) : ClientRequest
+
+@Serializable
+@SerialName("export_agent_skill")
+data class ExportAgentSkillRequest(
+    val skillId: AgentSkill.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("delete_agent_skill")
+data class DeleteAgentSkillRequest(
+    val skillId: AgentSkill.Id,
+) : ClientRequest
 
 @Serializable
 @SerialName("find_prompt")
@@ -538,6 +575,24 @@ data class AgentResponse(
 @SerialName("agents")
 data class AgentsResponse(
     val agents: List<AgentDefinition>,
+) : ServerResponse
+
+@Serializable
+@SerialName("agent_skill")
+data class AgentSkillResponse(
+    val skill: AgentSkill?,
+) : ServerResponse
+
+@Serializable
+@SerialName("agent_skills")
+data class AgentSkillsResponse(
+    val skills: List<AgentSkill>,
+) : ServerResponse
+
+@Serializable
+@SerialName("agent_skill_package")
+data class AgentSkillPackageResponse(
+    val skillPackage: AgentSkillPackage?,
 ) : ServerResponse
 
 @Serializable

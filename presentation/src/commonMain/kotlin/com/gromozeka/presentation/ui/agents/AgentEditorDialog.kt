@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.presentation.ui.session.BasicGromozekaDialog
 
@@ -22,12 +23,19 @@ fun AgentEditorDialog(
     agent: AgentDefinition? = null,
     copyMode: Boolean = false,
     prompts: List<Prompt>,
-    onSave: (name: String, selectedPrompts: List<Prompt.Id>, description: String?) -> Unit,
+    skills: List<AgentSkill>,
+    onSave: (
+        name: String,
+        selectedPrompts: List<Prompt.Id>,
+        selectedSkills: List<AgentSkill.Id>,
+        description: String?,
+    ) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(agent?.name ?: "") }
     var description by remember { mutableStateOf(agent?.description ?: "") }
     var selectedPromptIds by remember { mutableStateOf(agent?.prompts ?: emptyList()) }
+    var selectedSkillIds by remember { mutableStateOf(agent?.skills ?: emptyList()) }
     var nameError by remember { mutableStateOf<String?>(null) }
 
     BasicGromozekaDialog(onDismissRequest = onDismiss) {
@@ -247,6 +255,57 @@ fun AgentEditorDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                Text(
+                    text = "Agent Skills (${selectedSkillIds.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (skills.isEmpty()) {
+                    Text(
+                        text = "No project skills available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 144.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        items(skills) { skill ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = skill.id in selectedSkillIds,
+                                    onCheckedChange = { checked ->
+                                        selectedSkillIds = if (checked) {
+                                            selectedSkillIds + skill.id
+                                        } else {
+                                            selectedSkillIds.filterNot { it == skill.id }
+                                        }
+                                    },
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(skill.name, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        skill.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
@@ -268,6 +327,7 @@ fun AgentEditorDialog(
                             onSave(
                                 name.trim(),
                                 selectedPromptIds,
+                                selectedSkillIds,
                                 description.trim().takeIf { it.isNotEmpty() }
                             )
                         }

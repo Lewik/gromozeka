@@ -95,7 +95,8 @@ class DistributedAiToolCatalog(
                         )
                     }
                     .filter {
-                        descriptor.metadata.executionScope == AiToolExecutionScope.WORKER ||
+                        descriptor.metadata.executionScope == AiToolExecutionScope.CONVERSATION_RUNTIME ||
+                            descriptor.metadata.executionScope == AiToolExecutionScope.WORKER ||
                             descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
                             it.workspaceMounts.isNotEmpty()
                     }
@@ -143,6 +144,7 @@ class DistributedAiToolCatalog(
 
     private fun String.withExecutionTargetDescription(scope: AiToolExecutionScope): String {
         val targetDescription = when (scope) {
+            AiToolExecutionScope.CONVERSATION_RUNTIME -> return this
             AiToolExecutionScope.WORKER ->
                 "Select the exact online worker in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.WORKSPACE ->
@@ -160,7 +162,10 @@ class DistributedAiToolCatalog(
             "Tool '${tool.descriptor.definition.name}' already declares reserved field " +
                 "'$AI_TOOL_EXECUTION_TARGET_FIELD'"
         }
-        if (tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER) {
+        if (
+            tool.descriptor.metadata.executionScope == AiToolExecutionScope.CONVERSATION_RUNTIME ||
+            tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER
+        ) {
             return schema.toString()
         }
         val required = schema["required"]?.jsonArray.orEmpty()

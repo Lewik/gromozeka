@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -45,6 +46,7 @@ class GromozekaRemoteServer(
     private val settingsService: SettingsService,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val agentDomainService: AgentDomainService,
+    private val agentSkillDomainService: AgentSkillDomainService,
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
     private val conversationTabLayoutService: ConversationTabLayoutService,
@@ -148,6 +150,7 @@ class GromozekaRemoteServer(
                         request.runtimeSelection,
                         request.tools,
                         request.description,
+                        request.skills,
                     )
                 )
                 is CopyBuiltinAgentRequest -> AgentResponse(
@@ -157,16 +160,38 @@ class GromozekaRemoteServer(
                         request.name,
                         request.prompts,
                         request.description,
+                        request.skills,
                     )
                 )
                 is UpdateAgentRequest -> AgentResponse(
-                    agentDomainService.update(request.agentId, request.prompts, request.description)
+                    agentDomainService.update(
+                        request.agentId,
+                        request.prompts,
+                        request.description,
+                        request.skills,
+                    )
                 )
                 is DeleteAgentRequest -> {
                     agentDomainService.delete(request.agentId)
                     SavedResponse
                 }
                 CountAgentsRequest -> CountResponse(agentDomainService.count())
+                is FindAgentSkillsRequest -> AgentSkillsResponse(
+                    agentSkillDomainService.findByProject(request.projectId)
+                )
+                is FindAgentSkillRequest -> AgentSkillResponse(
+                    agentSkillDomainService.findById(request.skillId)
+                )
+                is ImportAgentSkillRequest -> AgentSkillResponse(
+                    agentSkillDomainService.importPackage(request.projectId, request.source)
+                )
+                is ExportAgentSkillRequest -> AgentSkillPackageResponse(
+                    agentSkillDomainService.exportPackage(request.skillId)
+                )
+                is DeleteAgentSkillRequest -> {
+                    agentSkillDomainService.delete(request.skillId)
+                    SavedResponse
+                }
                 is FindPromptRequest -> PromptResponse(promptDomainService.findById(request.promptId))
                 is FindPromptsRequest -> PromptsResponse(
                     request.projectId?.let { promptDomainService.findByProject(it) }

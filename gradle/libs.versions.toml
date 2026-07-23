@@ -8,6 +8,7 @@ agp = "8.10.1"
 ktor = "3.4.3"
 spring-boot = "3.5.4"
 spring-dependency-management = "1.1.7"
+snakeyaml = "2.6"
 jetbrains-compose = "1.11.1"
 junit = "5.13.4"
 mockk = "1.14.5"
@@ -69,6 +70,7 @@ aws-sdk-ssooidc = { module = "software.amazon.awssdk:ssooidc", version.ref = "aw
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
 spring-boot-starter-amqp = { module = "org.springframework.boot:spring-boot-starter-amqp", version.ref = "spring-boot" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
+snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 
 # Kotlinx
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }

@@ -6,6 +6,7 @@ import com.gromozeka.client.RemoteLiveInterpreterService
 import com.gromozeka.client.RemoteMemoryActionItemService
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
@@ -56,6 +57,7 @@ data class AppComponents(
     val loadingViewModel: LoadingViewModel,
     val tabPromptService: TabPromptService,
     val agentService: AgentDomainService,
+    val agentSkillService: AgentSkillDomainService,
     val promptService: PromptDomainService,
     val deviceLocationService: DeviceLocationService,
 )

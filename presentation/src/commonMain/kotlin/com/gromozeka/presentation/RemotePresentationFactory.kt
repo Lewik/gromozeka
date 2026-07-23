@@ -133,6 +133,7 @@ suspend fun createRemoteAppComponents(
             loadingViewModel = LoadingViewModel(),
             tabPromptService = TabPromptService(remoteServices.promptService),
             agentService = remoteServices.agentService,
+            agentSkillService = remoteServices.agentSkillService,
             promptService = remoteServices.promptService,
             deviceLocationService = deviceLocationService,
         ),

@@ -14,9 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkill
+import com.gromozeka.domain.model.AgentSkillFile
+import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -31,15 +35,17 @@ private val log = KLoggers.logger("AgentConstructorScreen")
 fun AgentConstructorScreen(
     projectId: Project.Id?,
     agentService: AgentDomainService,
+    agentSkillService: AgentSkillDomainService,
     promptService: PromptDomainService,
     settingsService: SettingsService,
     coroutineScope: CoroutineScope,
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableStateOf(0) } // 0 = Agents, 1 = Prompts
+    var selectedTab by remember { mutableStateOf(0) }
     
     var agents by remember { mutableStateOf<List<AgentDefinition>>(emptyList()) }
     var prompts by remember { mutableStateOf<List<Prompt>>(emptyList()) }
+    var skills by remember { mutableStateOf<List<AgentSkill>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -53,6 +59,10 @@ fun AgentConstructorScreen(
     // Prompt dialogs
     var viewingPrompt by remember { mutableStateOf<Prompt?>(null) }
     var showPromptCreateDialog by remember { mutableStateOf(false) }
+
+    var showSkillCreateDialog by remember { mutableStateOf(false) }
+    var viewingSkill by remember { mutableStateOf<AgentSkill?>(null) }
+    var deletingSkill by remember { mutableStateOf<AgentSkill?>(null) }
     
     // Prompt filters
     var selectedPromptTypes by remember { mutableStateOf(setOf(0, 1)) }
@@ -81,7 +91,8 @@ fun AgentConstructorScreen(
                 ?: agentService.findAll().filter { it.type is AgentDefinition.Type.Builtin }
             prompts = projectId?.let { promptService.findByProject(it) }
                 ?: promptService.findAll().filter { it.type is Prompt.Type.Builtin }
-            log.info { "Loaded ${agents.size} agents and ${prompts.size} prompts" }
+            skills = projectId?.let { agentSkillService.findByProject(it) }.orEmpty()
+            log.info { "Loaded ${agents.size} agents, ${prompts.size} prompts, and ${skills.size} skills" }
         } catch (e: Exception) {
             error = "Failed to load data: ${e.message}"
             log.error(e) { "Error loading data" }
@@ -90,7 +101,7 @@ fun AgentConstructorScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(projectId) {
         loadData()
     }
 
@@ -133,6 +144,13 @@ fun AgentConstructorScreen(
                             1 -> {
                                 showPromptCreateDialog = true
                             }
+                            2 -> {
+                                if (projectId == null) {
+                                    error = "Open a project before creating an Agent Skill"
+                                } else {
+                                    showSkillCreateDialog = true
+                                }
+                            }
                         }
                     }
                 ) {
@@ -141,7 +159,13 @@ fun AgentConstructorScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Add new")
-                        Text(if (selectedTab == 0) "New Agent" else "New Prompt")
+                        Text(
+                            when (selectedTab) {
+                                0 -> "New Agent"
+                                1 -> "New Prompt"
+                                else -> "New Skill"
+                            }
+                        )
                     }
                 }
             }
@@ -160,6 +184,11 @@ fun AgentConstructorScreen(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
                 text = { Text("Prompts") }
+            )
+            Tab(
+                selected = selectedTab == 2,
+                onClick = { selectedTab = 2 },
+                text = { Text("Skills") }
             )
         }
 
@@ -400,6 +429,74 @@ fun AgentConstructorScreen(
                     }
                 }
             }
+
+            selectedTab == 2 -> {
+                if (projectId == null) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "Open a project to manage Agent Skills",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else if (skills.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Text(
+                                "No Agent Skills yet",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Button(onClick = { showSkillCreateDialog = true }) {
+                                Icon(Icons.Default.Add, contentDescription = "New Skill")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Create Skill")
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(skills) { skill ->
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(skill.name, style = MaterialTheme.typography.titleMedium)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            skill.description,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    TextButton(onClick = { viewingSkill = skill }) {
+                                        Text("View")
+                                    }
+                                    IconButton(onClick = { deletingSkill = skill }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete Skill")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -409,7 +506,8 @@ fun AgentConstructorScreen(
             agent = editingAgent ?: copyingAgent,
             copyMode = copyingAgent != null,
             prompts = prompts,
-            onSave = { name, selectedPrompts, description ->
+            skills = skills,
+            onSave = { name, selectedPrompts, selectedSkills, description ->
                 coroutineScope.launch {
                     try {
                         val sourceAgent = copyingAgent
@@ -423,6 +521,7 @@ fun AgentConstructorScreen(
                                 name = name,
                                 prompts = selectedPrompts,
                                 description = description,
+                                skills = selectedSkills,
                             )
                             log.info { "Copied builtin agent ${sourceAgent.name} into project" }
                         } else if (editingAgent == null) {
@@ -437,13 +536,15 @@ fun AgentConstructorScreen(
                                     AiRuntimeAssignment.Purpose.DEFAULT_CHAT
                                 ),
                                 description = description,
+                                skills = selectedSkills,
                             )
                             log.info { "Created new agent: $name" }
                         } else {
                             agentService.update(
                                 id = editingAgent!!.id,
                                 prompts = selectedPrompts,
-                                description = description
+                                description = description,
+                                skills = selectedSkills,
                             )
                             log.info { "Updated agent: ${editingAgent!!.name}" }
                         }
@@ -539,4 +640,100 @@ fun AgentConstructorScreen(
             }
         )
     }
+
+    if (showSkillCreateDialog) {
+        AgentSkillCreateDialog(
+            onSave = { name, description, instructions ->
+                coroutineScope.launch {
+                    try {
+                        val targetProjectId = checkNotNull(projectId) {
+                            "Open a project before creating an Agent Skill"
+                        }
+                        agentSkillService.importPackage(
+                            projectId = targetProjectId,
+                            source = AgentSkillPackageSource(
+                                directoryName = name,
+                                files = listOf(
+                                    AgentSkillFile(
+                                        path = "SKILL.md",
+                                        content = buildAgentSkillMarkdown(
+                                            name = name,
+                                            description = description,
+                                            instructions = instructions,
+                                        ).encodeToByteArray(),
+                                    )
+                                ),
+                            ),
+                        )
+                        loadData()
+                        showSkillCreateDialog = false
+                    } catch (e: Exception) {
+                        error = "Failed to create Agent Skill: ${e.message}"
+                        log.error(e) { "Error creating Agent Skill" }
+                    }
+                }
+            },
+            onDismiss = { showSkillCreateDialog = false },
+        )
+    }
+
+    viewingSkill?.let { skill ->
+        AgentSkillDetailsDialog(
+            skill = skill,
+            onDismiss = { viewingSkill = null },
+        )
+    }
+
+    deletingSkill?.let { skill ->
+        AlertDialog(
+            onDismissRequest = { deletingSkill = null },
+            title = { Text("Delete Agent Skill?") },
+            text = { Text("Delete \"${skill.name}\"? Assigned skills cannot be deleted.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            try {
+                                agentSkillService.delete(skill.id)
+                                loadData()
+                                deletingSkill = null
+                            } catch (e: Exception) {
+                                error = "Failed to delete Agent Skill: ${e.message}"
+                                deletingSkill = null
+                                log.error(e) { "Error deleting Agent Skill" }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingSkill = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 }
+
+private fun buildAgentSkillMarkdown(
+    name: String,
+    description: String,
+    instructions: String,
+): String =
+    buildString {
+        appendLine("---")
+        append("name: ")
+        appendLine(name)
+        appendLine("description: |-")
+        description.lineSequence().forEach { line ->
+            append("  ")
+            appendLine(line)
+        }
+        appendLine("---")
+        appendLine(instructions)
+    }

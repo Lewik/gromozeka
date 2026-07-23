@@ -1,6 +1,7 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -38,6 +39,7 @@ interface AgentDomainService {
         runtimeSelection: AiRuntimeSelection,
         tools: List<String> = emptyList(),
         description: String? = null,
+        skills: List<AgentSkill.Id> = emptyList(),
     ): AgentDefinition
 
     /**
@@ -52,6 +54,7 @@ interface AgentDomainService {
         name: String,
         prompts: List<Prompt.Id>,
         description: String? = null,
+        skills: List<AgentSkill.Id> = emptyList(),
     ): AgentDefinition
 
     /**
@@ -85,7 +88,8 @@ interface AgentDomainService {
     suspend fun update(
         id: AgentDefinition.Id,
         prompts: List<Prompt.Id>? = null,
-        description: String? = null
+        description: String? = null,
+        skills: List<AgentSkill.Id>? = null,
     ): AgentDefinition?
 
     /**

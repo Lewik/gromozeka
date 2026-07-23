@@ -42,6 +42,7 @@ data class AiToolMetadata(
 
 @Serializable
 enum class AiToolExecutionScope {
+    CONVERSATION_RUNTIME,
     WORKER,
     WORKSPACE,
     COMMAND_TASK_OWNER,

@@ -25,6 +25,7 @@ import kotlin.jvm.JvmInline
  * @property projectId owning project for project definitions, null for builtins
  * @property name agent role name displayed in UI (e.g., "Code Reviewer", "Researcher")
  * @property prompts ordered list of prompt IDs defining agent behavior
+ * @property skills Agent Skills available to the agent through progressive disclosure
  * @property runtimeSelection model configuration used to create the runtime for this agent.
  * @property runtimeOverrides optional per-agent overrides on top of the selected model configuration.
  * @property tools list of available tool names for this agent
@@ -39,6 +40,7 @@ data class AgentDefinition(
     val projectId: Project.Id? = null,
     val name: String,
     val prompts: List<Prompt.Id>,
+    val skills: List<AgentSkill.Id> = emptyList(),
     val runtimeSelection: AiRuntimeSelection,
     val runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
     val tools: List<String> = emptyList(), // tool names to resolve via ToolRegistry

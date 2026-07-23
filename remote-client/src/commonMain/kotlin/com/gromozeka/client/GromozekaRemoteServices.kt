@@ -1,6 +1,7 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeService
@@ -44,6 +45,7 @@ class GromozekaRemoteServices(
     val settingsService: SettingsService = remoteSettingsService
     val defaultAgentProvider: DefaultAgentProvider = remoteAgentService
     val agentService: AgentDomainService = remoteAgentService
+    val agentSkillService: AgentSkillDomainService = RemoteAgentSkillService(client)
     val promptService: PromptDomainService = RemotePromptService(client)
     val projectService: ProjectDomainService = RemoteProjectService(client)
     private val remoteWorkspaceService = RemoteWorkspaceCatalogService(client)

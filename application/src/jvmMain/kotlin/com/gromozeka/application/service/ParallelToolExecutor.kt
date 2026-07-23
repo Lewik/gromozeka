@@ -14,6 +14,7 @@ import klog.KLoggers
 import kotlinx.coroutines.*
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.jsonObject
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import kotlin.coroutines.coroutineContext
@@ -65,6 +66,11 @@ class ParallelToolExecutor(
             val callback = callbackMap[toolCall.call.name]
                 ?: error("Worker does not advertise requested tool: ${toolCall.call.name}")
             when (callback.metadata.executionScope) {
+                AiToolExecutionScope.CONVERSATION_RUNTIME -> {
+                    require(AI_TOOL_EXECUTION_TARGET_FIELD !in toolCall.call.input.jsonObject) {
+                        "Conversation runtime tool ${toolCall.call.name} must not declare execution_target"
+                    }
+                }
                 AiToolExecutionScope.WORKER -> {
                     val requestedTarget = toolCall.call.input.parseExecutionTarget()
                     require(requestedTarget.workerId == expectedTarget.workerId) {

@@ -15,6 +15,8 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolDescriptor
+import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -48,6 +50,57 @@ class DistributedAiToolRoutingTest {
         ),
         metadata = LocalAgentToolMetadata,
     )
+    private val conversationRuntimeTool = AiToolDescriptor(
+        definition = AiToolDefinition(
+            name = "activate_test_skill",
+            description = "Activate a test skill.",
+            inputSchema = """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}""",
+        ),
+        metadata = AiToolMetadata(executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME),
+    )
+
+    @Test
+    fun `conversation runtime tools route to current worker without explicit target`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(conversationRuntimeTool))
+        registerWorker(workerRegistry, "worker-b", listOf(conversationRuntimeTool))
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = emptyList(),
+            mounts = emptyList(),
+        )
+        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val routing = ConversationRuntimeToolRoutingService(
+            runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
+            workspaceService = workspaceService,
+        )
+        val call = Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("activate-skill"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = conversationRuntimeTool.definition.name,
+                input = JsonObject(mapOf("name" to JsonPrimitive("test-skill"))),
+            ),
+        )
+
+        val accepted = routing.route(
+            conversation = conversation(project.id),
+            project = project,
+            toolCalls = listOf(call),
+            catalog = catalog,
+            runtimeWorkerId = ConversationRuntimeWorkerId("worker-b"),
+        )
+        val rejected = routing.route(
+            conversation = conversation(project.id),
+            project = project,
+            toolCalls = listOf(call),
+            catalog = catalog,
+        )
+
+        assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
+        assertEquals(ConversationRuntimeWorkerId("worker-b"), accepted.requirements.target?.workerId)
+        assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)
+        assertTrue(rejected.errors.single().message.contains("unavailable"))
+    }
 
     @Test
     fun `catalog exposes only workspace mounts from current project`() = runBlocking {

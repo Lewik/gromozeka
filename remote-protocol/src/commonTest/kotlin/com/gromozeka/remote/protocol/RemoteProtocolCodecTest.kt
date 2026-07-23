@@ -1,6 +1,8 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkillFile
+import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.Project
@@ -26,6 +28,47 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RemoteProtocolCodecTest {
+    @Test
+    fun roundTripSupportsAgentSkillPackages() {
+        val skillFile = AgentSkillFile(
+            path = "references/checklist.md",
+            content = byteArrayOf(0, 1, 2, 127, -1),
+        )
+        val envelope = GromozekaClientEnvelope(
+            id = "import-skill-1",
+            payload = ImportAgentSkillRequest(
+                projectId = Project.Id("project-1"),
+                source = AgentSkillPackageSource(
+                    directoryName = "release-check",
+                    files = listOf(
+                        AgentSkillFile(
+                            path = "SKILL.md",
+                            content = """
+                                ---
+                                name: release-check
+                                description: Verify releases.
+                                ---
+                                Follow the checklist.
+                            """.trimIndent().encodeToByteArray(),
+                        ),
+                        skillFile,
+                    ),
+                ),
+            ),
+        )
+
+        val jsonDecoded = RemoteProtocolCodec.decodeClientText(
+            RemoteProtocolCodec.encodeClientText(envelope)
+        ).payload as ImportAgentSkillRequest
+        val cborDecoded = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(envelope)
+        ).payload as ImportAgentSkillRequest
+
+        assertEquals("release-check", jsonDecoded.source.directoryName)
+        assertContentEquals(skillFile.content, jsonDecoded.source.files.last().content)
+        assertContentEquals(skillFile.content, cborDecoded.source.files.last().content)
+    }
+
     @Test
     fun roundTripSupportsProjectWorkspaceAndSharedTabManagement() {
         val updateProject = GromozekaClientEnvelope(

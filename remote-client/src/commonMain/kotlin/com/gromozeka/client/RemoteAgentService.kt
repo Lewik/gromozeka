@@ -1,6 +1,7 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
@@ -41,9 +42,10 @@ internal class RemoteAgentService(
         runtimeSelection: AiRuntimeSelection,
         tools: List<String>,
         description: String?,
+        skills: List<AgentSkill.Id>,
     ): AgentDefinition =
         client.requestTyped<CreateAgentRequest, AgentResponse>(
-            CreateAgentRequest(projectId, name, prompts, runtimeSelection, tools, description)
+            CreateAgentRequest(projectId, name, prompts, runtimeSelection, tools, description, skills)
         ).agent ?: error("Server returned null agent after create")
 
     override suspend fun copyBuiltinAgent(
@@ -52,17 +54,21 @@ internal class RemoteAgentService(
         name: String,
         prompts: List<Prompt.Id>,
         description: String?,
+        skills: List<AgentSkill.Id>,
     ): AgentDefinition =
         client.requestTyped<CopyBuiltinAgentRequest, AgentResponse>(
-            CopyBuiltinAgentRequest(projectId, sourceAgentId, name, prompts, description)
+            CopyBuiltinAgentRequest(projectId, sourceAgentId, name, prompts, description, skills)
         ).agent ?: error("Server returned null agent after builtin copy")
 
     override suspend fun update(
         id: AgentDefinition.Id,
         prompts: List<Prompt.Id>?,
         description: String?,
+        skills: List<AgentSkill.Id>?,
     ): AgentDefinition? =
-        client.requestTyped<UpdateAgentRequest, AgentResponse>(UpdateAgentRequest(id, prompts, description)).agent
+        client.requestTyped<UpdateAgentRequest, AgentResponse>(
+            UpdateAgentRequest(id, prompts, description, skills)
+        ).agent
 
     override suspend fun delete(id: AgentDefinition.Id) {
         client.requestTyped<DeleteAgentRequest, SavedResponse>(DeleteAgentRequest(id))

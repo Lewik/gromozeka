@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
@@ -111,6 +112,7 @@ class ExposedAgentRepository(
             Agents.update({ Agents.id eq agent.id.value }) {
                 it[name] = agent.name
                 it[promptsJson] = json.encodeToString(agent.prompts)
+                it[skillsJson] = json.encodeToString(agent.skills)
                 it[runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
                 it[runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
                 it[toolsJson] = json.encodeToString(agent.tools)
@@ -130,6 +132,7 @@ class ExposedAgentRepository(
             it[Agents.projectId] = projectId.value
             it[name] = agent.name
             it[promptsJson] = json.encodeToString(agent.prompts)
+            it[skillsJson] = json.encodeToString(agent.skills)
             it[runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
             it[runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
             it[toolsJson] = json.encodeToString(agent.tools)
@@ -181,6 +184,7 @@ class ExposedAgentRepository(
             projectId = Project.Id(this[Agents.projectId]),
             name = this[Agents.name],
             prompts = json.decodeFromString<List<Prompt.Id>>(this[Agents.promptsJson]),
+            skills = json.decodeFromString<List<AgentSkill.Id>>(this[Agents.skillsJson]),
             runtimeSelection = json.decodeFromString<AiRuntimeSelection>(this[Agents.runtimeSelectionJson]),
             runtimeOverrides = json.decodeFromString<AiRuntimeOverrides>(this[Agents.runtimeOverridesJson]),
             tools = json.decodeFromString<List<String>>(this[Agents.toolsJson]),

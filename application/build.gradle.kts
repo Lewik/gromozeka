@@ -13,6 +13,7 @@ kotlin {
                 implementation(project(":domain"))  // Transitively provides :shared
                 
                 implementation(libs.spring.boot.starter)
+                implementation(libs.snakeyaml)
                 implementation("org.springframework:spring-tx:6.2.2")
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)

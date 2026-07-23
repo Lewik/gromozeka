@@ -52,6 +52,7 @@ class ConversationRuntimeToolRoutingService(
         project: Project,
         toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
         catalog: DistributedAiToolCatalogSnapshot,
+        runtimeWorkerId: ConversationRuntimeWorkerId? = null,
     ): ConversationRuntimeToolRoutingResult {
         val resolved = mutableListOf<ResolvedToolCall>()
         val errors = mutableListOf<ConversationRuntimeToolRoutingError>()
@@ -66,6 +67,12 @@ class ConversationRuntimeToolRoutingService(
             }
 
             val target = when (entry.descriptor.metadata.executionScope) {
+                AiToolExecutionScope.CONVERSATION_RUNTIME -> resolveRuntimeWorkerTarget(
+                    toolCall = toolCall,
+                    entry = entry,
+                    runtimeWorkerId = runtimeWorkerId,
+                    errors = errors,
+                )
                 AiToolExecutionScope.WORKER -> resolveWorkerTarget(toolCall, entry, errors)
                 AiToolExecutionScope.WORKSPACE -> resolveMountTarget(
                     conversation = conversation,
@@ -130,6 +137,34 @@ class ConversationRuntimeToolRoutingService(
             ),
             returnDirect = resolved.all { it.returnDirect },
         )
+    }
+
+    private fun resolveRuntimeWorkerTarget(
+        toolCall: Conversation.Message.ContentItem.ToolCall,
+        entry: DistributedAiTool,
+        runtimeWorkerId: ConversationRuntimeWorkerId?,
+        errors: MutableList<ConversationRuntimeToolRoutingError>,
+    ): ConversationRuntimeTaskTarget? {
+        if (AI_TOOL_EXECUTION_TARGET_FIELD in toolCall.call.input.jsonObject) {
+            errors += toolCall.routingError(
+                "Tool '${toolCall.call.name}' executes in the current conversation runtime " +
+                    "and must not declare execution_target."
+            )
+            return null
+        }
+        if (runtimeWorkerId == null) {
+            errors += toolCall.routingError(
+                "Current conversation runtime worker is unavailable for tool '${toolCall.call.name}'."
+            )
+            return null
+        }
+        if (entry.workers.none { it.workerId == runtimeWorkerId }) {
+            errors += toolCall.routingError(
+                "Current worker '${runtimeWorkerId.value}' does not advertise tool '${toolCall.call.name}'."
+            )
+            return null
+        }
+        return ConversationRuntimeTaskTarget(workerId = runtimeWorkerId)
     }
 
     private fun resolveWorkerTarget(
