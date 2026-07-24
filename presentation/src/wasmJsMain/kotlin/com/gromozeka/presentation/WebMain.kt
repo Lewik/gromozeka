@@ -28,6 +28,7 @@ import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.ui.GromozekaTheme
 import kotlinx.browser.document
 import kotlinx.browser.window
+import org.w3c.dom.events.Event
 
 private data class WebLayoutHints(
     val uiScaleMultiplier: Float,
@@ -58,6 +59,7 @@ private fun GromozekaWebApp() {
                 remoteUrl = resolveRemoteUrl(),
                 scope = scope,
                 clientHomeDirectory = "browser",
+                clientPlatform = layoutHints.clientPlatform,
                 uiStateStore = BrowserUIStateStore(),
                 remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
                 audioRecorder = BrowserClientAudioRecorder(),
@@ -73,6 +75,26 @@ private fun GromozekaWebApp() {
     DisposableEffect(Unit) {
         onDispose {
             currentRemoteApp?.close()
+        }
+    }
+
+    DisposableEffect(remoteApp) {
+        val app = remoteApp ?: return@DisposableEffect onDispose {}
+        val reportFocus = {
+            if (document.hasFocus()) {
+                app.components.clientPresentationService.reportWindowFocused()
+            }
+        }
+        val focusListener: (Event) -> Unit = { reportFocus() }
+        val visibilityListener: (Event) -> Unit = { reportFocus() }
+
+        window.addEventListener("focus", focusListener)
+        document.addEventListener("visibilitychange", visibilityListener)
+        reportFocus()
+
+        onDispose {
+            window.removeEventListener("focus", focusListener)
+            document.removeEventListener("visibilitychange", visibilityListener)
         }
     }
 

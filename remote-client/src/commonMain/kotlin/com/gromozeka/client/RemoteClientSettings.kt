@@ -1,5 +1,6 @@
 package com.gromozeka.client
 
+import com.gromozeka.remote.protocol.ClientInstanceId
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,6 +10,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class RemoteClientSettings(
     val protocolEncoding: RemoteProtocolEncoding = RemoteProtocolEncoding.CBOR,
+    val clientInstanceId: ClientInstanceId? = null,
 )
 
 interface RemoteClientSettingsStore {

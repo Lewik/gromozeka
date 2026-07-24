@@ -27,6 +27,7 @@ import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlin.jvm.JvmInline
 
 @Serializable
 data class GromozekaClientEnvelope(
@@ -55,6 +56,46 @@ sealed interface ClientRequest : ClientPayload
 @Serializable
 @JsonClassDiscriminator("responseType")
 sealed interface ServerResponse : ServerPayload
+
+@Serializable
+sealed interface ClientPresentationDirective : ServerPayload
+
+@Serializable
+@JvmInline
+value class ClientInstanceId(val value: String)
+
+@Serializable
+@JvmInline
+value class ClientSessionId(val value: String)
+
+@Serializable
+enum class RemoteClientPlatform {
+    DESKTOP,
+    ANDROID,
+    IOS,
+    WEB_DESKTOP,
+    WEB_TOUCH,
+}
+
+@Serializable
+enum class ClientActivityKind {
+    WINDOW_FOCUSED,
+    USER_INTERACTION,
+}
+
+@Serializable
+@SerialName("register_client_session")
+data class RegisterClientSessionCommand(
+    val clientInstanceId: ClientInstanceId,
+    val clientSessionId: ClientSessionId,
+    val platform: RemoteClientPlatform,
+) : ClientPayload
+
+@Serializable
+@SerialName("report_client_activity")
+data class ReportClientActivityCommand(
+    val kind: ClientActivityKind,
+) : ClientPayload
 
 @Serializable
 @SerialName("get_settings")
@@ -775,6 +816,18 @@ data class MessageUpsertedEvent(
     val message: Conversation.Message,
     val cursorSequence: Long? = null,
 ) : ServerPayload
+
+@Serializable
+@SerialName("play_message_tts")
+data class PlayMessageTtsDirective(
+    val messageId: Conversation.Message.Id,
+    val text: String,
+    val tone: String,
+) : ClientPresentationDirective
+
+@Serializable
+@SerialName("stop_tts")
+data object StopTtsDirective : ClientPresentationDirective
 
 @Serializable
 @SerialName("conversation_execution_completed")

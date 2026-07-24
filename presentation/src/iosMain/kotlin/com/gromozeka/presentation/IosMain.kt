@@ -20,11 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.uikit.OnFocusBehavior
 import androidx.compose.ui.window.ComposeUIViewController
 import com.gromozeka.client.GromozekaRemoteDefaults
-import com.gromozeka.client.InMemoryRemoteClientSettingsStore
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.IosClientAudioPlayer
 import com.gromozeka.presentation.services.IosClientAudioRecorder
+import com.gromozeka.presentation.services.IosRemoteClientSettingsStore
 import com.gromozeka.presentation.services.PTTEvent
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
@@ -54,8 +54,9 @@ private fun GromozekaIosApp() {
                 remoteUrl = GromozekaRemoteDefaults.REMOTE_URL,
                 scope = scope,
                 clientHomeDirectory = "ios",
+                clientPlatform = ClientPlatform.IOS,
                 uiStateStore = InMemoryUIStateStore(),
-                remoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
+                remoteClientSettingsStore = IosRemoteClientSettingsStore(),
                 audioRecorder = IosClientAudioRecorder(),
                 audioPlayer = IosClientAudioPlayer(),
                 deviceLocationService = NoOpDeviceLocationService,

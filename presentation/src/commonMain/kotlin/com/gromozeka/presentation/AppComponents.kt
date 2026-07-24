@@ -2,6 +2,7 @@ package com.gromozeka.presentation
 
 import com.gromozeka.client.RemoteClientSettingsService
 import com.gromozeka.client.RemoteConnectionState
+import com.gromozeka.client.RemoteClientPresentationService
 import com.gromozeka.client.RemoteLiveInterpreterService
 import com.gromozeka.client.RemoteMemoryActionItemService
 import com.gromozeka.device.telemetry.DeviceLocationService
@@ -36,6 +37,7 @@ data class AppComponents(
     val settingsService: com.gromozeka.domain.service.SettingsService,
     val remoteClientSettingsService: RemoteClientSettingsService,
     val remoteConnectionState: StateFlow<RemoteConnectionState>,
+    val clientPresentationService: RemoteClientPresentationService,
     val memoryActionItemService: RemoteMemoryActionItemService,
     val liveInterpreterService: RemoteLiveInterpreterService,
     val clientSideSpeechToTextService: ClientSideSpeechToTextService,

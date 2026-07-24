@@ -15,6 +15,9 @@ import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import io.ktor.client.HttpClient
+import com.gromozeka.remote.protocol.ClientInstanceId
+import com.gromozeka.remote.protocol.RemoteClientPlatform
+import com.gromozeka.shared.uuid.uuid7
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 
@@ -23,17 +26,35 @@ class GromozekaRemoteServices(
     httpClient: HttpClient? = null,
     scope: CoroutineScope,
     clientHomeDirectory: String,
+    clientPlatform: RemoteClientPlatform,
     clientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
 ) {
-    private val initialClientSettings = clientSettingsStore.load() ?: RemoteClientSettings()
+    private val initialClientSettings = (clientSettingsStore.load() ?: RemoteClientSettings())
+        .let { settings ->
+            if (settings.clientInstanceId != null) {
+                settings
+            } else {
+                settings.copy(clientInstanceId = ClientInstanceId(uuid7()))
+                    .also(clientSettingsStore::save)
+            }
+        }
+    private val clientInstanceId = requireNotNull(initialClientSettings.clientInstanceId)
     private val client = if (httpClient == null) {
-        GromozekaWsClient(url = url, encoding = initialClientSettings.protocolEncoding, scope = scope)
+        GromozekaWsClient(
+            url = url,
+            encoding = initialClientSettings.protocolEncoding,
+            scope = scope,
+            clientInstanceId = clientInstanceId,
+            clientPlatform = clientPlatform,
+        )
     } else {
         GromozekaWsClient(
             url = url,
             encoding = initialClientSettings.protocolEncoding,
             httpClient = httpClient,
-            scope = scope
+            scope = scope,
+            clientInstanceId = clientInstanceId,
+            clientPlatform = clientPlatform,
         )
     }
     val clientSettingsService: RemoteClientSettingsService =
@@ -61,6 +82,7 @@ class GromozekaRemoteServices(
     val speechSynthesisService: RemoteSpeechSynthesisService = RemoteSpeechSynthesisService(client)
     val liveInterpreterService: RemoteLiveInterpreterService = RemoteLiveInterpreterService(client)
     val memoryActionItemService: RemoteMemoryActionItemService = RemoteMemoryActionItemService(client)
+    val clientPresentationService: RemoteClientPresentationService = RemoteClientPresentationService(client)
 
     suspend fun initialize() {
         remoteSettingsService.refreshFromServer()

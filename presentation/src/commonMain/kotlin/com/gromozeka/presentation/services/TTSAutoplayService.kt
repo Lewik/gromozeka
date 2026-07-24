@@ -1,116 +1,89 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.client.RemoteClientPresentationService
 import com.gromozeka.domain.service.SettingsService
-import com.gromozeka.presentation.ui.viewmodel.AppViewModel
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
+import com.gromozeka.remote.protocol.PlayMessageTtsDirective
+import com.gromozeka.remote.protocol.StopTtsDirective
 import klog.KLoggers
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class TTSAutoplayService(
-    private val appViewModel: AppViewModel,
+    private val clientPresentationService: RemoteClientPresentationService,
     private val ttsQueueService: TtsQueue,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
-
-    private var currentTabJob: Job? = null
-    private val seenMessageIds = mutableSetOf<Conversation.Message.Id>()
+    private val serviceJob = SupervisorJob(scope.coroutineContext[Job])
+    private val serviceScope = CoroutineScope(scope.coroutineContext + serviceJob)
+    private val playbackJobsMutex = Mutex()
+    private val playbackJobs = mutableSetOf<Job>()
+    private var directivesJob: Job? = null
 
     fun start() {
         log.info("Starting auto TTS service")
-
-        appViewModel.currentTab
-            .onEach { tab ->
-                currentTabJob?.cancel()
-                currentTabJob = null
-
-                if (tab != null) {
-                    subscribeToTab(tab)
+        directivesJob = clientPresentationService.directives
+            .onEach { directive ->
+                when (directive) {
+                    is PlayMessageTtsDirective -> schedulePlayback(directive)
+                    StopTtsDirective -> stopPlayback()
                 }
             }
-            .launchIn(scope)
+            .launchIn(serviceScope)
     }
 
-    private fun subscribeToTab(tab: com.gromozeka.presentation.ui.viewmodel.TabViewModel) {
-        var historySnapshotSeen = false
-
-        currentTabJob = tab.allMessages
-            .onEach { messages ->
-                if (!historySnapshotSeen) {
-                    if (messages.isEmpty()) {
-                        return@onEach
-                    }
-
-                    historySnapshotSeen = true
-                    seenMessageIds += messages.map { it.id }
-                    log.info("Auto TTS history snapshot skipped: messages=${messages.size}")
-                    return@onEach
-                }
-
-                messages.forEach { message ->
-                    if (!seenMessageIds.add(message.id)) {
-                        return@forEach
-                    }
-
-                    if (shouldConsiderAutoTTS(message)) {
-                        playAutoTTS(message)
-                    }
-                }
-            }
-            .launchIn(scope)
-    }
-
-    private fun shouldConsiderAutoTTS(message: Conversation.Message): Boolean {
-        val settings = settingsService.settings
-
-        // Check if TTS is enabled at all
-        if (!settings.userProfile.speechSettings.textToSpeech.enabled) return false
-
-        // Only Assistant messages can have TTS
-        return message.role == Conversation.Message.Role.ASSISTANT
-    }
-
-    private suspend fun playAutoTTS(message: Conversation.Message) {
-        try {
-            val assistantContent = message.content
-                .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-                .firstOrNull() ?: return
-
-            val ttsText = assistantContent.structured.ttsText?.trim()?.takeIf { it.isNotBlank() }
-            if (ttsText == null) {
-                log.info(
-                    "Auto TTS skipped: message=${message.id.value} reason=blank_tts_text " +
-                        "fullTextChars=${assistantContent.structured.fullText.length}"
-                )
-                return
-            }
-            val voiceTone = assistantContent.structured.voiceTone ?: ""
-
-            log.info(
-                "Auto TTS enqueue: message=${message.id.value} textChars=${ttsText.length} " +
-                    "voiceToneChars=${voiceTone.length}"
-            )
-
-            ttsQueueService.enqueue(
-                TtsTask(
-                    text = ttsText,
-                    tone = voiceTone
-                )
-            )
-        } catch (e: Exception) {
-            log.warn("Error playing auto TTS: ${e.message}")
+    private suspend fun schedulePlayback(directive: PlayMessageTtsDirective) {
+        if (!settingsService.settings.userProfile.speechSettings.textToSpeech.enabled) {
+            log.info { "Auto TTS skipped because it is disabled: message=${directive.messageId.value}" }
+            return
         }
+
+        val playbackJob = serviceScope.launch(
+            start = CoroutineStart.LAZY,
+        ) {
+            log.info {
+                "Auto TTS enqueue: message=${directive.messageId.value} textChars=${directive.text.length} " +
+                    "voiceToneChars=${directive.tone.length}"
+            }
+            ttsQueueService.enqueue(TtsTask(directive.text, directive.tone))
+        }
+        playbackJobsMutex.withLock {
+            playbackJobs += playbackJob
+        }
+        playbackJob.invokeOnCompletion {
+            serviceScope.launch {
+                playbackJobsMutex.withLock {
+                    playbackJobs -= playbackJob
+                }
+            }
+        }
+        playbackJob.start()
+    }
+
+    private suspend fun stopPlayback() {
+        val jobs = playbackJobsMutex.withLock {
+            playbackJobs.toList().also { playbackJobs.clear() }
+        }
+        jobs.forEach(Job::cancel)
+        ttsQueueService.stopAndClear()
+        log.info { "Auto TTS stopped because the active client changed" }
     }
 
     fun shutdown() {
         log.info("Shutting down auto TTS service")
-        currentTabJob?.cancel()
-        currentTabJob = null
+        directivesJob?.cancel()
+        directivesJob = null
+        serviceJob.cancel()
     }
 }

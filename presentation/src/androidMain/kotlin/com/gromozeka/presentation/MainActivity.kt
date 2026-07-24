@@ -24,10 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.gromozeka.client.InMemoryRemoteClientSettingsStore
 import com.gromozeka.device.telemetry.AndroidDeviceLocationService
 import com.gromozeka.device.telemetry.AndroidLocationPermissionRequester
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
+import com.gromozeka.presentation.services.AndroidRemoteClientSettingsStore
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -93,8 +93,9 @@ private fun GromozekaAndroidApp(
                 remoteUrl = remoteUrl,
                 scope = scope,
                 clientHomeDirectory = "android",
+                clientPlatform = ClientPlatform.ANDROID,
                 uiStateStore = InMemoryUIStateStore(),
-                remoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
+                remoteClientSettingsStore = AndroidRemoteClientSettingsStore(context),
                 audioRecorder = NoOpClientAudioRecorder,
                 deviceLocationService = if (BuildConfig.ENABLE_LOCATION_TELEMETRY) {
                     AndroidDeviceLocationService(context, locationPermissionRequester)

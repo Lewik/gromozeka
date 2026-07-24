@@ -32,6 +32,8 @@ import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.presentation.ui.viewmodel.LoadingViewModel
+import com.gromozeka.presentation.ui.ClientPlatform
+import com.gromozeka.remote.protocol.RemoteClientPlatform
 import com.gromozeka.domain.service.SettingsService
 import kotlinx.coroutines.CoroutineScope
 
@@ -39,6 +41,7 @@ suspend fun createRemoteAppComponents(
     remoteUrl: String,
     scope: CoroutineScope,
     clientHomeDirectory: String,
+    clientPlatform: ClientPlatform,
     uiStateStore: UIStateStore = InMemoryUIStateStore(),
     remoteClientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
     audioRecorder: ClientAudioRecorder = NoOpClientAudioRecorder,
@@ -53,6 +56,7 @@ suspend fun createRemoteAppComponents(
         url = remoteUrl,
         scope = scope,
         clientHomeDirectory = clientHomeDirectory,
+        clientPlatform = clientPlatform.toRemoteClientPlatform(),
         clientSettingsStore = remoteClientSettingsStore,
     )
 
@@ -96,7 +100,7 @@ suspend fun createRemoteAppComponents(
         scope = scope
     )
     val ttsAutoplayService = TTSAutoplayService(
-        appViewModel = appViewModel,
+        clientPresentationService = remoteServices.clientPresentationService,
         ttsQueueService = ttsQueue,
         settingsService = remoteServices.settingsService,
         scope = scope,
@@ -110,6 +114,7 @@ suspend fun createRemoteAppComponents(
             settingsService = remoteServices.settingsService,
             remoteClientSettingsService = remoteServices.clientSettingsService,
             remoteConnectionState = remoteServices.connectionState,
+            clientPresentationService = remoteServices.clientPresentationService,
             memoryActionItemService = remoteServices.memoryActionItemService,
             liveInterpreterService = remoteServices.liveInterpreterService,
             clientSideSpeechToTextService = clientSideSpeechToTextService,
@@ -141,6 +146,15 @@ suspend fun createRemoteAppComponents(
         ttsAutoplayService = ttsAutoplayService,
     )
 }
+
+private fun ClientPlatform.toRemoteClientPlatform(): RemoteClientPlatform =
+    when (this) {
+        ClientPlatform.DESKTOP -> RemoteClientPlatform.DESKTOP
+        ClientPlatform.ANDROID -> RemoteClientPlatform.ANDROID
+        ClientPlatform.IOS -> RemoteClientPlatform.IOS
+        ClientPlatform.WEB_DESKTOP -> RemoteClientPlatform.WEB_DESKTOP
+        ClientPlatform.WEB_TOUCH -> RemoteClientPlatform.WEB_TOUCH
+    }
 
 class RemoteAppComponents(
     val components: AppComponents,

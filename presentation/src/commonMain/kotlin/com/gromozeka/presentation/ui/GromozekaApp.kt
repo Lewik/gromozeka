@@ -1,6 +1,8 @@
 package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,9 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -113,9 +118,19 @@ fun GromozekaAppContent(
     val keyboardPttGestureDetector = remember {
         UnifiedGestureDetector(appComponents.pttEventRouter, coroutineScope)
     }
+    val isWindowFocused = LocalWindowInfo.current.isWindowFocused
+    val reportsComposeWindowFocus =
+        clientPlatform != ClientPlatform.WEB_DESKTOP &&
+            clientPlatform != ClientPlatform.WEB_TOUCH
 
     LaunchedEffect(Unit) {
         initialized = true
+    }
+
+    LaunchedEffect(isWindowFocused, reportsComposeWindowFocus) {
+        if (reportsComposeWindowFocus && isWindowFocused) {
+            appComponents.clientPresentationService.reportWindowFocused()
+        }
     }
 
     DisposableEffect(Unit) {
@@ -193,9 +208,21 @@ fun GromozekaAppContent(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .focusTarget()
+                .pointerInput(appComponents.clientPresentationService) {
+                    awaitEachGesture {
+                        awaitFirstDown(
+                            requireUnconsumed = false,
+                            pass = PointerEventPass.Initial,
+                        )
+                        appComponents.clientPresentationService.reportUserInteraction()
+                    }
+                }
                 .advancedEscape(appComponents.pttEventRouter)
                 .testTag(UiTestTag.AppRoot.value)
                 .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown) {
+                        appComponents.clientPresentationService.reportUserInteraction()
+                    }
                     when {
                         event.key == Key.T && event.isMetaPressed && event.type == KeyEventType.KeyDown -> {
                             createNewSessionInCurrentProject()
