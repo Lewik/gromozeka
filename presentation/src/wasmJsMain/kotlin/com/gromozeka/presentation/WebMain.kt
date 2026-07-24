@@ -31,7 +31,6 @@ import kotlinx.browser.window
 import org.w3c.dom.events.Event
 
 private data class WebLayoutHints(
-    val uiScaleMultiplier: Float,
     val showRuntimePanelInitially: Boolean,
     val forceCompactLayout: Boolean,
     val clientPlatform: ClientPlatform,
@@ -102,7 +101,6 @@ private fun GromozekaWebApp() {
         remoteApp != null -> GromozekaApp(
             appComponents = remoteApp!!.components,
             skipLoadingScreen = true,
-            uiScaleMultiplier = layoutHints.uiScaleMultiplier,
             showRuntimePanelInitially = layoutHints.showRuntimePanelInitially,
             forceCompactLayout = layoutHints.forceCompactLayout,
             clientPlatform = layoutHints.clientPlatform,
@@ -134,19 +132,16 @@ private fun resolveWebLayoutHints(): WebLayoutHints {
 
     return when {
         compactScreen -> WebLayoutHints(
-            uiScaleMultiplier = if (clientPlatform == ClientPlatform.WEB_TOUCH) 1.0f else 1.25f,
             showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         hasTouch && tabletScreen -> WebLayoutHints(
-            uiScaleMultiplier = 1.0f,
             showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         else -> WebLayoutHints(
-            uiScaleMultiplier = 1.0f,
             showRuntimePanelInitially = true,
             forceCompactLayout = false,
             clientPlatform = clientPlatform,

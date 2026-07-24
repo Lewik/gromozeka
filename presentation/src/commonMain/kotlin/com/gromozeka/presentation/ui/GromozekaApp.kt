@@ -62,7 +62,6 @@ import kotlinx.datetime.Clock
 fun GromozekaApp(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
-    uiScaleMultiplier: Float = 1f,
     showRuntimePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
@@ -74,7 +73,6 @@ fun GromozekaApp(
             GromozekaAppContent(
                 appComponents = appComponents,
                 skipLoadingScreen = skipLoadingScreen,
-                uiScaleMultiplier = uiScaleMultiplier,
                 showRuntimePanelInitially = showRuntimePanelInitially,
                 forceCompactLayout = forceCompactLayout,
                 clientPlatform = clientPlatform,
@@ -87,7 +85,6 @@ fun GromozekaApp(
 fun GromozekaAppContent(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
-    uiScaleMultiplier: Float = 1f,
     showRuntimePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
@@ -193,14 +190,12 @@ fun GromozekaAppContent(
     val onRemoteClientSettingsChange = appComponents.remoteClientSettingsService::saveSettings
     val currentUiSettings = currentSettings.userDeviceSettings.uiSettings
     val platformDensity = LocalDensity.current
-    val effectiveUiScale = (currentUiSettings.uiScale * uiScaleMultiplier).coerceIn(0.5f, 3.0f)
-    val baseDensity = if (clientPlatform.usePlatformDensity) platformDensity.density else 1.0f
-    val baseFontScale = if (clientPlatform.usePlatformDensity) platformDensity.fontScale else 1.0f
+    val effectiveUiScale = currentUiSettings.uiScale.coerceIn(0.5f, 3.0f)
 
     CompositionLocalProvider(
         LocalDensity provides Density(
-            density = baseDensity * effectiveUiScale,
-            fontScale = baseFontScale * currentUiSettings.fontScale,
+            density = platformDensity.density * effectiveUiScale,
+            fontScale = platformDensity.fontScale * currentUiSettings.fontScale,
         ),
     ) {
         Box(
@@ -263,14 +258,10 @@ fun GromozekaAppContent(
                 else -> {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val scaledDensity = LocalDensity.current
-                        val baseMaxWidth = if (clientPlatform.usePlatformDensity) {
-                            with(platformDensity) {
-                                with(scaledDensity) { maxWidth.toPx() }.toDp()
-                            }
-                        } else {
-                            maxWidth
+                        val unscaledMaxWidth = with(platformDensity) {
+                            with(scaledDensity) { maxWidth.toPx() }.toDp()
                         }
-                        val isCompactLayout = forceCompactLayout || baseMaxWidth < 700.dp
+                        val isCompactLayout = forceCompactLayout || unscaledMaxWidth < 700.dp
                         val contentPadding = if (isCompactLayout) 8.dp else 16.dp
                         val setSettingsPanel: (Boolean) -> Unit = { visible ->
                             showSettingsPanel = visible
