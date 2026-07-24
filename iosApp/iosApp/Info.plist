@@ -4,6 +4,8 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>GromozekaRemoteURL</key>
+	<string>$(GROMOZEKA_REMOTE_URL)</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Gromozeka needs microphone access for voice conversations.</string>
 	<key>NSLocalNetworkUsageDescription</key>

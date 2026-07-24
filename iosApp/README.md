@@ -23,9 +23,13 @@ xcodebuild \
   -configuration Debug \
   -sdk iphoneos26.2 \
   ARCHS=arm64 \
+  GROMOZEKA_REMOTE_URL='wss://<server-host>/ws' \
   -allowProvisioningUpdates \
   build
 ```
+
+`GROMOZEKA_REMOTE_URL` is embedded in `Info.plist` for that build. Simulator
+builds without an override continue to use `ws://127.0.0.1:8765/ws`.
 
 Install the freshly built physical-device app:
 
