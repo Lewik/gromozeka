@@ -44,7 +44,7 @@ class AgentApplicationService(
      * @param name agent role or display name (e.g., "Code Reviewer")
      * @param prompts ordered list of prompt IDs defining agent behavior
      * @param runtimeSelection model binding selected for this agent
-     * @param tools list of tool names available to this agent
+     * @param tools tool names that are always loaded for this agent
      * @param description optional human-readable description of capabilities
      * @return created agent
      */

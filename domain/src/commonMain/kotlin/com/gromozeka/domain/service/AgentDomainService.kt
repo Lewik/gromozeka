@@ -28,7 +28,7 @@ interface AgentDomainService {
      * @param name agent role name (e.g., "Code Reviewer", "Security Expert")
      * @param prompts ordered list of prompt IDs
      * @param runtimeSelection model binding selected for this agent
-     * @param tools list of tool names available to this agent (default: empty)
+     * @param tools tool names that are always loaded for this agent (default: empty)
      * @param description optional human-readable agent description
      * @return created agent with assigned ID
      */

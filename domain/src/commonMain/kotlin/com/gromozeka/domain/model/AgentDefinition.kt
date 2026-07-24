@@ -28,7 +28,7 @@ import kotlin.jvm.JvmInline
  * @property skills Agent Skills available to the agent through progressive disclosure
  * @property runtimeSelection model configuration used to create the runtime for this agent.
  * @property runtimeOverrides optional per-agent overrides on top of the selected model configuration.
- * @property tools list of available tool names for this agent
+ * @property tools tool names that are always loaded for this agent; other tools remain discoverable
  * @property description optional human-readable explanation of agent's purpose
  * @property type definition scope
  * @property createdAt timestamp when agent was created (immutable)
@@ -43,7 +43,7 @@ data class AgentDefinition(
     val skills: List<AgentSkill.Id> = emptyList(),
     val runtimeSelection: AiRuntimeSelection,
     val runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
-    val tools: List<String> = emptyList(), // tool names to resolve via ToolRegistry
+    val tools: List<String> = emptyList(),
     val description: String? = null,
     val type: Type,
     val createdAt: Instant,

@@ -104,6 +104,7 @@ class ConversationEngineService(
     private val workspaceService: WorkspaceDomainService,
     private val distributedToolCatalog: DistributedAiToolCatalog,
     private val agentSkillRuntimeCatalogService: AgentSkillRuntimeCatalogService,
+    private val aiToolRuntimeCatalogService: AiToolRuntimeCatalogService,
     private val toolRoutingService: ConversationRuntimeToolRoutingService,
     private val runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
 ) : ConversationRuntimeTaskRunner {
@@ -205,11 +206,16 @@ class ConversationEngineService(
         }
 
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
+        val availableTools = aiToolRuntimeCatalogService.availableTools(
+            agent = context.agent,
+            catalog = context.toolCatalog,
+            messages = currentMessages,
+        )
 
         val runtimeRequest = AiRuntimeRequest(
             systemPrompts = context.runtimeSystemPrompts,
             messages = currentMessages,
-            tools = context.availableTools,
+            tools = availableTools,
             options = AiRuntimeOptions(
                 maxOutputTokens = context.agent.runtimeOverrides.maxOutputTokens,
                 reasoning = context.agent.runtimeOverrides.reasoning,
@@ -806,7 +812,6 @@ class ConversationEngineService(
         val runtime: AiRuntime,
         val provider: AiProvider,
         val modelName: String,
-        val availableTools: List<AiToolCallback>,
         val toolCatalog: DistributedAiToolCatalogSnapshot,
         val memoryPipelineTools: List<AiToolCallback>,
         val memorySystemPrompts: List<String>,
@@ -867,7 +872,6 @@ class ConversationEngineService(
             toolCatalog = baseToolCatalog,
         )
         val toolCatalog = agentSkillRuntime.toolCatalog
-        val availableTools = toolCatalog.tools
         val memoryPipelineTools = aiToolProvider.getTools()
             .supportedBy(runtimeWorkerDescriptor.capabilities)
             .withoutMemoryManagementTools()
@@ -886,7 +890,6 @@ class ConversationEngineService(
             runtime = runtime,
             provider = provider,
             modelName = modelName,
-            availableTools = availableTools,
             toolCatalog = toolCatalog,
             memoryPipelineTools = memoryPipelineTools,
             memorySystemPrompts = baseSystemPrompts,
