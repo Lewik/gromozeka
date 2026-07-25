@@ -53,6 +53,7 @@ fun main() {
 
     val remoteServer = context.getBean(GromozekaRemoteServer::class.java)
     val mcpServerFactory = context.getBean(GromozekaMcpServerFactory::class.java)
+    val controlMcpServerFactory = context.getBean(GromozekaControlMcpServerFactory::class.java)
     val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
     val webRoot = resolveWebRoot()
     val mcpHttpSecurity = resolveMcpHttpSecurityConfiguration(
@@ -69,6 +70,13 @@ fun main() {
             allowedOrigins = mcpHttpSecurity.allowedOrigins,
         ) {
             mcpServerFactory.create()
+        }
+        statelessMcpStreamableHttp(
+            path = "/mcp/control",
+            allowedHosts = mcpHttpSecurity.allowedHosts,
+            allowedOrigins = mcpHttpSecurity.allowedOrigins,
+        ) {
+            controlMcpServerFactory.create()
         }
         install(WebSockets) {
             maxFrameSize = Long.MAX_VALUE
@@ -90,6 +98,7 @@ fun main() {
     }
     println("==== Gromozeka server started: $endpoints ====")
     println("==== Gromozeka MCP Streamable HTTP: http://$host:$port/mcp ====")
+    println("==== Gromozeka Control MCP Streamable HTTP: http://$host:$port/mcp/control ====")
     println("==== Gromozeka memory HTTP: http://$host:$port/memory/status ====")
     Thread.currentThread().join()
 }
