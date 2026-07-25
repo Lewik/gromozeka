@@ -250,11 +250,6 @@ class AgentSkillRuntimeTest {
     ) : AgentRepository {
         override suspend fun save(agent: AgentDefinition): AgentDefinition = error("Not used")
 
-        override suspend fun createWithPrompts(
-            agent: AgentDefinition,
-            prompts: List<Prompt>,
-        ): AgentDefinition = error("Not used")
-
         override suspend fun findById(id: AgentDefinition.Id): AgentDefinition? =
             agent.takeIf { it.id == id }
 

@@ -16,7 +16,7 @@ import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.datetime.Clock
@@ -80,7 +80,7 @@ object NoOpMemoryEmbeddingIndexer : MemoryEmbeddingIndexer {
 
 @Service
 class DefaultMemoryEmbeddingIndexer(
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val embeddingProvider: AiEmbeddingProvider,
     private val store: MemoryStore,
 ) : MemoryEmbeddingIndexer {
@@ -300,9 +300,9 @@ class DefaultMemoryEmbeddingIndexer(
         }
 
     private fun resolveEmbeddingRuntime(): ResolvedEmbeddingRuntime {
-        val selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS)
-        val runtime = settingsProvider.resolveAiRuntime(selection)
-        val spec = settingsProvider.userProfile.aiSettings.modelSpecFor(runtime.modelConfiguration)
+        val selection = aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS)
+        val runtime = aiConfigurationProvider.resolveAiRuntime(selection)
+        val spec = aiConfigurationProvider.catalog.modelSpecFor(runtime.modelConfiguration)
             ?: error("AI embedding model spec not found: ${runtime.modelConfiguration.providerModelId}")
         require(AiModelCapability.EMBEDDINGS in spec.capabilities) {
             "AI model ${runtime.modelConfiguration.providerModelId} does not support embeddings"

@@ -2,6 +2,7 @@ package com.gromozeka.client
 
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
+import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeService
@@ -12,6 +13,7 @@ import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import io.ktor.client.HttpClient
@@ -61,9 +63,13 @@ class GromozekaRemoteServices(
         RemoteClientSettingsService(client, clientSettingsStore, initialClientSettings)
     val connectionState: StateFlow<RemoteConnectionState> = client.connectionState
     private val remoteSettingsService = RemoteSettingsService(client, scope, clientHomeDirectory)
+    private val remoteAiConfigurationService = RemoteAiConfigurationService(client)
+    private val remoteRuntimeCatalogTemplateService = RemoteRuntimeCatalogTemplateService(client)
     private val remoteAgentService = RemoteAgentService(client)
 
     val settingsService: SettingsService = remoteSettingsService
+    val aiConfigurationService: AiConfigurationService = remoteAiConfigurationService
+    val runtimeCatalogTemplateService: RuntimeCatalogTemplateService = remoteRuntimeCatalogTemplateService
     val defaultAgentProvider: DefaultAgentProvider = remoteAgentService
     val agentService: AgentDomainService = remoteAgentService
     val agentSkillService: AgentSkillDomainService = RemoteAgentSkillService(client)
@@ -86,6 +92,8 @@ class GromozekaRemoteServices(
 
     suspend fun initialize() {
         remoteSettingsService.refreshFromServer()
+        remoteAiConfigurationService.reload()
+        remoteRuntimeCatalogTemplateService.reload()
     }
 
     fun close() {

@@ -1,7 +1,7 @@
 package com.gromozeka.server.testsupport.llm
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -16,8 +16,8 @@ import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ResolvedAiRuntime
-import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
@@ -55,8 +55,8 @@ import kotlin.io.path.writeText
 
 internal class CassetteAiRuntimeProvider(
     private val backends: List<AiRuntimeBackend>,
-    private val settingsProvider: SettingsProvider? = null,
-    private val userProfile: UserProfile = UserProfile(),
+    private val aiConfigurationProvider: AiConfigurationProvider? = null,
+    private val catalog: AiCatalog? = null,
     private val settings: AiRuntimeCassetteSettings = AiRuntimeCassetteSettings.fromSystemProperties(),
 ) : AiRuntimeProvider {
     override fun getRuntime(
@@ -86,16 +86,24 @@ internal class CassetteAiRuntimeProvider(
     }
 
     private fun resolveRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
-        settingsProvider?.let { return it.resolveAiRuntime(selection) }
-        val modelConfiguration = userProfile.aiSettings.modelConfigurations.firstOrNull {
-            it.id == selection.modelConfigurationId
-        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
-        val connection = userProfile.aiSettings.connections.firstOrNull { it.id == modelConfiguration.connectionId }
-            ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
-        require(connection.enabled) { "AI connection is disabled: ${connection.id.value}" }
-        require(modelConfiguration.enabled) { "AI model configuration is disabled: ${modelConfiguration.id.value}" }
-        return ResolvedAiRuntime(connection, modelConfiguration)
+        aiConfigurationProvider?.let { return it.resolveAiRuntime(selection) }
+        return requireNotNull(catalog) {
+            "Cassette AI runtime requires an AI configuration provider or catalog"
+        }.resolveEnabledRuntime(selection)
     }
+}
+
+internal fun AiCatalog.resolveEnabledRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
+    val modelConfiguration = modelConfigurations.firstOrNull {
+        it.id == selection.modelConfigurationId
+    } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
+    val connection = connections.firstOrNull { it.id == modelConfiguration.connectionId }
+        ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
+    require(connection.enabled) { "AI connection is disabled: ${connection.id.value}" }
+    require(modelConfiguration.enabled) {
+        "AI model configuration is disabled: ${modelConfiguration.id.value}"
+    }
+    return ResolvedAiRuntime(connection, modelConfiguration)
 }
 
 internal data class AiRuntimeCassetteSettings(

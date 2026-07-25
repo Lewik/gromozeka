@@ -2,13 +2,12 @@ package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AgentSkill
-import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.infrastructure.db.persistence.tables.Agents
-import com.gromozeka.infrastructure.db.persistence.tables.Prompts
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -22,166 +21,85 @@ import org.springframework.stereotype.Service
 
 @Service
 class ExposedAgentRepository(
-    private val builtinAgentLoader: BuiltinAgentLoader,
     private val json: Json,
 ) : AgentRepository {
-
-    private var cachedBuiltinAgents: List<AgentDefinition> = emptyList()
-
-    override suspend fun save(agent: AgentDefinition): AgentDefinition {
-        return when (agent.type) {
-            is AgentDefinition.Type.Project -> saveProjectAgent(agent)
-            is AgentDefinition.Type.Builtin ->
-                throw UnsupportedOperationException("Builtin agents are immutable")
-        }
-    }
-
-    override suspend fun createWithPrompts(
-        agent: AgentDefinition,
-        prompts: List<Prompt>,
-    ): AgentDefinition = dbQuery {
-        val projectId = checkNotNull(agent.projectId) { "Project agent must have projectId" }
-        require(agent.type is AgentDefinition.Type.Project) { "Only project agents can be persisted" }
-        require(
-            Agents.selectAll().where { Agents.id eq agent.id.value }.singleOrNull() == null
-        ) { "Agent already exists: ${agent.id.value}" }
-
-        prompts.forEach { prompt ->
-            require(prompt.type is Prompt.Type.Project && prompt.projectId == projectId) {
-                "Copied prompt ${prompt.id.value} must belong to project ${projectId.value}"
-            }
-            require(
-                Prompts.selectAll().where { Prompts.id eq prompt.id.value }.singleOrNull() == null
-            ) { "Prompt already exists: ${prompt.id.value}" }
-            insertProjectPrompt(prompt, projectId)
-        }
-        insertProjectAgent(agent, projectId)
-        agent
-    }
-
-    override suspend fun findById(id: AgentDefinition.Id): AgentDefinition? {
-        val idValue = id.value
-
-        findDynamicAgent(id)?.let { return it }
-
-        if (idValue.startsWith("builtin:")) {
-            return cachedBuiltinAgents.find { it.id == id }
-        }
-
-        return null
-    }
-
-    override suspend fun findAll(): List<AgentDefinition> {
-        return (cachedBuiltinAgents + findDynamicAgents())
-            .sortedBy { it.name }
-    }
-
-    override suspend fun findByProject(projectId: Project.Id): List<AgentDefinition> =
-        (cachedBuiltinAgents + findDynamicAgents(projectId))
-            .sortedBy { it.name }
-
-    override suspend fun delete(id: AgentDefinition.Id) {
-        val deleted = dbQuery {
-            Agents.deleteWhere { Agents.id eq id.value }
-        }
-        if (deleted > 0) {
-            return
-        }
-
-        throw IllegalArgumentException("Agent not found: ${id.value}")
-    }
-
-    override suspend fun count(): Int {
-        return findAll().size
-    }
-
-    @jakarta.annotation.PostConstruct
-    fun initialize() {
-        cachedBuiltinAgents = builtinAgentLoader.loadBuiltinAgents()
-    }
-
-    private suspend fun saveProjectAgent(agent: AgentDefinition): AgentDefinition = dbQuery {
-        val projectId = checkNotNull(agent.projectId) { "Project agent must have projectId" }
+    override suspend fun save(agent: AgentDefinition): AgentDefinition = dbQuery {
         val existing = Agents.selectAll()
             .where { Agents.id eq agent.id.value }
             .singleOrNull()
-        if (existing != null) {
-            require(existing[Agents.projectId] == projectId.value) {
-                "Agent ${agent.id.value} belongs to another project"
-            }
-            Agents.update({ Agents.id eq agent.id.value }) {
-                it[name] = agent.name
-                it[promptsJson] = json.encodeToString(agent.prompts)
-                it[skillsJson] = json.encodeToString(agent.skills)
-                it[runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
-                it[runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
-                it[toolsJson] = json.encodeToString(agent.tools)
-                it[description] = agent.description
-                it[type] = PROJECT_TYPE
-                it[updatedAt] = agent.updatedAt.toKotlin()
-            }
+
+        if (existing == null) {
+            Agents.insert { statement -> statement.write(agent) }
         } else {
-            insertProjectAgent(agent, projectId)
+            require(existing[Agents.projectId] == agent.projectId?.value) {
+                "Agent scope cannot be changed: ${agent.id.value}"
+            }
+            Agents.update({ Agents.id eq agent.id.value }) { statement ->
+                statement[Agents.name] = agent.name
+                statement[Agents.promptsJson] = json.encodeToString(agent.prompts)
+                statement[Agents.skillsJson] = json.encodeToString(agent.skills)
+                statement[Agents.runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
+                statement[Agents.runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
+                statement[Agents.toolsJson] = json.encodeToString(agent.tools)
+                statement[Agents.description] = agent.description
+                statement[Agents.type] = agent.type.databaseValue()
+                statement[Agents.updatedAt] = agent.updatedAt.toKotlin()
+            }
         }
         agent
     }
 
-    private fun insertProjectAgent(agent: AgentDefinition, projectId: Project.Id) {
-        Agents.insert {
-            it[id] = agent.id.value
-            it[Agents.projectId] = projectId.value
-            it[name] = agent.name
-            it[promptsJson] = json.encodeToString(agent.prompts)
-            it[skillsJson] = json.encodeToString(agent.skills)
-            it[runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
-            it[runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
-            it[toolsJson] = json.encodeToString(agent.tools)
-            it[description] = agent.description
-            it[type] = PROJECT_TYPE
-            it[createdAt] = agent.createdAt.toKotlin()
-            it[updatedAt] = agent.updatedAt.toKotlin()
-        }
-    }
-
-    private fun insertProjectPrompt(prompt: Prompt, projectId: Project.Id) {
-        Prompts.insert {
-            it[id] = prompt.id.value
-            it[Prompts.projectId] = projectId.value
-            it[name] = prompt.name
-            it[content] = prompt.content
-            it[sourceType] = PROJECT_TYPE
-            it[sourcePath] = null
-            it[createdAt] = prompt.createdAt.toKotlin()
-            it[updatedAt] = prompt.updatedAt.toKotlin()
-        }
-    }
-
-    private suspend fun findDynamicAgent(id: AgentDefinition.Id): AgentDefinition? = dbQuery {
+    override suspend fun findById(id: AgentDefinition.Id): AgentDefinition? = dbQuery {
         Agents.selectAll()
             .where { Agents.id eq id.value }
             .singleOrNull()
             ?.toAgent()
     }
 
-    private suspend fun findDynamicAgents(): List<AgentDefinition> = dbQuery {
+    override suspend fun findAll(): List<AgentDefinition> = dbQuery {
         Agents.selectAll()
             .map { it.toAgent() }
+            .sortedBy { it.name.lowercase() }
     }
 
-    private suspend fun findDynamicAgents(projectId: Project.Id): List<AgentDefinition> = dbQuery {
-        Agents.selectAll()
-            .where { Agents.projectId eq projectId.value }
-            .map { it.toAgent() }
+    override suspend fun findByProject(projectId: Project.Id): List<AgentDefinition> =
+        findAll().filter { it.type is AgentDefinition.Type.Global || it.projectId == projectId }
+
+    override suspend fun delete(id: AgentDefinition.Id) {
+        val deleted = dbQuery {
+            Agents.deleteWhere { Agents.id eq id.value }
+        }
+        require(deleted > 0) { "Agent not found: ${id.value}" }
+    }
+
+    override suspend fun count(): Int = dbQuery {
+        Agents.selectAll().count().toInt()
+    }
+
+    private fun org.jetbrains.exposed.v1.core.statements.UpdateBuilder<*>.write(agent: AgentDefinition) {
+        this[Agents.id] = agent.id.value
+        this[Agents.projectId] = agent.projectId?.value
+        this[Agents.name] = agent.name
+        this[Agents.promptsJson] = json.encodeToString(agent.prompts)
+        this[Agents.skillsJson] = json.encodeToString(agent.skills)
+        this[Agents.runtimeSelectionJson] = json.encodeToString(agent.runtimeSelection)
+        this[Agents.runtimeOverridesJson] = json.encodeToString(agent.runtimeOverrides)
+        this[Agents.toolsJson] = json.encodeToString(agent.tools)
+        this[Agents.description] = agent.description
+        this[Agents.type] = agent.type.databaseValue()
+        this[Agents.createdAt] = agent.createdAt.toKotlin()
+        this[Agents.updatedAt] = agent.updatedAt.toKotlin()
     }
 
     private fun ResultRow.toAgent(): AgentDefinition {
         val type = when (this[Agents.type]) {
+            GLOBAL_TYPE -> AgentDefinition.Type.Global
             PROJECT_TYPE -> AgentDefinition.Type.Project
-            else -> error("Unsupported database-backed agent type: ${this[Agents.type]}")
+            else -> error("Unsupported agent scope: ${this[Agents.type]}")
         }
         return AgentDefinition(
             id = AgentDefinition.Id(this[Agents.id]),
-            projectId = Project.Id(this[Agents.projectId]),
+            projectId = this[Agents.projectId]?.let(Project::Id),
             name = this[Agents.name],
             prompts = json.decodeFromString<List<Prompt.Id>>(this[Agents.promptsJson]),
             skills = json.decodeFromString<List<AgentSkill.Id>>(this[Agents.skillsJson]),
@@ -195,7 +113,14 @@ class ExposedAgentRepository(
         )
     }
 
+    private fun AgentDefinition.Type.databaseValue(): String =
+        when (this) {
+            AgentDefinition.Type.Global -> GLOBAL_TYPE
+            AgentDefinition.Type.Project -> PROJECT_TYPE
+        }
+
     private companion object {
+        const val GLOBAL_TYPE = "global"
         const val PROJECT_TYPE = "project"
     }
 }

@@ -290,7 +290,7 @@ class SearchToolsToolCallback(
             ?: error("Project not found: ${projectId.value}")
         val agent = agentDomainService.findById(agentId)
             ?: error("Agent not found: ${agentId.value}")
-        require(agent.type is AgentDefinition.Type.Builtin || agent.projectId == project.id) {
+        require(agent.type is AgentDefinition.Type.Global || agent.projectId == project.id) {
             "Agent ${agent.id.value} does not belong to project ${project.id.value}"
         }
 

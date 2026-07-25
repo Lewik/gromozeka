@@ -1,10 +1,5 @@
 package com.gromozeka.domain.model
 
-import com.gromozeka.domain.model.ai.AiConnection
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiModelSpec
-import com.gromozeka.domain.model.ai.AiRuntimeAssignment
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -19,7 +14,6 @@ import kotlin.jvm.JvmInline
 data class UserProfile(
     val id: Id = Id("local"),
     val displayName: String = "Local user",
-    val aiSettings: AiSettings = UserProfileAiDefaults.aiSettings(),
     val speechSettings: SpeechSettings = SpeechSettings(),
     val agentSettings: AgentSettings = AgentSettings(),
     val memorySettings: MemorySettings = MemorySettings(),
@@ -42,96 +36,6 @@ data class UserProfile(
     value class Id(val value: String) {
         init {
             require(value.isNotBlank()) { "User profile id must not be blank" }
-        }
-    }
-
-    /**
-     * User-owned AI settings: available connections, configured models, and
-     * purpose-specific runtime assignments.
-     */
-    @Serializable
-    data class AiSettings(
-        val connections: List<AiConnection> = UserProfileAiDefaults.connections(),
-        val modelSpecs: List<AiModelSpec> = UserProfileAiDefaults.modelSpecs(),
-        val modelConfigurations: List<AiModelConfiguration> = UserProfileAiDefaults.modelConfigurations(),
-        val runtimeAssignments: List<AiRuntimeAssignment> = UserProfileAiDefaults.runtimeAssignments(),
-    ) {
-        init {
-            require(connections.map { it.id }.distinct().size == connections.size) { "AI connection ids must be unique" }
-            require(modelSpecs.map { it.provider to it.id }.distinct().size == modelSpecs.size) {
-                "AI model specs must be unique by provider and model id"
-            }
-            require(modelConfigurations.map { it.id }.distinct().size == modelConfigurations.size) {
-                "AI model configuration ids must be unique"
-            }
-            require(modelConfigurations.all { configuration -> connections.any { it.id == configuration.connectionId } }) {
-                "Every AI model configuration must reference an existing connection"
-            }
-            require(runtimeAssignments.map { it.purpose }.distinct().size == runtimeAssignments.size) {
-                "AI runtime assignment purposes must be unique"
-            }
-            val assignedPurposes = runtimeAssignments.map { it.purpose }
-            val requiredPurposes = AiRuntimeAssignment.Purpose.entries.filter { it.requiresExplicitAssignment }
-            require(assignedPurposes.containsAll(requiredPurposes)) {
-                "Every primary AI runtime purpose must have an assignment"
-            }
-            modelConfigurations.filter { it.enabled }.forEach { configuration ->
-                require(modelSpecFor(configuration) != null) {
-                    "Enabled AI model configuration ${configuration.id.value} must have a model spec for " +
-                        "${configuration.providerModelId}"
-                }
-            }
-            runtimeAssignments.forEach { assignment ->
-                val configuration = modelConfigurations.firstOrNull {
-                    it.id == assignment.selection.modelConfigurationId
-                } ?: error(
-                    "AI runtime assignment ${assignment.purpose.name} references missing model configuration " +
-                        assignment.selection.modelConfigurationId.value
-                )
-                require(configuration.enabled) {
-                    "AI runtime assignment ${assignment.purpose.name} references disabled model configuration " +
-                        configuration.id.value
-                }
-                val spec = modelSpecFor(configuration) ?: error(
-                    "AI runtime assignment ${assignment.purpose.name} references model configuration " +
-                        "${configuration.id.value} without a matching model spec"
-                )
-                require(spec.capabilities.containsAll(assignment.purpose.requiredCapabilities)) {
-                    "AI runtime assignment ${assignment.purpose.name} requires capabilities " +
-                        "${assignment.purpose.requiredCapabilities}, but ${configuration.id.value} has ${spec.capabilities}"
-                }
-            }
-        }
-
-        fun connectionFor(configuration: AiModelConfiguration): AiConnection? =
-            connections.firstOrNull { it.id == configuration.connectionId }
-
-        fun modelSpecFor(configuration: AiModelConfiguration): AiModelSpec? =
-            connectionFor(configuration)?.let { connection ->
-                modelSpecs.firstOrNull {
-                    it.provider == connection.kind.provider && it.id == configuration.providerModelId
-                }
-            }
-
-        fun runtimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection? {
-            var currentPurpose: AiRuntimeAssignment.Purpose? = purpose
-            while (currentPurpose != null) {
-                val purposeToCheck = currentPurpose
-                val selection = runtimeAssignments.firstOrNull {
-                    it.purpose == purposeToCheck
-                }?.selection
-                if (selection != null) return selection
-                currentPurpose = purposeToCheck.fallbackPurpose
-            }
-            return null
-        }
-
-        fun supportsPurpose(configuration: AiModelConfiguration, purpose: AiRuntimeAssignment.Purpose): Boolean {
-            if (!configuration.enabled) return false
-            val connection = connectionFor(configuration) ?: return false
-            if (!connection.enabled) return false
-            val spec = modelSpecFor(configuration) ?: return false
-            return spec.capabilities.containsAll(purpose.requiredCapabilities)
         }
     }
 

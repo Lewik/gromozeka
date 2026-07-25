@@ -11,8 +11,8 @@ import kotlin.jvm.JvmInline
 /**
  * Agent definition - reusable configuration template for AI agent behavior.
  *
- * Builtin definitions are immutable blueprints. Project definitions are mutable,
- * server-managed runtime entities created through the UI or API.
+ * Global and project definitions are mutable server-managed runtime entities.
+ * Application resources are templates and are not [AgentDefinition] instances.
  *
  * Definition includes:
  * - Behavior (prompts, tools)
@@ -22,7 +22,7 @@ import kotlin.jvm.JvmInline
  * This is an immutable value type - use copy() to create modified versions.
  *
  * @property id unique agent identifier
- * @property projectId owning project for project definitions, null for builtins
+ * @property projectId owning project for project definitions, null for global definitions
  * @property name agent role name displayed in UI (e.g., "Code Reviewer", "Researcher")
  * @property prompts ordered list of prompt IDs defining agent behavior
  * @property skills Agent Skills available to the agent through progressive disclosure
@@ -50,8 +50,8 @@ data class AgentDefinition(
     val updatedAt: Instant,
 ) {
     init {
-        require((type is Type.Builtin) == (projectId == null)) {
-            "Builtin agents must not belong to a project and project agents must have a project"
+        require((type is Type.Global) == (projectId == null)) {
+            "Global agents must not belong to a project and project agents must have a project"
         }
     }
 
@@ -69,13 +69,11 @@ data class AgentDefinition(
     @JsonClassDiscriminator("kind")
     sealed class Type {
         /**
-         * Builtin agent shipped with Gromozeka.
-         * Stored in application resources.
-         * ID format: "agents/architect.json" (relative to resources/)
+         * Mutable agent available to every project.
          */
         @Serializable
-        @SerialName("builtin")
-        object Builtin : Type()
+        @SerialName("global")
+        object Global : Type()
 
         /**
          * Mutable agent owned by one logical project.

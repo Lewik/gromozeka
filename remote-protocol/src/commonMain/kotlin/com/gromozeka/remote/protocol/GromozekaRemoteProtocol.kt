@@ -13,11 +13,15 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.RuntimeCatalogTemplates
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiRuntimeOverrides
+import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.CommandTask
@@ -108,6 +112,21 @@ data class SaveSettingsRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("get_ai_catalog")
+data object GetAiCatalogRequest : ClientRequest
+
+@Serializable
+@SerialName("save_ai_catalog")
+data class SaveAiCatalogRequest(
+    val catalog: AiCatalog,
+    val expectedRevision: Long,
+) : ClientRequest
+
+@Serializable
+@SerialName("get_runtime_catalog_templates")
+data object GetRuntimeCatalogTemplatesRequest : ClientRequest
+
+@Serializable
 @SerialName("get_default_agent")
 data object GetDefaultAgentRequest : ClientRequest
 
@@ -126,33 +145,35 @@ data class FindAgentsRequest(
 @Serializable
 @SerialName("create_agent")
 data class CreateAgentRequest(
-    val projectId: Project.Id,
+    val projectId: Project.Id?,
     val name: String,
     val prompts: List<Prompt.Id>,
     val runtimeSelection: AiRuntimeSelection,
+    val runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
     val tools: List<String> = emptyList(),
     val description: String? = null,
     val skills: List<AgentSkill.Id> = emptyList(),
 ) : ClientRequest
 
 @Serializable
-@SerialName("copy_builtin_agent")
-data class CopyBuiltinAgentRequest(
-    val projectId: Project.Id,
+@SerialName("duplicate_agent")
+data class DuplicateAgentRequest(
+    val projectId: Project.Id?,
     val sourceAgentId: AgentDefinition.Id,
     val name: String,
-    val prompts: List<Prompt.Id>,
-    val description: String? = null,
-    val skills: List<AgentSkill.Id> = emptyList(),
 ) : ClientRequest
 
 @Serializable
 @SerialName("update_agent")
 data class UpdateAgentRequest(
     val agentId: AgentDefinition.Id,
-    val prompts: List<Prompt.Id>? = null,
+    val name: String,
+    val prompts: List<Prompt.Id>,
     val description: String? = null,
-    val skills: List<AgentSkill.Id>? = null,
+    val skills: List<AgentSkill.Id>,
+    val runtimeSelection: AiRuntimeSelection,
+    val runtimeOverrides: AiRuntimeOverrides,
+    val tools: List<String>,
 ) : ClientRequest
 
 @Serializable
@@ -209,11 +230,25 @@ data class FindPromptsRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("create_project_prompt")
-data class CreateProjectPromptRequest(
-    val projectId: Project.Id,
+@SerialName("create_prompt")
+data class CreatePromptRequest(
+    val projectId: Project.Id?,
     val name: String,
     val content: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("update_prompt")
+data class UpdatePromptRequest(
+    val promptId: Prompt.Id,
+    val name: String,
+    val content: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("delete_prompt")
+data class DeletePromptRequest(
+    val promptId: Prompt.Id,
 ) : ClientRequest
 
 @Serializable
@@ -594,6 +629,18 @@ data class StopLiveInterpreterCommand(
 @SerialName("settings")
 data class SettingsResponse(
     val settings: Settings,
+) : ServerResponse
+
+@Serializable
+@SerialName("ai_catalog")
+data class AiCatalogResponse(
+    val snapshot: AiCatalogSnapshot,
+) : ServerResponse
+
+@Serializable
+@SerialName("runtime_catalog_templates")
+data class RuntimeCatalogTemplatesResponse(
+    val templates: RuntimeCatalogTemplates,
 ) : ServerResponse
 
 @Serializable

@@ -164,7 +164,7 @@ class ConversationApplicationService(
     ) {
         val agent = agentService.findById(agentDefinitionId)
             ?: error("Agent not found: ${agentDefinitionId.value}")
-        require(agent.type is AgentDefinition.Type.Builtin || agent.projectId == projectId) {
+        require(agent.type is AgentDefinition.Type.Global || agent.projectId == projectId) {
             "Agent ${agentDefinitionId.value} does not belong to project ${projectId.value}"
         }
     }

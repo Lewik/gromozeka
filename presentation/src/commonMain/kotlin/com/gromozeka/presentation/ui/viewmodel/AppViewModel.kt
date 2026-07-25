@@ -8,6 +8,7 @@ import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.ScreenCaptureController
@@ -26,6 +27,7 @@ open class AppViewModel(
     private val messageSquashGenerationService: MessageSquashGenerationService,
     private val soundNotificationService: SoundNotificationPlayer,
     private val settingsService: SettingsService,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val scope: CoroutineScope,
     private val screenCaptureController: ScreenCaptureController,
     private val defaultAgentProvider: DefaultAgentProvider,
@@ -304,6 +306,7 @@ open class AppViewModel(
         messageSquashGenerationService = messageSquashGenerationService,
         soundNotificationService = soundNotificationService,
         settingsService = settingsService,
+        aiConfigurationProvider = aiConfigurationProvider,
         scope = scope,
         initialTabUiState = initialTabUiState,
         screenCaptureController = screenCaptureController,

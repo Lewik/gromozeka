@@ -8,6 +8,7 @@ import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningEffort
@@ -161,31 +162,12 @@ class LongMemEvalMemorySmokeTest {
         val postgresSchema = "longmemeval_${uuid7().replace("-", "_")}"
         val runId = "${Clock.System.now()}-$postgresSchema".sanitizePathSegment()
         val settings = Settings(
-            userProfile = ServerTestHarness.openAiSubscriptionProfile(modelName)
-                .withRuntimeOverride(
-                    idLabel = "read-planner",
-                    purposes = setOf(AiRuntimeAssignment.Purpose.MEMORY_READ_PLANNER),
-                    modelName = readPlannerModelName,
-                    effort = readPlannerReasoningEffort,
+            userProfile = UserProfile(
+                memorySettings = UserProfile.MemorySettings(
+                    autoRemember = true,
+                    autoRecall = true,
                 )
-                .withRuntimeOverride(
-                    idLabel = "read-selector",
-                    purposes = setOf(AiRuntimeAssignment.Purpose.MEMORY_READ_SELECTOR),
-                    modelName = readSelectorModelName,
-                    effort = readSelectorReasoningEffort,
-                )
-                .withRuntimeOverride(
-                    idLabel = "read-answer",
-                    purposes = setOf(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
-                    modelName = readAnswerModelName,
-                    effort = readAnswerReasoningEffort,
-                )
-                .copy(
-                    memorySettings = UserProfile.MemorySettings(
-                        autoRemember = true,
-                        autoRecall = true,
-                    )
-                ),
+            ),
         )
 
         ServerTestHarness(
@@ -210,6 +192,27 @@ class LongMemEvalMemorySmokeTest {
                 "gromozeka.memory.routing.deterministicIds" to "true",
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
+            aiCatalogTransform = { catalog ->
+                ServerTestHarness.openAiSubscriptionCatalog(catalog, modelName)
+                    .withRuntimeOverride(
+                        idLabel = "read-planner",
+                        purposes = setOf(AiRuntimeAssignment.Purpose.MEMORY_READ_PLANNER),
+                        modelName = readPlannerModelName,
+                        effort = readPlannerReasoningEffort,
+                    )
+                    .withRuntimeOverride(
+                        idLabel = "read-selector",
+                        purposes = setOf(AiRuntimeAssignment.Purpose.MEMORY_READ_SELECTOR),
+                        modelName = readSelectorModelName,
+                        effort = readSelectorReasoningEffort,
+                    )
+                    .withRuntimeOverride(
+                        idLabel = "read-answer",
+                        purposes = setOf(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
+                        modelName = readAnswerModelName,
+                        effort = readAnswerReasoningEffort,
+                    )
+            },
         ).use { harness ->
             val memoryExecutor = harness.context.getBean(MemoryOperationExecutor::class.java)
             val memoryPreparer = harness.context.getBean(MemoryOperationPreparer::class.java)
@@ -400,16 +403,16 @@ class LongMemEvalMemorySmokeTest {
             }
     }
 
-    private fun UserProfile.withRuntimeOverride(
+    private fun AiCatalog.withRuntimeOverride(
         idLabel: String,
         purposes: Set<AiRuntimeAssignment.Purpose>,
         modelName: String?,
         effort: AiReasoningEffort?,
-    ): UserProfile {
+    ): AiCatalog {
         if (modelName == null && effort == null) return this
 
         val baseSelection = ServerTestHarness.openAiSubscriptionRuntimeSelection()
-        val baseConfiguration = aiSettings.modelConfigurations.single {
+        val baseConfiguration = modelConfigurations.single {
             it.id == baseSelection.modelConfigurationId
         }
         val readModelName = modelName ?: baseConfiguration.providerModelId
@@ -429,11 +432,9 @@ class LongMemEvalMemorySmokeTest {
         val readSelection = AiRuntimeSelection(readConfiguration.id)
 
         return copy(
-            aiSettings = aiSettings.copy(
-                modelConfigurations = aiSettings.modelConfigurations + readConfiguration,
-                runtimeAssignments = aiSettings.runtimeAssignments.filterNot { it.purpose in purposes } +
-                    purposes.map { purpose -> AiRuntimeAssignment(purpose, readSelection) },
-            )
+            modelConfigurations = modelConfigurations + readConfiguration,
+            runtimeAssignments = runtimeAssignments.filterNot { it.purpose in purposes } +
+                purposes.map { purpose -> AiRuntimeAssignment(purpose, readSelection) },
         )
     }
 

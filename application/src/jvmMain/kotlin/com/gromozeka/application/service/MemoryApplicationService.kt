@@ -42,7 +42,7 @@ import com.gromozeka.domain.model.memory.MemoryThreadContext
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.datetime.Clock
@@ -54,7 +54,7 @@ import org.springframework.stereotype.Service
 @Service
 class MemoryApplicationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val store: MemoryStore,
     private val readTraceSinks: List<MemoryReadTraceSink>,
     private val maintenanceTraceSinks: List<MemoryMaintenanceTraceSink>,
@@ -95,7 +95,9 @@ class MemoryApplicationService(
         )
         val focusedThreadContext = MemoryThreadContextCompactor(
             runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_CONTEXT_COMPACTOR),
-            preCompactThresholdTokens = MemoryContextWindowPolicy.readPreCompactThresholdTokens(settingsProvider.userProfile.aiSettings),
+            preCompactThresholdTokens = MemoryContextWindowPolicy.readPreCompactThresholdTokens(
+                aiConfigurationProvider.catalog
+            ),
         ).compactIfNeeded(
             context = threadContext,
             targetSourceLabel = "chat:${targetMessage.id.value}",
@@ -170,7 +172,7 @@ class MemoryApplicationService(
             namespaceOverride = namespaceOverride,
         )
         val runtime = aiRuntimeProvider.getRuntime(
-            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
+            selection = aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
             workspaceRootPath = runtimeContext.workspaceRootPath,
         )
         return collectMemoryRunTimings(llmCallObservers) {
@@ -193,7 +195,7 @@ class MemoryApplicationService(
         fun runtimeFor(purpose: AiRuntimeAssignment.Purpose): AiRuntime =
             runtimes.getOrPut(purpose) {
                 aiRuntimeProvider.getRuntime(
-                    selection = settingsProvider.runtimeSelectionFor(purpose),
+                    selection = aiConfigurationProvider.runtimeSelectionFor(purpose),
                     workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
             }

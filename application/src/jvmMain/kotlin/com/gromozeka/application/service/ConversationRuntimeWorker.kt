@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -53,6 +54,7 @@ class ConversationRuntimeWorker(
     private val runtimeWorkConsumer: ConversationRuntimeWorkConsumer,
     private val runtimeWorkerRegistry: ConversationRuntimeWorkerRegistry,
     private val workspaceService: WorkspaceDomainService,
+    private val aiConfigurationService: AiConfigurationService,
     private val taskRunnerProvider: ObjectProvider<ConversationRuntimeTaskRunner>,
     runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
     @Value("\${gromozeka.runtime.worker.version:dev}") private val workerVersion: String,
@@ -310,6 +312,7 @@ class ConversationRuntimeWorker(
                     errorType = error::class.simpleName,
                 )
             }
+            delivery.acknowledge()
             return
         }
         redeliverOrRejectUnclaimedDelivery(
@@ -398,6 +401,7 @@ class ConversationRuntimeWorker(
             return DeliveryPreparation.Redeliver
         }
 
+        aiConfigurationService.refreshIfChanged()
         return DeliveryPreparation.Execute(task)
     }
 

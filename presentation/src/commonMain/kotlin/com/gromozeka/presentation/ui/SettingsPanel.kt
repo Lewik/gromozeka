@@ -23,14 +23,10 @@ import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
-import com.gromozeka.domain.model.ai.AiConnection
-import com.gromozeka.domain.model.ai.AiModelCapability
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiModelSpec
-import com.gromozeka.domain.model.ai.AiRuntimeAssignment
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.OllamaModelService
+import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
@@ -46,8 +42,18 @@ private val log = KLoggers.logger("SettingsPanel")
 
 enum class SettingsPanelContentMode {
     Quick,
-    AiRuntime,
+    Full,
 }
+
+private enum class SettingsSection(val title: String) {
+    Interface("Interface"),
+    Voice("Voice"),
+    AiRuntime("AI"),
+    Behavior("Behavior"),
+    Tools("Tools"),
+    Advanced("Advanced"),
+}
+
 @Composable
 fun SettingsPanel(
     isVisible: Boolean,
@@ -61,6 +67,8 @@ fun SettingsPanel(
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
     settingsService: SettingsService,
+    aiConfigurationService: AiConfigurationService,
+    runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     ollamaModelService: OllamaModelService,
     coroutineScope: CoroutineScope,
     onOpenTab: () -> Unit,
@@ -85,6 +93,9 @@ fun SettingsPanel(
     val soundSettings = deviceSettings.soundSettings
     val desktopInputSettings = settings.desktopInputSettings
     val desktopWindowSettings = settings.desktopWindowSettings
+    var selectedSection by remember(contentMode) {
+        mutableStateOf(SettingsSection.AiRuntime)
+    }
 
     // Refresh themes when panel opens
     LaunchedEffect(isVisible) {
@@ -139,15 +150,38 @@ fun SettingsPanel(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                if (contentMode == SettingsPanelContentMode.Full) {
+                    PrimaryScrollableTabRow(
+                        selectedTabIndex = SettingsSection.entries.indexOf(selectedSection),
+                        edgePadding = 0.dp,
+                    ) {
+                        SettingsSection.entries.forEach { section ->
+                            Tab(
+                                selected = selectedSection == section,
+                                onClick = { selectedSection = section },
+                                text = { Text(section.title) },
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 // Settings content
                 val scrollState = rememberScrollState()
+                LaunchedEffect(selectedSection) {
+                    scrollState.scrollTo(0)
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    if (contentMode == SettingsPanelContentMode.AiRuntime) {
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Voice
+                    ) {
                     // Audio Settings
                     // Voice Synthesis (TTS) Settings
                     SettingsGroup(title = translation.settings.voiceSynthesisTitle) {
@@ -428,126 +462,22 @@ fun SettingsPanel(
                     }
                     }
 
-                    if (contentMode == SettingsPanelContentMode.AiRuntime) {
-                        SettingsGroup(title = translation.settings.aiSettingsTitle) {
-                        val aiSettings = userProfile.aiSettings
-                        Text(
-                            text = "Runtime assignments",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.AiRuntime
+                    ) {
+                        AiCatalogSettings(
+                            aiConfigurationService = aiConfigurationService,
+                            runtimeCatalogTemplateService = runtimeCatalogTemplateService,
+                            coroutineScope = coroutineScope,
                         )
+                    }
 
-                        AiRuntimeAssignment.Purpose.entries.forEach { purpose ->
-                            val assignment = aiSettings.assignmentFor(purpose)
-                            val selection = aiSettings.runtimeSelectionFor(purpose)
-                            val options = aiSettings.modelConfigurations.filter {
-                                aiSettings.supportsPurpose(it, purpose)
-                            }
-                            val selectedConfiguration = options.firstOrNull {
-                                it.id == selection?.modelConfigurationId
-                            } ?: aiSettings.modelConfigurations.firstOrNull {
-                                it.id == selection?.modelConfigurationId
-                            } ?: options.firstOrNull()
-
-                            if (selectedConfiguration != null) {
-                                DropdownSettingItem(
-                                    label = if (assignment == null && purpose.fallbackPurpose != null) {
-                                        "${purpose.displayName} (fallback)"
-                                    } else {
-                                        purpose.displayName
-                                    },
-                                    description = purpose.description,
-                                    value = selectedConfiguration,
-                                    options = options.ifEmpty { listOf(selectedConfiguration) },
-                                    optionLabel = { "${it.displayName} · ${it.providerModelId}" },
-                                    optionEnabled = { aiSettings.supportsPurpose(it, purpose) },
-                                    onValueChange = { selected ->
-                                        onSettingsChange(
-                                            settings.copy(
-                                                userProfile = userProfile.copy(
-                                                    aiSettings = aiSettings.withRuntimeAssignment(
-                                                        purpose = purpose,
-                                                        modelConfigurationId = selected.id,
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    }
-                                )
-                            } else {
-                                InfoSettingItem(
-                                    label = purpose.displayName,
-                                    message = "No enabled model configuration with capabilities ${purpose.requiredCapabilities}",
-                                    isError = true,
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Connections",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-
-                        aiSettings.connections.forEach { connection ->
-                            AiConnectionSettingsCard(
-                                connection = connection,
-                                onConnectionChange = { updated ->
-                                    onSettingsChange(
-                                        settings.copy(
-                                            userProfile = userProfile.copy(
-                                                aiSettings = aiSettings.copy(
-                                                    connections = aiSettings.connections.map {
-                                                        if (it.id == updated.id) updated else it
-                                                    }
-                                                )
-                                            )
-                                        )
-                                    )
-                                }
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-
-                        Text(
-                            text = "Model configurations",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-
-                        aiSettings.modelConfigurations.forEach { configuration ->
-                            val assignedPurposes = aiSettings.runtimeAssignments
-                                .filter { it.selection.modelConfigurationId == configuration.id }
-                                .map { it.purpose.displayName }
-                            AiModelConfigurationSettingsCard(
-                                configuration = configuration,
-                                modelSpec = aiSettings.modelSpecFor(configuration),
-                                assignedPurposes = assignedPurposes,
-                                onConfigurationChange = { updated ->
-                                    onSettingsChange(
-                                        settings.copy(
-                                            userProfile = userProfile.copy(
-                                                aiSettings = aiSettings.copy(
-                                                    modelConfigurations = aiSettings.modelConfigurations.map {
-                                                        if (it.id == updated.id) updated else it
-                                                    }
-                                                )
-                                            )
-                                        )
-                                    )
-                                }
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Behavior
+                    ) {
+                        SettingsGroup(title = "Agent and memory behavior") {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                         SwitchSettingItem(
@@ -621,7 +551,10 @@ fun SettingsPanel(
                         }
                     }
 
-                    if (contentMode == SettingsPanelContentMode.AiRuntime) {
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Tools
+                    ) {
                         SettingsGroup(title = translation.settings.apiKeysTitle) {
                         // Brave Search
                         SwitchSettingItem(
@@ -704,7 +637,13 @@ fun SettingsPanel(
 
                     }
 
-                    if (contentMode == SettingsPanelContentMode.Quick) {
+                    if (
+                        contentMode == SettingsPanelContentMode.Quick ||
+                        (
+                            contentMode == SettingsPanelContentMode.Full &&
+                                selectedSection == SettingsSection.Interface
+                            )
+                    ) {
                     SettingsGroup(title = "Composer shortcuts") {
                         userProfile.messageInstructionGroups.forEach { group ->
                             SwitchSettingItem(
@@ -866,7 +805,6 @@ fun SettingsPanel(
                                 }
                             }
                         )
-                    }
 
                     // Theming Settings
                     SettingsGroup(title = translation.settings.themingTitle) {
@@ -1057,7 +995,10 @@ fun SettingsPanel(
 
                     }
 
-                    if (contentMode == SettingsPanelContentMode.AiRuntime) {
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Advanced
+                    ) {
                     // Logs & Diagnostics
                     SettingsGroup(title = translation.settings.logsAndDiagnosticsTitle) {
                         ButtonSettingItem(
@@ -1129,6 +1070,7 @@ fun SettingsPanel(
                     }
                     }
                 }
+            }
             }
         }
     }
@@ -1256,173 +1198,6 @@ private fun SliderSettingItem(
     }
 }
 
-@Composable
-private fun AiConnectionSettingsCard(
-    connection: AiConnection,
-    onConnectionChange: (AiConnection) -> Unit,
-) {
-    val httpConnection = connection as? AiConnection.HttpAiConnection
-    val apiKeyConnection = connection as? AiConnection.ApiKeyAiConnection
-    val awsConnection = connection as? AiConnection.AwsAiConnection
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(connection.displayName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "${connection.kind.name} · ${connection.id.value}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = connection.enabled,
-                    onCheckedChange = { onConnectionChange(connection.withEnabled(it)) }
-                )
-            }
-
-            TextFieldSettingItem(
-                label = "Display name",
-                description = "",
-                value = connection.displayName,
-                onValueChange = { onConnectionChange(connection.withDisplayName(it)) }
-            )
-
-            if (httpConnection != null) {
-                TextFieldSettingItem(
-                    label = "Base URL",
-                    description = "Optional endpoint override for this connection",
-                    value = httpConnection.baseUrl ?: "",
-                    placeholder = "https://api.example.com/v1",
-                    onValueChange = { onConnectionChange(connection.withBaseUrl(it.ifBlank { null })) }
-                )
-            }
-
-            if (apiKeyConnection != null) {
-                TextFieldSettingItem(
-                    label = "Secret env var",
-                    description = "Server-side environment variable that contains the API key",
-                    value = (apiKeyConnection.apiKey as? SecretRef.EnvironmentVariable)?.name ?: "",
-                    placeholder = "OPENAI_API_KEY",
-                    onValueChange = {
-                        onConnectionChange(connection.withApiKey(it.ifBlank { null }?.let(SecretRef::EnvironmentVariable)))
-                    }
-                )
-
-                PasswordSettingItem(
-                    label = "Inline API key",
-                    description = "Stored in server settings. Prefer env var for shared machines.",
-                    value = (apiKeyConnection.apiKey as? SecretRef.Inline)?.value ?: "",
-                    onValueChange = {
-                        onConnectionChange(connection.withApiKey(it.ifBlank { null }?.let(SecretRef::Inline)))
-                    }
-                )
-            }
-
-            if (awsConnection != null) {
-                TextFieldSettingItem(
-                    label = "AWS region",
-                    description = "Only used by Bedrock-style connections",
-                    value = awsConnection.awsRegion ?: "",
-                    placeholder = "us-east-1",
-                    onValueChange = { onConnectionChange(connection.withAwsRegion(it.ifBlank { null })) }
-                )
-
-                TextFieldSettingItem(
-                    label = "AWS profile",
-                    description = "Only used by Bedrock-style connections",
-                    value = awsConnection.awsProfile ?: "",
-                    placeholder = "work",
-                    onValueChange = { onConnectionChange(connection.withAwsProfile(it.ifBlank { null })) }
-                )
-            }
-        }
-    }
-}
-
-private fun AiConnection.withEnabled(enabled: Boolean): AiConnection =
-    when (this) {
-        is AiConnection.OpenAiSubscription -> copy(enabled = enabled)
-        is AiConnection.OpenAiApi -> copy(enabled = enabled)
-        is AiConnection.OpenAiCompatible -> copy(enabled = enabled)
-        is AiConnection.AnthropicApi -> copy(enabled = enabled)
-        is AiConnection.AnthropicBedrock -> copy(enabled = enabled)
-        is AiConnection.ClaudeCode -> copy(enabled = enabled)
-        is AiConnection.GeminiApi -> copy(enabled = enabled)
-        is AiConnection.Ollama -> copy(enabled = enabled)
-    }
-
-private fun AiConnection.withDisplayName(displayName: String): AiConnection =
-    when (this) {
-        is AiConnection.OpenAiSubscription -> copy(displayName = displayName)
-        is AiConnection.OpenAiApi -> copy(displayName = displayName)
-        is AiConnection.OpenAiCompatible -> copy(displayName = displayName)
-        is AiConnection.AnthropicApi -> copy(displayName = displayName)
-        is AiConnection.AnthropicBedrock -> copy(displayName = displayName)
-        is AiConnection.ClaudeCode -> copy(displayName = displayName)
-        is AiConnection.GeminiApi -> copy(displayName = displayName)
-        is AiConnection.Ollama -> copy(displayName = displayName)
-    }
-
-private fun AiConnection.withBaseUrl(baseUrl: String?): AiConnection =
-    when (this) {
-        is AiConnection.OpenAiApi -> copy(baseUrl = baseUrl)
-        is AiConnection.OpenAiCompatible -> baseUrl?.let { copy(baseUrl = it) } ?: this
-        is AiConnection.AnthropicApi -> copy(baseUrl = baseUrl)
-        is AiConnection.AnthropicBedrock -> copy(baseUrl = baseUrl)
-        is AiConnection.GeminiApi -> copy(baseUrl = baseUrl)
-        is AiConnection.Ollama -> baseUrl?.let { copy(baseUrl = it) } ?: this
-        is AiConnection.OpenAiSubscription,
-        is AiConnection.ClaudeCode -> this
-    }
-
-private fun AiConnection.withApiKey(apiKey: SecretRef?): AiConnection =
-    when (this) {
-        is AiConnection.OpenAiApi -> copy(apiKey = apiKey)
-        is AiConnection.OpenAiCompatible -> copy(apiKey = apiKey)
-        is AiConnection.AnthropicApi -> copy(apiKey = apiKey)
-        is AiConnection.GeminiApi -> copy(apiKey = apiKey)
-        is AiConnection.OpenAiSubscription,
-        is AiConnection.AnthropicBedrock,
-        is AiConnection.ClaudeCode,
-        is AiConnection.Ollama -> this
-    }
-
-private fun AiConnection.withAwsRegion(awsRegion: String?): AiConnection =
-    when (this) {
-        is AiConnection.AnthropicBedrock -> copy(awsRegion = awsRegion)
-        is AiConnection.OpenAiSubscription,
-        is AiConnection.OpenAiApi,
-        is AiConnection.OpenAiCompatible,
-        is AiConnection.AnthropicApi,
-        is AiConnection.ClaudeCode,
-        is AiConnection.GeminiApi,
-        is AiConnection.Ollama -> this
-    }
-
-private fun AiConnection.withAwsProfile(awsProfile: String?): AiConnection =
-    when (this) {
-        is AiConnection.AnthropicBedrock -> copy(awsProfile = awsProfile)
-        is AiConnection.OpenAiSubscription,
-        is AiConnection.OpenAiApi,
-        is AiConnection.OpenAiCompatible,
-        is AiConnection.AnthropicApi,
-        is AiConnection.ClaudeCode,
-        is AiConnection.GeminiApi,
-        is AiConnection.Ollama -> this
-    }
-
 private fun Settings.updateUserProfile(update: UserProfile.() -> UserProfile): Settings =
     copy(userProfile = userProfile.update())
 
@@ -1506,104 +1281,6 @@ private fun SecretRef?.secretText(): String =
 
 private fun String.inlineSecretOrNull(): SecretRef? =
     ifBlank { null }?.let(SecretRef::Inline)
-
-private fun UserProfile.AiSettings.assignmentFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeAssignment? =
-    runtimeAssignments.firstOrNull { it.purpose == purpose }
-
-private fun UserProfile.AiSettings.withRuntimeAssignment(
-    purpose: AiRuntimeAssignment.Purpose,
-    modelConfigurationId: AiModelConfiguration.Id,
-): UserProfile.AiSettings =
-    copy(
-        runtimeAssignments = (
-            runtimeAssignments.filterNot { it.purpose == purpose } +
-                AiRuntimeAssignment(purpose, AiRuntimeSelection(modelConfigurationId))
-            ).sortedBy { it.purpose.ordinal }
-    )
-
-@Composable
-private fun AiModelConfigurationSettingsCard(
-    configuration: AiModelConfiguration,
-    modelSpec: AiModelSpec?,
-    assignedPurposes: List<String>,
-    onConfigurationChange: (AiModelConfiguration) -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(configuration.displayName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "${configuration.connectionId.value} · ${configuration.id.value}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = configuration.enabled,
-                    enabled = !configuration.enabled || assignedPurposes.isEmpty(),
-                    onCheckedChange = { onConfigurationChange(configuration.copy(enabled = it)) }
-                )
-            }
-            if (assignedPurposes.isNotEmpty()) {
-                Text(
-                    text = "Assigned to: ${assignedPurposes.joinToString()}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            TextFieldSettingItem(
-                label = "Display name",
-                description = "",
-                value = configuration.displayName,
-                onValueChange = { onConfigurationChange(configuration.copy(displayName = it)) }
-            )
-
-            TextFieldSettingItem(
-                label = "Provider model id",
-                description = "Exact model id sent to the provider",
-                value = configuration.providerModelId,
-                placeholder = "gpt-5.5",
-                onValueChange = { onConfigurationChange(configuration.copy(providerModelId = it)) }
-            )
-
-            if (modelSpec?.capabilities?.contains(AiModelCapability.TEXT_GENERATION) == true) {
-                DropdownSettingItem(
-                    label = "Assistant response format",
-                    description = "JSON_SCHEMA is the default. Use XML_INLINE/XML_STRUCTURED for providers without native structured output.",
-                    value = configuration.assistantResponseFormat.name,
-                    options = AiModelConfiguration.AssistantResponseFormat.entries.map { it.name },
-                    onValueChange = {
-                        onConfigurationChange(
-                            configuration.copy(
-                                assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.valueOf(it)
-                            )
-                        )
-                    }
-                )
-            }
-
-            Text(
-                text = modelSpec?.let {
-                    "Capabilities: ${it.capabilities.joinToString { capability -> capability.name.lowercase() }}"
-                } ?: "Capabilities: missing model spec",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (modelSpec == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
 
 @Composable
 private fun DropdownSettingItem(

@@ -5,13 +5,14 @@ import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 
 /**
  * Domain service for managing AI agent definitions.
  *
  * Coordinates agent lifecycle and enforces business rules:
- * - Builtin agents cannot be deleted (protected system agents)
- * - Prompts and descriptions can be updated independently
+ * - Global agents are available across projects
+ * - Project agents may use global and same-project catalog entries
  * - All agents use ordered list of prompts for behavior definition
  *
  * @see AgentDefinition for domain model
@@ -33,28 +34,20 @@ interface AgentDomainService {
      * @return created agent with assigned ID
      */
     suspend fun createAgent(
-        projectId: Project.Id,
+        projectId: Project.Id?,
         name: String,
         prompts: List<Prompt.Id>,
         runtimeSelection: AiRuntimeSelection,
+        runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
         tools: List<String> = emptyList(),
         description: String? = null,
         skills: List<AgentSkill.Id> = emptyList(),
     ): AgentDefinition
 
-    /**
-     * Creates an independent project copy of a builtin agent.
-     *
-     * Selected builtin prompts are copied into the project. Existing prompts
-     * from the target project and the runtime `env` prompt remain references.
-     */
-    suspend fun copyBuiltinAgent(
-        projectId: Project.Id,
+    suspend fun duplicateAgent(
+        projectId: Project.Id?,
         sourceAgentId: AgentDefinition.Id,
         name: String,
-        prompts: List<Prompt.Id>,
-        description: String? = null,
-        skills: List<AgentSkill.Id> = emptyList(),
     ): AgentDefinition
 
     /**
@@ -75,32 +68,21 @@ interface AgentDomainService {
     suspend fun findByProject(projectId: Project.Id): List<AgentDefinition>
 
     /**
-     * Updates agent prompts or description.
-     *
-     * Name and type are immutable after creation.
-     * This is a transactional operation.
-     *
-     * @param id agent to update
-     * @param prompts new ordered prompts list (null = keep existing)
-     * @param description new description (null = keep existing)
-     * @return updated agent, or null if agent not found
+     * Replaces the mutable fields of an existing agent.
      */
     suspend fun update(
         id: AgentDefinition.Id,
-        prompts: List<Prompt.Id>? = null,
+        name: String,
+        prompts: List<Prompt.Id>,
         description: String? = null,
-        skills: List<AgentSkill.Id>? = null,
+        skills: List<AgentSkill.Id>,
+        runtimeSelection: AiRuntimeSelection,
+        runtimeOverrides: AiRuntimeOverrides,
+        tools: List<String>,
     ): AgentDefinition?
 
     /**
      * Deletes agent definition.
-     *
-     * Builtin agents cannot be deleted - operation logs warning and returns silently.
-     * User-created agents are permanently removed.
-     * This is a transactional operation.
-     *
-     * Note: Does not check if agent is in use by conversations.
-     * Infrastructure should enforce referential integrity.
      *
      * @param id agent to delete
      */

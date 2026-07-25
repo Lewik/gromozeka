@@ -21,6 +21,7 @@ import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
@@ -98,6 +99,7 @@ class ConversationEngineService(
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val aiModelSpecRepository: AiModelSpecRepository,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
@@ -833,7 +835,7 @@ class ConversationEngineService(
             ?: throw IllegalStateException(
                 "Agent not found for conversation ${conversation.id.value}: ${agentDefinitionId.value}"
             )
-        require(agent.type is AgentDefinition.Type.Builtin || agent.projectId == conversation.projectId) {
+        require(agent.type is AgentDefinition.Type.Global || agent.projectId == conversation.projectId) {
             "Agent ${agentDefinitionId.value} does not belong to conversation project ${conversation.projectId.value}"
         }
         val project = conversationService.getProject(conversation.id)
@@ -841,7 +843,7 @@ class ConversationEngineService(
             project = project,
             workerId = worker.workerId.value,
         )
-        val resolvedRuntime = settingsProvider.resolveAiRuntime(agent.runtimeSelection)
+        val resolvedRuntime = aiConfigurationProvider.resolveAiRuntime(agent.runtimeSelection)
         val provider = resolvedRuntime.connection.kind.provider
         val modelName = resolvedRuntime.modelConfiguration.providerModelId
         log.info {

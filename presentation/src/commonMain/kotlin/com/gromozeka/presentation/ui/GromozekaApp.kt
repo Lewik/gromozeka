@@ -360,6 +360,7 @@ fun GromozekaAppContent(
                                                 if (currentTabIndex == -3) {
                                                     LiveInterpreterScreen(
                                                         settings = currentSettings,
+                                                        aiConfigurationProvider = appComponents.aiConfigurationService,
                                                         liveInterpreterService = appComponents.liveInterpreterService,
                                                         liveAudioStreamer = appComponents.liveAudioStreamer,
                                                         clientSideSpeechToTextService = appComponents.clientSideSpeechToTextService,
@@ -487,10 +488,12 @@ fun GromozekaAppContent(
                                                             1 -> {
                                                                 AgentConstructorScreen(
                                                                     projectId = tabs.firstOrNull()?.projectId,
+                                                                    projectService = appComponents.projectService,
                                                                     agentService = appComponents.agentService,
                                                                     agentSkillService = appComponents.agentSkillService,
                                                                     promptService = appComponents.promptService,
-                                                                    settingsService = appComponents.settingsService,
+                                                                    aiConfigurationService = appComponents.aiConfigurationService,
+                                                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
                                                                     coroutineScope = coroutineScope,
                                                                 )
                                                             }
@@ -508,12 +511,14 @@ fun GromozekaAppContent(
                                                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                                                     logEncryptor = appComponents.logEncryptor,
                                                                     settingsService = appComponents.settingsService,
+                                                                    aiConfigurationService = appComponents.aiConfigurationService,
+                                                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
                                                                     ollamaModelService = appComponents.ollamaModelService,
                                                                     coroutineScope = coroutineScope,
                                                                     onOpenTab = createNewSessionInCurrentProject,
                                                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                                                     fullScreen = true,
-                                                                    contentMode = SettingsPanelContentMode.AiRuntime,
+                                                                    contentMode = SettingsPanelContentMode.Full,
                                                                     showCloseButton = false
                                                                 )
                                                             }
@@ -574,7 +579,7 @@ fun GromozekaAppContent(
                                                 ConversationRuntimePanel(
                                                     isVisible = showRuntimePanel,
                                                     currentAgent = tabUiState.agent,
-                                                    settings = currentSettings,
+                                                    aiConfigurationProvider = appComponents.aiConfigurationService,
                                                     tokenStats = tokenStats,
                                                     isWaitingForResponse = isWaitingForResponse,
                                                     executionPauseRequested = executionPauseRequested,
@@ -627,6 +632,8 @@ fun GromozekaAppContent(
                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                     logEncryptor = appComponents.logEncryptor,
                                     settingsService = appComponents.settingsService,
+                                    aiConfigurationService = appComponents.aiConfigurationService,
+                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
                                     onOpenTab = createNewSessionInCurrentProject,
@@ -668,7 +675,7 @@ fun GromozekaAppContent(
                                     ConversationRuntimePanel(
                                         isVisible = showRuntimePanel,
                                         currentAgent = tabUiState.agent,
-                                        settings = currentSettings,
+                                        aiConfigurationProvider = appComponents.aiConfigurationService,
                                         tokenStats = tokenStats,
                                         isWaitingForResponse = isWaitingForResponse,
                                         executionPauseRequested = executionPauseRequested,
@@ -728,6 +735,8 @@ fun GromozekaAppContent(
                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                     logEncryptor = appComponents.logEncryptor,
                                     settingsService = appComponents.settingsService,
+                                    aiConfigurationService = appComponents.aiConfigurationService,
+                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
                                     onOpenTab = createNewSessionInCurrentProject,

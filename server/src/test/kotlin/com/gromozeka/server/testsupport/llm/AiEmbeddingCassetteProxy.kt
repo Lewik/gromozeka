@@ -1,13 +1,13 @@
 package com.gromozeka.server.testsupport.llm
 
-import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiEmbeddingVector
 import com.gromozeka.domain.service.ResolvedAiRuntime
-import com.gromozeka.domain.service.SettingsProvider
 import klog.KLoggers
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -25,8 +25,8 @@ import kotlin.io.path.writeText
 
 internal class CassetteAiEmbeddingProvider(
     private val delegate: AiEmbeddingProvider,
-    private val settingsProvider: SettingsProvider? = null,
-    private val userProfile: UserProfile = UserProfile(),
+    private val aiConfigurationProvider: AiConfigurationProvider? = null,
+    private val catalog: AiCatalog? = null,
     private val settings: AiRuntimeCassetteSettings = AiRuntimeCassetteSettings.fromSystemProperties(),
 ) : AiEmbeddingProvider {
     private val log = KLoggers.logger(this)
@@ -56,15 +56,10 @@ internal class CassetteAiEmbeddingProvider(
     }
 
     private fun resolveRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
-        settingsProvider?.let { return it.resolveAiRuntime(selection) }
-        val modelConfiguration = userProfile.aiSettings.modelConfigurations.firstOrNull {
-            it.id == selection.modelConfigurationId
-        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
-        val connection = userProfile.aiSettings.connections.firstOrNull { it.id == modelConfiguration.connectionId }
-            ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
-        require(connection.enabled) { "AI connection is disabled: ${connection.id.value}" }
-        require(modelConfiguration.enabled) { "AI model configuration is disabled: ${modelConfiguration.id.value}" }
-        return ResolvedAiRuntime(connection, modelConfiguration)
+        aiConfigurationProvider?.let { return it.resolveAiRuntime(selection) }
+        return requireNotNull(catalog) {
+            "Cassette embedding provider requires an AI configuration provider or catalog"
+        }.resolveEnabledRuntime(selection)
     }
 }
 

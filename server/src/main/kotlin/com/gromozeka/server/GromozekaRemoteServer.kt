@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
+import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -16,6 +17,7 @@ import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
@@ -44,6 +46,8 @@ import kotlinx.serialization.json.Json
 @Service
 class GromozekaRemoteServer(
     private val settingsService: SettingsService,
+    private val aiConfigurationService: AiConfigurationService,
+    private val runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val agentDomainService: AgentDomainService,
     private val agentSkillDomainService: AgentSkillDomainService,
@@ -160,6 +164,16 @@ class GromozekaRemoteServer(
                     settingsService.saveSettings(request.settings)
                     SavedResponse
                 }
+                GetAiCatalogRequest -> AiCatalogResponse(aiConfigurationService.snapshot)
+                is SaveAiCatalogRequest -> AiCatalogResponse(
+                    aiConfigurationService.replaceCatalog(
+                        request.catalog,
+                        request.expectedRevision,
+                    )
+                )
+                GetRuntimeCatalogTemplatesRequest -> RuntimeCatalogTemplatesResponse(
+                    runtimeCatalogTemplateService.getTemplates()
+                )
 
                 GetDefaultAgentRequest -> DefaultAgentResponse(defaultAgentProvider.getDefault())
                 is FindAgentRequest -> AgentResponse(agentDomainService.findById(request.agentId))
@@ -173,27 +187,29 @@ class GromozekaRemoteServer(
                         request.name,
                         request.prompts,
                         request.runtimeSelection,
+                        request.runtimeOverrides,
                         request.tools,
                         request.description,
                         request.skills,
                     )
                 )
-                is CopyBuiltinAgentRequest -> AgentResponse(
-                    agentDomainService.copyBuiltinAgent(
+                is DuplicateAgentRequest -> AgentResponse(
+                    agentDomainService.duplicateAgent(
                         request.projectId,
                         request.sourceAgentId,
                         request.name,
-                        request.prompts,
-                        request.description,
-                        request.skills,
                     )
                 )
                 is UpdateAgentRequest -> AgentResponse(
                     agentDomainService.update(
                         request.agentId,
+                        request.name,
                         request.prompts,
                         request.description,
                         request.skills,
+                        request.runtimeSelection,
+                        request.runtimeOverrides,
+                        request.tools,
                     )
                 )
                 is DeleteAgentRequest -> {
@@ -222,9 +238,16 @@ class GromozekaRemoteServer(
                     request.projectId?.let { promptDomainService.findByProject(it) }
                         ?: promptDomainService.findAll()
                 )
-                is CreateProjectPromptRequest -> PromptResponse(
-                    promptDomainService.createProjectPrompt(request.projectId, request.name, request.content)
+                is CreatePromptRequest -> PromptResponse(
+                    promptDomainService.createPrompt(request.projectId, request.name, request.content)
                 )
+                is UpdatePromptRequest -> PromptResponse(
+                    promptDomainService.updatePrompt(request.promptId, request.name, request.content)
+                )
+                is DeletePromptRequest -> {
+                    promptDomainService.deletePrompt(request.promptId)
+                    SavedResponse
+                }
                 is CreateProjectRequest -> ProjectResponse(
                     projectDomainService.create(request.name, request.description)
                 )

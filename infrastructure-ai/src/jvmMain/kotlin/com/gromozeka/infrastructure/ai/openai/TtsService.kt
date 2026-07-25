@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai
 import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AudioController
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.openai.models.audio.speech.SpeechCreateParams
 import com.openai.models.audio.speech.SpeechModel
@@ -18,6 +19,7 @@ import java.io.File
 class TtsService(
     private val clientFactory: OpenAiSdkClientFactory,
     private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val audioController: AudioController,
 ) {
     private val log = KLoggers.logger(this)
@@ -100,7 +102,7 @@ class TtsService(
     }
 
     private fun textToSpeechRuntime() =
-        settingsProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.TEXT_TO_SPEECH)
+        aiConfigurationProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.TEXT_TO_SPEECH)
 
     private fun speechParamsBuilder(
         text: String,

@@ -9,7 +9,7 @@ import com.gromozeka.domain.model.memory.MemoryIngestPlanningRequest
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryIngestSectionPlan
 import com.gromozeka.domain.service.AiRuntimeProvider
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import org.springframework.stereotype.Service
@@ -24,7 +24,7 @@ internal data class MemoryIngestPreflightResult(
 @Service
 internal class MemoryIngestPreflightApplicationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val llmCallObservers: List<MemoryRunLlmCallObserver>,
 ) {
     private val engine = MemoryIngestPreflightEngine()
@@ -41,7 +41,9 @@ internal class MemoryIngestPreflightApplicationService(
                 sourceLabel = sourceLabel,
                 planner = LlmMemoryIngestPlanner(
                     runtime = aiRuntimeProvider.getRuntime(
-                        selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_INGEST_PLANNER),
+                        selection = aiConfigurationProvider.runtimeSelectionFor(
+                            AiRuntimeAssignment.Purpose.MEMORY_WRITE_INGEST_PLANNER
+                        ),
                         workspaceRootPath = runtimeContext.workspaceRootPath,
                     ),
                     runtimeSystemPrompts = runtimeSystemPrompts,

@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.ai.AiConnection
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import org.springframework.stereotype.Service
@@ -9,7 +9,7 @@ import java.time.Instant
 
 @Service
 class OpenAiSubscriptionStartupAuthService(
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val configService: OpenAiSubscriptionConfigService,
     private val browserAuthService: OpenAiSubscriptionBrowserAuthService,
 ) {
@@ -17,8 +17,9 @@ class OpenAiSubscriptionStartupAuthService(
 
     @PostConstruct
     fun bootstrapIfNeeded() {
-        if (settingsProvider.userProfile.aiSettings.connections.none {
-                it.enabled && it.kind == AiConnection.Kind.OPENAI_SUBSCRIPTION
+        if (aiConfigurationProvider.catalog.connections.none {
+                (it.enabled || it.id in aiConfigurationProvider.snapshot.runtimeEnabledConnectionIds) &&
+                    it.kind == AiConnection.Kind.OPENAI_SUBSCRIPTION
             }) {
             return
         }

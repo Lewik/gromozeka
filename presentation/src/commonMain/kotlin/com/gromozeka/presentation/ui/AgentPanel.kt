@@ -59,7 +59,7 @@ fun AgentPanel(
                     compareBy<AgentDefinition> { agent ->
                         when (val type = agent.type) {
                             is AgentDefinition.Type.Project -> 0
-                            is AgentDefinition.Type.Builtin -> 1
+                            is AgentDefinition.Type.Global -> 1
                         }
                     }.thenBy { it.name }
                 )
@@ -209,11 +209,11 @@ private fun AgentRadioItem(
             Icon(
                 imageVector = when (val type = agent.type) {
                     is AgentDefinition.Type.Project -> Icons.Default.Folder
-                    is AgentDefinition.Type.Builtin -> Icons.Default.Lock
+                    is AgentDefinition.Type.Global -> Icons.Default.Home
                 },
                 contentDescription = when (val type = agent.type) {
                     is AgentDefinition.Type.Project -> "Project"
-                    is AgentDefinition.Type.Builtin -> "Builtin"
+                    is AgentDefinition.Type.Global -> "Global"
                 },
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)

@@ -8,9 +8,11 @@ import com.gromozeka.client.RemoteMemoryActionItemService
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
+import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
+import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.presentation.services.GlobalHotkeyController
@@ -35,6 +37,8 @@ data class AppComponents(
     val appViewModel: AppViewModel,
     val ttsQueueService: TtsQueue,
     val settingsService: com.gromozeka.domain.service.SettingsService,
+    val aiConfigurationService: AiConfigurationService,
+    val runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     val remoteClientSettingsService: RemoteClientSettingsService,
     val remoteConnectionState: StateFlow<RemoteConnectionState>,
     val clientPresentationService: RemoteClientPresentationService,

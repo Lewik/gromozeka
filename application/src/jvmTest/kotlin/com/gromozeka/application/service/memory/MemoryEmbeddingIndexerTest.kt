@@ -1,10 +1,15 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.AppMode
-import com.gromozeka.domain.model.UserDeviceSettings
-import com.gromozeka.domain.model.UserProfile
-import com.gromozeka.domain.model.UserProfileAiDefaults
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelCapability
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryEmbeddingRecord
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemorySource
@@ -13,8 +18,11 @@ import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiEmbeddingVector
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -73,7 +81,7 @@ class MemoryEmbeddingIndexerTest {
         provider: AiEmbeddingProvider,
     ): DefaultMemoryEmbeddingIndexer =
         DefaultMemoryEmbeddingIndexer(
-            settingsProvider = TestSettingsProvider,
+            aiConfigurationProvider = TestAiConfigurationProvider,
             embeddingProvider = provider,
             store = store,
         )
@@ -95,23 +103,48 @@ class MemoryEmbeddingIndexerTest {
     }
 }
 
-private object TestSettingsProvider : SettingsProvider {
-    private val defaultAiSettings = UserProfileAiDefaults.aiSettings()
-
-    override val userProfile: UserProfile = UserProfile(
-        aiSettings = defaultAiSettings.copy(
-            connections = defaultAiSettings.connections.map { connection ->
-                if (connection is AiConnection.OpenAiApi) {
-                    connection.copy(enabled = true)
-                } else {
-                    connection
-                }
-            },
+private object TestAiConfigurationProvider : AiConfigurationProvider {
+    private val connection = AiConnection.OpenAiApi(
+        id = AiConnection.Id("test-openai"),
+        displayName = "Test OpenAI",
+        enabled = true,
+    )
+    private val modelConfiguration = AiModelConfiguration(
+        id = AiModelConfiguration.Id("test-embedding"),
+        connectionId = connection.id,
+        providerModelId = "text-embedding-3-large",
+        displayName = "Test embedding",
+    )
+    private val modelSpec = AiModelSpec(
+        id = modelConfiguration.providerModelId,
+        provider = AiProvider.OPENAI,
+        capabilities = AiModelCapability.entries.toSet(),
+        limits = AiModelSpec.Limits(
+            textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 128_000),
+            embeddings = AiModelSpec.Limits.Embeddings(
+                dimensions = 3_072,
+                maxInputTokens = 8_191,
+            ),
         ),
     )
-    override val userDeviceSettings: UserDeviceSettings = UserDeviceSettings.Desktop()
-    override val mode: AppMode = AppMode.TEST
-    override val homeDirectory: String = "/tmp/gromozeka-memory-embedding-test"
+    override val snapshot: AiCatalogSnapshot = AiCatalogSnapshot(
+        catalog = AiCatalog(
+            connections = listOf(connection),
+            modelSpecs = listOf(modelSpec),
+            modelConfigurations = listOf(modelConfiguration),
+            runtimeAssignments = AiRuntimeAssignment.Purpose.entries
+                .filter { it.requiresExplicitAssignment }
+                .map { AiRuntimeAssignment(it, AiRuntimeSelection(modelConfiguration.id)) },
+            defaultAgentId = AgentDefinition.Id("test-agent"),
+        ),
+        revision = 0,
+    )
+    override val snapshotFlow: StateFlow<AiCatalogSnapshot?> = MutableStateFlow(snapshot)
+
+    override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
+        require(selection.modelConfigurationId == modelConfiguration.id)
+        return ResolvedAiRuntime(connection, modelConfiguration)
+    }
 }
 
 private class FixedEmbeddingProvider : AiEmbeddingProvider {

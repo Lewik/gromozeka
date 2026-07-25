@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.speech.LocalWhisperTranscriptionService
 import com.gromozeka.shared.audio.AudioConfig
@@ -21,6 +22,7 @@ import java.io.File
 class SttService(
     private val clientFactory: OpenAiSdkClientFactory,
     private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val localWhisperTranscriptionService: LocalWhisperTranscriptionService,
 ) {
     private val log = KLoggers.logger(this)
@@ -63,7 +65,7 @@ class SttService(
             )
         }
 
-        val runtime = settingsProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT)
+        val runtime = aiConfigurationProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT)
         val client = clientFactory.createClient(runtime.connection)
         val tempFile = File.createTempFile("gromozeka-stt", ".${format.fileExtension}")
 
