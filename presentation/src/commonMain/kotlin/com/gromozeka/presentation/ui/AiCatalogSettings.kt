@@ -736,6 +736,18 @@ private fun ConnectionDialog(
     var executablePath by remember {
         mutableStateOf((existing as? AiConnection.ClaudeCode)?.executablePath ?: "claude")
     }
+    var maxCachedProcesses by remember {
+        mutableStateOf(
+            (existing as? AiConnection.ClaudeCode)?.maxCachedProcesses?.toString()
+                ?: AiConnection.ClaudeCode.DEFAULT_MAX_CACHED_PROCESSES.toString()
+        )
+    }
+    var processIdleTtlMinutes by remember {
+        mutableStateOf(
+            (existing as? AiConnection.ClaudeCode)?.processIdleTtlMinutes?.toString()
+                ?: AiConnection.ClaudeCode.DEFAULT_PROCESS_IDLE_TTL_MINUTES.toString()
+        )
+    }
     var awsRegion by remember {
         mutableStateOf((existing as? AiConnection.AwsAiConnection)?.awsRegion.orEmpty())
     }
@@ -850,6 +862,22 @@ private fun ConnectionDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    OutlinedTextField(
+                        value = maxCachedProcesses,
+                        onValueChange = { maxCachedProcesses = it.filter(Char::isDigit) },
+                        label = { Text("Cached process limit") },
+                        supportingText = { Text("Maximum Claude Code session processes retained by this connection") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = processIdleTtlMinutes,
+                        onValueChange = { processIdleTtlMinutes = it.filter(Char::isDigit) },
+                        label = { Text("Idle TTL (minutes)") },
+                        supportingText = { Text("Close a cached process after this much idle time") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -867,6 +895,8 @@ private fun ConnectionDialog(
                             secretMode = secretMode,
                             secretValue = secretValue,
                             executablePath = executablePath,
+                            maxCachedProcesses = maxCachedProcesses,
+                            processIdleTtlMinutes = processIdleTtlMinutes,
                             awsRegion = awsRegion,
                             awsProfile = awsProfile,
                         )
@@ -889,6 +919,8 @@ private fun createConnection(
     secretMode: String,
     secretValue: String,
     executablePath: String,
+    maxCachedProcesses: String,
+    processIdleTtlMinutes: String,
     awsRegion: String,
     awsProfile: String,
 ): AiConnection {
@@ -937,6 +969,10 @@ private fun createConnection(
             displayName,
             enabled,
             executablePath.trim(),
+            maxCachedProcesses.toIntOrNull()
+                ?: error("Cached process limit must be a positive integer"),
+            processIdleTtlMinutes.toIntOrNull()
+                ?: error("Idle TTL must be a positive integer"),
         )
         AiConnection.Kind.GEMINI_API -> AiConnection.GeminiApi(
             connectionId,

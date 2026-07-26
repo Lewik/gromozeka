@@ -223,6 +223,9 @@ class ClaudeCodeCliRuntimeTest {
         val args = ProcessClaudeCodeCliExecutor("claude")
             .buildArgs(command, "/tmp/gromozeka-system.md")
         assertTrue(args.windowed(2).contains(listOf("--effort", "max")))
+        assertTrue(args.windowed(2).contains(listOf("--input-format", "stream-json")))
+        assertTrue(args.windowed(2).contains(listOf("--output-format", "stream-json")))
+        assertTrue(args.contains("--verbose"))
     }
 
     @Test

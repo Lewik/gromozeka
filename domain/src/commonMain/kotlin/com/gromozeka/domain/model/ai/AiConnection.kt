@@ -142,12 +142,21 @@ sealed interface AiConnection {
         override val displayName: String,
         override val enabled: Boolean = true,
         val executablePath: String = "claude",
+        val maxCachedProcesses: Int = DEFAULT_MAX_CACHED_PROCESSES,
+        val processIdleTtlMinutes: Int = DEFAULT_PROCESS_IDLE_TTL_MINUTES,
     ) : AiConnection {
         override val kind = Kind.CLAUDE_CODE
 
         init {
             validateDisplayName(displayName)
             require(executablePath.isNotBlank()) { "Claude Code executable path must not be blank" }
+            require(maxCachedProcesses > 0) { "Claude Code cached process limit must be positive" }
+            require(processIdleTtlMinutes > 0) { "Claude Code process idle TTL must be positive" }
+        }
+
+        companion object {
+            const val DEFAULT_MAX_CACHED_PROCESSES = 10
+            const val DEFAULT_PROCESS_IDLE_TTL_MINUTES = 60
         }
     }
 

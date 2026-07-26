@@ -18,15 +18,12 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import com.gromozeka.shared.uuid.uuid7
+import jakarta.annotation.PreDestroy
 import klog.KLoggers
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -41,9 +38,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import org.springframework.stereotype.Service
 import java.io.File
-import java.io.IOException
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
@@ -52,6 +47,7 @@ internal class ClaudeCodeCliRuntimeBackend(
     private val sessionStateRepository: ClaudeCodeSessionStateRepository,
 ) : AiRuntimeBackend {
     private val sessionLocks = ConcurrentHashMap<String, Mutex>()
+    private val executor = ProcessClaudeCodeCliExecutor()
 
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.CLAUDE_CODE
@@ -66,10 +62,11 @@ internal class ClaudeCodeCliRuntimeBackend(
         }
 
         return ClaudeCodeCliRuntime(
-            executor = ProcessClaudeCodeCliExecutor(
-                executable = connection.executablePath,
-            ),
+            executor = executor,
             connectionId = connection.id.value,
+            executablePath = connection.executablePath,
+            maxCachedProcesses = connection.maxCachedProcesses,
+            processIdleTtlMinutes = connection.processIdleTtlMinutes,
             modelConfigurationId = modelConfiguration.id.value,
             modelName = modelConfiguration.providerModelId,
             workspaceDirectory = resolveWorkspaceDirectory(workspaceRootPath),
@@ -84,11 +81,19 @@ internal class ClaudeCodeCliRuntimeBackend(
         require(directory.isDirectory) { "Claude Code workspace root must be an existing directory: $value" }
         return directory
     }
+
+    @PreDestroy
+    fun close() {
+        executor.close()
+    }
 }
 
 internal class ClaudeCodeCliRuntime(
     private val executor: ClaudeCodeCliExecutor,
     private val connectionId: String,
+    private val executablePath: String = "claude",
+    private val maxCachedProcesses: Int = AiConnection.ClaudeCode.DEFAULT_MAX_CACHED_PROCESSES,
+    private val processIdleTtlMinutes: Int = AiConnection.ClaudeCode.DEFAULT_PROCESS_IDLE_TTL_MINUTES,
     private val modelConfigurationId: String,
     private val modelName: String,
     private val workspaceDirectory: File?,
@@ -132,6 +137,11 @@ internal class ClaudeCodeCliRuntime(
         }
 
         val command = ClaudeCodeCommand(
+            connectionId = connectionId,
+            executablePath = executablePath,
+            cacheKey = sessionStateKey?.lockKey(),
+            maxCachedProcesses = maxCachedProcesses,
+            processIdleTtlMinutes = processIdleTtlMinutes,
             modelName = modelName,
             workspaceDirectory = workspaceDirectory,
             systemPrompt = systemPrompt,
@@ -556,6 +566,11 @@ internal interface ClaudeCodeCliExecutor {
 }
 
 internal data class ClaudeCodeCommand(
+    val connectionId: String = "claude-code",
+    val executablePath: String = "claude",
+    val cacheKey: String? = null,
+    val maxCachedProcesses: Int = AiConnection.ClaudeCode.DEFAULT_MAX_CACHED_PROCESSES,
+    val processIdleTtlMinutes: Int = AiConnection.ClaudeCode.DEFAULT_PROCESS_IDLE_TTL_MINUTES,
     val modelName: String,
     val workspaceDirectory: File?,
     val systemPrompt: String,
@@ -566,12 +581,6 @@ internal data class ClaudeCodeCommand(
     val noSessionPersistence: Boolean,
 )
 
-private data class ProcessOutput(
-    val exitCode: Int,
-    val stdout: String,
-    val stderr: String,
-)
-
 internal data class ClaudeCodeCliResponse(
     val result: String,
     val structuredOutput: JsonElement?,
@@ -580,125 +589,6 @@ internal data class ClaudeCodeCliResponse(
     val finishReason: String?,
     val raw: JsonObject,
 )
-
-internal class ProcessClaudeCodeCliExecutor(
-    private val executable: String,
-) : ClaudeCodeCliExecutor {
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-
-    override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse {
-        val systemPromptFile = withContext(Dispatchers.IO) {
-            Files.createTempFile("gromozeka-claude-system-", ".md")
-        }
-
-        try {
-            withContext(Dispatchers.IO) {
-                Files.writeString(systemPromptFile, command.systemPrompt, StandardCharsets.UTF_8)
-            }
-
-            val args = buildArgs(command, systemPromptFile.toString())
-            val output = runProcess(args, command.workspaceDirectory, command.userPrompt)
-            if (output.exitCode != 0) {
-                val diagnostic = output.stderr.ifBlank { output.stdout }.trim()
-                error("Claude Code CLI failed with exit code ${output.exitCode}: $diagnostic")
-            }
-
-            return parseCliResponse(output.stdout)
-        } finally {
-            withContext(Dispatchers.IO) {
-                Files.deleteIfExists(systemPromptFile)
-            }
-        }
-    }
-
-    internal fun buildArgs(command: ClaudeCodeCommand, systemPromptFile: String): List<String> =
-        buildList {
-            add(executable)
-            add("-p")
-            add("--safe-mode")
-            add("--tools")
-            add("")
-            add("--disable-slash-commands")
-            add("--setting-sources")
-            add("")
-            add("--output-format")
-            add("json")
-            add("--system-prompt-file")
-            add(systemPromptFile)
-            add("--model")
-            add(command.modelName)
-            command.effort?.let { effort ->
-                add("--effort")
-                add(effort.name.lowercase())
-            }
-            command.jsonSchema?.let { schema ->
-                add("--json-schema")
-                add(schema.toString())
-            }
-            command.resumeSessionId?.let { sessionId ->
-                add("--resume")
-                add(sessionId)
-            }
-            if (command.noSessionPersistence) {
-                add("--no-session-persistence")
-            }
-        }
-
-    private suspend fun runProcess(
-        args: List<String>,
-        directory: File?,
-        stdin: String,
-    ): ProcessOutput = coroutineScope {
-        val process = try {
-            ProcessBuilder(args)
-                .apply { directory?.let(::directory) }
-                .start()
-        } catch (e: IOException) {
-            error("Failed to start Claude Code CLI '${args.first()}'. Ensure Claude Code is installed and authorized: ${e.message}")
-        }
-
-        val stdout = async(Dispatchers.IO) {
-            process.inputStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
-        }
-        val stderr = async(Dispatchers.IO) {
-            process.errorStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
-        }
-
-        withContext(Dispatchers.IO) {
-            process.outputStream.use { stream ->
-                stream.write(stdin.toByteArray(StandardCharsets.UTF_8))
-            }
-        }
-
-        val exitCode = withContext(Dispatchers.IO) { process.waitFor() }
-        ProcessOutput(
-            exitCode = exitCode,
-            stdout = stdout.await(),
-            stderr = stderr.await(),
-        )
-    }
-
-    private fun parseCliResponse(stdout: String): ClaudeCodeCliResponse {
-        val trimmed = stdout.trim()
-        require(trimmed.isNotBlank()) { "Claude Code CLI returned empty stdout" }
-
-        val root = json.parseToJsonElement(trimmed).jsonObject
-        val isError = root["is_error"]?.jsonPrimitive?.booleanOrNull == true
-        if (isError) {
-            val message = root["result"]?.jsonPrimitive?.contentOrNull ?: trimmed
-            error("Claude Code CLI returned an error: $message")
-        }
-
-        return ClaudeCodeCliResponse(
-            result = root["result"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-            structuredOutput = root["structured_output"],
-            sessionId = root["session_id"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() },
-            usage = root["usage"]?.jsonObject,
-            finishReason = root["subtype"]?.jsonPrimitive?.contentOrNull,
-            raw = root,
-        )
-    }
-}
 
 private class ClaudeCodeToolProtocol(
     private val tools: List<AiToolCallback>,

@@ -1,0 +1,316 @@
+package com.gromozeka.infrastructure.ai.claude
+
+import com.gromozeka.domain.model.ai.AiConnection
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+
+class ClaudeCodeProcessCacheTest {
+    @Test
+    fun reusesProcessForMatchingSessionAndLaunchConfiguration() = runBlocking {
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        try {
+            val first = executor.execute(command(cacheKey = "conversation"))
+            val second = executor.execute(
+                command(
+                    cacheKey = "conversation",
+                    resumeSessionId = first.sessionId,
+                    userPrompt = "second",
+                )
+            )
+
+            assertEquals(1, factory.started.size)
+            assertEquals(listOf("first", "second"), factory.started.single().prompts)
+            assertEquals(first.sessionId, second.sessionId)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun replacesProcessWhenLaunchConfigurationChanges() = runBlocking {
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        try {
+            val first = executor.execute(command(cacheKey = "conversation"))
+            executor.execute(
+                command(
+                    cacheKey = "conversation",
+                    resumeSessionId = first.sessionId,
+                    systemPrompt = "updated system prompt",
+                )
+            )
+
+            assertEquals(2, factory.started.size)
+            assertEquals(first.sessionId, factory.started[1].startCommand.resumeSessionId)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun evictsLeastRecentlyUsedIdleProcessAtConfiguredLimit() = runBlocking {
+        var now = 0L
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(
+            processFactory = factory,
+            nanoTime = { now },
+        )
+        try {
+            val first = executor.execute(command(cacheKey = "first", maxCachedProcesses = 2))
+            now++
+            val second = executor.execute(command(cacheKey = "second", maxCachedProcesses = 2))
+            now++
+            executor.execute(
+                command(
+                    cacheKey = "first",
+                    maxCachedProcesses = 2,
+                    resumeSessionId = first.sessionId,
+                )
+            )
+            now++
+            executor.execute(command(cacheKey = "third", maxCachedProcesses = 2))
+            now++
+            executor.execute(
+                command(
+                    cacheKey = "second",
+                    maxCachedProcesses = 2,
+                    resumeSessionId = second.sessionId,
+                )
+            )
+
+            assertEquals(4, factory.started.size)
+            assertEquals("second", factory.started.last().startCommand.cacheKey)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun expiresIdleProcessAfterConfiguredTtl() = runBlocking {
+        var now = 0L
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(
+            processFactory = factory,
+            nanoTime = { now },
+        )
+        try {
+            val first = executor.execute(
+                command(
+                    cacheKey = "conversation",
+                    processIdleTtlMinutes = 60,
+                )
+            )
+            now = 61.minutes.inWholeNanoseconds
+            executor.execute(
+                command(
+                    cacheKey = "conversation",
+                    processIdleTtlMinutes = 60,
+                    resumeSessionId = first.sessionId,
+                )
+            )
+
+            assertEquals(2, factory.started.size)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun doesNotRetryFailedProcessAutomatically() = runBlocking {
+        val factory = FakeProcessFactory(failFirstProcess = true)
+        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        try {
+            assertFailsWith<IllegalStateException> {
+                executor.execute(command(cacheKey = "conversation"))
+            }
+            assertEquals(1, factory.started.size)
+
+            executor.execute(command(cacheKey = "conversation"))
+            assertEquals(2, factory.started.size)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun bypassesCacheWithoutDurableSessionKey() = runBlocking {
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        try {
+            executor.execute(command(cacheKey = null, noSessionPersistence = true))
+            executor.execute(command(cacheKey = null, noSessionPersistence = true))
+
+            assertEquals(2, factory.started.size)
+            assertTrue(factory.started.all(FakeProcess::closed))
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun removesAndClosesProcessWhenCallIsCancelled() = runBlocking {
+        val process = BlockingProcess()
+        val executor = ProcessClaudeCodeCliExecutor(
+            processFactory = ClaudeCodeCliProcessFactory { process },
+        )
+        try {
+            val call = launch {
+                executor.execute(command(cacheKey = "conversation"))
+            }
+            process.started.await()
+            call.cancelAndJoin()
+
+            withTimeout(1.seconds) {
+                while (!process.closed) yield()
+            }
+            assertTrue(process.closed)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun closesProcessCreatedAfterAcquireCallerWasCancelled() = runBlocking {
+        val factoryStarted = CompletableDeferred<Unit>()
+        val allowFactoryToFinish = CompletableDeferred<Unit>()
+        val process = FakeProcess(
+            startCommand = command(cacheKey = "conversation"),
+            generatedSessionId = "session",
+            fail = false,
+        )
+        val executor = ProcessClaudeCodeCliExecutor(
+            processFactory = ClaudeCodeCliProcessFactory {
+                factoryStarted.complete(Unit)
+                allowFactoryToFinish.await()
+                process
+            },
+        )
+        try {
+            val call = launch {
+                executor.execute(command(cacheKey = "conversation"))
+            }
+            factoryStarted.await()
+            call.cancel()
+            allowFactoryToFinish.complete(Unit)
+            call.join()
+
+            withTimeout(1.seconds) {
+                while (!process.closed) yield()
+            }
+            assertTrue(process.closed)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    private fun command(
+        cacheKey: String?,
+        maxCachedProcesses: Int = AiConnection.ClaudeCode.DEFAULT_MAX_CACHED_PROCESSES,
+        processIdleTtlMinutes: Int = AiConnection.ClaudeCode.DEFAULT_PROCESS_IDLE_TTL_MINUTES,
+        resumeSessionId: String? = null,
+        systemPrompt: String = "system prompt",
+        userPrompt: String = "first",
+        noSessionPersistence: Boolean = false,
+    ): ClaudeCodeCommand =
+        ClaudeCodeCommand(
+            connectionId = "connection",
+            executablePath = "claude",
+            cacheKey = cacheKey,
+            maxCachedProcesses = maxCachedProcesses,
+            processIdleTtlMinutes = processIdleTtlMinutes,
+            modelName = "haiku",
+            workspaceDirectory = null,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            jsonSchema = null,
+            effort = null,
+            resumeSessionId = resumeSessionId,
+            noSessionPersistence = noSessionPersistence,
+        )
+
+    private class FakeProcessFactory(
+        private val failFirstProcess: Boolean = false,
+    ) : ClaudeCodeCliProcessFactory {
+        val started = mutableListOf<FakeProcess>()
+
+        override suspend fun start(command: ClaudeCodeCommand): ClaudeCodeCliProcess =
+            FakeProcess(
+                startCommand = command,
+                generatedSessionId = command.resumeSessionId ?: "session-${started.size + 1}",
+                fail = failFirstProcess && started.isEmpty(),
+            ).also(started::add)
+    }
+
+    private class FakeProcess(
+        val startCommand: ClaudeCodeCommand,
+        private val generatedSessionId: String,
+        private val fail: Boolean,
+    ) : ClaudeCodeCliProcess {
+        val prompts = mutableListOf<String>()
+
+        @Volatile
+        override var sessionId: String? = null
+            private set
+
+        @Volatile
+        var closed = false
+            private set
+
+        override val isAlive: Boolean
+            get() = !closed
+
+        override suspend fun execute(userPrompt: String): ClaudeCodeCliResponse {
+            prompts += userPrompt
+            if (fail) error("process failed")
+            sessionId = generatedSessionId
+            return ClaudeCodeCliResponse(
+                result = "ok",
+                structuredOutput = null,
+                sessionId = generatedSessionId,
+                usage = JsonObject(emptyMap()),
+                finishReason = "success",
+                raw = JsonObject(mapOf("type" to JsonPrimitive("result"))),
+            )
+        }
+
+        override suspend fun close() {
+            closed = true
+        }
+    }
+
+    private class BlockingProcess : ClaudeCodeCliProcess {
+        val started = CompletableDeferred<Unit>()
+
+        @Volatile
+        var closed = false
+            private set
+
+        override val sessionId: String? = null
+
+        override val isAlive: Boolean
+            get() = !closed
+
+        override suspend fun execute(userPrompt: String): ClaudeCodeCliResponse {
+            started.complete(Unit)
+            awaitCancellation()
+        }
+
+        override suspend fun close() {
+            closed = true
+        }
+    }
+}
