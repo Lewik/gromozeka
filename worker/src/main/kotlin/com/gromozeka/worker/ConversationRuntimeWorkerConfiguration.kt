@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 @EnableConfigurationProperties(ConversationRuntimeWorkerProperties::class)
 class ConversationRuntimeWorkerConfiguration {
-
     @Bean
     fun conversationRuntimeWorkerDescriptor(
         properties: ConversationRuntimeWorkerProperties,

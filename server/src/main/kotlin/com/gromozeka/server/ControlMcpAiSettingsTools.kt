@@ -38,13 +38,15 @@ internal class ControlMcpAiSettingsTools(
                 put(
                     "guide",
                     """
-                    Gromozeka Server is the source of truth for Projects, Workspaces, Agents, Prompts, Agent Skills, and AI configuration.
+                    Gromozeka Server is the source of truth for Projects, Workspaces, Agents, Prompts, Agent Skills, AI configuration, and external MCP definitions.
                     A Project is logical. A Workspace is a project resource. A Workspace Mount binds one Workspace to one Worker-local root path.
                     Agents are model and behavior configurations, not execution workers.
                     Bundled templates are blueprints only; copy their values into mutable server entities when needed.
                     Read current entities before changing references. Create Prompts and Skills before Agents that reference them.
                     Prompt and Skill imports accept exact inline content. Read client-local files with the caller's filesystem tools before invoking Control MCP; the Server does not guess which Worker's filesystem owns an arbitrary path.
                     AI catalog mutations require the latest expectedRevision. Read grz_ai_catalog_get again after a revision conflict.
+                    External MCP servers are assigned to one exact Worker. Create, update, refresh, and delete are explicit operations against its current live Worker session and are never retried automatically after execution starts.
+                    MCP tools/list_changed notifications only set refreshAvailable; call grz_mcp_server_refresh explicitly to accept a changed tool snapshot.
                     Inline secrets are returned as null with configuredInlineSecretPaths. Keep them null and preserveExistingSecret=true to retain their values.
                     Destructive operations never guess replacements and return dependency errors when an entity is still referenced.
                     Device UI settings are intentionally outside this control surface. grz_user_profile_update changes only shared user behavior.

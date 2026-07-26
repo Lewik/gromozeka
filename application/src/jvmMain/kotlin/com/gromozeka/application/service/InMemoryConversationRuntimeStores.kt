@@ -30,6 +30,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.QueuedMessagePlacement
+import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -1244,6 +1245,23 @@ class InMemoryConversationRuntimeWorkerRegistry : ConversationRuntimeWorkerRegis
                 return@withLock false
             }
             registrations[identity.workerId] = existing.copy(lastHeartbeatAt = at)
+            true
+        }
+
+    override suspend fun updateTools(
+        identity: ConversationRuntimeWorkerIdentity,
+        tools: List<AiToolDescriptor>,
+        at: Instant,
+    ): Boolean =
+        mutex.withLock {
+            val existing = registrations[identity.workerId] ?: return@withLock false
+            if (existing.identity != identity || existing.stoppedAt != null || at < existing.lastHeartbeatAt) {
+                return@withLock false
+            }
+            registrations[identity.workerId] = existing.copy(
+                tools = tools,
+                lastHeartbeatAt = at,
+            )
             true
         }
 

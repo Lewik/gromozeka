@@ -1,5 +1,9 @@
 package com.gromozeka.server
 
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -27,6 +31,9 @@ class GromozekaControlMcpSurfaceTest {
                     aiConfigurationService = mock(),
                     aiCatalogManagementService = mock(),
                     settingsService = mock(),
+                ),
+                ControlMcpServerCatalogTools(
+                    managementService = mock(),
                 ),
             )
         ).create()
@@ -75,6 +82,12 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_default_agent_set",
                 "grz_user_profile_get",
                 "grz_user_profile_update",
+                "grz_mcp_server_list",
+                "grz_mcp_server_get",
+                "grz_mcp_server_create",
+                "grz_mcp_server_update",
+                "grz_mcp_server_refresh",
+                "grz_mcp_server_delete",
             ),
             server.tools.keys,
         )
@@ -85,6 +98,35 @@ class GromozekaControlMcpSurfaceTest {
         assertFalse(server.toolProperties("grz_prompt_update").containsKey("projectId"))
         assertTrue(server.tools.getValue("grz_project_delete").tool.annotations?.destructiveHint == true)
         assertTrue(server.tools.getValue("grz_ai_catalog_get").tool.annotations?.readOnlyHint == true)
+
+        val mcpConfigSchema = server.toolProperties("grz_mcp_server_create")
+            .getValue("config")
+            .jsonObject
+        assertFalse(mcpConfigSchema.getValue("additionalProperties").jsonPrimitive.boolean)
+        assertEquals(
+            setOf("id", "displayName", "workerId", "transport"),
+            mcpConfigSchema.getValue("required").jsonArray
+                .map { it.jsonPrimitive.content }
+                .toSet(),
+        )
+
+        val transports = mcpConfigSchema.getValue("properties").jsonObject
+            .getValue("transport").jsonObject
+            .getValue("oneOf").jsonArray
+        assertEquals(
+            setOf("stdio", "streamable_http"),
+            transports.map { transport ->
+                transport.jsonObject
+                    .getValue("properties").jsonObject
+                    .getValue("type").jsonObject
+                    .getValue("const").jsonPrimitive.content
+            }.toSet(),
+        )
+        assertTrue(
+            mcpConfigSchema.getValue("properties").jsonObject
+                .getValue("forwardGrzConversationContext").jsonObject
+                .getValue("type").jsonPrimitive.content == "boolean"
+        )
     }
 
     private fun io.modelcontextprotocol.kotlin.sdk.server.Server.toolProperties(name: String) =

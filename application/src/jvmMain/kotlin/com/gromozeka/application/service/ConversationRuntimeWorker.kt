@@ -17,6 +17,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkspaceDomainService
+import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -69,7 +70,8 @@ class ConversationRuntimeWorker(
         sessionId = ConversationRuntimeWorkerSessionId(uuid7()),
     )
     private val runtimeWorkerCapabilities = runtimeWorkerDescriptor.capabilities
-    private val runtimeTools = runtimeWorkerDescriptor.tools
+    @Volatile
+    private var runtimeTools = runtimeWorkerDescriptor.tools
     private val eventLeaseOwnerId = "worker:${runtimeWorker.workerId.value}:${runtimeWorker.sessionId.value}"
     private val deliveryMutexes = Array(DELIVERY_MUTEX_STRIPES) { Mutex() }
     private val lifecycleLock = Any()
@@ -180,6 +182,21 @@ class ConversationRuntimeWorker(
     override fun getPhase(): Int = 100
 
     suspend fun awaitTermination(): Throwable? = termination.await()
+
+    suspend fun updateAdvertisedTools(tools: List<AiToolDescriptor>) {
+        require(tools.all { runtimeWorkerCapabilities.containsAll(it.metadata.requiredRuntimeCapabilities) }) {
+            "Worker must declare every capability required by its advertised tools"
+        }
+        require(tools.map { it.definition.name }.distinct().size == tools.size) {
+            "Worker advertised tool names must be unique"
+        }
+        runtimeTools = tools
+        if (running) {
+            check(runtimeWorkerRegistry.updateTools(runtimeWorker, runtimeTools, Clock.System.now())) {
+                "Conversation runtime worker lost registration while updating tools: $runtimeWorker"
+            }
+        }
+    }
 
     private suspend fun runHeartbeatLoop(workerJob: Job) {
         try {

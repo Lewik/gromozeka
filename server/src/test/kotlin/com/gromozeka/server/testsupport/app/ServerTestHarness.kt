@@ -81,7 +81,6 @@ class ServerTestHarness(
     private fun prepareHomeDirectory(): Path {
         val homeDirectory = Files.createTempDirectory("gromozeka-e2e-")
         writeSettings(homeDirectory, settings)
-        writeMcpConfig(homeDirectory)
         writeSubscriptionConfig(homeDirectory, subscriptionSession)
         customizeHome(homeDirectory)
         return homeDirectory
@@ -100,10 +99,6 @@ class ServerTestHarness(
 
     private fun writeSettings(homeDirectory: Path, settings: Settings) {
         homeDirectory.resolve("settings.json").writeText(appTestJson.encodeToString(settings))
-    }
-
-    private fun writeMcpConfig(homeDirectory: Path) {
-        homeDirectory.resolve("mcp.json").writeText("""{"mcpServers":{}}""")
     }
 
     private fun writeSubscriptionConfig(

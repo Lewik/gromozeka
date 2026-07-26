@@ -70,7 +70,9 @@ Layer ownership for focused work:
 | Domain design and contracts | `:domain` |
 | Use cases and orchestration | `:application` |
 | PostgreSQL persistence | `:infrastructure-db` |
-| AI providers, MCP, memory, tools | `:infrastructure-ai` |
+| AI providers, live external MCP clients, memory, tools | `:infrastructure-ai` |
+| External MCP definitions and accepted tool snapshots | Server database through `:infrastructure-db` |
+| Session-addressed Worker control | `:infrastructure-runtime` |
 | Runtime transport | `:infrastructure-runtime` |
 | Compose UI and presentation state | `:presentation` |
 | Server endpoints and composition | `:server` |

@@ -148,6 +148,28 @@ internal object RuntimeCatalogConfiguration : Table("runtime_catalog_configurati
     override val primaryKey = PrimaryKey(id)
 }
 
+internal object McpServers : Table("mcp_servers") {
+    val id = varchar("id", 64)
+    val workerId = varchar("worker_id", 255)
+    val revision = long("revision")
+    val refreshAvailable = bool("refresh_available")
+    val payloadJson = text("payload_json")
+    val createdAt = timestamp("created_at")
+    val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object AiToolCapabilityCatalogs : Table("ai_tool_capability_catalogs") {
+    val sourceId = varchar("source_id", 255)
+    val fingerprint = varchar("fingerprint", 64)
+    val modelConfigurationId = varchar("model_configuration_id", 255)
+    val payloadJson = text("payload_json")
+    val generatedAt = timestamp("generated_at")
+
+    override val primaryKey = PrimaryKey(sourceId, fingerprint)
+}
+
 internal object ConversationTabLayouts : Table("conversation_tab_layouts") {
     val id = varchar("id", 64)
     val conversationIdsJson = text("conversation_ids_json")

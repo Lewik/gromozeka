@@ -300,6 +300,12 @@ interface ConversationRuntimeWorkerRegistry {
         at: Instant,
     ): Boolean
 
+    suspend fun updateTools(
+        identity: ConversationRuntimeWorkerIdentity,
+        tools: List<AiToolDescriptor>,
+        at: Instant,
+    ): Boolean
+
     suspend fun unregister(
         identity: ConversationRuntimeWorkerIdentity,
         at: Instant,
