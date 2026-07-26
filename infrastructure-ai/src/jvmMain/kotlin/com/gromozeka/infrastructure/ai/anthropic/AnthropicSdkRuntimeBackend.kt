@@ -30,6 +30,7 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
+import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiResponseFormat
@@ -208,6 +209,8 @@ internal class AnthropicSdkMessageMapper(
     private val json = Json { ignoreUnknownKeys = true }
 
     fun toCreateParams(modelName: String, request: AiRuntimeRequest): MessageCreateParams {
+        validateModelOptions(modelName, request.options)
+
         val builder = MessageCreateParams.builder()
             .model(modelName)
             .maxTokens((request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS).toLong())
@@ -243,6 +246,21 @@ internal class AnthropicSdkMessageMapper(
         applyOutputConfig(builder, request.options)
 
         return builder.build()
+    }
+
+    private fun validateModelOptions(
+        modelName: String,
+        options: AiRuntimeOptions,
+    ) {
+        if (modelName != CLAUDE_OPUS_5) return
+
+        val reasoning = options.reasoning ?: return
+        require(reasoning.mode != AiReasoningMode.TOKEN_BUDGET) {
+            "Claude Opus 5 does not support manual thinking token budgets; use adaptive thinking and effort"
+        }
+        require(reasoning.mode != AiReasoningMode.DISABLED || reasoning.effort != AiReasoningEffort.MAX) {
+            "Claude Opus 5 cannot combine disabled thinking with maximum effort"
+        }
     }
 
     fun toRuntimeResponse(
@@ -642,6 +660,7 @@ internal class AnthropicSdkMessageMapper(
         coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 
     companion object {
+        private const val CLAUDE_OPUS_5 = "claude-opus-5"
         private const val DEFAULT_MAX_TOKENS = 8192
         private const val DEFAULT_THINKING_BUDGET_TOKENS = 16_000
     }

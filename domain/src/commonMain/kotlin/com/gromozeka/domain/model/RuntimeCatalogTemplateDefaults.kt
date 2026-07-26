@@ -4,6 +4,10 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningDisplay
+import com.gromozeka.domain.model.ai.AiReasoningEffort
+import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 
@@ -85,6 +89,13 @@ object RuntimeCatalogTemplateDefaults {
             displayName = "GPT-5.6 Luna subscription",
         ),
         AiModelConfiguration(
+            id = AiModelConfiguration.Id("anthropic-opus-5"),
+            connectionId = AiConnection.Id("anthropic-direct"),
+            providerModelId = "claude-opus-5",
+            displayName = "Claude Opus 5",
+            defaultParameters = opus5DefaultParameters(),
+        ),
+        AiModelConfiguration(
             id = AiModelConfiguration.Id("anthropic-sonnet-4.7"),
             connectionId = AiConnection.Id("anthropic-direct"),
             providerModelId = "claude-sonnet-4-7",
@@ -104,10 +115,11 @@ object RuntimeCatalogTemplateDefaults {
             displayName = "Claude Code Sonnet",
         ),
         AiModelConfiguration(
-            id = AiModelConfiguration.Id("claude-code-opus"),
+            id = AiModelConfiguration.Id("claude-code-opus-5"),
             connectionId = AiConnection.Id("claude-code"),
-            providerModelId = "opus",
-            displayName = "Claude Code Opus",
+            providerModelId = "claude-opus-5",
+            displayName = "Claude Code Opus 5",
+            defaultParameters = opus5DefaultParameters(),
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("claude-code-haiku"),
@@ -158,6 +170,15 @@ object RuntimeCatalogTemplateDefaults {
         AiRuntimeAssignment(
             purpose = purpose,
             selection = AiRuntimeSelection(AiModelConfiguration.Id(modelConfigurationId)),
+        )
+
+    private fun opus5DefaultParameters(): AiModelConfiguration.DefaultParameters =
+        AiModelConfiguration.DefaultParameters(
+            reasoning = AiReasoningConfig(
+                mode = AiReasoningMode.ADAPTIVE,
+                effort = AiReasoningEffort.HIGH,
+                display = AiReasoningDisplay.SUMMARIZED,
+            )
         )
 
 }

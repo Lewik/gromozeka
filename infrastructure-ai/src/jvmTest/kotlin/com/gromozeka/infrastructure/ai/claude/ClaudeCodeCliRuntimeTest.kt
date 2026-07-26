@@ -3,6 +3,8 @@ package com.gromozeka.infrastructure.ai.claude
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -190,6 +192,37 @@ class ClaudeCodeCliRuntimeTest {
         assertNull(executor.commands[1].resumeSessionId)
         assertTrue(executor.commands[1].userPrompt.contains("Edited"))
         assertTrue(executor.commands[1].userPrompt.contains("First"))
+    }
+
+    @Test
+    fun passesConfiguredEffortToClaudeCode() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("OK"),
+                )
+            )
+        )
+        val runtime = runtime(executor)
+
+        runtime.call(
+            request(
+                messages = listOf(userMessage("Reply with OK")),
+                tools = emptyList(),
+                options = AiRuntimeOptions(
+                    assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                    reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX),
+                    toolContext = testToolContext(),
+                ),
+            )
+        )
+
+        val command = executor.commands.single()
+        assertEquals(AiReasoningEffort.MAX, command.effort)
+        val args = ProcessClaudeCodeCliExecutor("claude")
+            .buildArgs(command, "/tmp/gromozeka-system.md")
+        assertTrue(args.windowed(2).contains(listOf("--effort", "max")))
     }
 
     @Test

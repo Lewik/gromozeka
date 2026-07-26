@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiResponseFormat
+import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
@@ -136,6 +137,7 @@ internal class ClaudeCodeCliRuntime(
             systemPrompt = systemPrompt,
             userPrompt = userPrompt,
             jsonSchema = schema,
+            effort = request.options.reasoning?.effort,
             resumeSessionId = sessionPlan.resumeSessionId,
             noSessionPersistence = sessionStateKey == null,
         )
@@ -559,6 +561,7 @@ internal data class ClaudeCodeCommand(
     val systemPrompt: String,
     val userPrompt: String,
     val jsonSchema: JsonElement?,
+    val effort: AiReasoningEffort?,
     val resumeSessionId: String?,
     val noSessionPersistence: Boolean,
 )
@@ -608,7 +611,7 @@ internal class ProcessClaudeCodeCliExecutor(
         }
     }
 
-    private fun buildArgs(command: ClaudeCodeCommand, systemPromptFile: String): List<String> =
+    internal fun buildArgs(command: ClaudeCodeCommand, systemPromptFile: String): List<String> =
         buildList {
             add(executable)
             add("-p")
@@ -624,6 +627,10 @@ internal class ProcessClaudeCodeCliExecutor(
             add(systemPromptFile)
             add("--model")
             add(command.modelName)
+            command.effort?.let { effort ->
+                add("--effort")
+                add(effort.name.lowercase())
+            }
             command.jsonSchema?.let { schema ->
                 add("--json-schema")
                 add(schema.toString())
