@@ -22,7 +22,11 @@ interface WorkspaceRepository {
 
     suspend fun findMount(workspaceId: Workspace.Id, workerId: String): WorkspaceMount?
 
-    suspend fun findMountByPath(workerId: String, rootPath: String): WorkspaceMount?
+    suspend fun findMountByPath(
+        projectId: Project.Id,
+        workerId: String,
+        rootPath: String,
+    ): WorkspaceMount?
 
     suspend fun findMounts(workspaceId: Workspace.Id): List<WorkspaceMount>
 

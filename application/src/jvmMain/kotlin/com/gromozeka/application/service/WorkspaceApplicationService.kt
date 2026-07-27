@@ -81,7 +81,11 @@ class WorkspaceApplicationService(
             ?: error("Project not found: ${workspace.projectId.value}")
         val normalizedWorkerId = normalizedWorkerId(workerId)
         val normalizedPath = normalizedRootPath(rootPath)
-        val pathOwner = workspaceRepository.findMountByPath(normalizedWorkerId, normalizedPath)
+        val pathOwner = workspaceRepository.findMountByPath(
+            project.id,
+            normalizedWorkerId,
+            normalizedPath,
+        )
         require(pathOwner == null || pathOwner.workspaceId == workspaceId) {
             "Worker $normalizedWorkerId already mounts another workspace at $normalizedPath"
         }
@@ -148,8 +152,13 @@ class WorkspaceApplicationService(
     override suspend fun findMountsByWorker(workerId: String): List<WorkspaceMount> =
         workspaceRepository.findMountsByWorker(normalizedWorkerId(workerId))
 
-    override suspend fun findByWorkerPath(workerId: String, rootPath: String): WorkspaceExecutionContext? {
+    override suspend fun findByWorkerPath(
+        projectId: Project.Id,
+        workerId: String,
+        rootPath: String,
+    ): WorkspaceExecutionContext? {
         val mount = workspaceRepository.findMountByPath(
+            projectId,
             normalizedWorkerId(workerId),
             normalizedRootPath(rootPath),
         ) ?: return null

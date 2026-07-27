@@ -57,11 +57,15 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
     }
 
     override suspend fun saveMount(mount: WorkspaceMount): WorkspaceMount = dbQuery {
+        val projectId = Workspaces.selectAll()
+            .where { Workspaces.id eq mount.workspaceId.value }
+            .single()[Workspaces.projectId]
         val predicate = WorkspaceMounts.id eq mount.id.value
         val exists = WorkspaceMounts.selectAll().where { predicate }.count() > 0
         if (exists) {
             WorkspaceMounts.update({ predicate }) {
                 it[workspaceId] = mount.workspaceId.value
+                it[WorkspaceMounts.projectId] = projectId
                 it[workerId] = mount.workerId
                 it[rootPath] = mount.rootPath
                 it[updatedAt] = mount.updatedAt.toKotlin()
@@ -70,6 +74,7 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
             WorkspaceMounts.insert {
                 it[id] = mount.id.value
                 it[workspaceId] = mount.workspaceId.value
+                it[WorkspaceMounts.projectId] = projectId
                 it[workerId] = mount.workerId
                 it[rootPath] = mount.rootPath
                 it[createdAt] = mount.createdAt.toKotlin()
@@ -96,10 +101,15 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
             ?.toWorkspaceMount()
     }
 
-    override suspend fun findMountByPath(workerId: String, rootPath: String): WorkspaceMount? = dbQuery {
+    override suspend fun findMountByPath(
+        projectId: Project.Id,
+        workerId: String,
+        rootPath: String,
+    ): WorkspaceMount? = dbQuery {
         WorkspaceMounts.selectAll()
             .where {
-                (WorkspaceMounts.workerId eq workerId) and
+                (WorkspaceMounts.projectId eq projectId.value) and
+                    (WorkspaceMounts.workerId eq workerId) and
                     (WorkspaceMounts.rootPath eq rootPath)
             }
             .singleOrNull()

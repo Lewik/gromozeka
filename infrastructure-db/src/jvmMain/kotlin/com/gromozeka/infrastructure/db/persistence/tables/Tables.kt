@@ -30,6 +30,7 @@ internal object Workspaces : Table("workspaces") {
 internal object WorkspaceMounts : Table("workspace_mounts") {
     val id = varchar("id", 255)
     val workspaceId = varchar("workspace_id", 255).references(Workspaces.id, onDelete = ReferenceOption.CASCADE)
+    val projectId = varchar("project_id", 255)
     val workerId = varchar("worker_id", 255)
     val rootPath = varchar("root_path", 1000)
     val createdAt = timestamp("created_at")

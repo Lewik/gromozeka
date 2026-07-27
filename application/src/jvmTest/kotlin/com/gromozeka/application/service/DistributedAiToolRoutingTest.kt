@@ -358,10 +358,15 @@ class DistributedAiToolRoutingTest {
             mounts.filter { it.workerId == workerId }
 
         override suspend fun findByWorkerPath(
+            projectId: Project.Id,
             workerId: String,
             rootPath: String,
         ): WorkspaceExecutionContext? =
-            mounts.singleOrNull { it.workerId == workerId && it.rootPath == rootPath }
+            mounts.singleOrNull {
+                workspacesById[it.workspaceId]?.projectId == projectId &&
+                    it.workerId == workerId &&
+                    it.rootPath == rootPath
+            }
                 ?.toContext()
 
         override suspend fun resolveExecution(

@@ -1040,6 +1040,7 @@ class ConversationRuntimeDispatcherTest {
             mountsFor(workerId)
 
         override suspend fun findByWorkerPath(
+            projectId: Project.Id,
             workerId: String,
             rootPath: String,
         ): WorkspaceExecutionContext? = null

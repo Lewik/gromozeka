@@ -44,7 +44,11 @@ interface WorkspaceDomainService {
 
     suspend fun findMountsByWorker(workerId: String): List<WorkspaceMount>
 
-    suspend fun findByWorkerPath(workerId: String, rootPath: String): WorkspaceExecutionContext?
+    suspend fun findByWorkerPath(
+        projectId: Project.Id,
+        workerId: String,
+        rootPath: String,
+    ): WorkspaceExecutionContext?
 
     suspend fun resolveExecution(mountId: WorkspaceMount.Id): WorkspaceExecutionContext
 

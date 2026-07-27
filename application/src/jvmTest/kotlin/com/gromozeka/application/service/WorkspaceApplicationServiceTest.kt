@@ -30,6 +30,20 @@ class WorkspaceApplicationServiceTest {
         createdAt = now,
         updatedAt = now,
     )
+    private val anotherProject = Project(
+        id = Project.Id("project-2"),
+        name = "Another project",
+        createdAt = now,
+        lastUsedAt = now,
+    )
+    private val anotherWorkspace = Workspace(
+        id = Workspace.Id("workspace-2"),
+        projectId = anotherProject.id,
+        name = "Shared checkout",
+        kind = Workspace.Kind.FILESYSTEM,
+        createdAt = now,
+        updatedAt = now,
+    )
 
     @Test
     fun `runtime context does not require workspace mount on current worker`() = runBlocking {
@@ -88,12 +102,33 @@ class WorkspaceApplicationServiceTest {
         service.delete(created.id)
         assertNull(service.findById(created.id))
     }
+
+    @Test
+    fun `mount path uniqueness is scoped to project and worker`() = runBlocking {
+        val repository = TestWorkspaceRepository(workspace, anotherWorkspace)
+        val service = WorkspaceApplicationService(
+            projectRepository = TestProjectRepository(project, anotherProject),
+            workspaceRepository = repository,
+        )
+
+        service.attachFilesystem(workspace.id, "mac-worker", "/repo")
+        val otherProjectMount = service.attachFilesystem(anotherWorkspace.id, "mac-worker", "/repo")
+        assertEquals(anotherWorkspace.id, otherProjectMount.workspace.id)
+
+        val duplicateWorkspace = service.create(project.id, "Duplicate checkout")
+        assertFailsWith<IllegalArgumentException> {
+            service.attachFilesystem(duplicateWorkspace.id, "mac-worker", "/repo")
+        }
+
+        val otherWorkerMount = service.attachFilesystem(duplicateWorkspace.id, "linux-worker", "/repo")
+        assertEquals("linux-worker", otherWorkerMount.mount.workerId)
+    }
 }
 
 private class TestProjectRepository(
-    project: Project,
+    vararg projects: Project,
 ) : ProjectRepository {
-    private val projects = mutableMapOf(project.id to project)
+    private val projects = projects.associateBy(Project::id).toMutableMap()
 
     override suspend fun save(project: Project): Project = project.also { projects[it.id] = it }
 
@@ -137,8 +172,16 @@ private class TestWorkspaceRepository(
     override suspend fun findMount(workspaceId: Workspace.Id, workerId: String): WorkspaceMount? =
         mounts[workspaceId to workerId]
 
-    override suspend fun findMountByPath(workerId: String, rootPath: String): WorkspaceMount? =
-        mounts.values.singleOrNull { it.workerId == workerId && it.rootPath == rootPath }
+    override suspend fun findMountByPath(
+        projectId: Project.Id,
+        workerId: String,
+        rootPath: String,
+    ): WorkspaceMount? =
+        mounts.values.singleOrNull {
+            workspaces[it.workspaceId]?.projectId == projectId &&
+                it.workerId == workerId &&
+                it.rootPath == rootPath
+        }
 
     override suspend fun findMounts(workspaceId: Workspace.Id): List<WorkspaceMount> =
         mounts.values.filter { it.workspaceId == workspaceId }
