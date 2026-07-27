@@ -27,14 +27,42 @@ import kotlin.test.assertTrue
 class RabbitConversationRuntimeWorkBrokerTest {
 
     @Test
-    fun `rabbit routing rejects unknown capability profiles`() {
+    fun `rabbit routing rejects unknown shared capability profiles`() {
         assertFailsWith<IllegalStateException> {
             RabbitRuntimeWorkRoute.from(
                 ConversationRuntimeTaskRequirements(
-                    capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                    capabilities = setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION),
                 )
             )
         }
+    }
+
+    @Test
+    fun `rabbit routing sends targeted work directly to its worker`() {
+        val workerId = ConversationRuntimeWorkerId("claude-worker")
+
+        val route = RabbitRuntimeWorkRoute.from(
+            ConversationRuntimeTaskRequirements(
+                capabilities = setOf(
+                    ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
+                    ConversationRuntimeWorkerCapability.LLM_RUNTIME,
+                ),
+                target = ConversationRuntimeTaskTarget(workerId),
+            )
+        )
+
+        assertEquals(RabbitRuntimeWorkRoute.Worker(workerId), route)
+    }
+
+    @Test
+    fun `rabbit routing supports conversation incident work`() {
+        val route = RabbitRuntimeWorkRoute.from(
+            ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+            )
+        )
+
+        assertEquals(RabbitRuntimeWorkRoute.Shared(RabbitRuntimeWorkLane.INCIDENT), route)
     }
 
     @Test
@@ -46,10 +74,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
             ),
         )
-        val workerRoute = RabbitRuntimeWorkRoute(
-            lane = RabbitRuntimeWorkLane.LOCAL_AGENT,
-            workerId = descriptor.id,
-        )
+        val workerRoute = RabbitRuntimeWorkRoute.Worker(descriptor.id)
 
         assertTrue(workerRoute in descriptor.consumerRoutes())
     }
@@ -88,6 +113,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
             capabilities = setOf(
                 ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
             ),
             target = ConversationRuntimeTaskTarget(
                 workerId = ConversationRuntimeWorkerId("local-worker"),
@@ -116,6 +142,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
             capabilities = setOf(
                 ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
             ),
         )
         val wrongWorkerDescriptor = ConversationRuntimeWorkerDescriptor(
@@ -123,6 +150,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
             capabilities = setOf(
                 ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
             ),
         )
         val turnConsumer = RabbitConversationRuntimeWorkConsumer(

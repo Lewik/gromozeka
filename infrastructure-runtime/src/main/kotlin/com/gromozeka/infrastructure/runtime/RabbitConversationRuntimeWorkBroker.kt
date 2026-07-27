@@ -353,34 +353,26 @@ internal class RabbitConversationRuntimeWorkTopology(
     }
 }
 
-internal data class RabbitRuntimeWorkRoute(
-    val lane: RabbitRuntimeWorkLane,
-    val workerId: ConversationRuntimeWorkerId?,
-) {
-    val id: String = buildString {
-        append("lane-")
-        append(lane.name.lowercase().replace('_', '-'))
-        append(".worker-")
-        append(workerId?.let(::workerRouteId) ?: "global")
+internal sealed interface RabbitRuntimeWorkRoute {
+    val id: String
+
+    data class Shared(
+        val lane: RabbitRuntimeWorkLane,
+    ) : RabbitRuntimeWorkRoute {
+        override val id: String = "lane-${lane.name.lowercase().replace('_', '-')}.global"
+    }
+
+    data class Worker(
+        val workerId: ConversationRuntimeWorkerId,
+    ) : RabbitRuntimeWorkRoute {
+        override val id: String = "worker-${workerRouteId(workerId)}"
     }
 
     companion object {
         fun from(requirements: ConversationRuntimeTaskRequirements): RabbitRuntimeWorkRoute =
-            RabbitRuntimeWorkRoute(
-                lane = RabbitRuntimeWorkLane.from(requirements.capabilities),
-                workerId = requirements.target?.workerId,
-            )
-
-        private fun workerRouteId(workerId: ConversationRuntimeWorkerId): String =
-            "${Integer.toUnsignedString(workerId.value.hashCode(), 36)}-${workerId.value.routeToken()}"
-
-        private fun String.routeToken(): String =
-            lowercase()
-                .map { char -> if (char.isLetterOrDigit()) char else '-' }
-                .joinToString("")
-                .trim('-')
-                .take(48)
-                .ifBlank { "value" }
+            requirements.target
+                ?.let { Worker(it.workerId) }
+                ?: Shared(RabbitRuntimeWorkLane.fromSharedCapabilities(requirements.capabilities))
     }
 }
 
@@ -399,37 +391,38 @@ internal enum class RabbitRuntimeWorkLane(
             ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
         )
     ),
-    TOOL(setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION)),
-    LOCAL_AGENT(
-        setOf(
-            ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-            ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
-        )
-    ),
-    MEMORY(setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE));
+    MEMORY(setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE)),
+    INCIDENT(setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN));
 
     companion object {
-        fun from(capabilities: Set<ConversationRuntimeWorkerCapability>): RabbitRuntimeWorkLane =
+        fun fromSharedCapabilities(capabilities: Set<ConversationRuntimeWorkerCapability>): RabbitRuntimeWorkLane =
             entries.singleOrNull { it.requiredCapabilities == capabilities }
                 ?: error(
-                    "Unsupported Rabbit runtime capability profile: " +
+                    "Unsupported shared Rabbit runtime capability profile: " +
                         capabilities.sortedBy { it.name }.joinToString()
                 )
     }
 }
 
 internal fun ConversationRuntimeWorkerDescriptor.consumerRoutes(): List<RabbitRuntimeWorkRoute> {
-    val workerOptions = listOf<ConversationRuntimeWorkerId?>(null, id)
-    return capabilities.consumerLanes()
-        .flatMap { lane ->
-            workerOptions.map { workerId -> RabbitRuntimeWorkRoute(lane = lane, workerId = workerId) }
-        }
-        .distinctBy { it.id }
+    return listOf(RabbitRuntimeWorkRoute.Worker(id)) +
+        capabilities.consumerLanes().map(RabbitRuntimeWorkRoute::Shared)
 }
 
 private fun Set<ConversationRuntimeWorkerCapability>.consumerLanes(): Set<RabbitRuntimeWorkLane> =
     RabbitRuntimeWorkLane.entries
         .filterTo(mutableSetOf()) { containsAll(it.requiredCapabilities) }
+
+private fun workerRouteId(workerId: ConversationRuntimeWorkerId): String =
+    "${Integer.toUnsignedString(workerId.value.hashCode(), 36)}-${workerId.value.routeToken()}"
+
+private fun String.routeToken(): String =
+    lowercase()
+        .map { char -> if (char.isLetterOrDigit()) char else '-' }
+        .joinToString("")
+        .trim('-')
+        .take(48)
+        .ifBlank { "value" }
 
 private fun RabbitTemplate.requirePublisherConfirms() {
     val factory = connectionFactory
