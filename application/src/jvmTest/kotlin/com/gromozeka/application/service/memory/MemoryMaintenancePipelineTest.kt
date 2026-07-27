@@ -58,6 +58,8 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class MemoryMaintenancePipelineTest {
 
@@ -285,6 +287,13 @@ class MemoryMaintenancePipelineTest {
                 sources = listOf(oldSource, forgetSource),
                 entities = listOf(entity()),
                 claims = listOf(claim),
+                profiles = listOf(
+                    profile(
+                        id = "profile-to-rebuild",
+                        ownerEntityId = USER_ENTITY_ID,
+                        profileText = "Profile for Lewik (USER).\nStable facts:\n- The user prefers Toyota RunX for daily driving.",
+                    )
+                ),
             )
         )
         val store = SearchInterceptingMemoryStore(backingStore) { backingStore.search(it) }
@@ -304,12 +313,6 @@ class MemoryMaintenancePipelineTest {
                         targetIds = listOf(forgetSource.id.value),
                         reason = "Planner must not be able to delete the current forget command.",
                     ),
-                    MemoryForgetPlan.Action(
-                        action = MemoryForgetPlan.Action.Type.ARCHIVE_ITEM,
-                        targetType = MemoryItemRef.Type.CLAIM,
-                        targetIds = listOf(claim.id.value),
-                        reason = "Remove interpreted memory from normal recall.",
-                    ),
                 ),
                 summary = "Forgot Toyota preference.",
             )
@@ -319,6 +322,7 @@ class MemoryMaintenancePipelineTest {
             store = store,
             planner = planner,
             idFactory = SequentialMemoryIdFactory("forget"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
             embeddingIndexer = embeddingIndexer,
             clock = FixedMemoryClock(NOW),
         ).run(
@@ -343,9 +347,96 @@ class MemoryMaintenancePipelineTest {
         assertEquals(NOW, snapshot.sourceById(oldSource.id.value).deletedAt)
         assertNull(snapshot.sourceById(forgetSource.id.value).deletedAt)
         assertEquals(NOW, snapshot.claimById(claim.id.value).archivedAt)
+        assertTrue(snapshot.profiles.single().profileText.contains("No active profile-synced memory."))
         assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.FORGET_MEMORY })
         assertTrue(store.searchRequests.any { it.scopes == setOf(MemoryStore.SearchScope.ALL) && it.embedding != null })
         assertTrue("Toyota RunX preference" in embeddingIndexer.queries)
+    }
+
+    @Test
+    fun sourceForgetCascadeRemovesLogicalDocumentAndPreservesMixedEvidence() = runBlocking {
+        val parentSource = source("document-parent", "Document audit source.")
+        val firstSection = source("document-section-1", "The user prefers Toyota.")
+            .withParentSource(parentSource.id)
+        val secondSection = source("document-section-2", "The user tracks maintenance history.")
+            .withParentSource(parentSource.id)
+        val independentSource = source("independent-source", "The user also tracks fuel economy.")
+        val directClaim = claim(
+            id = "document-claim",
+            sourceId = firstSection.id.value,
+            normalizedText = "The user prefers Toyota.",
+        )
+        val mixedNote = note(
+            id = "mixed-note",
+            evidenceRefs = listOf(
+                evidenceRef(secondSection.id.value, secondSection.contentText),
+                evidenceRef(independentSource.id.value, independentSource.contentText),
+            ),
+        )
+        val directActionItem = actionItem("document-task", MemoryActionItem.Status.OPEN).copy(
+            evidenceRefs = listOf(evidenceRef(secondSection.id.value, secondSection.contentText)),
+        )
+        val mixedEpisode = episode("mixed-episode").copy(
+            evidenceRefs = listOf(
+                evidenceRef(firstSection.id.value, firstSection.contentText),
+                evidenceRef(independentSource.id.value, independentSource.contentText),
+            ),
+        )
+        val sourceBackedAlias = MemoryEntity.Alias(
+            text = "Toyota owner",
+            normalizedText = "toyota owner",
+            sourceId = firstSection.id,
+            confidence = 1.0,
+            createdAt = EARLIER,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(parentSource, firstSection, secondSection, independentSource),
+                entities = listOf(entity(aliases = listOf(alias("Lev"), sourceBackedAlias))),
+                claims = listOf(directClaim),
+                notes = listOf(mixedNote),
+                actionItems = listOf(directActionItem),
+                episodes = listOf(mixedEpisode),
+            )
+        )
+        val cascade = MemorySourceForgetCascade()
+        val result = cascade.build(
+            snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true),
+            requestedSourceIds = setOf(firstSection.id),
+            protectedSourceIds = emptySet(),
+            completedAt = NOW,
+            reason = "Exact document source forget.",
+        )
+
+        store.apply(result.memoryBatch)
+        val fullSnapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val activeSnapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE)
+        cascade.verify(activeSnapshot, result.forgottenSourceIds)
+
+        assertEquals(
+            setOf(parentSource.id, firstSection.id, secondSection.id),
+            result.forgottenSourceIds,
+        )
+        assertTrue(
+            listOf(parentSource, firstSection, secondSection).all {
+                fullSnapshot.sourceById(it.id.value).deletedAt == NOW
+            }
+        )
+        assertNull(fullSnapshot.sourceById(independentSource.id.value).deletedAt)
+        assertEquals(NOW, fullSnapshot.claimById(directClaim.id.value).archivedAt)
+        assertEquals(NOW, fullSnapshot.taskById(directActionItem.id.value).archivedAt)
+        assertNull(fullSnapshot.noteById(mixedNote.id.value).archivedAt)
+        assertEquals(
+            listOf(independentSource.id),
+            fullSnapshot.noteById(mixedNote.id.value).evidenceRefs.map { it.sourceId },
+        )
+        assertEquals(1, fullSnapshot.noteById(mixedNote.id.value).evidenceCount)
+        assertNull(fullSnapshot.episodeById(mixedEpisode.id.value).archivedAt)
+        assertEquals(
+            listOf(independentSource.id),
+            fullSnapshot.episodeById(mixedEpisode.id.value).evidenceRefs.map { it.sourceId },
+        )
+        assertEquals(listOf("Lev"), fullSnapshot.entities.single().aliases.map { it.text })
     }
 
     @Test
@@ -4798,6 +4889,18 @@ private fun source(
         observedAt = EARLIER,
         createdAt = EARLIER,
     )
+
+private fun MemorySource.withParentSource(parentSourceId: MemorySource.Id): MemorySource {
+    val payload = buildJsonObject {
+        put("parentSourceId", parentSourceId.value)
+    }
+    return when (this) {
+        is MemorySource.ChatTurn -> copy(contentPayload = payload)
+        is MemorySource.ToolOutput -> copy(contentPayload = payload)
+        is MemorySource.ImportedNote -> copy(contentPayload = payload)
+        is MemorySource.ExternalRecord -> copy(contentPayload = payload)
+    }
+}
 
 private fun claim(
     id: String = "claim",

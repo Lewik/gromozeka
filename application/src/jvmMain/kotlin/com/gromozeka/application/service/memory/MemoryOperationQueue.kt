@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service
 @Serializable
 enum class MemoryOperationKind(val wireName: String) {
     REMEMBER("remember"),
+    FORGET_SOURCE("forget_source"),
     ENRICH_CONTEXT("enrich_context"),
     ANSWER_QUESTION("answer_question"),
     MAINTENANCE("maintenance"),
@@ -78,6 +79,17 @@ sealed interface MemoryOperationRequest {
         val writeSurface: MemoryWriteSurface,
     ) : MemoryOperationRequest {
         override val kind: MemoryOperationKind = MemoryOperationKind.REMEMBER
+    }
+
+    @Serializable
+    @SerialName("forget_source")
+    data class ForgetSource(
+        override val namespace: MemoryNamespace,
+        override val conversationId: Conversation.Id?,
+        override val threadId: Conversation.Thread.Id?,
+        val sourceId: MemorySource.Id,
+    ) : MemoryOperationRequest {
+        override val kind: MemoryOperationKind = MemoryOperationKind.FORGET_SOURCE
     }
 
     @Serializable
@@ -166,6 +178,7 @@ internal val MemoryOperationRequest.runType: MemoryRun.Type
             if (content.documentType == null) MemoryRun.Type.REMEMBER else MemoryRun.Type.DOCUMENT_INGEST
         else -> when (kind) {
             MemoryOperationKind.REMEMBER -> MemoryRun.Type.REMEMBER
+            MemoryOperationKind.FORGET_SOURCE -> MemoryRun.Type.FORGET_MEMORY
             MemoryOperationKind.ENRICH_CONTEXT -> MemoryRun.Type.ENRICH_CONTEXT
             MemoryOperationKind.ANSWER_QUESTION -> MemoryRun.Type.ANSWER_QUESTION
             MemoryOperationKind.MAINTENANCE -> error("Maintenance run type must come from its action")
@@ -319,6 +332,7 @@ internal const val MEMORY_OPERATION_RESULT_DELIVERY_CANCELLED = "cancelled"
 internal val MEMORY_OPERATION_RUN_TYPES = setOf(
     MemoryRun.Type.REMEMBER,
     MemoryRun.Type.DOCUMENT_INGEST,
+    MemoryRun.Type.FORGET_MEMORY,
     MemoryRun.Type.ENRICH_CONTEXT,
     MemoryRun.Type.ANSWER_QUESTION,
     MemoryRun.Type.CONSOLIDATE_NOTES,

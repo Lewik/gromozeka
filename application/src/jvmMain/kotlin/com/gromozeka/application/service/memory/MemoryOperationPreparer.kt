@@ -3,6 +3,7 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.service.ConversationDomainService
 import java.security.MessageDigest
 import kotlinx.serialization.json.contentOrNull
@@ -110,6 +111,27 @@ class MemoryOperationPreparer(
             ),
             summary = if (content.documentType == null) "Memory remember queued" else "Document ingest queued",
             inputHash = content.input.identityValue().sha256(),
+        )
+    }
+
+    suspend fun prepareForgetSource(
+        conversationIdValue: String?,
+        sourceIdValue: String,
+        namespaceValue: String? = null,
+    ): PreparedMemoryOperation {
+        val sourceId = sourceIdValue.trim()
+        require(sourceId.isNotBlank()) { "Memory source id is blank." }
+        val conversation = conversationIdValue.toConversationIdOrNull()?.let { requireConversation(it) }
+        return PreparedMemoryOperation(
+            request = MemoryOperationRequest.ForgetSource(
+                namespace = resolveNamespace(namespaceValue),
+                conversationId = conversation?.id,
+                threadId = conversation?.currentThread,
+                sourceId = MemorySource.Id(sourceId),
+            ),
+            summary = "Memory source forget queued",
+            sourceIds = listOf(MemorySource.Id(sourceId)),
+            inputHash = sourceId.sha256(),
         )
     }
 

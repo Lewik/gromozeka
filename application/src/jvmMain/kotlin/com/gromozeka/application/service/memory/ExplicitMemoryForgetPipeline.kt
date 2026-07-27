@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.MemoryClaim
+import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEpisode
 import com.gromozeka.domain.model.memory.MemoryForgetPlan
 import com.gromozeka.domain.model.memory.MemoryForgetPlanner
@@ -25,6 +26,7 @@ data class ExplicitMemoryForgetPipelineResult(
     val candidates: List<MemoryStore.SearchHit>,
     val forgetPlan: MemoryForgetPlan,
     val memoryBatch: MemoryUpdateBatch,
+    val forgottenSourceIds: Set<MemorySource.Id>,
 )
 
 class ExplicitMemoryForgetPipeline(
@@ -36,14 +38,15 @@ class ExplicitMemoryForgetPipeline(
     private val clock: MemoryClock = SystemMemoryClock,
 ) {
     private val log = KLoggers.logger(this)
+    private val sourceForgetCascade = MemorySourceForgetCascade()
 
     suspend fun run(
         request: DirectStructuredMemoryWriteRequest,
         routeDecision: MemoryRouteDecision,
     ): ExplicitMemoryForgetPipelineResult {
         val startedAt = clock.now()
-        val snapshot = store.loadNamespaceSnapshot(request.namespace)
-        val candidates = selectCandidates(request, routeDecision, snapshot)
+        val activeSnapshot = store.loadNamespaceSnapshot(request.namespace)
+        val candidates = selectCandidates(request, routeDecision, activeSnapshot)
 
         log.info {
             "Memory forget selected: namespace=${request.namespace.value} source=${request.source.id.value} " +
@@ -51,19 +54,19 @@ class ExplicitMemoryForgetPipeline(
                 "items=${candidates.joinToString("|") { it.forgetHitForLog() }.ifBlank { "none" }}"
         }
 
-        val plan = planner.plan(request, routeDecision, candidates, snapshot)
+        val plan = planner.plan(request, routeDecision, candidates, activeSnapshot)
         val completedAt = clock.now()
-        val structuredBatch = materialize(
+        val materialized = materialize(
             request = request,
             routeDecision = routeDecision,
             startedAt = startedAt,
             completedAt = completedAt,
-            snapshot = snapshot,
+            snapshot = store.loadNamespaceSnapshot(request.namespace, includeArchived = true),
             candidates = candidates,
             plan = plan,
         )
 
-        val indexedStructuredBatch = embeddingIndexer.withEmbeddings(structuredBatch)
+        val indexedStructuredBatch = embeddingIndexer.withEmbeddings(materialized.memoryBatch)
         store.apply(indexedStructuredBatch)
 
         val profileBatch = profileUpdater.update(
@@ -76,13 +79,18 @@ class ExplicitMemoryForgetPipeline(
         if (indexedProfileBatch.isNotEmptyForForget()) {
             store.apply(indexedProfileBatch)
         }
+        sourceForgetCascade.verify(
+            activeSnapshot = store.loadNamespaceSnapshot(request.namespace),
+            forgottenSourceIds = materialized.forgottenSourceIds,
+        )
 
         val memoryBatch = indexedStructuredBatch + indexedProfileBatch
 
         log.info {
             "Memory forget completed: namespace=${request.namespace.value} source=${request.source.id.value} " +
                 "candidates=${candidates.size} actions=${plan.forgetActions.size} appliedRuns=${memoryBatch.runs.size} " +
-                "appliedSources=${memoryBatch.sources.size} appliedClaims=${memoryBatch.claims.size} appliedNotes=${memoryBatch.notes.size} " +
+                "forgottenSources=${materialized.forgottenSourceIds.size} appliedSources=${memoryBatch.sources.size} " +
+                "appliedEntities=${memoryBatch.entities.size} appliedClaims=${memoryBatch.claims.size} appliedNotes=${memoryBatch.notes.size} " +
                 "appliedTasks=${memoryBatch.actionItems.size} appliedProfiles=${memoryBatch.profiles.size} " +
                 "summary=${plan.summary.oneLineForForgetPipelineLog(500)}"
         }
@@ -91,6 +99,7 @@ class ExplicitMemoryForgetPipeline(
             candidates = candidates,
             forgetPlan = plan,
             memoryBatch = memoryBatch,
+            forgottenSourceIds = materialized.forgottenSourceIds,
         )
     }
 
@@ -143,36 +152,84 @@ class ExplicitMemoryForgetPipeline(
         snapshot: MemoryNamespaceSnapshot,
         candidates: List<MemoryStore.SearchHit>,
         plan: MemoryForgetPlan,
-    ): MemoryUpdateBatch {
+    ): ForgetMaterialization {
         val runId = idFactory.newRunId()
         val candidateRefs = candidates.mapTo(mutableSetOf()) { it.toForgetItemRef() }
         val forgottenSources = mutableMapOf<MemorySource.Id, MemorySource>()
+        val forgottenEntities = mutableMapOf<MemoryEntity.Id, MemoryEntity>()
         val forgottenClaims = mutableMapOf<MemoryClaim.Id, MemoryClaim>()
         val forgottenNotes = mutableMapOf<MemoryNote.Id, MemoryNote>()
         val forgottenActionItems = mutableMapOf<MemoryActionItem.Id, MemoryActionItem>()
         val forgottenEpisodes = mutableMapOf<MemoryEpisode.Id, MemoryEpisode>()
+        val sourceActions = plan.forgetActions.filter { action ->
+            if (
+                action.action != MemoryForgetPlan.Action.Type.SOFT_DELETE_SOURCE ||
+                action.targetType != MemoryItemRef.Type.SOURCE
+            ) {
+                false
+            } else if (!action.isInsideForgetCandidates(candidateRefs)) {
+                log.info {
+                    "Memory forget skipped action outside candidate set: action=${action.action.name} targetType=${action.targetType.name} " +
+                        "targetIds=${action.targetIds.joinToString("|")} reason=${action.reason.oneLineForForgetPipelineLog(240)}"
+                }
+                false
+            } else {
+                true
+            }
+        }
+        val sourceIds = sourceActions
+            .flatMap { it.targetIds }
+            .map(MemorySource::Id)
+            .filterTo(mutableSetOf()) { it != request.source.id }
+        val sourceReason = sourceActions
+            .map { it.reason.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString("; ")
+            .ifBlank { "Forget selected source evidence and its direct dependents." }
+        val cascadeResult = sourceIds.takeIf { it.isNotEmpty() }?.let { selectedSourceIds ->
+            sourceForgetCascade.build(
+                snapshot = snapshot,
+                requestedSourceIds = selectedSourceIds,
+                protectedSourceIds = setOf(request.source.id),
+                completedAt = completedAt,
+                reason = sourceReason,
+            )
+        }
+        cascadeResult?.memoryBatch?.let { cascadeBatch ->
+            cascadeBatch.sources.associateByTo(forgottenSources) { it.id }
+            cascadeBatch.entities.associateByTo(forgottenEntities) { it.id }
+            cascadeBatch.claims.associateByTo(forgottenClaims) { it.id }
+            cascadeBatch.notes.associateByTo(forgottenNotes) { it.id }
+            cascadeBatch.actionItems.associateByTo(forgottenActionItems) { it.id }
+            cascadeBatch.episodes.associateByTo(forgottenEpisodes) { it.id }
+        }
 
         val appliedOps = buildJsonArray {
-            plan.forgetActions.forEach { action ->
-                val applied = applyAction(
-                    request = request,
+            cascadeResult?.appliedOps.orEmpty().forEach { op ->
+                add(op.toForgetOpJson())
+            }
+            plan.forgetActions
+                .filter { it.action == MemoryForgetPlan.Action.Type.ARCHIVE_ITEM }
+                .forEach { action ->
+                if (!action.isInsideForgetCandidates(candidateRefs)) {
+                    log.info {
+                        "Memory forget skipped action outside candidate set: action=${action.action.name} targetType=${action.targetType.name} " +
+                            "targetIds=${action.targetIds.joinToString("|")} reason=${action.reason.oneLineForForgetPipelineLog(240)}"
+                    }
+                    return@forEach
+                }
+                val applied = archiveItems(
                     action = action,
                     completedAt = completedAt,
                     snapshot = snapshot,
-                    candidateRefs = candidateRefs,
-                    forgottenSources = forgottenSources,
                     forgottenClaims = forgottenClaims,
                     forgottenNotes = forgottenNotes,
                     forgottenActionItems = forgottenActionItems,
                     forgottenEpisodes = forgottenEpisodes,
                 )
                 applied.forEach { op ->
-                    add(buildJsonObject {
-                        put("op", op.op)
-                        put("target_type", op.targetType.name)
-                        put("target_id", op.targetId)
-                        put("reason", op.reason)
-                    })
+                    add(op.toForgetOpJson())
                 }
             }
         }
@@ -183,7 +240,11 @@ class ExplicitMemoryForgetPipeline(
             runType = MemoryRun.Type.FORGET_MEMORY,
             triggerMode = request.triggerMode,
             summary = plan.summary.ifBlank { "Explicit memory forget request completed." },
-            sourceIds = (listOf(request.source.id) + candidates.sourceIdsForForgetRun()).distinct(),
+            sourceIds = (
+                listOf(request.source.id) +
+                    candidates.sourceIdsForForgetRun() +
+                    cascadeResult?.forgottenSourceIds.orEmpty()
+                ).distinct(),
             retrievedItemRefs = candidateRefs.toList(),
             output = plan.toForgetOutputJson(routeDecision),
             appliedOps = appliedOps,
@@ -195,78 +256,18 @@ class ExplicitMemoryForgetPipeline(
             completedAt = completedAt,
         )
 
-        return MemoryUpdateBatch(
-            sources = forgottenSources.values.toList(),
-            runs = listOf(run),
-            claims = forgottenClaims.values.toList(),
-            notes = forgottenNotes.values.toList(),
-            actionItems = forgottenActionItems.values.toList(),
-            episodes = forgottenEpisodes.values.toList(),
+        return ForgetMaterialization(
+            memoryBatch = MemoryUpdateBatch(
+                sources = forgottenSources.values.toList(),
+                runs = listOf(run),
+                entities = forgottenEntities.values.toList(),
+                claims = forgottenClaims.values.toList(),
+                notes = forgottenNotes.values.toList(),
+                actionItems = forgottenActionItems.values.toList(),
+                episodes = forgottenEpisodes.values.toList(),
+            ),
+            forgottenSourceIds = cascadeResult?.forgottenSourceIds.orEmpty(),
         )
-    }
-
-    private fun applyAction(
-        request: DirectStructuredMemoryWriteRequest,
-        action: MemoryForgetPlan.Action,
-        completedAt: Instant,
-        snapshot: MemoryNamespaceSnapshot,
-        candidateRefs: Set<MemoryItemRef>,
-        forgottenSources: MutableMap<MemorySource.Id, MemorySource>,
-        forgottenClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
-        forgottenNotes: MutableMap<MemoryNote.Id, MemoryNote>,
-        forgottenActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
-        forgottenEpisodes: MutableMap<MemoryEpisode.Id, MemoryEpisode>,
-    ): List<AppliedForgetOp> {
-        if (action.action == MemoryForgetPlan.Action.Type.NOOP) {
-            return emptyList()
-        }
-
-        if (action.targetIds.any { MemoryItemRef(action.targetType, it) !in candidateRefs }) {
-            log.info {
-                "Memory forget skipped action outside candidate set: action=${action.action.name} targetType=${action.targetType.name} " +
-                    "targetIds=${action.targetIds.joinToString("|")} reason=${action.reason.oneLineForForgetPipelineLog(240)}"
-            }
-            return emptyList()
-        }
-
-        return when (action.action) {
-            MemoryForgetPlan.Action.Type.SOFT_DELETE_SOURCE -> softDeleteSourcesIfSafe(
-                request = request,
-                action = action,
-                completedAt = completedAt,
-                snapshot = snapshot,
-                forgottenSources = forgottenSources,
-            )
-
-            MemoryForgetPlan.Action.Type.ARCHIVE_ITEM -> archiveItems(
-                action = action,
-                completedAt = completedAt,
-                snapshot = snapshot,
-                forgottenClaims = forgottenClaims,
-                forgottenNotes = forgottenNotes,
-                forgottenActionItems = forgottenActionItems,
-                forgottenEpisodes = forgottenEpisodes,
-            )
-
-            MemoryForgetPlan.Action.Type.NOOP -> emptyList()
-        }
-    }
-
-    private fun softDeleteSourcesIfSafe(
-        request: DirectStructuredMemoryWriteRequest,
-        action: MemoryForgetPlan.Action,
-        completedAt: Instant,
-        snapshot: MemoryNamespaceSnapshot,
-        forgottenSources: MutableMap<MemorySource.Id, MemorySource>,
-    ): List<AppliedForgetOp> {
-        if (action.targetType != MemoryItemRef.Type.SOURCE) return emptyList()
-
-        return action.targetIds.mapNotNull { id -> snapshot.sources.firstOrNull { it.id.value == id } }
-            .filter { it.id != request.source.id && it.deletedAt == null }
-            .map { source ->
-                forgottenSources[source.id] = source.withDeletedAt(completedAt)
-                AppliedForgetOp("soft_delete_source", MemoryItemRef.Type.SOURCE, source.id.value, action.reason)
-            }
     }
 
     private fun archiveItems(
@@ -277,34 +278,34 @@ class ExplicitMemoryForgetPipeline(
         forgottenNotes: MutableMap<MemoryNote.Id, MemoryNote>,
         forgottenActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
         forgottenEpisodes: MutableMap<MemoryEpisode.Id, MemoryEpisode>,
-    ): List<AppliedForgetOp> =
+    ): List<MemorySourceForgetOp> =
         when (action.targetType) {
             MemoryItemRef.Type.CLAIM -> action.targetIds.mapNotNull { id -> snapshot.claims.firstOrNull { it.id.value == id } }
                 .filter { it.archivedAt == null }
                 .map { claim ->
                     forgottenClaims[claim.id] = claim.copy(archivedAt = completedAt, updatedAt = completedAt)
-                    AppliedForgetOp("archive_claim", MemoryItemRef.Type.CLAIM, claim.id.value, action.reason)
+                    MemorySourceForgetOp("archive_claim", MemoryItemRef.Type.CLAIM, claim.id.value, action.reason)
                 }
 
             MemoryItemRef.Type.NOTE -> action.targetIds.mapNotNull { id -> snapshot.notes.firstOrNull { it.id.value == id } }
                 .filter { it.archivedAt == null }
                 .map { note ->
                     forgottenNotes[note.id] = note.copy(archivedAt = completedAt, updatedAt = completedAt)
-                    AppliedForgetOp("archive_note", MemoryItemRef.Type.NOTE, note.id.value, action.reason)
+                    MemorySourceForgetOp("archive_note", MemoryItemRef.Type.NOTE, note.id.value, action.reason)
                 }
 
             MemoryItemRef.Type.ACTION_ITEM -> action.targetIds.mapNotNull { id -> snapshot.actionItems.firstOrNull { it.id.value == id } }
                 .filter { it.archivedAt == null }
                 .map { actionItem ->
                     forgottenActionItems[actionItem.id] = actionItem.copy(archivedAt = completedAt, updatedAt = completedAt)
-                    AppliedForgetOp("archive_task", MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value, action.reason)
+                    MemorySourceForgetOp("archive_task", MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value, action.reason)
                 }
 
             MemoryItemRef.Type.EPISODE -> action.targetIds.mapNotNull { id -> snapshot.episodes.firstOrNull { it.id.value == id } }
                 .filter { it.archivedAt == null }
                 .map { episode ->
                     forgottenEpisodes[episode.id] = episode.copy(archivedAt = completedAt, updatedAt = completedAt)
-                    AppliedForgetOp("archive_episode", MemoryItemRef.Type.EPISODE, episode.id.value, action.reason)
+                    MemorySourceForgetOp("archive_episode", MemoryItemRef.Type.EPISODE, episode.id.value, action.reason)
                 }
 
             MemoryItemRef.Type.SOURCE,
@@ -315,12 +316,21 @@ class ExplicitMemoryForgetPipeline(
         }
 }
 
-private data class AppliedForgetOp(
-    val op: String,
-    val targetType: MemoryItemRef.Type,
-    val targetId: String,
-    val reason: String,
+private data class ForgetMaterialization(
+    val memoryBatch: MemoryUpdateBatch,
+    val forgottenSourceIds: Set<MemorySource.Id>,
 )
+
+private fun MemoryForgetPlan.Action.isInsideForgetCandidates(candidateRefs: Set<MemoryItemRef>): Boolean =
+    targetIds.all { MemoryItemRef(targetType, it) in candidateRefs }
+
+private fun MemorySourceForgetOp.toForgetOpJson() =
+    buildJsonObject {
+        put("op", op)
+        put("target_type", targetType.name)
+        put("target_id", targetId)
+        put("reason", reason)
+    }
 
 private fun forgetQuery(
     request: DirectStructuredMemoryWriteRequest,
@@ -328,14 +338,6 @@ private fun forgetQuery(
 ): String =
     routeDecision.sourceSearchText?.trim()?.takeIf { it.isNotBlank() }
         ?: request.source.contentText
-
-private fun MemorySource.withDeletedAt(deletedAt: Instant): MemorySource =
-    when (this) {
-        is MemorySource.ChatTurn -> copy(deletedAt = deletedAt)
-        is MemorySource.ToolOutput -> copy(deletedAt = deletedAt)
-        is MemorySource.ImportedNote -> copy(deletedAt = deletedAt)
-        is MemorySource.ExternalRecord -> copy(deletedAt = deletedAt)
-    }
 
 private fun List<MemoryStore.SearchHit>.sourceIdsForForgetRun() =
     flatMap { hit ->

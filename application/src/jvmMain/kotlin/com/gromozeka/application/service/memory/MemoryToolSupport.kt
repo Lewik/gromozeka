@@ -17,6 +17,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
 const val MEMORY_REMEMBER_TOOL_NAME = "memory_remember"
+const val MEMORY_FORGET_SOURCE_TOOL_NAME = "memory_forget_source"
 const val MEMORY_ENRICH_CONTEXT_TOOL_NAME = "memory_enrich_context"
 const val MEMORY_ANSWER_QUESTION_TOOL_NAME = "memory_answer_question"
 const val MEMORY_RUN_STATUS_TOOL_NAME = "memory_run_status"
@@ -31,6 +32,7 @@ fun List<AiToolCallback>.withoutMemoryManagementTools(): List<AiToolCallback> =
 
 private val memoryManagementToolNames = setOf(
     MEMORY_REMEMBER_TOOL_NAME,
+    MEMORY_FORGET_SOURCE_TOOL_NAME,
     MEMORY_ENRICH_CONTEXT_TOOL_NAME,
     MEMORY_ANSWER_QUESTION_TOOL_NAME,
     MEMORY_RUN_STATUS_TOOL_NAME,

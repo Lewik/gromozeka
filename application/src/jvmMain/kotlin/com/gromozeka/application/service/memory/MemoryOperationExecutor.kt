@@ -17,6 +17,7 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
@@ -44,6 +45,8 @@ class MemoryOperationExecutor internal constructor(
 ) {
     private val rememberContentResolver = MemoryRememberContentResolver()
     private val sourceMapper = ConversationMessageMemorySourceMapper()
+    private val sourceForgetCascade = MemorySourceForgetCascade()
+    private val profileUpdater = ProjectionMemoryProfileUpdater(memoryStore)
     private val resultJson = Json { ignoreUnknownKeys = true }
 
     internal suspend fun execute(
@@ -119,12 +122,70 @@ class MemoryOperationExecutor internal constructor(
             is MemoryOperationRequest.RememberMessage -> executeRememberMessage(rootRun, request, reportProgress)
             is MemoryOperationRequest.RememberProvidedContent ->
                 executeRememberProvidedContent(rootRun, request, reportProgress)
+            is MemoryOperationRequest.ForgetSource -> executeForgetSource(rootRun, request)
             is MemoryOperationRequest.EnrichMessage -> executeEnrichMessage(request)
             is MemoryOperationRequest.EnrichProvidedContext -> executeEnrichProvidedContext(request)
             is MemoryOperationRequest.AnswerMessage -> executeAnswerMessage(request)
             is MemoryOperationRequest.AnswerProvidedQuestion -> executeAnswerProvidedQuestion(request)
             is MemoryOperationRequest.Maintenance -> executeMaintenance(request)
         }
+
+    private suspend fun executeForgetSource(
+        rootRun: MemoryRun?,
+        request: MemoryOperationRequest.ForgetSource,
+    ): MemoryOperationExecution {
+        val completedAt = Clock.System.now()
+        val cascadeResult = sourceForgetCascade.build(
+            snapshot = memoryStore.loadNamespaceSnapshot(request.namespace, includeArchived = true),
+            requestedSourceIds = setOf(request.sourceId),
+            protectedSourceIds = emptySet(),
+            completedAt = completedAt,
+            reason = "Exact source forget requested by the user.",
+        )
+        val indexedCascadeBatch = embeddingIndexer.withEmbeddings(cascadeResult.memoryBatch)
+        memoryStore.apply(indexedCascadeBatch)
+
+        val profileBatch = profileUpdater.updateNamespaceProfiles(
+            namespace = request.namespace,
+            logSubject = "forgottenSource=${request.sourceId.value}",
+            appliedBatch = indexedCascadeBatch.copy(runs = listOfNotNull(rootRun)),
+            completedAt = completedAt,
+            force = true,
+        )
+        val indexedProfileBatch = embeddingIndexer.withEmbeddings(profileBatch)
+        memoryStore.apply(indexedProfileBatch)
+        sourceForgetCascade.verify(
+            activeSnapshot = memoryStore.loadNamespaceSnapshot(request.namespace),
+            forgottenSourceIds = cascadeResult.forgottenSourceIds,
+        )
+
+        val output = buildJsonObject {
+            put("status", "completed")
+            put("source_id", request.sourceId.value)
+            put("namespace", request.namespace.value)
+            putJsonArray("forgotten_source_ids") {
+                cascadeResult.forgottenSourceIds
+                    .sortedBy { it.value }
+                    .forEach { add(JsonPrimitive(it.value)) }
+            }
+            put("counts", buildJsonObject {
+                put("sources", indexedCascadeBatch.sources.size)
+                put("entities", indexedCascadeBatch.entities.size)
+                put("claims", indexedCascadeBatch.claims.size)
+                put("notes", indexedCascadeBatch.notes.size)
+                put("action_items", indexedCascadeBatch.actionItems.size)
+                put("episodes", indexedCascadeBatch.episodes.size)
+                put("profiles", indexedProfileBatch.profiles.size)
+                put("operations", cascadeResult.appliedOps.size)
+            })
+        }
+        return MemoryOperationExecution(
+            status = MemoryRun.Status.SUCCESS,
+            summary = "Memory source forget completed",
+            output = output,
+            sourceIds = cascadeResult.forgottenSourceIds.sortedBy { it.value },
+        )
+    }
 
     private suspend fun executeMaintenance(
         request: MemoryOperationRequest.Maintenance,

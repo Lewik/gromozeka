@@ -89,6 +89,20 @@ class MemoryAsyncOperationApplicationService(
             )
         }
 
+    suspend fun forgetSource(
+        conversationIdValue: String?,
+        sourceIdValue: String,
+        namespaceValue: String? = null,
+        resultDelivery: MemoryOperationResultDelivery? = null,
+    ): String =
+        schedule(MemoryOperationKind.FORGET_SOURCE, resultDelivery) {
+            preparer.prepareForgetSource(
+                conversationIdValue = conversationIdValue,
+                sourceIdValue = sourceIdValue,
+                namespaceValue = namespaceValue,
+            )
+        }
+
     suspend fun enrichMessage(
         conversationIdValue: String,
         targetMessageId: String? = null,

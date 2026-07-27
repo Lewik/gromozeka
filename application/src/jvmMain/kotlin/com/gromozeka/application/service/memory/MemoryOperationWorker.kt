@@ -298,6 +298,7 @@ class MemoryOperationWorker(
     private fun MemoryOperationKind.displayName(): String =
         when (this) {
             MemoryOperationKind.REMEMBER -> "Memory remember"
+            MemoryOperationKind.FORGET_SOURCE -> "Memory source forget"
             MemoryOperationKind.ENRICH_CONTEXT -> "Memory context enrichment"
             MemoryOperationKind.ANSWER_QUESTION -> "Memory question answering"
             MemoryOperationKind.MAINTENANCE -> "Memory maintenance"

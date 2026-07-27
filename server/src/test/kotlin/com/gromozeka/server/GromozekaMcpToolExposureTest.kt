@@ -18,6 +18,7 @@ class GromozekaMcpToolExposureTest {
         assertTrue(exposure.exposes("memory_list_namespaces"))
         assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
+        assertTrue(exposure.exposes("memory_forget_source"))
         assertTrue(exposure.exposes("memory_run_status"))
         assertFalse(exposure.exposes("grz_execute_command"))
     }
@@ -33,7 +34,7 @@ class GromozekaMcpToolExposureTest {
     @Test
     fun `explicit configuration accepts comma and whitespace separated tool names`() {
         val exposure = GromozekaMcpToolExposure.fromConfiguredValue(
-            "memory_help, memory_enrich_context, memory_answer_question, memory_remember\nmemory_run_status memory_queue_status memory_maintenance"
+            "memory_help, memory_enrich_context, memory_answer_question, memory_remember, memory_forget_source\nmemory_run_status memory_queue_status memory_maintenance"
         )
 
         assertTrue(exposure.exposes("memory_help"))
@@ -42,6 +43,7 @@ class GromozekaMcpToolExposureTest {
         assertTrue(exposure.exposes("memory_answer_question"))
         assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
+        assertTrue(exposure.exposes("memory_forget_source"))
         assertTrue(exposure.exposes("memory_run_status"))
         assertFalse(exposure.exposes("brave_web_search"))
     }

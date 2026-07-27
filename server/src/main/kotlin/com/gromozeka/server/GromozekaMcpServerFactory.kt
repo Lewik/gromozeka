@@ -4,6 +4,7 @@ import com.gromozeka.application.service.memory.MEMORY_QUEUE_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_ANSWER_QUESTION_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_EMBEDDING_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_FORGET_SOURCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME
@@ -135,6 +136,7 @@ class GromozekaMcpServerFactory(
                 description = MCP_MEMORY_REMEMBER_DESCRIPTION,
                 inputSchema = MCP_MEMORY_REMEMBER_INPUT_SCHEMA,
             )
+            MEMORY_FORGET_SOURCE_TOOL_NAME -> copy(description = MCP_MEMORY_FORGET_SOURCE_DESCRIPTION)
             MEMORY_ENRICH_CONTEXT_TOOL_NAME -> copy(description = MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION)
             MEMORY_ANSWER_QUESTION_TOOL_NAME -> copy(description = MCP_MEMORY_ANSWER_QUESTION_DESCRIPTION)
             MEMORY_LIST_NAMESPACES_TOOL_NAME -> copy(description = MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION)
@@ -242,6 +244,12 @@ class GromozekaMcpServerFactory(
 
             `memory_remember` returns a queued `run_id` immediately. The accepted operation continues locally in the background. Call `memory_run_status` with that id until `poll_again=false`, then stop polling and consume `result` or follow `next_action`.
 
+            ## Forgetting memory
+
+            Use `memory_forget_source` only when the user explicitly asks to forget a source identified by an exact persisted `source_id`. Set `user_consent_confirmed=true` only after that request. The operation forgets the whole logical document/source, prunes mixed-evidence memories, archives memories left without evidence, removes source-backed aliases, and rebuilds affected profiles.
+
+            This exact-source tool does not perform semantic search. A normal conversational request such as "forget what I said about X" is handled by Gromozeka's memory router, which first identifies relevant candidates and then applies the same source cascade.
+
             ## Reading memory
 
             Use `memory_enrich_context` to enrich a context, not to ask a question.
@@ -274,11 +282,15 @@ class GromozekaMcpServerFactory(
             3. Call `memory_answer_question` for direct memory-only questions.
             4. Call `memory_enrich_context` before answering or acting when remembered context may matter.
             5. Call `memory_remember` only for explicit user-approved content.
-            6. Call `memory_run_status` with the returned run id until `poll_again=false`, then consume the completed result or follow `next_action`.
+            6. Call `memory_forget_source` only for an explicit request to forget an exact source id.
+            7. Call `memory_run_status` with the returned run id until `poll_again=false`, then consume the completed result or follow `next_action`.
         """.trimIndent()
 
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
             "Queue persistence of explicit user-approved text or a raw markdown/text document in the global namespace and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Follow the returned result_delivery contract: poll memory_run_status only when poll_required=true. Use memory_help for typed-memory concepts and workflow."
+
+        const val MCP_MEMORY_FORGET_SOURCE_DESCRIPTION =
+            "Queue exact forgetting of one persisted source_id in the global namespace and return a run_id. Requires an explicit user request and user_consent_confirmed=true. The operation forgets the logical source closure and updates directly dependent typed memory and profiles. Poll memory_run_status only when poll_required=true."
 
         const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
             "Queue retrieval of persisted memory relevant to a supplied context and return a run_id. This enriches a topic/action item/current turn; it is not a question-answering tool. Follow the returned result_delivery contract and poll memory_run_status only when poll_required=true."
@@ -376,6 +388,7 @@ internal class GromozekaMcpToolExposure private constructor(
             MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,
             MEMORY_EMBEDDING_STATUS_TOOL_NAME,
             MEMORY_REMEMBER_TOOL_NAME,
+            MEMORY_FORGET_SOURCE_TOOL_NAME,
             MEMORY_RUN_STATUS_TOOL_NAME,
         )
 
