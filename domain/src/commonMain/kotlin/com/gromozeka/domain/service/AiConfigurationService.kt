@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import kotlinx.coroutines.flow.StateFlow
 
 interface AiConfigurationProvider {
@@ -79,6 +80,12 @@ interface AiCatalogManagementService {
     suspend fun setDefaultAgent(
         agentId: AgentDefinition.Id,
         expectedRevision: Long,
+    ): AiCatalogSnapshot
+
+    suspend fun setWebToolConfiguration(
+        configuration: AiWebToolConfiguration,
+        expectedRevision: Long,
+        preserveExistingSecrets: Boolean = true,
     ): AiCatalogSnapshot
 }
 

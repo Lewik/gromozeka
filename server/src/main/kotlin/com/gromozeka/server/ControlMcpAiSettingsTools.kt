@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.service.AiCatalogManagementService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.SettingsService
@@ -45,9 +46,10 @@ internal class ControlMcpAiSettingsTools(
                     Read current entities before changing references. Create Prompts and Skills before Agents that reference them.
                     Prompt and Skill imports accept exact inline content. Read client-local files with the caller's filesystem tools before invoking Control MCP; the Server does not guess which Worker's filesystem owns an arbitrary path.
                     AI catalog mutations require the latest expectedRevision. Read grz_ai_catalog_get again after a revision conflict.
+                    Web tool configuration is part of the central AI catalog and is shared by all Workers.
                     External MCP servers are assigned to one exact Worker. Create, update, refresh, and delete are explicit operations against its current live Worker session and are never retried automatically after execution starts.
                     MCP tools/list_changed notifications only set refreshAvailable; call grz_mcp_server_refresh explicitly to accept a changed tool snapshot.
-                    Inline secrets are returned as null with configuredInlineSecretPaths. Keep them null and preserveExistingSecret=true to retain their values.
+                    Inline secrets are returned as null with configuredInlineSecretPaths. Keep them null and use the mutation's preserve-existing-secret option to retain their values.
                     Destructive operations never guess replacements and return dependency errors when an entity is still referenced.
                     Device UI settings are intentionally outside this control surface. grz_user_profile_update changes only shared user behavior.
                     """.trimIndent()
@@ -249,8 +251,45 @@ internal class ControlMcpAiSettingsTools(
             }
         },
         controlMcpTool(
+            name = "grz_web_tools_update",
+            description = "Replace central web tool configuration. Missing Brave and Jina API keys preserve their existing values by default.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "configuration" to ControlMcpSchemas.objectValue(
+                        "Serialized AiWebToolConfiguration object."
+                    ),
+                    "expectedRevision" to ControlMcpSchemas.integer(
+                        "Latest AI catalog revision.",
+                        minimum = 0,
+                    ),
+                    "preserveExistingSecrets" to ControlMcpSchemas.boolean(
+                        "Preserve existing Brave and Jina API keys when omitted. Defaults to true."
+                    ),
+                ),
+                required = listOf("configuration", "expectedRevision"),
+            ),
+            readOnly = false,
+            idempotent = true,
+        ) { input ->
+            val configuration = input.decodeRequired(
+                "configuration",
+                AiWebToolConfiguration.serializer(),
+            )
+            val snapshot = aiCatalogManagementService.setWebToolConfiguration(
+                configuration = configuration,
+                expectedRevision = input.requiredLong("expectedRevision"),
+                preserveExistingSecrets = input.optionalBoolean("preserveExistingSecrets", true),
+            )
+            aiMutationResult(
+                snapshot = snapshot,
+                name = "configuration",
+                serializer = AiWebToolConfiguration.serializer(),
+                value = snapshot.catalog.webTools,
+            )
+        },
+        controlMcpTool(
             name = "grz_user_profile_get",
-            description = "Read shared user behavior settings. Device-specific UI settings are not included. Inline secrets are redacted.",
+            description = "Read shared user behavior settings. Device-specific UI settings are not included.",
             readOnly = true,
         ) {
             redactedEntityResult(
@@ -261,13 +300,10 @@ internal class ControlMcpAiSettingsTools(
         },
         controlMcpTool(
             name = "grz_user_profile_update",
-            description = "Replace shared user behavior settings while preserving the profile id and leaving device-specific settings unchanged. Missing tool API keys preserve existing secrets by default.",
+            description = "Replace shared user behavior settings while preserving the profile id and leaving device-specific settings unchanged.",
             inputSchema = ControlMcpSchemas.objectSchema(
                 properties = mapOf(
                     "userProfile" to ControlMcpSchemas.objectValue("Serialized UserProfile object."),
-                    "preserveExistingSecrets" to ControlMcpSchemas.boolean(
-                        "Preserve existing tool API keys when omitted. Defaults to true."
-                    ),
                 ),
                 required = listOf("userProfile"),
             ),
@@ -276,10 +312,7 @@ internal class ControlMcpAiSettingsTools(
         ) { input ->
             val existing = settingsService.userProfile
             val supplied = input.decodeRequired("userProfile", UserProfile.serializer())
-            val updated = supplied.preserveSecretsFrom(
-                existing,
-                input.optionalBoolean("preserveExistingSecrets", true),
-            ).copy(id = existing.id)
+            val updated = supplied.copy(id = existing.id)
             settingsService.saveSettings {
                 copy(userProfile = updated)
             }
@@ -419,20 +452,3 @@ private fun JsonElement.redactInlineSecrets(
 
 private fun String.toJsonPointerSegment(): String =
     replace("~", "~0").replace("/", "~1")
-
-private fun UserProfile.preserveSecretsFrom(
-    existing: UserProfile,
-    preserveExistingSecrets: Boolean,
-): UserProfile {
-    if (!preserveExistingSecrets) return this
-    return copy(
-        toolSettings = toolSettings.copy(
-            braveSearch = toolSettings.braveSearch.copy(
-                apiKey = toolSettings.braveSearch.apiKey ?: existing.toolSettings.braveSearch.apiKey,
-            ),
-            jinaReader = toolSettings.jinaReader.copy(
-                apiKey = toolSettings.jinaReader.apiKey ?: existing.toolSettings.jinaReader.apiKey,
-            ),
-        )
-    )
-}

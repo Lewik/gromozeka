@@ -25,7 +25,7 @@ class DefaultAiToolProvider(
         val declaredCallbacks = applicationContext.getBeansOfType(AiToolCallback::class.java).values
         val localTools = localToolCallbacks.getIfAvailable()?.callbacks.orEmpty()
         val externalTools = mcpConfigurationService.getIfAvailable()?.getTools().orEmpty()
-        val tools = declaredCallbacks + localTools + externalTools
+        val tools = (declaredCallbacks + localTools + externalTools).filter(AiToolCallback::available)
         val duplicateNames = tools
             .groupingBy { it.definition.name }
             .eachCount()

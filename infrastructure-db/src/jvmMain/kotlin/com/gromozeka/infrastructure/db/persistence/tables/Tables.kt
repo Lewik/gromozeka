@@ -144,6 +144,7 @@ internal object AiRuntimeAssignments : Table("ai_runtime_assignments") {
 internal object RuntimeCatalogConfiguration : Table("runtime_catalog_configuration") {
     val id = varchar("id", 32)
     val defaultAgentId = varchar("default_agent_id", 255).references(Agents.id)
+    val webToolsJson = text("web_tools_json")
     val revision = long("revision")
 
     override val primaryKey = PrimaryKey(id)

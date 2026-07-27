@@ -23,6 +23,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -47,7 +49,7 @@ internal class ProcessClaudeCodeCliExecutor(
     private val executableOverride: String? = null,
     processFactory: ClaudeCodeCliProcessFactory = DefaultClaudeCodeCliProcessFactory(),
     nanoTime: () -> Long = System::nanoTime,
-) : ClaudeCodeCliExecutor, AutoCloseable {
+) : ClaudeCodeCliExecutor, ClaudeCodeNativeToolExecutor, AutoCloseable {
     private val processCache = ClaudeCodeProcessCache(processFactory, nanoTime)
 
     override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse {
@@ -83,6 +85,33 @@ internal class ProcessClaudeCodeCliExecutor(
         }
     }
 
+    override suspend fun executeNativeTool(
+        command: ClaudeCodeCommand,
+        invocation: ClaudeCodeNativeToolInvocation,
+    ): ClaudeCodeNativeToolResponse {
+        val effectiveCommand = executableOverride
+            ?.let { command.copy(executablePath = it) }
+            ?: command
+        require(effectiveCommand.noSessionPersistence) {
+            "Claude Code native web tools require a one-shot process"
+        }
+        require(effectiveCommand.cacheKey == null) {
+            "Claude Code native web tools cannot use a semantic session cache"
+        }
+        require(effectiveCommand.nativeTools == setOf(invocation.tool)) {
+            "Claude Code native tool command must expose only ${invocation.tool.cliName}"
+        }
+
+        val process = processCache.startUncached(effectiveCommand)
+        return try {
+            process.executeNativeTool(effectiveCommand.userPrompt, invocation)
+        } finally {
+            withContext(NonCancellable) {
+                process.close()
+            }
+        }
+    }
+
     internal fun buildArgs(command: ClaudeCodeCommand, systemPromptFile: String): List<String> =
         ClaudeCodeProcessArguments.build(
             command = executableOverride
@@ -111,6 +140,12 @@ internal interface ClaudeCodeCliProcess {
     val isAlive: Boolean
 
     suspend fun execute(userPrompt: String): ClaudeCodeCliResponse
+
+    suspend fun executeNativeTool(
+        userPrompt: String,
+        invocation: ClaudeCodeNativeToolInvocation,
+    ): ClaudeCodeNativeToolResponse =
+        error("Claude Code process does not support native tool interception")
 
     suspend fun close()
 }
@@ -414,6 +449,7 @@ private data class ClaudeCodeLaunchConfiguration(
     val systemPromptFingerprint: String,
     val jsonSchemaFingerprint: String?,
     val effort: String?,
+    val nativeTools: Set<String>,
 ) {
     companion object {
         fun from(command: ClaudeCodeCommand): ClaudeCodeLaunchConfiguration =
@@ -424,6 +460,7 @@ private data class ClaudeCodeLaunchConfiguration(
                 systemPromptFingerprint = sha256(command.systemPrompt),
                 jsonSchemaFingerprint = command.jsonSchema?.toString()?.let(::sha256),
                 effort = command.effort?.name,
+                nativeTools = command.nativeTools.mapTo(sortedSetOf()) { it.cliName },
             )
     }
 }
@@ -501,6 +538,31 @@ private class StreamingClaudeCodeCliProcess(
             }
         }
 
+    override suspend fun executeNativeTool(
+        userPrompt: String,
+        invocation: ClaudeCodeNativeToolInvocation,
+    ): ClaudeCodeNativeToolResponse =
+        requestMutex.withLock {
+            check(isAlive) {
+                "Claude Code CLI process is not running${stderrDiagnostic().asDiagnosticSuffix()}"
+            }
+
+            coroutineScope {
+                val response = async(Dispatchers.IO) {
+                    stdin.write(streamingUserMessage(userPrompt))
+                    stdin.newLine()
+                    stdin.flush()
+                    readNativeToolResult(invocation)
+                }
+                try {
+                    response.await()
+                } catch (exception: CancellationException) {
+                    runCatching(::terminateImmediately)
+                    throw exception
+                }
+            }
+        }
+
     override suspend fun close() {
         if (!closed.compareAndSet(false, true)) return
         withContext(Dispatchers.IO) {
@@ -534,6 +596,26 @@ private class StreamingClaudeCodeCliProcess(
             if (root["type"]?.jsonPrimitive?.contentOrNull == "result") {
                 return parseCliResponse(root)
             }
+        }
+    }
+
+    private fun readNativeToolResult(
+        invocation: ClaudeCodeNativeToolInvocation,
+    ): ClaudeCodeNativeToolResponse {
+        val parser = ClaudeCodeNativeToolStreamParser(invocation)
+        while (true) {
+            val line = stdout.readLine()
+                ?: error(
+                    "Claude Code CLI stream closed before returning ${invocation.tool.cliName} result" +
+                        processExitDiagnostic() +
+                        stderrDiagnostic().asDiagnosticSuffix()
+                )
+            if (line.isBlank()) continue
+            val root = runCatching { json.parseToJsonElement(line).jsonObject }
+                .getOrElse {
+                    error("Claude Code CLI returned invalid stream JSON: $line")
+                }
+            parser.accept(root)?.let { return it }
         }
     }
 
@@ -605,6 +687,74 @@ private class StreamingClaudeCodeCliProcess(
     }
 }
 
+internal class ClaudeCodeNativeToolStreamParser(
+    private val invocation: ClaudeCodeNativeToolInvocation,
+) {
+    private var toolUseId: String? = null
+
+    fun accept(root: JsonObject): ClaudeCodeNativeToolResponse? {
+        when (root["type"]?.jsonPrimitive?.contentOrNull) {
+            "assistant" -> acceptAssistant(root)
+            "user" -> return acceptUser(root)
+            "result" -> error(
+                "Claude Code completed without returning ${invocation.tool.cliName} result"
+            )
+        }
+        return null
+    }
+
+    private fun acceptAssistant(root: JsonObject) {
+        val contents = (root["message"] as? JsonObject)
+            ?.get("content") as? JsonArray
+            ?: return
+        contents.forEach { item ->
+            val toolUse = item as? JsonObject ?: return@forEach
+            if (toolUse["type"]?.jsonPrimitive?.contentOrNull != "tool_use") {
+                return@forEach
+            }
+            check(toolUseId == null) {
+                "Claude Code invoked more than one native tool"
+            }
+            val actualName = toolUse["name"]?.jsonPrimitive?.contentOrNull
+            require(actualName == invocation.tool.cliName) {
+                "Claude Code invoked $actualName instead of ${invocation.tool.cliName}"
+            }
+            val actualInput = toolUse["input"] as? JsonObject
+                ?: error("Claude Code ${invocation.tool.cliName} call missed object input")
+            require(actualInput == invocation.input) {
+                "Claude Code changed ${invocation.tool.cliName} input: " +
+                    "expected=${invocation.input}, actual=$actualInput"
+            }
+            toolUseId = toolUse["id"]?.jsonPrimitive?.contentOrNull
+                ?.takeIf(String::isNotBlank)
+                ?: error("Claude Code ${invocation.tool.cliName} call missed id")
+        }
+    }
+
+    private fun acceptUser(root: JsonObject): ClaudeCodeNativeToolResponse? {
+        val expectedToolUseId = toolUseId ?: return null
+        val contents = (root["message"] as? JsonObject)
+            ?.get("content") as? JsonArray
+            ?: return null
+        val toolResult = contents
+            .mapNotNull { it as? JsonObject }
+            .singleOrNull {
+                it["type"]?.jsonPrimitive?.contentOrNull == "tool_result" &&
+                    it["tool_use_id"]?.jsonPrimitive?.contentOrNull == expectedToolUseId
+            }
+            ?: return null
+        val result = root["tool_use_result"]
+            ?.takeUnless { it is JsonNull }
+            ?: toolResult["content"]
+            ?: JsonNull
+        return ClaudeCodeNativeToolResponse(
+            tool = invocation.tool,
+            input = invocation.input,
+            result = result,
+        )
+    }
+}
+
 private fun sha256(value: String): String =
     MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(StandardCharsets.UTF_8))
@@ -613,11 +763,21 @@ private fun sha256(value: String): String =
 private object ClaudeCodeProcessArguments {
     fun build(command: ClaudeCodeCommand, systemPromptFile: String): List<String> =
         buildList {
+            require(command.nativeTools.isEmpty() || command.jsonSchema == null) {
+                "Claude Code native tools cannot be combined with structured output"
+            }
+            val nativeToolNames = command.nativeTools
+                .map { it.cliName }
+                .sorted()
             add(command.executablePath)
             add("-p")
             add("--safe-mode")
             add("--tools")
-            add("")
+            add(nativeToolNames.joinToString(","))
+            if (nativeToolNames.isNotEmpty()) {
+                add("--allowedTools")
+                add(nativeToolNames.joinToString(","))
+            }
             add("--disable-slash-commands")
             add("--setting-sources")
             add("")

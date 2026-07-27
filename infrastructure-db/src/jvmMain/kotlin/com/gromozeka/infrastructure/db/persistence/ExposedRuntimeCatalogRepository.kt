@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.repository.AiCatalogRepository
 import com.gromozeka.domain.repository.RuntimeCatalogBootstrapRepository
 import com.gromozeka.infrastructure.db.persistence.tables.Agents
@@ -52,6 +53,7 @@ class ExposedRuntimeCatalogRepository(
                 (RuntimeCatalogConfiguration.revision eq expectedRevision)
         }) {
             it[defaultAgentId] = catalog.defaultAgentId.value
+            it[webToolsJson] = json.encodeToString(catalog.webTools)
             it[revision] = expectedRevision + 1
         }
         check(updated == 1) {
@@ -109,6 +111,7 @@ class ExposedRuntimeCatalogRepository(
         RuntimeCatalogConfiguration.insert {
             it[id] = CONFIGURATION_ID
             it[defaultAgentId] = seed.aiCatalog.defaultAgentId.value
+            it[webToolsJson] = json.encodeToString(seed.aiCatalog.webTools)
             it[revision] = 0
         }
         true
@@ -134,6 +137,9 @@ class ExposedRuntimeCatalogRepository(
                 .map { json.decodeFromString<AiRuntimeAssignment>(it[AiRuntimeAssignments.payloadJson]) }
                 .sortedBy { it.purpose.ordinal },
             defaultAgentId = AgentDefinition.Id(configuration[RuntimeCatalogConfiguration.defaultAgentId]),
+            webTools = json.decodeFromString<AiWebToolConfiguration>(
+                configuration[RuntimeCatalogConfiguration.webToolsJson]
+            ),
         )
         return AiCatalogSnapshot(
             catalog = catalog,

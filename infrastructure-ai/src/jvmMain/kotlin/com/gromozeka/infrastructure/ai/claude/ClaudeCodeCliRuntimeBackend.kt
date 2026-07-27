@@ -18,7 +18,6 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import com.gromozeka.shared.uuid.uuid7
-import jakarta.annotation.PreDestroy
 import klog.KLoggers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -45,9 +44,9 @@ import java.util.concurrent.ConcurrentHashMap
 @Service
 internal class ClaudeCodeCliRuntimeBackend(
     private val sessionStateRepository: ClaudeCodeSessionStateRepository,
+    private val executor: ClaudeCodeCliExecutor,
 ) : AiRuntimeBackend {
     private val sessionLocks = ConcurrentHashMap<String, Mutex>()
-    private val executor = ProcessClaudeCodeCliExecutor()
 
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.CLAUDE_CODE
@@ -80,11 +79,6 @@ internal class ClaudeCodeCliRuntimeBackend(
         val directory = File(value).toPath().toAbsolutePath().normalize().toFile()
         require(directory.isDirectory) { "Claude Code workspace root must be an existing directory: $value" }
         return directory
-    }
-
-    @PreDestroy
-    fun close() {
-        executor.close()
     }
 }
 
@@ -565,6 +559,29 @@ internal interface ClaudeCodeCliExecutor {
     suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse
 }
 
+internal interface ClaudeCodeNativeToolExecutor {
+    suspend fun executeNativeTool(
+        command: ClaudeCodeCommand,
+        invocation: ClaudeCodeNativeToolInvocation,
+    ): ClaudeCodeNativeToolResponse
+}
+
+internal enum class ClaudeCodeNativeTool(val cliName: String) {
+    WEB_SEARCH("WebSearch"),
+    WEB_FETCH("WebFetch"),
+}
+
+internal data class ClaudeCodeNativeToolInvocation(
+    val tool: ClaudeCodeNativeTool,
+    val input: JsonObject,
+)
+
+internal data class ClaudeCodeNativeToolResponse(
+    val tool: ClaudeCodeNativeTool,
+    val input: JsonObject,
+    val result: JsonElement,
+)
+
 internal data class ClaudeCodeCommand(
     val connectionId: String = "claude-code",
     val executablePath: String = "claude",
@@ -579,6 +596,7 @@ internal data class ClaudeCodeCommand(
     val effort: AiReasoningEffort?,
     val resumeSessionId: String?,
     val noSessionPersistence: Boolean,
+    val nativeTools: Set<ClaudeCodeNativeTool> = emptySet(),
 )
 
 internal data class ClaudeCodeCliResponse(

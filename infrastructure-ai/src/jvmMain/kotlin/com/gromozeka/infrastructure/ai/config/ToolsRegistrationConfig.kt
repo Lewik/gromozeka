@@ -58,6 +58,8 @@ class ToolsRegistrationConfig {
                 inputSchema = schema,
             )
             override val metadata = tool.metadata
+            override val available: Boolean
+                get() = tool.available
 
             override fun call(toolInput: String, context: ToolExecutionContext?): String {
                 val request = objectMapper.readValue(toolInput, tool.requestType)

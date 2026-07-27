@@ -65,6 +65,7 @@ import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import kotlinx.coroutines.CoroutineScope
@@ -89,6 +90,7 @@ private data class AiCatalogDraft(
     val modelConfigurations: List<AiModelConfiguration>,
     val runtimeAssignments: List<AiRuntimeAssignment>,
     val defaultAgentId: com.gromozeka.domain.model.AgentDefinition.Id,
+    val webTools: AiWebToolConfiguration,
 ) {
     fun toCatalog(): AiCatalog = AiCatalog(
         connections = connections,
@@ -96,6 +98,7 @@ private data class AiCatalogDraft(
         modelConfigurations = modelConfigurations,
         runtimeAssignments = runtimeAssignments,
         defaultAgentId = defaultAgentId,
+        webTools = webTools,
     )
 
     companion object {
@@ -105,6 +108,7 @@ private data class AiCatalogDraft(
             modelConfigurations = catalog.modelConfigurations,
             runtimeAssignments = catalog.runtimeAssignments,
             defaultAgentId = catalog.defaultAgentId,
+            webTools = catalog.webTools,
         )
     }
 }

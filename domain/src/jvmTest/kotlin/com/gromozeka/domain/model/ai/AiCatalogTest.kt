@@ -85,6 +85,22 @@ class AiCatalogTest {
         )
     }
 
+    @Test
+    fun rejectsClaudeCodeWebToolsBackedByAnotherProvider() {
+        val catalog = testCatalog()
+
+        assertFailsWith<IllegalArgumentException> {
+            catalog.copy(
+                webTools = AiWebToolConfiguration(
+                    claudeCode = AiWebToolConfiguration.ClaudeCode(
+                        modelConfigurationId = CHAT_CONFIGURATION_ID,
+                        searchEnabled = true,
+                    )
+                )
+            )
+        }
+    }
+
     private fun testCatalog(connectionEnabled: Boolean = true): AiCatalog {
         val configurations = listOf(
             configuration(CHAT_CONFIGURATION_ID, "chat"),

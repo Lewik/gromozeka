@@ -40,6 +40,19 @@ class DefaultAiToolProviderTest {
         assertEquals("AI tool names must be unique: test_tool", error.message)
     }
 
+    @Test
+    fun `omits callbacks that are not currently available`() {
+        val provider = provider(
+            declaredCallbacks = listOf(
+                testCallback("enabled"),
+                testCallback("disabled", available = false),
+            ),
+            localTools = emptyList(),
+        )
+
+        assertEquals(listOf("enabled"), provider.getTools().map { it.definition.name })
+    }
+
     private fun provider(
         declaredCallbacks: List<AiToolCallback>,
         localTools: List<Tool<*, *>>,
@@ -58,8 +71,12 @@ class DefaultAiToolProviderTest {
         )
     }
 
-    private fun testCallback(name: String): AiToolCallback =
+    private fun testCallback(
+        name: String,
+        available: Boolean = true,
+    ): AiToolCallback =
         object : AiToolCallback {
+            override val available = available
             override val definition = AiToolDefinition(
                 name = name,
                 description = "Test callback",

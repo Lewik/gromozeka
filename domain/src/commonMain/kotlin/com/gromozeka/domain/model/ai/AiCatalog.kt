@@ -10,6 +10,7 @@ data class AiCatalog(
     val modelConfigurations: List<AiModelConfiguration>,
     val runtimeAssignments: List<AiRuntimeAssignment>,
     val defaultAgentId: AgentDefinition.Id,
+    val webTools: AiWebToolConfiguration = AiWebToolConfiguration(),
 ) {
     init {
         require(connections.map { it.id }.distinct().size == connections.size) {
@@ -28,6 +29,12 @@ data class AiCatalog(
         }
         require(runtimeAssignments.map { it.purpose }.distinct().size == runtimeAssignments.size) {
             "AI runtime assignment purposes must be unique"
+        }
+        require(!webTools.braveSearch.enabled || webTools.braveSearch.apiKey != null) {
+            "Brave Search requires an API key when enabled"
+        }
+        require(!webTools.jinaReader.enabled || webTools.jinaReader.apiKey != null) {
+            "Jina Reader requires an API key when enabled"
         }
 
         val assignedPurposes = runtimeAssignments.map { it.purpose }
@@ -60,6 +67,24 @@ data class AiCatalog(
             require(spec.capabilities.containsAll(assignment.purpose.requiredCapabilities)) {
                 "AI runtime assignment ${assignment.purpose.name} requires capabilities " +
                     "${assignment.purpose.requiredCapabilities}, but ${configuration.id.value} has ${spec.capabilities}"
+            }
+        }
+
+        val claudeCodeWebTools = webTools.claudeCode
+        if (claudeCodeWebTools.searchEnabled || claudeCodeWebTools.fetchEnabled) {
+            val configuration = modelConfigurations.singleOrNull {
+                it.id == claudeCodeWebTools.modelConfigurationId
+            } ?: error(
+                "Claude Code web tools reference missing model configuration " +
+                    claudeCodeWebTools.modelConfigurationId?.value
+            )
+            require(configuration.enabled) {
+                "Claude Code web tools reference disabled model configuration ${configuration.id.value}"
+            }
+            val connection = connectionFor(configuration)
+                ?: error("Claude Code web tools reference a model without a connection")
+            require(connection is AiConnection.ClaudeCode && connection.enabled) {
+                "Claude Code web tools require an enabled Claude Code connection"
             }
         }
     }

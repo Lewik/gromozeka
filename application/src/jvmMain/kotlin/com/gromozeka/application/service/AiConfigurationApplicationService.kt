@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AiCatalogRepository
 import com.gromozeka.domain.repository.AiModelSpecRepository
@@ -156,6 +157,20 @@ class AiConfigurationApplicationService(
         catalog.copy(defaultAgentId = agentId)
     }
 
+    override suspend fun setWebToolConfiguration(
+        configuration: AiWebToolConfiguration,
+        expectedRevision: Long,
+        preserveExistingSecrets: Boolean,
+    ): AiCatalogSnapshot = mutateCatalog(expectedRevision) { catalog ->
+        catalog.copy(
+            webTools = if (preserveExistingSecrets) {
+                configuration.preserveSecretsFrom(catalog.webTools)
+            } else {
+                configuration
+            }
+        )
+    }
+
     override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
         val modelConfiguration = catalog.modelConfigurations.firstOrNull {
             it.id == selection.modelConfigurationId
@@ -237,6 +252,14 @@ private fun AiConnection.preserveSecretFrom(
         else -> this
     }
 }
+
+private fun AiWebToolConfiguration.preserveSecretsFrom(
+    existing: AiWebToolConfiguration,
+): AiWebToolConfiguration =
+    copy(
+        braveSearch = braveSearch.copy(apiKey = braveSearch.apiKey ?: existing.braveSearch.apiKey),
+        jinaReader = jinaReader.copy(apiKey = jinaReader.apiKey ?: existing.jinaReader.apiKey),
+    )
 
 private fun <T, K> List<T>.upsertBy(value: T, key: (T) -> K): List<T> {
     val targetKey = key(value)

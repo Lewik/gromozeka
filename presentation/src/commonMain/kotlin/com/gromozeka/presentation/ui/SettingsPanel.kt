@@ -23,6 +23,8 @@ import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.AiConfigurationService
@@ -86,7 +88,6 @@ fun SettingsPanel(
     val speechToText = speechSettings.speechToText
     val agentSettings = userProfile.agentSettings
     val memorySettings = userProfile.memorySettings
-    val toolSettings = userProfile.toolSettings
     val deviceSettings = settings.userDeviceSettings
     val uiSettings = deviceSettings.uiSettings
     val themeSettings = uiSettings.theme
@@ -555,86 +556,11 @@ fun SettingsPanel(
                         contentMode == SettingsPanelContentMode.Full &&
                         selectedSection == SettingsSection.Tools
                     ) {
-                        SettingsGroup(title = translation.settings.apiKeysTitle) {
-                        // Brave Search
-                        SwitchSettingItem(
-                            label = translation.settings.enableBraveSearchLabel,
-                            description = translation.settings.braveSearchDescription,
-                            value = toolSettings.braveSearch.enabled,
-                            onValueChange = {
-                                onSettingsChange(
-                                    settings.updateUserProfile {
-                                        copy(
-                                            toolSettings = toolSettings.copy(
-                                                braveSearch = toolSettings.braveSearch.copy(enabled = it)
-                                            )
-                                        )
-                                    }
-                                )
-                            }
+                        WebToolSettingsEditor(
+                            aiConfigurationService = aiConfigurationService,
+                            coroutineScope = coroutineScope,
+                            translation = translation,
                         )
-
-                        if (toolSettings.braveSearch.enabled) {
-                            PasswordSettingItem(
-                                label = translation.settings.braveApiKeyLabel,
-                                description = translation.settings.braveApiKeyDescription,
-                                value = toolSettings.braveSearch.apiKey.secretText(),
-                                onValueChange = {
-                                    onSettingsChange(
-                                        settings.updateUserProfile {
-                                            copy(
-                                                toolSettings = toolSettings.copy(
-                                                    braveSearch = toolSettings.braveSearch.copy(
-                                                        apiKey = it.inlineSecretOrNull()
-                                                    )
-                                                )
-                                            )
-                                        }
-                                    )
-                                }
-                            )
-                        }
-
-                        // Jina Reader
-                        SwitchSettingItem(
-                            label = translation.settings.enableJinaReaderLabel,
-                            description = translation.settings.jinaReaderDescription,
-                            value = toolSettings.jinaReader.enabled,
-                            onValueChange = {
-                                onSettingsChange(
-                                    settings.updateUserProfile {
-                                        copy(
-                                            toolSettings = toolSettings.copy(
-                                                jinaReader = toolSettings.jinaReader.copy(enabled = it)
-                                            )
-                                        )
-                                    }
-                                )
-                            }
-                        )
-
-                        if (toolSettings.jinaReader.enabled) {
-                            PasswordSettingItem(
-                                label = translation.settings.jinaApiKeyLabel,
-                                description = translation.settings.jinaApiKeyDescription,
-                                value = toolSettings.jinaReader.apiKey.secretText(),
-                                onValueChange = {
-                                    onSettingsChange(
-                                        settings.updateUserProfile {
-                                            copy(
-                                                toolSettings = toolSettings.copy(
-                                                    jinaReader = toolSettings.jinaReader.copy(
-                                                        apiKey = it.inlineSecretOrNull()
-                                                    )
-                                                )
-                                            )
-                                        }
-                                    )
-                                }
-                            )
-                        }
-                    }
-
                     }
 
                     if (
@@ -1074,6 +1000,193 @@ fun SettingsPanel(
             }
         }
     }
+
+@Composable
+private fun WebToolSettingsEditor(
+    aiConfigurationService: AiConfigurationService,
+    coroutineScope: CoroutineScope,
+    translation: Translation,
+) {
+    val snapshot by aiConfigurationService.snapshotFlow.collectAsState()
+    val currentSnapshot = snapshot
+    if (currentSnapshot == null) {
+        SettingsGroup(title = "Web tools") {
+            InfoSettingItem(
+                label = "AI catalog is loading",
+                message = "Web tool settings will become available after the server catalog is loaded.",
+            )
+        }
+        return
+    }
+
+    var draft by remember(currentSnapshot.revision) {
+        mutableStateOf(currentSnapshot.catalog.webTools)
+    }
+    var isSaving by remember { mutableStateOf(false) }
+    var error by remember(currentSnapshot.revision) { mutableStateOf<String?>(null) }
+    val claudeModels = currentSnapshot.catalog.modelConfigurations
+        .filter { configuration ->
+            configuration.enabled &&
+                currentSnapshot.catalog.connectionFor(configuration).let {
+                    it is AiConnection.ClaudeCode && it.enabled
+                }
+        }
+        .sortedBy(AiModelConfiguration::displayName)
+    val claudeModelById = claudeModels.associateBy(AiModelConfiguration::id)
+    val selectedClaudeModel = draft.claudeCode.modelConfigurationId
+    val canEnableClaudeTools = selectedClaudeModel in claudeModelById
+    val isDirty = draft != currentSnapshot.catalog.webTools
+
+    SettingsGroup(title = "Web tools") {
+        SwitchSettingItem(
+            label = translation.settings.enableBraveSearchLabel,
+            description = translation.settings.braveSearchDescription,
+            value = draft.braveSearch.enabled,
+            onValueChange = { enabled ->
+                draft = draft.copy(
+                    braveSearch = draft.braveSearch.copy(enabled = enabled),
+                )
+            },
+        )
+        if (draft.braveSearch.enabled) {
+            PasswordSettingItem(
+                label = translation.settings.braveApiKeyLabel,
+                description = translation.settings.braveApiKeyDescription,
+                value = draft.braveSearch.apiKey.secretText(),
+                onValueChange = { value ->
+                    draft = draft.copy(
+                        braveSearch = draft.braveSearch.copy(apiKey = value.inlineSecretOrNull()),
+                    )
+                },
+            )
+        }
+
+        SwitchSettingItem(
+            label = translation.settings.enableJinaReaderLabel,
+            description = translation.settings.jinaReaderDescription,
+            value = draft.jinaReader.enabled,
+            onValueChange = { enabled ->
+                draft = draft.copy(
+                    jinaReader = draft.jinaReader.copy(enabled = enabled),
+                )
+            },
+        )
+        if (draft.jinaReader.enabled) {
+            PasswordSettingItem(
+                label = translation.settings.jinaApiKeyLabel,
+                description = translation.settings.jinaApiKeyDescription,
+                value = draft.jinaReader.apiKey.secretText(),
+                onValueChange = { value ->
+                    draft = draft.copy(
+                        jinaReader = draft.jinaReader.copy(apiKey = value.inlineSecretOrNull()),
+                    )
+                },
+            )
+        }
+
+        HorizontalDivider()
+
+        if (claudeModels.isEmpty()) {
+            InfoSettingItem(
+                label = "Claude Code web tools",
+                message = "Create and enable a Claude Code connection and model configuration first.",
+            )
+        } else {
+            DropdownSettingItem<AiModelConfiguration.Id?>(
+                label = "Claude Code web model",
+                description = "One central model configuration used by the native WebSearch and WebFetch proxies.",
+                value = selectedClaudeModel,
+                options = listOf(null) + claudeModels.map(AiModelConfiguration::id),
+                optionLabel = { id ->
+                    id?.let(claudeModelById::get)?.let { model ->
+                        "${model.displayName} (${model.providerModelId})"
+                    } ?: "Not configured"
+                },
+                onValueChange = { modelConfigurationId ->
+                    draft = draft.copy(
+                        claudeCode = draft.claudeCode.copy(
+                            modelConfigurationId = modelConfigurationId,
+                            searchEnabled = if (modelConfigurationId == null) {
+                                false
+                            } else {
+                                draft.claudeCode.searchEnabled
+                            },
+                            fetchEnabled = if (modelConfigurationId == null) {
+                                false
+                            } else {
+                                draft.claudeCode.fetchEnabled
+                            },
+                        )
+                    )
+                },
+            )
+            SwitchSettingItem(
+                label = "Enable Claude Code WebSearch",
+                description = "Expose claude_code_web_search only on Workers that can run the selected Claude Code connection.",
+                value = draft.claudeCode.searchEnabled,
+                enabled = canEnableClaudeTools,
+                onValueChange = { enabled ->
+                    draft = draft.copy(
+                        claudeCode = draft.claudeCode.copy(searchEnabled = enabled),
+                    )
+                },
+            )
+            SwitchSettingItem(
+                label = "Enable Claude Code WebFetch",
+                description = "Expose claude_code_web_fetch only on Workers that can run the selected Claude Code connection.",
+                value = draft.claudeCode.fetchEnabled,
+                enabled = canEnableClaudeTools,
+                onValueChange = { enabled ->
+                    draft = draft.copy(
+                        claudeCode = draft.claudeCode.copy(fetchEnabled = enabled),
+                    )
+                },
+            )
+        }
+
+        error?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Button(
+                enabled = isDirty && !isSaving,
+                onClick = {
+                    coroutineScope.launch {
+                        isSaving = true
+                        error = null
+                        runCatching {
+                            val latest = aiConfigurationService.snapshot
+                            aiConfigurationService.replaceCatalog(
+                                catalog = latest.catalog.copy(webTools = draft),
+                                expectedRevision = latest.revision,
+                            )
+                        }.onFailure {
+                            error = it.message ?: it::class.simpleName
+                        }
+                        isSaving = false
+                    }
+                },
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text("Save web tools")
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun SettingsGroup(

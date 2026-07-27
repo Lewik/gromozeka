@@ -11,6 +11,7 @@ import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -31,6 +32,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.WorkspaceDomainService
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -400,6 +404,47 @@ class ConversationRuntimeDispatcherTest {
             val snapshot = coordinator.snapshot(conversationId)
             assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, snapshot.incidents.single().kind)
             assertNull(snapshot.activeTask)
+        } finally {
+            worker.stop()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `worker refreshes advertised tools without restarting`() = runBlocking {
+        val registry = InMemoryConversationRuntimeWorkerRegistry()
+        val provider = MutableAiToolProvider()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val workerId = ConversationRuntimeWorkerId("dynamic-tools-worker")
+        val worker = runtimeWorker(
+            coordinator = InMemoryConversationRuntimeCoordinator(),
+            eventBus = InMemoryConversationRuntimeEventBus(),
+            workQueue = InMemoryTestRuntimeWorkBroker(),
+            registry = registry,
+            runner = ControllableTaskRunner(),
+            descriptor = ConversationRuntimeWorkerDescriptor(
+                id = workerId,
+                capabilities = setOf(
+                    ConversationRuntimeWorkerCapability.LLM_RUNTIME,
+                    ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
+                ),
+            ),
+            scope = scope,
+            heartbeatIntervalMillis = 20,
+            aiToolProvider = provider,
+        )
+
+        try {
+            worker.start()
+            provider.enabled = true
+            waitUntil {
+                registry.find(workerId)?.tools?.map { it.definition.name } == listOf("dynamic_tool")
+            }
+
+            provider.enabled = false
+            waitUntil {
+                registry.find(workerId)?.tools?.isEmpty() == true
+            }
         } finally {
             worker.stop()
             scope.cancel()
@@ -802,6 +847,7 @@ class ConversationRuntimeDispatcherTest {
             ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
         ),
         aiConfigurationService: AiConfigurationService = TestAiConfigurationService(),
+        aiToolProvider: AiToolProvider = EmptyAiToolProvider,
     ): DispatcherHarness {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val workerDescriptor = ConversationRuntimeWorkerDescriptor(
@@ -822,6 +868,7 @@ class ConversationRuntimeDispatcherTest {
             runtimeWorkerRegistry = workerRegistry,
             workspaceService = StaticWorkspaceDomainService(workerId),
             aiConfigurationService = aiConfigurationService,
+            aiToolProvider = aiToolProvider,
             taskRunnerProvider = objectProvider(runner),
             runtimeWorkerDescriptor = workerDescriptor,
             workerVersion = "test",
@@ -1036,6 +1083,7 @@ class ConversationRuntimeDispatcherTest {
         workspaceMounts: Map<WorkspaceMount.Id, Workspace.Id> = emptyMap(),
         heartbeatIntervalMillis: Long = ConversationRuntimeTiming.workerHeartbeatIntervalMillis,
         aiConfigurationService: AiConfigurationService = TestAiConfigurationService(),
+        aiToolProvider: AiToolProvider = EmptyAiToolProvider,
     ): ConversationRuntimeWorker =
         ConversationRuntimeWorker(
             runtimeCoordinator = coordinator,
@@ -1044,6 +1092,7 @@ class ConversationRuntimeDispatcherTest {
             runtimeWorkerRegistry = registry,
             workspaceService = StaticWorkspaceDomainService(descriptor.id.value, workspaceMounts),
             aiConfigurationService = aiConfigurationService,
+            aiToolProvider = aiToolProvider,
             taskRunnerProvider = objectProvider(runner),
             runtimeWorkerDescriptor = descriptor,
             workerVersion = "test",
@@ -1292,4 +1341,29 @@ class ConversationRuntimeDispatcherTest {
         }
     }
 
+}
+
+private object EmptyAiToolProvider : AiToolProvider {
+    override fun getTools() = emptyList<AiToolCallback>()
+}
+
+private class MutableAiToolProvider : AiToolProvider {
+    @Volatile
+    var enabled = false
+
+    override fun getTools(): List<AiToolCallback> =
+        if (enabled) listOf(DynamicTool) else emptyList()
+
+    private object DynamicTool : AiToolCallback {
+        override val definition = AiToolDefinition(
+            name = "dynamic_tool",
+            description = "Dynamic test tool",
+            inputSchema = """{"type":"object","properties":{}}""",
+        )
+
+        override fun call(
+            toolInput: String,
+            context: ToolExecutionContext?,
+        ): String = "ok"
+    }
 }

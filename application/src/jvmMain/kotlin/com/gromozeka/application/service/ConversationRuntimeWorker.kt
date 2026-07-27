@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
@@ -18,6 +19,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolDescriptor
+import com.gromozeka.domain.tool.supportedBy
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -56,6 +58,7 @@ class ConversationRuntimeWorker(
     private val runtimeWorkerRegistry: ConversationRuntimeWorkerRegistry,
     private val workspaceService: WorkspaceDomainService,
     private val aiConfigurationService: AiConfigurationService,
+    private val aiToolProvider: AiToolProvider,
     private val taskRunnerProvider: ObjectProvider<ConversationRuntimeTaskRunner>,
     runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
     @Value("\${gromozeka.runtime.worker.version:dev}") private val workerVersion: String,
@@ -202,6 +205,7 @@ class ConversationRuntimeWorker(
         try {
             while (workerJob.isActive) {
                 delay(heartbeatIntervalMillis)
+                refreshAdvertisedTools()
                 val heartbeatAccepted = runtimeWorkerRegistry.heartbeat(runtimeWorker, Clock.System.now())
                 if (!heartbeatAccepted) {
                     terminateAfterRegistrationLoss(
@@ -215,6 +219,26 @@ class ConversationRuntimeWorker(
             throw error
         } catch (error: Throwable) {
             terminateAfterRegistrationLoss(workerJob, error)
+        }
+    }
+
+    private suspend fun refreshAdvertisedTools() {
+        aiConfigurationService.refreshIfChanged()
+        val refreshedTools = if (
+            ConversationRuntimeWorkerCapability.TOOL_EXECUTION in runtimeWorkerCapabilities
+        ) {
+            aiToolProvider.getTools()
+        } else {
+            emptyList()
+        }
+            .supportedBy(runtimeWorkerCapabilities)
+            .map { AiToolDescriptor(it.definition, it.metadata) }
+            .sortedBy { it.definition.name }
+        if (refreshedTools != runtimeTools) {
+            updateAdvertisedTools(refreshedTools)
+            log.info {
+                "Conversation runtime worker tools refreshed: identity=$runtimeWorker tools=${runtimeTools.size}"
+            }
         }
     }
 

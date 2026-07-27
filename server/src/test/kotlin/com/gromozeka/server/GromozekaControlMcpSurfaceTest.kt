@@ -82,6 +82,7 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_default_agent_set",
                 "grz_user_profile_get",
                 "grz_user_profile_update",
+                "grz_web_tools_update",
                 "grz_mcp_server_list",
                 "grz_mcp_server_get",
                 "grz_mcp_server_create",

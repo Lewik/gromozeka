@@ -213,6 +213,9 @@ interface Tool<TRequest, TResponse> {
 
     val metadata: AiToolMetadata
         get() = AiToolMetadata()
+
+    val available: Boolean
+        get() = true
     
     /**
      * Request parameter class for automatic JSON Schema generation.

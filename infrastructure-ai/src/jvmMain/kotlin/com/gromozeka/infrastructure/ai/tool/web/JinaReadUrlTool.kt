@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.tool.web
 
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.web.JinaReadUrlRequest
 import org.slf4j.LoggerFactory
@@ -21,7 +22,8 @@ import java.time.Duration
  */
 @Service
 class JinaReadUrlTool(
-    private val settingsProvider: SettingsProvider
+    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
 ) : com.gromozeka.domain.tool.web.JinaReadUrlTool {
     
     private val logger = LoggerFactory.getLogger(JinaReadUrlTool::class.java)
@@ -29,9 +31,15 @@ class JinaReadUrlTool(
     private val httpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(30))
         .build()
+
+    override val available: Boolean
+        get() {
+            val settings = aiConfigurationProvider.catalog.webTools.jinaReader
+            return settings.enabled && !settingsProvider.resolveSecret(settings.apiKey).isNullOrBlank()
+        }
     
     override fun execute(request: JinaReadUrlRequest, context: ToolExecutionContext?): Map<String, Any> {
-        val jinaReader = settingsProvider.userProfile.toolSettings.jinaReader
+        val jinaReader = aiConfigurationProvider.catalog.webTools.jinaReader
         val apiKey = settingsProvider.resolveSecret(jinaReader.apiKey)
         if (!jinaReader.enabled || apiKey.isNullOrBlank()) {
             return mapOf<String, Any>(

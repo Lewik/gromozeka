@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.tool.web
 
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.web.BraveWebSearchRequest
 import kotlinx.serialization.Serializable
@@ -24,7 +25,8 @@ import java.time.Duration
  */
 @Service
 class BraveWebSearchTool(
-    private val settingsProvider: SettingsProvider
+    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
 ) : com.gromozeka.domain.tool.web.BraveWebSearchTool {
     
     private val logger = LoggerFactory.getLogger(BraveWebSearchTool::class.java)
@@ -34,9 +36,15 @@ class BraveWebSearchTool(
         .build()
     
     private val json = Json { ignoreUnknownKeys = true }
+
+    override val available: Boolean
+        get() {
+            val settings = aiConfigurationProvider.catalog.webTools.braveSearch
+            return settings.enabled && !settingsProvider.resolveSecret(settings.apiKey).isNullOrBlank()
+        }
     
     override fun execute(request: BraveWebSearchRequest, context: ToolExecutionContext?): Map<String, Any> {
-        val braveSearch = settingsProvider.userProfile.toolSettings.braveSearch
+        val braveSearch = aiConfigurationProvider.catalog.webTools.braveSearch
         val apiKey = settingsProvider.resolveSecret(braveSearch.apiKey)
         if (!braveSearch.enabled || apiKey.isNullOrBlank()) {
             return mapOf<String, Any>(

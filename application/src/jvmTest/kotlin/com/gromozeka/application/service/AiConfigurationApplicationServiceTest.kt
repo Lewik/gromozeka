@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AiCatalogRepository
 import com.gromozeka.domain.service.SettingsProvider
@@ -70,6 +71,35 @@ class AiConfigurationApplicationServiceTest {
 
         assertEquals(11, repository.findRevision())
         assertTrue(repository.find()!!.catalog.connections.any { it.id.value == "openai-api" })
+    }
+
+    @Test
+    fun `web tool update preserves configured secrets when requested`() = runBlocking {
+        val braveKey = SecretRef.Inline("brave-secret")
+        val jinaKey = SecretRef.Inline("jina-secret")
+        val initialCatalog = seed.aiCatalog.copy(
+            webTools = AiWebToolConfiguration(
+                braveSearch = AiWebToolConfiguration.BraveSearch(apiKey = braveKey),
+                jinaReader = AiWebToolConfiguration.JinaReader(apiKey = jinaKey),
+            )
+        )
+        val repository = TestAiCatalogRepository(initialCatalog, revision = 3)
+        val service = service(repository)
+        service.initialize()
+
+        val updated = service.setWebToolConfiguration(
+            configuration = AiWebToolConfiguration(
+                braveSearch = AiWebToolConfiguration.BraveSearch(enabled = true),
+                jinaReader = AiWebToolConfiguration.JinaReader(enabled = true),
+            ),
+            expectedRevision = 3,
+            preserveExistingSecrets = true,
+        )
+
+        assertEquals(braveKey, updated.catalog.webTools.braveSearch.apiKey)
+        assertEquals(jinaKey, updated.catalog.webTools.jinaReader.apiKey)
+        assertTrue(updated.catalog.webTools.braveSearch.enabled)
+        assertTrue(updated.catalog.webTools.jinaReader.enabled)
     }
 
     private fun service(repository: AiCatalogRepository) =

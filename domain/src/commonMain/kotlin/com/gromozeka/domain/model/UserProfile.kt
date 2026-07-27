@@ -17,7 +17,6 @@ data class UserProfile(
     val speechSettings: SpeechSettings = SpeechSettings(),
     val agentSettings: AgentSettings = AgentSettings(),
     val memorySettings: MemorySettings = MemorySettings(),
-    val toolSettings: ToolSettings = ToolSettings(),
     val messageInstructionGroups: List<MessageInstructionGroup> = MessageInstructionGroup.defaults(),
 ) {
     init {
@@ -168,21 +167,4 @@ data class UserProfile(
         val forceWriteForDocumentIngest: Boolean = true,
     )
 
-    @Serializable
-    data class ToolSettings(
-        val braveSearch: BraveSearch = BraveSearch(),
-        val jinaReader: JinaReader = JinaReader(),
-    ) {
-        @Serializable
-        data class BraveSearch(
-            val enabled: Boolean = false,
-            val apiKey: SecretRef? = null,
-        )
-
-        @Serializable
-        data class JinaReader(
-            val enabled: Boolean = false,
-            val apiKey: SecretRef? = null,
-        )
-    }
 }

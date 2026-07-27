@@ -17,6 +17,9 @@ interface AiToolCallback {
     val metadata: AiToolMetadata
         get() = AiToolMetadata()
 
+    val available: Boolean
+        get() = true
+
     fun call(toolInput: String, context: ToolExecutionContext? = null): String
 }
 
