@@ -9,9 +9,9 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.MessageSquashService as MessageSquashServiceSpec
 import com.gromozeka.domain.service.MessageSquashGenerationService
-import com.gromozeka.domain.service.SettingsProvider
 import klog.KLoggers
 import org.springframework.stereotype.Service
 
@@ -20,10 +20,10 @@ class MessageSquashService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val conversationService: ConversationDomainService,
     private val promptDomainService: PromptDomainService,
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
 ) : MessageSquashServiceSpec, MessageSquashGenerationService {
     companion object {
-        private val COMMON_PROMPT_PREFIX_ID = Prompt.Id("builtin:common-prompt-prefix.md")
+        private val COMMON_PROMPT_PREFIX_ID = Prompt.Id("global:common-prompt-prefix.md")
     }
     private val log = KLoggers.logger(this)
 
@@ -86,7 +86,9 @@ class MessageSquashService(
                         conversationId = conversationId,
                         selectedIds = messageIds,
                         squashType = strategy,
-                        runtimeSelection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH),
+                        runtimeSelection = aiConfigurationProvider.runtimeSelectionFor(
+                            AiRuntimeAssignment.Purpose.MESSAGE_SQUASH
+                        ),
                     )
 
                     MessageSquashServiceSpec.SquashResult.Success(

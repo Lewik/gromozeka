@@ -5,9 +5,6 @@ import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeAssignment
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 
 /**
  * Provides runtime environment settings and the current user/device settings.
@@ -40,32 +37,6 @@ interface SettingsProvider {
      */
     val homeDirectory: String
 
-    fun runtimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection {
-        return userProfile.aiSettings.runtimeSelectionFor(purpose)
-            ?: error("AI runtime assignment not found: ${purpose.name}")
-    }
-
-    fun resolveAiRuntime(purpose: AiRuntimeAssignment.Purpose): ResolvedAiRuntime =
-        resolveAiRuntime(runtimeSelectionFor(purpose))
-
-    fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
-        val modelConfiguration = userProfile.aiSettings.modelConfigurations.firstOrNull {
-            it.id == selection.modelConfigurationId
-        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
-        val connection = userProfile.aiSettings.connections.firstOrNull { it.id == modelConfiguration.connectionId }
-            ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
-        require(connection.enabled || connection.id in runtimeEnabledAiConnectionIds) {
-            "AI connection is disabled: ${connection.id.value}"
-        }
-        require(modelConfiguration.enabled) { "AI model configuration is disabled: ${modelConfiguration.id.value}" }
-        return ResolvedAiRuntime(connection, modelConfiguration)
-    }
-
     fun resolveSecret(secretRef: SecretRef?): String? = null
 
 }
-
-data class ResolvedAiRuntime(
-    val connection: AiConnection,
-    val modelConfiguration: AiModelConfiguration,
-)

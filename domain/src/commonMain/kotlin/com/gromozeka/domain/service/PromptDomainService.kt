@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.Project
 /**
  * Domain service for managing prompt templates.
  *
- * Coordinates the builtin and project prompt catalogs.
+ * Coordinates the global and project prompt catalogs.
  *
  * @see Prompt for domain model
  * @see PromptRepository for persistence operations
@@ -24,25 +24,25 @@ interface PromptDomainService {
     /**
      * Finds all available prompts.
      *
-     * @return all builtin and project prompts
+     * @return all global and project prompts
      */
     suspend fun findAll(): List<Prompt>
 
     suspend fun findByProject(projectId: Project.Id): List<Prompt>
 
-    /**
-     * Creates a mutable project prompt.
-     *
-     * Used for dynamically created prompts (e.g., via MCP tools).
-     * Generates UUIDv7 for time-based ordering.
-     * This is a transactional operation.
-     *
-     * @param name human-readable prompt name
-     * @param content markdown text of the prompt
-     * @return created prompt with assigned ID
-     */
-    suspend fun createProjectPrompt(projectId: Project.Id, name: String, content: String): Prompt
-    
+    suspend fun createPrompt(
+        projectId: Project.Id?,
+        name: String,
+        content: String,
+    ): Prompt
+
+    suspend fun updatePrompt(
+        id: Prompt.Id,
+        name: String,
+        content: String,
+    ): Prompt?
+
+    suspend fun deletePrompt(id: Prompt.Id)
 }
 
 /**

@@ -2,7 +2,8 @@ package com.gromozeka.server.testsupport.llm
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AiProvider
-import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelCapability
@@ -223,7 +224,7 @@ class AiRuntimeCassetteProxyTest {
             val delegate = CountingEmbeddingProvider()
             val provider = CassetteAiEmbeddingProvider(
                 delegate = delegate,
-                userProfile = testUserProfile(listOf("text-embedding-3-small")),
+                catalog = testCatalog(listOf("text-embedding-3-small")),
                 settings = AiRuntimeCassetteSettings(
                     mode = AiRuntimeCassetteMode.RECORD_MISSING,
                     rootDirectory = root,
@@ -675,14 +676,14 @@ class AiRuntimeCassetteProxyTest {
     ): CassetteAiRuntimeProvider =
         CassetteAiRuntimeProvider(
             backends = backends,
-            userProfile = testUserProfile(modelNames, defaultParameters),
+            catalog = testCatalog(modelNames, defaultParameters),
             settings = settings,
         )
 
-    private fun testUserProfile(
+    private fun testCatalog(
         modelNames: List<String>,
         defaultParameters: AiModelConfiguration.DefaultParameters = AiModelConfiguration.DefaultParameters(),
-    ): UserProfile {
+    ): AiCatalog {
         val connectionId = AiConnection.Id("test-openai")
         val modelConfigurations = modelNames.distinct().map { modelName ->
             AiModelConfiguration(
@@ -710,21 +711,20 @@ class AiRuntimeCassetteProxyTest {
             )
         }
         val selection = AiRuntimeSelection(modelConfigurations.first().id)
-        return UserProfile(
-            aiSettings = UserProfile.AiSettings(
-                connections = listOf(
-                    AiConnection.OpenAiApi(
-                        id = connectionId,
-                        displayName = "Test OpenAI",
-                        enabled = true,
-                    )
-                ),
-                modelSpecs = modelSpecs,
-                modelConfigurations = modelConfigurations,
-                runtimeAssignments = AiRuntimeAssignment.Purpose.entries.map { purpose ->
-                    AiRuntimeAssignment(purpose, selection)
-                },
-            )
+        return AiCatalog(
+            connections = listOf(
+                AiConnection.OpenAiApi(
+                    id = connectionId,
+                    displayName = "Test OpenAI",
+                    enabled = true,
+                )
+            ),
+            modelSpecs = modelSpecs,
+            modelConfigurations = modelConfigurations,
+            runtimeAssignments = AiRuntimeAssignment.Purpose.entries.map { purpose ->
+                AiRuntimeAssignment(purpose, selection)
+            },
+            defaultAgentId = AgentDefinition.Id("test-agent"),
         )
     }
 

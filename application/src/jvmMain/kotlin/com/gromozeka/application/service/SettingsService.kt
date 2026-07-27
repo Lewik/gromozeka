@@ -61,7 +61,7 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
             log.info("Created gromozeka home directory: ${gromozekaHome.absolutePath}")
         }
 
-        _settingsFlow.value = loadSettings().also(::validateRuntimeAiConnectionIds)
+        _settingsFlow.value = loadSettings()
 
         log.info("Initialized with mode: ${mode.name}")
         log.info("Gromozeka home: ${gromozekaHome.absolutePath}")
@@ -161,7 +161,6 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
 
     override fun saveSettings(settings: Settings) {
         validateSettings(settings)
-        validateRuntimeAiConnectionIds(settings)
         settingsFile.writeText(json.encodeToString(settings))
         _settingsFlow.value = settings
         log.info("Settings saved to: ${settingsFile.absolutePath}")
@@ -173,7 +172,7 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
     }
 
     override fun reloadSettings() {
-        _settingsFlow.value = loadSettings().also(::validateRuntimeAiConnectionIds)
+        _settingsFlow.value = loadSettings()
         log.info("Settings reloaded from file")
     }
 
@@ -197,15 +196,6 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
     private fun validateSettings(settings: Settings) {
         validateLanguageCode(settings.userProfile.speechSettings.speechToText.mainLanguageCode)
         validateTtsSpeed(settings.userProfile.speechSettings.textToSpeech.speed)
-    }
-
-    private fun validateRuntimeAiConnectionIds(settings: Settings) {
-        val configuredConnectionIds = settings.userProfile.aiSettings.connections.mapTo(mutableSetOf()) { it.id }
-        val unknownConnectionIds = runtimeEnabledAiConnectionIds - configuredConnectionIds
-        require(unknownConnectionIds.isEmpty()) {
-            "Runtime-enabled AI connections are not configured: " +
-                unknownConnectionIds.joinToString { it.value }
-        }
     }
 
     private fun validateLanguageCode(languageCode: String) {

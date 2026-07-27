@@ -7,6 +7,10 @@ import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSnapshot
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -25,6 +29,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.WorkspaceDomainService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +40,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -341,6 +348,54 @@ class ConversationRuntimeDispatcherTest {
             workQueue.submit(runtimeWorkItem(task))
 
             waitUntil { coordinator.snapshot(conversationId).incidents.isNotEmpty() }
+            assertNull(withTimeoutOrNull(250) { runner.awaitStarted() })
+            val snapshot = coordinator.snapshot(conversationId)
+            assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, snapshot.incidents.single().kind)
+            assertNull(snapshot.activeTask)
+        } finally {
+            worker.stop()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `worker records delivery failure without running task when AI configuration refresh fails`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val eventBus = InMemoryConversationRuntimeEventBus()
+        val workQueue = AcknowledgementTrackingRuntimeWorkQueue()
+        val runner = ControllableTaskRunner()
+        val aiConfigurationService = TestAiConfigurationService(
+            refreshFailure = IllegalStateException("AI catalog unavailable")
+        )
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val worker = runtimeWorker(
+            coordinator = coordinator,
+            eventBus = eventBus,
+            workQueue = workQueue,
+            registry = InMemoryConversationRuntimeWorkerRegistry(),
+            runner = runner,
+            descriptor = ConversationRuntimeWorkerDescriptor(
+                id = ConversationRuntimeWorkerId("configuration-refresh-worker"),
+                capabilities = setOf(
+                    ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
+                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ),
+            ),
+            scope = scope,
+            aiConfigurationService = aiConfigurationService,
+        )
+        val task = runtimeUserTurnTask(userMessage("configuration-refresh-message"))
+
+        try {
+            worker.start()
+            assertTrue(coordinator.submit(task))
+            workQueue.submit(runtimeWorkItem(task))
+
+            aiConfigurationService.awaitRefresh()
+            waitUntil { coordinator.snapshot(conversationId).incidents.isNotEmpty() }
+            workQueue.awaitAcknowledged()
+            workQueue.completeAcknowledgement()
+
             assertNull(withTimeoutOrNull(250) { runner.awaitStarted() })
             val snapshot = coordinator.snapshot(conversationId)
             assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, snapshot.incidents.single().kind)
@@ -746,6 +801,7 @@ class ConversationRuntimeDispatcherTest {
             ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
             ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
         ),
+        aiConfigurationService: AiConfigurationService = TestAiConfigurationService(),
     ): DispatcherHarness {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val workerDescriptor = ConversationRuntimeWorkerDescriptor(
@@ -765,6 +821,7 @@ class ConversationRuntimeDispatcherTest {
             runtimeWorkConsumer = workQueue,
             runtimeWorkerRegistry = workerRegistry,
             workspaceService = StaticWorkspaceDomainService(workerId),
+            aiConfigurationService = aiConfigurationService,
             taskRunnerProvider = objectProvider(runner),
             runtimeWorkerDescriptor = workerDescriptor,
             workerVersion = "test",
@@ -978,6 +1035,7 @@ class ConversationRuntimeDispatcherTest {
         scope: CoroutineScope,
         workspaceMounts: Map<WorkspaceMount.Id, Workspace.Id> = emptyMap(),
         heartbeatIntervalMillis: Long = ConversationRuntimeTiming.workerHeartbeatIntervalMillis,
+        aiConfigurationService: AiConfigurationService = TestAiConfigurationService(),
     ): ConversationRuntimeWorker =
         ConversationRuntimeWorker(
             runtimeCoordinator = coordinator,
@@ -985,12 +1043,45 @@ class ConversationRuntimeDispatcherTest {
             runtimeWorkConsumer = workQueue,
             runtimeWorkerRegistry = registry,
             workspaceService = StaticWorkspaceDomainService(descriptor.id.value, workspaceMounts),
+            aiConfigurationService = aiConfigurationService,
             taskRunnerProvider = objectProvider(runner),
             runtimeWorkerDescriptor = descriptor,
             workerVersion = "test",
             heartbeatIntervalMillis = heartbeatIntervalMillis,
             parentScope = scope,
         )
+
+    private class TestAiConfigurationService(
+        private val refreshFailure: Throwable? = null,
+    ) : AiConfigurationService {
+        private val refreshStarted = CompletableDeferred<Unit>()
+
+        override val snapshotFlow: StateFlow<AiCatalogSnapshot?> = MutableStateFlow(null)
+        override val snapshot: AiCatalogSnapshot
+            get() = error("AI catalog snapshot is outside this test")
+
+        override suspend fun replaceCatalog(
+            catalog: AiCatalog,
+            expectedRevision: Long,
+        ): AiCatalogSnapshot = error("AI catalog replacement is outside this test")
+
+        override suspend fun reload(): AiCatalogSnapshot =
+            error("AI catalog reload is outside this test")
+
+        override suspend fun refreshIfChanged() {
+            refreshStarted.complete(Unit)
+            refreshFailure?.let { throw it }
+        }
+
+        override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime =
+            error("AI runtime resolution is outside this test")
+
+        suspend fun awaitRefresh() {
+            withTimeout(TEST_EVENT_TIMEOUT_MS) {
+                refreshStarted.await()
+            }
+        }
+    }
 
     private class StaticWorkspaceDomainService(
         private val workerId: String,

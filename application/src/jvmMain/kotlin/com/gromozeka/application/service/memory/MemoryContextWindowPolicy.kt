@@ -1,25 +1,25 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 
 internal object MemoryContextWindowPolicy {
-    fun writePreCompactThresholdTokens(aiSettings: UserProfile.AiSettings): Int? =
-        preCompactThresholdTokens(aiSettings, WRITE_STAGE_CONTEXT_PURPOSES)
+    fun writePreCompactThresholdTokens(aiCatalog: AiCatalog): Int? =
+        preCompactThresholdTokens(aiCatalog, WRITE_STAGE_CONTEXT_PURPOSES)
 
-    fun readPreCompactThresholdTokens(aiSettings: UserProfile.AiSettings): Int? =
-        preCompactThresholdTokens(aiSettings, READ_STAGE_CONTEXT_PURPOSES)
+    fun readPreCompactThresholdTokens(aiCatalog: AiCatalog): Int? =
+        preCompactThresholdTokens(aiCatalog, READ_STAGE_CONTEXT_PURPOSES)
 
     private fun preCompactThresholdTokens(
-        aiSettings: UserProfile.AiSettings,
+        aiCatalog: AiCatalog,
         purposes: List<AiRuntimeAssignment.Purpose>,
     ): Int? {
         val contextWindows = purposes.mapNotNull { purpose ->
-            val selection = aiSettings.runtimeSelectionFor(purpose) ?: return@mapNotNull null
-            val configuration = aiSettings.modelConfigurations.firstOrNull {
+            val selection = aiCatalog.runtimeSelectionFor(purpose) ?: return@mapNotNull null
+            val configuration = aiCatalog.modelConfigurations.firstOrNull {
                 it.id == selection.modelConfigurationId
             } ?: return@mapNotNull null
-            aiSettings.modelSpecFor(configuration)?.contextWindowTokens
+            aiCatalog.modelSpecFor(configuration)?.contextWindowTokens
         }
 
         return contextWindows

@@ -17,6 +17,7 @@ import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.WorkspaceContextReference
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -47,6 +48,7 @@ class TabViewModel(
     private val messageSquashGenerationService: MessageSquashGenerationService,
     private val soundNotificationService: SoundNotificationPlayer,
     private val settingsService: SettingsService,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
     private val screenCaptureController: ScreenCaptureController,
@@ -1057,7 +1059,9 @@ class TabViewModel(
         }
 
         try {
-            val runtimeSelection = settingsService.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH)
+            val runtimeSelection = aiConfigurationProvider.runtimeSelectionFor(
+                AiRuntimeAssignment.Purpose.MESSAGE_SQUASH
+            )
 
             log.info { "Starting AI squash: type=$squashType, runtimeSelection=${runtimeSelection.modelConfigurationId.value}" }
 

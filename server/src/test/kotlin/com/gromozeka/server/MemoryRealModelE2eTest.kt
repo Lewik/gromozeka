@@ -127,7 +127,7 @@ class MemoryRealModelE2eTest {
         val postgresSchema = "memory_e2e_${uuid7().replace("-", "_")}"
         val runId = "${Clock.System.now()}-$postgresSchema".sanitizePathSegment()
         val settings = Settings(
-            userProfile = ServerTestHarness.openAiSubscriptionProfile(modelName).copy(
+            userProfile = UserProfile(
                 memorySettings = UserProfile.MemorySettings(
                     autoRemember = true,
                     autoRecall = true,
@@ -155,6 +155,9 @@ class MemoryRealModelE2eTest {
                 "gromozeka.memory.routing.failFast" to "true",
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
+            aiCatalogTransform = { catalog ->
+                ServerTestHarness.openAiSubscriptionCatalog(catalog, modelName)
+            },
         ).use { harness ->
             val context = harness.context
             val conversationService = context.getBean(ConversationDomainService::class.java)
@@ -396,7 +399,7 @@ class MemoryRealModelE2eTest {
             rootPath = workspaceRootPath.absolutePathString(),
         ).toRuntimeContext()
 
-        val prompt = promptDomainService.createProjectPrompt(
+        val prompt = promptDomainService.createPrompt(
             projectId = project.id,
             name = "Memory E2E system prompt",
             content = """

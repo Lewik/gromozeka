@@ -3,8 +3,12 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.remote.protocol.ClientActivityKind
+import com.gromozeka.remote.protocol.ClientInstanceId
 import com.gromozeka.remote.protocol.ClientPayload
+import com.gromozeka.remote.protocol.ClientPresentationDirective
 import com.gromozeka.remote.protocol.ClientRequest
+import com.gromozeka.remote.protocol.ClientSessionId
 import com.gromozeka.remote.protocol.ConversationExecutionCompletedEvent
 import com.gromozeka.remote.protocol.ConversationExecutionFailedEvent
 import com.gromozeka.remote.protocol.ConversationRuntimeSnapshotEvent
@@ -26,8 +30,11 @@ import com.gromozeka.remote.protocol.ObserveConversationCommand
 import com.gromozeka.remote.protocol.ObserveConversationTabLayoutCommand
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
+import com.gromozeka.remote.protocol.RemoteClientPlatform
 import com.gromozeka.remote.protocol.RemoteProtocolCodec
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
+import com.gromozeka.remote.protocol.RegisterClientSessionCommand
+import com.gromozeka.remote.protocol.ReportClientActivityCommand
 import com.gromozeka.remote.protocol.ServerPayload
 import com.gromozeka.remote.protocol.ServerResponse
 import com.gromozeka.remote.protocol.SpeechSynthesisChunkEvent
@@ -57,7 +64,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
@@ -72,12 +82,17 @@ internal class GromozekaWsClient(
         install(WebSockets)
     },
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob()),
+    private val clientInstanceId: ClientInstanceId,
+    private val clientPlatform: RemoteClientPlatform,
 ) {
+    private val clientSessionId = ClientSessionId(uuid7())
     private val encodingState = MutableStateFlow(encoding)
     private val connectMutex = Mutex()
     private val registryMutex = Mutex()
     private val _connectionState = MutableStateFlow(RemoteConnectionState(RemoteConnectionState.Status.DISCONNECTED))
     val connectionState: StateFlow<RemoteConnectionState> = _connectionState.asStateFlow()
+    private val _presentationDirectives = MutableSharedFlow<ClientPresentationDirective>(extraBufferCapacity = 16)
+    val presentationDirectives: SharedFlow<ClientPresentationDirective> = _presentationDirectives.asSharedFlow()
 
     private var session: DefaultClientWebSocketSession? = null
     private var readerJob: Job? = null
@@ -90,6 +105,18 @@ internal class GromozekaWsClient(
     private val conversationEventSequences = mutableMapOf<Conversation.Id, Long>()
     private val conversationTabLayoutSubscriptions = mutableMapOf<String, Channel<ConversationTabLayout>>()
     private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
+
+    fun reportActivity(kind: ClientActivityKind) {
+        scope.launch {
+            runCatching {
+                send(ReportClientActivityCommand(kind))
+            }.onFailure { error ->
+                if (error !is CancellationException) {
+                    println("Gromozeka WS client activity report failed: kind=$kind error=${error.message}")
+                }
+            }
+        }
+    }
 
     suspend fun request(payload: ClientRequest): ServerResponse {
         val id = uuid7()
@@ -376,6 +403,17 @@ internal class GromozekaWsClient(
             try {
                 val newSession = httpClient.webSocketSession(url)
                 println("Gromozeka WS connected url=$url")
+                sendEnvelopeRaw(
+                    newSession,
+                    GromozekaClientEnvelope(
+                        id = uuid7(),
+                        payload = RegisterClientSessionCommand(
+                            clientInstanceId = clientInstanceId,
+                            clientSessionId = clientSessionId,
+                            platform = clientPlatform,
+                        ),
+                    ),
+                )
                 session = newSession
                 readerJob?.cancel()
                 readerJob = scope.launch {
@@ -416,6 +454,7 @@ internal class GromozekaWsClient(
                     is ConversationExecutionCompletedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionFailedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationTabLayoutSnapshotEvent -> routeConversationTabLayoutEvent(payload)
+                    is ClientPresentationDirective -> _presentationDirectives.emit(payload)
                     is SpeechSynthesisStartedEvent -> routeStreamEvent(payload.streamId, payload)
                     is SpeechSynthesisChunkEvent -> routeStreamEvent(payload.streamId, payload)
                     is SpeechSynthesisCompletedEvent -> routeStreamEvent(payload.streamId, payload)

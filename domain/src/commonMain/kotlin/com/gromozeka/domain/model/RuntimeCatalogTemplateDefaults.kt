@@ -1,18 +1,25 @@
 package com.gromozeka.domain.model
 
 import com.gromozeka.domain.model.ai.AiConnection
-import com.gromozeka.domain.model.ai.AiModelCapability
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningDisplay
+import com.gromozeka.domain.model.ai.AiReasoningEffort
+import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 
-object UserProfileAiDefaults {
-    fun aiSettings(): UserProfile.AiSettings = UserProfile.AiSettings(
+object RuntimeCatalogTemplateDefaults {
+    val defaultAgentId = AgentDefinition.Id("global:default-gromozeka")
+
+    fun catalog(modelSpecs: List<AiModelSpec>): AiCatalog = AiCatalog(
         connections = connections(),
-        modelSpecs = modelSpecs(),
+        modelSpecs = modelSpecs,
         modelConfigurations = modelConfigurations(),
         runtimeAssignments = runtimeAssignments(),
+        defaultAgentId = defaultAgentId,
     )
 
     fun runtimeAssignments(): List<AiRuntimeAssignment> = listOf(
@@ -82,6 +89,13 @@ object UserProfileAiDefaults {
             displayName = "GPT-5.6 Luna subscription",
         ),
         AiModelConfiguration(
+            id = AiModelConfiguration.Id("anthropic-opus-5"),
+            connectionId = AiConnection.Id("anthropic-direct"),
+            providerModelId = "claude-opus-5",
+            displayName = "Claude Opus 5",
+            defaultParameters = opus5DefaultParameters(),
+        ),
+        AiModelConfiguration(
             id = AiModelConfiguration.Id("anthropic-sonnet-4.7"),
             connectionId = AiConnection.Id("anthropic-direct"),
             providerModelId = "claude-sonnet-4-7",
@@ -101,10 +115,11 @@ object UserProfileAiDefaults {
             displayName = "Claude Code Sonnet",
         ),
         AiModelConfiguration(
-            id = AiModelConfiguration.Id("claude-code-opus"),
+            id = AiModelConfiguration.Id("claude-code-opus-5"),
             connectionId = AiConnection.Id("claude-code"),
-            providerModelId = "opus",
-            displayName = "Claude Code Opus",
+            providerModelId = "claude-opus-5",
+            displayName = "Claude Code Opus 5",
+            defaultParameters = opus5DefaultParameters(),
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("claude-code-haiku"),
@@ -148,52 +163,6 @@ object UserProfileAiDefaults {
         ),
     )
 
-    fun modelSpecs(): List<AiModelSpec> = listOf(
-        textGenerationSpec(AiProvider.OPENAI, "gpt-5.6-sol", contextWindowTokens = 372_000),
-        textGenerationSpec(AiProvider.OPENAI, "gpt-5.6-terra", contextWindowTokens = 372_000),
-        textGenerationSpec(AiProvider.OPENAI, "gpt-5.6-luna", contextWindowTokens = 372_000),
-        textGenerationSpec(AiProvider.OPENAI, "gpt-5.5", contextWindowTokens = 272_000, maxOutputTokens = 128_000),
-        textGenerationSpec(AiProvider.OPENAI, "gpt-5.4", contextWindowTokens = 400_000, maxOutputTokens = 128_000),
-        textGenerationSpec(AiProvider.OPENAI, "gpt-5.4-mini", contextWindowTokens = 400_000, maxOutputTokens = 128_000),
-        textGenerationSpec(AiProvider.OPENAI, "gpt-5.2", contextWindowTokens = 400_000),
-        textGenerationSpec(AiProvider.OPENAI, "gpt-4o", contextWindowTokens = 128_000),
-        textGenerationSpec(AiProvider.OPENAI, "gpt-4o-mini", contextWindowTokens = 128_000),
-        AiModelSpec(
-            id = "text-embedding-3-large",
-            provider = AiProvider.OPENAI,
-            capabilities = setOf(AiModelCapability.EMBEDDINGS),
-            limits = AiModelSpec.Limits(
-                embeddings = AiModelSpec.Limits.Embeddings(dimensions = 3_072, maxInputTokens = 8_191)
-            ),
-        ),
-        AiModelSpec(
-            id = "text-embedding-3-small",
-            provider = AiProvider.OPENAI,
-            capabilities = setOf(AiModelCapability.EMBEDDINGS),
-            limits = AiModelSpec.Limits(
-                embeddings = AiModelSpec.Limits.Embeddings(dimensions = 1_536, maxInputTokens = 8_191)
-            ),
-        ),
-        AiModelSpec(
-            id = "gpt-4o-transcribe",
-            provider = AiProvider.OPENAI,
-            capabilities = setOf(AiModelCapability.SPEECH_TO_TEXT),
-        ),
-        AiModelSpec(
-            id = "gpt-4o-mini-tts",
-            provider = AiProvider.OPENAI,
-            capabilities = setOf(AiModelCapability.TEXT_TO_SPEECH),
-        ),
-        textGenerationSpec(AiProvider.ANTHROPIC, "claude-sonnet-4-7", contextWindowTokens = 1_000_000),
-        textGenerationSpec(AiProvider.ANTHROPIC, "anthropic.claude-sonnet-4-20250514-v1:0", contextWindowTokens = 200_000),
-        textGenerationSpec(AiProvider.ANTHROPIC, "claude-sonnet-4-5", contextWindowTokens = 200_000),
-        textGenerationSpec(AiProvider.ANTHROPIC, "sonnet", contextWindowTokens = 1_000_000),
-        textGenerationSpec(AiProvider.ANTHROPIC, "opus", contextWindowTokens = 1_000_000),
-        textGenerationSpec(AiProvider.ANTHROPIC, "haiku", contextWindowTokens = 200_000),
-        textGenerationSpec(AiProvider.GOOGLE, "gemini-2.0-flash-exp", contextWindowTokens = 1_000_000),
-        textGenerationSpec(AiProvider.OLLAMA, "llama3.2", contextWindowTokens = 4_096),
-    )
-
     private fun assignment(
         purpose: AiRuntimeAssignment.Purpose,
         modelConfigurationId: String,
@@ -203,26 +172,13 @@ object UserProfileAiDefaults {
             selection = AiRuntimeSelection(AiModelConfiguration.Id(modelConfigurationId)),
         )
 
-    private fun textGenerationSpec(
-        provider: AiProvider,
-        id: String,
-        contextWindowTokens: Int,
-        maxOutputTokens: Int? = null,
-    ): AiModelSpec =
-        AiModelSpec(
-            id = id,
-            provider = provider,
-            capabilities = setOf(
-                AiModelCapability.TEXT_GENERATION,
-                AiModelCapability.STRUCTURED_OUTPUT,
-                AiModelCapability.TOOL_CALLING,
-            ),
-            limits = AiModelSpec.Limits(
-                textGeneration = AiModelSpec.Limits.TextGeneration(
-                    contextWindowTokens = contextWindowTokens,
-                    maxOutputTokens = maxOutputTokens,
-                    autoCompaction = AiModelSpec.AutoCompaction.Percent(80),
-                )
-            ),
+    private fun opus5DefaultParameters(): AiModelConfiguration.DefaultParameters =
+        AiModelConfiguration.DefaultParameters(
+            reasoning = AiReasoningConfig(
+                mode = AiReasoningMode.ADAPTIVE,
+                effort = AiReasoningEffort.HIGH,
+                display = AiReasoningDisplay.SUMMARIZED,
+            )
         )
+
 }

@@ -2,16 +2,17 @@ package com.gromozeka.server.testsupport.app
 
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserProfile
-import com.gromozeka.domain.model.UserProfileAiDefaults
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionConfig
 import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionSession
 import com.gromozeka.server.GromozekaServerApplication
 import com.gromozeka.server.testsupport.config.E2eSupportConfig
 import kotlinx.datetime.Clock
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.builder.SpringApplicationBuilder
@@ -32,6 +33,9 @@ class ServerTestHarness(
     private val systemProperties: Map<String, String> = emptyMap(),
     private val additionalSources: List<Class<*>> = emptyList(),
     private val customizeHome: (Path) -> Unit = {},
+    private val aiCatalogTransform: (AiCatalog) -> AiCatalog = { catalog ->
+        openAiSubscriptionCatalog(catalog, "gpt-5.5")
+    },
 ) : Closeable {
     val homeDirectory: Path = prepareHomeDirectory()
     private val previousSystemProperties: Map<String, String?>
@@ -60,6 +64,7 @@ class ServerTestHarness(
                 .web(WebApplicationType.NONE)
                 .profiles("e2e")
                 .run()
+                .also(::configureAiCatalog)
         } catch (error: Throwable) {
             restoreSystemProperties()
             throw error
@@ -76,18 +81,24 @@ class ServerTestHarness(
     private fun prepareHomeDirectory(): Path {
         val homeDirectory = Files.createTempDirectory("gromozeka-e2e-")
         writeSettings(homeDirectory, settings)
-        writeMcpConfig(homeDirectory)
         writeSubscriptionConfig(homeDirectory, subscriptionSession)
         customizeHome(homeDirectory)
         return homeDirectory
     }
 
-    private fun writeSettings(homeDirectory: Path, settings: Settings) {
-        homeDirectory.resolve("settings.json").writeText(appTestJson.encodeToString(settings))
+    private fun configureAiCatalog(context: ConfigurableApplicationContext) {
+        val service = context.getBean(AiConfigurationService::class.java)
+        val snapshot = service.snapshot
+        val transformed = aiCatalogTransform(snapshot.catalog)
+        if (transformed != snapshot.catalog) {
+            runBlocking {
+                service.replaceCatalog(transformed, snapshot.revision)
+            }
+        }
     }
 
-    private fun writeMcpConfig(homeDirectory: Path) {
-        homeDirectory.resolve("mcp.json").writeText("""{"mcpServers":{}}""")
+    private fun writeSettings(homeDirectory: Path, settings: Settings) {
+        homeDirectory.resolve("settings.json").writeText(appTestJson.encodeToString(settings))
     }
 
     private fun writeSubscriptionConfig(
@@ -139,41 +150,35 @@ class ServerTestHarness(
 
     companion object {
         fun defaultSettings(): Settings = Settings(
-            userProfile = openAiSubscriptionProfile("gpt-5.5"),
+            userProfile = UserProfile(),
         )
 
         fun openAiSubscriptionRuntimeSelection(): AiRuntimeSelection =
             AiRuntimeSelection(AiModelConfiguration.Id("openai-subscription-gpt-5.5"))
 
-        fun openAiSubscriptionProfile(modelName: String): UserProfile {
+        fun openAiSubscriptionCatalog(
+            catalog: AiCatalog,
+            modelName: String,
+        ): AiCatalog {
             val selection = openAiSubscriptionRuntimeSelection()
-            return UserProfile(
-                aiSettings = UserProfile.AiSettings(
-                    connections = UserProfileAiDefaults.connections().map { connection ->
-                        when (connection) {
-                            is AiConnection.OpenAiApi -> connection.copy(enabled = true)
-                            is AiConnection.OpenAiSubscription -> connection.copy(enabled = true)
-                            else -> connection
-                        }
-                    },
-                    modelConfigurations = UserProfileAiDefaults.modelConfigurations().map { configuration ->
-                        if (configuration.id == selection.modelConfigurationId) {
-                            configuration.copy(
-                                providerModelId = modelName,
-                                displayName = "OpenAI subscription $modelName",
-                            )
-                        } else {
-                            configuration
-                        }
-                    },
-                    runtimeAssignments = UserProfileAiDefaults.runtimeAssignments().map {
-                        if (it.purpose == AiRuntimeAssignment.Purpose.DEFAULT_CHAT) {
-                            it.copy(selection = selection)
-                        } else {
-                            it
-                        }
-                    },
-                )
+            return catalog.copy(
+                connections = catalog.connections.map { connection ->
+                    when (connection) {
+                        is AiConnection.OpenAiApi -> connection.copy(enabled = true)
+                        is AiConnection.OpenAiSubscription -> connection.copy(enabled = true)
+                        else -> connection
+                    }
+                },
+                modelConfigurations = catalog.modelConfigurations.map { configuration ->
+                    if (configuration.id == selection.modelConfigurationId) {
+                        configuration.copy(
+                            providerModelId = modelName,
+                            displayName = "OpenAI subscription $modelName",
+                        )
+                    } else {
+                        configuration
+                    }
+                },
             )
         }
 

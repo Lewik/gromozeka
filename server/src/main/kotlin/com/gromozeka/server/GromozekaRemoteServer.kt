@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
+import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -16,6 +17,7 @@ import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
@@ -44,6 +46,8 @@ import kotlinx.serialization.json.Json
 @Service
 class GromozekaRemoteServer(
     private val settingsService: SettingsService,
+    private val aiConfigurationService: AiConfigurationService,
+    private val runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val agentDomainService: AgentDomainService,
     private val agentSkillDomainService: AgentSkillDomainService,
@@ -61,6 +65,7 @@ class GromozekaRemoteServer(
     private val ttsService: TtsService,
     private val memoryStore: MemoryStore,
     private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
+    private val clientPresentationRegistry: ClientPresentationRegistry,
 ) {
     private val log = KLoggers.logger(this)
     private val memoryActionItemRevisionJson = Json {
@@ -69,6 +74,7 @@ class GromozekaRemoteServer(
     }
 
     suspend fun handle(session: DefaultWebSocketServerSession) {
+        val connectionId = uuid7()
         val sender = RemoteSessionSender(session)
         val conversationSubscriptions = mutableMapOf<String, Job>()
         val conversationTabLayoutSubscriptions = mutableMapOf<String, Job>()
@@ -82,8 +88,30 @@ class GromozekaRemoteServer(
                     }
                     if (decoded != null) {
                         val (encoding, envelope) = decoded
+                        if (envelope.payload !is RegisterClientSessionCommand) {
+                            clientPresentationRegistry.requireRegistered(connectionId)
+                            clientPresentationRegistry.updateEncoding(connectionId, encoding)
+                        }
                         when (val payload = envelope.payload) {
-                            is ClientRequest -> handleRequest(sender, envelope.id, payload, encoding)
+                            is RegisterClientSessionCommand -> clientPresentationRegistry.register(
+                                connectionId = connectionId,
+                                command = payload,
+                                encoding = encoding,
+                                send = { presentationPayload, presentationEncoding ->
+                                    sender.send(uuid7(), presentationPayload, presentationEncoding)
+                                },
+                            )
+                            is ReportClientActivityCommand ->
+                                clientPresentationRegistry.activate(connectionId, payload.kind)
+                            is ClientRequest -> {
+                                if (payload is SubmitMessageRequest || payload is EnqueueMessageRequest) {
+                                    clientPresentationRegistry.activate(
+                                        connectionId,
+                                        ClientActivityKind.USER_INTERACTION,
+                                    )
+                                }
+                                handleRequest(sender, envelope.id, payload, encoding)
+                            }
                             is ObserveConversationCommand -> {
                                 conversationSubscriptions[payload.subscriptionId]?.cancel()
                                 conversationSubscriptions[payload.subscriptionId] = launch {
@@ -118,6 +146,7 @@ class GromozekaRemoteServer(
                 conversationSubscriptions.clear()
                 conversationTabLayoutSubscriptions.values.forEach { it.cancel() }
                 conversationTabLayoutSubscriptions.clear()
+                clientPresentationRegistry.disconnect(connectionId)
             }
         }
     }
@@ -135,6 +164,16 @@ class GromozekaRemoteServer(
                     settingsService.saveSettings(request.settings)
                     SavedResponse
                 }
+                GetAiCatalogRequest -> AiCatalogResponse(aiConfigurationService.snapshot)
+                is SaveAiCatalogRequest -> AiCatalogResponse(
+                    aiConfigurationService.replaceCatalog(
+                        request.catalog,
+                        request.expectedRevision,
+                    )
+                )
+                GetRuntimeCatalogTemplatesRequest -> RuntimeCatalogTemplatesResponse(
+                    runtimeCatalogTemplateService.getTemplates()
+                )
 
                 GetDefaultAgentRequest -> DefaultAgentResponse(defaultAgentProvider.getDefault())
                 is FindAgentRequest -> AgentResponse(agentDomainService.findById(request.agentId))
@@ -148,27 +187,29 @@ class GromozekaRemoteServer(
                         request.name,
                         request.prompts,
                         request.runtimeSelection,
+                        request.runtimeOverrides,
                         request.tools,
                         request.description,
                         request.skills,
                     )
                 )
-                is CopyBuiltinAgentRequest -> AgentResponse(
-                    agentDomainService.copyBuiltinAgent(
+                is DuplicateAgentRequest -> AgentResponse(
+                    agentDomainService.duplicateAgent(
                         request.projectId,
                         request.sourceAgentId,
                         request.name,
-                        request.prompts,
-                        request.description,
-                        request.skills,
                     )
                 )
                 is UpdateAgentRequest -> AgentResponse(
                     agentDomainService.update(
                         request.agentId,
+                        request.name,
                         request.prompts,
                         request.description,
                         request.skills,
+                        request.runtimeSelection,
+                        request.runtimeOverrides,
+                        request.tools,
                     )
                 )
                 is DeleteAgentRequest -> {
@@ -197,9 +238,16 @@ class GromozekaRemoteServer(
                     request.projectId?.let { promptDomainService.findByProject(it) }
                         ?: promptDomainService.findAll()
                 )
-                is CreateProjectPromptRequest -> PromptResponse(
-                    promptDomainService.createProjectPrompt(request.projectId, request.name, request.content)
+                is CreatePromptRequest -> PromptResponse(
+                    promptDomainService.createPrompt(request.projectId, request.name, request.content)
                 )
+                is UpdatePromptRequest -> PromptResponse(
+                    promptDomainService.updatePrompt(request.promptId, request.name, request.content)
+                )
+                is DeletePromptRequest -> {
+                    promptDomainService.deletePrompt(request.promptId)
+                    SavedResponse
+                }
                 is CreateProjectRequest -> ProjectResponse(
                     projectDomainService.create(request.name, request.description)
                 )
@@ -355,30 +403,39 @@ class GromozekaRemoteServer(
         encoding: RemoteProtocolEncoding,
     ) {
         try {
+            var liveEventsStarted = false
             conversationRuntimeService.observeConversation(command.conversationId, command.afterEventSequence)
                 .collect { event ->
                     when (event) {
-                        is ConversationRuntimeEvent.SnapshotUpdated -> sender.send(
-                            command.subscriptionId,
-                            ConversationRuntimeSnapshotEvent(
-                                subscriptionId = command.subscriptionId,
-                                conversationId = event.conversationId,
-                                snapshot = event.snapshot,
-                                cursorSequence = event.cursorSequence,
-                            ),
-                            encoding,
-                        )
-                        is ConversationRuntimeEvent.MessageEmitted -> sender.send(
-                            command.subscriptionId,
-                            MessageUpsertedEvent(
-                                subscriptionId = command.subscriptionId,
-                                conversationId = event.conversationId,
-                                taskId = event.taskId,
-                                message = event.message,
-                                cursorSequence = event.cursorSequence,
-                            ),
-                            encoding,
-                        )
+                        is ConversationRuntimeEvent.SnapshotUpdated -> {
+                            sender.send(
+                                command.subscriptionId,
+                                ConversationRuntimeSnapshotEvent(
+                                    subscriptionId = command.subscriptionId,
+                                    conversationId = event.conversationId,
+                                    snapshot = event.snapshot,
+                                    cursorSequence = event.cursorSequence,
+                                ),
+                                encoding,
+                            )
+                            liveEventsStarted = true
+                        }
+                        is ConversationRuntimeEvent.MessageEmitted -> {
+                            sender.send(
+                                command.subscriptionId,
+                                MessageUpsertedEvent(
+                                    subscriptionId = command.subscriptionId,
+                                    conversationId = event.conversationId,
+                                    taskId = event.taskId,
+                                    message = event.message,
+                                    cursorSequence = event.cursorSequence,
+                                ),
+                                encoding,
+                            )
+                            if (liveEventsStarted) {
+                                clientPresentationRegistry.present(event.message)
+                            }
+                        }
                         is ConversationRuntimeEvent.ExecutionCompleted -> sender.send(
                             command.subscriptionId,
                             ConversationExecutionCompletedEvent(command.subscriptionId, event.conversationId, event.cursorSequence),

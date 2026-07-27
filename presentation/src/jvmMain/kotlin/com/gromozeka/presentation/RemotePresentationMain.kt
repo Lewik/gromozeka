@@ -6,6 +6,7 @@ import com.gromozeka.presentation.services.DesktopSystemAudioMuteService
 import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextService
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.WindowStateService
+import com.gromozeka.presentation.ui.ClientPlatform
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +24,7 @@ internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
             remoteUrl = remoteUrl,
             scope = scope,
             clientHomeDirectory = clientHomeDirectory,
+            clientPlatform = ClientPlatform.DESKTOP,
             remoteClientSettingsStore = DesktopRemoteClientSettingsStore(
                 File(clientHomeDirectoryFile, "remote-client-settings.json")
             ),

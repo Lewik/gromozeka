@@ -6,22 +6,11 @@ import com.gromozeka.domain.model.Project
 /**
  * Repository for managing prompt templates.
  *
- * Builtin prompts are loaded from application resources. Mutable project
- * prompts are stored in the central project catalog.
+ * Global and project prompts are stored in the central catalog.
  *
  * @see Prompt for domain model
  */
 interface PromptRepository {
-
-    /**
-     * Finds builtin prompt by unique identifier.
-     *
-     * Only works for builtin: prompts (no project context needed).
-     *
-     * @param id builtin prompt identifier (must start with "builtin:")
-     * @return prompt if found, null otherwise
-     */
-    suspend fun findBuiltinById(id: Prompt.Id): Prompt?
 
     /**
      * Finds prompt by unique identifier.
@@ -37,7 +26,7 @@ interface PromptRepository {
     suspend fun findAll(): List<Prompt>
 
     /**
-     * Finds builtin prompts and prompts owned by the given project.
+     * Finds global prompts and prompts owned by the given project.
      */
     suspend fun findByProject(projectId: Project.Id): List<Prompt>
 
@@ -61,4 +50,6 @@ interface PromptRepository {
      * @return saved prompt
      */
     suspend fun save(prompt: Prompt): Prompt
+
+    suspend fun delete(id: Prompt.Id)
 }

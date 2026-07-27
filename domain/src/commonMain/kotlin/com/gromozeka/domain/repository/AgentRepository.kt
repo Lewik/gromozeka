@@ -2,7 +2,6 @@ package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
-import com.gromozeka.domain.model.Prompt
 
 /**
  * Repository for managing AI agent definitions.
@@ -28,14 +27,6 @@ interface AgentRepository {
     suspend fun save(agent: AgentDefinition): AgentDefinition
 
     /**
-     * Atomically creates a project agent together with private prompt copies.
-     */
-    suspend fun createWithPrompts(
-        agent: AgentDefinition,
-        prompts: List<Prompt>,
-    ): AgentDefinition
-
-    /**
      * Finds agent by unique identifier.
      *
      * @param id agent identifier
@@ -55,7 +46,7 @@ interface AgentRepository {
     suspend fun findAll(): List<AgentDefinition>
 
     /**
-     * Finds builtin agents and agents owned by the given project.
+     * Finds global agents and agents owned by the given project.
      */
     suspend fun findByProject(projectId: Project.Id): List<AgentDefinition>
 
@@ -72,7 +63,7 @@ interface AgentRepository {
     /**
      * Counts total number of agents.
      *
-     * Includes both builtin and user-created agents.
+     * Includes both global and project agents.
      *
      * @return total agent count
      */

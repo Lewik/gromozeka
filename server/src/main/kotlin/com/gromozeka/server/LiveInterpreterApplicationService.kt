@@ -8,8 +8,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiToolChoice
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntimeProvider
-import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.infrastructure.ai.openai.SttService
 import com.gromozeka.remote.protocol.LiveInterpreterAudioChunkCommand
 import com.gromozeka.remote.protocol.LiveInterpreterDraftsEvent
@@ -46,7 +46,7 @@ import kotlin.coroutines.coroutineContext
 class LiveInterpreterApplicationService(
     private val sttService: SttService,
     private val aiRuntimeProvider: AiRuntimeProvider,
-    private val settingsService: SettingsService,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     @param:Qualifier("applicationScope") private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
@@ -64,11 +64,11 @@ class LiveInterpreterApplicationService(
             sourceLanguageHint = request.sourceLanguageHint.ifBlank {
                 "Hebrew, Russian, and English workplace conversation"
             },
-            stabilizerRuntimeSelection = settingsService.runtimeSelectionFor(
+            stabilizerRuntimeSelection = aiConfigurationProvider.runtimeSelectionFor(
                 AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPT_STABILIZER
             ),
             translationRuntimeSelection = request.translationRuntimeSelection
-                ?: settingsService.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION),
+                ?: aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION),
             eventSink = eventSink,
         )
         sessions[sessionId] = session

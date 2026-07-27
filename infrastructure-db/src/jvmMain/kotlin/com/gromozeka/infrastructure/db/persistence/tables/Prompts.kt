@@ -6,11 +6,12 @@ import org.jetbrains.exposed.v1.datetime.timestamp
 
 internal object Prompts : Table("prompts") {
     val id = varchar("id", 255)
-    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val projectId = varchar("project_id", 255)
+        .references(Projects.id, onDelete = ReferenceOption.CASCADE)
+        .nullable()
     val name = varchar("name", 255)
     val content = text("content")
-    val sourceType = varchar("source_type", 50)
-    val sourcePath = text("source_path").nullable()
+    val scope = varchar("scope", 50)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 

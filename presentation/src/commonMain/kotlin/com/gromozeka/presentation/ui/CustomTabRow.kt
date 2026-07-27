@@ -162,7 +162,7 @@ fun CustomTabRow(
                                 Icon(
                                     imageVector = when (val type = tabUiState.agent.type) {
                                         is AgentDefinition.Type.Project -> Icons.Default.Folder
-                                        is AgentDefinition.Type.Builtin -> Icons.Default.Lock
+                                        is AgentDefinition.Type.Global -> Icons.Default.Home
                                     },
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)

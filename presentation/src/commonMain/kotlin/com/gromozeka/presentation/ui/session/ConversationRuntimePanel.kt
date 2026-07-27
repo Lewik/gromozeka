@@ -37,10 +37,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
@@ -60,7 +61,7 @@ import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
 fun ConversationRuntimePanel(
     isVisible: Boolean,
     currentAgent: AgentDefinition,
-    settings: Settings,
+    aiConfigurationProvider: AiConfigurationProvider,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     isWaitingForResponse: Boolean,
     executionPauseRequested: Boolean,
@@ -82,6 +83,7 @@ fun ConversationRuntimePanel(
     slideFromRight: Boolean = false,
 ) {
     val translation = LocalTranslation.current.runtime
+    val aiCatalogSnapshot by aiConfigurationProvider.snapshotFlow.collectAsState()
 
     AnimatedVisibility(
         visible = isVisible,
@@ -122,7 +124,7 @@ fun ConversationRuntimePanel(
                 ) {
                     RuntimeConfigurationCard(
                         agent = currentAgent,
-                        settings = settings,
+                        aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
                         tokenStats = tokenStats,
                     )
                     TokenStatisticsTable(
@@ -242,15 +244,14 @@ private fun RuntimeMemorySection(runtimeSnapshot: ConversationRuntimeSnapshot?) 
 @Composable
 private fun RuntimeConfigurationCard(
     agent: AgentDefinition,
-    settings: Settings,
+    aiCatalog: AiCatalog,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
 ) {
     val translation = LocalTranslation.current.runtime
-    val aiSettings = settings.userProfile.aiSettings
-    val configuration = aiSettings.modelConfigurations.firstOrNull {
+    val configuration = aiCatalog.modelConfigurations.firstOrNull {
         it.id == agent.runtimeSelection.modelConfigurationId
     }
-    val connection = configuration?.let(aiSettings::connectionFor)
+    val connection = configuration?.let(aiCatalog::connectionFor)
     val reasoning = agent.runtimeOverrides.reasoning ?: configuration?.defaultParameters?.reasoning
     val maxOutputTokens = agent.runtimeOverrides.maxOutputTokens ?: configuration?.defaultParameters?.maxOutputTokens
     val parameters = buildList {

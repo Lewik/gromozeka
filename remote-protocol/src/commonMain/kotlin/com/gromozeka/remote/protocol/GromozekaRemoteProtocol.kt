@@ -13,11 +13,15 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.RuntimeCatalogTemplates
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiRuntimeOverrides
+import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.CommandTask
@@ -27,6 +31,7 @@ import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlin.jvm.JvmInline
 
 @Serializable
 data class GromozekaClientEnvelope(
@@ -57,6 +62,46 @@ sealed interface ClientRequest : ClientPayload
 sealed interface ServerResponse : ServerPayload
 
 @Serializable
+sealed interface ClientPresentationDirective : ServerPayload
+
+@Serializable
+@JvmInline
+value class ClientInstanceId(val value: String)
+
+@Serializable
+@JvmInline
+value class ClientSessionId(val value: String)
+
+@Serializable
+enum class RemoteClientPlatform {
+    DESKTOP,
+    ANDROID,
+    IOS,
+    WEB_DESKTOP,
+    WEB_TOUCH,
+}
+
+@Serializable
+enum class ClientActivityKind {
+    WINDOW_FOCUSED,
+    USER_INTERACTION,
+}
+
+@Serializable
+@SerialName("register_client_session")
+data class RegisterClientSessionCommand(
+    val clientInstanceId: ClientInstanceId,
+    val clientSessionId: ClientSessionId,
+    val platform: RemoteClientPlatform,
+) : ClientPayload
+
+@Serializable
+@SerialName("report_client_activity")
+data class ReportClientActivityCommand(
+    val kind: ClientActivityKind,
+) : ClientPayload
+
+@Serializable
 @SerialName("get_settings")
 data object GetSettingsRequest : ClientRequest
 
@@ -65,6 +110,21 @@ data object GetSettingsRequest : ClientRequest
 data class SaveSettingsRequest(
     val settings: Settings,
 ) : ClientRequest
+
+@Serializable
+@SerialName("get_ai_catalog")
+data object GetAiCatalogRequest : ClientRequest
+
+@Serializable
+@SerialName("save_ai_catalog")
+data class SaveAiCatalogRequest(
+    val catalog: AiCatalog,
+    val expectedRevision: Long,
+) : ClientRequest
+
+@Serializable
+@SerialName("get_runtime_catalog_templates")
+data object GetRuntimeCatalogTemplatesRequest : ClientRequest
 
 @Serializable
 @SerialName("get_default_agent")
@@ -85,33 +145,35 @@ data class FindAgentsRequest(
 @Serializable
 @SerialName("create_agent")
 data class CreateAgentRequest(
-    val projectId: Project.Id,
+    val projectId: Project.Id?,
     val name: String,
     val prompts: List<Prompt.Id>,
     val runtimeSelection: AiRuntimeSelection,
+    val runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
     val tools: List<String> = emptyList(),
     val description: String? = null,
     val skills: List<AgentSkill.Id> = emptyList(),
 ) : ClientRequest
 
 @Serializable
-@SerialName("copy_builtin_agent")
-data class CopyBuiltinAgentRequest(
-    val projectId: Project.Id,
+@SerialName("duplicate_agent")
+data class DuplicateAgentRequest(
+    val projectId: Project.Id?,
     val sourceAgentId: AgentDefinition.Id,
     val name: String,
-    val prompts: List<Prompt.Id>,
-    val description: String? = null,
-    val skills: List<AgentSkill.Id> = emptyList(),
 ) : ClientRequest
 
 @Serializable
 @SerialName("update_agent")
 data class UpdateAgentRequest(
     val agentId: AgentDefinition.Id,
-    val prompts: List<Prompt.Id>? = null,
+    val name: String,
+    val prompts: List<Prompt.Id>,
     val description: String? = null,
-    val skills: List<AgentSkill.Id>? = null,
+    val skills: List<AgentSkill.Id>,
+    val runtimeSelection: AiRuntimeSelection,
+    val runtimeOverrides: AiRuntimeOverrides,
+    val tools: List<String>,
 ) : ClientRequest
 
 @Serializable
@@ -168,11 +230,25 @@ data class FindPromptsRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("create_project_prompt")
-data class CreateProjectPromptRequest(
-    val projectId: Project.Id,
+@SerialName("create_prompt")
+data class CreatePromptRequest(
+    val projectId: Project.Id?,
     val name: String,
     val content: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("update_prompt")
+data class UpdatePromptRequest(
+    val promptId: Prompt.Id,
+    val name: String,
+    val content: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("delete_prompt")
+data class DeletePromptRequest(
+    val promptId: Prompt.Id,
 ) : ClientRequest
 
 @Serializable
@@ -556,6 +632,18 @@ data class SettingsResponse(
 ) : ServerResponse
 
 @Serializable
+@SerialName("ai_catalog")
+data class AiCatalogResponse(
+    val snapshot: AiCatalogSnapshot,
+) : ServerResponse
+
+@Serializable
+@SerialName("runtime_catalog_templates")
+data class RuntimeCatalogTemplatesResponse(
+    val templates: RuntimeCatalogTemplates,
+) : ServerResponse
+
+@Serializable
 @SerialName("saved")
 data object SavedResponse : ServerResponse
 
@@ -775,6 +863,18 @@ data class MessageUpsertedEvent(
     val message: Conversation.Message,
     val cursorSequence: Long? = null,
 ) : ServerPayload
+
+@Serializable
+@SerialName("play_message_tts")
+data class PlayMessageTtsDirective(
+    val messageId: Conversation.Message.Id,
+    val text: String,
+    val tone: String,
+) : ClientPresentationDirective
+
+@Serializable
+@SerialName("stop_tts")
+data object StopTtsDirective : ClientPresentationDirective
 
 @Serializable
 @SerialName("conversation_execution_completed")

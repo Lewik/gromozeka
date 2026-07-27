@@ -7,21 +7,21 @@ import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import kotlinx.coroutines.flow.Flow
 import org.springframework.stereotype.Service
 
 @Service
 internal class RoutingAiRuntimeProvider(
     private val backends: List<AiRuntimeBackend>,
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
 ) : AiRuntimeProvider {
 
     override fun getRuntime(
         selection: AiRuntimeSelection,
         workspaceRootPath: String?
     ): AiRuntime {
-        val resolved = settingsProvider.resolveAiRuntime(selection)
+        val resolved = aiConfigurationProvider.resolveAiRuntime(selection)
         val backend = backends.firstOrNull { it.supports(resolved.connection.kind) }
             ?: error("No AI runtime backend registered for connection kind ${resolved.connection.kind}")
 

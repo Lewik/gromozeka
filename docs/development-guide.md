@@ -1,9 +1,9 @@
 # Gromozeka Development Guide
 
 This document is the repository-level entry point for development without a
-running Gromozeka instance. Runtime Agent definitions and project Prompt
-fragments are managed by the central Server; repository files are
-documentation, not a second agent configuration source.
+running Gromozeka instance. AI connections, model specifications, runtime
+assignments, Agents, and Prompts are managed by the central Server. Repository
+resources are import templates, not a second live configuration source.
 
 ## Current Architecture
 
@@ -70,7 +70,9 @@ Layer ownership for focused work:
 | Domain design and contracts | `:domain` |
 | Use cases and orchestration | `:application` |
 | PostgreSQL persistence | `:infrastructure-db` |
-| AI providers, MCP, memory, tools | `:infrastructure-ai` |
+| AI providers, live external MCP clients, memory, tools | `:infrastructure-ai` |
+| External MCP definitions and accepted tool snapshots | Server database through `:infrastructure-db` |
+| Session-addressed Worker control | `:infrastructure-runtime` |
 | Runtime transport | `:infrastructure-runtime` |
 | Compose UI and presentation state | `:presentation` |
 | Server endpoints and composition | `:server` |
@@ -79,21 +81,24 @@ Layer ownership for focused work:
 Repository dependency sources may be cloned into `.sources/` when exact
 third-party behavior matters. They are research material and stay gitignored.
 
-## Agent And Prompt Design
+## Runtime Configuration Design
 
-Runtime Agents and Prompts are Server-managed data. Builtin definitions are
-application blueprints that can be copied into a Project; repository markdown
-is not read as live runtime configuration.
+AI configuration, runtime Agents, and Prompts are Server-managed database
+entities. Bundled definitions are application templates used to initialize an
+empty catalog or prefill an explicit create/import flow. Updating a bundled
+resource never silently changes an existing runtime entity.
 
-- Keep stable cross-project behavior in builtin prompts.
-- Keep project-specific behavior in project-scoped Prompts and Agent
-  definitions stored by the Server.
+- Keep stable cross-project behavior in global Prompts and Agents.
+- Keep project-specific behavior in project-scoped Prompts and Agents.
 - Keep each prompt focused on one class of information instead of repeating
   mutable facts across a stack.
 - Put dynamic execution environment data in the runtime environment context,
   not in static prompt definitions.
 - Change prompts in response to observed behavior and validate the assembled
   stack rather than only checking individual fragments.
+- Treat Agent Skills as imported project-scoped packages. Update them by
+  importing the package from disk again; do not edit package files in the
+  runtime catalog UI.
 
 ## Repository Checkouts
 

@@ -1,0 +1,268 @@
+package com.gromozeka.server
+
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.WorkspaceDomainService
+import com.gromozeka.domain.service.WorkspaceManagementService
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import org.springframework.stereotype.Service
+
+@Service
+internal class ControlMcpProjectWorkspaceTools(
+    private val projectService: ProjectDomainService,
+    private val workspaceService: WorkspaceDomainService,
+    private val workspaceManagementService: WorkspaceManagementService,
+    private val workerRegistry: ConversationRuntimeWorkerRegistry,
+) : ControlMcpToolProvider {
+    override val tools: List<ControlMcpTool> = listOf(
+        controlMcpTool(
+            name = "grz_project_list",
+            description = "List every logical Gromozeka project.",
+            readOnly = true,
+        ) {
+            buildJsonObject {
+                put(
+                    "projects",
+                    controlMcpJson.encodeToJsonElement(
+                        ListSerializer(Project.serializer()),
+                        projectService.findAll(),
+                    )
+                )
+            }
+        },
+        controlMcpTool(
+            name = "grz_project_get",
+            description = "Read one logical Gromozeka project by id.",
+            inputSchema = idSchema("projectId", "Project id."),
+            readOnly = true,
+        ) { input ->
+            val id = input.requiredString("projectId")
+            val project = projectService.findById(Project.Id(id)) ?: notFound("Project", id)
+            entityResult("project", Project.serializer(), project)
+        },
+        controlMcpTool(
+            name = "grz_project_create",
+            description = "Create a logical project. A project does not imply a filesystem workspace.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "name" to ControlMcpSchemas.string("Human-readable project name."),
+                    "description" to ControlMcpSchemas.string("Optional project description."),
+                ),
+                required = listOf("name"),
+            ),
+            readOnly = false,
+        ) { input ->
+            entityResult(
+                "project",
+                Project.serializer(),
+                projectService.create(
+                    name = input.requiredString("name"),
+                    description = input.optionalString("description"),
+                )
+            )
+        },
+        controlMcpTool(
+            name = "grz_project_update",
+            description = "Replace a project's mutable name and description.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "projectId" to ControlMcpSchemas.string("Project id."),
+                    "name" to ControlMcpSchemas.string("Human-readable project name."),
+                    "description" to ControlMcpSchemas.string("Optional project description."),
+                ),
+                required = listOf("projectId", "name"),
+            ),
+            readOnly = false,
+            idempotent = true,
+        ) { input ->
+            entityResult(
+                "project",
+                Project.serializer(),
+                projectService.update(
+                    id = Project.Id(input.requiredString("projectId")),
+                    name = input.requiredString("name"),
+                    description = input.optionalString("description"),
+                )
+            )
+        },
+        controlMcpTool(
+            name = "grz_project_delete",
+            description = "Delete a project and its project-owned data. This is destructive.",
+            inputSchema = idSchema("projectId", "Project id."),
+            readOnly = false,
+            destructive = true,
+        ) { input ->
+            val id = input.requiredString("projectId")
+            projectService.delete(Project.Id(id))
+            deletedResult("project", id)
+        },
+        controlMcpTool(
+            name = "grz_workspace_list",
+            description = "List filesystem workspaces in one project, including their worker-specific mounts.",
+            inputSchema = idSchema("projectId", "Project id."),
+            readOnly = true,
+        ) { input ->
+            val workspaces = workspaceService.findByProject(Project.Id(input.requiredString("projectId")))
+            buildJsonObject {
+                put(
+                    "workspaces",
+                    kotlinx.serialization.json.JsonArray(
+                        workspaces.map { workspaceWithMounts(it) }
+                    )
+                )
+            }
+        },
+        controlMcpTool(
+            name = "grz_workspace_get",
+            description = "Read one filesystem workspace and every worker mount attached to it.",
+            inputSchema = idSchema("workspaceId", "Workspace id."),
+            readOnly = true,
+        ) { input ->
+            val id = input.requiredString("workspaceId")
+            val workspace = workspaceService.findById(Workspace.Id(id)) ?: notFound("Workspace", id)
+            workspaceWithMounts(workspace)
+        },
+        controlMcpTool(
+            name = "grz_workspace_create",
+            description = "Create an unmounted filesystem workspace inside a project.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "projectId" to ControlMcpSchemas.string("Owning project id."),
+                    "name" to ControlMcpSchemas.string("Workspace name."),
+                ),
+                required = listOf("projectId", "name"),
+            ),
+            readOnly = false,
+        ) { input ->
+            entityResult(
+                "workspace",
+                Workspace.serializer(),
+                workspaceService.createFilesystemWorkspace(
+                    projectId = Project.Id(input.requiredString("projectId")),
+                    name = input.requiredString("name"),
+                )
+            )
+        },
+        controlMcpTool(
+            name = "grz_workspace_update",
+            description = "Rename a filesystem workspace.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "workspaceId" to ControlMcpSchemas.string("Workspace id."),
+                    "name" to ControlMcpSchemas.string("New workspace name."),
+                ),
+                required = listOf("workspaceId", "name"),
+            ),
+            readOnly = false,
+        ) { input ->
+            entityResult(
+                "workspace",
+                Workspace.serializer(),
+                workspaceManagementService.update(
+                    workspaceId = Workspace.Id(input.requiredString("workspaceId")),
+                    name = input.requiredString("name"),
+                )
+            )
+        },
+        controlMcpTool(
+            name = "grz_workspace_delete",
+            description = "Delete a logical workspace and its mounts. This does not delete files from workers.",
+            inputSchema = idSchema("workspaceId", "Workspace id."),
+            readOnly = false,
+            destructive = true,
+        ) { input ->
+            val id = input.requiredString("workspaceId")
+            workspaceManagementService.delete(Workspace.Id(id))
+            deletedResult("workspace", id)
+        },
+        controlMcpTool(
+            name = "grz_workspace_mount_create",
+            description = "Attach a filesystem workspace to one exact worker-local root path.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "workspaceId" to ControlMcpSchemas.string("Workspace id."),
+                    "workerId" to ControlMcpSchemas.string("Exact worker id."),
+                    "rootPath" to ControlMcpSchemas.string("Absolute worker-local workspace root path."),
+                ),
+                required = listOf("workspaceId", "workerId", "rootPath"),
+            ),
+            readOnly = false,
+        ) { input ->
+            val execution = workspaceService.attachFilesystem(
+                workspaceId = Workspace.Id(input.requiredString("workspaceId")),
+                workerId = input.requiredString("workerId"),
+                rootPath = input.requiredString("rootPath"),
+            )
+            buildJsonObject {
+                put("project", controlMcpJson.encodeToJsonElement(Project.serializer(), execution.project))
+                put("workspace", controlMcpJson.encodeToJsonElement(Workspace.serializer(), execution.workspace))
+                put("mount", controlMcpJson.encodeToJsonElement(WorkspaceMount.serializer(), execution.mount))
+            }
+        },
+        controlMcpTool(
+            name = "grz_workspace_mount_delete",
+            description = "Detach a workspace mount. This does not delete the workspace or worker files.",
+            inputSchema = idSchema("mountId", "Workspace mount id."),
+            readOnly = false,
+            destructive = true,
+        ) { input ->
+            val id = input.requiredString("mountId")
+            workspaceManagementService.deleteMount(WorkspaceMount.Id(id))
+            deletedResult("workspace_mount", id)
+        },
+        controlMcpTool(
+            name = "grz_worker_list",
+            description = "List registered worker sessions, capabilities, advertised tools, and heartbeat state.",
+            readOnly = true,
+        ) {
+            buildJsonObject {
+                put(
+                    "workers",
+                    controlMcpJson.encodeToJsonElement(
+                        ListSerializer(com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration.serializer()),
+                        workerRegistry.list(),
+                    )
+                )
+            }
+        },
+    )
+
+    private suspend fun workspaceWithMounts(workspace: Workspace): JsonObject =
+        buildJsonObject {
+            put("workspace", controlMcpJson.encodeToJsonElement(Workspace.serializer(), workspace))
+            put(
+                "mounts",
+                controlMcpJson.encodeToJsonElement(
+                    ListSerializer(WorkspaceMount.serializer()),
+                    workspaceService.findMounts(workspace.id),
+                )
+            )
+        }
+}
+
+internal fun idSchema(field: String, description: String) =
+    ControlMcpSchemas.objectSchema(
+        properties = mapOf(field to ControlMcpSchemas.string(description)),
+        required = listOf(field),
+    )
+
+internal fun <T> entityResult(
+    name: String,
+    serializer: kotlinx.serialization.KSerializer<T>,
+    value: T,
+): JsonObject = buildJsonObject {
+    put(name, controlMcpJson.encodeToJsonElement(serializer, value))
+}
+
+internal fun deletedResult(entity: String, id: String): JsonObject =
+    buildJsonObject {
+        put("deleted", true)
+        put("entity", entity)
+        put("id", id)
+    }

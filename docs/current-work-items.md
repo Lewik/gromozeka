@@ -2,14 +2,22 @@
 
 ## MCP configuration ownership
 
-Status: design pending.
+Status: implemented and verified end to end.
 
-- Document the current split between Gromozeka's server-side MCP endpoint and
-  Worker-side external MCP clients.
-- Decide how external MCP definitions, Worker assignment, and secrets should be
-  managed centrally.
-- Do not migrate the configuration until the server/Worker contract has been
-  agreed explicitly.
+- The Server database is the source of truth for external MCP definitions and
+  accepted tool snapshots.
+- Every external MCP server is assigned to one exact Worker. That Worker owns
+  the live connection, handshake, tool discovery, and execution.
+- Control MCP tools create, update, refresh, list, inspect, and delete external
+  MCP servers through session-addressed Worker control messages.
+- `tools/list_changed` marks a stored definition as refreshable; accepting a
+  changed tool surface always requires an explicit refresh.
+- Tool capability summaries are generated per source fingerprint and cached in
+  PostgreSQL. They are regenerated when an explicit MCP mutation accepts a new
+  fingerprint.
+- Secret references and system-wide authentication remain separate future
+  security work. Raw configuration values currently follow the same trusted
+  operator boundary as the rest of the development runtime.
 
 ## UI typography and themes
 
@@ -75,4 +83,3 @@ Status: complete.
 ## Working order
 
 1. Verify the startup background, memory progress, and conversation scrolling.
-2. MCP configuration migration after its architecture is agreed.

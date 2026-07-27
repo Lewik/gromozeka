@@ -20,15 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.uikit.OnFocusBehavior
 import androidx.compose.ui.window.ComposeUIViewController
 import com.gromozeka.client.GromozekaRemoteDefaults
-import com.gromozeka.client.InMemoryRemoteClientSettingsStore
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.IosClientAudioPlayer
 import com.gromozeka.presentation.services.IosClientAudioRecorder
+import com.gromozeka.presentation.services.IosRemoteClientSettingsStore
 import com.gromozeka.presentation.services.PTTEvent
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import kotlinx.coroutines.delay
+import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
 import platform.UIKit.UIViewController
 
@@ -51,11 +52,12 @@ private fun GromozekaIosApp() {
     LaunchedEffect(Unit) {
         runCatching {
             createRemoteAppComponents(
-                remoteUrl = GromozekaRemoteDefaults.REMOTE_URL,
+                remoteUrl = resolveRemoteUrl(),
                 scope = scope,
                 clientHomeDirectory = "ios",
+                clientPlatform = ClientPlatform.IOS,
                 uiStateStore = InMemoryUIStateStore(),
-                remoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
+                remoteClientSettingsStore = IosRemoteClientSettingsStore(),
                 audioRecorder = IosClientAudioRecorder(),
                 audioPlayer = IosClientAudioPlayer(),
                 deviceLocationService = NoOpDeviceLocationService,
@@ -82,7 +84,6 @@ private fun GromozekaIosApp() {
         remoteApp != null -> GromozekaApp(
             appComponents = remoteApp!!.components,
             skipLoadingScreen = true,
-            uiScaleMultiplier = 1.0f,
             showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = ClientPlatform.IOS,
@@ -91,6 +92,20 @@ private fun GromozekaIosApp() {
         startupError != null -> StartupError(startupError!!)
         else -> StartupLoading()
     }
+}
+
+private fun resolveRemoteUrl(): String {
+    val configuredUrl = (NSBundle.mainBundle.objectForInfoDictionaryKey(RemoteUrlInfoKey) as? String)
+        ?.trim()
+        .orEmpty()
+    if (configuredUrl.isEmpty()) {
+        return GromozekaRemoteDefaults.REMOTE_URL
+    }
+
+    require(configuredUrl.startsWith("ws://") || configuredUrl.startsWith("wss://")) {
+        "$RemoteUrlInfoKey must use ws:// or wss://"
+    }
+    return configuredUrl
 }
 
 private suspend fun handleActionButtonEvents(app: RemoteAppComponents) {
@@ -144,3 +159,4 @@ private fun StartupError(message: String) {
 
 private const val ActionButtonActiveKey = "gromozeka.actionButton.active"
 private const val ActionButtonCounterKey = "gromozeka.actionButton.counter"
+private const val RemoteUrlInfoKey = "GromozekaRemoteURL"

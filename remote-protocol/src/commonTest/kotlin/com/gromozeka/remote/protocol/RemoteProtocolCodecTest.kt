@@ -29,6 +29,51 @@ import kotlin.test.assertTrue
 
 class RemoteProtocolCodecTest {
     @Test
+    fun roundTripSupportsClientActivityAndPresentationDirectives() {
+        val registration = GromozekaClientEnvelope(
+            id = "register-client-1",
+            payload = RegisterClientSessionCommand(
+                clientInstanceId = ClientInstanceId("client-1"),
+                clientSessionId = ClientSessionId("session-1"),
+                platform = RemoteClientPlatform.WEB_DESKTOP,
+            ),
+        )
+        val decodedRegistration = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(registration)
+        ).payload as RegisterClientSessionCommand
+
+        assertEquals("client-1", decodedRegistration.clientInstanceId.value)
+        assertEquals("session-1", decodedRegistration.clientSessionId.value)
+        assertEquals(RemoteClientPlatform.WEB_DESKTOP, decodedRegistration.platform)
+
+        val activity = GromozekaClientEnvelope(
+            id = "client-activity-1",
+            payload = ReportClientActivityCommand(ClientActivityKind.USER_INTERACTION),
+        )
+        val decodedActivity = RemoteProtocolCodec.decodeClientText(
+            RemoteProtocolCodec.encodeClientText(activity)
+        ).payload as ReportClientActivityCommand
+
+        assertEquals(ClientActivityKind.USER_INTERACTION, decodedActivity.kind)
+
+        val directive = GromozekaServerEnvelope(
+            id = "play-tts-1",
+            payload = PlayMessageTtsDirective(
+                messageId = Conversation.Message.Id("message-1"),
+                text = "Hello",
+                tone = "warm",
+            ),
+        )
+        val decodedDirective = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(directive)
+        ).payload as PlayMessageTtsDirective
+
+        assertEquals("message-1", decodedDirective.messageId.value)
+        assertEquals("Hello", decodedDirective.text)
+        assertEquals("warm", decodedDirective.tone)
+    }
+
+    @Test
     fun roundTripSupportsAgentSkillPackages() {
         val skillFile = AgentSkillFile(
             path = "references/checklist.md",

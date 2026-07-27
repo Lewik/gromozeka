@@ -1,558 +1,316 @@
 package com.gromozeka.infrastructure.ai.config.mcp
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.McpServerConfig
+import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.model.mcp.McpServerSnapshot
+import com.gromozeka.domain.model.mcp.McpToolSnapshot
+import com.gromozeka.domain.repository.McpServerRepository
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.McpServerMutationKind
 import com.gromozeka.domain.tool.AiToolCallback
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.sse.SSE
-import io.modelcontextprotocol.kotlin.sdk.client.Client
-import io.modelcontextprotocol.kotlin.sdk.client.StdioClientTransport
-import io.modelcontextprotocol.kotlin.sdk.client.StreamableHttpClientTransport
-import io.modelcontextprotocol.kotlin.sdk.types.AudioContent
-import io.modelcontextprotocol.kotlin.sdk.types.EmbeddedResource
-import io.modelcontextprotocol.kotlin.sdk.types.ImageContent
-import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.McpJson
-import io.modelcontextprotocol.kotlin.sdk.types.ResourceLink
-import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.Tool
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import klog.KLoggers
-import kotlinx.coroutines.*
-import kotlinx.io.asSink
-import kotlinx.io.asSource
-import kotlinx.io.buffered
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.DependsOn
 import org.springframework.stereotype.Service
-import java.io.File
 
 @Service
+@DependsOn("database")
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class McpConfigurationService(
-    @Value("\${GROMOZEKA_HOME:\${user.home}/.gromozeka}")
-    private val gromozemkaHome: String,
-    @Value("\${gromozeka.runtime.worker.id}")
-    private val workerId: String,
-    @Qualifier("mcpCoroutineScope") private val coroutineScope: CoroutineScope
+    @Value("\${gromozeka.runtime.worker.id}") workerId: String,
+    private val repository: McpServerRepository,
+    private val clientFactory: McpClientFactory,
+    @Qualifier("mcpCoroutineScope") private val coroutineScope: CoroutineScope,
 ) {
-    companion object {
-        private val DEFAULT_INHERITED_ENV_VARS = if (System.getProperty("os.name").lowercase().contains("win")) {
-            listOf(
-                "APPDATA", "HOMEDRIVE", "HOMEPATH", "LOCALAPPDATA", "PATH",
-                "PROCESSOR_ARCHITECTURE", "SYSTEMDRIVE", "SYSTEMROOT", "TEMP",
-                "USERNAME", "USERPROFILE"
-            )
-        } else {
-            listOf("HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER")
-        }
-    }
-
-    private val log = KLoggers.logger {}
-    private val objectMapper = ObjectMapper()
-
-    private var cachedConfig: McpConfig? = null
+    private val log = KLoggers.logger(this)
+    private val workerId = ConversationRuntimeWorkerId(workerId)
+    private val mutationMutex = Mutex()
 
     @Volatile
-    private var mcpClients: List<McpWrapperInterface> = emptyList()
+    private var activeServers: Map<McpServerId, ActiveMcpServer> = emptyMap()
 
     @PostConstruct
     fun initialize() {
-        loadConfiguration()
         runBlocking {
-            startMcpClientsWithProgress()
+            repository.listByWorker(workerId).forEach { server ->
+                runCatching { activatePersisted(server) }
+                    .onFailure { error ->
+                        log.error(error) {
+                            "Failed to activate persisted MCP server ${server.config.id.value}: ${error.message}"
+                        }
+                    }
+            }
         }
     }
 
-    private fun loadConfiguration() {
-        val mcpFile = File("$gromozemkaHome/mcp.json")
+    fun getTools(): List<AiToolCallback> =
+        activeServers.values
+            .sortedBy { it.server.config.id.value }
+            .flatMap(ActiveMcpServer::tools)
 
-        if (!mcpFile.exists()) {
-            log.warn { "MCP config not found: ${mcpFile.absolutePath}" }
-            log.info { "Create $gromozemkaHome/mcp.json to configure MCP servers" }
-            cachedConfig = McpConfig(emptyMap())
-            return
+    suspend fun apply(
+        kind: McpServerMutationKind,
+        config: McpServerConfig,
+        expectedRevision: Long?,
+    ): McpServer = mutationMutex.withLock {
+        require(config.workerId == workerId) {
+            "MCP server ${config.id.value} targets worker ${config.workerId.value}, not ${workerId.value}"
         }
+        val current = repository.find(config.id)
+        validateMutation(kind, config, expectedRevision, current)
 
+        val candidate = connect(config)
         try {
-            cachedConfig = objectMapper.readValue(mcpFile, McpConfig::class.java)
-            cachedConfig!!.mcpServers.forEach { (name, config) ->
-                if (!config.disabled) {
-                    require(config.workerIds.isNotEmpty()) {
-                        "MCP server '$name' must declare a non-empty workerIds array"
-                    }
-                    require(config.transportType != TransportType.UNKNOWN) {
-                        "MCP server '$name' must declare exactly one supported transport"
-                    }
+            val snapshot = snapshot(config, candidate, candidate.listAllTools())
+            val now = Clock.System.now()
+            val replacement = McpServer(
+                config = config,
+                snapshot = snapshot,
+                revision = (current?.revision ?: 0) + 1,
+                refreshAvailable = false,
+                createdAt = current?.createdAt ?: now,
+                updatedAt = now,
+            )
+            val activeCandidate = prepareActive(replacement, candidate)
+            val persisted = if (current == null) {
+                repository.create(replacement)
+            } else {
+                repository.replace(replacement, checkNotNull(expectedRevision))
+            }
+            check(persisted) {
+                "MCP server ${config.id.value} changed concurrently; read it again before retrying"
+            }
+            activate(activeCandidate)
+            replacement
+        } catch (error: Throwable) {
+            candidate.forceClose()
+            throw error
+        }
+    }
+
+    suspend fun delete(
+        serverId: McpServerId,
+        expectedRevision: Long,
+    ) = mutationMutex.withLock {
+        val current = repository.find(serverId)
+            ?: error("MCP server not found: ${serverId.value}")
+        require(current.config.workerId == workerId) {
+            "MCP server ${serverId.value} belongs to worker ${current.config.workerId.value}"
+        }
+        require(repository.delete(serverId, expectedRevision)) {
+            "MCP server ${serverId.value} changed concurrently; read it again before retrying"
+        }
+        val removed = activeServers[serverId]
+        activeServers = activeServers - serverId
+        removed?.let {
+            runCatching(it.client::close)
+                .onFailure { error ->
+                    log.warn(error) { "Failed to close deleted MCP server client ${serverId.value}" }
                 }
-            }
-            val totalServers = cachedConfig!!.mcpServers.size
-            val activeServers = cachedConfig!!.mcpServers.count { it.value.isEnabledOn(workerId) }
-
-            log.info { "Loaded MCP config with $activeServers/$totalServers active servers" }
-
-            cachedConfig!!.mcpServers.forEach { (name, config) ->
-                if (config.disabled) {
-                    log.debug { "  - $name: disabled" }
-                } else if (workerId !in config.workerIds) {
-                    log.debug { "  - $name: assigned to ${config.workerIds.sorted().joinToString()}" }
-                } else {
-                    when (config.transportType) {
-                        TransportType.STDIO -> log.info { "  - $name: stdio (${config.command})" }
-                        TransportType.STREAMABLE_HTTP -> log.info { "  - $name: streamable HTTP (${config.url})" }
-                        TransportType.UNKNOWN -> log.warn { "  - $name: unknown transport type (missing command or url)" }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to load mcp.json from ${mcpFile.absolutePath}" }
-            throw IllegalStateException("Invalid MCP configuration: ${mcpFile.absolutePath}", e)
         }
-    }
-
-    private fun getDefaultEnvironment(): Map<String, String> {
-        return System.getenv()
-            .filterKeys { it in DEFAULT_INHERITED_ENV_VARS }
-            .filterValues { value -> !value.startsWith("()") }
-    }
-
-    suspend fun startMcpClientsWithProgress(
-        onProgress: (serverName: String, current: Int, total: Int) -> Unit = { _, _, _ -> }
-    ) {
-        val stdioServers = getStdioServers()
-        val streamableHttpServers = getStreamableHttpServers()
-
-        val totalServers = stdioServers.size + streamableHttpServers.size
-
-        if (totalServers == 0) {
-            log.info { "No MCP servers configured" }
-            return
-        }
-
-        val clients = mutableListOf<McpWrapperInterface>()
-        var current = 0
-
-        // Start stdio servers
-        for ((name, config) in stdioServers) {
-            try {
-                current++
-                onProgress(name, current, totalServers)
-
-                log.info { "Starting MCP client: $name ($current/$totalServers)" }
-                log.debug { "  Command: ${config.command}" }
-                log.debug { "  Args: ${config.args?.joinToString(" ")}" }
-
-                val processBuilder = ProcessBuilder(
-                    listOf(config.command!!) + (config.args ?: emptyList())
-                )
-
-                // Initialize with default environment (PATH, HOME, SHELL, etc.)
-                val defaultEnv = getDefaultEnvironment()
-                log.debug { "  Default environment keys: ${defaultEnv.keys.joinToString()}" }
-                log.debug { "  PATH: ${defaultEnv["PATH"]}" }
-                processBuilder.environment().putAll(defaultEnv)
-
-                // Apply user-provided environment variables (overrides defaults)
-                config.env?.let { envMap ->
-                    log.debug { "  User environment keys: ${envMap.keys.joinToString()}" }
-                    processBuilder.environment().putAll(envMap)
-                }
-
-                val process = processBuilder.start()
-
-                val input = process.inputStream.asSource().buffered()
-                val output = process.outputStream.asSink().buffered()
-
-                val transport = StdioClientTransport(
-                    input = input,
-                    output = output,
-                    error = process.errorStream.asSource().buffered()
-                )
-
-                val client = Client(
-                    clientInfo = Implementation(
-                        name = "Gromozeka",
-                        version = "1.0.0"
-                    )
-                )
-
-                val wrapper = McpStdioClientWrapper(name, client, transport, process)
-
-                wrapper.initialize()
-
-                clients.add(wrapper)
-                log.info { "Successfully started MCP client: $name" }
-            } catch (e: Exception) {
-                log.error(e) { "Failed to start MCP client: $name" }
-                throw IllegalStateException("Failed to start MCP server '$name' on worker '$workerId'", e)
-            }
-        }
-
-        for ((name, config) in streamableHttpServers) {
-            try {
-                current++
-                onProgress(name, current, totalServers)
-
-                log.info { "Starting MCP streamable HTTP client: $name ($current/$totalServers)" }
-                log.debug { "  URL: ${config.url}" }
-
-                val httpClient = HttpClient(CIO) {
-                    install(SSE)
-                }
-                val transport = StreamableHttpClientTransport(
-                    client = httpClient,
-                    url = config.url!!,
-                ) {
-                    config.headers?.forEach { (key, value) ->
-                        headers.append(key, value)
-                    }
-                }
-                val client = Client(
-                    clientInfo = Implementation(
-                        name = "Gromozeka",
-                        version = "1.0.0"
-                    )
-                )
-
-                val wrapper = McpRemoteClientWrapper(name, client, transport, httpClient)
-
-                wrapper.initialize()
-
-                clients.add(wrapper)
-                log.info { "Successfully started MCP streamable HTTP client: $name" }
-            } catch (e: Exception) {
-                log.error(e) { "Failed to start MCP streamable HTTP client: $name" }
-                throw IllegalStateException("Failed to connect MCP server '$name' on worker '$workerId'", e)
-            }
-        }
-
-        mcpClients = clients
-        log.info {
-            "Initialized ${mcpClients.size} MCP client(s) " +
-                "(${stdioServers.size} stdio, ${streamableHttpServers.size} streamable HTTP)"
-        }
-    }
-
-    fun getStdioServers(): Map<String, ServerConfig> {
-        return cachedConfig?.mcpServers
-            ?.filter { it.value.transportType == TransportType.STDIO && it.value.isEnabledOn(workerId) }
-            ?: emptyMap()
-    }
-
-    fun getStreamableHttpServers(): Map<String, ServerConfig> {
-        return cachedConfig?.mcpServers
-            ?.filter { it.value.transportType == TransportType.STREAMABLE_HTTP && it.value.isEnabledOn(workerId) }
-            ?: emptyMap()
-    }
-
-    fun getAllServers(): Map<String, ServerConfig> {
-        return cachedConfig?.mcpServers ?: emptyMap()
-    }
-
-    /**
-     * Gets MCP client wrapper by server name.
-     * 
-     * @param serverName name of MCP server (e.g., "selene", "brave-search")
-     * @return MCP client wrapper or null if not found
-     */
-    fun getMcpClient(serverName: String): McpWrapperInterface? {
-        return mcpClients.find { it.name.equals(serverName, ignoreCase = true) }
-    }
-
-    fun getTools(): List<AiToolCallback> {
-        return runBlocking {
-            val callbacks = mutableListOf<AiToolCallback>()
-
-            for (wrapper in mcpClients) {
-                try {
-                    val allTools = wrapper.listTools()
-                    
-                    val serverConfig = cachedConfig?.mcpServers?.get(wrapper.name)
-                    val tools = filterToolsForServer(wrapper.name, allTools, serverConfig)
-                    
-                    log.info { "=".repeat(80) }
-                    log.info { "MCP Server: ${wrapper.name} - ${tools.size} tools (${allTools.size} total, ${allTools.size - tools.size} filtered out)" }
-                    log.info { "=".repeat(80) }
-
-                    tools.forEach { tool ->
-                        log.info { "" }
-                        log.info { "## ${tool.name}" }
-                        log.info { "" }
-                        log.info { tool.description ?: "No description" }
-                        log.info { "" }
-
-                        log.info { "**Parameters (JSON Schema):**" }
-                        log.info { "```json" }
-                        log.info { McpJson.encodeToString(ToolSchema.serializer(), tool.inputSchema) }
-                        log.info { "```" }
-                        log.info { "" }
-
-                        callbacks.add(
-                            McpToolCallbackAdapter(
-                                serverName = wrapper.name,
-                                clientWrapper = wrapper,
-                                tool = tool,
-                                coroutineScope = coroutineScope,
-                                forwardGrzConversationContext = serverConfig?.forwardGrzConversationContext == true,
-                            )
-                        )
-                    }
-                    log.debug { "Registered ${tools.size} tools from ${wrapper.name}" }
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to get tools from ${wrapper.name}" }
-                }
-            }
-
-            if (callbacks.isNotEmpty()) {
-                log.info { "Total MCP tools registered: ${callbacks.size}" }
-            }
-
-            callbacks
-        }
-    }
-
-    private fun ServerConfig.isEnabledOn(workerId: String): Boolean =
-        !disabled && workerId in workerIds
-
-    internal fun filterToolsForServer(
-        serverName: String,
-        allTools: List<Tool>,
-        serverConfig: ServerConfig?
-    ): List<Tool> {
-        val allowedTools = serverConfig?.allowedTools
-        val excludedTools = serverConfig?.excludedTools.orEmpty()
-
-        val allowedFiltered = if (allowedTools == null) {
-            allTools
-        } else {
-            val allowedToolNames = allowedTools.toSet()
-            val filtered = allTools.filter { it.name in allowedToolNames }
-            val missingAllowedTools = allowedToolNames - allTools.map { it.name }.toSet()
-
-            log.info {
-                "MCP Server '$serverName': allowed ${filtered.size}/${allTools.size} tools (${allowedTools.joinToString(", ")})"
-            }
-
-            if (missingAllowedTools.isNotEmpty()) {
-                log.warn {
-                    "MCP Server '$serverName': allowedTools contains missing tools (${missingAllowedTools.joinToString(", ")})"
-                }
-            }
-
-            filtered
-        }
-
-        if (excludedTools.isEmpty()) {
-            return allowedFiltered
-        }
-
-        val excludedToolNames = excludedTools.toSet()
-        val filtered = allowedFiltered.filterNot { it.name in excludedToolNames }
-        log.info {
-            "MCP Server '$serverName': excluded ${allowedFiltered.size - filtered.size} tools (${excludedTools.joinToString(", ")})"
-        }
-
-        return filtered
-    }
-
-    suspend fun reloadClients() {
-        log.info { "Reloading MCP clients..." }
-        closeClients()
-        loadConfiguration()
-        startMcpClientsWithProgress()
     }
 
     @PreDestroy
     fun shutdown() {
-        log.info { "Shutting down MCP configuration service..." }
-        closeClients()
-    }
-
-    private fun closeClients() {
-        if (mcpClients.isEmpty()) {
-            log.info { "No MCP clients to stop" }
-            return
+        activeServers.values.forEach { server ->
+            runCatching(server.client::forceClose)
+                .onFailure { error ->
+                    log.warn(error) { "Failed to close MCP server ${server.server.config.id.value}" }
+                }
         }
-
-        log.info { "Force-stopping ${mcpClients.size} MCP client(s)..." }
-
-        // Forcefully stop all clients without blocking
-        mcpClients.forEach { wrapper ->
-            try {
-                wrapper.forceClose()
-            } catch (e: Exception) {
-                log.error(e) { "Error force-closing MCP client: ${wrapper.name}" }
-            }
-        }
-
-        mcpClients = emptyList()
-        log.info { "All MCP clients stopped" }
-    }
-}
-
-private data class McpStdioClientWrapper(
-    override val name: String,
-    private val client: Client,
-    private val transport: StdioClientTransport,
-    private val process: Process,
-) : McpWrapperInterface {
-    private val log = KLoggers.logger {}
-
-    override suspend fun initialize() {
-        client.connect(transport)
-
-        val serverInfo = client.serverVersion
-        log.info { "Connected to MCP server: $name" }
-        log.info { "  Server: ${serverInfo?.name} v${serverInfo?.version}" }
+        activeServers = emptyMap()
     }
 
-    override suspend fun listTools(): List<Tool> {
-        return client.listTools().tools
-    }
-
-    override suspend fun callTool(toolName: String, arguments: Map<String, Any?>): String {
-        val startTime = System.currentTimeMillis()
-        log.info { "[MCP] Calling tool '$toolName' on server '$name' (timeout: 40s)" }
-        
-        val result = try {
-            withTimeout(40_000) {
-                client.callTool(toolName, arguments)
-            }
-        } catch (e: Exception) {
-            val duration = System.currentTimeMillis() - startTime
-            log.error(e) { "[MCP] Tool '$toolName' failed after ${duration}ms: ${e.message}" }
-            throw IllegalStateException("MCP tool '$toolName' failed after ${duration}ms", e)
-        }
-        
-        val duration = System.currentTimeMillis() - startTime
-        log.info { "[MCP] Tool '$toolName' completed in ${duration}ms" }
-
-        return renderToolResultContent(result.content)
-    }
-
-    override fun close() {
+    private suspend fun activatePersisted(server: McpServer) {
+        val client = connect(server.config)
         try {
-            log.info { "Closing MCP client: $name" }
-
-            // Get process handle and descendants BEFORE closing
-            val handle = process.toHandle()
-            val descendants = handle.descendants().toList()
-
-            // Close client - this may kill parent process
-            runBlocking { client.close() }
-
-            // Kill all descendant processes (prevents orphaned subprocesses)
-            descendants.forEach { it.destroyForcibly() }
-
-            // Kill parent process if still alive
-            if (handle.isAlive()) {
-                handle.destroyForcibly()
+            val observedTools = client.listAllTools()
+            val observedSnapshot = runCatching {
+                snapshot(server.config, client, observedTools)
+            }.getOrElse { error ->
+                repository.markRefreshAvailable(server.config.id, server.revision)
+                log.warn(error) {
+                    "MCP server ${server.config.id.value} no longer matches its accepted snapshot; " +
+                        "explicit refresh is required"
+                }
+                activate(prepareActive(server, client))
+                return
             }
-
-            // Wait for termination with timeout
-            val terminated = handle.onExit()
-                .orTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
-                .handle { _, ex -> ex == null }
-                .get()
-
-            if (terminated) {
-                log.info { "MCP client $name closed successfully" }
-            } else {
-                log.warn { "MCP client $name process did not terminate cleanly" }
+            if (observedSnapshot.fingerprint != server.snapshot.fingerprint) {
+                repository.markRefreshAvailable(server.config.id, server.revision)
+                log.warn {
+                    "MCP server ${server.config.id.value} tools changed; explicit refresh is required"
+                }
             }
-        } catch (e: Exception) {
-            log.error(e) { "Error closing MCP client: $name" }
+            activate(prepareActive(server, client))
+        } catch (error: Throwable) {
+            client.forceClose()
+            throw error
         }
     }
 
-    override fun forceClose() {
-        try {
-            log.info { "Force-closing MCP client: $name" }
+    private suspend fun connect(config: McpServerConfig): McpConnectedClient =
+        clientFactory.connect(config).also { client ->
+            check(client.serverInfo.name.isNotBlank()) {
+                "MCP server ${config.id.value} returned a blank implementation name"
+            }
+        }
 
-            // Get process handle and descendants
-            val handle = process.toHandle()
-            val descendants = handle.descendants().toList()
+    private suspend fun snapshot(
+        config: McpServerConfig,
+        client: McpConnectedClient,
+        availableTools: List<Tool>,
+    ): McpServerSnapshot {
+        val selectedTools = selectTools(config, availableTools)
+        val tools = selectedTools.map { tool ->
+            McpToolSnapshot(
+                remoteName = tool.name,
+                description = tool.description.orEmpty(),
+                inputSchema = McpJson.encodeToString(ToolSchema.serializer(), tool.inputSchema),
+            )
+        }.sortedBy(McpToolSnapshot::remoteName)
+        val fingerprint = McpServerSnapshot.calculateFingerprint(
+            serverName = client.serverInfo.name,
+            serverVersion = client.serverInfo.version,
+            instructions = client.serverInstructions,
+            supportsToolsListChanged = client.supportsToolsListChanged,
+            tools = tools,
+        )
+        return McpServerSnapshot(
+            serverName = client.serverInfo.name,
+            serverVersion = client.serverInfo.version,
+            instructions = client.serverInstructions,
+            supportsToolsListChanged = client.supportsToolsListChanged,
+            tools = tools,
+            fingerprint = fingerprint,
+            capturedAt = Clock.System.now(),
+        )
+    }
 
-            // Kill all descendant processes first
-            descendants.forEach { it.destroyForcibly() }
+    private fun selectTools(
+        config: McpServerConfig,
+        tools: List<Tool>,
+    ): List<Tool> {
+        require(tools.map(Tool::name).distinct().size == tools.size) {
+            "MCP server ${config.id.value} returned duplicate tool names"
+        }
+        val available = tools.map(Tool::name).toSet()
+        val allowedTools = config.allowedTools
+        val configuredNames = allowedTools.orEmpty() + config.excludedTools
+        val missing = configuredNames - available
+        require(missing.isEmpty()) {
+            "MCP server ${config.id.value} filters reference missing tools: ${missing.sorted().joinToString()}"
+        }
+        val selected = tools
+            .filter { allowedTools == null || it.name in allowedTools }
+            .filterNot { it.name in config.excludedTools }
+        require(selected.isNotEmpty()) {
+            "MCP server ${config.id.value} exposes no tools after filtering"
+        }
+        return selected
+    }
 
-            // Kill parent process
-            handle.destroyForcibly()
+    private fun prepareActive(
+        server: McpServer,
+        client: McpConnectedClient,
+    ): ActiveMcpServer {
+        val active = ActiveMcpServer(
+            server = server,
+            client = client,
+            tools = server.snapshot.tools.map { tool ->
+                McpToolCallbackAdapter(
+                    serverId = server.config.id,
+                    client = client,
+                    tool = tool,
+                    forwardGrzConversationContext = server.config.forwardGrzConversationContext,
+                )
+            },
+        )
+        client.setToolsListChangedHandler {
+            coroutineScope.launch {
+                val active = activeServers[server.config.id]
+                if (active?.client !== client || active.server.revision != server.revision) {
+                    return@launch
+                }
+                val current = repository.find(server.config.id)
+                if (
+                    current != null &&
+                    current.config.workerId == workerId &&
+                    current.revision == server.revision
+                ) {
+                    repository.markRefreshAvailable(current.config.id, current.revision)
+                }
+            }
+        }
+        return active
+    }
 
-            log.info { "Force-closed MCP client: $name" }
-        } catch (e: Exception) {
-            log.error(e) { "Error force-closing MCP client: $name" }
+    private fun activate(active: ActiveMcpServer) {
+        val server = active.server
+        val previous = activeServers[server.config.id]
+        activeServers = activeServers + (server.config.id to active)
+        previous?.let {
+            runCatching(it.client::close)
+                .onFailure { error ->
+                    log.warn(error) {
+                        "Failed to close replaced MCP server client ${server.config.id.value}"
+                    }
+                }
+        }
+        log.info {
+            "Activated MCP server ${server.config.id.value} revision=${server.revision} " +
+                "tools=${server.snapshot.tools.size}"
         }
     }
+
+    private fun validateMutation(
+        kind: McpServerMutationKind,
+        config: McpServerConfig,
+        expectedRevision: Long?,
+        current: McpServer?,
+    ) {
+        when (kind) {
+            McpServerMutationKind.CREATE -> require(current == null) {
+                "MCP server already exists: ${config.id.value}"
+            }
+            McpServerMutationKind.UPDATE -> {
+                requireNotNull(current) { "MCP server not found: ${config.id.value}" }
+                require(current.config.workerId == config.workerId) {
+                    "MCP server worker assignment is immutable; delete and recreate it to move workers"
+                }
+                require(current.revision == expectedRevision) {
+                    "MCP server revision conflict: expected=$expectedRevision actual=${current.revision}"
+                }
+            }
+            McpServerMutationKind.REFRESH -> {
+                requireNotNull(current) { "MCP server not found: ${config.id.value}" }
+                require(current.revision == expectedRevision) {
+                    "MCP server revision conflict: expected=$expectedRevision actual=${current.revision}"
+                }
+                require(current.config == config) {
+                    "MCP refresh cannot change configuration"
+                }
+            }
+        }
+    }
+
+    private data class ActiveMcpServer(
+        val server: McpServer,
+        val client: McpConnectedClient,
+        val tools: List<AiToolCallback>,
+    )
 }
-
-private data class McpRemoteClientWrapper(
-    override val name: String,
-    private val client: Client,
-    private val transport: StreamableHttpClientTransport,
-    private val httpClient: HttpClient,
-) : McpWrapperInterface {
-    private val log = KLoggers.logger {}
-
-    override suspend fun initialize() {
-        client.connect(transport)
-
-        val serverInfo = client.serverVersion
-        log.info { "Connected to MCP streamable HTTP server: $name" }
-        log.info { "  Server: ${serverInfo?.name} v${serverInfo?.version}" }
-    }
-
-    override suspend fun listTools(): List<Tool> {
-        return client.listTools().tools
-    }
-
-    override suspend fun callTool(toolName: String, arguments: Map<String, Any?>): String {
-        val startTime = System.currentTimeMillis()
-        log.info { "[MCP] Calling tool '$toolName' on streamable HTTP server '$name' (timeout: 40s)" }
-
-        val result = try {
-            withTimeout(40_000) {
-                client.callTool(toolName, arguments)
-            }
-        } catch (e: Exception) {
-            val duration = System.currentTimeMillis() - startTime
-            log.error(e) { "[MCP] Tool '$toolName' failed after ${duration}ms: ${e.message}" }
-            throw IllegalStateException("MCP tool '$toolName' failed after ${duration}ms", e)
-        }
-
-        val duration = System.currentTimeMillis() - startTime
-        log.info { "[MCP] Tool '$toolName' completed in ${duration}ms" }
-
-        return renderToolResultContent(result.content)
-    }
-
-    override fun close() {
-        try {
-            log.info { "Closing MCP streamable HTTP client: $name" }
-            runBlocking { client.close() }
-            httpClient.close()
-            log.info { "MCP streamable HTTP client $name closed successfully" }
-        } catch (e: Exception) {
-            log.error(e) { "Error closing MCP streamable HTTP client: $name" }
-        }
-    }
-
-    override fun forceClose() {
-        close()
-    }
-}
-
-private fun renderToolResultContent(content: List<io.modelcontextprotocol.kotlin.sdk.types.ContentBlock>): String =
-    content.joinToString("\n") {
-        when (it) {
-            is TextContent -> it.text
-            is ImageContent -> "[Image: ${it.mimeType}]"
-            is AudioContent -> "[Audio: ${it.mimeType}]"
-            is EmbeddedResource -> "[Resource: ${it.resource.uri}]"
-            is ResourceLink -> "[Resource Link: ${it.uri}]"
-            else -> it.toString()
-        }
-    }

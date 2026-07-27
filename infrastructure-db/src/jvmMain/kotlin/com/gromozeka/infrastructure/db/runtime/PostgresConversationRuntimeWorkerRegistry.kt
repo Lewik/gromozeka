@@ -4,6 +4,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
@@ -78,6 +79,22 @@ class PostgresConversationRuntimeWorkerRegistry(
                 null
             } else {
                 registration.copy(lastHeartbeatAt = at)
+            }
+        }
+
+    override suspend fun updateTools(
+        identity: ConversationRuntimeWorkerIdentity,
+        tools: List<AiToolDescriptor>,
+        at: Instant,
+    ): Boolean =
+        mutate(identity) { registration ->
+            if (registration.stoppedAt != null || at < registration.lastHeartbeatAt) {
+                null
+            } else {
+                registration.copy(
+                    tools = tools,
+                    lastHeartbeatAt = at,
+                )
             }
         }
 

@@ -56,7 +56,9 @@ internal object Contexts : Table("contexts") {
 
 internal object Agents : Table("agents") {
     val id = varchar("id", 255)
-    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val projectId = varchar("project_id", 255)
+        .references(Projects.id, onDelete = ReferenceOption.CASCADE)
+        .nullable()
     val name = varchar("name", 255)
     val promptsJson = text("prompts_json")  // JSON array of Prompt IDs
     val skillsJson = text("skills_json")
@@ -99,13 +101,74 @@ internal object AgentSkillFiles : Table("agent_skill_files") {
 internal object Conversations : Table("conversations") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
-    val agentDefinitionId = varchar("agent_definition_id", 255)
+    val agentDefinitionId = varchar("agent_definition_id", 255).references(Agents.id)
     val displayName = varchar("display_name", 255)
     val currentThreadId = varchar("current_thread_id", 255)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 
     override val primaryKey = PrimaryKey(id)
+}
+
+internal object AiConnections : Table("ai_connections") {
+    val id = varchar("id", 255)
+    val payloadJson = text("payload_json")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object AiModelSpecs : Table("ai_model_specs") {
+    val provider = varchar("provider", 50)
+    val modelId = varchar("model_id", 255)
+    val payloadJson = text("payload_json")
+
+    override val primaryKey = PrimaryKey(provider, modelId)
+}
+
+internal object AiModelConfigurations : Table("ai_model_configurations") {
+    val id = varchar("id", 255)
+    val connectionId = varchar("connection_id", 255).references(AiConnections.id)
+    val payloadJson = text("payload_json")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object AiRuntimeAssignments : Table("ai_runtime_assignments") {
+    val purpose = varchar("purpose", 100)
+    val modelConfigurationId = varchar("model_configuration_id", 255).references(AiModelConfigurations.id)
+    val payloadJson = text("payload_json")
+
+    override val primaryKey = PrimaryKey(purpose)
+}
+
+internal object RuntimeCatalogConfiguration : Table("runtime_catalog_configuration") {
+    val id = varchar("id", 32)
+    val defaultAgentId = varchar("default_agent_id", 255).references(Agents.id)
+    val revision = long("revision")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object McpServers : Table("mcp_servers") {
+    val id = varchar("id", 64)
+    val workerId = varchar("worker_id", 255)
+    val revision = long("revision")
+    val refreshAvailable = bool("refresh_available")
+    val payloadJson = text("payload_json")
+    val createdAt = timestamp("created_at")
+    val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object AiToolCapabilityCatalogs : Table("ai_tool_capability_catalogs") {
+    val sourceId = varchar("source_id", 255)
+    val fingerprint = varchar("fingerprint", 64)
+    val modelConfigurationId = varchar("model_configuration_id", 255)
+    val payloadJson = text("payload_json")
+    val generatedAt = timestamp("generated_at")
+
+    override val primaryKey = PrimaryKey(sourceId, fingerprint)
 }
 
 internal object ConversationTabLayouts : Table("conversation_tab_layouts") {

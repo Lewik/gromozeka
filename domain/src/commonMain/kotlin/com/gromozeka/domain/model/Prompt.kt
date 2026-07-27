@@ -13,7 +13,7 @@ import kotlin.jvm.JvmInline
  * This is an immutable value type - use copy() to create modified versions.
  *
  * @property id stable unique prompt identifier
- * @property projectId owning project for project prompts, null for builtins
+ * @property projectId owning project for project prompts, null for global prompts
  * @property name human-readable prompt name (displayed in UI)
  * @property content markdown text of the prompt
  * @property type prompt ownership scope
@@ -31,8 +31,8 @@ data class Prompt(
     val updatedAt: Instant
 ) {
     init {
-        require((type is Type.Builtin) == (projectId == null)) {
-            "Builtin prompts must not belong to a project and project prompts must have a project"
+        require((type is Type.Global) == (projectId == null)) {
+            "Global prompts must not belong to a project and project prompts must have a project"
         }
     }
 
@@ -49,12 +49,10 @@ data class Prompt(
     @Serializable
     sealed class Type {
         /**
-         * Builtin prompt shipped with Gromozeka.
-         * Stored in application resources.
-         * ID format: "prompts/shared-base.md" (relative to resources/)
+         * Mutable prompt available to every project.
          */
         @Serializable
-        object Builtin : Type()
+        object Global : Type()
 
         /**
          * Mutable prompt owned by one logical project.

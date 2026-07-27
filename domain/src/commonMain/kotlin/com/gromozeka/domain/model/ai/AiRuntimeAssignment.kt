@@ -26,6 +26,11 @@ data class AiRuntimeAssignment(
             displayName = "Message squash",
             description = "Model used to summarize or compact chat messages.",
         ),
+        TOOL_CATALOG_SUMMARY(
+            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
+            displayName = "Tool capability catalog",
+            description = "Optional model used to organize deferred tools into a compact capability catalog.",
+        ),
         MEMORY_READ(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
             displayName = "Memory read",
@@ -181,6 +186,8 @@ data class AiRuntimeAssignment(
                 MEMORY_MAINTENANCE_NOTE_CONSOLIDATOR,
                 MEMORY_MAINTENANCE_REPAIR_PLANNER,
                 MEMORY_MAINTENANCE_ENTITY_PLANNER -> MEMORY_MAINTENANCE
+
+                TOOL_CATALOG_SUMMARY -> DEFAULT_CHAT
 
                 else -> null
             }

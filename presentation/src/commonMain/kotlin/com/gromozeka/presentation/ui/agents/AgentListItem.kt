@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,8 +18,10 @@ import com.gromozeka.domain.model.AgentDefinition
 @Composable
 fun AgentListItem(
     agent: AgentDefinition,
+    isDefault: Boolean,
     onEdit: () -> Unit,
     onCopy: () -> Unit,
+    onSetDefault: (() -> Unit)?,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -44,12 +47,12 @@ fun AgentListItem(
                             fontWeight = FontWeight.Bold
                         )
                         
-                        when (val type = agent.type) {
-                            is AgentDefinition.Type.Builtin -> {
+                        when (agent.type) {
+                            is AgentDefinition.Type.Global -> {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 AssistChip(
                                     onClick = {},
-                                    label = { Text("Built-in") },
+                                    label = { Text(if (isDefault) "Global · default" else "Global") },
                                     enabled = false
                                 )
                             }
@@ -70,29 +73,35 @@ fun AgentListItem(
                 }
                 
                 Row {
-                    when (agent.type) {
-                        is AgentDefinition.Type.Builtin -> IconButton(onClick = onCopy) {
+                    IconButton(onClick = onCopy) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate agent")
+                    }
+                    onSetDefault?.let { action ->
+                        IconButton(onClick = action, enabled = !isDefault) {
                             Icon(
-                                Icons.Default.ContentCopy,
-                                contentDescription = "Create project copy"
+                                Icons.Default.Star,
+                                contentDescription = if (isDefault) "Default agent" else "Set as default",
+                                tint = if (isDefault) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    LocalContentColor.current
+                                },
                             )
                         }
-
-                        is AgentDefinition.Type.Project -> {
-                            IconButton(onClick = onEdit) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Edit agent"
-                                )
-                            }
-                            IconButton(onClick = onDelete) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Delete agent",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
+                    }
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit agent")
+                    }
+                    IconButton(onClick = onDelete, enabled = !isDefault) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete agent",
+                            tint = if (isDefault) {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                        )
                     }
                 }
             }

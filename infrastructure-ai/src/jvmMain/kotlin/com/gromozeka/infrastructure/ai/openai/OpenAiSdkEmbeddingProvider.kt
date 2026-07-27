@@ -6,7 +6,7 @@ import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiEmbeddingVector
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.infrastructure.db.persistence.EmbeddingCacheService
 import com.openai.models.embeddings.EmbeddingCreateParams
 import klog.KLoggers
@@ -17,17 +17,17 @@ import org.springframework.stereotype.Service
 @Service
 class OpenAiSdkEmbeddingProvider(
     private val clientFactory: OpenAiSdkClientFactory,
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val embeddingCacheService: EmbeddingCacheService,
 ) : AiEmbeddingProvider {
     private val log = KLoggers.logger(this)
 
     override suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse {
-        val runtime = settingsProvider.resolveAiRuntime(request.selection)
+        val runtime = aiConfigurationProvider.resolveAiRuntime(request.selection)
         require(runtime.connection.kind == AiConnection.Kind.OPENAI_API || runtime.connection.kind == AiConnection.Kind.OPENAI_COMPATIBLE) {
             "OpenAI embedding provider supports only OpenAI-compatible connections, got ${runtime.connection.kind}"
         }
-        val spec = settingsProvider.userProfile.aiSettings.modelSpecFor(runtime.modelConfiguration)
+        val spec = aiConfigurationProvider.catalog.modelSpecFor(runtime.modelConfiguration)
             ?: error("AI embedding model spec not found: ${runtime.modelConfiguration.providerModelId}")
         require(AiModelCapability.EMBEDDINGS in spec.capabilities) {
             "AI model ${runtime.modelConfiguration.providerModelId} does not support embeddings"

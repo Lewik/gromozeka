@@ -28,9 +28,9 @@ import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.ui.GromozekaTheme
 import kotlinx.browser.document
 import kotlinx.browser.window
+import org.w3c.dom.events.Event
 
 private data class WebLayoutHints(
-    val uiScaleMultiplier: Float,
     val showRuntimePanelInitially: Boolean,
     val forceCompactLayout: Boolean,
     val clientPlatform: ClientPlatform,
@@ -58,6 +58,7 @@ private fun GromozekaWebApp() {
                 remoteUrl = resolveRemoteUrl(),
                 scope = scope,
                 clientHomeDirectory = "browser",
+                clientPlatform = layoutHints.clientPlatform,
                 uiStateStore = BrowserUIStateStore(),
                 remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
                 audioRecorder = BrowserClientAudioRecorder(),
@@ -76,11 +77,30 @@ private fun GromozekaWebApp() {
         }
     }
 
+    DisposableEffect(remoteApp) {
+        val app = remoteApp ?: return@DisposableEffect onDispose {}
+        val reportFocus = {
+            if (document.hasFocus()) {
+                app.components.clientPresentationService.reportWindowFocused()
+            }
+        }
+        val focusListener: (Event) -> Unit = { reportFocus() }
+        val visibilityListener: (Event) -> Unit = { reportFocus() }
+
+        window.addEventListener("focus", focusListener)
+        document.addEventListener("visibilitychange", visibilityListener)
+        reportFocus()
+
+        onDispose {
+            window.removeEventListener("focus", focusListener)
+            document.removeEventListener("visibilitychange", visibilityListener)
+        }
+    }
+
     when {
         remoteApp != null -> GromozekaApp(
             appComponents = remoteApp!!.components,
             skipLoadingScreen = true,
-            uiScaleMultiplier = layoutHints.uiScaleMultiplier,
             showRuntimePanelInitially = layoutHints.showRuntimePanelInitially,
             forceCompactLayout = layoutHints.forceCompactLayout,
             clientPlatform = layoutHints.clientPlatform,
@@ -112,19 +132,16 @@ private fun resolveWebLayoutHints(): WebLayoutHints {
 
     return when {
         compactScreen -> WebLayoutHints(
-            uiScaleMultiplier = if (clientPlatform == ClientPlatform.WEB_TOUCH) 1.0f else 1.25f,
             showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         hasTouch && tabletScreen -> WebLayoutHints(
-            uiScaleMultiplier = 1.0f,
             showRuntimePanelInitially = false,
             forceCompactLayout = true,
             clientPlatform = clientPlatform,
         )
         else -> WebLayoutHints(
-            uiScaleMultiplier = 1.0f,
             showRuntimePanelInitially = true,
             forceCompactLayout = false,
             clientPlatform = clientPlatform,

@@ -1,13 +1,13 @@
 package com.gromozeka.server.testsupport.config
 
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
-import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
 import com.gromozeka.application.service.InMemoryConversationRuntimeWorkQueue
 import com.gromozeka.infrastructure.ai.openai.OpenAiSdkEmbeddingProvider
@@ -32,11 +32,11 @@ class E2eSupportConfig {
     @Primary
     fun aiRuntimeProvider(
         backends: List<AiRuntimeBackend>,
-        settingsProvider: SettingsProvider,
+        aiConfigurationProvider: AiConfigurationProvider,
     ): AiRuntimeProvider {
         return CassetteAiRuntimeProvider(
             backends = backends,
-            settingsProvider = settingsProvider,
+            aiConfigurationProvider = aiConfigurationProvider,
             settings = AiRuntimeCassetteSettings.fromSystemProperties(),
         )
     }
@@ -45,11 +45,11 @@ class E2eSupportConfig {
     @Primary
     fun aiEmbeddingProvider(
         delegate: OpenAiSdkEmbeddingProvider,
-        settingsProvider: SettingsProvider,
+        aiConfigurationProvider: AiConfigurationProvider,
     ): AiEmbeddingProvider {
         return CassetteAiEmbeddingProvider(
             delegate = delegate,
-            settingsProvider = settingsProvider,
+            aiConfigurationProvider = aiConfigurationProvider,
             settings = AiRuntimeCassetteSettings.fromSystemProperties(),
         )
     }

@@ -10,7 +10,8 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.DefaultAgentProvider
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
@@ -30,7 +31,8 @@ class CreateAgentTool(
     private val tabManager: TabManager,
     private val agentService: AgentDomainService,
     private val promptService: com.gromozeka.domain.service.PromptDomainService,
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
+    private val defaultAgentProvider: DefaultAgentProvider,
 ) : GromozekaMcpTool {
 
     @Serializable
@@ -100,7 +102,7 @@ class CreateAgentTool(
         val projectId = Project.Id(input.project_id)
 
         val agent = if (input.agent_prompt != null) {
-            val inlinePrompt = promptService.createProjectPrompt(
+            val inlinePrompt = promptService.createPrompt(
                 projectId = projectId,
                 name = "${input.agent_name} prompt",
                 content = input.agent_prompt
@@ -111,13 +113,11 @@ class CreateAgentTool(
                 prompts = listOf(inlinePrompt.id),
                 runtimeSelection = input.model_configuration_id?.let {
                     AiRuntimeSelection(AiModelConfiguration.Id(it))
-                } ?: settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.DEFAULT_CHAT),
+                } ?: aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.DEFAULT_CHAT),
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
             )
         } else {
-            agentService.findAll()
-                .firstOrNull { it.type is AgentDefinition.Type.Builtin && it.name == "Gromozeka" }
-                ?: error("Default agent 'Gromozeka' not found")
+            defaultAgentProvider.getDefault()
         }
 
         val baseMessageText = input.initial_message ?: "Ready to work on this project"

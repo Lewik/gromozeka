@@ -40,8 +40,8 @@ fun PromptListItem(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Type icon
-                        val typeIcon = when (val type = prompt.type) {
-                            is Prompt.Type.Builtin -> Icons.Default.Lock
+                        val typeIcon = when (prompt.type) {
+                            is Prompt.Type.Global -> Icons.Default.Public
                             is Prompt.Type.Project -> Icons.Default.Folder
                         }
                         
@@ -62,8 +62,8 @@ fun PromptListItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     
                     Text(
-                        text = when (val type = prompt.type) {
-                            is Prompt.Type.Builtin -> "Built-in prompt"
+                        text = when (prompt.type) {
+                            is Prompt.Type.Global -> "Global prompt"
                             is Prompt.Type.Project -> "Project prompt"
                         },
                         style = MaterialTheme.typography.bodySmall,

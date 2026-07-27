@@ -59,7 +59,7 @@ Gromozeka accepts this residual risk explicitly instead of presenting command fi
 - Supports remote UI clients over WebSocket: JVM desktop locally, Wasm web/PWA in a browser.
 - Calls LLM runtimes through domain-level `AiRuntime` abstractions.
 - Exposes internal tools for filesystem, shell, web search, code navigation, planning, and inter-agent workflows.
-- Supports MCP configuration for external tools and servers.
+- Stores external MCP definitions and accepted tool snapshots in the Server database, while the assigned Worker owns the live connection and execution.
 - Provides voice-oriented UI pieces such as push-to-talk and TTS services.
 - Writes and recalls structured project memory automatically during chat.
 

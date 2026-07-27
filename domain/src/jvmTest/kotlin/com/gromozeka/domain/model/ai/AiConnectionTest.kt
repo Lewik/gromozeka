@@ -1,6 +1,9 @@
 package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.AiProvider
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -56,5 +59,40 @@ class AiConnectionTest {
                 executablePath = "",
             )
         }
+    }
+
+    @Test
+    fun claudeCodeConnectionRequiresPositiveProcessCacheSettings() {
+        assertFailsWith<IllegalArgumentException> {
+            AiConnection.ClaudeCode(
+                id = AiConnection.Id("claude-code"),
+                displayName = "Claude Code",
+                maxCachedProcesses = 0,
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            AiConnection.ClaudeCode(
+                id = AiConnection.Id("claude-code"),
+                displayName = "Claude Code",
+                processIdleTtlMinutes = 0,
+            )
+        }
+    }
+
+    @Test
+    fun claudeCodeProcessCacheSettingsSurviveSerialization() {
+        val connection: AiConnection = AiConnection.ClaudeCode(
+            id = AiConnection.Id("claude-code"),
+            displayName = "Claude Code",
+            maxCachedProcesses = 17,
+            processIdleTtlMinutes = 95,
+        )
+
+        val restored = Json.decodeFromString<AiConnection>(
+            Json.encodeToString(connection),
+        ) as AiConnection.ClaudeCode
+
+        assertEquals(17, restored.maxCachedProcesses)
+        assertEquals(95, restored.processIdleTtlMinutes)
     }
 }

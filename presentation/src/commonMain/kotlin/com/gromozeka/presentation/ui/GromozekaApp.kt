@@ -1,6 +1,8 @@
 package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,9 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -57,7 +62,6 @@ import kotlinx.datetime.Clock
 fun GromozekaApp(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
-    uiScaleMultiplier: Float = 1f,
     showRuntimePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
@@ -69,7 +73,6 @@ fun GromozekaApp(
             GromozekaAppContent(
                 appComponents = appComponents,
                 skipLoadingScreen = skipLoadingScreen,
-                uiScaleMultiplier = uiScaleMultiplier,
                 showRuntimePanelInitially = showRuntimePanelInitially,
                 forceCompactLayout = forceCompactLayout,
                 clientPlatform = clientPlatform,
@@ -82,7 +85,6 @@ fun GromozekaApp(
 fun GromozekaAppContent(
     appComponents: AppComponents,
     skipLoadingScreen: Boolean = false,
-    uiScaleMultiplier: Float = 1f,
     showRuntimePanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
@@ -113,9 +115,19 @@ fun GromozekaAppContent(
     val keyboardPttGestureDetector = remember {
         UnifiedGestureDetector(appComponents.pttEventRouter, coroutineScope)
     }
+    val isWindowFocused = LocalWindowInfo.current.isWindowFocused
+    val reportsComposeWindowFocus =
+        clientPlatform != ClientPlatform.WEB_DESKTOP &&
+            clientPlatform != ClientPlatform.WEB_TOUCH
 
     LaunchedEffect(Unit) {
         initialized = true
+    }
+
+    LaunchedEffect(isWindowFocused, reportsComposeWindowFocus) {
+        if (reportsComposeWindowFocus && isWindowFocused) {
+            appComponents.clientPresentationService.reportWindowFocused()
+        }
     }
 
     DisposableEffect(Unit) {
@@ -178,14 +190,12 @@ fun GromozekaAppContent(
     val onRemoteClientSettingsChange = appComponents.remoteClientSettingsService::saveSettings
     val currentUiSettings = currentSettings.userDeviceSettings.uiSettings
     val platformDensity = LocalDensity.current
-    val effectiveUiScale = (currentUiSettings.uiScale * uiScaleMultiplier).coerceIn(0.5f, 3.0f)
-    val baseDensity = if (clientPlatform.usePlatformDensity) platformDensity.density else 1.0f
-    val baseFontScale = if (clientPlatform.usePlatformDensity) platformDensity.fontScale else 1.0f
+    val effectiveUiScale = currentUiSettings.uiScale.coerceIn(0.5f, 3.0f)
 
     CompositionLocalProvider(
         LocalDensity provides Density(
-            density = baseDensity * effectiveUiScale,
-            fontScale = baseFontScale * currentUiSettings.fontScale,
+            density = platformDensity.density * effectiveUiScale,
+            fontScale = platformDensity.fontScale * currentUiSettings.fontScale,
         ),
     ) {
         Box(
@@ -193,9 +203,21 @@ fun GromozekaAppContent(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .focusTarget()
+                .pointerInput(appComponents.clientPresentationService) {
+                    awaitEachGesture {
+                        awaitFirstDown(
+                            requireUnconsumed = false,
+                            pass = PointerEventPass.Initial,
+                        )
+                        appComponents.clientPresentationService.reportUserInteraction()
+                    }
+                }
                 .advancedEscape(appComponents.pttEventRouter)
                 .testTag(UiTestTag.AppRoot.value)
                 .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown) {
+                        appComponents.clientPresentationService.reportUserInteraction()
+                    }
                     when {
                         event.key == Key.T && event.isMetaPressed && event.type == KeyEventType.KeyDown -> {
                             createNewSessionInCurrentProject()
@@ -236,14 +258,10 @@ fun GromozekaAppContent(
                 else -> {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val scaledDensity = LocalDensity.current
-                        val baseMaxWidth = if (clientPlatform.usePlatformDensity) {
-                            with(platformDensity) {
-                                with(scaledDensity) { maxWidth.toPx() }.toDp()
-                            }
-                        } else {
-                            maxWidth
+                        val unscaledMaxWidth = with(platformDensity) {
+                            with(scaledDensity) { maxWidth.toPx() }.toDp()
                         }
-                        val isCompactLayout = forceCompactLayout || baseMaxWidth < 700.dp
+                        val isCompactLayout = forceCompactLayout || unscaledMaxWidth < 700.dp
                         val contentPadding = if (isCompactLayout) 8.dp else 16.dp
                         val setSettingsPanel: (Boolean) -> Unit = { visible ->
                             showSettingsPanel = visible
@@ -342,6 +360,7 @@ fun GromozekaAppContent(
                                                 if (currentTabIndex == -3) {
                                                     LiveInterpreterScreen(
                                                         settings = currentSettings,
+                                                        aiConfigurationProvider = appComponents.aiConfigurationService,
                                                         liveInterpreterService = appComponents.liveInterpreterService,
                                                         liveAudioStreamer = appComponents.liveAudioStreamer,
                                                         clientSideSpeechToTextService = appComponents.clientSideSpeechToTextService,
@@ -469,10 +488,12 @@ fun GromozekaAppContent(
                                                             1 -> {
                                                                 AgentConstructorScreen(
                                                                     projectId = tabs.firstOrNull()?.projectId,
+                                                                    projectService = appComponents.projectService,
                                                                     agentService = appComponents.agentService,
                                                                     agentSkillService = appComponents.agentSkillService,
                                                                     promptService = appComponents.promptService,
-                                                                    settingsService = appComponents.settingsService,
+                                                                    aiConfigurationService = appComponents.aiConfigurationService,
+                                                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
                                                                     coroutineScope = coroutineScope,
                                                                 )
                                                             }
@@ -490,12 +511,14 @@ fun GromozekaAppContent(
                                                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                                                     logEncryptor = appComponents.logEncryptor,
                                                                     settingsService = appComponents.settingsService,
+                                                                    aiConfigurationService = appComponents.aiConfigurationService,
+                                                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
                                                                     ollamaModelService = appComponents.ollamaModelService,
                                                                     coroutineScope = coroutineScope,
                                                                     onOpenTab = createNewSessionInCurrentProject,
                                                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                                                     fullScreen = true,
-                                                                    contentMode = SettingsPanelContentMode.AiRuntime,
+                                                                    contentMode = SettingsPanelContentMode.Full,
                                                                     showCloseButton = false
                                                                 )
                                                             }
@@ -556,7 +579,7 @@ fun GromozekaAppContent(
                                                 ConversationRuntimePanel(
                                                     isVisible = showRuntimePanel,
                                                     currentAgent = tabUiState.agent,
-                                                    settings = currentSettings,
+                                                    aiConfigurationProvider = appComponents.aiConfigurationService,
                                                     tokenStats = tokenStats,
                                                     isWaitingForResponse = isWaitingForResponse,
                                                     executionPauseRequested = executionPauseRequested,
@@ -609,6 +632,8 @@ fun GromozekaAppContent(
                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                     logEncryptor = appComponents.logEncryptor,
                                     settingsService = appComponents.settingsService,
+                                    aiConfigurationService = appComponents.aiConfigurationService,
+                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
                                     onOpenTab = createNewSessionInCurrentProject,
@@ -650,7 +675,7 @@ fun GromozekaAppContent(
                                     ConversationRuntimePanel(
                                         isVisible = showRuntimePanel,
                                         currentAgent = tabUiState.agent,
-                                        settings = currentSettings,
+                                        aiConfigurationProvider = appComponents.aiConfigurationService,
                                         tokenStats = tokenStats,
                                         isWaitingForResponse = isWaitingForResponse,
                                         executionPauseRequested = executionPauseRequested,
@@ -710,6 +735,8 @@ fun GromozekaAppContent(
                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                     logEncryptor = appComponents.logEncryptor,
                                     settingsService = appComponents.settingsService,
+                                    aiConfigurationService = appComponents.aiConfigurationService,
+                                    runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
                                     onOpenTab = createNewSessionInCurrentProject,

@@ -19,7 +19,7 @@ import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import java.security.MessageDigest
 import klog.KLoggers
@@ -36,7 +36,7 @@ import org.springframework.stereotype.Service
 @Service
 class MemoryMessageRoutingApplicationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
-    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
     private val store: MemoryStore,
     private val threadMessageRepository: ThreadMessageRepository,
     private val writeTraceSinks: List<MemoryWriteTraceSink>,
@@ -420,7 +420,9 @@ class MemoryMessageRoutingApplicationService(
         val focusedThreadContext = threadContext?.let {
             MemoryThreadContextCompactor(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CONTEXT_COMPACTOR),
-                preCompactThresholdTokens = MemoryContextWindowPolicy.writePreCompactThresholdTokens(settingsProvider.userProfile.aiSettings),
+                preCompactThresholdTokens = MemoryContextWindowPolicy.writePreCompactThresholdTokens(
+                    aiConfigurationProvider.catalog
+                ),
             ).compactIfNeeded(
                 context = it,
                 targetSourceLabel = source.id.value,
@@ -558,7 +560,7 @@ class MemoryMessageRoutingApplicationService(
         fun runtimeFor(purpose: AiRuntimeAssignment.Purpose): AiRuntime =
             runtimes.getOrPut(purpose) {
                 aiRuntimeProvider.getRuntime(
-                    selection = settingsProvider.runtimeSelectionFor(purpose),
+                    selection = aiConfigurationProvider.runtimeSelectionFor(purpose),
                     workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
             }

@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import com.gromozeka.client.RemoteLiveInterpreterSession
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.presentation.services.ClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ClientLiveAudioStreamingSession
@@ -62,6 +64,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LiveInterpreterScreen(
     settings: Settings,
+    aiConfigurationProvider: AiConfigurationProvider,
     liveInterpreterService: RemoteLiveInterpreterService,
     liveAudioStreamer: ClientLiveAudioStreamer,
     clientSideSpeechToTextService: ClientSideSpeechToTextService = NoOpClientSideSpeechToTextService,
@@ -91,18 +94,22 @@ fun LiveInterpreterScreen(
     var selectedSourceLanguageCode by remember { mutableStateOf(sourceLanguageOptions.first().code) }
     val selectedSourceLanguage = sourceLanguageOptions.firstOrNull { it.code == selectedSourceLanguageCode }
         ?: sourceLanguageOptions.first()
-    val aiSettings = settings.userProfile.aiSettings
-    val translationModelOptions = remember(aiSettings) {
-        aiSettings.modelConfigurations.filter {
-            aiSettings.supportsPurpose(it, AiRuntimeAssignment.Purpose.LIVE_TRANSLATION)
+    val aiSnapshot by aiConfigurationProvider.snapshotFlow.collectAsState()
+    val translationModelOptions = remember(aiSnapshot) {
+        aiSnapshot?.catalog?.modelConfigurations.orEmpty().filter {
+            aiSnapshot?.supportsPurpose(it, AiRuntimeAssignment.Purpose.LIVE_TRANSLATION) == true
         }
     }
     var selectedTranslationModelId by remember {
         mutableStateOf(
-            aiSettings.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION)?.modelConfigurationId
+            aiConfigurationProvider.catalog.runtimeSelectionFor(
+                AiRuntimeAssignment.Purpose.LIVE_TRANSLATION
+            )?.modelConfigurationId
                 ?: translationModelOptions.firstOrNull()?.id
-                ?: aiSettings.runtimeSelectionFor(AiRuntimeAssignment.Purpose.DEFAULT_CHAT)?.modelConfigurationId
-                ?: aiSettings.modelConfigurations.first().id
+                ?: aiConfigurationProvider.catalog.runtimeSelectionFor(
+                    AiRuntimeAssignment.Purpose.DEFAULT_CHAT
+                )?.modelConfigurationId
+                ?: aiConfigurationProvider.catalog.modelConfigurations.first().id
         )
     }
     val selectedTranslationModel = translationModelOptions.firstOrNull { it.id == selectedTranslationModelId }
