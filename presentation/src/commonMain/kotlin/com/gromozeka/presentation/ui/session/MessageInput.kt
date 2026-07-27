@@ -46,7 +46,7 @@ fun MessageInput(
     onUserInputChange: (String) -> Unit,
     isWaitingForResponse: Boolean,
     pendingMessagesCount: Int,
-    onSendMessage: suspend (String) -> Unit,
+    onSendMessage: suspend () -> Unit,
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState,
@@ -73,6 +73,13 @@ fun MessageInput(
         OutlinedTextFieldDefaults.MinHeight,
         textFieldLineHeight + textFieldPadding.calculateTopPadding() + textFieldPadding.calculateBottomPadding(),
     )
+
+    fun submitInput() {
+        if (userInput.isBlank()) return
+        coroutineScope.launch {
+            onSendMessage()
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -120,11 +127,9 @@ fun MessageInput(
                         .onPreviewKeyEvent { event ->
                             when {
                                 event.key == Key.Enter &&
-                                    event.isShiftPressed &&
-                                    event.type == KeyEventType.KeyDown &&
-                                    userInput.isNotBlank() -> {
-                                    coroutineScope.launch {
-                                        onSendMessage(userInput)
+                                    event.isShiftPressed -> {
+                                    if (event.type == KeyEventType.KeyDown) {
+                                        submitInput()
                                     }
                                     true
                                 }
@@ -182,11 +187,7 @@ fun MessageInput(
                         },
                     ) {
                         CompactButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    onSendMessage(userInput)
-                                }
-                            },
+                            onClick = ::submitInput,
                             modifier = Modifier
                                 .size(actionButtonSize)
                                 .testTag(UiTestTag.SendButton.value),

@@ -65,6 +65,7 @@ class TabViewModel(
     private var currentRequestJob: kotlinx.coroutines.Job? = null
     private var lastRuntimeMessage: Conversation.Message? = null
     private var lastRuntimeSnapshotRevision = -1L
+    private var claimedUserInput: String? = null
 
     companion object {
         private const val MID_TURN_STEER_INSTRUCTION_ID = "mid_turn_steer"
@@ -363,6 +364,13 @@ class TabViewModel(
     }
 
     fun updateUserInput(input: String) {
+        val claimedInput = claimedUserInput
+        if (claimedInput != null) {
+            if (input.isBlank() || input.trimEnd() == claimedInput.trimEnd()) {
+                return
+            }
+            claimedUserInput = null
+        }
         _uiState.update { currentState ->
             currentState.copy(userInput = input)
         }
@@ -416,7 +424,24 @@ class TabViewModel(
         }
 
         val queuedMessage = createPendingUserMessage(message, additionalInstructions)
+        sendPendingUserMessage(queuedMessage)
+    }
 
+    suspend fun submitUserInputToSession() {
+        val pendingMessage = claimUserInput() ?: return
+        try {
+            sendPendingUserMessage(pendingMessage, restoreComposerOnQueueRejection = true)
+        } finally {
+            if (claimedUserInput == pendingMessage.text) {
+                claimedUserInput = null
+            }
+        }
+    }
+
+    private suspend fun sendPendingUserMessage(
+        queuedMessage: PendingUserMessage,
+        restoreComposerOnQueueRejection: Boolean = false,
+    ) {
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
             if (submitPendingMessage(queuedMessage)) {
                 showPendingMessage(queuedMessage)
@@ -430,12 +455,53 @@ class TabViewModel(
                     "Queued user message for conversation $conversationId because previous request is still running"
                 }
             } else {
+                if (restoreComposerOnQueueRejection) {
+                    restoreComposerMessage(queuedMessage)
+                }
                 log.warn { "Runtime queue rejected end-of-turn message for conversation $conversationId" }
             }
             return
         }
 
         sendPendingMessageToSession(queuedMessage)
+    }
+
+    private fun claimUserInput(): PendingUserMessage? {
+        while (true) {
+            val currentState = _uiState.value
+            if (currentState.userInput.isBlank()) return null
+
+            val pendingMessage = createPendingUserMessage(
+                message = currentState.userInput,
+                additionalInstructions = emptyList(),
+                currentState = currentState,
+            )
+            val clearedState = currentState.copy(
+                userInput = "",
+                workspaceContextReferences = emptyList(),
+            )
+            if (_uiState.compareAndSet(currentState, clearedState)) {
+                claimedUserInput = currentState.userInput
+                return pendingMessage
+            }
+        }
+    }
+
+    private fun restoreComposerMessage(pendingMessage: PendingUserMessage) {
+        claimedUserInput = null
+        _uiState.update { currentState ->
+            val restoredInput = when {
+                currentState.userInput.isBlank() -> pendingMessage.text
+                currentState.userInput == pendingMessage.text -> currentState.userInput
+                else -> "${pendingMessage.text}\n\n${currentState.userInput}"
+            }
+            currentState.copy(
+                userInput = restoredInput,
+                workspaceContextReferences =
+                    (pendingMessage.workspaceContextReferences + currentState.workspaceContextReferences)
+                        .distinctBy { it.kind to it.relativePath },
+            )
+        }
     }
 
     fun cancelPendingMessage(messageId: String) {
@@ -510,9 +576,8 @@ class TabViewModel(
     private fun createPendingUserMessage(
         message: String,
         additionalInstructions: List<Conversation.Message.Instruction>,
+        currentState: UIState.Tab = _uiState.value,
     ): PendingUserMessage {
-        val currentState = _uiState.value
-
         val activeInstructions = messageInstructionGroups.mapNotNull { group ->
             val activeControlIndex = group.controls.indexOfFirst { control ->
                 control.data.id in currentState.activeMessageInstructionIds
@@ -587,13 +652,8 @@ class TabViewModel(
                         messages.filterNot { it.id == userMessage.id }
                     }
                     _isWaitingForResponse.value = false
-                    _uiState.update {
-                        it.copy(
-                            userInput = pendingMessage.text,
-                            workspaceContextReferences = pendingMessage.workspaceContextReferences,
-                            isWaitingForResponse = false,
-                        )
-                    }
+                    restoreComposerMessage(pendingMessage)
+                    _uiState.update { it.copy(isWaitingForResponse = false) }
                     log.warn { "Runtime rejected submitted message for conversation $conversationId" }
                 }
             } catch (e: Exception) {
@@ -601,13 +661,8 @@ class TabViewModel(
                     messages.filterNot { it.id == userMessage.id }
                 }
                 _isWaitingForResponse.value = false
-                _uiState.update {
-                    it.copy(
-                        userInput = pendingMessage.text,
-                        workspaceContextReferences = pendingMessage.workspaceContextReferences,
-                        isWaitingForResponse = false,
-                    )
-                }
+                restoreComposerMessage(pendingMessage)
+                _uiState.update { it.copy(isWaitingForResponse = false) }
                 log.error(e) { "Failed to submit message" }
             } finally {
                 currentRequestJob = null

@@ -100,13 +100,6 @@ fun SessionScreen(
     var showMemoryMenu by remember { mutableStateOf(false) }
     var showWorkspaceContextPicker by remember { mutableStateOf(false) }
 
-    // Message sending function using ViewModel
-    val onSendMessage: (String) -> Unit = { message ->
-        coroutineScope.launch {
-            viewModel.sendMessageToSession(message)
-        }
-    }
-
     // LazyColumn sticky to bottom logic
     val isAtBottom by remember {
         derivedStateOf {
@@ -571,14 +564,13 @@ fun SessionScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DisableSelection {
+                    // The ViewModel claims the composer draft atomically before asynchronous submission.
                     MessageInput(
                         userInput = userInput,
                         onUserInputChange = { viewModel.updateUserInput(it) },
                         isWaitingForResponse = isWaitingForResponse,
                         pendingMessagesCount = pendingMessagesCount,
-                        onSendMessage = { message ->
-                            onSendMessage(message)
-                        },
+                        onSendMessage = viewModel::submitUserInputToSession,
                         coroutineScope = coroutineScope,
                         pttEventHandler = pttEventHandler,
                         pttState = pttState,
@@ -598,9 +590,7 @@ fun SessionScreen(
                     if (isDev) {
                         Spacer(modifier = Modifier.height(8.dp))
                         DevButtons(
-                            onSendMessage = { message ->
-                                onSendMessage(message)
-                            },
+                            onSendMessage = { message -> viewModel.sendMessageToSession(message) },
                             coroutineScope = coroutineScope,
                         )
                     }
