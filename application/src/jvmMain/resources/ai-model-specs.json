@@ -12,7 +12,7 @@
     },
     "reasoning": {
       "modes": ["DISABLED", "ADAPTIVE"],
-      "efforts": ["LOW", "MEDIUM", "HIGH", "MAX"],
+      "efforts": ["LOW", "MEDIUM", "HIGH", "XHIGH", "MAX"],
       "displays": ["SUMMARIZED", "OMITTED"]
     }
   },

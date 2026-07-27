@@ -33,7 +33,13 @@ class RuntimeCatalogTemplateApplicationServiceTest {
         assertEquals(800_000, spec.autoCompactionThresholdTokens)
         assertEquals(setOf(AiReasoningMode.DISABLED, AiReasoningMode.ADAPTIVE), spec.reasoning?.modes)
         assertEquals(
-            setOf(AiReasoningEffort.LOW, AiReasoningEffort.MEDIUM, AiReasoningEffort.HIGH, AiReasoningEffort.MAX),
+            setOf(
+                AiReasoningEffort.LOW,
+                AiReasoningEffort.MEDIUM,
+                AiReasoningEffort.HIGH,
+                AiReasoningEffort.XHIGH,
+                AiReasoningEffort.MAX,
+            ),
             spec.reasoning?.efforts,
         )
 

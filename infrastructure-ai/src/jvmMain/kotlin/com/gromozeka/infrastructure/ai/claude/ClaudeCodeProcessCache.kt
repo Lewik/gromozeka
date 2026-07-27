@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.claude
 
+import com.gromozeka.domain.model.ai.AiReasoningMode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
@@ -449,6 +450,7 @@ private data class ClaudeCodeLaunchConfiguration(
     val systemPromptFingerprint: String,
     val jsonSchemaFingerprint: String?,
     val effort: String?,
+    val reasoningMode: String?,
     val nativeTools: Set<String>,
 ) {
     companion object {
@@ -460,6 +462,7 @@ private data class ClaudeCodeLaunchConfiguration(
                 systemPromptFingerprint = sha256(command.systemPrompt),
                 jsonSchemaFingerprint = command.jsonSchema?.toString()?.let(::sha256),
                 effort = command.effort?.name,
+                reasoningMode = command.reasoningMode?.name,
                 nativeTools = command.nativeTools.mapTo(sortedSetOf()) { it.cliName },
             )
     }
@@ -474,7 +477,10 @@ private class DefaultClaudeCodeCliProcessFactory : ClaudeCodeCliProcessFactory {
                 val args = ClaudeCodeProcessArguments.build(command, systemPromptFile.toString())
                 val process = try {
                     ProcessBuilder(args)
-                        .apply { command.workspaceDirectory?.let(::directory) }
+                        .apply {
+                            command.workspaceDirectory?.let(::directory)
+                            environment().applyClaudeCodeReasoningMode(command.reasoningMode)
+                        }
                         .start()
                 } catch (exception: IOException) {
                     error(
@@ -488,6 +494,24 @@ private class DefaultClaudeCodeCliProcessFactory : ClaudeCodeCliProcessFactory {
                 throw exception
             }
         }
+}
+
+internal fun MutableMap<String, String>.applyClaudeCodeReasoningMode(mode: AiReasoningMode?) {
+    when (mode) {
+        null -> Unit
+        AiReasoningMode.ADAPTIVE -> {
+            remove("CLAUDE_CODE_DISABLE_THINKING")
+            remove("CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING")
+            remove("MAX_THINKING_TOKENS")
+        }
+        AiReasoningMode.DISABLED -> {
+            put("CLAUDE_CODE_DISABLE_THINKING", "1")
+            remove("CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING")
+            remove("MAX_THINKING_TOKENS")
+        }
+        AiReasoningMode.TOKEN_BUDGET ->
+            error("Claude Code does not support fixed thinking token budgets")
+    }
 }
 
 private class StreamingClaudeCodeCliProcess(
@@ -581,6 +605,7 @@ private class StreamingClaudeCodeCliProcess(
     }
 
     private fun readResult(): ClaudeCodeCliResponse {
+        val parser = ClaudeCodeResultStreamParser()
         while (true) {
             val line = stdout.readLine()
                 ?: error(
@@ -593,9 +618,7 @@ private class StreamingClaudeCodeCliProcess(
                 .getOrElse {
                     error("Claude Code CLI returned invalid stream JSON: $line")
                 }
-            if (root["type"]?.jsonPrimitive?.contentOrNull == "result") {
-                return parseCliResponse(root)
-            }
+            parser.accept(root)?.let { return it }
         }
     }
 
@@ -617,23 +640,6 @@ private class StreamingClaudeCodeCliProcess(
                 }
             parser.accept(root)?.let { return it }
         }
-    }
-
-    private fun parseCliResponse(root: JsonObject): ClaudeCodeCliResponse {
-        val isError = root["is_error"]?.jsonPrimitive?.booleanOrNull == true
-        if (isError) {
-            val message = root["result"]?.jsonPrimitive?.contentOrNull ?: root.toString()
-            error("Claude Code CLI returned an error: $message")
-        }
-
-        return ClaudeCodeCliResponse(
-            result = root["result"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-            structuredOutput = root["structured_output"],
-            sessionId = root["session_id"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank),
-            usage = root["usage"]?.jsonObject,
-            finishReason = root["subtype"]?.jsonPrimitive?.contentOrNull,
-            raw = root,
-        )
     }
 
     private fun appendStderr(line: String) {
@@ -684,6 +690,74 @@ private class StreamingClaudeCodeCliProcess(
         const val GRACEFUL_CLOSE_SECONDS = 1L
         const val TERMINATE_SECONDS = 1L
         const val STDERR_TAIL_LIMIT = 64 * 1024
+    }
+}
+
+internal class ClaudeCodeResultStreamParser {
+    private var latestMessageId: String? = null
+    private val latestThinking = linkedMapOf<String, ClaudeCodeThinkingBlock>()
+
+    fun accept(root: JsonObject): ClaudeCodeCliResponse? =
+        when (root["type"]?.jsonPrimitive?.contentOrNull) {
+            "assistant" -> {
+                acceptAssistant(root)
+                null
+            }
+            "result" -> parseResult(root)
+            else -> null
+        }
+
+    private fun acceptAssistant(root: JsonObject) {
+        val parentToolUseId = root["parent_tool_use_id"]
+        if (parentToolUseId != null && parentToolUseId !is JsonNull) return
+
+        val message = root["message"] as? JsonObject ?: return
+        val content = message["content"] as? JsonArray ?: return
+        val messageId = message["id"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank)
+        if (messageId != null && messageId != latestMessageId) {
+            latestMessageId = messageId
+            latestThinking.clear()
+        }
+        val thinking = content.mapNotNull(::parseThinking)
+        if (messageId == null && thinking.isNotEmpty()) {
+            latestThinking.clear()
+        }
+        thinking.forEach { block ->
+            latestThinking[block.signature ?: "summary:${block.thinking}"] = block
+        }
+    }
+
+    private fun parseThinking(element: JsonElement): ClaudeCodeThinkingBlock? {
+        val block = element as? JsonObject ?: return null
+        return when (block["type"]?.jsonPrimitive?.contentOrNull) {
+            "thinking" -> ClaudeCodeThinkingBlock(
+                thinking = block["thinking"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                signature = block["signature"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank),
+            )
+            "redacted_thinking" -> ClaudeCodeThinkingBlock(
+                thinking = "",
+                signature = block["data"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank),
+            )
+            else -> null
+        }
+    }
+
+    private fun parseResult(root: JsonObject): ClaudeCodeCliResponse {
+        val isError = root["is_error"]?.jsonPrimitive?.booleanOrNull == true
+        if (isError) {
+            val message = root["result"]?.jsonPrimitive?.contentOrNull ?: root.toString()
+            error("Claude Code CLI returned an error: $message")
+        }
+
+        return ClaudeCodeCliResponse(
+            result = root["result"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            structuredOutput = root["structured_output"],
+            sessionId = root["session_id"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank),
+            usage = root["usage"] as? JsonObject,
+            finishReason = root["subtype"]?.jsonPrimitive?.contentOrNull,
+            raw = root,
+            thinking = latestThinking.values.toList(),
+        )
     }
 }
 

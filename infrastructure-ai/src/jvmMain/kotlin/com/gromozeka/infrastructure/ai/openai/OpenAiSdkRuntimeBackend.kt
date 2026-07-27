@@ -430,6 +430,7 @@ private class OpenAiSdkMessageMapper(
             AiReasoningEffort.LOW -> ReasoningEffort.LOW
             AiReasoningEffort.MEDIUM -> ReasoningEffort.MEDIUM
             AiReasoningEffort.HIGH -> ReasoningEffort.HIGH
+            AiReasoningEffort.XHIGH,
             AiReasoningEffort.MAX -> ReasoningEffort.XHIGH
         }
 

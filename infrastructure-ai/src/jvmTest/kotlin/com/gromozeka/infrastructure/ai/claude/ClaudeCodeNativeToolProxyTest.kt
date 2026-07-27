@@ -104,6 +104,7 @@ class ClaudeCodeNativeToolProxyTest {
             userPrompt = "Search for Kotlin coroutines.",
             jsonSchema = null,
             effort = null,
+            reasoningMode = null,
             resumeSessionId = null,
             noSessionPersistence = true,
             nativeTools = setOf(tool),

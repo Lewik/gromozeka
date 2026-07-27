@@ -258,8 +258,11 @@ internal class AnthropicSdkMessageMapper(
         require(reasoning.mode != AiReasoningMode.TOKEN_BUDGET) {
             "Claude Opus 5 does not support manual thinking token budgets; use adaptive thinking and effort"
         }
-        require(reasoning.mode != AiReasoningMode.DISABLED || reasoning.effort != AiReasoningEffort.MAX) {
-            "Claude Opus 5 cannot combine disabled thinking with maximum effort"
+        require(
+            reasoning.mode != AiReasoningMode.DISABLED ||
+                reasoning.effort !in setOf(AiReasoningEffort.XHIGH, AiReasoningEffort.MAX)
+        ) {
+            "Claude Opus 5 cannot combine disabled thinking with xhigh or maximum effort"
         }
     }
 

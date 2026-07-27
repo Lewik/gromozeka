@@ -51,6 +51,7 @@ enum class AiReasoningEffort {
     LOW,
     MEDIUM,
     HIGH,
+    XHIGH,
     MAX,
 }
 

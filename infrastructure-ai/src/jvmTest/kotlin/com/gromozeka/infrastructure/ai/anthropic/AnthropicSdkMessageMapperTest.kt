@@ -95,21 +95,23 @@ class AnthropicSdkMessageMapperTest {
     }
 
     @Test
-    fun opus5RejectsDisabledThinkingAtMaximumEffort() {
-        val error = assertFailsWith<IllegalArgumentException> {
-            AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
-                .toCreateParams(
-                    "claude-opus-5",
-                    requestWithoutJsonSchema(
-                        AiReasoningConfig(
-                            mode = AiReasoningMode.DISABLED,
-                            effort = AiReasoningEffort.MAX,
-                        )
-                    ),
-                )
-        }
+    fun opus5RejectsDisabledThinkingAtExtendedEfforts() {
+        listOf(AiReasoningEffort.XHIGH, AiReasoningEffort.MAX).forEach { effort ->
+            val error = assertFailsWith<IllegalArgumentException> {
+                AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+                    .toCreateParams(
+                        "claude-opus-5",
+                        requestWithoutJsonSchema(
+                            AiReasoningConfig(
+                                mode = AiReasoningMode.DISABLED,
+                                effort = effort,
+                            )
+                        ),
+                    )
+            }
 
-        assertTrue("cannot combine disabled thinking with maximum effort" in error.message.orEmpty())
+            assertTrue("cannot combine disabled thinking" in error.message.orEmpty())
+        }
     }
 
     private fun requestWithJsonSchema(): AiRuntimeRequest =

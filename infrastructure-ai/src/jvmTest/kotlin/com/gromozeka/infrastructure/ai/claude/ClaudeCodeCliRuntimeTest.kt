@@ -4,7 +4,9 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningDisplay
 import com.gromozeka.domain.model.ai.AiReasoningEffort
+import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -25,6 +27,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -195,7 +198,7 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
-    fun passesConfiguredEffortToClaudeCode() = runBlocking {
+    fun passesConfiguredOpus5ReasoningToClaudeCode() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(
             response(
                 structuredOutput = jsonObject(
@@ -212,20 +215,130 @@ class ClaudeCodeCliRuntimeTest {
                 tools = emptyList(),
                 options = AiRuntimeOptions(
                     assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
-                    reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX),
+                    reasoning = AiReasoningConfig(
+                        mode = AiReasoningMode.ADAPTIVE,
+                        effort = AiReasoningEffort.XHIGH,
+                        display = AiReasoningDisplay.SUMMARIZED,
+                    ),
                     toolContext = testToolContext(),
                 ),
             )
         )
 
         val command = executor.commands.single()
-        assertEquals(AiReasoningEffort.MAX, command.effort)
+        assertEquals(AiReasoningEffort.XHIGH, command.effort)
+        assertEquals(AiReasoningMode.ADAPTIVE, command.reasoningMode)
         val args = ProcessClaudeCodeCliExecutor("claude")
             .buildArgs(command, "/tmp/gromozeka-system.md")
-        assertTrue(args.windowed(2).contains(listOf("--effort", "max")))
+        assertTrue(args.windowed(2).contains(listOf("--effort", "xhigh")))
         assertTrue(args.windowed(2).contains(listOf("--input-format", "stream-json")))
         assertTrue(args.windowed(2).contains(listOf("--output-format", "stream-json")))
         assertTrue(args.contains("--verbose"))
+    }
+
+    @Test
+    fun preservesProviderThinkingSummaryAndSignature() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("OK"),
+                ),
+                thinking = listOf(ClaudeCodeThinkingBlock("Checked the constraints.", "signed-thinking")),
+            )
+        )
+
+        val response = runtime(executor).call(
+            request(
+                messages = listOf(userMessage("Reply with OK")),
+                tools = emptyList(),
+                options = AiRuntimeOptions(
+                    assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                    reasoning = AiReasoningConfig(
+                        mode = AiReasoningMode.ADAPTIVE,
+                        effort = AiReasoningEffort.XHIGH,
+                        display = AiReasoningDisplay.SUMMARIZED,
+                    ),
+                    toolContext = testToolContext(),
+                ),
+            )
+        )
+
+        val thinking = response.messages.single().content
+            .filterIsInstance<Conversation.Message.ContentItem.Thinking>()
+            .single()
+        assertEquals("Checked the constraints.", thinking.thinking)
+        assertEquals("signed-thinking", thinking.signature)
+    }
+
+    @Test
+    fun omittedDisplayPreservesSignatureWithoutExposingSummary() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("OK"),
+                ),
+                thinking = listOf(ClaudeCodeThinkingBlock("Private summary.", "signed-thinking")),
+            )
+        )
+
+        val response = runtime(executor).call(
+            request(
+                messages = listOf(userMessage("Reply with OK")),
+                tools = emptyList(),
+                options = AiRuntimeOptions(
+                    assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                    reasoning = AiReasoningConfig(
+                        mode = AiReasoningMode.ADAPTIVE,
+                        effort = AiReasoningEffort.HIGH,
+                        display = AiReasoningDisplay.OMITTED,
+                    ),
+                    toolContext = testToolContext(),
+                ),
+            )
+        )
+
+        val thinking = response.messages.single().content
+            .filterIsInstance<Conversation.Message.ContentItem.Thinking>()
+            .single()
+        assertEquals("", thinking.thinking)
+        assertEquals("signed-thinking", thinking.signature)
+    }
+
+    @Test
+    fun rejectsUnsupportedClaudeCodeReasoningControls() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("OK"),
+                )
+            )
+        )
+        val runtime = runtime(executor)
+
+        listOf(
+            AiReasoningConfig(mode = AiReasoningMode.TOKEN_BUDGET, budgetTokens = 16_000),
+            AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE, display = AiReasoningDisplay.FULL),
+            AiReasoningConfig(mode = AiReasoningMode.DISABLED, effort = AiReasoningEffort.XHIGH),
+        ).forEach { reasoning ->
+            assertFailsWith<IllegalArgumentException> {
+                runtime.call(
+                    request(
+                        messages = listOf(userMessage("Reply with OK")),
+                        tools = emptyList(),
+                        options = AiRuntimeOptions(
+                            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                            reasoning = reasoning,
+                            toolContext = testToolContext(),
+                        ),
+                    )
+                )
+            }
+        }
+
+        assertTrue(executor.commands.isEmpty())
     }
 
     @Test
@@ -254,6 +367,43 @@ class ClaudeCodeCliRuntimeTest {
         )
 
         assertTrue(response.messages.single().text().contains("OK"))
+    }
+
+    @Test
+    fun realClaudeCodePreservesOpus5ThinkingEnvelopeWhenEnabled() = runBlocking {
+        if (!realClaudeCodeEnabled() || realClaudeModel() != "claude-opus-5") return@runBlocking
+
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val response = runtime.call(
+            request(
+                messages = listOf(
+                    userMessage(
+                        "Determine the smallest positive integer divisible by every integer from 1 through 10. " +
+                            "Return exactly OPUS5_REASONING_OK:<integer>."
+                    )
+                ),
+                tools = emptyList(),
+                options = AiRuntimeOptions(
+                    assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                    reasoning = AiReasoningConfig(
+                        mode = AiReasoningMode.ADAPTIVE,
+                        effort = AiReasoningEffort.XHIGH,
+                        display = AiReasoningDisplay.SUMMARIZED,
+                    ),
+                    toolContext = testToolContext("real-claude-opus5-thinking-test"),
+                ),
+            )
+        )
+
+        assertTrue(response.messages.single().text().contains("OPUS5_REASONING_OK:2520"))
+        val thinking = response.messages.single().content
+            .filterIsInstance<Conversation.Message.ContentItem.Thinking>()
+        assertTrue(thinking.isNotEmpty(), "Expected Claude Code Opus 5 to return a thinking envelope")
+        assertTrue(
+            thinking.all { !it.signature.isNullOrBlank() },
+            "Expected every Claude Code Opus 5 thinking block to preserve its signature",
+        )
+        println("Claude Code Opus 5 thinking summary lengths: ${thinking.map { it.thinking.length }}")
     }
 
     @Test
@@ -463,6 +613,7 @@ class ClaudeCodeCliRuntimeTest {
     private fun response(
         sessionId: String = "session-1",
         structuredOutput: JsonElement,
+        thinking: List<ClaudeCodeThinkingBlock> = emptyList(),
     ): ClaudeCodeCliResponse {
         val envelope = jsonObject("response" to structuredOutput)
         return ClaudeCodeCliResponse(
@@ -477,6 +628,7 @@ class ClaudeCodeCliRuntimeTest {
             ),
             finishReason = "success",
             raw = jsonObject("type" to JsonPrimitive("result")),
+            thinking = thinking,
         )
     }
 

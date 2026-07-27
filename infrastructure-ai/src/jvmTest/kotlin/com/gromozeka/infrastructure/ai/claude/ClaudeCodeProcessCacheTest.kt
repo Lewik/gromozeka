@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiReasoningMode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -8,6 +9,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
@@ -59,6 +62,111 @@ class ClaudeCodeProcessCacheTest {
         } finally {
             executor.shutdown()
         }
+    }
+
+    @Test
+    fun replacesProcessWhenReasoningModeChanges() = runBlocking {
+        val factory = FakeProcessFactory()
+        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
+        try {
+            val first = executor.execute(
+                command(
+                    cacheKey = "conversation",
+                    reasoningMode = AiReasoningMode.ADAPTIVE,
+                )
+            )
+            executor.execute(
+                command(
+                    cacheKey = "conversation",
+                    resumeSessionId = first.sessionId,
+                    reasoningMode = AiReasoningMode.DISABLED,
+                )
+            )
+
+            assertEquals(2, factory.started.size)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test
+    fun appliesExplicitReasoningModeToClaudeCodeEnvironment() {
+        val adaptive = mutableMapOf(
+            "CLAUDE_CODE_DISABLE_THINKING" to "1",
+            "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING" to "1",
+            "MAX_THINKING_TOKENS" to "16000",
+        )
+        adaptive.applyClaudeCodeReasoningMode(AiReasoningMode.ADAPTIVE)
+
+        assertEquals(null, adaptive["CLAUDE_CODE_DISABLE_THINKING"])
+        assertEquals(null, adaptive["CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING"])
+        assertEquals(null, adaptive["MAX_THINKING_TOKENS"])
+
+        val disabled = mutableMapOf("MAX_THINKING_TOKENS" to "16000")
+        disabled.applyClaudeCodeReasoningMode(AiReasoningMode.DISABLED)
+
+        assertEquals("1", disabled["CLAUDE_CODE_DISABLE_THINKING"])
+        assertEquals(null, disabled["CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING"])
+        assertEquals(null, disabled["MAX_THINKING_TOKENS"])
+    }
+
+    @Test
+    fun resultParserKeepsThinkingFromLatestTopLevelAssistantMessage() {
+        val parser = ClaudeCodeResultStreamParser()
+        parser.accept(
+            assistantEvent(
+                thinking("old summary", "old-signature"),
+                messageId = "old-message",
+            )
+        )
+        parser.accept(
+            assistantEvent(
+                thinking("nested summary", "nested-signature"),
+                messageId = "nested-message",
+                parentToolUseId = "tool-1",
+            )
+        )
+        parser.accept(
+            assistantEvent(
+                thinking("current summary", "current-signature"),
+                messageId = "current-message",
+            )
+        )
+        parser.accept(
+            assistantEvent(
+                redactedThinking("opaque-signature"),
+                messageId = "current-message",
+            )
+        )
+        parser.accept(
+            assistantEvent(
+                text("done"),
+                messageId = "current-message",
+            )
+        )
+
+        val response = requireNotNull(
+            parser.accept(
+                JsonObject(
+                    mapOf(
+                        "type" to JsonPrimitive("result"),
+                        "subtype" to JsonPrimitive("success"),
+                        "result" to JsonPrimitive("done"),
+                        "session_id" to JsonPrimitive("session-1"),
+                        "usage" to JsonObject(emptyMap()),
+                        "is_error" to JsonPrimitive(false),
+                    )
+                )
+            )
+        )
+
+        assertEquals(
+            listOf(
+                ClaudeCodeThinkingBlock("current summary", "current-signature"),
+                ClaudeCodeThinkingBlock("", "opaque-signature"),
+            ),
+            response.thinking,
+        )
     }
 
     @Test
@@ -225,6 +333,7 @@ class ClaudeCodeProcessCacheTest {
         systemPrompt: String = "system prompt",
         userPrompt: String = "first",
         noSessionPersistence: Boolean = false,
+        reasoningMode: AiReasoningMode? = null,
     ): ClaudeCodeCommand =
         ClaudeCodeCommand(
             connectionId = "connection",
@@ -238,8 +347,52 @@ class ClaudeCodeProcessCacheTest {
             userPrompt = userPrompt,
             jsonSchema = null,
             effort = null,
+            reasoningMode = reasoningMode,
             resumeSessionId = resumeSessionId,
             noSessionPersistence = noSessionPersistence,
+        )
+
+    private fun assistantEvent(
+        vararg content: JsonObject,
+        messageId: String,
+        parentToolUseId: String? = null,
+    ): JsonObject =
+        JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("assistant"),
+                "parent_tool_use_id" to (parentToolUseId?.let(::JsonPrimitive) ?: JsonNull),
+                "message" to JsonObject(
+                    mapOf(
+                        "id" to JsonPrimitive(messageId),
+                        "content" to JsonArray(content.toList()),
+                    )
+                ),
+            )
+        )
+
+    private fun thinking(text: String, signature: String): JsonObject =
+        JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("thinking"),
+                "thinking" to JsonPrimitive(text),
+                "signature" to JsonPrimitive(signature),
+            )
+        )
+
+    private fun redactedThinking(signature: String): JsonObject =
+        JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("redacted_thinking"),
+                "data" to JsonPrimitive(signature),
+            )
+        )
+
+    private fun text(value: String): JsonObject =
+        JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("text"),
+                "text" to JsonPrimitive(value),
+            )
         )
 
     private class FakeProcessFactory(

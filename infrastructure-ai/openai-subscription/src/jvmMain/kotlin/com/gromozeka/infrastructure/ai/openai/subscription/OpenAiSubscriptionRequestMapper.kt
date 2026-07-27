@@ -369,6 +369,7 @@ class OpenAiSubscriptionRequestMapper {
             AiReasoningEffort.LOW -> "low"
             AiReasoningEffort.MEDIUM -> "medium"
             AiReasoningEffort.HIGH -> "high"
+            AiReasoningEffort.XHIGH -> "xhigh"
             AiReasoningEffort.MAX -> MAX_REASONING_EFFORTS.firstOrNull {
                 it in modelProfile.supportedReasoningEfforts
             } ?: error("Model ${modelProfile.slug} does not support a maximum reasoning effort")

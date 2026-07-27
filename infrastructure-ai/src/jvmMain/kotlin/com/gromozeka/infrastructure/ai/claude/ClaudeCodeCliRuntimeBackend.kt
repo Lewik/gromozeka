@@ -5,7 +5,10 @@ import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiResponseFormat
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningDisplay
 import com.gromozeka.domain.model.ai.AiReasoningEffort
+import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
@@ -99,6 +102,7 @@ internal class ClaudeCodeCliRuntime(
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         require(request.messages.isNotEmpty()) { "Claude Code CLI request must contain at least one message" }
         validateToolChoice(request.tools, request.options.toolChoice)
+        validateReasoning(request.options.reasoning)
 
         val sessionStateKey = sessionStateKey(request)
         return if (sessionStateKey == null) {
@@ -142,6 +146,7 @@ internal class ClaudeCodeCliRuntime(
             userPrompt = userPrompt,
             jsonSchema = schema,
             effort = request.options.reasoning?.effort,
+            reasoningMode = request.options.reasoning?.mode,
             resumeSessionId = sessionPlan.resumeSessionId,
             noSessionPersistence = sessionStateKey == null,
         )
@@ -171,6 +176,26 @@ internal class ClaudeCodeCliRuntime(
             is AiToolChoice.RequiredTool -> require(tools.any { it.definition.name == toolChoice.name }) {
                 "Claude Code runtime required tool is not available: ${toolChoice.name}"
             }
+        }
+    }
+
+    private fun validateReasoning(reasoning: AiReasoningConfig?) {
+        if (reasoning == null) return
+
+        require(reasoning.mode != AiReasoningMode.TOKEN_BUDGET && reasoning.budgetTokens == null) {
+            "Claude Code does not support fixed thinking token budgets; use adaptive thinking and effort"
+        }
+        require(reasoning.display != AiReasoningDisplay.FULL) {
+            "Claude Code exposes provider-generated thinking summaries, not full chain of thought"
+        }
+        require(reasoning.mode != AiReasoningMode.DISABLED || reasoning.display == null) {
+            "Claude Code thinking display must be unset when thinking is disabled"
+        }
+        require(
+            reasoning.mode != AiReasoningMode.DISABLED ||
+                reasoning.effort !in setOf(AiReasoningEffort.XHIGH, AiReasoningEffort.MAX)
+        ) {
+            "Claude Code cannot combine disabled thinking with xhigh or maximum effort"
         }
     }
 
@@ -317,14 +342,21 @@ internal class ClaudeCodeCliRuntime(
         toolProtocol: ClaudeCodeToolProtocol?,
         resumed: Boolean,
     ): AiRuntimeResponse {
+        val thinking = thinkingContent(cliResponse, request.options.reasoning)
         val assistantMessage = if (toolProtocol == null) {
             finalAssistantMessage(
                 text = responseText(cliResponse, request.options.responseFormat),
                 assistantResponseFormat = request.options.assistantResponseFormat,
                 metadata = assistantMetadata(cliResponse, wrapper = false, resumed = resumed),
+                thinking = thinking,
             )
         } else {
-            toolProtocol.toAssistantMessage(cliResponse, request.options, assistantMetadata(cliResponse, wrapper = true, resumed = resumed))
+            toolProtocol.toAssistantMessage(
+                cliResponse = cliResponse,
+                options = request.options,
+                metadata = assistantMetadata(cliResponse, wrapper = true, resumed = resumed),
+                thinking = thinking,
+            )
         }
 
         return AiRuntimeResponse(
@@ -357,16 +389,35 @@ internal class ClaudeCodeCliRuntime(
         text: String,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
         metadata: Map<String, Any?>,
+        thinking: List<Conversation.Message.ContentItem.Thinking>,
     ): AiAssistantMessage =
         AiAssistantMessage(
-            content = listOf(
-                Conversation.Message.ContentItem.AssistantMessage(
-                    structured = AssistantResponseParser.parse(text, assistantResponseFormat),
-                    state = Conversation.Message.BlockState.COMPLETE,
-                )
+            content = thinking + Conversation.Message.ContentItem.AssistantMessage(
+                structured = AssistantResponseParser.parse(text, assistantResponseFormat),
+                state = Conversation.Message.BlockState.COMPLETE,
             ),
             metadata = metadata,
         )
+
+    private fun thinkingContent(
+        cliResponse: ClaudeCodeCliResponse,
+        reasoning: AiReasoningConfig?,
+    ): List<Conversation.Message.ContentItem.Thinking> {
+        if (reasoning?.mode == AiReasoningMode.DISABLED) return emptyList()
+
+        return cliResponse.thinking.map { block ->
+            Conversation.Message.ContentItem.Thinking(
+                thinking = when (reasoning?.display) {
+                    AiReasoningDisplay.OMITTED -> ""
+                    AiReasoningDisplay.FULL,
+                    AiReasoningDisplay.SUMMARIZED,
+                    null -> block.thinking
+                },
+                signature = block.signature,
+                state = Conversation.Message.BlockState.COMPLETE,
+            )
+        }
+    }
 
     private fun assistantMetadata(
         cliResponse: ClaudeCodeCliResponse,
@@ -594,9 +645,15 @@ internal data class ClaudeCodeCommand(
     val userPrompt: String,
     val jsonSchema: JsonElement?,
     val effort: AiReasoningEffort?,
+    val reasoningMode: AiReasoningMode?,
     val resumeSessionId: String?,
     val noSessionPersistence: Boolean,
     val nativeTools: Set<ClaudeCodeNativeTool> = emptySet(),
+)
+
+internal data class ClaudeCodeThinkingBlock(
+    val thinking: String,
+    val signature: String?,
 )
 
 internal data class ClaudeCodeCliResponse(
@@ -606,6 +663,7 @@ internal data class ClaudeCodeCliResponse(
     val usage: JsonObject?,
     val finishReason: String?,
     val raw: JsonObject,
+    val thinking: List<ClaudeCodeThinkingBlock> = emptyList(),
 )
 
 private class ClaudeCodeToolProtocol(
@@ -740,6 +798,7 @@ private class ClaudeCodeToolProtocol(
         cliResponse: ClaudeCodeCliResponse,
         options: AiRuntimeOptions,
         metadata: Map<String, Any?>,
+        thinking: List<Conversation.Message.ContentItem.Thinking>,
     ): AiAssistantMessage {
         val root = wrapperRoot(cliResponse)
         return when (val kind = root["kind"]?.jsonPrimitive?.contentOrNull) {
@@ -749,11 +808,9 @@ private class ClaudeCodeToolProtocol(
                 }
                 val answer = root["final_answer"] ?: error("Claude Code final_answer wrapper missed final_answer")
                 AiAssistantMessage(
-                    content = listOf(
-                        Conversation.Message.ContentItem.AssistantMessage(
-                            structured = AssistantResponseParser.parse(finalAnswerText(answer), options.assistantResponseFormat),
-                            state = Conversation.Message.BlockState.COMPLETE,
-                        )
+                    content = thinking + Conversation.Message.ContentItem.AssistantMessage(
+                        structured = AssistantResponseParser.parse(finalAnswerText(answer), options.assistantResponseFormat),
+                        state = Conversation.Message.BlockState.COMPLETE,
                     ),
                     metadata = metadata + ("wrapperKind" to kind),
                 )
@@ -770,15 +827,13 @@ private class ClaudeCodeToolProtocol(
                 }
                 val arguments = parseArguments(root["arguments"] ?: JsonObject(emptyMap()))
                 AiAssistantMessage(
-                    content = listOf(
-                        Conversation.Message.ContentItem.ToolCall(
-                            id = Conversation.Message.ContentItem.ToolCall.Id("claude-code:${uuid7()}"),
-                            call = Conversation.Message.ContentItem.ToolCall.Data(
-                                name = name,
-                                input = arguments,
-                            ),
-                            state = Conversation.Message.BlockState.COMPLETE,
-                        )
+                    content = thinking + Conversation.Message.ContentItem.ToolCall(
+                        id = Conversation.Message.ContentItem.ToolCall.Id("claude-code:${uuid7()}"),
+                        call = Conversation.Message.ContentItem.ToolCall.Data(
+                            name = name,
+                            input = arguments,
+                        ),
+                        state = Conversation.Message.BlockState.COMPLETE,
                     ),
                     metadata = metadata + ("wrapperKind" to kind),
                 )
