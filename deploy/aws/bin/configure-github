@@ -26,6 +26,18 @@ gh variable set AWS_GROMOZEKA_BUILD_ROLE_ARN \
 gh variable set AWS_GROMOZEKA_DEPLOY_ROLE_ARN \
   --repo "$repository" \
   --body "$(terraform_output github_deploy_role_arn)"
+gh variable set AWS_GROMOZEKA_SERVER_REPOSITORY_URL \
+  --repo "$repository" \
+  --body "$(terraform_output server_repository_url)"
+gh variable set AWS_GROMOZEKA_SERVER_REPOSITORY_NAME \
+  --repo "$repository" \
+  --body "$(terraform_output server_repository_name)"
+gh variable set AWS_GROMOZEKA_WORKER_REPOSITORY_URL \
+  --repo "$repository" \
+  --body "$(terraform_output worker_repository_url)"
+gh variable set AWS_GROMOZEKA_WORKER_REPOSITORY_NAME \
+  --repo "$repository" \
+  --body "$(terraform_output worker_repository_name)"
 gh variable set AWS_GROMOZEKA_ARTIFACT_BUCKET \
   --repo "$repository" \
   --body "$(terraform_output artifact_bucket)"

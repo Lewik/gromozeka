@@ -28,9 +28,12 @@ data "aws_iam_policy_document" "github_build_assume_role" {
     }
 
     condition {
-      test     = "StringEquals"
+      test     = "StringLike"
       variable = "${local.github_oidc_host}:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"]
+      values = [
+        "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}",
+        "repo:${var.github_repository}:ref:refs/tags/v*",
+      ]
     }
   }
 }
@@ -102,6 +105,17 @@ resource "aws_iam_role" "github_deploy" {
 }
 
 data "aws_iam_policy_document" "github_deploy" {
+  statement {
+    sid = "InspectReleaseImages"
+    actions = [
+      "ecr:DescribeImages",
+    ]
+    resources = [
+      aws_ecr_repository.server.arn,
+      aws_ecr_repository.worker.arn,
+    ]
+  }
+
   statement {
     sid = "PublishRuntimeBundle"
     actions = [

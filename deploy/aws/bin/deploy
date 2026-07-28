@@ -9,17 +9,31 @@ require_command gh
 repository="${GITHUB_REPOSITORY:-Lewik/gromozeka}"
 branch="${GITHUB_DEPLOY_BRANCH:-main}"
 
-gh workflow run build-cloud-images.yml \
+if [[ "$#" -ne 1 ]]; then
+  echo "Usage: deploy VERSION" >&2
+  exit 2
+fi
+
+version="${1#v}"
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || {
+  echo "VERSION must be a published semantic Gromozeka release version" >&2
+  exit 2
+}
+
+gh release view "v$version" \
+  --repo "$repository" \
+  >/dev/null
+
+gh workflow run deploy-release.yml \
   --repo "$repository" \
   --ref "$branch" \
-  --field push_images=true \
-  --field deploy=true
+  --field version="$version"
 
 sleep 3
 run_id="$(
   gh run list \
     --repo "$repository" \
-    --workflow build-cloud-images.yml \
+    --workflow deploy-release.yml \
     --branch "$branch" \
     --event workflow_dispatch \
     --limit 1 \

@@ -51,7 +51,7 @@ tar \
 
 cat > "$backup_dir/manifest.txt" <<EOF
 created_at=$timestamp
-image_tag=$GROMOZEKA_IMAGE_TAG
+release_version=$GROMOZEKA_RELEASE_VERSION
 server_image=$GROMOZEKA_SERVER_IMAGE
 worker_image=$GROMOZEKA_WORKER_IMAGE
 EOF

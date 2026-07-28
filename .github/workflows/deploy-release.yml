@@ -1,0 +1,149 @@
+name: Deploy Release to AWS
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Published release version without the v prefix
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published release version without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-production-release
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'il-central-1' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: aws-production
+
+    steps:
+      - name: Validate release version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $VERSION" >&2
+            exit 2
+          fi
+
+      - name: Checkout published release
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+
+      - name: Verify GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          release="$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION"
+          )"
+          [[ "$(jq -r '.draft' <<< "$release")" == "false" ]]
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_GROMOZEKA_DEPLOY_ROLE_ARN }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+
+      - name: Verify immutable release images
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          SERVER_REPOSITORY: ${{ vars.AWS_GROMOZEKA_SERVER_REPOSITORY_NAME }}
+          WORKER_REPOSITORY: ${{ vars.AWS_GROMOZEKA_WORKER_REPOSITORY_NAME }}
+        run: |
+          test -n "$SERVER_REPOSITORY"
+          test -n "$WORKER_REPOSITORY"
+          aws ecr describe-images \
+            --repository-name "$SERVER_REPOSITORY" \
+            --image-ids "imageTag=$VERSION" \
+            >/dev/null
+          aws ecr describe-images \
+            --repository-name "$WORKER_REPOSITORY" \
+            --image-ids "imageTag=$VERSION" \
+            >/dev/null
+
+      - name: Publish release runtime bundle
+        id: runtime
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          archive="$RUNNER_TEMP/gromozeka-runtime.tar.gz"
+          key="runtime/releases/$VERSION.tar.gz"
+          tar -C deploy/aws/runtime -czf "$archive" .
+          aws s3 cp \
+            "$archive" \
+            "s3://${{ vars.AWS_GROMOZEKA_ARTIFACT_BUCKET }}/$key" \
+            --sse AES256
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy release through SSM
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          parameters="$(
+            jq -nc \
+              --arg releaseVersion "$VERSION" \
+              --arg runtimeBundleKey "${{ steps.runtime.outputs.key }}" \
+              '{ReleaseVersion:[$releaseVersion],RuntimeBundleKey:[$runtimeBundleKey]}'
+          )"
+          command_id="$(
+            aws ssm send-command \
+              --instance-ids "${{ vars.AWS_GROMOZEKA_INSTANCE_ID }}" \
+              --document-name "${{ vars.AWS_GROMOZEKA_DEPLOY_DOCUMENT }}" \
+              --parameters "$parameters" \
+              --comment "Deploy Gromozeka release $VERSION" \
+              --query 'Command.CommandId' \
+              --output text
+          )"
+
+          status="Pending"
+          for _ in $(seq 1 180); do
+            status="$(
+              aws ssm get-command-invocation \
+                --command-id "$command_id" \
+                --instance-id "${{ vars.AWS_GROMOZEKA_INSTANCE_ID }}" \
+                --query Status \
+                --output text \
+                2>/dev/null || true
+            )"
+            case "$status" in
+              Success|Cancelled|TimedOut|Failed|Cancelling)
+                break
+                ;;
+            esac
+            sleep 10
+          done
+
+          invocation="$(
+            aws ssm get-command-invocation \
+              --command-id "$command_id" \
+              --instance-id "${{ vars.AWS_GROMOZEKA_INSTANCE_ID }}" \
+              --output json
+          )"
+          jq -r '.StandardOutputContent' <<< "$invocation"
+          jq -r '.StandardErrorContent' <<< "$invocation" >&2
+          [[ "$(jq -r '.Status' <<< "$invocation")" == "Success" ]]

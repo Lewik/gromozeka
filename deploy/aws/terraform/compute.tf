@@ -46,6 +46,10 @@ resource "aws_instance" "gromozeka" {
     Name = local.instance_name
   }
 
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.instance_ssm,
     aws_iam_role_policy.instance,

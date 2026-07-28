@@ -10,9 +10,10 @@ The first production shape is deliberately small:
 - no inbound security-group rules, SSH keys or long-lived GitHub AWS keys;
 - SSM for operations and Tailscale Serve for application access.
 
-GitHub Actions authenticates through OIDC. The build role can only push the two
-ECR repositories. The deployment role can only publish a runtime bundle and run
-the deployment SSM document against the single managed instance.
+GitHub Actions authenticates through OIDC. The release build role can only push
+the two ECR repositories. The deployment role can inspect those release images,
+publish a runtime bundle, and run the deployment SSM document against the
+single managed instance.
 
 ## Local prerequisites
 
@@ -44,15 +45,26 @@ deploy/aws/bin/configure-github
 `terraform-plan` creates a saved plan. Review its resources and cost before
 running `terraform-apply`.
 
-## Deploy
+## Release and deploy
 
 ```bash
-deploy/aws/bin/deploy
+gh workflow run release.yml \
+  --ref main \
+  --field version=1.5.0 \
+  --field publish_release=true \
+  --field deploy_aws=true
 ```
 
-This dispatches one GitHub Actions workflow that tests and assembles the
-application, pushes both images under the full Git commit SHA, publishes the
-runtime bundle and deploys it through SSM.
+The release workflow tests and assembles every published artifact, pushes the
+same versioned Server and Worker images to GHCR and ECR, publishes the GitHub
+Release, then installs that exact release through SSM. Pushing a `v*` tag runs
+the same release-and-deploy path.
+
+Redeploy an already published release without rebuilding it:
+
+```bash
+deploy/aws/bin/deploy 1.5.0
+```
 
 ## Operate
 
@@ -72,7 +84,7 @@ sudo tailscale serve --bg --yes http://127.0.0.1:8765
 tailscale serve status
 ```
 
-Run `deploy/aws/bin/deploy` once more after the first Tailscale login. The
+Redeploy the current release once more after the first Tailscale login. The
 deployment discovers the instance MagicDNS name and adds it to the MCP Host and
 Origin allowlists without hardcoding a tailnet name.
 

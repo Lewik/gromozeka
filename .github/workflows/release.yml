@@ -1,4 +1,4 @@
-name: Build Release
+name: Release and Deploy
 
 on:
   push:
@@ -12,6 +12,11 @@ on:
         default: "0.0.0-dev"
       publish_release:
         description: Publish GitHub Release and GHCR images
+        required: true
+        type: boolean
+        default: false
+      deploy_aws:
+        description: Deploy the published release to AWS production
         required: true
         type: boolean
         default: false
@@ -34,6 +39,7 @@ jobs:
       tag: ${{ steps.release.outputs.tag }}
       publish: ${{ steps.release.outputs.publish }}
       prerelease: ${{ steps.release.outputs.prerelease }}
+      deploy: ${{ steps.release.outputs.deploy }}
     steps:
       - id: release
         shell: bash
@@ -42,10 +48,12 @@ jobs:
             version="${GITHUB_REF_NAME#v}"
             tag="$GITHUB_REF_NAME"
             publish=true
+            deploy=true
           else
             version="${{ inputs.version }}"
             tag="v$version"
             publish="${{ inputs.publish_release }}"
+            deploy="${{ inputs.deploy_aws }}"
           fi
 
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
@@ -56,14 +64,18 @@ jobs:
             echo "0.0.0-dev is reserved for local builds and cannot be published" >&2
             exit 2
           fi
+          if [[ "$deploy" == "true" && "$publish" != "true" ]]; then
+            echo "deploy_aws=true requires publish_release=true" >&2
+            exit 2
+          fi
 
           prerelease=false
           if [[ "$version" == *-* ]]; then
             prerelease=true
           fi
 
-          printf 'version=%s\ntag=%s\npublish=%s\nprerelease=%s\n' \
-            "$version" "$tag" "$publish" "$prerelease" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\ntag=%s\npublish=%s\nprerelease=%s\ndeploy=%s\n' \
+            "$version" "$tag" "$publish" "$prerelease" "$deploy" >> "$GITHUB_OUTPUT"
 
   verify:
     needs: metadata
@@ -265,6 +277,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      id-token: write
       packages: write
     steps:
       - uses: actions/checkout@v7
@@ -282,12 +295,55 @@ jobs:
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
       - uses: docker/setup-buildx-action@v4
+      - name: Configure AWS credentials
+        if: needs.metadata.outputs.publish == 'true'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_GROMOZEKA_BUILD_ROLE_ARN }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+      - name: Log in to Amazon ECR
+        if: needs.metadata.outputs.publish == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: docker/login-action@v4
         if: needs.metadata.outputs.publish == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve release image tags
+        id: image-tags
+        shell: bash
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          PUBLISH: ${{ needs.metadata.outputs.publish }}
+          PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
+          ECR_SERVER_REPOSITORY: ${{ vars.AWS_GROMOZEKA_SERVER_REPOSITORY_URL }}
+          ECR_WORKER_REPOSITORY: ${{ vars.AWS_GROMOZEKA_WORKER_REPOSITORY_URL }}
+        run: |
+          {
+            echo "server<<EOF"
+            echo "ghcr.io/lewik/gromozeka-server:$VERSION"
+            if [[ "$PRERELEASE" == "false" ]]; then
+              echo "ghcr.io/lewik/gromozeka-server:latest"
+            fi
+            if [[ "$PUBLISH" == "true" ]]; then
+              test -n "$ECR_SERVER_REPOSITORY"
+              echo "$ECR_SERVER_REPOSITORY:$VERSION"
+            fi
+            echo "EOF"
+
+            echo "worker<<EOF"
+            echo "ghcr.io/lewik/gromozeka-worker:$VERSION"
+            if [[ "$PRERELEASE" == "false" ]]; then
+              echo "ghcr.io/lewik/gromozeka-worker:latest"
+            fi
+            if [[ "$PUBLISH" == "true" ]]; then
+              test -n "$ECR_WORKER_REPOSITORY"
+              echo "$ECR_WORKER_REPOSITORY:$VERSION"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: Build Server image
         uses: docker/build-push-action@v7
         with:
@@ -296,9 +352,7 @@ jobs:
           platforms: linux/amd64
           push: ${{ needs.metadata.outputs.publish == 'true' }}
           load: ${{ needs.metadata.outputs.publish != 'true' }}
-          tags: |
-            ghcr.io/lewik/gromozeka-server:${{ needs.metadata.outputs.version }}
-            ${{ needs.metadata.outputs.prerelease == 'false' && 'ghcr.io/lewik/gromozeka-server:latest' || '' }}
+          tags: ${{ steps.image-tags.outputs.server }}
           cache-from: type=gha,scope=release-server
           cache-to: type=gha,mode=max,scope=release-server
       - name: Build Worker image
@@ -309,9 +363,7 @@ jobs:
           platforms: linux/amd64
           push: ${{ needs.metadata.outputs.publish == 'true' }}
           load: ${{ needs.metadata.outputs.publish != 'true' }}
-          tags: |
-            ghcr.io/lewik/gromozeka-worker:${{ needs.metadata.outputs.version }}
-            ${{ needs.metadata.outputs.prerelease == 'false' && 'ghcr.io/lewik/gromozeka-worker:latest' || '' }}
+          tags: ${{ steps.image-tags.outputs.worker }}
           cache-from: type=gha,scope=release-worker
           cache-to: type=gha,mode=max,scope=release-worker
 
@@ -380,3 +432,16 @@ jobs:
           files: release-assets/*
           prerelease: ${{ needs.metadata.outputs.prerelease == 'true' }}
           generate_release_notes: true
+
+  deploy:
+    if: needs.metadata.outputs.deploy == 'true'
+    needs:
+      - metadata
+      - release
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-release.yml
+    with:
+      version: ${{ needs.metadata.outputs.version }}
+    secrets: inherit

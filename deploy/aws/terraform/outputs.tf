@@ -14,8 +14,16 @@ output "server_repository_url" {
   value = aws_ecr_repository.server.repository_url
 }
 
+output "server_repository_name" {
+  value = aws_ecr_repository.server.name
+}
+
 output "worker_repository_url" {
   value = aws_ecr_repository.worker.repository_url
+}
+
+output "worker_repository_name" {
+  value = aws_ecr_repository.worker.name
 }
 
 output "instance_id" {

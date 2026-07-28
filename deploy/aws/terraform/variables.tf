@@ -23,7 +23,7 @@ variable "github_repository" {
 }
 
 variable "github_branch" {
-  description = "GitHub branch allowed to build cloud images."
+  description = "GitHub branch allowed to publish releases through workflow dispatch."
   type        = string
   default     = "main"
 }
