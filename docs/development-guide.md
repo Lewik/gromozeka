@@ -51,6 +51,12 @@ including shell, filesystem, and Git tools, select an exact Workspace Mount.
 The Server does not inspect a Worker's filesystem, guess a target, reassign a
 call, or retry work automatically.
 
+Each Worker registration advertises a stable environment profile collected at
+startup. The execution topology uses that profile without changing on every
+heartbeat. `grz_get_worker_environment` recollects the complete profile and
+volatile capacity, process, executable, and project-mount data on the selected
+Worker when current facts are needed.
+
 ## Development Model
 
 Typed domain contracts and KDoc are the primary coordination mechanism. Read

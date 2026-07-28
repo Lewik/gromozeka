@@ -9,6 +9,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.WorkerEnvironmentProfile
+import com.gromozeka.domain.service.WorkerNativeShell
+import com.gromozeka.domain.service.WorkerOperatingSystem
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -73,6 +76,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
             ),
+            environmentProfile = testWorkerEnvironmentProfile(),
         )
         val workerRoute = RabbitRuntimeWorkRoute.Worker(descriptor.id)
 
@@ -136,6 +140,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                 ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
             ),
+            environmentProfile = testWorkerEnvironmentProfile(),
         )
         val localWorkerDescriptor = ConversationRuntimeWorkerDescriptor(
             id = ConversationRuntimeWorkerId("local-worker"),
@@ -144,6 +149,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
                 ConversationRuntimeWorkerCapability.LLM_RUNTIME,
             ),
+            environmentProfile = testWorkerEnvironmentProfile(),
         )
         val wrongWorkerDescriptor = ConversationRuntimeWorkerDescriptor(
             id = ConversationRuntimeWorkerId("wrong-worker"),
@@ -152,6 +158,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
                 ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
                 ConversationRuntimeWorkerCapability.LLM_RUNTIME,
             ),
+            environmentProfile = testWorkerEnvironmentProfile(),
         )
         val turnConsumer = RabbitConversationRuntimeWorkConsumer(
             connectionFactory = connectionFactory,
@@ -241,3 +248,20 @@ class RabbitConversationRuntimeWorkBrokerTest {
         )
 
 }
+
+private fun testWorkerEnvironmentProfile(): WorkerEnvironmentProfile =
+    WorkerEnvironmentProfile(
+        observedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(1),
+        operatingSystem = WorkerOperatingSystem(
+            family = WorkerOperatingSystem.Family.LINUX,
+            name = "Test Linux",
+            version = "1",
+        ),
+        architecture = "x86_64",
+        nativeShell = WorkerNativeShell(WorkerNativeShell.Kind.POSIX_SH, "/bin/sh"),
+        timezoneId = "UTC",
+        localeTag = "en-US",
+        logicalProcessorCount = 4,
+        totalMemoryBytes = 8_589_934_592,
+        availableExecutables = listOf("sh"),
+    )

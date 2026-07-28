@@ -644,6 +644,7 @@ class InMemoryConversationRuntimeStoresTest {
             identity = identity,
             capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
             tools = emptyList(),
+            environmentProfile = testWorkerEnvironmentProfile(at),
             version = "test",
             startedAt = at,
             lastHeartbeatAt = at,

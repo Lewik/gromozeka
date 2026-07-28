@@ -22,6 +22,7 @@ import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.CommandMonitorOwnerToolMetadata
 import com.gromozeka.domain.tool.CommandTaskOwnerToolMetadata
 import com.gromozeka.domain.tool.LocalAgentToolMetadata
+import com.gromozeka.domain.tool.WorkerInspectionToolMetadata
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
@@ -32,6 +33,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -78,6 +80,14 @@ class DistributedAiToolRoutingTest {
         ),
         metadata = CommandMonitorOwnerToolMetadata,
     )
+    private val workerEnvironmentTool = AiToolDescriptor(
+        definition = AiToolDefinition(
+            name = "grz_get_worker_environment",
+            description = "Inspect a worker.",
+            inputSchema = """{"type":"object","properties":{"executable_names":{"type":"array","items":{"type":"string"}}}}""",
+        ),
+        metadata = WorkerInspectionToolMetadata,
+    )
 
     @Test
     fun `conversation runtime tools route to current worker without explicit target`() = runBlocking {
@@ -123,6 +133,53 @@ class DistributedAiToolRoutingTest {
     }
 
     @Test
+    fun `worker inspection routes to the exact selected worker`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(workerEnvironmentTool))
+        registerWorker(workerRegistry, "worker-b", listOf(workerEnvironmentTool))
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = emptyList(),
+            mounts = emptyList(),
+        )
+        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val call = Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("inspect-worker-b"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = workerEnvironmentTool.definition.name,
+                input = buildJsonObject {
+                    putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                        put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-b")
+                    }
+                },
+            ),
+        )
+
+        val result = ConversationRuntimeToolRoutingService(
+            runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
+            workspaceService = workspaceService,
+        ).route(
+            conversation = conversation(project.id),
+            project = project,
+            toolCalls = listOf(call),
+            catalog = catalog,
+        )
+
+        assertIs<ConversationRuntimeToolRoutingResult.Accepted>(result)
+        assertEquals(ConversationRuntimeWorkerId("worker-b"), result.requirements.target?.workerId)
+        assertEquals(null, result.requirements.target?.workspaceMountId)
+        val schema = Json.parseToJsonElement(
+            catalog.tools.single().definition.inputSchema
+        ).jsonObject
+        val target = schema.getValue("properties").jsonObject
+            .getValue(AI_TOOL_EXECUTION_TARGET_FIELD).jsonObject
+        assertEquals(
+            setOf(AI_TOOL_EXECUTION_WORKER_ID_FIELD),
+            target.getValue("properties").jsonObject.keys,
+        )
+    }
+
+    @Test
     fun `catalog exposes only workspace mounts from current project`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         registerWorker(workerRegistry, "worker-a", listOf(workspaceTool))
@@ -154,6 +211,11 @@ class DistributedAiToolRoutingTest {
         )
         assertFalse(snapshot.environmentPrompt.contains("workspace-foreign"))
         assertFalse(snapshot.environmentPrompt.contains("/foreign"))
+        assertTrue(snapshot.environmentPrompt.contains("\"os_family\":\"linux\""))
+        assertTrue(snapshot.environmentPrompt.contains("\"os_name\":\"Test Linux\""))
+        assertTrue(snapshot.environmentPrompt.contains("\"architecture\":\"x86_64\""))
+        assertTrue(snapshot.environmentPrompt.contains("\"available_executables\":[\"git\",\"sh\"]"))
+        assertTrue(snapshot.environmentPrompt.contains("use grz_get_worker_environment"))
 
         val schema = Json.parseToJsonElement(snapshot.tools.single().definition.inputSchema).jsonObject
         val targetSchema = schema["properties"]
@@ -403,6 +465,7 @@ class DistributedAiToolRoutingTest {
                         ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
                     ),
                     tools = tools,
+                    environmentProfile = testWorkerEnvironmentProfile(registeredAt),
                     version = "test",
                     startedAt = registeredAt,
                     lastHeartbeatAt = registeredAt,

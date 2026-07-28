@@ -20,8 +20,6 @@ class SystemPromptBuilder {
      * @return Environment info block wrapped in <env> tag
      */
     fun buildEnvironmentInfo(runtimeContext: RuntimeEnvironmentContext): String {
-        val platform = System.getProperty("os.name")
-        val osVersion = System.getProperty("os.version")
         val todayDate = LocalDate.now()
 
         return buildString {
@@ -58,8 +56,6 @@ class SystemPromptBuilder {
                     } ?: appendLine("Workspace mounted on runtime worker: No")
                 }
             }
-            appendLine("Platform: $platform")
-            appendLine("OS Version: $osVersion")
             appendLine("Today's date: $todayDate")
             append("</env>")
         }

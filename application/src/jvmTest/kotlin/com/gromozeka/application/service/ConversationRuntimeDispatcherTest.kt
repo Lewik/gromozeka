@@ -95,6 +95,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
             heartbeatIntervalMillis = 10,
@@ -139,6 +140,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
             heartbeatIntervalMillis = 10,
@@ -399,6 +401,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
         )
@@ -440,6 +443,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
         )
@@ -483,6 +487,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
             aiConfigurationService = aiConfigurationService,
@@ -527,6 +532,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.LLM_RUNTIME,
                     ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
             heartbeatIntervalMillis = 20,
@@ -569,6 +575,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
         )
@@ -611,6 +618,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
         )
@@ -672,6 +680,7 @@ class ConversationRuntimeDispatcherTest {
                         identity = assignedWorker,
                         capabilities = task.requirements.capabilities,
                         tools = emptyList(),
+                        environmentProfile = testWorkerEnvironmentProfile(stoppedAt),
                         version = "test",
                         startedAt = stoppedAt,
                         lastHeartbeatAt = stoppedAt,
@@ -839,6 +848,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                     ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
         )
@@ -854,6 +864,7 @@ class ConversationRuntimeDispatcherTest {
                     ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
                     ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
                 ),
+                environmentProfile = testWorkerEnvironmentProfile(),
             ),
             scope = scope,
             workspaceMounts = mapOf(workspaceMountId to workspaceId),
@@ -952,6 +963,7 @@ class ConversationRuntimeDispatcherTest {
         val workerDescriptor = ConversationRuntimeWorkerDescriptor(
             id = ConversationRuntimeWorkerId(workerId),
             capabilities = workerCapabilities,
+            environmentProfile = testWorkerEnvironmentProfile(),
         )
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,

@@ -47,6 +47,7 @@ class DefaultCommandTaskServiceTest {
             ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
             ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
         ),
+        environmentProfile = testWorkerEnvironmentProfile(),
     )
 
     @Test

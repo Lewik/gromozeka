@@ -73,6 +73,7 @@ class ConversationRuntimeWorker(
         sessionId = ConversationRuntimeWorkerSessionId(uuid7()),
     )
     private val runtimeWorkerCapabilities = runtimeWorkerDescriptor.capabilities
+    private val environmentProfile = runtimeWorkerDescriptor.environmentProfile
     @Volatile
     private var runtimeTools = runtimeWorkerDescriptor.tools
     private val eventLeaseOwnerId = "worker:${runtimeWorker.workerId.value}:${runtimeWorker.sessionId.value}"
@@ -111,6 +112,7 @@ class ConversationRuntimeWorker(
                         identity = runtimeWorker,
                         capabilities = runtimeWorkerCapabilities,
                         tools = runtimeTools,
+                        environmentProfile = environmentProfile,
                         version = workerVersion,
                         startedAt = startedAt,
                         lastHeartbeatAt = now,

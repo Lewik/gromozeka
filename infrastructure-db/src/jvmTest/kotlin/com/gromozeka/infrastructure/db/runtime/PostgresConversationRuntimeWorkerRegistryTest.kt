@@ -5,6 +5,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
+import com.gromozeka.domain.service.WorkerEnvironmentProfile
+import com.gromozeka.domain.service.WorkerNativeShell
+import com.gromozeka.domain.service.WorkerOperatingSystem
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import org.postgresql.ds.PGSimpleDataSource
@@ -61,6 +64,10 @@ class PostgresConversationRuntimeWorkerRegistryTest {
             assertTrue(registry.heartbeat(second, Instant.fromEpochMilliseconds(42_000)))
             assertEquals(second, registry.find(second.workerId)?.identity)
             assertEquals(Instant.fromEpochMilliseconds(42_000), registry.find(second.workerId)?.lastHeartbeatAt)
+            assertEquals(
+                workerEnvironmentProfile(Instant.fromEpochMilliseconds(40_000)),
+                registry.find(second.workerId)?.environmentProfile,
+            )
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->
@@ -110,8 +117,26 @@ class PostgresConversationRuntimeWorkerRegistryTest {
             identity = identity,
             capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
             tools = emptyList(),
+            environmentProfile = workerEnvironmentProfile(at),
             version = "test",
             startedAt = at,
             lastHeartbeatAt = at,
+        )
+
+    private fun workerEnvironmentProfile(observedAt: Instant): WorkerEnvironmentProfile =
+        WorkerEnvironmentProfile(
+            observedAt = observedAt,
+            operatingSystem = WorkerOperatingSystem(
+                family = WorkerOperatingSystem.Family.LINUX,
+                name = "Test Linux",
+                version = "1",
+            ),
+            architecture = "x86_64",
+            nativeShell = WorkerNativeShell(WorkerNativeShell.Kind.POSIX_SH, "/bin/sh"),
+            timezoneId = "UTC",
+            localeTag = "en-US",
+            logicalProcessorCount = 4,
+            totalMemoryBytes = 8_589_934_592,
+            availableExecutables = listOf("sh"),
         )
 }

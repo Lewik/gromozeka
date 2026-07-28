@@ -25,3 +25,8 @@ val WorkerManagementToolMetadata = AiToolMetadata(
     requiredRuntimeCapabilities = setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL),
     executionScope = AiToolExecutionScope.WORKER,
 )
+
+val WorkerInspectionToolMetadata = AiToolMetadata(
+    requiredRuntimeCapabilities = setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION),
+    executionScope = AiToolExecutionScope.WORKER,
+)

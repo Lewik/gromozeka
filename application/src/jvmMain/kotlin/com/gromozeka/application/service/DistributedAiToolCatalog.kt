@@ -251,6 +251,26 @@ class DistributedAiToolCatalog(
                                     .sorted()
                                     .forEach { capability -> add(JsonPrimitive(capability)) }
                             }
+                            putJsonObject("environment_profile") {
+                                put("observed_at", it.environmentProfile.observedAt.toString())
+                                put("os_family", it.environmentProfile.operatingSystem.family.name.lowercase())
+                                put("os_name", it.environmentProfile.operatingSystem.name)
+                                put("os_version", it.environmentProfile.operatingSystem.version)
+                                put("architecture", it.environmentProfile.architecture)
+                                put("shell_kind", it.environmentProfile.nativeShell.kind.name.lowercase())
+                                put("shell_executable", it.environmentProfile.nativeShell.executable)
+                                put("timezone_id", it.environmentProfile.timezoneId)
+                                put("locale_tag", it.environmentProfile.localeTag)
+                                put("logical_processor_count", it.environmentProfile.logicalProcessorCount)
+                                it.environmentProfile.totalMemoryBytes?.let { bytes ->
+                                    put("total_memory_bytes", bytes)
+                                }
+                                putJsonArray("available_executables") {
+                                    it.environmentProfile.availableExecutables.forEach { executable ->
+                                        add(JsonPrimitive(executable))
+                                    }
+                                }
+                            }
                         }
                     })
                 }
@@ -296,6 +316,7 @@ class DistributedAiToolCatalog(
             append("Project is the logical scope for conversations, agents, prompts, and workspaces; it is not a filesystem path.\n")
             append("Conversation belongs to one Project and is not bound to a Workspace. Agent is its selected model and instruction configuration.\n")
             append("Worker is a named executor. Workspace is a logical filesystem resource. WorkspaceMount binds a Workspace to one worker-local root path and is the filesystem execution target.\n")
+            append("Each worker environment_profile is the stable profile advertised when that worker session started; when available, use grz_get_worker_environment if current process, capacity, storage, or executable data matters.\n")
             append("Topology: ")
             append(topology)
             append("\n")

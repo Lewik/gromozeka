@@ -130,6 +130,7 @@ class McpServerManagementServiceTest {
                         identity = identity,
                         capabilities = setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION),
                         tools = emptyList(),
+                        environmentProfile = testWorkerEnvironmentProfile(registrationTime),
                         version = "test",
                         startedAt = registrationTime,
                         lastHeartbeatAt = registrationTime,

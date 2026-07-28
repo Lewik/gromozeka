@@ -21,6 +21,8 @@ class SystemPromptBuilderTest {
         assertContains(prompt, "Runtime worker: cloud-worker")
         assertContains(prompt, "Runtime scope: standalone")
         assertFalse(prompt.contains("Workspace root path"))
+        assertFalse(prompt.contains("Platform:"))
+        assertFalse(prompt.contains("OS Version:"))
     }
 
     @Test

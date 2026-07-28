@@ -253,6 +253,7 @@ data class ConversationRuntimeWorkerDescriptor(
     val id: ConversationRuntimeWorkerId,
     val capabilities: Set<ConversationRuntimeWorkerCapability>,
     val tools: List<AiToolDescriptor> = emptyList(),
+    val environmentProfile: WorkerEnvironmentProfile,
 ) {
     init {
         require(capabilities.isNotEmpty()) { "Conversation runtime worker must declare at least one capability" }
@@ -273,6 +274,7 @@ data class ConversationRuntimeWorkerRegistration(
     val identity: ConversationRuntimeWorkerIdentity,
     val capabilities: Set<ConversationRuntimeWorkerCapability>,
     val tools: List<AiToolDescriptor>,
+    val environmentProfile: WorkerEnvironmentProfile,
     val version: String,
     val startedAt: Instant,
     val lastHeartbeatAt: Instant,

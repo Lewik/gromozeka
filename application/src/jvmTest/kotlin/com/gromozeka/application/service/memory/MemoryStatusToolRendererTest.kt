@@ -1,5 +1,6 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.application.service.testWorkerEnvironmentProfile
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
@@ -216,6 +217,7 @@ class MemoryStatusToolRendererTest {
                             identity = workerIdentity,
                             capabilities = setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE),
                             tools = emptyList(),
+                            environmentProfile = testWorkerEnvironmentProfile(createdAt),
                             version = "test",
                             startedAt = createdAt,
                             lastHeartbeatAt = createdAt,
