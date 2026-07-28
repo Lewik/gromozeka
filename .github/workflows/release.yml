@@ -161,8 +161,14 @@ jobs:
           if ($null -eq $App) {
             throw "Gromozeka.exe was not found in the distributable"
           }
-          if (-not (Test-Path (Join-Path $App.FullName "runtime/bin/java.exe"))) {
-            throw "Bundled Java runtime was not found"
+          $Runtime = Join-Path $App.FullName "runtime"
+          if (-not (Test-Path $Runtime -PathType Container)) {
+            throw "Bundled Java runtime directory was not found"
+          }
+          $JvmLibrary = Get-ChildItem $Runtime -Recurse -File -Filter "jvm.dll" |
+            Select-Object -First 1
+          if ($null -eq $JvmLibrary) {
+            throw "Bundled JVM library was not found"
           }
           Copy-Item "LICENSE" (Join-Path $App.FullName "LICENSE")
           New-Item -ItemType Directory -Force "release-asset" | Out-Null
