@@ -15,6 +15,10 @@ gromozeka:
     worker:
       enabled: true
       version: ${GROMOZEKA_RUNTIME_WORKER_VERSION:dev}
+    command-output:
+      retention-hours: ${GROMOZEKA_COMMAND_OUTPUT_RETENTION_HOURS:168}
+      max-total-bytes: ${GROMOZEKA_COMMAND_OUTPUT_MAX_TOTAL_BYTES:1073741824}
+      gc-interval-minutes: ${GROMOZEKA_COMMAND_OUTPUT_GC_INTERVAL_MINUTES:60}
     rabbit:
       enabled: ${GROMOZEKA_RUNTIME_RABBIT_ENABLED:true}
       exchange: gromozeka.runtime.work

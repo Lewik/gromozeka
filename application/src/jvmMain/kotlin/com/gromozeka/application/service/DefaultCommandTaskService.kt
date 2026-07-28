@@ -6,6 +6,7 @@ import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
+import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
@@ -44,6 +45,7 @@ import kotlinx.datetime.Clock
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.io.File
@@ -51,6 +53,8 @@ import java.io.RandomAccessFile
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Service
@@ -64,6 +68,12 @@ class DefaultCommandTaskService(
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val lifecycleEventPublisher: CommandTaskLifecycleEventPublisher,
     private val runtimeWorkerDescriptor: ObjectProvider<ConversationRuntimeWorkerDescriptor>,
+    @Value("\${gromozeka.runtime.command-output.retention-hours:168}")
+    private val outputRetentionHours: Long = DEFAULT_OUTPUT_RETENTION_HOURS,
+    @Value("\${gromozeka.runtime.command-output.max-total-bytes:1073741824}")
+    private val outputMaxTotalBytes: Long = DEFAULT_OUTPUT_MAX_TOTAL_BYTES,
+    @Value("\${gromozeka.runtime.command-output.gc-interval-minutes:60}")
+    private val outputGcIntervalMinutes: Long = DEFAULT_OUTPUT_GC_INTERVAL_MINUTES,
 ) : CommandTaskService {
     private val log = KLoggers.logger(this)
     private val workerId get() = runtimeWorkerDescriptor.getObject().id
@@ -73,9 +83,16 @@ class DefaultCommandTaskService(
     private val lifecycleMutex = Mutex()
     private val taskMutexes = Array(TASK_MUTEX_STRIPES) { Mutex() }
 
+    init {
+        require(outputRetentionHours >= 0) { "Command output retention hours must be non-negative" }
+        require(outputMaxTotalBytes >= 0) { "Command output byte quota must be non-negative" }
+        require(outputGcIntervalMinutes > 0) { "Command output GC interval must be positive" }
+    }
+
     @EventListener(ApplicationReadyEvent::class)
     fun recoverOnStartup() = runBlocking {
         recoverPersistedTasks()
+        scope.launch { runOutputGarbageCollectionLoop() }
     }
 
     override suspend fun start(
@@ -165,8 +182,9 @@ class DefaultCommandTaskService(
         check(initial.workerId == workerId) {
             "Command task ${taskId.value} belongs to worker ${initial.workerId.value}, not ${workerId.value}"
         }
-        require(afterByte <= File(initial.outputFile).length()) {
-            "after_byte $afterByte exceeds current output size ${File(initial.outputFile).length()}"
+        val currentOutputSize = initial.currentOutputSize()
+        require(afterByte <= currentOutputSize) {
+            "after_byte $afterByte exceeds current output size $currentOutputSize"
         }
         if (initial.status == CommandTask.Status.WORKING && waitMillis > 0) {
             val deadline = System.nanoTime() + waitMillis * 1_000_000
@@ -268,7 +286,7 @@ class DefaultCommandTaskService(
         val tasks = runtimeCoordinator.findCommandTasks()
             .filter { it.workerId == workerId }
         runCatching {
-            processRunner.garbageCollectOutputArtifacts(tasks.mapTo(mutableSetOf()) { it.outputFile })
+            garbageCollectOutputArtifacts(tasks)
         }.onFailure { error ->
             log.warn(error) { "Failed to garbage-collect command output artifacts" }
         }
@@ -448,6 +466,12 @@ class DefaultCommandTaskService(
         } finally {
             activeCommands.remove(activeCommand.task.id, activeCommand)
             activeCommand.completed.complete(Unit)
+            if (activeCommand.task.isTerminal) {
+                runCatching { garbageCollectOutputArtifacts() }
+                    .onFailure { error ->
+                        log.warn(error) { "Failed to apply command output retention: ${error.message}" }
+                    }
+            }
         }
     }
 
@@ -555,6 +579,10 @@ class DefaultCommandTaskService(
         persistCommandTask(completedTask)
         publishSnapshot(task.conversationId)
         publishTerminalLifecycleEvent(completedTask)
+        runCatching { garbageCollectOutputArtifacts() }
+            .onFailure { error ->
+                log.warn(error) { "Failed to apply command output retention: ${error.message}" }
+            }
     }
 
     private suspend fun requestCompletionNotification(activeCommand: ActiveCommand): CommandTask =
@@ -604,6 +632,42 @@ class DefaultCommandTaskService(
         }
     }
 
+    private suspend fun runOutputGarbageCollectionLoop() {
+        while (currentCoroutineContext().isActive) {
+            delay(outputGcIntervalMinutes.minutes)
+            runCatching { garbageCollectOutputArtifacts() }
+                .onFailure { error ->
+                    log.warn(error) { "Periodic command output garbage collection failed: ${error.message}" }
+                }
+        }
+    }
+
+    private suspend fun garbageCollectOutputArtifacts(
+        tasks: List<CommandTask>? = null,
+    ) {
+        val workerTasks = tasks ?: runtimeCoordinator.findCommandTasks()
+            .filter { it.workerId == workerId }
+        val referenced = workerTasks.mapTo(mutableSetOf()) { it.outputFile }
+        val protected = workerTasks.asSequence()
+            .filterNot(CommandTask::isTerminal)
+            .mapTo(mutableSetOf()) { it.outputFile }
+        val result = processRunner.garbageCollectOutputArtifacts(
+            CommandOutputGarbageCollectionSpec(
+                referencedOutputFiles = referenced,
+                protectedOutputFiles = protected,
+                expireBefore = Clock.System.now() - outputRetentionHours.hours,
+                maxTotalBytes = outputMaxTotalBytes,
+            )
+        )
+        if (result.retainedBytes > outputMaxTotalBytes) {
+            log.warn {
+                "Command output exceeds the configured quota because active outputs are protected: " +
+                    "retained=${result.retainedBytes} protected=${result.protectedBytes} " +
+                    "quota=$outputMaxTotalBytes"
+            }
+        }
+    }
+
     private suspend fun awaitInitialResult(
         activeCommand: ActiveCommand,
         yieldMillis: Long,
@@ -621,13 +685,7 @@ class DefaultCommandTaskService(
         val file = File(task.outputFile)
         if (!file.isFile) {
             check(task.isTerminal) { "Command output artifact is missing: ${file.absolutePath}" }
-            return CommandTaskOutput(
-                task = task.copy(outputBytes = 0),
-                output = "",
-                outputStartByte = 0,
-                nextOutputByte = 0,
-                hasMoreOutput = false,
-            )
+            return retainedTerminalOutput(task, afterByte)
         }
         val size = file.length()
         val start = min(afterByte, size)
@@ -676,6 +734,31 @@ class DefaultCommandTaskService(
         }
         return (requestedStart + safeStart) to
             String(bytes, safeStart, bytes.size - safeStart, StandardCharsets.UTF_8)
+    }
+
+    private fun retainedTerminalOutput(task: CommandTask, afterByte: Long): CommandTaskOutput {
+        val tailStart = task.terminalOutputStartByte ?: task.outputBytes
+        val bytes = task.terminalOutput.orEmpty().toByteArray(StandardCharsets.UTF_8)
+        var offset = (afterByte - tailStart).coerceIn(0, bytes.size.toLong()).toInt()
+        while (offset < bytes.size && (bytes[offset].toInt() and 0xC0) == 0x80) {
+            offset += 1
+        }
+        return CommandTaskOutput(
+            task = task,
+            output = String(bytes, offset, bytes.size - offset, StandardCharsets.UTF_8),
+            outputStartByte = tailStart + offset,
+            nextOutputByte = task.outputBytes,
+            hasMoreOutput = false,
+        )
+    }
+
+    private fun CommandTask.currentOutputSize(): Long {
+        val file = File(outputFile)
+        return when {
+            file.isFile -> file.length()
+            isTerminal -> outputBytes
+            else -> error("Command output artifact is missing: ${file.absolutePath}")
+        }
     }
 
     private suspend fun publishSnapshot(conversationId: Conversation.Id) {
@@ -796,5 +879,8 @@ class DefaultCommandTaskService(
         const val MAX_TERMINAL_OUTPUT_BYTES = 8 * 1024L
         const val PROGRESS_PUBLISH_INTERVAL_NANOS = 1_000_000_000L
         const val TASK_MUTEX_STRIPES = 64
+        const val DEFAULT_OUTPUT_RETENTION_HOURS = 168L
+        const val DEFAULT_OUTPUT_MAX_TOTAL_BYTES = 1_073_741_824L
+        const val DEFAULT_OUTPUT_GC_INTERVAL_MINUTES = 60L
     }
 }

@@ -4,6 +4,8 @@ import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
+import kotlinx.datetime.Instant
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.Test
@@ -181,7 +183,14 @@ class LocalCommandProcessRunnerTest {
             assertTrue(retained.waitFor(5_000))
             assertTrue(orphaned.waitFor(5_000))
 
-            runner.garbageCollectOutputArtifacts(setOf(retained.outputFile))
+            runner.garbageCollectOutputArtifacts(
+                CommandOutputGarbageCollectionSpec(
+                    referencedOutputFiles = setOf(retained.outputFile),
+                    protectedOutputFiles = emptySet(),
+                    expireBefore = Instant.fromEpochMilliseconds(0),
+                    maxTotalBytes = Long.MAX_VALUE,
+                )
+            )
 
             assertTrue(File(retained.outputFile).isFile)
             assertFalse(File(orphaned.outputFile).exists())
@@ -189,6 +198,60 @@ class LocalCommandProcessRunnerTest {
             assertFalse(File("${orphaned.outputFile}.exit").exists())
             assertFalse(File("${orphaned.outputFile}.command.cmd").exists())
             assertFalse(File("${orphaned.outputFile}.wrapper.cmd").exists())
+        }
+    }
+
+    @Test
+    fun `runner expires old referenced output but keeps recent output`() {
+        withTemporaryGromozekaHome { home ->
+            val expired = completedProcess(home, "expired-output-task", "expired")
+            val recent = completedProcess(home, "recent-output-task", "recent")
+            artifactsFor(expired.outputFile).forEach { it.setLastModified(1_000) }
+            artifactsFor(recent.outputFile).forEach { it.setLastModified(3_000) }
+
+            val result = runner.garbageCollectOutputArtifacts(
+                CommandOutputGarbageCollectionSpec(
+                    referencedOutputFiles = setOf(expired.outputFile, recent.outputFile),
+                    protectedOutputFiles = emptySet(),
+                    expireBefore = Instant.fromEpochMilliseconds(2_000),
+                    maxTotalBytes = Long.MAX_VALUE,
+                )
+            )
+
+            assertEquals(setOf(File(expired.outputFile).canonicalPath), result.deletedOutputFiles)
+            assertFalse(File(expired.outputFile).exists())
+            assertTrue(File(recent.outputFile).isFile)
+        }
+    }
+
+    @Test
+    fun `runner applies global quota oldest first and never deletes protected output`() {
+        withTemporaryGromozekaHome { home ->
+            val protected = completedProcess(home, "protected-output-task", "protected")
+            val oldest = completedProcess(home, "oldest-output-task", "x".repeat(256))
+            val newest = completedProcess(home, "newest-output-task", "newest")
+            artifactsFor(oldest.outputFile).forEach { it.setLastModified(1_000) }
+            artifactsFor(newest.outputFile).forEach { it.setLastModified(2_000) }
+            artifactsFor(protected.outputFile).forEach { it.setLastModified(3_000) }
+            val expectedRetainedBytes =
+                artifactsFor(protected.outputFile).sumOf(File::length) +
+                    artifactsFor(newest.outputFile).sumOf(File::length)
+
+            val result = runner.garbageCollectOutputArtifacts(
+                CommandOutputGarbageCollectionSpec(
+                    referencedOutputFiles = setOf(protected.outputFile, oldest.outputFile, newest.outputFile),
+                    protectedOutputFiles = setOf(protected.outputFile),
+                    expireBefore = Instant.fromEpochMilliseconds(0),
+                    maxTotalBytes = expectedRetainedBytes,
+                )
+            )
+
+            assertEquals(setOf(File(oldest.outputFile).canonicalPath), result.deletedOutputFiles)
+            assertTrue(File(protected.outputFile).isFile)
+            assertFalse(File(oldest.outputFile).exists())
+            assertTrue(File(newest.outputFile).isFile)
+            assertEquals(expectedRetainedBytes, result.retainedBytes)
+            assertEquals(artifactsFor(protected.outputFile).sumOf(File::length), result.protectedBytes)
         }
     }
 
@@ -234,6 +297,30 @@ class LocalCommandProcessRunnerTest {
             Thread.sleep(25)
         }
         assertTrue(condition(), "Condition was not met within ${timeoutMillis}ms")
+    }
+
+    private fun completedProcess(
+        home: File,
+        taskId: String,
+        output: String,
+    ) = runner.start(
+        CommandProcessSpec(
+            taskId = CommandTask.Id(taskId),
+            command = platformCommand(
+                posix = "printf '$output'",
+                windows = "<NUL set /P =$output",
+            ),
+            workingDirectory = home.absolutePath,
+        )
+    ).also { process ->
+        assertTrue(process.waitFor(5_000))
+        assertEquals(0, process.exitCode())
+    }
+
+    private fun artifactsFor(outputFile: String): List<File> {
+        val output = File(outputFile)
+        return output.parentFile.listFiles().orEmpty()
+            .filter { it.name == output.name || it.name.startsWith("${output.name}.") }
     }
 
     private fun withTemporaryGromozekaHome(block: (File) -> Unit) {

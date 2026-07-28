@@ -4,6 +4,8 @@ import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
+import com.gromozeka.domain.service.CommandOutputGarbageCollectionResult
+import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.RunningCommandProcess
 import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
@@ -116,15 +118,53 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         }
     }
 
-    override fun garbageCollectOutputArtifacts(retainedOutputFiles: Set<String>) {
-        val retained = retainedOutputFiles.mapNotNullTo(mutableSetOf()) { path ->
+    override fun garbageCollectOutputArtifacts(
+        spec: CommandOutputGarbageCollectionSpec,
+    ): CommandOutputGarbageCollectionResult {
+        val referenced = spec.referencedOutputFiles.mapNotNullTo(mutableSetOf()) { path ->
             runCatching { managedOutputFile(path).absolutePath }.getOrNull()
         }
-        outputDirectory().listFiles().orEmpty()
+        val protected = spec.protectedOutputFiles.mapTo(mutableSetOf()) { path ->
+            managedOutputFile(path).absolutePath
+        }
+        val artifacts = outputDirectory().listFiles().orEmpty()
             .mapNotNull(::outputFileForArtifact)
             .distinctBy { it.absolutePath }
-            .filterNot { it.absolutePath in retained }
-            .forEach { deleteOutputArtifacts(it.absolutePath) }
+            .map(::outputArtifactGroup)
+        val deleted = linkedSetOf<String>()
+        val retained = artifacts.toMutableList()
+
+        retained.removeAll { group ->
+            val delete = group.outputFile.absolutePath !in referenced ||
+                (
+                    group.outputFile.absolutePath !in protected &&
+                        group.lastModifiedAtMillis < spec.expireBefore.toEpochMilliseconds()
+                )
+            if (delete) {
+                deleteOutputArtifacts(group.outputFile.absolutePath)
+                deleted += group.outputFile.absolutePath
+            }
+            delete
+        }
+
+        var retainedBytes = retained.sumOf(OutputArtifactGroup::sizeBytes)
+        val quotaCandidates = retained.asSequence()
+            .filterNot { it.outputFile.absolutePath in protected }
+            .sortedBy(OutputArtifactGroup::lastModifiedAtMillis)
+        for (group in quotaCandidates) {
+            if (retainedBytes <= spec.maxTotalBytes) break
+            deleteOutputArtifacts(group.outputFile.absolutePath)
+            deleted += group.outputFile.absolutePath
+            retainedBytes -= group.sizeBytes
+        }
+
+        return CommandOutputGarbageCollectionResult(
+            deletedOutputFiles = deleted,
+            retainedBytes = retainedBytes,
+            protectedBytes = retained
+                .filter { it.outputFile.absolutePath in protected }
+                .sumOf(OutputArtifactGroup::sizeBytes),
+        )
     }
 
     private fun terminateStartupFailure(processHandle: ProcessHandle, processTreeFile: File) {
@@ -174,6 +214,15 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         windowsCommandFile(outputFile),
         windowsWrapperFile(outputFile),
     )
+
+    private fun outputArtifactGroup(outputFile: File): OutputArtifactGroup {
+        val existingArtifacts = outputArtifacts(outputFile).filter(File::isFile)
+        return OutputArtifactGroup(
+            outputFile = outputFile,
+            sizeBytes = existingArtifacts.sumOf(File::length),
+            lastModifiedAtMillis = existingArtifacts.maxOfOrNull(File::lastModified) ?: 0L,
+        )
+    }
 
     private fun readExitCode(outputFile: File): Int? {
         val artifact = exitCodeFile(outputFile)
@@ -246,6 +295,12 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             processTree.terminate(processHandle)
         }
     }
+
+    private data class OutputArtifactGroup(
+        val outputFile: File,
+        val sizeBytes: Long,
+        val lastModifiedAtMillis: Long,
+    )
 
     private companion object {
         const val OUTPUT_DIRECTORY_NAME = "tool-outputs"

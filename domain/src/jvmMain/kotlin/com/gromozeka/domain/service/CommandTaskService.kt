@@ -56,8 +56,30 @@ interface CommandProcessRunner {
 
     fun deleteOutputArtifacts(outputFile: String)
 
-    fun garbageCollectOutputArtifacts(retainedOutputFiles: Set<String>)
+    fun garbageCollectOutputArtifacts(
+        spec: CommandOutputGarbageCollectionSpec,
+    ): CommandOutputGarbageCollectionResult
 }
+
+data class CommandOutputGarbageCollectionSpec(
+    val referencedOutputFiles: Set<String>,
+    val protectedOutputFiles: Set<String>,
+    val expireBefore: Instant,
+    val maxTotalBytes: Long,
+) {
+    init {
+        require(referencedOutputFiles.containsAll(protectedOutputFiles)) {
+            "Protected command outputs must also be referenced"
+        }
+        require(maxTotalBytes >= 0) { "Command output byte quota must be non-negative" }
+    }
+}
+
+data class CommandOutputGarbageCollectionResult(
+    val deletedOutputFiles: Set<String>,
+    val retainedBytes: Long,
+    val protectedBytes: Long,
+)
 
 interface RunningCommandProcess {
     val processId: Long

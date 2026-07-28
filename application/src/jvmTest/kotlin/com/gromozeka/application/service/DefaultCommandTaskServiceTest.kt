@@ -7,6 +7,8 @@ import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
+import com.gromozeka.domain.service.CommandOutputGarbageCollectionResult
+import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
@@ -239,7 +241,8 @@ class DefaultCommandTaskServiceTest {
             )
             try {
                 recoveredService.recoverPersistedTasks()
-                assertTrue(result.task.outputFile in runner.garbageCollectionRetainedFiles)
+                assertTrue(result.task.outputFile in runner.garbageCollectionSpec.referencedOutputFiles)
+                assertTrue(result.task.outputFile in runner.garbageCollectionSpec.protectedOutputFiles)
                 runner.lastProcess.appendOutput("recovered output")
                 runner.lastProcess.complete(0)
 
@@ -312,6 +315,31 @@ class DefaultCommandTaskServiceTest {
             assertTrue(stored.terminalOutput.orEmpty().endsWith("-terminal-suffix"))
             assertTrue(stored.terminalOutput.orEmpty().toByteArray().size <= 8 * 1024)
             assertTrue((stored.terminalOutputStartByte ?: 0) > 0)
+        }
+    }
+
+    @Test
+    fun `terminal tail remains readable after full output is garbage collected`() = runBlocking {
+        withService { service, runner, coordinator, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(command = "large", yield_time_ms = 0),
+                context(projectDirectory),
+            )
+            runner.lastProcess.appendOutput("discarded-" + "x".repeat(10_000) + "-retained")
+            runner.lastProcess.complete(0)
+            waitUntil(3_000) {
+                coordinator.findCommandTask(conversationId, result.task.id)?.isTerminal == true
+            }
+            val stored = assertNotNull(coordinator.findCommandTask(conversationId, result.task.id))
+            assertTrue(File(stored.outputFile).delete())
+
+            val output = assertNotNull(service.get(conversationId, stored.id, 0, 0))
+
+            assertTrue(output.output.endsWith("-retained"))
+            assertTrue(output.outputStartByte > 0)
+            assertEquals(stored.outputBytes, output.nextOutputByte)
+            assertEquals(stored.outputBytes, output.task.outputBytes)
+            assertFalse(output.hasMoreOutput)
         }
     }
 
@@ -510,7 +538,7 @@ class DefaultCommandTaskServiceTest {
         lateinit var lastProcess: FakeRunningCommandProcess
         var onStart: (FakeRunningCommandProcess) -> Unit = {}
         val deletedOutputFiles = mutableListOf<String>()
-        var garbageCollectionRetainedFiles = emptySet<String>()
+        lateinit var garbageCollectionSpec: CommandOutputGarbageCollectionSpec
 
         override fun start(spec: CommandProcessSpec): RunningCommandProcess =
             FakeRunningCommandProcess(
@@ -539,8 +567,15 @@ class DefaultCommandTaskServiceTest {
             File(outputFile).delete()
         }
 
-        override fun garbageCollectOutputArtifacts(retainedOutputFiles: Set<String>) {
-            garbageCollectionRetainedFiles = retainedOutputFiles
+        override fun garbageCollectOutputArtifacts(
+            spec: CommandOutputGarbageCollectionSpec,
+        ): CommandOutputGarbageCollectionResult {
+            garbageCollectionSpec = spec
+            return CommandOutputGarbageCollectionResult(
+                deletedOutputFiles = emptySet(),
+                retainedBytes = 0,
+                protectedBytes = 0,
+            )
         }
     }
 
