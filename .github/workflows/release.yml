@@ -391,9 +391,18 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v4
+      - name: Download Client artifacts
+        uses: actions/download-artifact@v4
         with:
+          pattern: client-*
           path: downloaded-artifacts
+          merge-multiple: true
+      - name: Download Worker artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: worker-*
+          path: downloaded-artifacts
+          merge-multiple: true
       - name: Prepare release assets
         shell: bash
         run: |
