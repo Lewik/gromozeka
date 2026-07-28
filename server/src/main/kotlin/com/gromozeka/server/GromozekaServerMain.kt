@@ -55,6 +55,7 @@ fun main() {
     val mcpServerFactory = context.getBean(GromozekaMcpServerFactory::class.java)
     val controlMcpServerFactory = context.getBean(GromozekaControlMcpServerFactory::class.java)
     val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
+    val workerEnrollmentService = context.getBean(WorkerEnrollmentService::class.java)
     val webRoot = resolveWebRoot()
     val mcpHttpSecurity = resolveMcpHttpSecurityConfiguration(
         System.getProperty("gromozeka.mcp.allowed-hosts")
@@ -88,6 +89,7 @@ fun main() {
                 remoteServer.handle(this)
             }
             gromozekaMemoryHttp(memoryToolApplicationService)
+            gromozekaDistributions(workerEnrollmentService)
             gromozekaWeb(webRoot)
         }
     }.start(wait = false)

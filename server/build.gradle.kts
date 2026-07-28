@@ -57,6 +57,9 @@ application {
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     archiveFileName.set("gromozeka-server.jar")
+    manifest {
+        attributes["Implementation-Version"] = project.version
+    }
 }
 
 tasks.withType<JavaExec>().matching { it.name == "run" || it.name == "bootRun" }.configureEach {

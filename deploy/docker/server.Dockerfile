@@ -25,6 +25,7 @@ WORKDIR /app
 
 COPY --chown=gromozeka:gromozeka server/build/libs/gromozeka-server.jar /app/gromozeka-server.jar
 COPY --from=web-assets --chown=gromozeka:gromozeka /app/web /app/web
+COPY --chown=gromozeka:gromozeka LICENSE /app/LICENSE
 
 ENV GROMOZEKA_MODE=prod \
     GROMOZEKA_HOME=/var/lib/gromozeka \

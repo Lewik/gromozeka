@@ -25,6 +25,7 @@ java {
 
 dependencies {
     implementation(project(":domain"))
+    implementation(project(":remote-protocol"))
     implementation(project(":application"))
     implementation(project(":infrastructure-db"))
     implementation(project(":infrastructure-runtime"))
@@ -46,6 +47,9 @@ application {
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     archiveFileName.set("gromozeka-worker.jar")
+    manifest {
+        attributes["Implementation-Version"] = project.version
+    }
 }
 
 tasks.withType<JavaExec>().matching { it.name == "run" || it.name == "bootRun" }.configureEach {

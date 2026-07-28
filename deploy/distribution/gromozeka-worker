@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+app_home="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$HOME/.gromozeka}"
+worker_config="${GROMOZEKA_WORKER_CONFIG:-$GROMOZEKA_HOME/worker.yaml}"
+
+if [ "${1:-}" = "enroll" ]; then
+  exec "$app_home/runtime/bin/java" \
+    -jar "$app_home/app/gromozeka-worker.jar" \
+    "$@"
+fi
+
+exec "$app_home/runtime/bin/java" \
+  -jar "$app_home/app/gromozeka-worker.jar" \
+  "--spring.config.additional-location=optional:file:$worker_config" \
+  "$@"

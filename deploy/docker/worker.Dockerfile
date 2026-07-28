@@ -6,6 +6,7 @@ RUN groupadd --gid 10001 gromozeka \
 WORKDIR /app
 
 COPY --chown=gromozeka:gromozeka worker/build/libs/gromozeka-worker.jar /app/gromozeka-worker.jar
+COPY --chown=gromozeka:gromozeka LICENSE /app/LICENSE
 
 ENV GROMOZEKA_MODE=prod \
     GROMOZEKA_HOME=/var/lib/gromozeka

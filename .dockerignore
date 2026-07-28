@@ -1,4 +1,5 @@
 **
+!LICENSE
 !deploy/
 !deploy/docker/
 !deploy/docker/server.Dockerfile

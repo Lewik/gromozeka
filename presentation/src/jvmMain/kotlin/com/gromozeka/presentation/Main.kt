@@ -1,52 +1,99 @@
 package com.gromozeka.presentation
 
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import com.gromozeka.client.GromozekaRemoteDefaults
+import androidx.compose.ui.window.rememberWindowState
+import com.gromozeka.client.resolveRemoteUrl
+import com.gromozeka.client.saveRemoteUrl
 import com.gromozeka.presentation.ui.ChatWindow
-import com.gromozeka.presentation.ui.ErrorDialog
+import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.RemoteServerSetupScreen
 import klog.KLoggers
-import kotlin.system.exitProcess
+import kotlinx.coroutines.CancellationException
 
 fun main() {
     val log = KLoggers.logger("ChatApplication")
     System.setProperty("java.awt.headless", "false")
 
-    val remoteUrl = System.getProperty("gromozeka.remote.url")
-        ?: System.getenv("GROMOZEKA_REMOTE_URL")
-        ?: GromozekaRemoteDefaults.REMOTE_URL
-
-    var initializationError: Throwable? = null
-    var remoteApp: RemoteStartedApp? = null
-
-    try {
-        log.info("Initializing remote UI client: $remoteUrl")
-        remoteApp = startRemotePresentation(remoteUrl)
-    } catch (e: Throwable) {
-        log.error("Failed to initialize remote UI client: ${e.message}")
-        e.printStackTrace()
-        initializationError = e
-    }
-
     log.info("Starting Compose Desktop UI...")
     application {
-        when {
-            initializationError != null -> {
-                ErrorDialog(
-                    error = initializationError,
-                    onClose = { exitProcess(1) }
-                )
-            }
+        val settingsStore = remember { createDesktopRemoteClientSettingsStore() }
+        val explicitRemoteUrl = remember {
+            System.getProperty("gromozeka.remote.url")
+                ?: System.getenv("GROMOZEKA_REMOTE_URL")
+        }
+        val initialResolution = remember {
+            runCatching { settingsStore.resolveRemoteUrl(explicitUrl = explicitRemoteUrl) }
+        }
+        var remoteUrl by remember {
+            mutableStateOf(initialResolution.getOrNull())
+        }
+        var connectionAttempt by remember { mutableIntStateOf(0) }
+        var connecting by remember { mutableStateOf(false) }
+        var initializationError by remember {
+            mutableStateOf(initialResolution.exceptionOrNull()?.message)
+        }
+        var remoteApp by remember { mutableStateOf<RemoteStartedApp?>(null) }
 
-            remoteApp != null -> {
-                ChatWindow(
-                    appComponents = remoteApp.components,
-                    windowStateService = remoteApp.windowStateService,
-                    skipLoadingScreen = true,
-                    onExitRequest = {
-                        remoteApp.close()
-                        exitApplication()
-                    }
-                )
+        LaunchedEffect(remoteUrl, connectionAttempt) {
+            val targetUrl = remoteUrl ?: return@LaunchedEffect
+            connecting = true
+            initializationError = null
+            try {
+                log.info("Initializing remote UI client: $targetUrl")
+                remoteApp = startRemotePresentation(targetUrl, settingsStore)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                log.error("Failed to initialize remote UI client: ${error.message}")
+                initializationError = error.message ?: error.toString()
+            }
+            connecting = false
+        }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                remoteApp?.close()
+            }
+        }
+
+        val startedApp = remoteApp
+        if (startedApp != null) {
+            ChatWindow(
+                appComponents = startedApp.components,
+                windowStateService = startedApp.windowStateService,
+                skipLoadingScreen = true,
+                onExitRequest = {
+                    startedApp.close()
+                    exitApplication()
+                }
+            )
+        } else {
+            Window(
+                onCloseRequest = ::exitApplication,
+                title = "Gromozeka",
+                state = rememberWindowState(size = DpSize(640.dp, 480.dp)),
+            ) {
+                GromozekaTheme {
+                    RemoteServerSetupScreen(
+                        initialAddress = remoteUrl.orEmpty(),
+                        connecting = connecting,
+                        connectionError = initializationError,
+                        onConnect = { address ->
+                            remoteUrl = settingsStore.saveRemoteUrl(address)
+                            connectionAttempt += 1
+                        },
+                    )
+                }
             }
         }
     }

@@ -4,7 +4,7 @@
 [versions]
 java = "21"
 kotlin = "2.3.21"
-agp = "8.10.1"
+agp = "8.13.2"
 ktor = "3.4.3"
 spring-boot = "3.5.4"
 spring-dependency-management = "1.1.7"

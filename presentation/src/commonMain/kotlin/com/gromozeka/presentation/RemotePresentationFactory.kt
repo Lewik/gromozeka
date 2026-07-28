@@ -60,7 +60,12 @@ suspend fun createRemoteAppComponents(
         clientSettingsStore = remoteClientSettingsStore,
     )
 
-    remoteServices.initialize()
+    try {
+        remoteServices.initialize()
+    } catch (error: Throwable) {
+        remoteServices.close()
+        throw error
+    }
 
     val screenCaptureController = object : ScreenCaptureController {
         override suspend fun captureWindow(): String? = null

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -30,9 +29,14 @@ import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.AndroidRemoteClientSettingsStore
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
+import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
+import com.gromozeka.presentation.ui.RemoteServerSetupScreen
+import com.gromozeka.client.resolveRemoteUrl
+import com.gromozeka.client.saveRemoteUrl
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -41,11 +45,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val remoteUrl = intent.getStringExtra(EXTRA_REMOTE_URL) ?: BuildConfig.DEFAULT_REMOTE_URL
+        val explicitRemoteUrl = intent.getStringExtra(EXTRA_REMOTE_URL)
+        val bundledRemoteUrl = BuildConfig.DEFAULT_REMOTE_URL.takeIf(String::isNotBlank)
 
         setContent {
             GromozekaAndroidApp(
-                remoteUrl = remoteUrl,
+                explicitRemoteUrl = explicitRemoteUrl,
+                bundledRemoteUrl = bundledRemoteUrl,
                 onRemoteAppStarted = { remoteApp = it }
             )
         }
@@ -64,14 +70,29 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun GromozekaAndroidApp(
-    remoteUrl: String,
+    explicitRemoteUrl: String?,
+    bundledRemoteUrl: String?,
     onRemoteAppStarted: (RemoteAppComponents) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var remoteApp by remember { mutableStateOf<RemoteAppComponents?>(null) }
     val currentRemoteApp by rememberUpdatedState(remoteApp)
-    var startupError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current.applicationContext
+    val settingsStore = remember { AndroidRemoteClientSettingsStore(context) }
+    val initialResolution = remember {
+        runCatching {
+            settingsStore.resolveRemoteUrl(
+                explicitUrl = explicitRemoteUrl,
+                fallbackUrl = bundledRemoteUrl,
+            )
+        }
+    }
+    var remoteUrl by remember { mutableStateOf(initialResolution.getOrNull()) }
+    var connectionAttempt by remember { mutableStateOf(0) }
+    var connecting by remember { mutableStateOf(false) }
+    var startupError by remember {
+        mutableStateOf(initialResolution.exceptionOrNull()?.message)
+    }
     val locationPermissionRequester = remember { ComposeLocationPermissionRequester() }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -87,15 +108,18 @@ private fun GromozekaAndroidApp(
         )
     }
 
-    LaunchedEffect(remoteUrl) {
-        runCatching {
-            createRemoteAppComponents(
-                remoteUrl = remoteUrl,
+    LaunchedEffect(remoteUrl, connectionAttempt) {
+        val targetUrl = remoteUrl ?: return@LaunchedEffect
+        connecting = true
+        startupError = null
+        try {
+            val app = createRemoteAppComponents(
+                remoteUrl = targetUrl,
                 scope = scope,
                 clientHomeDirectory = "android",
                 clientPlatform = ClientPlatform.ANDROID,
                 uiStateStore = InMemoryUIStateStore(),
-                remoteClientSettingsStore = AndroidRemoteClientSettingsStore(context),
+                remoteClientSettingsStore = settingsStore,
                 audioRecorder = NoOpClientAudioRecorder,
                 deviceLocationService = if (BuildConfig.ENABLE_LOCATION_TELEMETRY) {
                     AndroidDeviceLocationService(context, locationPermissionRequester)
@@ -103,12 +127,14 @@ private fun GromozekaAndroidApp(
                     NoOpDeviceLocationService
                 },
             )
-        }.onSuccess { app ->
             remoteApp = app
             onRemoteAppStarted(app)
-        }.onFailure { error ->
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             startupError = error.message ?: error.toString()
         }
+        connecting = false
     }
 
     DisposableEffect(Unit) {
@@ -117,17 +143,28 @@ private fun GromozekaAndroidApp(
         }
     }
 
-    when {
-        remoteApp != null -> GromozekaApp(
-            appComponents = remoteApp!!.components,
-            skipLoadingScreen = true,
-            showRuntimePanelInitially = false,
-            forceCompactLayout = true,
-            clientPlatform = ClientPlatform.ANDROID,
-        )
+    GromozekaTheme {
+        when {
+            remoteApp != null -> GromozekaApp(
+                appComponents = remoteApp!!.components,
+                skipLoadingScreen = true,
+                showRuntimePanelInitially = false,
+                forceCompactLayout = true,
+                clientPlatform = ClientPlatform.ANDROID,
+            )
 
-        startupError != null -> StartupError(startupError!!)
-        else -> StartupLoading()
+            remoteUrl == null || startupError != null -> RemoteServerSetupScreen(
+                initialAddress = remoteUrl.orEmpty(),
+                connecting = connecting,
+                connectionError = startupError,
+                onConnect = { address ->
+                    remoteUrl = settingsStore.saveRemoteUrl(address)
+                    connectionAttempt += 1
+                },
+            )
+
+            else -> StartupLoading()
+        }
     }
 }
 
@@ -166,15 +203,6 @@ private fun StartupLoading() {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
-        }
-    }
-}
-
-@Composable
-private fun StartupError(message: String) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Failed to start Gromozeka Android client: $message")
         }
     }
 }

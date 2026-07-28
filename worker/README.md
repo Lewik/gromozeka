@@ -36,16 +36,24 @@ Worker log directory.
 
 ## Distribution
 
-Build the standalone Spring Boot distribution:
+Release archives contain `gromozeka-worker.jar`, a private Java 21 runtime,
+launchers, and an example configuration. The GitHub release workflow builds
+macOS ARM64, Linux x64, and Windows x64 packages.
+
+Build a macOS or Linux archive locally:
 
 ```bash
-./gradlew :worker:bootDistZip
+./gradlew :worker:bootJar -Pgromozeka.version=1.0.0
+deploy/distribution/package-worker.sh macos arm64 build/release
 ```
 
-The archive in `worker/build/distributions/` contains `bin/worker` and
-`bin/worker.bat`. Both launch the executable `gromozeka-worker.jar`; the Windows
-launcher does not expand the runtime dependency classpath into the `cmd.exe`
-command line.
+On Windows, run `deploy/distribution/package-worker.ps1` after `bootJar`.
+
+When Server enrollment is enabled, open its `/downloads` page, generate a
+one-time token, then run the displayed `bin/gromozeka-worker enroll` or
+`bin\gromozeka-worker.cmd enroll` command. The Worker writes a private
+`~/.gromozeka/worker.yaml`; manual YAML configuration remains available for
+development and custom deployments.
 
 Managed commands use the native host shell: `/bin/sh` on macOS/Linux and
 `cmd.exe` on Windows. Windows commands are staged in managed batch artifacts

@@ -13,26 +13,30 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
-internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
+internal suspend fun startRemotePresentation(
+    remoteUrl: String,
+    remoteClientSettingsStore: DesktopRemoteClientSettingsStore,
+): RemoteStartedApp {
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     val clientHomeDirectory = System.getProperty("GROMOZEKA_CLIENT_HOME")
         ?: File(System.getProperty("user.home"), ".gromozeka-remote-client").absolutePath
-    val clientHomeDirectoryFile = File(clientHomeDirectory)
-    val remoteApp = runBlocking {
+    val remoteApp = try {
         createRemoteAppComponents(
             remoteUrl = remoteUrl,
             scope = scope,
             clientHomeDirectory = clientHomeDirectory,
             clientPlatform = ClientPlatform.DESKTOP,
-            remoteClientSettingsStore = DesktopRemoteClientSettingsStore(
-                File(clientHomeDirectoryFile, "remote-client-settings.json")
-            ),
+            remoteClientSettingsStore = remoteClientSettingsStore,
             audioRecorder = DesktopClientAudioRecorder(),
             audioPlayer = DesktopClientAudioPlayer(),
             systemAudioMuteService = DesktopSystemAudioMuteService(),
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
         )
+    } catch (error: Throwable) {
+        scope.cancel()
+        throw error
     }
     File(remoteApp.components.settingsService.homeDirectory).mkdirs()
     System.setProperty("GROMOZEKA_HOME", remoteApp.components.settingsService.homeDirectory)
@@ -41,14 +45,24 @@ internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
     return RemoteStartedApp(remoteApp, windowStateService, scope)
 }
 
+internal fun createDesktopRemoteClientSettingsStore(): DesktopRemoteClientSettingsStore {
+    val clientHomeDirectory = System.getProperty("GROMOZEKA_CLIENT_HOME")
+        ?: File(System.getProperty("user.home"), ".gromozeka-remote-client").absolutePath
+    return DesktopRemoteClientSettingsStore(
+        File(clientHomeDirectory, "remote-client-settings.json")
+    )
+}
+
 internal class RemoteStartedApp(
     private val remoteApp: RemoteAppComponents,
     val windowStateService: WindowStateService,
     private val scope: CoroutineScope,
 ) : AutoCloseable {
     val components: AppComponents = remoteApp.components
+    private val closed = AtomicBoolean()
 
     override fun close() {
+        if (!closed.compareAndSet(false, true)) return
         runCatching { remoteApp.close() }
         runCatching { runBlocking { components.appViewModel.cleanup() } }
         scope.cancel()

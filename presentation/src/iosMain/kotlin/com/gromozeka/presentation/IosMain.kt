@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -19,7 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.uikit.OnFocusBehavior
 import androidx.compose.ui.window.ComposeUIViewController
-import com.gromozeka.client.GromozekaRemoteDefaults
+import com.gromozeka.client.resolveRemoteUrl
+import com.gromozeka.client.saveRemoteUrl
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.IosClientAudioPlayer
@@ -28,6 +28,9 @@ import com.gromozeka.presentation.services.IosRemoteClientSettingsStore
 import com.gromozeka.presentation.services.PTTEvent
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
+import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.RemoteServerSetupScreen
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
@@ -45,28 +48,43 @@ fun GromozekaMainViewController(): UIViewController =
 @Composable
 private fun GromozekaIosApp() {
     val scope = rememberCoroutineScope()
+    val settingsStore = remember { IosRemoteClientSettingsStore() }
+    val initialResolution = remember {
+        runCatching {
+            settingsStore.resolveRemoteUrl(fallbackUrl = resolveBundledRemoteUrl())
+        }
+    }
     var remoteApp by remember { mutableStateOf<RemoteAppComponents?>(null) }
     val currentRemoteApp by rememberUpdatedState(remoteApp)
-    var startupError by remember { mutableStateOf<String?>(null) }
+    var remoteUrl by remember { mutableStateOf(initialResolution.getOrNull()) }
+    var connectionAttempt by remember { mutableStateOf(0) }
+    var connecting by remember { mutableStateOf(false) }
+    var startupError by remember {
+        mutableStateOf(initialResolution.exceptionOrNull()?.message)
+    }
 
-    LaunchedEffect(Unit) {
-        runCatching {
-            createRemoteAppComponents(
-                remoteUrl = resolveRemoteUrl(),
+    LaunchedEffect(remoteUrl, connectionAttempt) {
+        val targetUrl = remoteUrl ?: return@LaunchedEffect
+        connecting = true
+        startupError = null
+        try {
+            remoteApp = createRemoteAppComponents(
+                remoteUrl = targetUrl,
                 scope = scope,
                 clientHomeDirectory = "ios",
                 clientPlatform = ClientPlatform.IOS,
                 uiStateStore = InMemoryUIStateStore(),
-                remoteClientSettingsStore = IosRemoteClientSettingsStore(),
+                remoteClientSettingsStore = settingsStore,
                 audioRecorder = IosClientAudioRecorder(),
                 audioPlayer = IosClientAudioPlayer(),
                 deviceLocationService = NoOpDeviceLocationService,
             )
-        }.onSuccess { app ->
-            remoteApp = app
-        }.onFailure { error ->
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             startupError = error.message ?: error.toString()
         }
+        connecting = false
     }
 
     LaunchedEffect(remoteApp) {
@@ -80,32 +98,36 @@ private fun GromozekaIosApp() {
         }
     }
 
-    when {
-        remoteApp != null -> GromozekaApp(
-            appComponents = remoteApp!!.components,
-            skipLoadingScreen = true,
-            showRuntimePanelInitially = false,
-            forceCompactLayout = true,
-            clientPlatform = ClientPlatform.IOS,
-        )
+    GromozekaTheme {
+        when {
+            remoteApp != null -> GromozekaApp(
+                appComponents = remoteApp!!.components,
+                skipLoadingScreen = true,
+                showRuntimePanelInitially = false,
+                forceCompactLayout = true,
+                clientPlatform = ClientPlatform.IOS,
+            )
 
-        startupError != null -> StartupError(startupError!!)
-        else -> StartupLoading()
+            remoteUrl == null || startupError != null -> RemoteServerSetupScreen(
+                initialAddress = remoteUrl.orEmpty(),
+                connecting = connecting,
+                connectionError = startupError,
+                onConnect = { address ->
+                    remoteUrl = settingsStore.saveRemoteUrl(address)
+                    connectionAttempt += 1
+                },
+            )
+
+            else -> StartupLoading()
+        }
     }
 }
 
-private fun resolveRemoteUrl(): String {
+private fun resolveBundledRemoteUrl(): String? {
     val configuredUrl = (NSBundle.mainBundle.objectForInfoDictionaryKey(RemoteUrlInfoKey) as? String)
         ?.trim()
         .orEmpty()
-    if (configuredUrl.isEmpty()) {
-        return GromozekaRemoteDefaults.REMOTE_URL
-    }
-
-    require(configuredUrl.startsWith("ws://") || configuredUrl.startsWith("wss://")) {
-        "$RemoteUrlInfoKey must use ws:// or wss://"
-    }
-    return configuredUrl
+    return configuredUrl.takeIf(String::isNotEmpty)
 }
 
 private suspend fun handleActionButtonEvents(app: RemoteAppComponents) {
@@ -144,15 +166,6 @@ private fun StartupLoading() {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
-        }
-    }
-}
-
-@Composable
-private fun StartupError(message: String) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Failed to start Gromozeka iOS client: $message")
         }
     }
 }

@@ -975,6 +975,18 @@ fun SettingsPanel(
 
                     // Developer Settings
                     SettingsGroup(title = translation.settings.developerSettingsTitle) {
+                        TextFieldSettingItem(
+                            label = "Server address",
+                            description = "The new address is used after restarting this client. Clear it to choose a server on the next launch.",
+                            value = remoteClientSettings.remoteUrl.orEmpty(),
+                            placeholder = "https://gromozeka.example",
+                            onValueChange = {
+                                onRemoteClientSettingsChange(
+                                    remoteClientSettings.copy(remoteUrl = it.trim().ifEmpty { null })
+                                )
+                            },
+                        )
+
                         SwitchSettingItem(
                             label = translation.settings.showOriginalJsonLabel,
                             description = translation.settings.showJsonDescription,

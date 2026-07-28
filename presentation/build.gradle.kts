@@ -10,6 +10,10 @@ plugins {
 }
 
 val javaVersion = libs.versions.java.get().toInt()
+val nativePackageVersion = rootProject.version.toString()
+    .substringBefore('-')
+    .substringBefore('+')
+    .let { version -> if (version == "0.0.0") "1.0.0" else version }
 
 kotlin {
     jvmToolchain(javaVersion)
@@ -106,7 +110,7 @@ android {
 
     defaultConfig {
         val defaultRemoteUrl = providers.gradleProperty("gromozeka.defaultRemoteUrl")
-            .orElse("ws://127.0.0.1:8765/ws")
+            .orElse("")
             .get()
 
         applicationId = "com.gromozeka.app"
@@ -230,25 +234,22 @@ compose.desktop {
         
         nativeDistributions {
             targetFormats(
-                TargetFormat.Dmg,  // macOS universal
-                TargetFormat.Msi,  // Windows
-//                TargetFormat.Deb,  // Ubuntu/Debian
-//                TargetFormat.Rpm,  // Red Hat/Fedora
-//                TargetFormat.AppImage  // Linux AppImage (requires appimagetool)
+                TargetFormat.Dmg,
             )
             
             packageName = "Gromozeka"
-            packageVersion = rootProject.version.toString()
+            packageVersion = nativePackageVersion
             description = "Multi-armed AI agent for comprehensive task automation"
             copyright = "© 2024 Gromozeka Project"
             vendor = "Gromozeka"
             
             appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/resources"))
+            licenseFile.set(rootProject.layout.projectDirectory.file("LICENSE"))
             includeAllModules = true
             
             macOS {
-                packageBuildVersion = rootProject.version.toString()
-                dmgPackageVersion = rootProject.version.toString()
+                packageBuildVersion = nativePackageVersion
+                dmgPackageVersion = nativePackageVersion
                 bundleID = "com.gromozeka.app"
                 
                 // macOS-specific JVM args (Dock, appearance) are set via OS detection above
@@ -325,6 +326,13 @@ tasks.register("removeJarSignatures") {
 tasks.whenTaskAdded {
     if (name == "run" && this is JavaExec) {
         systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
+        systemProperty(
+            "gromozeka.remote.url",
+            System.getProperty("gromozeka.remote.url")
+                ?: System.getenv("GROMOZEKA_REMOTE_URL")
+                ?: providers.gradleProperty("gromozeka.defaultRemoteUrl").orNull
+                ?: "ws://127.0.0.1:8765/ws",
+        )
         System.getenv("GROMOZEKA_MODE")?.let {
             environment("GROMOZEKA_MODE", it)
         }

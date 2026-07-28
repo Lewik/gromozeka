@@ -1,257 +1,382 @@
-name: Build Cross-Platform Packages
+name: Build Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to build (e.g., 1.0.0)'
+        description: Release version without the v prefix
         required: true
-        default: '1.0.0'
+        default: "0.0.0-dev"
+      publish_release:
+        description: Publish GitHub Release and GHCR images
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
-  JAVA_VERSION: '21'
-  GRADLE_VERSION: 'wrapper'
+  JAVA_VERSION: "21"
 
 jobs:
-  build:
-    name: Build ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+  metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      publish: ${{ steps.release.outputs.publish }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      - id: release
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            tag="$GITHUB_REF_NAME"
+            publish=true
+          else
+            version="${{ inputs.version }}"
+            tag="v$version"
+            publish="${{ inputs.publish_release }}"
+          fi
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $version" >&2
+            exit 2
+          fi
+          if [[ "$publish" == "true" && "$version" == "0.0.0-dev" ]]; then
+            echo "0.0.0-dev is reserved for local builds and cannot be published" >&2
+            exit 2
+          fi
+
+          prerelease=false
+          if [[ "$version" == *-* ]]; then
+            prerelease=true
+          fi
+
+          printf 'version=%s\ntag=%s\npublish=%s\nprerelease=%s\n' \
+            "$version" "$tag" "$publish" "$prerelease" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Verify release source
+        run: >
+          ./gradlew
+          :presentation:build
+          :server:test
+          :worker:test
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+
+  client-macos:
+    needs: [metadata, verify]
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build unsigned macOS ARM64 client
+        run: >
+          ./gradlew
+          :presentation:packageDmg
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+      - name: Verify and stage DMG
+        shell: bash
+        run: |
+          source_dmg="$(find presentation/build/compose/binaries -type f -name '*.dmg' -print -quit)"
+          app_binary="$(find presentation/build/compose/binaries -type f -path '*/Gromozeka.app/Contents/MacOS/Gromozeka' -print -quit)"
+          test -n "$source_dmg"
+          test -n "$app_binary"
+          test "$(uname -m)" = "arm64"
+          file "$app_binary" | grep -q 'arm64'
+          hdiutil verify "$source_dmg"
+          mkdir -p release-asset
+          cp "$source_dmg" release-asset/gromozeka-client-macos-arm64.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-macos-arm64
+          path: release-asset/gromozeka-client-macos-arm64.dmg
+          if-no-files-found: error
+
+  client-windows:
+    needs: [metadata, verify]
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build portable Windows x64 client
+        shell: pwsh
+        run: >
+          ./gradlew.bat
+          :presentation:createDistributable
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+      - name: Verify and archive portable client
+        shell: pwsh
+        run: |
+          $App = Get-ChildItem "presentation/build/compose/binaries" -Recurse -Directory |
+            Where-Object { Test-Path (Join-Path $_.FullName "Gromozeka.exe") } |
+            Select-Object -First 1
+          if ($null -eq $App) {
+            throw "Gromozeka.exe was not found in the distributable"
+          }
+          if (-not (Test-Path (Join-Path $App.FullName "runtime/bin/java.exe"))) {
+            throw "Bundled Java runtime was not found"
+          }
+          Copy-Item "LICENSE" (Join-Path $App.FullName "LICENSE")
+          New-Item -ItemType Directory -Force "release-asset" | Out-Null
+          Compress-Archive `
+            -Path (Join-Path $App.FullName "*") `
+            -DestinationPath "release-asset/gromozeka-client-windows-x64.zip" `
+            -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-windows-x64
+          path: release-asset/gromozeka-client-windows-x64.zip
+          if-no-files-found: error
+
+  worker-unix:
+    needs: [metadata, verify]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: macOS DMG
-            os: macos-latest
-            target-formats: Dmg
-            artifact-pattern: '**/*.dmg'
-            artifact-name: 'gromozeka-macos'
-          - name: Linux AppImage
-            os: ubuntu-latest
-            target-formats: AppImage
-            artifact-pattern: '**/*.AppImage'
-            artifact-name: 'gromozeka-linux'
-          - name: Cross-Platform JAR
-            os: ubuntu-latest
-            target-formats: Jar
-            artifact-pattern: '**/*.jar'
-            artifact-name: 'gromozeka-jar'
-          - name: Windows MSI
-            os: windows-latest
-            target-formats: Msi
-            artifact-pattern: '**/*.msi'
-            artifact-name: 'gromozeka-windows'
-
+          - runner: macos-latest
+            platform: macos
+            architecture: arm64
+          - runner: ubuntu-latest
+            platform: linux
+            architecture: x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
         with:
-          fetch-depth: 0
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
-        with:
+          distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build Worker
+        run: >
+          ./gradlew
+          :worker:bootJar
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+      - name: Package Worker with Java runtime
+        shell: bash
+        run: |
+          chmod +x deploy/distribution/package-worker.sh
+          deploy/distribution/package-worker.sh \
+            "${{ matrix.platform }}" \
+            "${{ matrix.architecture }}" \
+            release-asset
+          archive="release-asset/gromozeka-worker-${{ matrix.platform }}-${{ matrix.architecture }}.tar.gz"
+          package_root="gromozeka-worker-${{ matrix.platform }}-${{ matrix.architecture }}"
+          tar -tzf "$archive" \
+            "$package_root/runtime/bin/java" \
+            "$package_root/app/gromozeka-worker.jar" \
+            "$package_root/LICENSE"
+      - uses: actions/upload-artifact@v4
         with:
-          gradle-version: ${{ env.GRADLE_VERSION }}
+          name: worker-${{ matrix.platform }}-${{ matrix.architecture }}
+          path: release-asset/gromozeka-worker-${{ matrix.platform }}-${{ matrix.architecture }}.tar.gz
+          if-no-files-found: error
 
-      - name: Extract version from tag or input
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="${GITHUB_REF#refs/tags/v}"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Building version: $VERSION"
-
-      - name: Update package version in build.gradle.kts
-        shell: bash
-        run: |
-          # Update macOS package version
-          echo "Using version $VERSION for macOS"
-          
-          # Update build.gradle.kts with unified version
-          sed -i.bak 's/packageVersion = ".*"/packageVersion = "'$VERSION'"/g' presentation/build.gradle.kts
-          sed -i.bak 's/packageBuildVersion = ".*"/packageBuildVersion = "'$VERSION'"/g' presentation/build.gradle.kts
-          sed -i.bak 's/dmgPackageVersion = ".*"/dmgPackageVersion = "'$VERSION'"/g' presentation/build.gradle.kts
-
-      - name: Install FUSE for AppImage
-        if: matrix.target-formats == 'AppImage'
-        shell: bash
-        run: |
-          echo "Installing FUSE library for AppImage support..."
-          sudo apt-get update
-          # Try libfuse2t64 first (Ubuntu 24.04+), fallback to libfuse2 (Ubuntu 22.04)
-          sudo apt-get install -y libfuse2t64 || sudo apt-get install -y libfuse2
-          echo "FUSE installation completed"
-
-      - name: Build native distributions
-        shell: bash
-        env:
-          TARGET_FORMATS: ${{ matrix.target-formats }}
-        run: |
-          if [ "${{ matrix.target-formats }}" = "AppImage" ]; then
-            echo "Building AppImage for Linux..."
-            chmod +x build-appimage.sh
-            ./build-appimage.sh
-          elif [ "${{ matrix.target-formats }}" = "Jar" ]; then
-            echo "Building cross-platform JAR..."
-            ./gradlew :presentation:removeJarSignatures
-          elif [ "$RUNNER_OS" = "Windows" ]; then
-            ./gradlew.bat :presentation:packageDistributionForCurrentOS
-          else
-            ./gradlew :presentation:packageDistributionForCurrentOS
-          fi
-
-      - name: Find and list built packages
-        shell: bash
-        run: |
-          echo "Built packages:"
-          if [ "${{ matrix.target-formats }}" = "AppImage" ]; then
-            find build/appimage -type f -name "Gromozeka-*.AppImage" -exec ls -la {} \; 2>/dev/null || echo "No AppImage files found"
-          elif [ "${{ matrix.target-formats }}" = "Jar" ]; then
-            find presentation/build/compose/jars -type f -name "*.jar" -exec ls -la {} \; 2>/dev/null || echo "No JAR files found"
-          elif [ "${{ matrix.target-formats }}" = "Msi" ]; then
-            find presentation/build/compose/binaries -type f -name "*.msi" -exec ls -la {} \; 2>/dev/null || echo "No MSI files found"
-          else
-            find presentation/build/compose/binaries -type f -name "*.dmg" -exec ls -la {} \; 2>/dev/null || echo "No DMG files found"
-          fi
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+  worker-windows:
+    needs: [metadata, verify]
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
         with:
-          name: ${{ matrix.artifact-name }}-${{ env.VERSION }}
-          path: |
-            ${{ matrix.target-formats == 'AppImage' && 'build/appimage/Gromozeka-*.AppImage' || matrix.target-formats == 'Jar' && 'presentation/build/compose/jars/*.jar' || matrix.target-formats == 'Msi' && 'presentation/build/compose/binaries/**/*.msi' || 'presentation/build/compose/binaries/**/*.dmg' }}
-          retention-days: 30
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build Worker
+        shell: pwsh
+        run: >
+          ./gradlew.bat
+          :worker:bootJar
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+      - name: Package Worker with Java runtime
+        shell: pwsh
+        run: |
+          deploy/distribution/package-worker.ps1 -OutputDirectory release-asset
+          $Archive = "release-asset/gromozeka-worker-windows-x64.zip"
+          if (-not (Test-Path $Archive)) {
+            throw "Worker archive was not created"
+          }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $Zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $Archive))
+          try {
+            $Entries = $Zip.Entries.FullName.Replace("\", "/")
+            $RequiredEntries = @(
+              "gromozeka-worker-windows-x64/runtime/bin/java.exe",
+              "gromozeka-worker-windows-x64/app/gromozeka-worker.jar",
+              "gromozeka-worker-windows-x64/LICENSE"
+            )
+            foreach ($Entry in $RequiredEntries) {
+              if ($Entries -notcontains $Entry) {
+                throw "Worker archive is missing $Entry"
+              }
+            }
+          }
+          finally {
+            $Zip.Dispose()
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worker-windows-x64
+          path: release-asset/gromozeka-worker-windows-x64.zip
+          if-no-files-found: error
+
+  images:
+    needs: [metadata, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Assemble image inputs
+        run: >
+          ./gradlew
+          :server:bootJar
+          :worker:bootJar
+          :presentation:wasmJsBrowserDistribution
+          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
+          -q
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        if: needs.metadata.outputs.publish == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Server image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/docker/server.Dockerfile
+          platforms: linux/amd64
+          push: ${{ needs.metadata.outputs.publish == 'true' }}
+          load: ${{ needs.metadata.outputs.publish != 'true' }}
+          tags: |
+            ghcr.io/lewik/gromozeka-server:${{ needs.metadata.outputs.version }}
+            ${{ needs.metadata.outputs.prerelease == 'false' && 'ghcr.io/lewik/gromozeka-server:latest' || '' }}
+          cache-from: type=gha,scope=release-server
+          cache-to: type=gha,mode=max,scope=release-server
+      - name: Build Worker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/docker/worker.Dockerfile
+          platforms: linux/amd64
+          push: ${{ needs.metadata.outputs.publish == 'true' }}
+          load: ${{ needs.metadata.outputs.publish != 'true' }}
+          tags: |
+            ghcr.io/lewik/gromozeka-worker:${{ needs.metadata.outputs.version }}
+            ${{ needs.metadata.outputs.prerelease == 'false' && 'ghcr.io/lewik/gromozeka-worker:latest' || '' }}
+          cache-from: type=gha,scope=release-worker
+          cache-to: type=gha,mode=max,scope=release-worker
 
   release:
-    name: Create GitHub Release
-    needs: [build]
+    if: needs.metadata.outputs.publish == 'true'
+    needs:
+      - metadata
+      - client-macos
+      - client-windows
+      - worker-unix
+      - worker-windows
+      - images
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Extract version
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloaded-artifacts
+      - name: Prepare release assets
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="${GITHUB_REF#refs/tags/v}"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-
-      - name: Prepare release assets
-        run: |
           mkdir -p release-assets
-          find artifacts -type f -name "*.dmg" -exec cp {} release-assets/ \;
-          find artifacts -type f -name "Gromozeka-*.AppImage" -exec cp {} release-assets/ \;
-          find artifacts -type f -name "*.msi" -exec cp {} release-assets/ \;
-          find artifacts -type f -name "*.jar" -exec cp {} release-assets/ \;
-          ls -la release-assets/
-
-      - name: Generate release notes
+          find downloaded-artifacts -type f -exec cp {} release-assets/ \;
+          cp deploy/distribution/compose.yaml release-assets/compose.yaml
+          sed \
+            's/^GROMOZEKA_VERSION=.*/GROMOZEKA_VERSION=${{ needs.metadata.outputs.version }}/' \
+            deploy/distribution/gromozeka.env.example \
+            > release-assets/gromozeka.env.example
+          (
+            cd release-assets
+            sha256sum \
+              gromozeka-client-macos-arm64.dmg \
+              gromozeka-client-windows-x64.zip \
+              gromozeka-worker-macos-arm64.tar.gz \
+              gromozeka-worker-windows-x64.zip \
+              gromozeka-worker-linux-x64.tar.gz \
+              compose.yaml \
+              gromozeka.env.example \
+              > SHA256SUMS
+          )
+      - name: Write release notes
+        shell: bash
         run: |
-          cat > release-notes.md << 'EOF'
-          # Gromozeka v${{ env.VERSION }}
-
+          cat > release-notes.md <<'EOF'
           ## Downloads
 
-          ### macOS
-          - **Universal Binary (M1/M2/M3/M4 + Intel)**: `Gromozeka-${{ env.VERSION }}.dmg`
+          - macOS ARM64 Client: `gromozeka-client-macos-arm64.dmg`
+          - Windows x64 portable Client: `gromozeka-client-windows-x64.zip`
+          - macOS ARM64 Worker: `gromozeka-worker-macos-arm64.tar.gz`
+          - Windows x64 Worker: `gromozeka-worker-windows-x64.zip`
+          - Linux x64 Worker: `gromozeka-worker-linux-x64.tar.gz`
+          - Self-hosted stack: `compose.yaml` and `gromozeka.env.example`
 
-          ### Windows
-          - **MSI Installer (x64)**: `Gromozeka-${{ env.VERSION }}.msi`
-
-          ### Linux
-          - **AppImage (x86_64)**: `Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
-
-          ### Cross-Platform (Java)
-          - **JAR file**: `gromozeka-jvm-${{ env.VERSION }}.jar`
-
-          ## Installation
-
-          ### macOS
-          1. Download the `.dmg` file
-          2. Open it and drag Gromozeka to Applications folder
-          3. First launch: Right-click → Open (to bypass Gatekeeper)
-          4. Grant accessibility permissions when prompted for global hotkey support
-
-          ### Windows
-          1. Download the `.msi` file
-          2. Double-click to run the installer
-          3. Follow the installation wizard
-          4. **Requirements**: Claude Code CLI must be installed and available in PATH
-          5. **Compatibility**: Windows 10 and later (x64)
-
-          ### Linux
-          1. Download the `.AppImage` file
-          2. Make it executable: `chmod +x Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
-          3. Run it: `./Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
-          4. **Requirements**: Claude Code CLI must be installed and available in PATH
-          5. **Compatibility**: Works on Ubuntu 14.04+, Fedora, openSUSE, Arch, and other distributions (glibc 2.17+)
-
-          ### Cross-Platform JAR
-          1. **Requirements**: Java 21+ installed on your system
-          2. Download the `.jar` file
-          3. Run it: `java -jar gromozeka-jvm-${{ env.VERSION }}.jar`
-          4. **Claude Code CLI**: Must be installed and available in PATH
-          5. **Works on**: Any platform with Java 21+ (Windows, macOS, Linux, etc.)
-
-          ## What's New
-
-          - Multi-armed AI agent with Claude Code CLI integration
-          - Advanced Push-to-Talk (PTT) system with global hotkeys
-          - Real-time streaming interface
-          - Session management and history
-          - Native library bundling for improved macOS compatibility
-
-          ---
-          🤖 Generated with [Claude Code](https://claude.ai/code)
+          The desktop packages are currently unsigned. macOS Gatekeeper and
+          Windows SmartScreen may require explicit confirmation on first launch.
+          Verify downloaded files against `SHA256SUMS`.
           EOF
-
-      - name: Determine release type
-        run: |
-          # Extract patch version (last number in X.Y.Z)
-          PATCH_VERSION=$(echo "${{ env.VERSION }}" | cut -d'.' -f3)
-          echo "Patch version: $PATCH_VERSION"
-
-          # If patch != 0, it's a pre-release
-          if [ "$PATCH_VERSION" != "0" ]; then
-            echo "IS_PRERELEASE=true" >> $GITHUB_ENV
-            echo "This is a pre-release version (patch != 0)"
-          else
-            echo "IS_PRERELEASE=false" >> $GITHUB_ENV
-            echo "This is a stable release version (patch == 0)"
-          fi
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', env.VERSION) || github.ref_name }}
-          name: Gromozeka v${{ env.VERSION }}${{ env.IS_PRERELEASE == 'true' && ' (Beta)' || '' }}
+          tag_name: ${{ needs.metadata.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Gromozeka ${{ needs.metadata.outputs.tag }}
           body_path: release-notes.md
           files: release-assets/*
-          draft: false
-          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: ${{ needs.metadata.outputs.prerelease == 'true' }}
+          generate_release_notes: true

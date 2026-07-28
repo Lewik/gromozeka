@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.ai.tool.worker
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.WorkerEnvironmentProbe
 import com.gromozeka.domain.service.WorkerEnvironmentSnapshot
 import com.gromozeka.domain.service.WorkspaceCatalogService
@@ -10,6 +10,7 @@ import com.gromozeka.domain.tool.requiredWorkerId
 import com.gromozeka.domain.tool.worker.GetWorkerEnvironmentRequest
 import com.gromozeka.domain.tool.worker.GrzGetWorkerEnvironmentTool
 import kotlinx.coroutines.runBlocking
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
@@ -18,16 +19,18 @@ import org.springframework.stereotype.Service
 class GrzGetWorkerEnvironmentToolImpl(
     private val environmentProbe: WorkerEnvironmentProbe,
     private val workspaceCatalogService: WorkspaceCatalogService,
-    private val workerDescriptor: ConversationRuntimeWorkerDescriptor,
+    @Value("\${gromozeka.runtime.worker.id}") configuredWorkerId: String,
 ) : GrzGetWorkerEnvironmentTool {
+    private val localWorkerId = ConversationRuntimeWorkerId(configuredWorkerId.trim())
+
     override fun execute(
         request: GetWorkerEnvironmentRequest,
         context: ToolExecutionContext?,
     ): Map<String, Any> {
         val projectId = context.requiredProjectId()
         val workerId = context.requiredWorkerId()
-        check(workerId == workerDescriptor.id) {
-            "Worker environment request for ${workerId.value} reached ${workerDescriptor.id.value}"
+        check(workerId == localWorkerId) {
+            "Worker environment request for ${workerId.value} reached ${localWorkerId.value}"
         }
         val mounts = runBlocking {
             workspaceCatalogService.findByProject(projectId)

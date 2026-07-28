@@ -28,8 +28,9 @@ xcodebuild \
   build
 ```
 
-`GROMOZEKA_REMOTE_URL` is embedded in `Info.plist` for that build. Simulator
-builds without an override continue to use `ws://127.0.0.1:8765/ws`.
+`GROMOZEKA_REMOTE_URL` is embedded in `Info.plist` as a first-run fallback.
+Without it, the app asks for the Server address. Once connected, the selected
+address is stored on the device and takes precedence over the bundled fallback.
 
 Install the freshly built physical-device app:
 
@@ -52,11 +53,5 @@ Install/run from Xcode after signing is configured:
 3. Select the connected iPhone.
 4. Press Run.
 
-The first version is intentionally native SwiftUI and probes the existing remote server over JSON WebSocket.
-Full typed protocol sharing with Kotlin Multiplatform can be added after the install loop is stable.
-
-The default endpoint is local. Override it when using a remote server:
-
-```text
-ws://127.0.0.1:8765/ws
-```
+The iOS shell hosts the shared Compose Multiplatform client and uses the same
+typed remote protocol as the desktop, Android, and web clients.

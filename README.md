@@ -150,13 +150,37 @@ GROMOZEKA_MODE=dev \
 
 See `worker/README.md` for cloud/local Worker configuration and the trusted executor contract.
 
-The default remote client endpoint is local:
+The Gradle development client defaults to the local Server:
 
 ```text
 ws://127.0.0.1:8765/ws
 ```
 
-Override it with `GROMOZEKA_REMOTE_URL` when connecting through LAN, VPN, or Tailscale.
+Override it with `GROMOZEKA_REMOTE_URL` when connecting through LAN, VPN, or
+Tailscale. Packaged native clients have no hardcoded Server: they ask for its
+address on first launch and persist the selection locally.
+
+## Releases and Downloads
+
+Open a running Server's `/downloads` page to download the Client or a standalone
+Worker from the matching Gromozeka release. Published releases currently
+provide:
+
+- an unsigned macOS ARM64 Client DMG;
+- a portable Windows x64 Client ZIP;
+- macOS ARM64, Linux x64, and Windows x64 Worker archives with private Java 21 runtimes;
+- `ghcr.io/lewik/gromozeka-server` and `ghcr.io/lewik/gromozeka-worker` images;
+- a self-hosted Compose file, environment template, and SHA-256 checksums.
+
+Pushing a `v<major>.<minor>.<patch>` tag runs the release workflow and publishes
+those assets. Prerelease tags such as `v1.5.0-test.1` remain GitHub
+prereleases. The workflow can also be dispatched without publishing to verify
+all release jobs.
+
+Desktop packages are unsigned for now. Android store/direct-release signing and
+iOS TestFlight/App Store distribution are intentionally deferred; iOS
+development builds are installed locally as described in
+[iosApp/README.md](iosApp/README.md).
 
 ### JVM Desktop Client
 

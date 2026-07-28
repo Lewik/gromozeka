@@ -30,6 +30,7 @@ class ConversationRuntimeWorkerConfiguration {
         val workerId = properties.id
             .trim()
             .takeIf { it.isNotEmpty() }
+            ?.let(::ConversationRuntimeWorkerId)
             ?: error("gromozeka.runtime.worker.id is required")
         require(properties.capabilities.isNotEmpty()) {
             "gromozeka.runtime.worker.capabilities must declare at least one capability"
@@ -43,7 +44,7 @@ class ConversationRuntimeWorkerConfiguration {
             .map { AiToolDescriptor(it.definition, it.metadata) }
             .sortedBy { it.definition.name }
         return ConversationRuntimeWorkerDescriptor(
-            id = ConversationRuntimeWorkerId(workerId),
+            id = workerId,
             capabilities = properties.capabilities,
             tools = tools,
             environmentProfile = workerEnvironmentProbe.collectProfile(),

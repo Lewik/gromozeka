@@ -37,8 +37,9 @@ val experimentalTestOptIns = listOf(
     "androidx.compose.ui.test.ExperimentalTestApi"
 )
 
-// Centralized version for the entire project
-val projectVersion = "1.4.9"
+val projectVersion = providers.gradleProperty("gromozeka.version")
+    .orElse("0.0.0-dev")
+    .get()
 
 allprojects {
     group = "com.example"

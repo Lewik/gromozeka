@@ -12,14 +12,27 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
 import java.io.File
+import kotlin.system.exitProcess
 
-fun main() {
+fun main(args: Array<String>) {
+    if (args.firstOrNull() == "enroll") {
+        runCatching {
+            WorkerEnrollmentClient().enroll(args.drop(1))
+        }.onSuccess { configPath ->
+            println("Worker enrollment completed. Configuration saved to $configPath")
+        }.onFailure { error ->
+            System.err.println("Worker enrollment failed: ${error.message}")
+            exitProcess(2)
+        }
+        return
+    }
+
     applyWorkerSystemProperties()
 
     val context = SpringApplicationBuilder(GromozekaWorkerApplication::class.java)
         .web(WebApplicationType.NONE)
         .profiles(resolveSpringProfile())
-        .run()
+        .run(*args)
 
     val worker = context.getBean(ConversationRuntimeWorker::class.java)
     check(worker.isRunning) { "Conversation runtime Worker did not start" }
@@ -35,8 +48,18 @@ private fun applyWorkerSystemProperties() {
         ?: System.getenv("GROMOZEKA_MODE")
 
     mode?.let { System.setProperty("GROMOZEKA_MODE", it) }
+    if (System.getProperty("gromozeka.runtime.worker.version") == null &&
+        System.getenv("GROMOZEKA_RUNTIME_WORKER_VERSION").isNullOrBlank()
+    ) {
+        System.setProperty("gromozeka.runtime.worker.version", currentWorkerVersion())
+    }
     System.setProperty("logging.file.path", determineLogPath(mode))
 }
+
+internal fun currentWorkerVersion(): String =
+    GromozekaWorkerApplication::class.java.`package`.implementationVersion
+        ?.takeIf(String::isNotBlank)
+        ?: "0.0.0-dev"
 
 private fun resolveSpringProfile(): String =
     when ((System.getProperty("GROMOZEKA_MODE") ?: System.getenv("GROMOZEKA_MODE"))?.lowercase()) {

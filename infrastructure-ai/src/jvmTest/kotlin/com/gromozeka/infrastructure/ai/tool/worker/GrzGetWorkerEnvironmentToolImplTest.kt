@@ -3,9 +3,6 @@ package com.gromozeka.infrastructure.ai.tool.worker
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
-import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
-import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.WorkerEnvironmentProbe
 import com.gromozeka.domain.service.WorkerEnvironmentProfile
 import com.gromozeka.domain.service.WorkerEnvironmentSnapshot
@@ -42,7 +39,7 @@ class GrzGetWorkerEnvironmentToolImplTest {
                 workspaces = listOf(workspace, foreignWorkspace),
                 mounts = listOf(matchingMount, otherWorkerMount, foreignMount),
             ),
-            workerDescriptor = descriptor("worker-a"),
+            configuredWorkerId = "worker-a",
         )
 
         val result = tool.execute(
@@ -96,7 +93,7 @@ class GrzGetWorkerEnvironmentToolImplTest {
         val tool = GrzGetWorkerEnvironmentToolImpl(
             environmentProbe = RecordingProbe(),
             workspaceCatalogService = FakeWorkspaceCatalogService(emptyList(), emptyList()),
-            workerDescriptor = descriptor("worker-a"),
+            configuredWorkerId = "worker-a",
         )
 
         assertFailsWith<IllegalStateException> {
@@ -116,13 +113,6 @@ class GrzGetWorkerEnvironmentToolImplTest {
             GetWorkerEnvironmentRequest((0..32).map { "tool-$it" })
         }
     }
-
-    private fun descriptor(workerId: String): ConversationRuntimeWorkerDescriptor =
-        ConversationRuntimeWorkerDescriptor(
-            id = ConversationRuntimeWorkerId(workerId),
-            capabilities = setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION),
-            environmentProfile = profile(),
-        )
 
     private fun context(
         projectId: Project.Id,

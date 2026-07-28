@@ -32,15 +32,15 @@ class GromozekaRemoteServices(
     clientPlatform: RemoteClientPlatform,
     clientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
 ) {
-    private val initialClientSettings = (clientSettingsStore.load() ?: RemoteClientSettings())
-        .let { settings ->
-            if (settings.clientInstanceId != null) {
-                settings
-            } else {
-                settings.copy(clientInstanceId = ClientInstanceId(uuid7()))
-                    .also(clientSettingsStore::save)
-            }
+    private val initialClientSettings = (clientSettingsStore.load() ?: RemoteClientSettings()).let { loaded ->
+        val persisted = loaded.copy(
+            clientInstanceId = loaded.clientInstanceId ?: ClientInstanceId(uuid7()),
+        )
+        if (persisted != loaded) {
+            clientSettingsStore.save(persisted)
         }
+        persisted.copy(remoteUrl = url)
+    }
     private val clientInstanceId = requireNotNull(initialClientSettings.clientInstanceId)
     private val client = if (httpClient == null) {
         GromozekaWsClient(
