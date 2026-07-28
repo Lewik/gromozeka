@@ -53,6 +53,8 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
+import com.gromozeka.domain.service.WorkerCatalogEntry
+import com.gromozeka.domain.service.WorkerCatalogService
 import kotlinx.coroutines.launch
 
 @Composable
@@ -223,6 +225,7 @@ fun WorkspaceManagerScreen(
     projectService: ProjectDomainService,
     workspaceCatalogService: WorkspaceCatalogService,
     workspaceManagementService: WorkspaceManagementService,
+    workerCatalogService: WorkerCatalogService,
     onBack: () -> Unit,
     onManageProjects: () -> Unit,
 ) {
@@ -233,6 +236,7 @@ fun WorkspaceManagerScreen(
     var workspaces by remember { mutableStateOf<List<Workspace>>(emptyList()) }
     var selectedWorkspaceId by remember { mutableStateOf<Workspace.Id?>(null) }
     var mounts by remember { mutableStateOf<List<WorkspaceMount>>(emptyList()) }
+    var workers by remember { mutableStateOf<List<WorkerCatalogEntry>>(emptyList()) }
     var editorWorkspace by remember { mutableStateOf<Workspace?>(null) }
     var showCreateEditor by remember { mutableStateOf(false) }
     var workspaceToDelete by remember { mutableStateOf<Workspace?>(null) }
@@ -253,13 +257,22 @@ fun WorkspaceManagerScreen(
                 ?.takeIf { selected -> loadedWorkspaces.any { it.id == selected } }
                 ?: loadedWorkspaces.firstOrNull()?.id
             val loadedMounts = workspaceId?.let { workspaceCatalogService.findMounts(it) }.orEmpty()
-            WorkspaceManagerSnapshot(loadedProjects, projectId, loadedWorkspaces, workspaceId, loadedMounts)
+            val loadedWorkers = workerCatalogService.listWorkers()
+            WorkspaceManagerSnapshot(
+                loadedProjects,
+                projectId,
+                loadedWorkspaces,
+                workspaceId,
+                loadedMounts,
+                loadedWorkers,
+            )
         }.onSuccess { snapshot ->
             projects = snapshot.projects
             selectedProjectId = snapshot.projectId
             workspaces = snapshot.workspaces
             selectedWorkspaceId = snapshot.workspaceId
             mounts = snapshot.mounts
+            workers = snapshot.workers
             error = null
         }.onFailure { error = it.message ?: strings.operationFailed }
         loading = false
@@ -365,6 +378,7 @@ fun WorkspaceManagerScreen(
                             } else {
                                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(mounts, key = { it.id.value }) { mount ->
+                                        val worker = workers.firstOrNull { it.workerId.value == mount.workerId }
                                         Surface(
                                             color = MaterialTheme.colorScheme.surfaceVariant,
                                             shape = MaterialTheme.shapes.small,
@@ -375,6 +389,12 @@ fun WorkspaceManagerScreen(
                                             ) {
                                                 Column(Modifier.weight(1f)) {
                                                     Text(mount.workerId, fontWeight = FontWeight.SemiBold)
+                                                    Text(
+                                                        worker?.environmentSummary(strings)
+                                                            ?: strings.workerProfileUnavailable,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    )
                                                     Text(
                                                         mount.rootPath,
                                                         fontFamily = FontFamily.Monospace,
@@ -683,7 +703,21 @@ private data class WorkspaceManagerSnapshot(
     val workspaces: List<Workspace>,
     val workspaceId: Workspace.Id?,
     val mounts: List<WorkspaceMount>,
+    val workers: List<WorkerCatalogEntry>,
 )
+
+private fun WorkerCatalogEntry.environmentSummary(strings: ManagementStrings): String {
+    val statusLabel = when (status) {
+        WorkerCatalogEntry.Status.ONLINE -> strings.workerOnline
+        WorkerCatalogEntry.Status.OFFLINE -> strings.workerOffline
+    }
+    return listOf(
+        statusLabel,
+        "${environmentProfile.operatingSystem.name} ${environmentProfile.operatingSystem.version}",
+        environmentProfile.architecture,
+        environmentProfile.nativeShell.executable,
+    ).joinToString(" · ")
+}
 
 private data class ManagementStrings(
     val projects: String,
@@ -715,6 +749,9 @@ private data class ManagementStrings(
     val deleteWorkspaceBody: String,
     val detachMount: String,
     val detachMountBody: String,
+    val workerOnline: String,
+    val workerOffline: String,
+    val workerProfileUnavailable: String,
     val operationFailed: String,
 ) {
     companion object {
@@ -748,6 +785,9 @@ private data class ManagementStrings(
             deleteWorkspaceBody = "Workspace {name} and all of its mounts will be deleted permanently.",
             detachMount = "Detach mount?",
             detachMountBody = "The worker path {path} will no longer be available through this workspace.",
+            workerOnline = "Online",
+            workerOffline = "Offline",
+            workerProfileUnavailable = "Worker profile unavailable",
             operationFailed = "Operation failed",
         )
 
@@ -781,6 +821,9 @@ private data class ManagementStrings(
             deleteWorkspaceBody = "Workspace {name} и все его mounts будут удалены безвозвратно.",
             detachMount = "Отключить mount?",
             detachMountBody = "Путь worker {path} больше не будет доступен через этот workspace.",
+            workerOnline = "В сети",
+            workerOffline = "Не в сети",
+            workerProfileUnavailable = "Профиль worker недоступен",
             operationFailed = "Операция не выполнена",
         )
     }

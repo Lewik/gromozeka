@@ -29,6 +29,7 @@ import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.QueuedMessagePlacement
+import com.gromozeka.domain.service.WorkerCatalogEntry
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -355,6 +356,10 @@ data class FindWorkspacesByProjectRequest(
 data class FindWorkspaceMountsRequest(
     val workspaceId: Workspace.Id,
 ) : ClientRequest
+
+@Serializable
+@SerialName("list_workers")
+data object ListWorkersRequest : ClientRequest
 
 @Serializable
 @SerialName("create_filesystem_workspace")
@@ -757,6 +762,12 @@ data class WorkspacesResponse(
 @SerialName("workspace_mounts")
 data class WorkspaceMountsResponse(
     val mounts: List<WorkspaceMount>,
+) : ServerResponse
+
+@Serializable
+@SerialName("workers")
+data class WorkersResponse(
+    val workers: List<WorkerCatalogEntry>,
 ) : ServerResponse
 
 

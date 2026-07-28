@@ -19,6 +19,10 @@ import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.QueuedMessagePlacement
+import com.gromozeka.domain.service.WorkerCatalogEntry
+import com.gromozeka.domain.service.WorkerEnvironmentProfile
+import com.gromozeka.domain.service.WorkerNativeShell
+import com.gromozeka.domain.service.WorkerOperatingSystem
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -134,6 +138,55 @@ class RemoteProtocolCodecTest {
             RemoteProtocolCodec.encodeClientBinary(updateWorkspace)
         ).payload as UpdateWorkspaceRequest
         assertEquals("Mac checkout", decodedWorkspace.name)
+
+        val listWorkers = GromozekaClientEnvelope(
+            id = "list-workers-1",
+            payload = ListWorkersRequest,
+        )
+        assertEquals(
+            ListWorkersRequest,
+            RemoteProtocolCodec.decodeClientText(
+                RemoteProtocolCodec.encodeClientText(listWorkers)
+            ).payload,
+        )
+
+        val workerEnvelope = GromozekaServerEnvelope(
+            id = "workers-1",
+            payload = WorkersResponse(
+                listOf(
+                    WorkerCatalogEntry(
+                        workerId = ConversationRuntimeWorkerId("mac-worker"),
+                        status = WorkerCatalogEntry.Status.ONLINE,
+                        version = "test",
+                        startedAt = Instant.parse("2026-07-28T00:00:00Z"),
+                        lastHeartbeatAt = Instant.parse("2026-07-28T00:00:05Z"),
+                        environmentProfile = WorkerEnvironmentProfile(
+                            observedAt = Instant.parse("2026-07-28T00:00:00Z"),
+                            operatingSystem = WorkerOperatingSystem(
+                                family = WorkerOperatingSystem.Family.MACOS,
+                                name = "macOS",
+                                version = "26.0",
+                            ),
+                            architecture = "arm64",
+                            nativeShell = WorkerNativeShell(
+                                WorkerNativeShell.Kind.POSIX_SH,
+                                "/bin/sh",
+                            ),
+                            timezoneId = "Asia/Jerusalem",
+                            localeTag = "en-IL",
+                            logicalProcessorCount = 10,
+                            totalMemoryBytes = 32_000_000_000,
+                            availableExecutables = listOf("git", "sh"),
+                        ),
+                    )
+                )
+            ),
+        )
+        val decodedWorkers = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(workerEnvelope)
+        ).payload as WorkersResponse
+        assertEquals("mac-worker", decodedWorkers.workers.single().workerId.value)
+        assertEquals("arm64", decodedWorkers.workers.single().environmentProfile.architecture)
 
         val layoutEvent = GromozekaServerEnvelope(
             id = "layout-event-1",

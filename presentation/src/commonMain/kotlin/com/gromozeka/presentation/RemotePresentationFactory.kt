@@ -136,6 +136,7 @@ suspend fun createRemoteAppComponents(
             projectService = remoteServices.projectService,
             workspaceCatalogService = remoteServices.workspaceCatalogService,
             workspaceManagementService = remoteServices.workspaceManagementService,
+            workerCatalogService = remoteServices.workerCatalogService,
             conversationService = remoteServices.conversationService,
             conversationSearchViewModel = ConversationSearchViewModel(remoteServices.conversationNameSearchService, scope),
             loadingViewModel = LoadingViewModel(),

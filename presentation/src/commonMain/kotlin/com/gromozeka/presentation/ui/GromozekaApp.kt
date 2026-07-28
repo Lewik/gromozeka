@@ -557,6 +557,7 @@ fun GromozekaAppContent(
                                                                     projectService = appComponents.projectService,
                                                                     workspaceCatalogService = appComponents.workspaceCatalogService,
                                                                     workspaceManagementService = appComponents.workspaceManagementService,
+                                                                    workerCatalogService = appComponents.workerCatalogService,
                                                                     onBack = { projectArea = ProjectArea.CONVERSATIONS },
                                                                     onManageProjects = { projectArea = ProjectArea.PROJECTS },
                                                                 )

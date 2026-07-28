@@ -16,6 +16,7 @@ import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
+import com.gromozeka.domain.service.WorkerCatalogService
 import io.ktor.client.HttpClient
 import com.gromozeka.remote.protocol.ClientInstanceId
 import com.gromozeka.remote.protocol.RemoteClientPlatform
@@ -78,6 +79,7 @@ class GromozekaRemoteServices(
     private val remoteWorkspaceService = RemoteWorkspaceCatalogService(client)
     val workspaceCatalogService: WorkspaceCatalogService = remoteWorkspaceService
     val workspaceManagementService: WorkspaceManagementService = remoteWorkspaceService
+    val workerCatalogService: WorkerCatalogService = RemoteWorkerCatalogService(client)
     val conversationService: ConversationDomainService = RemoteConversationService(client)
     val conversationTabLayoutService: ConversationTabLayoutService = RemoteConversationTabLayoutService(client)
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)

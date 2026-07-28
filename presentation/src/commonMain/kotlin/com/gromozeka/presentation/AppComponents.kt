@@ -15,6 +15,7 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
+import com.gromozeka.domain.service.WorkerCatalogService
 import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.ClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
@@ -58,6 +59,7 @@ data class AppComponents(
     val projectService: ProjectDomainService,
     val workspaceCatalogService: WorkspaceCatalogService,
     val workspaceManagementService: WorkspaceManagementService,
+    val workerCatalogService: WorkerCatalogService,
     val conversationService: ConversationDomainService,
     val conversationSearchViewModel: ConversationSearchViewModel,
     val loadingViewModel: LoadingViewModel,
