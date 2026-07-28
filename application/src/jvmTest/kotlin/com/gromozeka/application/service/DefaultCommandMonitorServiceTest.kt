@@ -22,6 +22,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -77,7 +78,10 @@ class DefaultCommandMonitorServiceTest {
             val events = coordinator.findCommandMonitorEvents(conversationId, monitor.id)
 
             assertEquals(listOf("error: first", "error: second"), events.map { it.output })
-            assertEquals(CommandMonitor.Status.COMPLETED, service.get(conversationId, monitor.id, 0)?.monitor?.status)
+            assertEquals(
+                CommandMonitor.Status.COMPLETED,
+                service.get(conversationId, monitor.id, 0, 0)?.monitor?.status,
+            )
         }
     }
 
@@ -105,6 +109,42 @@ class DefaultCommandMonitorServiceTest {
                 listOf("error: new"),
                 coordinator.findCommandMonitorEvents(conversationId, monitor.id).map { it.output },
             )
+            assertTrue(service.cancel(conversationId, monitor.id))
+        }
+    }
+
+    @Test
+    fun `get waits until new monitor output is available`() = runBlocking {
+        withService { service, _, coordinator, directory ->
+            val source = sourceTask(directory, "")
+            coordinator.upsertCommandTask(source)
+            val monitor = service.start(
+                CommandMonitorSpec(
+                    source.id,
+                    "contains:ready",
+                    CommandMonitor.Mode.CONTINUOUS,
+                    CommandMonitor.StartFrom.NOW,
+                ),
+                context(directory),
+            )
+            val waitingOutput = async {
+                service.get(
+                    conversationId = conversationId,
+                    monitorId = monitor.id,
+                    afterByte = 0,
+                    waitMillis = 2_000,
+                )
+            }
+
+            delay(200)
+            assertFalse(waitingOutput.isCompleted)
+            File(source.outputFile).appendText("ready now\n")
+
+            val output = withTimeout(2_000) { waitingOutput.await() }
+
+            assertNotNull(output)
+            assertEquals("ready now\n", output.output)
+            assertEquals(output.output.toByteArray().size.toLong(), output.nextOutputByte)
             assertTrue(service.cancel(conversationId, monitor.id))
         }
     }

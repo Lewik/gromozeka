@@ -7,6 +7,8 @@ import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
@@ -17,6 +19,8 @@ import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.CommandMonitorOwnerToolMetadata
+import com.gromozeka.domain.tool.CommandTaskOwnerToolMetadata
 import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -57,6 +61,22 @@ class DistributedAiToolRoutingTest {
             inputSchema = """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}""",
         ),
         metadata = AiToolMetadata(executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME),
+    )
+    private val monitorCommandTool = AiToolDescriptor(
+        definition = AiToolDefinition(
+            name = "grz_monitor_command",
+            description = "Monitor a command task.",
+            inputSchema = """{"type":"object","properties":{"task_id":{"type":"string"}},"required":["task_id"]}""",
+        ),
+        metadata = CommandTaskOwnerToolMetadata,
+    )
+    private val getCommandMonitorTool = AiToolDescriptor(
+        definition = AiToolDefinition(
+            name = "grz_get_command_monitor",
+            description = "Read a command monitor.",
+            inputSchema = """{"type":"object","properties":{"monitor_id":{"type":"string"}},"required":["monitor_id"]}""",
+        ),
+        metadata = CommandMonitorOwnerToolMetadata,
     )
 
     @Test
@@ -192,6 +212,152 @@ class DistributedAiToolRoutingTest {
     }
 
     @Test
+    fun `command task owner tool routes to the exact task worker and mount`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(monitorCommandTool))
+        registerWorker(workerRegistry, "worker-b", listOf(monitorCommandTool))
+        val mountA = mount(workspaceA.id, "worker-a", "/checkout/a")
+        val mountB = mount(workspaceB.id, "worker-b", "/checkout/b")
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = listOf(workspaceA, workspaceB),
+            mounts = listOf(mountA, mountB),
+        )
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val conversation = conversation(project.id)
+        val task = commandTask(conversation.id, "task-b", mountB, "worker-b")
+        coordinator.upsertCommandTask(task)
+        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val routing = ConversationRuntimeToolRoutingService(coordinator, workspaceService)
+
+        val accepted = routing.route(
+            conversation = conversation,
+            project = project,
+            toolCalls = listOf(ownerToolCall(monitorCommandTool.definition.name, "task_id", task.id.value)),
+            catalog = catalog,
+        )
+
+        assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
+        assertEquals(task.workerId, accepted.requirements.target?.workerId)
+        assertEquals(task.workspaceMountId, accepted.requirements.target?.workspaceMountId)
+        val schema = Json.parseToJsonElement(
+            catalog.tools.single().definition.inputSchema
+        ).jsonObject
+        assertFalse(AI_TOOL_EXECUTION_TARGET_FIELD in schema.getValue("properties").jsonObject)
+    }
+
+    @Test
+    fun `command owner tools reject explicit targets instead of allowing reassignment`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-b", listOf(monitorCommandTool))
+        val mountB = mount(workspaceB.id, "worker-b", "/checkout/b")
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = listOf(workspaceB),
+            mounts = listOf(mountB),
+        )
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val conversation = conversation(project.id)
+        val task = commandTask(conversation.id, "task-b", mountB, "worker-b")
+        coordinator.upsertCommandTask(task)
+        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val baseCall = ownerToolCall(monitorCommandTool.definition.name, "task_id", task.id.value)
+        val call = baseCall.copy(
+                call = Conversation.Message.ContentItem.ToolCall.Data(
+                    name = monitorCommandTool.definition.name,
+                    input = JsonObject(
+                        baseCall.call.input.jsonObject + (
+                            AI_TOOL_EXECUTION_TARGET_FIELD to buildJsonObject {
+                                put(AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD, mountB.id.value)
+                            }
+                        )
+                    ),
+                ),
+            )
+
+        val result = ConversationRuntimeToolRoutingService(coordinator, workspaceService).route(
+            conversation = conversation,
+            project = project,
+            toolCalls = listOf(call),
+            catalog = catalog,
+        )
+
+        assertIs<ConversationRuntimeToolRoutingResult.Rejected>(result)
+        assertTrue(result.errors.single().message.contains("must not declare execution_target"))
+    }
+
+    @Test
+    fun `command monitor owner tool routes to its source worker and rejects another conversation`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-b", listOf(getCommandMonitorTool))
+        val mountB = mount(workspaceB.id, "worker-b", "/checkout/b")
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = listOf(workspaceB),
+            mounts = listOf(mountB),
+        )
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val conversation = conversation(project.id)
+        val monitor = commandMonitor(conversation.id, "monitor-b", mountB, "worker-b")
+        coordinator.synchronizeCommandMonitor(monitor)
+        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val routing = ConversationRuntimeToolRoutingService(coordinator, workspaceService)
+        val call = ownerToolCall(
+            getCommandMonitorTool.definition.name,
+            "monitor_id",
+            monitor.id.value,
+        )
+
+        val accepted = routing.route(conversation, project, listOf(call), catalog)
+        val rejected = routing.route(
+            conversation.copy(id = Conversation.Id("other-conversation")),
+            project,
+            listOf(call),
+            catalog,
+        )
+
+        assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
+        assertEquals(monitor.workerId, accepted.requirements.target?.workerId)
+        assertEquals(monitor.workspaceMountId, accepted.requirements.target?.workspaceMountId)
+        assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)
+        assertTrue(rejected.errors.single().message.contains("was not found"))
+    }
+
+    @Test
+    fun `command monitor owner tool fails when its worker is offline`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(getCommandMonitorTool))
+        val mountA = mount(workspaceA.id, "worker-a", "/checkout/a")
+        val mountB = mount(workspaceB.id, "worker-b", "/checkout/b")
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = listOf(workspaceA, workspaceB),
+            mounts = listOf(mountA, mountB),
+        )
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val conversation = conversation(project.id)
+        val monitor = commandMonitor(conversation.id, "monitor-b", mountB, "worker-b")
+        coordinator.synchronizeCommandMonitor(monitor)
+        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+
+        val result = ConversationRuntimeToolRoutingService(coordinator, workspaceService).route(
+            conversation = conversation,
+            project = project,
+            toolCalls = listOf(
+                ownerToolCall(
+                    getCommandMonitorTool.definition.name,
+                    "monitor_id",
+                    monitor.id.value,
+                )
+            ),
+            catalog = catalog,
+        )
+
+        assertIs<ConversationRuntimeToolRoutingResult.Rejected>(result)
+        assertTrue(result.errors.single().message.contains("offline"))
+    }
+
+    @Test
     fun `environment revision ignores heartbeats and changes when a worker goes offline`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         registerWorker(workerRegistry, "worker-a", listOf(workspaceTool))
@@ -305,6 +471,68 @@ class DistributedAiToolRoutingTest {
                     )
                 ),
             ),
+        )
+
+    private fun ownerToolCall(
+        toolName: String,
+        ownerField: String,
+        ownerId: String,
+    ): Conversation.Message.ContentItem.ToolCall =
+        Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("call-$toolName-$ownerId"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = toolName,
+                input = buildJsonObject { put(ownerField, ownerId) },
+            ),
+        )
+
+    private fun commandTask(
+        conversationId: Conversation.Id,
+        id: String,
+        mount: WorkspaceMount,
+        workerId: String,
+    ): CommandTask =
+        CommandTask(
+            id = CommandTask.Id(id),
+            conversationId = conversationId,
+            workerId = ConversationRuntimeWorkerId(workerId),
+            workspaceMountId = mount.id,
+            command = "sleep 60",
+            workingDirectory = mount.rootPath,
+            status = CommandTask.Status.WORKING,
+            processId = 100,
+            processStartedAt = now,
+            outputFile = "/tmp/$id.log",
+            outputBytes = 0,
+            createdAt = now,
+            updatedAt = now,
+        )
+
+    private fun commandMonitor(
+        conversationId: Conversation.Id,
+        id: String,
+        mount: WorkspaceMount,
+        workerId: String,
+    ): CommandMonitor =
+        CommandMonitor(
+            id = CommandMonitor.Id(id),
+            conversationId = conversationId,
+            commandTaskId = CommandTask.Id("source-$id"),
+            workerId = ConversationRuntimeWorkerId(workerId),
+            workspaceMountId = mount.id,
+            filterCommand = "grep ready",
+            mode = CommandMonitor.Mode.CONTINUOUS,
+            startFrom = CommandMonitor.StartFrom.NOW,
+            status = CommandMonitor.Status.WORKING,
+            sourceOutputCursor = 0,
+            processId = 101,
+            processStartedAt = now,
+            outputFile = "/tmp/$id.log",
+            errorFile = "/tmp/$id.err",
+            outputBytes = 0,
+            eventOutputCursor = 0,
+            createdAt = now,
+            updatedAt = now,
         )
 
     private class TestWorkspaceDomainService(

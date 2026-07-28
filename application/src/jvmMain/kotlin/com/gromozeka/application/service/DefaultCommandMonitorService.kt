@@ -9,6 +9,7 @@ import com.gromozeka.domain.service.CommandMonitorLifecycleEventPublisher
 import com.gromozeka.domain.service.CommandMonitorOutput
 import com.gromozeka.domain.service.CommandMonitorService
 import com.gromozeka.domain.service.CommandMonitorSpec
+import com.gromozeka.domain.service.MAX_COMMAND_MONITOR_WAIT_MILLIS
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
@@ -168,16 +169,31 @@ class DefaultCommandMonitorService(
         conversationId: Conversation.Id,
         monitorId: CommandMonitor.Id,
         afterByte: Long,
+        waitMillis: Long,
     ): CommandMonitorOutput? {
         require(afterByte >= 0) { "after_byte must be non-negative" }
-        val monitor = currentMonitor(conversationId, monitorId) ?: return null
-        check(monitor.workerId == workerId) {
-            "Command monitor ${monitor.id.value} belongs to worker ${monitor.workerId.value}, not ${workerId.value}"
+        require(waitMillis in 0..MAX_COMMAND_MONITOR_WAIT_MILLIS) {
+            "wait_ms must be between 0 and $MAX_COMMAND_MONITOR_WAIT_MILLIS"
         }
-        require(afterByte <= monitor.currentOutputSize()) {
-            "after_byte $afterByte exceeds current monitor output size ${monitor.currentOutputSize()}"
+        val initial = currentMonitor(conversationId, monitorId) ?: return null
+        check(initial.workerId == workerId) {
+            "Command monitor ${initial.id.value} belongs to worker ${initial.workerId.value}, not ${workerId.value}"
         }
-        return output(monitor, afterByte)
+        val currentOutputSize = initial.currentOutputSize()
+        require(afterByte <= currentOutputSize) {
+            "after_byte $afterByte exceeds current monitor output size $currentOutputSize"
+        }
+        if (!initial.isTerminal && waitMillis > 0) {
+            val deadline = System.nanoTime() + waitMillis * 1_000_000
+            while (System.nanoTime() < deadline) {
+                val current = currentMonitor(conversationId, monitorId) ?: return null
+                if (current.isTerminal || current.currentOutputSize() > afterByte) {
+                    return output(current, afterByte)
+                }
+                delay(MONITOR_POLL_INTERVAL_MILLIS)
+            }
+        }
+        return output(currentMonitor(conversationId, monitorId) ?: initial, afterByte)
     }
 
     override suspend fun cancel(

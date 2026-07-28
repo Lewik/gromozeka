@@ -3,6 +3,8 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.tool.ToolExecutionContext
 
+const val MAX_COMMAND_MONITOR_WAIT_MILLIS = 300_000L
+
 interface CommandMonitorService {
     suspend fun start(
         spec: CommandMonitorSpec,
@@ -13,6 +15,7 @@ interface CommandMonitorService {
         conversationId: Conversation.Id,
         monitorId: CommandMonitor.Id,
         afterByte: Long,
+        waitMillis: Long,
     ): CommandMonitorOutput?
 
     suspend fun cancel(

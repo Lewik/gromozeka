@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
@@ -82,6 +83,13 @@ class ConversationRuntimeToolRoutingService(
                     errors = errors,
                 )
                 AiToolExecutionScope.COMMAND_TASK_OWNER -> resolveCommandTaskTarget(
+                    conversation = conversation,
+                    project = project,
+                    toolCall = toolCall,
+                    entry = entry,
+                    errors = errors,
+                )
+                AiToolExecutionScope.COMMAND_MONITOR_OWNER -> resolveCommandMonitorTarget(
                     conversation = conversation,
                     project = project,
                     toolCall = toolCall,
@@ -277,6 +285,60 @@ class ConversationRuntimeToolRoutingService(
         return ConversationRuntimeTaskTarget(
             workerId = commandTask.workerId,
             workspaceMountId = commandTask.workspaceMountId,
+        )
+    }
+
+    private suspend fun resolveCommandMonitorTarget(
+        conversation: Conversation,
+        project: Project,
+        toolCall: Conversation.Message.ContentItem.ToolCall,
+        entry: DistributedAiTool,
+        errors: MutableList<ConversationRuntimeToolRoutingError>,
+    ): ConversationRuntimeTaskTarget? {
+        if (AI_TOOL_EXECUTION_TARGET_FIELD in toolCall.call.input.jsonObject) {
+            errors += toolCall.routingError(
+                "Tool '${toolCall.call.name}' routes by monitor_id and must not declare execution_target."
+            )
+            return null
+        }
+        val monitorId = (toolCall.call.input.jsonObject["monitor_id"] as? JsonPrimitive)
+            ?.contentOrNull
+            ?.takeIf { it.isNotBlank() }
+        if (monitorId == null) {
+            errors += toolCall.routingError("Tool '${toolCall.call.name}' requires a non-empty monitor_id.")
+            return null
+        }
+        val monitor = runtimeCoordinator.findCommandMonitor(conversation.id, CommandMonitor.Id(monitorId))
+        if (monitor == null) {
+            errors += toolCall.routingError(
+                "Command monitor '$monitorId' was not found in conversation '${conversation.id.value}'."
+            )
+            return null
+        }
+        val mount = workspaceService.findMount(monitor.workspaceMountId)
+        if (mount == null) {
+            errors += toolCall.routingError(
+                "Workspace mount '${monitor.workspaceMountId.value}' for command monitor '$monitorId' no longer exists."
+            )
+            return null
+        }
+        if (mount.workerId != monitor.workerId.value) {
+            errors += toolCall.routingError(
+                "Command monitor '$monitorId' has inconsistent worker and workspace mount ownership."
+            )
+            return null
+        }
+        if (entry.workers.none { it.workerId == monitor.workerId }) {
+            errors += toolCall.routingError(
+                "Worker '${monitor.workerId.value}' that owns command monitor '$monitorId' is offline or does not " +
+                    "advertise tool '${toolCall.call.name}'."
+            )
+            return null
+        }
+        validateProjectMount(conversation, project, toolCall, mount, errors) ?: return null
+        return ConversationRuntimeTaskTarget(
+            workerId = monitor.workerId,
+            workspaceMountId = monitor.workspaceMountId,
         )
     }
 

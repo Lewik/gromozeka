@@ -49,6 +49,7 @@ enum class AiToolExecutionScope {
     WORKER,
     WORKSPACE,
     COMMAND_TASK_OWNER,
+    COMMAND_MONITOR_OWNER,
 }
 
 @Serializable

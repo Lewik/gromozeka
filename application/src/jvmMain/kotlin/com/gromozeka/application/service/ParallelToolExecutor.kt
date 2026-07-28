@@ -87,6 +87,7 @@ class ParallelToolExecutor(
                     }
                 }
                 AiToolExecutionScope.COMMAND_TASK_OWNER -> Unit
+                AiToolExecutionScope.COMMAND_MONITOR_OWNER -> Unit
             }
         }
 

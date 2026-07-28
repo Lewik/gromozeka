@@ -98,6 +98,7 @@ class DistributedAiToolCatalog(
                         descriptor.metadata.executionScope == AiToolExecutionScope.CONVERSATION_RUNTIME ||
                             descriptor.metadata.executionScope == AiToolExecutionScope.WORKER ||
                             descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
+                            descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_MONITOR_OWNER ||
                             it.workspaceMounts.isNotEmpty()
                     }
                     .sortedBy { it.workerId.value }
@@ -151,6 +152,8 @@ class DistributedAiToolCatalog(
                 "Select the exact online filesystem mount in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.COMMAND_TASK_OWNER ->
                 "The command task ID routes this call to the worker and mount that own the task."
+            AiToolExecutionScope.COMMAND_MONITOR_OWNER ->
+                "The command monitor ID routes this call to the worker and mount that own the monitor."
         }
         return "$this\n\n$targetDescription"
     }
@@ -164,7 +167,8 @@ class DistributedAiToolCatalog(
         }
         if (
             tool.descriptor.metadata.executionScope == AiToolExecutionScope.CONVERSATION_RUNTIME ||
-            tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER
+            tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
+            tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_MONITOR_OWNER
         ) {
             return schema.toString()
         }
