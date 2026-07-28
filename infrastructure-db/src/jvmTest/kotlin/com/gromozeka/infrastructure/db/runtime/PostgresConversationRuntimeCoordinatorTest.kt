@@ -2,6 +2,10 @@ package com.gromozeka.infrastructure.db.runtime
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.CommandMonitorEvent
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
@@ -157,6 +161,99 @@ class PostgresConversationRuntimeCoordinatorTest {
                 assertEquals(listOf(availableTask.id), claimed.map { it.item.taskId })
                 lockConnection.rollback()
             }
+        } finally {
+            adminDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("DROP SCHEMA $schema CASCADE")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `command monitors and events survive postgres round trip`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
+            return@runBlocking
+        }
+
+        val schema = "runtime_coordinator_test_${UUID.randomUUID().toString().replace("-", "")}"
+        val adminDataSource = dataSource()
+        adminDataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE SCHEMA $schema")
+            }
+        }
+
+        try {
+            val runtimeDataSource = dataSource(schema).also(::createRuntimeSchema)
+            val json = Json {
+                encodeDefaults = true
+                ignoreUnknownKeys = false
+            }
+            val coordinator = PostgresConversationRuntimeCoordinator(runtimeDataSource, json)
+            val reloadedCoordinator = PostgresConversationRuntimeCoordinator(runtimeDataSource, json)
+            val conversationId = Conversation.Id("monitor-conversation")
+            val now = Instant.fromEpochMilliseconds(1_000)
+            val source = CommandTask(
+                id = CommandTask.Id("source-command"),
+                conversationId = conversationId,
+                workerId = ConversationRuntimeWorkerId("worker-1"),
+                workspaceMountId = WorkspaceMount.Id("mount-1"),
+                command = "tail -f app.log",
+                workingDirectory = "/tmp",
+                status = CommandTask.Status.WORKING,
+                processId = 100,
+                processStartedAt = now,
+                outputFile = "/tmp/source-command.log",
+                outputBytes = 12,
+                createdAt = now,
+                updatedAt = now,
+            )
+            val monitor = CommandMonitor(
+                id = CommandMonitor.Id("monitor-1"),
+                conversationId = conversationId,
+                commandTaskId = source.id,
+                workerId = source.workerId,
+                workspaceMountId = source.workspaceMountId,
+                agentDefinitionId = AGENT_DEFINITION_ID,
+                filterCommand = "grep ERROR",
+                mode = CommandMonitor.Mode.CONTINUOUS,
+                startFrom = CommandMonitor.StartFrom.NOW,
+                status = CommandMonitor.Status.WORKING,
+                sourceOutputCursor = 12,
+                processId = 101,
+                processStartedAt = now,
+                outputFile = "/tmp/monitor-1.log",
+                errorFile = "/tmp/monitor-1.err",
+                outputBytes = 6,
+                eventOutputCursor = 6,
+                eventCount = 1,
+                createdAt = now,
+                updatedAt = now,
+                terminalNotificationRequestedAt = now,
+            )
+            val event = CommandMonitorEvent(
+                id = CommandMonitorEvent.Id("monitor-1:6"),
+                conversationId = conversationId,
+                monitorId = monitor.id,
+                outputStartByte = 0,
+                outputEndByte = 6,
+                output = "ERROR",
+                outputTruncatedBefore = false,
+                occurredAt = now,
+            )
+
+            coordinator.upsertCommandTask(source)
+            coordinator.synchronizeCommandMonitor(monitor, listOf(event))
+
+            assertEquals(monitor, reloadedCoordinator.findCommandMonitor(conversationId, monitor.id))
+            assertEquals(listOf(event), reloadedCoordinator.findCommandMonitorEvents(conversationId, monitor.id))
+            assertEquals(listOf(monitor), reloadedCoordinator.snapshot(conversationId).commandMonitors)
+            assertTrue(reloadedCoordinator.requestCommandMonitorCancellation(conversationId, monitor.id, now))
+            assertEquals(
+                now,
+                reloadedCoordinator.findCommandMonitor(conversationId, monitor.id)?.cancellationRequestedAt,
+            )
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->

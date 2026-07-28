@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
@@ -647,10 +648,19 @@ class DefaultCommandTaskService(
     ) {
         val workerTasks = tasks ?: runtimeCoordinator.findCommandTasks()
             .filter { it.workerId == workerId }
-        val referenced = workerTasks.mapTo(mutableSetOf()) { it.outputFile }
+        val workerMonitors = runtimeCoordinator.findCommandMonitors()
+            .filter { it.workerId == workerId }
+        val activeMonitors = workerMonitors.filterNot(CommandMonitor::isTerminal)
+        val protectedSourceTaskIds = activeMonitors.mapTo(mutableSetOf()) { it.commandTaskId }
+        val referenced = workerTasks.mapTo(mutableSetOf()) { it.outputFile }.apply {
+            addAll(workerMonitors.map(CommandMonitor::outputFile))
+        }
         val protected = workerTasks.asSequence()
-            .filterNot(CommandTask::isTerminal)
+            .filter { !it.isTerminal || it.id in protectedSourceTaskIds }
             .mapTo(mutableSetOf()) { it.outputFile }
+            .apply {
+                addAll(activeMonitors.map(CommandMonitor::outputFile))
+            }
         val result = processRunner.garbageCollectOutputArtifacts(
             CommandOutputGarbageCollectionSpec(
                 referencedOutputFiles = referenced,

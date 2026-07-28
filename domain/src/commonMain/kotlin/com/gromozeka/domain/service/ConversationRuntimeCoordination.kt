@@ -447,6 +447,7 @@ data class ConversationRuntimeTraceEntry(
         CONTROL_REQUESTED,
         TOOL_EXECUTION,
         COMMAND_TASK,
+        COMMAND_MONITOR,
         EVENT_PUBLISHED,
     }
 
@@ -475,6 +476,7 @@ data class ConversationRuntimeSnapshot(
     val toolExecutions: List<ConversationRuntimeToolExecution> = emptyList(),
     val memoryOperations: List<ConversationRuntimeMemoryOperation> = emptyList(),
     val commandTasks: List<CommandTask> = emptyList(),
+    val commandMonitors: List<CommandMonitor> = emptyList(),
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val trace: List<ConversationRuntimeTraceEntry> = emptyList(),
     val lastEventSequence: Long = 0,
@@ -710,6 +712,35 @@ interface ConversationRuntimeCoordinator {
         conversationId: Conversation.Id,
         requestedAt: Instant,
     ): Int
+
+    suspend fun synchronizeCommandMonitor(
+        monitor: CommandMonitor,
+        events: List<CommandMonitorEvent> = emptyList(),
+    ): CommandMonitorSyncResult
+
+    suspend fun findCommandMonitors(): List<CommandMonitor>
+
+    suspend fun findCommandMonitor(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+    ): CommandMonitor?
+
+    suspend fun findCommandMonitorEvents(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id? = null,
+    ): List<CommandMonitorEvent>
+
+    suspend fun markCommandMonitorEventsDelivered(
+        conversationId: Conversation.Id,
+        eventIds: Set<CommandMonitorEvent.Id>,
+        deliveredAt: Instant,
+    ): Boolean
+
+    suspend fun requestCommandMonitorCancellation(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+        requestedAt: Instant,
+    ): Boolean
 
     suspend fun requestPause(conversationId: Conversation.Id): Boolean
     suspend fun markPaused(conversationId: Conversation.Id): Boolean

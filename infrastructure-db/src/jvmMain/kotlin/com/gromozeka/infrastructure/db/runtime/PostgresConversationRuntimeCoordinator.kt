@@ -2,6 +2,9 @@ package com.gromozeka.infrastructure.db.runtime
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.CommandMonitorEvent
+import com.gromozeka.domain.service.CommandMonitorSyncResult
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationExecutionState
@@ -461,8 +464,14 @@ class PostgresConversationRuntimeCoordinator(
             } else {
                 tasks += task
             }
+            val monitoredTaskIds = record.commandMonitors
+                .asSequence()
+                .filterNot(CommandMonitor::isTerminal)
+                .mapTo(mutableSetOf()) { it.commandTaskId }
             val retainedTasks = tasks
-                .partition { it.status == CommandTask.Status.WORKING }
+                .partition {
+                    it.status == CommandTask.Status.WORKING || it.id in monitoredTaskIds
+                }
                 .let { (working, terminal) ->
                     working + terminal.sortedBy { it.createdAt }.takeLast(COMMAND_TASK_TERMINAL_RETENTION_LIMIT)
                 }
@@ -509,6 +518,124 @@ class PostgresConversationRuntimeCoordinator(
                 .count { task ->
                     record.requestCommandTaskCancellation(conversationId, task.id, requestedAt)
                 }
+        }
+
+    override suspend fun synchronizeCommandMonitor(
+        monitor: CommandMonitor,
+        events: List<CommandMonitorEvent>,
+    ): CommandMonitorSyncResult =
+        mutateRecord(monitor.conversationId, createIfMissing = true) { record ->
+            require(events.all { it.conversationId == monitor.conversationId && it.monitorId == monitor.id }) {
+                "Command monitor events must belong to the synchronized monitor"
+            }
+            val storedEvents = record.commandMonitorEvents.toMutableList()
+            events.forEach { event ->
+                val index = storedEvents.indexOfFirst { it.id == event.id }
+                if (index >= 0) {
+                    storedEvents[index] = event.copy(
+                        deliveredAt = event.deliveredAt ?: storedEvents[index].deliveredAt,
+                    )
+                } else {
+                    storedEvents += event
+                }
+            }
+
+            val monitors = record.commandMonitors.toMutableList()
+            val existingIndex = monitors.indexOfFirst { it.id == monitor.id }
+            val existing = monitors.getOrNull(existingIndex)
+            val previousStatus = existing?.status
+            val storedMonitor = monitor.mergeCoordinatorState(existing)
+            if (existingIndex >= 0) {
+                monitors[existingIndex] = storedMonitor
+            } else {
+                monitors += storedMonitor
+            }
+
+            val pendingEventMonitorIds = storedEvents.asSequence()
+                .filter { it.deliveredAt == null }
+                .mapTo(mutableSetOf()) { it.monitorId }
+            val retainedMonitors = monitors
+                .partition {
+                    !it.isTerminal ||
+                        it.id in pendingEventMonitorIds ||
+                        (
+                            it.terminalNotificationRequestedAt != null &&
+                                it.terminalNotificationDeliveredAt == null
+                        )
+                }
+                .let { (active, terminal) ->
+                    active + terminal.sortedBy { it.createdAt }
+                        .takeLast(COMMAND_MONITOR_TERMINAL_RETENTION_LIMIT)
+                }
+                .sortedBy { it.createdAt }
+            val retainedIds = retainedMonitors.mapTo(mutableSetOf()) { it.id }
+            val evictedMonitors = monitors.filterNot { it.id in retainedIds }
+            record.commandMonitors = retainedMonitors
+            record.commandMonitorEvents = storedEvents
+                .filter { it.monitorId in retainedIds }
+                .partition { it.deliveredAt == null }
+                .let { (pending, delivered) ->
+                    pending + delivered.sortedBy { it.occurredAt }
+                        .takeLast(COMMAND_MONITOR_DELIVERED_EVENT_RETENTION_LIMIT)
+                }
+                .sortedBy { it.occurredAt }
+
+            if (previousStatus != storedMonitor.status) {
+                record.appendTrace(
+                    conversationId = storedMonitor.conversationId,
+                    kind = ConversationRuntimeTraceEntry.Kind.COMMAND_MONITOR,
+                    status = storedMonitor.status.toTraceStatus(),
+                    message = "${storedMonitor.id.value}: ${storedMonitor.status}",
+                )
+            }
+            record.bumpRevision()
+            CommandMonitorSyncResult(storedMonitor, evictedMonitors)
+        }
+
+    override suspend fun findCommandMonitors(): List<CommandMonitor> =
+        readAllRecords().flatMap { it.commandMonitors }
+
+    override suspend fun findCommandMonitor(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+    ): CommandMonitor? =
+        readRecord(conversationId)?.commandMonitors?.firstOrNull { it.id == monitorId }
+
+    override suspend fun findCommandMonitorEvents(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id?,
+    ): List<CommandMonitorEvent> =
+        readRecord(conversationId)?.commandMonitorEvents
+            .orEmpty()
+            .filter { monitorId == null || it.monitorId == monitorId }
+
+    override suspend fun markCommandMonitorEventsDelivered(
+        conversationId: Conversation.Id,
+        eventIds: Set<CommandMonitorEvent.Id>,
+        deliveredAt: Instant,
+    ): Boolean =
+        mutateRecord(conversationId, createIfMissing = false) { record ->
+            if (eventIds.isEmpty()) return@mutateRecord false
+            var changed = false
+            record.commandMonitorEvents = record.commandMonitorEvents.map { event ->
+                if (event.id in eventIds && event.deliveredAt == null) {
+                    changed = true
+                    event.copy(deliveredAt = deliveredAt)
+                } else {
+                    event
+                }
+            }
+            if (changed) record.bumpRevision()
+            changed
+        }
+
+    override suspend fun requestCommandMonitorCancellation(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+        requestedAt: Instant,
+    ): Boolean =
+        mutateRecord(conversationId, createIfMissing = false) { record ->
+            record.requestCommandMonitorCancellation(conversationId, monitorId, requestedAt)
         }
 
     override suspend fun requestPause(conversationId: Conversation.Id): Boolean =
@@ -1005,6 +1132,8 @@ class PostgresConversationRuntimeCoordinator(
         var toolExecutions: List<ConversationRuntimeToolExecution> = emptyList(),
         var memoryOperations: List<ConversationRuntimeMemoryOperation> = emptyList(),
         var commandTasks: List<CommandTask> = emptyList(),
+        var commandMonitors: List<CommandMonitor> = emptyList(),
+        var commandMonitorEvents: List<CommandMonitorEvent> = emptyList(),
         var incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
         var trace: List<ConversationRuntimeTraceEntry> = emptyList(),
         var eventLog: List<ConversationRuntimeEventLogEntry> = emptyList(),
@@ -1024,6 +1153,7 @@ class PostgresConversationRuntimeCoordinator(
                 toolExecutions = toolExecutions,
                 memoryOperations = memoryOperations,
                 commandTasks = commandTasks,
+                commandMonitors = commandMonitors,
                 incidents = incidents,
                 trace = trace.takeLast(TRACE_SNAPSHOT_LIMIT),
                 lastEventSequence = eventSequence,
@@ -1107,6 +1237,33 @@ class PostgresConversationRuntimeCoordinator(
                 kind = ConversationRuntimeTraceEntry.Kind.COMMAND_TASK,
                 status = ConversationRuntimeTraceEntry.Status.UPDATED,
                 message = "${task.id.value}: cancellation requested",
+            )
+            bumpRevision()
+            return true
+        }
+
+        fun requestCommandMonitorCancellation(
+            conversationId: Conversation.Id,
+            monitorId: CommandMonitor.Id,
+            requestedAt: Instant,
+        ): Boolean {
+            val index = commandMonitors.indexOfFirst { it.id == monitorId }
+            if (index < 0) return false
+            val monitor = commandMonitors[index]
+            if (monitor.isTerminal) return false
+            if (monitor.cancellationRequestedAt != null) return true
+            commandMonitors = commandMonitors.toMutableList().apply {
+                this[index] = monitor.copy(
+                    cancellationRequestedAt = requestedAt,
+                    statusMessage = "Cancellation requested",
+                    updatedAt = requestedAt,
+                )
+            }
+            appendTrace(
+                conversationId = conversationId,
+                kind = ConversationRuntimeTraceEntry.Kind.COMMAND_MONITOR,
+                status = ConversationRuntimeTraceEntry.Status.UPDATED,
+                message = "${monitor.id.value}: cancellation requested",
             )
             bumpRevision()
             return true
@@ -1301,6 +1458,25 @@ class PostgresConversationRuntimeCoordinator(
         CommandTask.Status.CANCELLED -> ConversationRuntimeTraceEntry.Status.CANCELLED
     }
 
+    private fun CommandMonitor.Status.toTraceStatus(): ConversationRuntimeTraceEntry.Status = when (this) {
+        CommandMonitor.Status.WORKING -> ConversationRuntimeTraceEntry.Status.STARTED
+        CommandMonitor.Status.COMPLETED -> ConversationRuntimeTraceEntry.Status.COMPLETED
+        CommandMonitor.Status.FAILED -> ConversationRuntimeTraceEntry.Status.FAILED
+        CommandMonitor.Status.CANCELLED -> ConversationRuntimeTraceEntry.Status.CANCELLED
+    }
+
+    private fun CommandMonitor.mergeCoordinatorState(existing: CommandMonitor?): CommandMonitor {
+        if (existing == null) return this
+        val preserveCancellation = cancellationRequestedAt == null && existing.cancellationRequestedAt != null
+        return copy(
+            cancellationRequestedAt = cancellationRequestedAt ?: existing.cancellationRequestedAt,
+            terminalNotificationDeliveredAt =
+                terminalNotificationDeliveredAt ?: existing.terminalNotificationDeliveredAt,
+            statusMessage = if (preserveCancellation) existing.statusMessage else statusMessage,
+            updatedAt = maxOf(updatedAt, existing.updatedAt),
+        )
+    }
+
     private companion object {
         fun List<ConversationRuntimeMemoryOperation>.retainedMemoryOperations(): List<ConversationRuntimeMemoryOperation> {
             val (active, terminal) = partition {
@@ -1312,6 +1488,8 @@ class PostgresConversationRuntimeCoordinator(
 
         const val MEMORY_OPERATION_TERMINAL_RETENTION_LIMIT = 20
         const val COMMAND_TASK_TERMINAL_RETENTION_LIMIT = 100
+        const val COMMAND_MONITOR_TERMINAL_RETENTION_LIMIT = 100
+        const val COMMAND_MONITOR_DELIVERED_EVENT_RETENTION_LIMIT = 1_000
         const val TRACE_SNAPSHOT_LIMIT = 200
         const val TRACE_RETENTION_LIMIT = 2_000
         const val EVENT_LOG_RETENTION_LIMIT = 10_000

@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionResult
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandTask
@@ -470,6 +471,62 @@ class DefaultCommandTaskServiceTest {
 
             assertTrue(evictedOutput.absolutePath in runner.deletedOutputFiles)
             assertFalse(evictedOutput.exists())
+        }
+    }
+
+    @Test
+    fun `output retention protects active monitor and its terminal source`() = runBlocking {
+        withService { service, runner, coordinator, projectDirectory ->
+            val now = Clock.System.now()
+            val sourceOutput = File(projectDirectory, "source.log").apply { writeText("source") }
+            val monitorOutput = File(projectDirectory, "monitor.log").apply { writeText("match") }
+            val source = CommandTask(
+                id = CommandTask.Id("source"),
+                conversationId = conversationId,
+                workerId = workerDescriptor.id,
+                workspaceMountId = WorkspaceMount.Id("mount-1"),
+                command = "source",
+                workingDirectory = projectDirectory.absolutePath,
+                status = CommandTask.Status.COMPLETED,
+                processId = null,
+                processStartedAt = null,
+                outputFile = sourceOutput.absolutePath,
+                outputBytes = sourceOutput.length(),
+                createdAt = now,
+                updatedAt = now,
+                completedAt = now,
+            )
+            coordinator.upsertCommandTask(source)
+            coordinator.synchronizeCommandMonitor(
+                CommandMonitor(
+                    id = CommandMonitor.Id("monitor"),
+                    conversationId = conversationId,
+                    commandTaskId = source.id,
+                    workerId = workerDescriptor.id,
+                    workspaceMountId = source.workspaceMountId,
+                    filterCommand = "grep match",
+                    mode = CommandMonitor.Mode.CONTINUOUS,
+                    startFrom = CommandMonitor.StartFrom.BEGINNING,
+                    status = CommandMonitor.Status.WORKING,
+                    sourceOutputCursor = source.outputBytes,
+                    processId = 999,
+                    processStartedAt = now,
+                    outputFile = monitorOutput.absolutePath,
+                    errorFile = File(projectDirectory, "monitor.err").apply { createNewFile() }.absolutePath,
+                    outputBytes = monitorOutput.length(),
+                    eventOutputCursor = monitorOutput.length(),
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+                emptyList(),
+            )
+
+            service.recoverPersistedTasks()
+
+            assertTrue(sourceOutput.absolutePath in runner.garbageCollectionSpec.referencedOutputFiles)
+            assertTrue(monitorOutput.absolutePath in runner.garbageCollectionSpec.referencedOutputFiles)
+            assertTrue(sourceOutput.absolutePath in runner.garbageCollectionSpec.protectedOutputFiles)
+            assertTrue(monitorOutput.absolutePath in runner.garbageCollectionSpec.protectedOutputFiles)
         }
     }
 

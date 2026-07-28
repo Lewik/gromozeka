@@ -12,6 +12,8 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
+import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
@@ -29,6 +31,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -436,6 +439,76 @@ class InMemoryConversationRuntimeStoresTest {
     }
 
     @Test
+    fun `command task retention keeps terminal source of active monitor`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val source = commandTask(
+            id = "source",
+            status = CommandTask.Status.COMPLETED,
+            createdAt = Instant.fromEpochMilliseconds(0),
+        )
+        coordinator.upsertCommandTask(source)
+        coordinator.synchronizeCommandMonitor(
+            commandMonitor(Instant.fromEpochMilliseconds(1)).copy(commandTaskId = source.id),
+            emptyList(),
+        )
+
+        var evictedTasks = emptyList<CommandTask>()
+        repeat(101) { index ->
+            evictedTasks = coordinator.upsertCommandTask(
+                commandTask(
+                    id = "completed-$index",
+                    status = CommandTask.Status.COMPLETED,
+                    createdAt = Instant.fromEpochMilliseconds(index + 2L),
+                )
+            ).evictedTasks
+        }
+
+        assertNotNull(coordinator.findCommandTask(conversationId, source.id))
+        assertEquals(listOf(CommandTask.Id("completed-0")), evictedTasks.map { it.id })
+    }
+
+    @Test
+    fun `coordinator synchronizes command monitor events idempotently`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val now = Clock.System.now()
+        val monitor = commandMonitor(now)
+        val event = CommandMonitorEvent(
+            id = CommandMonitorEvent.Id("${monitor.id.value}:12"),
+            conversationId = conversationId,
+            monitorId = monitor.id,
+            outputStartByte = 0,
+            outputEndByte = 12,
+            output = "matched line",
+            outputTruncatedBefore = false,
+            occurredAt = now,
+        )
+        val progressed = monitor.copy(
+            outputBytes = 12,
+            eventOutputCursor = 12,
+            eventCount = 1,
+            lastEventAt = now,
+            lastEventPreview = event.output,
+        )
+
+        assertTrue(coordinator.synchronizeCommandMonitor(progressed, listOf(event)).evictedMonitors.isEmpty())
+        assertTrue(coordinator.synchronizeCommandMonitor(progressed, listOf(event)).evictedMonitors.isEmpty())
+
+        assertEquals(listOf(progressed), coordinator.findCommandMonitors())
+        assertEquals(listOf(progressed), coordinator.snapshot(conversationId).commandMonitors)
+        assertEquals(listOf(event), coordinator.findCommandMonitorEvents(conversationId, progressed.id))
+        assertTrue(coordinator.requestCommandMonitorCancellation(conversationId, progressed.id, now))
+        assertTrue(coordinator.findCommandMonitor(conversationId, progressed.id)?.cancellationRequestedAt != null)
+        assertTrue(
+            coordinator.markCommandMonitorEventsDelivered(
+                conversationId = conversationId,
+                eventIds = setOf(event.id),
+                deliveredAt = now,
+            )
+        )
+        assertEquals(now, coordinator.findCommandMonitorEvents(conversationId, progressed.id).single().deliveredAt)
+    }
+
+    @Test
     fun `coordinator records sequenced event log entries`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val firstEvent = ConversationRuntimeEvent.ExecutionCompleted(conversationId)
@@ -530,6 +603,28 @@ class InMemoryConversationRuntimeStoresTest {
         updatedAt = createdAt,
         completedAt = createdAt.takeIf { status != CommandTask.Status.WORKING },
     )
+
+    private fun commandMonitor(createdAt: Instant): CommandMonitor =
+        CommandMonitor(
+            id = CommandMonitor.Id("monitor-1"),
+            conversationId = conversationId,
+            commandTaskId = CommandTask.Id("command-task-1"),
+            workerId = ConversationRuntimeWorkerId("worker-1"),
+            workspaceMountId = WorkspaceMount.Id("mount-1"),
+            filterCommand = "grep match",
+            mode = CommandMonitor.Mode.CONTINUOUS,
+            startFrom = CommandMonitor.StartFrom.BEGINNING,
+            status = CommandMonitor.Status.WORKING,
+            sourceOutputCursor = 0,
+            processId = 456,
+            processStartedAt = createdAt,
+            outputFile = "/tmp/monitor-1.log",
+            errorFile = "/tmp/monitor-1.stderr.log",
+            outputBytes = 0,
+            eventOutputCursor = 0,
+            createdAt = createdAt,
+            updatedAt = createdAt,
+        )
 
     private fun worker(
         id: String,
