@@ -650,6 +650,7 @@ class DefaultCommandMonitorService(
             output = String(bytes, safeStart, bytes.size - safeStart, StandardCharsets.UTF_8),
             outputTruncatedBefore = actualStart > lineStart,
             occurredAt = Clock.System.now(),
+            deliveryRequested = monitor.agentDefinitionId != null,
         )
     }
 

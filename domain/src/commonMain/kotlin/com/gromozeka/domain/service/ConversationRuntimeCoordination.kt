@@ -128,10 +128,14 @@ data class ConversationRuntimeTask(
         }
 
         @Serializable
-        @SerialName("command_task_completion")
-        data class CommandTaskCompletion(
-            val sourceTaskId: CommandTask.Id,
-        ) : Payload
+        @SerialName("background_activity_completion")
+        data class BackgroundActivityCompletion(
+            val sourceKey: String,
+        ) : Payload {
+            init {
+                require(sourceKey.isNotBlank()) { "Background activity completion source key must not be blank" }
+            }
+        }
 
         @Serializable
         @SerialName("execution_incident")
@@ -170,7 +174,7 @@ data class ConversationRuntimeTask(
                 ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                 ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
             )
-            is Payload.CommandTaskCompletion -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
+            is Payload.BackgroundActivityCompletion -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
             is Payload.ExecutionIncident -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
         }
 }
@@ -733,6 +737,12 @@ interface ConversationRuntimeCoordinator {
     suspend fun markCommandMonitorEventsDelivered(
         conversationId: Conversation.Id,
         eventIds: Set<CommandMonitorEvent.Id>,
+        deliveredAt: Instant,
+    ): Boolean
+
+    suspend fun markCommandMonitorTerminalNotificationDelivered(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
         deliveredAt: Instant,
     ): Boolean
 

@@ -598,7 +598,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             }
 
             val pendingEventMonitorIds = storedEvents.asSequence()
-                .filter { it.deliveredAt == null }
+                .filter { it.deliveryRequested && it.deliveredAt == null }
                 .mapTo(mutableSetOf()) { it.monitorId }
             val retainedMonitors = monitors
                 .partition {
@@ -621,7 +621,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
 
             val retainedEvents = storedEvents
                 .filter { it.monitorId in retainedIds }
-                .partition { it.deliveredAt == null }
+                .partition { it.deliveryRequested && it.deliveredAt == null }
                 .let { (pending, delivered) ->
                     pending + delivered.sortedBy { it.occurredAt }
                         .takeLast(COMMAND_MONITOR_DELIVERED_EVENT_RETENTION_LIMIT)
@@ -676,6 +676,9 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             var changed = false
             events.replaceAll { event ->
                 if (event.id in eventIds && event.deliveredAt == null) {
+                    check(event.deliveryRequested) {
+                        "Command monitor event ${event.id.value} did not request automatic delivery"
+                    }
                     changed = true
                     event.copy(deliveredAt = deliveredAt)
                 } else {
@@ -684,6 +687,30 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             }
             if (changed) bumpRevision(conversationId)
             changed
+        }
+
+    override suspend fun markCommandMonitorTerminalNotificationDelivered(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+        deliveredAt: Instant,
+    ): Boolean =
+        mutex.withLock {
+            val monitors = commandMonitorsByConversation[conversationId] ?: return@withLock false
+            val index = monitors.indexOfFirst { it.id == monitorId }
+            if (index < 0) return@withLock false
+            val monitor = monitors[index]
+            if (!monitor.isTerminal ||
+                monitor.terminalNotificationRequestedAt == null ||
+                monitor.terminalNotificationDeliveredAt != null
+            ) {
+                return@withLock false
+            }
+            monitors[index] = monitor.copy(
+                terminalNotificationDeliveredAt = deliveredAt,
+                updatedAt = maxOf(monitor.updatedAt, deliveredAt),
+            )
+            bumpRevision(conversationId)
+            true
         }
 
     override suspend fun requestCommandMonitorCancellation(

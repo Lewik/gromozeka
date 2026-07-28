@@ -481,6 +481,7 @@ class InMemoryConversationRuntimeStoresTest {
             output = "matched line",
             outputTruncatedBefore = false,
             occurredAt = now,
+            deliveryRequested = true,
         )
         val progressed = monitor.copy(
             outputBytes = 12,

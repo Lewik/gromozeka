@@ -241,6 +241,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                 output = "ERROR",
                 outputTruncatedBefore = false,
                 occurredAt = now,
+                deliveryRequested = true,
             )
 
             coordinator.upsertCommandTask(source)
@@ -253,6 +254,36 @@ class PostgresConversationRuntimeCoordinatorTest {
             assertEquals(
                 now,
                 reloadedCoordinator.findCommandMonitor(conversationId, monitor.id)?.cancellationRequestedAt,
+            )
+            assertTrue(
+                reloadedCoordinator.markCommandMonitorEventsDelivered(
+                    conversationId = conversationId,
+                    eventIds = setOf(event.id),
+                    deliveredAt = Instant.fromEpochMilliseconds(2_000),
+                )
+            )
+            val terminal = requireNotNull(
+                reloadedCoordinator.findCommandMonitor(conversationId, monitor.id)
+            ).copy(
+                status = CommandMonitor.Status.COMPLETED,
+                completedAt = Instant.fromEpochMilliseconds(3_000),
+                updatedAt = Instant.fromEpochMilliseconds(3_000),
+                terminalOutputStartByte = 0,
+                terminalOutput = "ERROR",
+                terminalErrorOutput = "",
+            )
+            reloadedCoordinator.synchronizeCommandMonitor(terminal)
+            assertTrue(
+                reloadedCoordinator.markCommandMonitorTerminalNotificationDelivered(
+                    conversationId = conversationId,
+                    monitorId = monitor.id,
+                    deliveredAt = Instant.fromEpochMilliseconds(4_000),
+                )
+            )
+            assertEquals(
+                Instant.fromEpochMilliseconds(4_000),
+                coordinator.findCommandMonitor(conversationId, monitor.id)
+                    ?.terminalNotificationDeliveredAt,
             )
         } finally {
             adminDataSource.connection.use { connection ->

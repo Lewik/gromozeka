@@ -95,7 +95,7 @@ class ConversationEngineService(
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryToolApplicationService: MemoryToolApplicationService,
-    private val commandTaskCompletionApplicationService: CommandTaskCompletionApplicationService,
+    private val backgroundActivityCompletionApplicationService: BackgroundActivityCompletionApplicationService,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
@@ -124,8 +124,8 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.ToolResultProcessing -> runToolResultProcessingStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.MemoryRecall -> runMemoryRecallStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.MemoryRunCompletion -> runMemoryRunCompletionStep(task, worker, payload)
-            is ConversationRuntimeTask.Payload.CommandTaskCompletion ->
-                runCommandTaskCompletionStep(task, worker, payload)
+            is ConversationRuntimeTask.Payload.BackgroundActivityCompletion ->
+                runBackgroundActivityCompletionStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.ExecutionIncident -> runExecutionIncidentStep(task, worker, payload)
         }
 
@@ -769,10 +769,10 @@ class ConversationEngineService(
         }
     }
 
-    private fun runCommandTaskCompletionStep(
+    private fun runBackgroundActivityCompletionStep(
         task: ConversationRuntimeTask,
         worker: ConversationRuntimeWorkerIdentity,
-        _payload: ConversationRuntimeTask.Payload.CommandTaskCompletion,
+        _payload: ConversationRuntimeTask.Payload.BackgroundActivityCompletion,
     ): Flow<Conversation.Message> = flow {
         val conversationId = task.conversationId
         if (!awaitExecutionCanContinue(conversationId)) return@flow
@@ -780,7 +780,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
 
-        val batch = commandTaskCompletionApplicationService.prepareBatch(
+        val batch = backgroundActivityCompletionApplicationService.prepareBatch(
             conversationId = conversationId,
         )
         if (batch.isEmpty) return@flow
@@ -793,7 +793,7 @@ class ConversationEngineService(
         }
 
         val pendingConversationWork =
-            commandTaskCompletionApplicationService.hasPendingConversationWork(conversationId)
+            backgroundActivityCompletionApplicationService.hasPendingConversationWork(conversationId)
         if (!pendingConversationWork && awaitExecutionCanContinue(conversationId)) {
             submitContinuationTask(
                 llmCallTask(
@@ -807,7 +807,7 @@ class ConversationEngineService(
 
         val deliveredAt = Clock.System.now()
         ensureRuntimeTaskOwner(conversationId, task.id, worker)
-        commandTaskCompletionApplicationService.markDelivered(batch, deliveredAt)
+        backgroundActivityCompletionApplicationService.markDelivered(batch, deliveredAt)
         publishRuntimeSnapshot(conversationId)
     }
 

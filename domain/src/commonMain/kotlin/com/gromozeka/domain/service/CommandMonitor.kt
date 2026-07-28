@@ -96,11 +96,15 @@ data class CommandMonitorEvent(
     val output: String,
     val outputTruncatedBefore: Boolean,
     val occurredAt: Instant,
+    val deliveryRequested: Boolean,
     val deliveredAt: Instant? = null,
 ) {
     init {
         require(outputStartByte >= 0) { "Command monitor event start must be non-negative" }
         require(outputEndByte > outputStartByte) { "Command monitor event must consume output bytes" }
+        require(deliveredAt == null || deliveryRequested) {
+            "Command monitor event cannot be delivered when automatic delivery was not requested"
+        }
     }
 
     @Serializable

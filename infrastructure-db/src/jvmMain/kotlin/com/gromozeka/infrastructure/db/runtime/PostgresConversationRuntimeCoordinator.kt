@@ -552,7 +552,7 @@ class PostgresConversationRuntimeCoordinator(
             }
 
             val pendingEventMonitorIds = storedEvents.asSequence()
-                .filter { it.deliveredAt == null }
+                .filter { it.deliveryRequested && it.deliveredAt == null }
                 .mapTo(mutableSetOf()) { it.monitorId }
             val retainedMonitors = monitors
                 .partition {
@@ -573,7 +573,7 @@ class PostgresConversationRuntimeCoordinator(
             record.commandMonitors = retainedMonitors
             record.commandMonitorEvents = storedEvents
                 .filter { it.monitorId in retainedIds }
-                .partition { it.deliveredAt == null }
+                .partition { it.deliveryRequested && it.deliveredAt == null }
                 .let { (pending, delivered) ->
                     pending + delivered.sortedBy { it.occurredAt }
                         .takeLast(COMMAND_MONITOR_DELIVERED_EVENT_RETENTION_LIMIT)
@@ -619,6 +619,9 @@ class PostgresConversationRuntimeCoordinator(
             var changed = false
             record.commandMonitorEvents = record.commandMonitorEvents.map { event ->
                 if (event.id in eventIds && event.deliveredAt == null) {
+                    check(event.deliveryRequested) {
+                        "Command monitor event ${event.id.value} did not request automatic delivery"
+                    }
                     changed = true
                     event.copy(deliveredAt = deliveredAt)
                 } else {
@@ -627,6 +630,31 @@ class PostgresConversationRuntimeCoordinator(
             }
             if (changed) record.bumpRevision()
             changed
+        }
+
+    override suspend fun markCommandMonitorTerminalNotificationDelivered(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+        deliveredAt: Instant,
+    ): Boolean =
+        mutateRecord(conversationId, createIfMissing = false) { record ->
+            val index = record.commandMonitors.indexOfFirst { it.id == monitorId }
+            if (index < 0) return@mutateRecord false
+            val monitor = record.commandMonitors[index]
+            if (!monitor.isTerminal ||
+                monitor.terminalNotificationRequestedAt == null ||
+                monitor.terminalNotificationDeliveredAt != null
+            ) {
+                return@mutateRecord false
+            }
+            record.commandMonitors = record.commandMonitors.toMutableList().apply {
+                this[index] = monitor.copy(
+                    terminalNotificationDeliveredAt = deliveredAt,
+                    updatedAt = maxOf(monitor.updatedAt, deliveredAt),
+                )
+            }
+            record.bumpRevision()
+            true
         }
 
     override suspend fun requestCommandMonitorCancellation(

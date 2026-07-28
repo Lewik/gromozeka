@@ -29,6 +29,7 @@ import kotlinx.datetime.Clock
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
+import java.security.MessageDigest
 
 @Service
 @ConditionalOnProperty(
@@ -196,25 +197,33 @@ class ConversationRuntimeDispatcher(
             )
         )
 
-    suspend fun submitCommandTaskCompletion(
-        task: CommandTask,
+    suspend fun submitBackgroundActivityCompletion(
+        conversationId: Conversation.Id,
+        sourceKey: String,
     ): Boolean =
         submitRuntimeTask(
             ConversationRuntimeTask(
-                id = ConversationRuntimeTask.Id("${task.id.value}:conversation-delivery"),
-                conversationId = task.conversationId,
-                payload = ConversationRuntimeTask.Payload.CommandTaskCompletion(
-                    sourceTaskId = task.id,
+                id = ConversationRuntimeTask.Id("background-activity:${stableIdentifier(sourceKey)}"),
+                conversationId = conversationId,
+                payload = ConversationRuntimeTask.Payload.BackgroundActivityCompletion(
+                    sourceKey = sourceKey,
                 ),
                 placement = QueuedMessagePlacement.END_OF_TURN,
                 idempotencyKey =
-                    "conversation:${task.conversationId.value}:command-task:${task.id.value}:delivery",
+                    "conversation:${conversationId.value}:background-activity:$sourceKey",
                 requirements = ConversationRuntimeTaskRequirements(
                     capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
                 ),
                 createdAt = Clock.System.now(),
             )
         )
+
+    private fun stableIdentifier(value: String): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray())
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
 
     suspend fun publishSnapshot(conversationId: Conversation.Id) {
         publishRuntimeSnapshot(conversationId)
