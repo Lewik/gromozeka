@@ -27,10 +27,16 @@ interface CommandTaskService {
 }
 
 data class CommandProcessSpec(
-    val taskId: CommandTask.Id,
+    val executionId: String,
     val command: String,
     val workingDirectory: String,
-)
+    val captureStandardErrorSeparately: Boolean = false,
+) {
+    init {
+        require(executionId.isNotBlank()) { "Command process execution id must not be blank" }
+        require(command.isNotBlank()) { "Command process command must not be blank" }
+    }
+}
 
 data class CommandProcessRecoverySpec(
     val processId: Long?,
@@ -86,9 +92,13 @@ interface RunningCommandProcess {
     val processStartedAt: Instant
     val processTreeId: Long
     val outputFile: String
+    val errorFile: String?
+    val acceptsInput: Boolean
 
     fun isAlive(): Boolean
     fun waitFor(timeoutMillis: Long): Boolean
     fun exitCode(): Int
+    fun writeInput(bytes: ByteArray)
+    fun closeInput()
     fun terminateTree()
 }

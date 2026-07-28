@@ -3,7 +3,6 @@ package com.gromozeka.infrastructure.ai.tool
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
-import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import kotlinx.datetime.Instant
 import java.io.File
@@ -12,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -24,7 +24,7 @@ class LocalCommandProcessRunnerTest {
         withTemporaryGromozekaHome { home ->
             val process = runner.start(
                 CommandProcessSpec(
-                    taskId = CommandTask.Id("large-output-task"),
+                    executionId = "large-output-task",
                     command = platformCommand(
                         posix = "i=0; while [ ${'$'}i -lt 20000 ]; do echo line-${'$'}i; i=${'$'}((i+1)); done",
                         windows = "for /L %%i in (0,1,19999) do @echo line-%%i",
@@ -42,12 +42,38 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
+    fun `runner streams standard input and captures standard error separately`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(
+                CommandProcessSpec(
+                    executionId = "stream-input-task",
+                    command = platformCommand(
+                        posix = "grep match; printf diagnostic >&2",
+                        windows = "findstr /C:match & echo diagnostic 1>&2",
+                    ),
+                    workingDirectory = home.absolutePath,
+                    captureStandardErrorSeparately = true,
+                )
+            )
+
+            assertTrue(process.acceptsInput)
+            process.writeInput("skip\nmatch\n".toByteArray())
+            process.closeInput()
+
+            assertTrue(process.waitFor(5_000))
+            assertEquals(0, process.exitCode())
+            assertTrue(File(process.outputFile).readText().contains("match"))
+            assertTrue(File(requireNotNull(process.errorFile)).readText().contains("diagnostic"))
+        }
+    }
+
+    @Test
     fun `runner terminates root and child processes`() {
         withTemporaryGromozekaHome { home ->
             val childPidFile = File(home, "child.pid")
             val process = runner.start(
                 CommandProcessSpec(
-                    taskId = CommandTask.Id("process-tree-task"),
+                    executionId = "process-tree-task",
                     command = platformCommand(
                         posix = "sleep 30 & child=${'$'}!; echo ${'$'}child > '${childPidFile.absolutePath}'; wait",
                         windows = windowsProcessTreeCommand(childPidFile),
@@ -80,7 +106,7 @@ class LocalCommandProcessRunnerTest {
             val lateChildPidFile = File(home, "late-child.pid")
             val process = runner.start(
                 CommandProcessSpec(
-                    taskId = CommandTask.Id("late-descendant-task"),
+                    executionId = "late-descendant-task",
                     command = "trap 'sleep 30 & late=${'$'}!; echo ${'$'}late > '${lateChildPidFile.absolutePath}'; wait ${'$'}late' TERM; " +
                         "echo ready > '${readyFile.absolutePath}'; while :; do sleep 30; done",
                     workingDirectory = home.absolutePath,
@@ -101,7 +127,7 @@ class LocalCommandProcessRunnerTest {
         withTemporaryGromozekaHome { home ->
             val process = runner.start(
                 CommandProcessSpec(
-                    taskId = CommandTask.Id("completed-recovery-task"),
+                    executionId = "completed-recovery-task",
                     command = platformCommand(
                         posix = "printf recovered; exit 7",
                         windows = "<NUL set /P =recovered & exit /B 7",
@@ -132,7 +158,7 @@ class LocalCommandProcessRunnerTest {
         withTemporaryGromozekaHome { home ->
             val process = runner.start(
                 CommandProcessSpec(
-                    taskId = CommandTask.Id("live-recovery-task"),
+                    executionId = "live-recovery-task",
                     command = platformCommand(
                         posix = "sleep 30",
                         windows = "ping.exe -n 31 127.0.0.1 >NUL",
@@ -152,6 +178,10 @@ class LocalCommandProcessRunnerTest {
                 )
             )
 
+            assertFalse(recovery.process.acceptsInput)
+            assertFailsWith<IllegalStateException> {
+                recovery.process.writeInput("unavailable".toByteArray())
+            }
             recovery.process.terminateTree()
             assertFalse(process.isAlive())
         }
@@ -162,7 +192,7 @@ class LocalCommandProcessRunnerTest {
         withTemporaryGromozekaHome { home ->
             val retained = runner.start(
                 CommandProcessSpec(
-                    taskId = CommandTask.Id("retained-output-task"),
+                    executionId = "retained-output-task",
                     command = platformCommand(
                         posix = "printf retained",
                         windows = "<NUL set /P =retained",
@@ -172,7 +202,7 @@ class LocalCommandProcessRunnerTest {
             )
             val orphaned = runner.start(
                 CommandProcessSpec(
-                    taskId = CommandTask.Id("orphaned-output-task"),
+                    executionId = "orphaned-output-task",
                     command = platformCommand(
                         posix = "printf orphaned",
                         windows = "<NUL set /P =orphaned",
@@ -305,7 +335,7 @@ class LocalCommandProcessRunnerTest {
         output: String,
     ) = runner.start(
         CommandProcessSpec(
-            taskId = CommandTask.Id(taskId),
+            executionId = taskId,
             command = platformCommand(
                 posix = "printf '$output'",
                 windows = "<NUL set /P =$output",

@@ -106,7 +106,7 @@ class DefaultCommandTaskService(
         val activeCommand = lifecycleMutex.withLock {
             val process = processRunner.start(
                 CommandProcessSpec(
-                    taskId = taskId,
+                    executionId = taskId.value,
                     command = request.command,
                     workingDirectory = workingDirectory,
                 )

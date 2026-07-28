@@ -28,12 +28,14 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         val outputFile = commandOutputFile(spec)
         val processTreeFile = processTreeFile(outputFile)
         val exitCodeFile = exitCodeFile(outputFile)
+        val errorFile = errorFile(outputFile).takeIf { spec.captureStandardErrorSeparately }
         var process: Process? = null
         try {
             process = host.launch(
                 spec = spec,
                 workingDirectory = workingDirectory,
                 outputFile = outputFile,
+                errorFile = errorFile,
                 processTreeFile = processTreeFile,
                 exitCodeFile = exitCodeFile,
             )
@@ -48,6 +50,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
                 startedAt = startedAt.toKotlinInstant(),
                 processTree = host.processTree(processTreeId),
                 outputArtifact = outputFile,
+                errorArtifact = errorFile,
                 exitCodeArtifact = exitCodeFile,
             )
         } catch (error: Throwable) {
@@ -97,6 +100,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             startedAt = actualStartedAt,
             processTree = processTree,
             outputArtifact = outputFile,
+            errorArtifact = errorFile(outputFile).takeIf(File::isFile),
             exitCodeArtifact = exitCodeFile(outputFile),
         )
         return if (outputFile.isFile) {
@@ -179,7 +183,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
 
     private fun commandOutputFile(spec: CommandProcessSpec): File = File(
         outputDirectory(),
-        "command-${System.currentTimeMillis()}-${spec.command.sha256Prefix()}-${spec.taskId.value.take(8)}.log",
+        "command-${System.currentTimeMillis()}-${spec.command.sha256Prefix()}-${spec.executionId.take(8)}.log",
     ).apply {
         check(createNewFile()) { "Command output artifact already exists: $absolutePath" }
     }
@@ -211,6 +215,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         File("${processTreeFile(outputFile).absolutePath}.tmp"),
         exitCodeFile(outputFile),
         File("${exitCodeFile(outputFile).absolutePath}.tmp"),
+        errorFile(outputFile),
         windowsCommandFile(outputFile),
         windowsWrapperFile(outputFile),
     )
@@ -252,8 +257,11 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         private val startedAt: Instant,
         private val processTree: LocalProcessTree,
         private val outputArtifact: File,
+        private val errorArtifact: File?,
         private val exitCodeArtifact: File,
     ) : RunningCommandProcess {
+        private val inputLock = Any()
+
         override val processId: Long
             get() = processHandle.pid()
 
@@ -265,6 +273,12 @@ class LocalCommandProcessRunner : CommandProcessRunner {
 
         override val outputFile: String
             get() = outputArtifact.absolutePath
+
+        override val errorFile: String?
+            get() = errorArtifact?.absolutePath
+
+        override val acceptsInput: Boolean
+            get() = process != null
 
         override fun isAlive(): Boolean = processHandle.isAlive
 
@@ -291,6 +305,24 @@ class LocalCommandProcessRunner : CommandProcessRunner {
             error("Exit code artifact is unavailable after reconnecting to process $processId")
         }
 
+        override fun writeInput(bytes: ByteArray) {
+            require(bytes.isNotEmpty()) { "Command process input must not be empty" }
+            val directProcess = process
+                ?: error("Cannot write input after reconnecting to command process $processId")
+            synchronized(inputLock) {
+                directProcess.outputStream.write(bytes)
+                directProcess.outputStream.flush()
+            }
+        }
+
+        override fun closeInput() {
+            val directProcess = process
+                ?: error("Cannot close input after reconnecting to command process $processId")
+            synchronized(inputLock) {
+                directProcess.outputStream.close()
+            }
+        }
+
         override fun terminateTree() {
             processTree.terminate(processHandle)
         }
@@ -307,7 +339,7 @@ class LocalCommandProcessRunner : CommandProcessRunner {
         val OUTPUT_FILE_NAME = Regex("command-[A-Za-z0-9-]+\\.log")
         val OUTPUT_ARTIFACT_NAME = Regex(
             "(command-[A-Za-z0-9-]+\\.log)" +
-                "(?:\\.(?:(?:tree|exit)(?:\\.tmp)?|(?:command|wrapper)\\.cmd))?"
+                "(?:\\.(?:(?:tree|exit)(?:\\.tmp)?|stderr\\.log|(?:command|wrapper)\\.cmd))?"
         )
     }
 }
@@ -317,6 +349,7 @@ internal interface LocalCommandHost {
         spec: CommandProcessSpec,
         workingDirectory: File,
         outputFile: File,
+        errorFile: File?,
         processTreeFile: File,
         exitCodeFile: File,
     ): Process
@@ -355,6 +388,7 @@ internal class PosixLocalCommandHost private constructor(
         spec: CommandProcessSpec,
         workingDirectory: File,
         outputFile: File,
+        errorFile: File?,
         processTreeFile: File,
         exitCodeFile: File,
     ): Process = ProcessBuilder(
@@ -369,8 +403,11 @@ internal class PosixLocalCommandHost private constructor(
         launcherExecutable.orEmpty(),
     )
         .directory(workingDirectory)
-        .redirectErrorStream(true)
         .redirectOutput(outputFile)
+        .apply {
+            redirectErrorStream(errorFile == null)
+            errorFile?.let(::redirectError)
+        }
         .start()
 
     override fun resolveProcessTreeId(process: Process, processTreeFile: File): Long =
@@ -404,19 +441,22 @@ internal class WindowsLocalCommandHost(
         spec: CommandProcessSpec,
         workingDirectory: File,
         outputFile: File,
+        errorFile: File?,
         processTreeFile: File,
         exitCodeFile: File,
     ): Process = prepareProcessBuilder(
         command = spec.command,
-        workingDirectory = workingDirectory,
-        outputFile = outputFile,
-        exitCodeFile = exitCodeFile,
+            workingDirectory = workingDirectory,
+            outputFile = outputFile,
+            errorFile = errorFile,
+            exitCodeFile = exitCodeFile,
     ).start()
 
     internal fun prepareProcessBuilder(
         command: String,
         workingDirectory: File,
         outputFile: File,
+        errorFile: File? = null,
         exitCodeFile: File,
     ): ProcessBuilder {
         val commandFile = windowsCommandFile(outputFile)
@@ -432,9 +472,10 @@ internal class WindowsLocalCommandHost(
             wrapperFile.absolutePath,
         )
             .directory(workingDirectory)
-            .redirectErrorStream(true)
             .redirectOutput(outputFile)
             .apply {
+                redirectErrorStream(errorFile == null)
+                errorFile?.let(::redirectError)
                 environment()[WINDOWS_COMMAND_FILE_ENV] = commandFile.absolutePath
                 environment()[WINDOWS_EXIT_FILE_ENV] = exitCodeFile.absolutePath
             }
@@ -545,6 +586,8 @@ internal fun String.toWindowsCommandFile(): String {
 private fun processTreeFile(outputFile: File): File = File("${outputFile.absolutePath}.tree")
 
 private fun exitCodeFile(outputFile: File): File = File("${outputFile.absolutePath}.exit")
+
+private fun errorFile(outputFile: File): File = File("${outputFile.absolutePath}.stderr.log")
 
 private fun windowsCommandFile(outputFile: File): File = File("${outputFile.absolutePath}.command.cmd")
 

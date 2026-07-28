@@ -543,7 +543,7 @@ class DefaultCommandTaskServiceTest {
         override fun start(spec: CommandProcessSpec): RunningCommandProcess =
             FakeRunningCommandProcess(
                 processId = nextPid.incrementAndGet(),
-                outputArtifact = File(outputDirectory, "${spec.taskId.value}.log").apply { createNewFile() },
+                outputArtifact = File(outputDirectory, "${spec.executionId}.log").apply { createNewFile() },
             ).also { process ->
                 lastProcess = process
                 onStart(process)
@@ -609,6 +609,8 @@ class DefaultCommandTaskServiceTest {
         override val processTreeId: Long = processId + 10_000
         override val outputFile: String
             get() = outputArtifact.absolutePath
+        override val errorFile: String? = null
+        override val acceptsInput: Boolean = true
         @Volatile
         private var alive = true
         @Volatile
@@ -629,6 +631,12 @@ class DefaultCommandTaskServiceTest {
         }
 
         override fun exitCode(): Int = code
+
+        override fun writeInput(bytes: ByteArray) {
+            check(alive) { "Process is not running" }
+        }
+
+        override fun closeInput() = Unit
 
         override fun terminateTree() {
             terminateTreeCalled = true
