@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.PlaylistAddCheck
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
@@ -40,6 +41,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ConversationExecutionState
@@ -74,6 +76,7 @@ fun ConversationRuntimePanel(
     onResume: () -> Unit,
     onStop: () -> Unit,
     onCancelCommandTask: (CommandTask.Id) -> Unit,
+    onCancelCommandMonitor: (CommandMonitor.Id) -> Unit,
     onSendInCurrentTurn: (String) -> Unit,
     onEditPendingMessage: (String) -> Unit,
     onCancelPendingMessage: (String) -> Unit,
@@ -138,6 +141,7 @@ fun ConversationRuntimePanel(
                 RuntimeTasksSection(
                     runtimeSnapshot = runtimeSnapshot,
                     onCancelCommandTask = onCancelCommandTask,
+                    onCancelCommandMonitor = onCancelCommandMonitor,
                 )
 
                 PendingMessagesSection(
@@ -350,21 +354,31 @@ private fun RuntimeConfigurationCard(
 private fun RuntimeTasksSection(
     runtimeSnapshot: ConversationRuntimeSnapshot?,
     onCancelCommandTask: (CommandTask.Id) -> Unit,
+    onCancelCommandMonitor: (CommandMonitor.Id) -> Unit,
 ) {
-    val translation = LocalTranslation.current.runtime
+    val appTranslation = LocalTranslation.current
+    val translation = appTranslation.runtime
     val activeTask = runtimeSnapshot?.activeTask
     val pendingTasks = runtimeSnapshot?.pendingTasks.orEmpty()
     val runningTools = runtimeSnapshot?.toolExecutions.orEmpty()
         .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
+    val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
     val incidents = runtimeSnapshot?.incidents.orEmpty()
-    if (activeTask == null && pendingTasks.isEmpty() && runningTools.isEmpty() && activeCommands.isEmpty() && incidents.isEmpty()) {
+    if (
+        activeTask == null &&
+        pendingTasks.isEmpty() &&
+        runningTools.isEmpty() &&
+        activeCommands.isEmpty() &&
+        activeMonitors.isEmpty() &&
+        incidents.isEmpty()
+    ) {
         return
     }
 
     Spacer(modifier = Modifier.height(12.dp))
     Card(
-        modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
@@ -415,6 +429,59 @@ private fun RuntimeTasksSection(
                         }
                         TextButton(onClick = { onCancelCommandTask(commandTask.id) }) {
                             Text(translation.killButton)
+                        }
+                    }
+                }
+                activeMonitors.forEach { monitor ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.testTag(UiTestTag.CommandMonitorItem(monitor.id.value).value),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = monitor.filterCommand,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Text(
+                                text = buildList {
+                                    add(monitor.mode.runtimeMonitorModeLabel(translation))
+                                    add("${translation.monitorEventsLabel}: ${monitor.eventCount}")
+                                    add(monitor.workerId.value)
+                                }.joinToString(" · "),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            monitor.lastEventPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                                Text(
+                                    text = preview,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        TextButton(
+                            onClick = { onCancelCommandMonitor(monitor.id) },
+                            enabled = monitor.cancellationRequestedAt == null,
+                        ) {
+                            Text(
+                                if (monitor.cancellationRequestedAt == null) {
+                                    appTranslation.cancelButton
+                                } else {
+                                    translation.cancellingStatus
+                                }
+                            )
                         }
                     }
                 }
@@ -571,14 +638,16 @@ private fun RuntimeStatusFooter(
     val translation = LocalTranslation.current.runtime
     val voiceError = pttStatusMessage?.takeIf { it.isNotBlank() }
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
+    val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
     val runningTools = runtimeSnapshot?.toolExecutions.orEmpty()
         .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
         .map { it.toolName }
         .distinct()
     val activeTask = runtimeSnapshot?.activeTask
     val controlState = runtimeSnapshot?.state?.controlState
-    val runtimeHasWork = runtimeSnapshot?.state != null || activeTask != null ||
+    val controllableRuntimeHasWork = runtimeSnapshot?.state != null || activeTask != null ||
         runtimeSnapshot?.pendingTasks.orEmpty().isNotEmpty() || activeCommands.isNotEmpty() || runningTools.isNotEmpty()
+    val runtimeHasWork = controllableRuntimeHasWork || activeMonitors.isNotEmpty()
     val isPaused = executionPauseRequested ||
         controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED ||
         controlState == ConversationExecutionState.ControlState.PAUSED
@@ -596,11 +665,13 @@ private fun RuntimeStatusFooter(
         controlState == ConversationExecutionState.ControlState.STOPPING -> translation.stoppingStatus
         controlState == ConversationExecutionState.ControlState.INTERRUPTING -> translation.interruptingStatus
         executionPauseRequested -> translation.pauseRequestedStatus
-        activeCommands.size == 1 -> translation.commandRunningStatus
-        activeCommands.size > 1 -> "${translation.commandsRunningStatus}: ${activeCommands.size}"
         runningTools.isNotEmpty() -> "${translation.toolsRunningStatus}: ${runningTools.joinToString(", ")}"
         activeTask != null -> activeTask.payload.runtimeStatusLabel(agentName, translation)
         isWaitingForResponse -> "$agentName ${translation.agentWorkingStatus}"
+        activeCommands.size == 1 -> translation.commandRunningStatus
+        activeCommands.size > 1 -> "${translation.commandsRunningStatus}: ${activeCommands.size}"
+        activeMonitors.size == 1 -> translation.monitorRunningStatus
+        activeMonitors.size > 1 -> "${translation.monitorsRunningStatus}: ${activeMonitors.size}"
         pendingMessages.isNotEmpty() -> "${translation.queuedStatus} ${pendingMessages.size}"
         else -> translation.readyStatus
     }
@@ -663,7 +734,7 @@ private fun RuntimeStatusFooter(
                         )
                     }
                 }
-                if ((isWaitingForResponse || runtimeHasWork) && !isStopping) {
+                if ((isWaitingForResponse || controllableRuntimeHasWork) && !isStopping) {
                     TextButton(onClick = if (isPaused) onResume else onPause) {
                         Text(if (isPaused) translation.resumeButton else translation.pauseButton)
                     }
@@ -720,11 +791,33 @@ private fun MemoryRun.Status.runtimeMemoryStatusLabel(translation: Translation.R
         MemoryRun.Status.CANCELLED -> translation.memoryCancelledStatus
     }
 
+private fun CommandMonitor.Mode.runtimeMonitorModeLabel(
+    translation: Translation.RuntimeTranslation,
+): String = when (this) {
+    CommandMonitor.Mode.ONCE -> translation.monitorOnceMode
+    CommandMonitor.Mode.CONTINUOUS -> translation.monitorContinuousMode
+}
+
+internal fun List<CommandMonitor>.activeForRuntimePanel(): List<CommandMonitor> =
+    asSequence()
+        .filterNot(CommandMonitor::isTerminal)
+        .sortedWith(
+            compareBy<CommandMonitor> { it.cancellationRequestedAt != null }
+                .thenByDescending { it.lastEventAt ?: it.updatedAt }
+        )
+        .toList()
+
 private fun ConversationRuntimeSnapshot.runtimeDetailsText(
     translation: Translation.RuntimeTranslation,
 ): String = buildList {
     activeTask?.payload?.let { add(it.runtimeLabel(translation)) }
     if (pendingTasks.isNotEmpty()) add("${translation.pendingDetailsLabel} ${pendingTasks.size}")
+    commandTasks.count { !it.isTerminal }
+        .takeIf { it > 0 }
+        ?.let { add("${translation.commandsDetailsLabel} $it") }
+    commandMonitors.count { !it.isTerminal }
+        .takeIf { it > 0 }
+        ?.let { add("${translation.monitorsDetailsLabel} $it") }
     if (incidents.isNotEmpty()) add("${translation.incidentsDetailsLabel} ${incidents.size}")
 }.joinToString(" · ")
 

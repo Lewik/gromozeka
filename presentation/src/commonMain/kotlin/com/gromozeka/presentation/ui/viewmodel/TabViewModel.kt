@@ -23,6 +23,7 @@ import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
@@ -740,6 +741,16 @@ class TabViewModel(
                 conversationRuntimeService.cancelCommandTask(conversationId, taskId)
             }.onFailure { error ->
                 log.warn(error) { "Command task cancellation failed for ${taskId.value}: ${error.message}" }
+            }
+        }
+    }
+
+    fun cancelCommandMonitor(monitorId: CommandMonitor.Id) {
+        scope.launch {
+            runCatching {
+                conversationRuntimeService.cancelCommandMonitor(conversationId, monitorId)
+            }.onFailure { error ->
+                log.warn(error) { "Command monitor cancellation failed for ${monitorId.value}: ${error.message}" }
             }
         }
     }

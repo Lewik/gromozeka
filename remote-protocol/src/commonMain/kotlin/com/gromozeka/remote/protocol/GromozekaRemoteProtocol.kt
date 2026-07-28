@@ -23,8 +23,9 @@ import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.memory.MemoryActionItem
-import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -595,6 +596,13 @@ data class ControlConversationRuntimeRequest(
 data class CancelCommandTaskRequest(
     val conversationId: Conversation.Id,
     val taskId: CommandTask.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("cancel_command_monitor")
+data class CancelCommandMonitorRequest(
+    val conversationId: Conversation.Id,
+    val monitorId: CommandMonitor.Id,
 ) : ClientRequest
 
 @Serializable

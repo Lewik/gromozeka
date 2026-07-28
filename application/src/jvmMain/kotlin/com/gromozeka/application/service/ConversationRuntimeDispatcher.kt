@@ -3,8 +3,9 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryRun
-import com.gromozeka.domain.service.ConversationExecutionState
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -153,6 +154,21 @@ class ConversationRuntimeDispatcher(
         val accepted = runtimeCoordinator.requestCommandTaskCancellation(
             conversationId = conversationId,
             taskId = taskId,
+            requestedAt = Clock.System.now(),
+        )
+        if (accepted) {
+            publishRuntimeSnapshot(conversationId)
+        }
+        return accepted
+    }
+
+    suspend fun cancelCommandMonitor(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+    ): Boolean {
+        val accepted = runtimeCoordinator.requestCommandMonitorCancellation(
+            conversationId = conversationId,
+            monitorId = monitorId,
             requestedAt = Clock.System.now(),
         )
         if (accepted) {

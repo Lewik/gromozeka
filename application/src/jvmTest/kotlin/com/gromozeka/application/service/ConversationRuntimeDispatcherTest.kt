@@ -12,6 +12,8 @@ import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -61,6 +63,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -272,6 +275,52 @@ class ConversationRuntimeDispatcherTest {
             waitUntil { harness.coordinator.find(conversationId) == null }
             assertEquals(emptyList(), harness.coordinator.listPending(conversationId))
             assertNull(withTimeoutOrNull(350) { harness.runner.awaitStarted() })
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun `dispatcher requests cancellation for an active command monitor`() = runBlocking {
+        val harness = dispatcherHarness()
+        try {
+            val now = Clock.System.now()
+            val monitor = CommandMonitor(
+                id = CommandMonitor.Id("monitor-1"),
+                conversationId = conversationId,
+                commandTaskId = CommandTask.Id("command-1"),
+                workerId = ConversationRuntimeWorkerId("worker-1"),
+                workspaceMountId = WorkspaceMount.Id("mount-1"),
+                filterCommand = "grep --line-buffered READY",
+                mode = CommandMonitor.Mode.CONTINUOUS,
+                startFrom = CommandMonitor.StartFrom.NOW,
+                status = CommandMonitor.Status.WORKING,
+                sourceOutputCursor = 0,
+                processId = 101,
+                processStartedAt = now,
+                outputFile = "/tmp/monitor-1.log",
+                errorFile = "/tmp/monitor-1.err",
+                outputBytes = 0,
+                eventOutputCursor = 0,
+                createdAt = now,
+                updatedAt = now,
+            )
+            harness.coordinator.synchronizeCommandMonitor(monitor)
+
+            assertTrue(harness.dispatcher.cancelCommandMonitor(conversationId, monitor.id))
+
+            val stored = assertNotNull(
+                harness.coordinator.findCommandMonitor(conversationId, monitor.id)
+            )
+            assertNotNull(stored.cancellationRequestedAt)
+            assertEquals("Cancellation requested", stored.statusMessage)
+            assertTrue(harness.dispatcher.cancelCommandMonitor(conversationId, monitor.id))
+            assertFalse(
+                harness.dispatcher.cancelCommandMonitor(
+                    conversationId,
+                    CommandMonitor.Id("missing-monitor"),
+                )
+            )
         } finally {
             harness.close()
         }

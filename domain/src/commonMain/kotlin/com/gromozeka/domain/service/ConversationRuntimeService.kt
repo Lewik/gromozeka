@@ -39,6 +39,11 @@ interface ConversationRuntimeService {
         taskId: CommandTask.Id,
     ): Boolean
 
+    suspend fun cancelCommandMonitor(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+    ): Boolean
+
     suspend fun rememberCurrentThread(conversationId: Conversation.Id)
     suspend fun consolidateCurrentMemory(conversationId: Conversation.Id)
     suspend fun repairCurrentMemory(conversationId: Conversation.Id)

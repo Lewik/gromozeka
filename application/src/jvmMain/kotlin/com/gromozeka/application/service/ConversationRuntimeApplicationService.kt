@@ -6,6 +6,7 @@ import com.gromozeka.application.service.memory.MemoryMaintenanceTargetKind
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -51,6 +52,11 @@ class ConversationRuntimeApplicationService(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
     ): Boolean = runtimeDispatcher.cancelCommandTask(conversationId, taskId)
+
+    override suspend fun cancelCommandMonitor(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+    ): Boolean = runtimeDispatcher.cancelCommandMonitor(conversationId, monitorId)
 
     override suspend fun submitMessage(
         conversationId: Conversation.Id,

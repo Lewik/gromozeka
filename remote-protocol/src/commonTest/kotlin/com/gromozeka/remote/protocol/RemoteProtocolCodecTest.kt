@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
@@ -466,7 +467,25 @@ class RemoteProtocolCodecTest {
     }
 
     @Test
-    fun cborRoundTripPreservesCommandTasksInRuntimeSnapshot() {
+    fun cborRoundTripSupportsCommandMonitorCancellation() {
+        val envelope = GromozekaClientEnvelope(
+            id = "cancel-monitor-1",
+            payload = CancelCommandMonitorRequest(
+                conversationId = Conversation.Id("conversation-command-1"),
+                monitorId = CommandMonitor.Id("command-monitor-1"),
+            )
+        )
+
+        val decoded = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(envelope)
+        ).payload as CancelCommandMonitorRequest
+
+        assertEquals("conversation-command-1", decoded.conversationId.value)
+        assertEquals("command-monitor-1", decoded.monitorId.value)
+    }
+
+    @Test
+    fun cborRoundTripPreservesCommandsAndMonitorsInRuntimeSnapshot() {
         val now = Instant.parse("2026-07-15T12:00:00Z")
         val commandTask = CommandTask(
             id = CommandTask.Id("command-task-1"),
@@ -483,6 +502,29 @@ class RemoteProtocolCodecTest {
             createdAt = now,
             updatedAt = now,
         )
+        val monitor = CommandMonitor(
+            id = CommandMonitor.Id("command-monitor-1"),
+            conversationId = commandTask.conversationId,
+            commandTaskId = commandTask.id,
+            workerId = commandTask.workerId,
+            workspaceMountId = commandTask.workspaceMountId,
+            filterCommand = "grep --line-buffered READY",
+            mode = CommandMonitor.Mode.CONTINUOUS,
+            startFrom = CommandMonitor.StartFrom.NOW,
+            status = CommandMonitor.Status.WORKING,
+            sourceOutputCursor = 42,
+            processId = 322,
+            processStartedAt = now,
+            outputFile = "/tmp/command-monitor-1.log",
+            errorFile = "/tmp/command-monitor-1.err",
+            outputBytes = 6,
+            eventOutputCursor = 6,
+            eventCount = 1,
+            lastEventAt = now,
+            lastEventPreview = "READY",
+            createdAt = now,
+            updatedAt = now,
+        )
         val envelope = GromozekaServerEnvelope(
             id = "runtime-command-1",
             payload = ConversationRuntimeSnapshotEvent(
@@ -494,6 +536,7 @@ class RemoteProtocolCodecTest {
                     state = null,
                     pendingTasks = emptyList(),
                     commandTasks = listOf(commandTask),
+                    commandMonitors = listOf(monitor),
                 ),
             )
         )
@@ -503,6 +546,7 @@ class RemoteProtocolCodecTest {
         ).payload as ConversationRuntimeSnapshotEvent
 
         assertEquals(commandTask, decoded.snapshot.commandTasks.single())
+        assertEquals(monitor, decoded.snapshot.commandMonitors.single())
     }
 
     @Test

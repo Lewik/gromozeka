@@ -47,6 +47,10 @@ sealed interface UiTestTag {
         override val suffixParts: List<Any?> = listOf(messageId)
     }
 
+    data class CommandMonitorItem(val monitorId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(monitorId)
+    }
+
     val suffixParts: List<Any?>
         get() = emptyList()
 

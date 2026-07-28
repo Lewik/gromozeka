@@ -3,12 +3,14 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MemoryAction
-import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.remote.protocol.CancelQueuedMessageRequest
+import com.gromozeka.remote.protocol.CancelCommandMonitorRequest
 import com.gromozeka.remote.protocol.CancelCommandTaskRequest
 import com.gromozeka.remote.protocol.ControlConversationRuntimeRequest
 import com.gromozeka.remote.protocol.EnqueueMessageRequest
@@ -68,6 +70,14 @@ internal class RemoteConversationRuntimeService(
     ): Boolean =
         client.requestTyped<CancelCommandTaskRequest, OperationResultResponse>(
             CancelCommandTaskRequest(conversationId, taskId)
+        ).success
+
+    override suspend fun cancelCommandMonitor(
+        conversationId: Conversation.Id,
+        monitorId: CommandMonitor.Id,
+    ): Boolean =
+        client.requestTyped<CancelCommandMonitorRequest, OperationResultResponse>(
+            CancelCommandMonitorRequest(conversationId, monitorId)
         ).success
 
     override suspend fun rememberCurrentThread(conversationId: Conversation.Id) =
