@@ -35,6 +35,7 @@ interface GrzGetCommandTaskTool : Tool<GetCommandTaskRequest, Map<String, Any>> 
             Reuse next_output_byte on the next call. Continue while status is WORKING or has_more_output is true.
             wait_ms may be from 0 to $MAX_COMMAND_TASK_WAIT_MILLIS; prefer one wait covering the expected remaining duration, capped at this limit.
             The terminal statuses are COMPLETED, FAILED, and CANCELLED.
+            Gromozeka conversations receive terminal command results automatically, so call this only for intermediate output or an explicit status check.
         """.trimIndent()
 
     override val requestType: Class<GetCommandTaskRequest>

@@ -1,5 +1,6 @@
 package com.gromozeka.domain.service
 
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
 import kotlinx.datetime.Instant
@@ -12,6 +13,7 @@ data class CommandTask(
     val conversationId: Conversation.Id,
     val workerId: ConversationRuntimeWorkerId,
     val workspaceMountId: WorkspaceMount.Id,
+    val agentDefinitionId: AgentDefinition.Id? = null,
     val command: String,
     val workingDirectory: String,
     val status: Status,
@@ -27,7 +29,20 @@ data class CommandTask(
     val createdAt: Instant,
     val updatedAt: Instant,
     val completedAt: Instant? = null,
+    val completionNotificationRequestedAt: Instant? = null,
+    val completionNotificationDeliveredAt: Instant? = null,
+    val terminalOutputStartByte: Long? = null,
+    val terminalOutput: String? = null,
 ) {
+    init {
+        require(completionNotificationDeliveredAt == null || completionNotificationRequestedAt != null) {
+            "Command completion notification cannot be delivered before it is requested"
+        }
+        require((terminalOutputStartByte == null) == (terminalOutput == null)) {
+            "Command terminal output and its byte offset must be stored together"
+        }
+    }
+
     @Serializable
     @JvmInline
     value class Id(val value: String)

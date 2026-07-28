@@ -128,6 +128,12 @@ data class ConversationRuntimeTask(
         }
 
         @Serializable
+        @SerialName("command_task_completion")
+        data class CommandTaskCompletion(
+            val sourceTaskId: CommandTask.Id,
+        ) : Payload
+
+        @Serializable
         @SerialName("execution_incident")
         data class ExecutionIncident(
             val sourceTaskId: Id,
@@ -164,6 +170,7 @@ data class ConversationRuntimeTask(
                 ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
                 ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
             )
+            is Payload.CommandTaskCompletion -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
             is Payload.ExecutionIncident -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
         }
 }

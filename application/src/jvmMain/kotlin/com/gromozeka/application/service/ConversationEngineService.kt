@@ -25,7 +25,6 @@ import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
-import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -96,6 +95,7 @@ class ConversationEngineService(
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryToolApplicationService: MemoryToolApplicationService,
+    private val commandTaskCompletionApplicationService: CommandTaskCompletionApplicationService,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
@@ -124,6 +124,8 @@ class ConversationEngineService(
             is ConversationRuntimeTask.Payload.ToolResultProcessing -> runToolResultProcessingStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.MemoryRecall -> runMemoryRecallStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.MemoryRunCompletion -> runMemoryRunCompletionStep(task, worker, payload)
+            is ConversationRuntimeTask.Payload.CommandTaskCompletion ->
+                runCommandTaskCompletionStep(task, worker, payload)
             is ConversationRuntimeTask.Payload.ExecutionIncident -> runExecutionIncidentStep(task, worker, payload)
         }
 
@@ -765,6 +767,48 @@ class ConversationEngineService(
                 )
             )
         }
+    }
+
+    private fun runCommandTaskCompletionStep(
+        task: ConversationRuntimeTask,
+        worker: ConversationRuntimeWorkerIdentity,
+        _payload: ConversationRuntimeTask.Payload.CommandTaskCompletion,
+    ): Flow<Conversation.Message> = flow {
+        val conversationId = task.conversationId
+        if (!awaitExecutionCanContinue(conversationId)) return@flow
+        ensureRuntimeTaskOwner(conversationId, task.id, worker)
+        val conversation = conversationService.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+
+        val batch = commandTaskCompletionApplicationService.prepareBatch(
+            conversationId = conversationId,
+        )
+        if (batch.isEmpty) return@flow
+
+        batch.messages.forEach { syntheticMessage ->
+            ensureRuntimeTaskOwner(conversationId, task.id, worker)
+            if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
+                emit(syntheticMessage)
+            }
+        }
+
+        val pendingConversationWork =
+            commandTaskCompletionApplicationService.hasPendingConversationWork(conversationId)
+        if (!pendingConversationWork && awaitExecutionCanContinue(conversationId)) {
+            submitContinuationTask(
+                llmCallTask(
+                    conversationId = conversationId,
+                    rootUserMessageId = batch.resultMessageId,
+                    agentDefinitionId = conversation.agentDefinitionId,
+                    iteration = 1,
+                )
+            )
+        }
+
+        val deliveredAt = Clock.System.now()
+        ensureRuntimeTaskOwner(conversationId, task.id, worker)
+        commandTaskCompletionApplicationService.markDelivered(batch, deliveredAt)
+        publishRuntimeSnapshot(conversationId)
     }
 
     private fun executionIncidentResult(incident: ConversationRuntimeTaskIncident): String =

@@ -1,11 +1,14 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.CommandTaskLifecycleEvent
+import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
 import com.gromozeka.domain.service.CommandTaskOutput
 import com.gromozeka.domain.service.CommandTaskService
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
@@ -14,6 +17,7 @@ import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.requiredWorkspaceMountId
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_INITIAL_YIELD_MILLIS
@@ -58,6 +62,7 @@ class DefaultCommandTaskService(
     private val processRunner: CommandProcessRunner,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
+    private val lifecycleEventPublisher: CommandTaskLifecycleEventPublisher,
     private val runtimeWorkerDescriptor: ObjectProvider<ConversationRuntimeWorkerDescriptor>,
 ) : CommandTaskService {
     private val log = KLoggers.logger(this)
@@ -95,6 +100,7 @@ class DefaultCommandTaskService(
                 conversationId = conversationId,
                 workerId = workerId,
                 workspaceMountId = context.requiredWorkspaceMountId(),
+                agentDefinitionId = context.agentDefinitionIdOrNull(),
                 command = request.command,
                 workingDirectory = workingDirectory,
                 status = CommandTask.Status.WORKING,
@@ -138,7 +144,11 @@ class DefaultCommandTaskService(
             cancel(conversationId, taskId)
             throw error
         }
-        return output(currentTask(conversationId, taskId) ?: activeCommand.task, 0)
+        var resultTask = currentTask(conversationId, taskId) ?: activeCommand.task
+        if (resultTask.status == CommandTask.Status.WORKING && resultTask.agentDefinitionId != null) {
+            resultTask = requestCompletionNotification(activeCommand)
+        }
+        return output(resultTask, 0)
     }
 
     override suspend fun get(
@@ -450,6 +460,7 @@ class DefaultCommandTaskService(
         setTerminalState(activeCommand, status, exitCode, statusMessage)
         persistCommandTask(activeCommand.task)
         publishSnapshot(activeCommand.task.conversationId)
+        publishTerminalLifecycleEvent(activeCommand.task)
     }
 
     private fun setTerminalState(
@@ -459,6 +470,7 @@ class DefaultCommandTaskService(
         statusMessage: String,
     ) {
         val now = Clock.System.now()
+        val terminalOutput = terminalOutput(activeCommand.task.outputFile)
         activeCommand.task = activeCommand.task.copy(
             status = status,
             outputBytes = File(activeCommand.task.outputFile).length(),
@@ -466,6 +478,8 @@ class DefaultCommandTaskService(
             statusMessage = statusMessage,
             updatedAt = now,
             completedAt = now,
+            terminalOutputStartByte = terminalOutput.first,
+            terminalOutput = terminalOutput.second,
         )
     }
 
@@ -486,6 +500,7 @@ class DefaultCommandTaskService(
             val task = activeCommand.task
             persistCommandTask(task)
             publishSnapshot(task.conversationId)
+            publishTerminalLifecycleEvent(task)
             activeCommand.lastControlPlaneWarningAtNanos = null
             true
         } catch (error: CancellationException) {
@@ -526,17 +541,58 @@ class DefaultCommandTaskService(
         statusMessage: String,
     ) {
         val now = Clock.System.now()
-        persistCommandTask(
-            task.copy(
+        val terminalOutput = terminalOutput(task.outputFile)
+        val completedTask = task.copy(
                 status = status,
                 outputBytes = File(task.outputFile).length(),
                 exitCode = exitCode,
                 statusMessage = statusMessage,
                 updatedAt = now,
                 completedAt = now,
-            )
+                terminalOutputStartByte = terminalOutput.first,
+                terminalOutput = terminalOutput.second,
         )
+        persistCommandTask(completedTask)
         publishSnapshot(task.conversationId)
+        publishTerminalLifecycleEvent(completedTask)
+    }
+
+    private suspend fun requestCompletionNotification(activeCommand: ActiveCommand): CommandTask =
+        activeCommand.mutex.withLock {
+            if (activeCommand.task.completionNotificationRequestedAt == null) {
+                activeCommand.task = activeCommand.task.copy(
+                    completionNotificationRequestedAt = Clock.System.now(),
+                    updatedAt = Clock.System.now(),
+                )
+                trySynchronizeCommandTask(activeCommand)
+            }
+            activeCommand.task
+        }
+
+    private suspend fun publishTerminalLifecycleEvent(task: CommandTask) {
+        if (!task.isTerminal ||
+            task.agentDefinitionId == null ||
+            task.completionNotificationRequestedAt == null ||
+            task.completionNotificationDeliveredAt != null
+        ) {
+            return
+        }
+        try {
+            lifecycleEventPublisher.publish(
+                CommandTaskLifecycleEvent(
+                    conversationId = task.conversationId,
+                    taskId = task.id,
+                    status = task.status,
+                    occurredAt = task.completedAt ?: task.updatedAt,
+                )
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            log.warn(error) {
+                "Command completion event publication failed; DB reconciliation will recover it: ${task.id.value}"
+            }
+        }
     }
 
     private suspend fun persistCommandTask(task: CommandTask) {
@@ -597,6 +653,29 @@ class DefaultCommandTaskService(
             nextOutputByte = next,
             hasMoreOutput = next < size,
         )
+    }
+
+    private fun terminalOutput(outputFile: String): Pair<Long, String> {
+        val file = File(outputFile)
+        if (!file.isFile) {
+            return 0L to ""
+        }
+        val size = file.length()
+        val requestedStart = maxOf(0L, size - MAX_TERMINAL_OUTPUT_BYTES)
+        val bytes = ByteArray((size - requestedStart).toInt())
+        if (bytes.isEmpty()) {
+            return 0L to ""
+        }
+        RandomAccessFile(file, "r").use { output ->
+            output.seek(requestedStart)
+            output.readFully(bytes)
+        }
+        var safeStart = 0
+        while (safeStart < bytes.size && (bytes[safeStart].toInt() and 0xC0) == 0x80) {
+            safeStart += 1
+        }
+        return (requestedStart + safeStart) to
+            String(bytes, safeStart, bytes.size - safeStart, StandardCharsets.UTF_8)
     }
 
     private suspend fun publishSnapshot(conversationId: Conversation.Id) {
@@ -679,6 +758,11 @@ class DefaultCommandTaskService(
         getString("workspaceRootPath")?.takeIf { it.isNotBlank() }
             ?: error("workspaceRootPath is required in tool context")
 
+    private fun ToolExecutionContext.agentDefinitionIdOrNull(): AgentDefinition.Id? =
+        getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)
+            ?.takeIf { it.isNotBlank() }
+            ?.let(AgentDefinition::Id)
+
     private fun resolveWorkingDirectory(workspaceRootPath: String, requested: String?): String {
         val workspaceDirectory = File(workspaceRootPath).absoluteFile.normalize()
         val directory = requested
@@ -709,6 +793,7 @@ class DefaultCommandTaskService(
         const val CONTROL_PLANE_WARNING_INTERVAL_NANOS = 30_000_000_000L
         const val CANCELLATION_POLL_INTERVAL_NANOS = 1_000_000_000L
         const val MAX_OUTPUT_CHUNK_BYTES = 64 * 1024
+        const val MAX_TERMINAL_OUTPUT_BYTES = 8 * 1024L
         const val PROGRESS_PUBLISH_INTERVAL_NANOS = 1_000_000_000L
         const val TASK_MUTEX_STRIPES = 64
     }

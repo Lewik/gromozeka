@@ -692,6 +692,7 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translatio
         is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingTask
         is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallTask
         is ConversationRuntimeTask.Payload.MemoryRunCompletion -> translation.memoryRunCompletionTask
+        is ConversationRuntimeTask.Payload.CommandTaskCompletion -> translation.commandTaskCompletionTask
         is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentTask
     }
 
@@ -705,6 +706,7 @@ private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
     is ConversationRuntimeTask.Payload.ToolResultProcessing -> translation.toolResultProcessingStatus
     is ConversationRuntimeTask.Payload.MemoryRecall -> translation.memoryRecallStatus
     is ConversationRuntimeTask.Payload.MemoryRunCompletion -> translation.memoryRunCompletionStatus
+    is ConversationRuntimeTask.Payload.CommandTaskCompletion -> translation.commandTaskCompletionStatus
     is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentStatus
 }
 

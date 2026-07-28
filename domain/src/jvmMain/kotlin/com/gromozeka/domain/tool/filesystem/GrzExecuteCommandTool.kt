@@ -164,7 +164,9 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
             Execute a shell command as a managed task. Short commands return a terminal result; long commands return status WORKING and task_id after yield_time_ms.
             The target Worker uses its native shell: /bin/sh on macOS/Linux and cmd.exe on Windows. Match command syntax to the target WorkspaceMount and Worker.
             yield_time_ms is only the initial wait and may be from 0 to $MAX_COMMAND_INITIAL_YIELD_MILLIS; it is not the command timeout.
-            Use grz_get_command_task with next_output_byte until the task is terminal and has_more_output is false. Use grz_cancel_command_task to terminate the process tree.
+            Inside a Gromozeka conversation, a WORKING task automatically reports its terminal result later; do not poll merely to discover completion.
+            Use grz_get_command_task only when intermediate output is needed. External MCP callers without conversation delivery must poll explicitly.
+            Use grz_cancel_command_task to terminate the process tree.
             Do not create unmanaged background processes with '&' on macOS/Linux or 'start' without '/WAIT' on Windows. Full merged stdout/stderr is saved to output_file.
             Use with caution - has full system access.
             

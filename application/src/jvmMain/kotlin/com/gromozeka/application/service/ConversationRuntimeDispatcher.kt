@@ -196,6 +196,26 @@ class ConversationRuntimeDispatcher(
             )
         )
 
+    suspend fun submitCommandTaskCompletion(
+        task: CommandTask,
+    ): Boolean =
+        submitRuntimeTask(
+            ConversationRuntimeTask(
+                id = ConversationRuntimeTask.Id("${task.id.value}:conversation-delivery"),
+                conversationId = task.conversationId,
+                payload = ConversationRuntimeTask.Payload.CommandTaskCompletion(
+                    sourceTaskId = task.id,
+                ),
+                placement = QueuedMessagePlacement.END_OF_TURN,
+                idempotencyKey =
+                    "conversation:${task.conversationId.value}:command-task:${task.id.value}:delivery",
+                requirements = ConversationRuntimeTaskRequirements(
+                    capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                ),
+                createdAt = Clock.System.now(),
+            )
+        )
+
     suspend fun publishSnapshot(conversationId: Conversation.Id) {
         publishRuntimeSnapshot(conversationId)
     }

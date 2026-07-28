@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.CommandProcessRecovery
@@ -7,6 +8,8 @@ import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.CommandTaskLifecycleEvent
+import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
@@ -15,8 +18,11 @@ import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.io.File
@@ -27,6 +33,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DefaultCommandTaskServiceTest {
@@ -227,6 +234,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeCoordinator = coordinator,
                 runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+                lifecycleEventPublisher = noOpLifecycleEventPublisher(),
                 runtimeWorkerDescriptor = objectProvider(workerDescriptor),
             )
             try {
@@ -264,6 +272,7 @@ class DefaultCommandTaskServiceTest {
                 processRunner = runner,
                 runtimeCoordinator = coordinator,
                 runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+                lifecycleEventPublisher = noOpLifecycleEventPublisher(),
                 runtimeWorkerDescriptor = objectProvider(workerDescriptor),
             )
             try {
@@ -279,6 +288,55 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
+    fun `working command requests one completion event with bounded terminal output`() = runBlocking {
+        val events = Channel<CommandTaskLifecycleEvent>(Channel.UNLIMITED)
+        withService(lifecycleEventPublisher = CommandTaskLifecycleEventPublisher(events::send)) {
+                service, runner, coordinator, projectDirectory ->
+            val result = service.start(
+                ExecuteCommandRequest(command = "background", yield_time_ms = 0),
+                context(projectDirectory, AgentDefinition.Id("agent-1")),
+            )
+
+            assertEquals(CommandTask.Status.WORKING, result.task.status)
+            assertNotNull(result.task.completionNotificationRequestedAt)
+
+            runner.lastProcess.appendOutput("prefix-" + "x".repeat(10_000) + "-terminal-suffix")
+            runner.lastProcess.complete(0)
+
+            val event = withTimeout(3_000) { events.receive() }
+            assertEquals(result.task.id, event.taskId)
+            assertEquals(CommandTask.Status.COMPLETED, event.status)
+            assertNull(withTimeoutOrNull(200) { events.receive() })
+
+            val stored = assertNotNull(coordinator.findCommandTask(conversationId, result.task.id))
+            assertTrue(stored.terminalOutput.orEmpty().endsWith("-terminal-suffix"))
+            assertTrue(stored.terminalOutput.orEmpty().toByteArray().size <= 8 * 1024)
+            assertTrue((stored.terminalOutputStartByte ?: 0) > 0)
+        }
+    }
+
+    @Test
+    fun `command completed during initial yield does not request completion event`() = runBlocking {
+        val events = Channel<CommandTaskLifecycleEvent>(Channel.UNLIMITED)
+        withService(lifecycleEventPublisher = CommandTaskLifecycleEventPublisher(events::send)) {
+                service, runner, _, projectDirectory ->
+            runner.onStart = { process ->
+                process.appendOutput("done")
+                process.complete(0)
+            }
+
+            val result = service.start(
+                ExecuteCommandRequest(command = "short", yield_time_ms = 2_000),
+                context(projectDirectory, AgentDefinition.Id("agent-1")),
+            )
+
+            assertEquals(CommandTask.Status.COMPLETED, result.task.status)
+            assertEquals(null, result.task.completionNotificationRequestedAt)
+            assertNull(withTimeoutOrNull(200) { events.receive() })
+        }
+    }
+
+    @Test
     fun `running command survives control plane outage and synchronizes completion after recovery`() = runBlocking {
         val projectDirectory = Files.createTempDirectory("command-task-offline-test-").toFile()
         val runner = FakeCommandProcessRunner(projectDirectory)
@@ -288,6 +346,7 @@ class DefaultCommandTaskServiceTest {
             processRunner = runner,
             runtimeCoordinator = coordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            lifecycleEventPublisher = noOpLifecycleEventPublisher(),
             runtimeWorkerDescriptor = objectProvider(workerDescriptor),
         )
         try {
@@ -387,6 +446,7 @@ class DefaultCommandTaskServiceTest {
     }
 
     private suspend fun withService(
+        lifecycleEventPublisher: CommandTaskLifecycleEventPublisher = noOpLifecycleEventPublisher(),
         block: suspend (
             service: DefaultCommandTaskService,
             runner: FakeCommandProcessRunner,
@@ -401,6 +461,7 @@ class DefaultCommandTaskServiceTest {
             processRunner = runner,
             runtimeCoordinator = coordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            lifecycleEventPublisher = lifecycleEventPublisher,
             runtimeWorkerDescriptor = objectProvider(workerDescriptor),
         )
         try {
@@ -411,15 +472,19 @@ class DefaultCommandTaskServiceTest {
         }
     }
 
-    private fun context(projectDirectory: File): ToolExecutionContext = ToolExecutionContext(
-        mapOf(
-            "conversationId" to conversationId.value,
-            "projectId" to "project-1",
-            "workspaceId" to "workspace-1",
-            "workspaceMountId" to "mount-1",
-            "workspaceRootPath" to projectDirectory.absolutePath,
-            "workerId" to workerDescriptor.id.value,
-        )
+    private fun context(
+        projectDirectory: File,
+        agentDefinitionId: AgentDefinition.Id? = null,
+    ): ToolExecutionContext = ToolExecutionContext(
+        buildMap {
+            put("conversationId", conversationId.value)
+            put("projectId", "project-1")
+            put("workspaceId", "workspace-1")
+            put("workspaceMountId", "mount-1")
+            put("workspaceRootPath", projectDirectory.absolutePath)
+            put("workerId", workerDescriptor.id.value)
+            agentDefinitionId?.let { put("agentDefinitionId", it.value) }
+        }
     )
 
     private suspend fun waitUntil(timeoutMillis: Long, condition: suspend () -> Boolean) {
@@ -434,6 +499,9 @@ class DefaultCommandTaskServiceTest {
         object : org.springframework.beans.factory.ObjectProvider<T> {
             override fun getObject(): T = value
         }
+
+    private fun noOpLifecycleEventPublisher(): CommandTaskLifecycleEventPublisher =
+        CommandTaskLifecycleEventPublisher { }
 
     private class FakeCommandProcessRunner(
         private val outputDirectory: File,
