@@ -57,6 +57,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonObject
 import org.springframework.beans.factory.ObjectProvider
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -101,6 +102,55 @@ class ConversationRuntimeDispatcherTest {
             val failure = withTimeout(1_000) { worker.awaitTermination() }
             assertTrue(failure?.message?.contains("lost registration") == true)
             assertFalse(worker.isRunning)
+        } finally {
+            worker.stop()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `worker stays alive across transient heartbeat failures`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val registryDelegate = InMemoryConversationRuntimeWorkerRegistry()
+        val heartbeatAttempts = AtomicInteger()
+        val registry = object : ConversationRuntimeWorkerRegistry by registryDelegate {
+            override suspend fun heartbeat(
+                identity: ConversationRuntimeWorkerIdentity,
+                at: kotlinx.datetime.Instant,
+            ): Boolean {
+                if (heartbeatAttempts.incrementAndGet() <= 2) {
+                    error("Control plane is unavailable")
+                }
+                return registryDelegate.heartbeat(identity, at)
+            }
+        }
+        val worker = runtimeWorker(
+            coordinator = InMemoryConversationRuntimeCoordinator(),
+            eventBus = InMemoryConversationRuntimeEventBus(),
+            workQueue = InMemoryConversationRuntimeWorkQueue(),
+            registry = registry,
+            runner = ControllableTaskRunner(),
+            descriptor = ConversationRuntimeWorkerDescriptor(
+                id = ConversationRuntimeWorkerId("recovering-heartbeat-worker"),
+                capabilities = setOf(
+                    ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
+                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ),
+            ),
+            scope = scope,
+            heartbeatIntervalMillis = 10,
+        )
+
+        try {
+            worker.start()
+            withTimeout(1_000) {
+                while (heartbeatAttempts.get() < 3) {
+                    delay(10)
+                }
+            }
+
+            assertTrue(worker.isRunning)
+            assertNull(withTimeoutOrNull(100) { worker.awaitTermination() })
         } finally {
             worker.stop()
             scope.cancel()

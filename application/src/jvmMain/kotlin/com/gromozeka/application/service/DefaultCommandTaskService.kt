@@ -31,6 +31,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -339,38 +340,39 @@ class DefaultCommandTaskService(
             var nextCancellationPollAt = 0L
             while (true) {
                 currentCoroutineContext().ensureActive()
-                val processStopped = activeCommand.process.waitFor(COMMAND_STATE_POLL_INTERVAL_MILLIS)
+                val processStopped = if (activeCommand.task.isTerminal) {
+                    false
+                } else {
+                    activeCommand.process.waitFor(COMMAND_STATE_POLL_INTERVAL_MILLIS)
+                }
                 val now = System.nanoTime()
-                val cancellationRequested = if (now >= nextCancellationPollAt) {
+                val cancellationRequested = if (!activeCommand.task.isTerminal && now >= nextCancellationPollAt) {
                     nextCancellationPollAt = now + CANCELLATION_POLL_INTERVAL_NANOS
-                    runtimeCoordinator.findCommandTask(
-                        activeCommand.task.conversationId,
-                        activeCommand.task.id,
-                    )?.cancellationRequestedAt != null
+                    pollCancellationRequest(activeCommand)
                 } else {
                     false
                 }
                 var stopMonitoring = false
                 activeCommand.mutex.withLock {
                     if (activeCommand.task.isTerminal) {
-                        stopMonitoring = true
+                        stopMonitoring = trySynchronizeCommandTask(activeCommand)
                         return@withLock
                     }
                     when {
                         cancellationRequested -> {
                             activeCommand.process.terminateTree()
-                            complete(
+                            setTerminalState(
                                 activeCommand = activeCommand,
                                 status = CommandTask.Status.CANCELLED,
                                 exitCode = null,
                                 statusMessage = "Command was cancelled",
                             )
-                            stopMonitoring = true
+                            stopMonitoring = trySynchronizeCommandTask(activeCommand)
                         }
 
                         processStopped -> {
                             val exitCode = activeCommand.process.exitCode()
-                            complete(
+                            setTerminalState(
                                 activeCommand = activeCommand,
                                 status = exitCode.toTaskStatus(),
                                 exitCode = exitCode,
@@ -380,18 +382,18 @@ class DefaultCommandTaskService(
                                     "Command exited with code $exitCode"
                                 },
                             )
-                            stopMonitoring = true
+                            stopMonitoring = trySynchronizeCommandTask(activeCommand)
                         }
 
                         activeCommand.task.timeoutAt?.let { Clock.System.now() >= it } == true -> {
                             activeCommand.process.terminateTree()
-                            complete(
+                            setTerminalState(
                                 activeCommand = activeCommand,
                                 status = CommandTask.Status.FAILED,
                                 exitCode = null,
                                 statusMessage = "Command timed out at ${activeCommand.task.timeoutAt}",
                             )
-                            stopMonitoring = true
+                            stopMonitoring = trySynchronizeCommandTask(activeCommand)
                         }
 
                         else -> {
@@ -400,19 +402,22 @@ class DefaultCommandTaskService(
                             if (outputBytes != lastPublishedBytes &&
                                 now - lastPublishedAt >= PROGRESS_PUBLISH_INTERVAL_NANOS
                             ) {
-                                lastPublishedBytes = outputBytes
                                 lastPublishedAt = now
                                 activeCommand.task = activeCommand.task.copy(
                                     outputBytes = outputBytes,
                                     updatedAt = Clock.System.now(),
                                 )
-                                persistCommandTask(activeCommand.task)
-                                publishSnapshot(activeCommand.task.conversationId)
+                                if (trySynchronizeCommandTask(activeCommand)) {
+                                    lastPublishedBytes = outputBytes
+                                }
                             }
                         }
                     }
                 }
                 if (stopMonitoring) return
+                if (activeCommand.task.isTerminal) {
+                    delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+                }
             }
         } catch (error: CancellationException) {
             throw error
@@ -421,7 +426,7 @@ class DefaultCommandTaskService(
             activeCommand.mutex.withLock {
                 if (!activeCommand.task.isTerminal) {
                     runCatching { activeCommand.process.terminateTree() }
-                    complete(
+                    setTerminalState(
                         activeCommand = activeCommand,
                         status = CommandTask.Status.FAILED,
                         exitCode = null,
@@ -429,6 +434,7 @@ class DefaultCommandTaskService(
                     )
                 }
             }
+            synchronizeTerminalStateUntilAvailable(activeCommand)
         } finally {
             activeCommands.remove(activeCommand.task.id, activeCommand)
             activeCommand.completed.complete(Unit)
@@ -436,6 +442,17 @@ class DefaultCommandTaskService(
     }
 
     private suspend fun complete(
+        activeCommand: ActiveCommand,
+        status: CommandTask.Status,
+        exitCode: Int?,
+        statusMessage: String,
+    ) {
+        setTerminalState(activeCommand, status, exitCode, statusMessage)
+        persistCommandTask(activeCommand.task)
+        publishSnapshot(activeCommand.task.conversationId)
+    }
+
+    private fun setTerminalState(
         activeCommand: ActiveCommand,
         status: CommandTask.Status,
         exitCode: Int?,
@@ -450,8 +467,56 @@ class DefaultCommandTaskService(
             updatedAt = now,
             completedAt = now,
         )
-        persistCommandTask(activeCommand.task)
-        publishSnapshot(activeCommand.task.conversationId)
+    }
+
+    private suspend fun pollCancellationRequest(activeCommand: ActiveCommand): Boolean =
+        try {
+            val task = activeCommand.task
+            runtimeCoordinator.findCommandTask(task.conversationId, task.id)
+                ?.cancellationRequestedAt != null
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            warnControlPlaneUnavailable(activeCommand, error)
+            false
+        }
+
+    private suspend fun trySynchronizeCommandTask(activeCommand: ActiveCommand): Boolean =
+        try {
+            val task = activeCommand.task
+            persistCommandTask(task)
+            publishSnapshot(task.conversationId)
+            activeCommand.lastControlPlaneWarningAtNanos = null
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            warnControlPlaneUnavailable(activeCommand, error)
+            false
+        }
+
+    private suspend fun synchronizeTerminalStateUntilAvailable(activeCommand: ActiveCommand) {
+        while (currentCoroutineContext().isActive) {
+            val synchronized = activeCommand.mutex.withLock {
+                trySynchronizeCommandTask(activeCommand)
+            }
+            if (synchronized) {
+                return
+            }
+            delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+        }
+    }
+
+    private fun warnControlPlaneUnavailable(activeCommand: ActiveCommand, error: Throwable) {
+        val now = System.nanoTime()
+        val lastWarningAt = activeCommand.lastControlPlaneWarningAtNanos
+        if (lastWarningAt == null || now - lastWarningAt >= CONTROL_PLANE_WARNING_INTERVAL_NANOS) {
+            activeCommand.lastControlPlaneWarningAtNanos = now
+            log.warn(error) {
+                "Command continues locally while control plane synchronization is unavailable: " +
+                    activeCommand.task.id.value
+            }
+        }
     }
 
     private suspend fun completeStoredTask(
@@ -635,10 +700,13 @@ class DefaultCommandTaskService(
         val mutex: Mutex,
     ) {
         val completed = CompletableDeferred<Unit>()
+        var lastControlPlaneWarningAtNanos: Long? = null
     }
 
     private companion object {
         const val COMMAND_STATE_POLL_INTERVAL_MILLIS = 100L
+        const val CONTROL_PLANE_RETRY_INTERVAL_MILLIS = 1_000L
+        const val CONTROL_PLANE_WARNING_INTERVAL_NANOS = 30_000_000_000L
         const val CANCELLATION_POLL_INTERVAL_NANOS = 1_000_000_000L
         const val MAX_OUTPUT_CHUNK_BYTES = 64 * 1024
         const val PROGRESS_PUBLISH_INTERVAL_NANOS = 1_000_000_000L

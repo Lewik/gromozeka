@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -278,6 +279,55 @@ class DefaultCommandTaskServiceTest {
     }
 
     @Test
+    fun `running command survives control plane outage and synchronizes completion after recovery`() = runBlocking {
+        val projectDirectory = Files.createTempDirectory("command-task-offline-test-").toFile()
+        val runner = FakeCommandProcessRunner(projectDirectory)
+        val storedCoordinator = InMemoryConversationRuntimeCoordinator()
+        val coordinator = ToggleableCommandTaskCoordinator(storedCoordinator)
+        val service = DefaultCommandTaskService(
+            processRunner = runner,
+            runtimeCoordinator = coordinator,
+            runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            runtimeWorkerDescriptor = objectProvider(workerDescriptor),
+        )
+        try {
+            val result = service.start(
+                ExecuteCommandRequest(command = "offline", yield_time_ms = 0),
+                context(projectDirectory),
+            )
+            coordinator.unavailable = true
+
+            delay(1_200)
+
+            assertTrue(runner.lastProcess.isAlive())
+            assertFalse(runner.lastProcess.terminateTreeCalled)
+
+            runner.lastProcess.appendOutput("completed offline")
+            runner.lastProcess.complete(0)
+            delay(200)
+
+            assertEquals(
+                CommandTask.Status.WORKING,
+                storedCoordinator.findCommandTask(conversationId, result.task.id)?.status,
+            )
+            assertFalse(runner.lastProcess.terminateTreeCalled)
+
+            coordinator.unavailable = false
+            waitUntil(3_000) {
+                storedCoordinator.findCommandTask(conversationId, result.task.id)?.status ==
+                    CommandTask.Status.COMPLETED
+            }
+            assertEquals(
+                "completed offline",
+                assertNotNull(service.get(conversationId, result.task.id, 0, 0)).output,
+            )
+        } finally {
+            service.close()
+            projectDirectory.deleteRecursively()
+        }
+    }
+
+    @Test
     fun `concurrent cancellation terminates command once`() = runBlocking {
         withService { service, runner, _, projectDirectory ->
             val result = service.start(
@@ -424,6 +474,28 @@ class DefaultCommandTaskServiceTest {
         override fun garbageCollectOutputArtifacts(retainedOutputFiles: Set<String>) {
             garbageCollectionRetainedFiles = retainedOutputFiles
         }
+    }
+
+    private class ToggleableCommandTaskCoordinator(
+        private val delegate: ConversationRuntimeCoordinator,
+    ) : ConversationRuntimeCoordinator by delegate {
+        @Volatile
+        var unavailable = false
+
+        override suspend fun findCommandTask(
+            conversationId: Conversation.Id,
+            taskId: CommandTask.Id,
+        ): CommandTask? {
+            check(!unavailable) { "Control plane is unavailable" }
+            return delegate.findCommandTask(conversationId, taskId)
+        }
+
+        override suspend fun upsertCommandTask(task: CommandTask) =
+            if (unavailable) {
+                error("Control plane is unavailable")
+            } else {
+                delegate.upsertCommandTask(task)
+            }
     }
 
     private class FakeRunningCommandProcess(

@@ -85,6 +85,7 @@ class ConversationRuntimeWorker(
     private var runtimeJob: Job? = null
     private var deliveryCollectionJob: Job? = null
     private var heartbeatJob: Job? = null
+    private var lastToolRefreshWarningAtNanos: Long? = null
 
     val identity: ConversationRuntimeWorkerIdentity
         get() = runtimeWorker
@@ -193,32 +194,59 @@ class ConversationRuntimeWorker(
         require(tools.map { it.definition.name }.distinct().size == tools.size) {
             "Worker advertised tool names must be unique"
         }
-        runtimeTools = tools
         if (running) {
-            check(runtimeWorkerRegistry.updateTools(runtimeWorker, runtimeTools, Clock.System.now())) {
-                "Conversation runtime worker lost registration while updating tools: $runtimeWorker"
+            if (!runtimeWorkerRegistry.updateTools(runtimeWorker, tools, Clock.System.now())) {
+                throw WorkerRegistrationLostException(
+                    "Conversation runtime worker lost registration while updating tools: $runtimeWorker"
+                )
             }
         }
+        runtimeTools = tools
     }
 
     private suspend fun runHeartbeatLoop(workerJob: Job) {
-        try {
-            while (workerJob.isActive) {
-                delay(heartbeatIntervalMillis)
+        var controlPlaneUnavailable = false
+        while (workerJob.isActive) {
+            delay(heartbeatIntervalMillis)
+            try {
                 refreshAdvertisedTools()
-                val heartbeatAccepted = runtimeWorkerRegistry.heartbeat(runtimeWorker, Clock.System.now())
-                if (!heartbeatAccepted) {
-                    terminateAfterRegistrationLoss(
-                        workerJob,
-                        IllegalStateException("Conversation runtime worker session lost registration: $runtimeWorker"),
-                    )
-                    return
-                }
+                lastToolRefreshWarningAtNanos = null
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: WorkerRegistrationLostException) {
+                terminateAfterRegistrationLoss(workerJob, error)
+                return
+            } catch (error: Throwable) {
+                warnToolRefreshFailure(error)
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            terminateAfterRegistrationLoss(workerJob, error)
+
+            val heartbeatAccepted = try {
+                runtimeWorkerRegistry.heartbeat(runtimeWorker, Clock.System.now())
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (!controlPlaneUnavailable) {
+                    log.warn(error) {
+                        "Conversation runtime worker control plane is unavailable; " +
+                            "local processes continue and no execution is retried: identity=$runtimeWorker"
+                    }
+                }
+                controlPlaneUnavailable = true
+                continue
+            }
+            if (!heartbeatAccepted) {
+                terminateAfterRegistrationLoss(
+                    workerJob,
+                    WorkerRegistrationLostException(
+                        "Conversation runtime worker session lost registration: $runtimeWorker"
+                    ),
+                )
+                return
+            }
+            if (controlPlaneUnavailable) {
+                controlPlaneUnavailable = false
+                log.info { "Conversation runtime worker control plane connection recovered: identity=$runtimeWorker" }
+            }
         }
     }
 
@@ -251,6 +279,18 @@ class ConversationRuntimeWorker(
                 initCause(error)
             }
         )
+    }
+
+    private fun warnToolRefreshFailure(error: Throwable) {
+        val now = System.nanoTime()
+        val lastWarningAt = lastToolRefreshWarningAtNanos
+        if (lastWarningAt == null || now - lastWarningAt >= TOOL_REFRESH_WARNING_INTERVAL_NANOS) {
+            lastToolRefreshWarningAtNanos = now
+            log.warn(error) {
+                "Conversation runtime worker keeps its previous tool catalog after refresh failure: " +
+                    "identity=$runtimeWorker"
+            }
+        }
     }
 
     private suspend fun processRuntimeWorkDelivery(delivery: ConversationRuntimeWorkDelivery) {
@@ -664,5 +704,8 @@ class ConversationRuntimeWorker(
 
     private companion object {
         const val DELIVERY_MUTEX_STRIPES = 256
+        const val TOOL_REFRESH_WARNING_INTERVAL_NANOS = 30_000_000_000L
     }
+
+    private class WorkerRegistrationLostException(message: String) : IllegalStateException(message)
 }
