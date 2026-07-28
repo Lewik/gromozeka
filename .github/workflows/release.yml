@@ -145,11 +145,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Build portable Windows x64 client
         shell: pwsh
-        run: >
-          ./gradlew.bat
-          :presentation:createDistributable
-          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
-          -q
+        env:
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          & ./gradlew.bat `
+            :presentation:createDistributable `
+            "-Pgromozeka.version=$env:RELEASE_VERSION" `
+            -q
       - name: Verify and archive portable client
         shell: pwsh
         run: |
@@ -234,11 +236,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Build Worker
         shell: pwsh
-        run: >
-          ./gradlew.bat
-          :worker:bootJar
-          -Pgromozeka.version=${{ needs.metadata.outputs.version }}
-          -q
+        env:
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          & ./gradlew.bat `
+            :worker:bootJar `
+            "-Pgromozeka.version=$env:RELEASE_VERSION" `
+            -q
       - name: Package Worker with Java runtime
         shell: pwsh
         run: |
