@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ProjectRepository
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.ProjectDomainService
-import com.gromozeka.domain.service.ConversationTabLayoutService
+import com.gromozeka.domain.service.UserConversationTabLayoutService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional
 class ProjectApplicationService(
     private val projectRepository: ProjectRepository,
     private val conversationRepository: ConversationRepository,
-    private val conversationTabLayoutService: ConversationTabLayoutService,
+    private val conversationTabLayoutService: UserConversationTabLayoutService,
 ) : ProjectDomainService {
     private val log = KLoggers.logger(this)
 
@@ -92,7 +92,7 @@ class ProjectApplicationService(
     override suspend fun delete(id: Project.Id) {
         require(projectRepository.findById(id) != null) { "Project not found: ${id.value}" }
         conversationRepository.findByProject(id).forEach { conversation ->
-            conversationTabLayoutService.close(conversation.id)
+            conversationTabLayoutService.removeConversation(conversation.id)
         }
         projectRepository.delete(id)
     }

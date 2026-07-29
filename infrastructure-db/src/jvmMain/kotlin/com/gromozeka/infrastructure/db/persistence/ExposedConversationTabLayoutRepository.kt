@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ConversationTabLayoutRepository
 import com.gromozeka.infrastructure.db.persistence.tables.ConversationTabLayouts
 import kotlinx.serialization.builtins.ListSerializer
@@ -18,17 +19,23 @@ import org.springframework.stereotype.Service
 class ExposedConversationTabLayoutRepository : ConversationTabLayoutRepository {
     private val json = Json
 
-    override suspend fun load(): ConversationTabLayout = dbQuery {
+    override suspend fun load(userId: User.Id): ConversationTabLayout = dbQuery {
         ConversationTabLayouts.selectAll()
-            .where { ConversationTabLayouts.id eq GLOBAL_LAYOUT_ID }
+            .where { ConversationTabLayouts.userId eq userId.value }
             .singleOrNull()
             ?.toLayout()
             ?: ConversationTabLayout()
     }
 
-    override suspend fun save(layout: ConversationTabLayout): ConversationTabLayout = dbQuery {
+    override suspend fun loadAll(): Map<User.Id, ConversationTabLayout> = dbQuery {
+        ConversationTabLayouts.selectAll().associate { row ->
+            User.Id(row[ConversationTabLayouts.userId]) to row.toLayout()
+        }
+    }
+
+    override suspend fun save(userId: User.Id, layout: ConversationTabLayout): ConversationTabLayout = dbQuery {
         val current = ConversationTabLayouts.selectAll()
-            .where { ConversationTabLayouts.id eq GLOBAL_LAYOUT_ID }
+            .where { ConversationTabLayouts.userId eq userId.value }
             .singleOrNull()
         val currentRevision = current?.get(ConversationTabLayouts.revision) ?: 0L
         require(layout.revision == currentRevision + 1) {
@@ -40,13 +47,13 @@ class ExposedConversationTabLayoutRepository : ConversationTabLayoutRepository {
         )
         if (current == null) {
             ConversationTabLayouts.insert {
-                it[id] = GLOBAL_LAYOUT_ID
+                it[ConversationTabLayouts.userId] = userId.value
                 it[conversationIdsJson] = encodedIds
                 it[revision] = layout.revision
                 it[updatedAt] = layout.updatedAt?.toKotlin()
             }
         } else {
-            ConversationTabLayouts.update({ ConversationTabLayouts.id eq GLOBAL_LAYOUT_ID }) {
+            ConversationTabLayouts.update({ ConversationTabLayouts.userId eq userId.value }) {
                 it[conversationIdsJson] = encodedIds
                 it[revision] = layout.revision
                 it[updatedAt] = layout.updatedAt?.toKotlin()
@@ -64,8 +71,4 @@ class ExposedConversationTabLayoutRepository : ConversationTabLayoutRepository {
             revision = this[ConversationTabLayouts.revision],
             updatedAt = this[ConversationTabLayouts.updatedAt]?.toKotlinx(),
         )
-
-    private companion object {
-        const val GLOBAL_LAYOUT_ID = "global"
-    }
 }

@@ -13,7 +13,6 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
-import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
@@ -21,6 +20,7 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.domain.service.UserConversationTabLayoutService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.domain.service.WorkerCatalogService
@@ -64,7 +64,7 @@ class GromozekaRemoteServer(
     private val agentSkillDomainService: AgentSkillDomainService,
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
-    private val conversationTabLayoutService: ConversationTabLayoutService,
+    private val conversationTabLayoutService: UserConversationTabLayoutService,
     private val projectAccessService: ProjectAccessService,
     private val workspaceCatalogService: WorkspaceCatalogService,
     private val workspaceManagementService: WorkspaceManagementService,
@@ -394,18 +394,18 @@ class GromozekaRemoteServer(
                     conversationDomainService.findByProject(request.projectId)
                 )
                 GetConversationTabLayoutRequest -> ConversationTabLayoutResponse(
-                    filterConversationTabLayout(user, conversationTabLayoutService.snapshot())
+                    filterConversationTabLayout(user, conversationTabLayoutService.snapshot(user.id))
                 )
                 is OpenConversationTabRequest -> ConversationTabLayoutResponse(
                     filterConversationTabLayout(
                         user,
-                        conversationTabLayoutService.open(request.conversationId),
+                        conversationTabLayoutService.open(user.id, request.conversationId),
                     )
                 )
                 is CloseConversationTabRequest -> ConversationTabLayoutResponse(
                     filterConversationTabLayout(
                         user,
-                        conversationTabLayoutService.close(request.conversationId),
+                        conversationTabLayoutService.close(user.id, request.conversationId),
                     )
                 )
                 is FindWorkspaceRequest -> WorkspaceResponse(workspaceCatalogService.findById(request.workspaceId))
@@ -618,7 +618,7 @@ class GromozekaRemoteServer(
         encoding: RemoteProtocolEncoding,
         user: User,
     ) {
-        conversationTabLayoutService.observe().collect { layout ->
+        conversationTabLayoutService.observe(user.id).collect { layout ->
             sender.send(
                 command.subscriptionId,
                 ConversationTabLayoutSnapshotEvent(

@@ -6,8 +6,8 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.UserConversationTabLayoutService
 import klog.KLoggers
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -42,7 +42,7 @@ class ConversationApplicationService(
     private val projectService: ProjectDomainService,
     private val agentService: AgentDomainService,
     private val toolCallPairingService: ToolCallPairingService,
-    private val conversationTabLayoutService: ConversationTabLayoutService,
+    private val conversationTabLayoutService: UserConversationTabLayoutService,
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
 
@@ -126,7 +126,7 @@ class ConversationApplicationService(
      */
     @Transactional
     override suspend fun delete(id: Conversation.Id) {
-        conversationTabLayoutService.close(id)
+        conversationTabLayoutService.removeConversation(id)
         conversationRepo.delete(id)
     }
 

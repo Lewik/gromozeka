@@ -241,12 +241,12 @@ internal object AiToolCapabilityCatalogs : Table("ai_tool_capability_catalogs") 
 }
 
 internal object ConversationTabLayouts : Table("conversation_tab_layouts") {
-    val id = varchar("id", 64)
+    val userId = varchar("user_id", 255).references(Users.id, onDelete = ReferenceOption.CASCADE)
     val conversationIdsJson = text("conversation_ids_json")
     val revision = long("revision")
     val updatedAt = timestamp("updated_at").nullable()
 
-    override val primaryKey = PrimaryKey(id)
+    override val primaryKey = PrimaryKey(userId)
 }
 
 internal object Threads : Table("threads") {
