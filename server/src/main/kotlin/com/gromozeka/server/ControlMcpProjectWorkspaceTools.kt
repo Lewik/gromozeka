@@ -1,10 +1,11 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
-import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import kotlinx.serialization.builtins.ListSerializer
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service
 
 @Service
 internal class ControlMcpProjectWorkspaceTools(
-    private val projectService: ProjectDomainService,
+    private val projectAccessService: ProjectAccessService,
     private val workspaceService: WorkspaceDomainService,
     private val workspaceManagementService: WorkspaceManagementService,
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
@@ -31,7 +32,7 @@ internal class ControlMcpProjectWorkspaceTools(
                     "projects",
                     controlMcpJson.encodeToJsonElement(
                         ListSerializer(Project.serializer()),
-                        projectService.findAll(),
+                        projectAccessService.findAll(user.id),
                     )
                 )
             }
@@ -43,7 +44,8 @@ internal class ControlMcpProjectWorkspaceTools(
             readOnly = true,
         ) { input ->
             val id = input.requiredString("projectId")
-            val project = projectService.findById(Project.Id(id)) ?: notFound("Project", id)
+            val project = projectAccessService.findById(user.id, Project.Id(id))
+                ?: notFound("Project", id)
             entityResult("project", Project.serializer(), project)
         },
         controlMcpTool(
@@ -61,7 +63,8 @@ internal class ControlMcpProjectWorkspaceTools(
             entityResult(
                 "project",
                 Project.serializer(),
-                projectService.create(
+                projectAccessService.create(
+                    actorUserId = user.id,
                     name = input.requiredString("name"),
                     description = input.optionalString("description"),
                 )
@@ -84,7 +87,8 @@ internal class ControlMcpProjectWorkspaceTools(
             entityResult(
                 "project",
                 Project.serializer(),
-                projectService.update(
+                projectAccessService.update(
+                    actorUserId = user.id,
                     id = Project.Id(input.requiredString("projectId")),
                     name = input.requiredString("name"),
                     description = input.optionalString("description"),
@@ -99,7 +103,7 @@ internal class ControlMcpProjectWorkspaceTools(
             destructive = true,
         ) { input ->
             val id = input.requiredString("projectId")
-            projectService.delete(Project.Id(id))
+            projectAccessService.delete(user.id, Project.Id(id))
             deletedResult("project", id)
         },
         controlMcpTool(
@@ -108,7 +112,9 @@ internal class ControlMcpProjectWorkspaceTools(
             inputSchema = idSchema("projectId", "Project id."),
             readOnly = true,
         ) { input ->
-            val workspaces = workspaceService.findByProject(Project.Id(input.requiredString("projectId")))
+            val projectId = Project.Id(input.requiredString("projectId"))
+            projectAccessService.requirePermission(user.id, projectId, ProjectPermission.READ)
+            val workspaces = workspaceService.findByProject(projectId)
             buildJsonObject {
                 put(
                     "workspaces",
@@ -125,7 +131,7 @@ internal class ControlMcpProjectWorkspaceTools(
             readOnly = true,
         ) { input ->
             val id = input.requiredString("workspaceId")
-            val workspace = workspaceService.findById(Workspace.Id(id)) ?: notFound("Workspace", id)
+            val workspace = requireWorkspace(Workspace.Id(id), ProjectPermission.READ)
             workspaceWithMounts(workspace)
         },
         controlMcpTool(
@@ -140,11 +146,13 @@ internal class ControlMcpProjectWorkspaceTools(
             ),
             readOnly = false,
         ) { input ->
+            val projectId = Project.Id(input.requiredString("projectId"))
+            projectAccessService.requirePermission(user.id, projectId, ProjectPermission.WRITE)
             entityResult(
                 "workspace",
                 Workspace.serializer(),
                 workspaceService.createFilesystemWorkspace(
-                    projectId = Project.Id(input.requiredString("projectId")),
+                    projectId = projectId,
                     name = input.requiredString("name"),
                 )
             )
@@ -161,11 +169,13 @@ internal class ControlMcpProjectWorkspaceTools(
             ),
             readOnly = false,
         ) { input ->
+            val workspaceId = Workspace.Id(input.requiredString("workspaceId"))
+            requireWorkspace(workspaceId, ProjectPermission.WRITE)
             entityResult(
                 "workspace",
                 Workspace.serializer(),
                 workspaceManagementService.update(
-                    workspaceId = Workspace.Id(input.requiredString("workspaceId")),
+                    workspaceId = workspaceId,
                     name = input.requiredString("name"),
                 )
             )
@@ -178,7 +188,9 @@ internal class ControlMcpProjectWorkspaceTools(
             destructive = true,
         ) { input ->
             val id = input.requiredString("workspaceId")
-            workspaceManagementService.delete(Workspace.Id(id))
+            val workspaceId = Workspace.Id(id)
+            requireWorkspace(workspaceId, ProjectPermission.ADMIN)
+            workspaceManagementService.delete(workspaceId)
             deletedResult("workspace", id)
         },
         controlMcpTool(
@@ -193,9 +205,12 @@ internal class ControlMcpProjectWorkspaceTools(
                 required = listOf("workspaceId", "workerId", "rootPath"),
             ),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
+            val workspaceId = Workspace.Id(input.requiredString("workspaceId"))
+            requireWorkspace(workspaceId, ProjectPermission.WRITE)
             val execution = workspaceService.attachFilesystem(
-                workspaceId = Workspace.Id(input.requiredString("workspaceId")),
+                workspaceId = workspaceId,
                 workerId = input.requiredString("workerId"),
                 rootPath = input.requiredString("rootPath"),
             )
@@ -211,15 +226,20 @@ internal class ControlMcpProjectWorkspaceTools(
             inputSchema = idSchema("mountId", "Workspace mount id."),
             readOnly = false,
             destructive = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val id = input.requiredString("mountId")
-            workspaceManagementService.deleteMount(WorkspaceMount.Id(id))
+            val mountId = WorkspaceMount.Id(id)
+            val mount = workspaceService.findMount(mountId) ?: notFound("Workspace mount", id)
+            requireWorkspace(mount.workspaceId, ProjectPermission.WRITE)
+            workspaceManagementService.deleteMount(mountId)
             deletedResult("workspace_mount", id)
         },
         controlMcpTool(
             name = "grz_worker_list",
             description = "List registered worker sessions, capabilities, advertised tools, and heartbeat state.",
             readOnly = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) {
             buildJsonObject {
                 put(
@@ -244,6 +264,16 @@ internal class ControlMcpProjectWorkspaceTools(
                 )
             )
         }
+
+    private suspend fun ControlMcpCallContext.requireWorkspace(
+        workspaceId: Workspace.Id,
+        permission: ProjectPermission,
+    ): Workspace {
+        val workspace = workspaceService.findById(workspaceId)
+            ?: notFound("Workspace", workspaceId.value)
+        projectAccessService.requirePermission(user.id, workspace.projectId, permission)
+        return workspace
+    }
 }
 
 internal fun idSchema(field: String, description: String) =

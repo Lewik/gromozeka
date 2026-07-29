@@ -34,6 +34,7 @@ internal class ControlMcpAiSettingsTools(
             name = "grz_control_help",
             description = "Explain Gromozeka configuration ownership and safe Control MCP workflows.",
             readOnly = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) {
             buildJsonObject {
                 put(
@@ -61,6 +62,7 @@ internal class ControlMcpAiSettingsTools(
             name = "grz_ai_catalog_get",
             description = "Read the complete AI catalog and optimistic revision. Inline secret values are always redacted.",
             readOnly = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) {
             aiConfigurationService.refreshIfChanged()
             redactedEntityResult(
@@ -82,6 +84,7 @@ internal class ControlMcpAiSettingsTools(
                 ),
             ),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val connection = input.decodeRequired("connection", AiConnection.serializer())
             val snapshot = aiCatalogManagementService.upsertConnection(
@@ -102,6 +105,7 @@ internal class ControlMcpAiSettingsTools(
             inputSchema = aiDeleteSchema("connectionId", "AI connection id."),
             readOnly = false,
             destructive = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val connectionId = AiConnection.Id(input.requiredString("connectionId"))
             aiDeleteResult(
@@ -121,6 +125,7 @@ internal class ControlMcpAiSettingsTools(
                 description = "Serialized AiModelSpec object.",
             ),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val modelSpec = input.decodeRequired("modelSpec", AiModelSpec.serializer())
             val snapshot = aiCatalogManagementService.upsertModelSpec(
@@ -152,6 +157,7 @@ internal class ControlMcpAiSettingsTools(
             ),
             readOnly = false,
             destructive = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val provider = input.requiredEnum("provider", AiProvider.entries)
             val modelId = input.requiredString("modelId")
@@ -173,6 +179,7 @@ internal class ControlMcpAiSettingsTools(
                 description = "Serialized AiModelConfiguration object.",
             ),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val configuration = input.decodeRequired(
                 "modelConfiguration",
@@ -195,6 +202,7 @@ internal class ControlMcpAiSettingsTools(
             inputSchema = aiDeleteSchema("modelConfigurationId", "AI model configuration id."),
             readOnly = false,
             destructive = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val configurationId = AiModelConfiguration.Id(input.requiredString("modelConfigurationId"))
             aiDeleteResult(
@@ -214,6 +222,7 @@ internal class ControlMcpAiSettingsTools(
                 description = "Serialized AiRuntimeAssignment object containing purpose and selection.",
             ),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val assignment = input.decodeRequired(
                 "assignment",
@@ -241,6 +250,7 @@ internal class ControlMcpAiSettingsTools(
                 required = listOf("agentId", "expectedRevision"),
             ),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val snapshot = aiCatalogManagementService.setDefaultAgent(
                 agentId = AgentDefinition.Id(input.requiredString("agentId")),
@@ -271,6 +281,7 @@ internal class ControlMcpAiSettingsTools(
             ),
             readOnly = false,
             idempotent = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val configuration = input.decodeRequired(
                 "configuration",
@@ -292,6 +303,7 @@ internal class ControlMcpAiSettingsTools(
             name = "grz_user_profile_get",
             description = "Read shared user behavior settings. Device-specific UI settings are not included.",
             readOnly = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) {
             redactedEntityResult(
                 "userProfile",
@@ -310,6 +322,7 @@ internal class ControlMcpAiSettingsTools(
             ),
             readOnly = false,
             idempotent = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val existing = settingsService.userProfile
             val supplied = input.decodeRequired("userProfile", UserProfile.serializer())

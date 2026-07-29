@@ -37,7 +37,8 @@ internal class GromozekaControlMcpServerFactory(
         }
     }
 
-    fun create(): Server {
+    fun create(caller: AuthenticatedMcpCaller): Server {
+        val context = ControlMcpCallContext(caller)
         val server = Server(
             serverInfo = Implementation(
                 name = "gromozeka-control",
@@ -51,7 +52,10 @@ internal class GromozekaControlMcpServerFactory(
         )
         tools.forEach { tool ->
             server.addTool(tool.definition) { request ->
-                tool.invoke(request.arguments ?: kotlinx.serialization.json.JsonObject(emptyMap()))
+                tool.invoke(
+                    context,
+                    request.arguments ?: kotlinx.serialization.json.JsonObject(emptyMap()),
+                )
             }
         }
         return server

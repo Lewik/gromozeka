@@ -106,8 +106,8 @@ fun main() {
             path = "/mcp/control",
             allowedHosts = mcpHttpSecurity.allowedHosts,
             allowedOrigins = mcpHttpSecurity.allowedOrigins,
-        ) {
-            controlMcpServerFactory.create()
+        ) { call ->
+            controlMcpServerFactory.create(call.attributes[authenticatedMcpCallerKey])
         }
         install(WebSockets) {
             maxFrameSize = MAX_WEBSOCKET_FRAME_BYTES

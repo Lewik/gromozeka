@@ -2,6 +2,7 @@ package com.gromozeka.server
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.response.respond
 import io.ktor.server.routing.delete
@@ -17,7 +18,7 @@ internal fun Application.statelessMcpStreamableHttp(
     path: String,
     allowedHosts: List<String>?,
     allowedOrigins: List<String>?,
-    createServer: () -> Server,
+    createServer: (ApplicationCall) -> Server,
 ) {
     routing {
         route(path) {
@@ -32,7 +33,7 @@ internal fun Application.statelessMcpStreamableHttp(
                 ).apply {
                     setSessionIdGenerator(null)
                 }
-                createServer().createSession(transport)
+                createServer(call).createSession(transport)
                 transport.handleRequest(null, call)
             }
             get {

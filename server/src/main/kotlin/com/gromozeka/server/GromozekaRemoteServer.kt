@@ -1,6 +1,8 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.MemoryAction
+import com.gromozeka.domain.model.ConversationTabLayout
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
@@ -16,7 +18,7 @@ import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
-import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.WorkspaceCatalogService
@@ -63,7 +65,7 @@ class GromozekaRemoteServer(
     private val promptDomainService: PromptDomainService,
     private val conversationDomainService: ConversationDomainService,
     private val conversationTabLayoutService: ConversationTabLayoutService,
-    private val projectDomainService: ProjectDomainService,
+    private val projectAccessService: ProjectAccessService,
     private val workspaceCatalogService: WorkspaceCatalogService,
     private val workspaceManagementService: WorkspaceManagementService,
     private val workerCatalogService: WorkerCatalogService,
@@ -78,6 +80,7 @@ class GromozekaRemoteServer(
     private val clientPresentationRegistry: ClientPresentationRegistry,
     private val authenticationService: AuthenticationService,
     private val personalAccessTokenService: PersonalAccessTokenService,
+    private val remoteAuthorization: GromozekaRemoteAuthorization,
 ) {
     private val log = KLoggers.logger(this)
     private val memoryActionItemRevisionJson = Json {
@@ -153,14 +156,24 @@ class GromozekaRemoteServer(
                             is ObserveConversationCommand -> {
                                 conversationSubscriptions[payload.subscriptionId]?.cancel()
                                 conversationSubscriptions[payload.subscriptionId] = launch {
-                                    observeConversation(sender, payload, encoding)
+                                    observeConversation(
+                                        sender,
+                                        payload,
+                                        encoding,
+                                        authenticatedSession.principal.user,
+                                    )
                                 }
                             }
                             is StopObserveConversationCommand -> conversationSubscriptions.remove(payload.subscriptionId)?.cancel()
                             is ObserveConversationTabLayoutCommand -> {
                                 conversationTabLayoutSubscriptions[payload.subscriptionId]?.cancel()
                                 conversationTabLayoutSubscriptions[payload.subscriptionId] = launch {
-                                    observeConversationTabLayout(sender, payload, encoding)
+                                    observeConversationTabLayout(
+                                        sender,
+                                        payload,
+                                        encoding,
+                                        authenticatedSession.principal.user,
+                                    )
                                 }
                             }
                             is StopObserveConversationTabLayoutCommand ->
@@ -198,6 +211,8 @@ class GromozekaRemoteServer(
         authenticatedSession: AuthenticatedRemoteSession,
     ) {
         val response = runCatching {
+            val user = authenticatedSession.principal.user
+            remoteAuthorization.authorize(user, request)
             when (request) {
                 GetSettingsRequest -> SettingsResponse(settingsService.settings)
                 is SaveSettingsRequest -> {
@@ -251,10 +266,15 @@ class GromozekaRemoteServer(
 
                 GetDefaultAgentRequest -> DefaultAgentResponse(defaultAgentProvider.getDefault())
                 is FindAgentRequest -> AgentResponse(agentDomainService.findById(request.agentId))
-                is FindAgentsRequest -> AgentsResponse(
-                    request.projectId?.let { agentDomainService.findByProject(it) }
-                        ?: agentDomainService.findAll()
-                )
+                is FindAgentsRequest -> {
+                    val readableProjectIds = remoteAuthorization.readableProjectIds(user)
+                    AgentsResponse(
+                        request.projectId?.let { agentDomainService.findByProject(it) }
+                            ?: agentDomainService.findAll().filter {
+                                it.projectId == null || it.projectId in readableProjectIds
+                            }
+                    )
+                }
                 is CreateAgentRequest -> AgentResponse(
                     agentDomainService.createAgent(
                         request.projectId,
@@ -290,7 +310,14 @@ class GromozekaRemoteServer(
                     agentDomainService.delete(request.agentId)
                     SavedResponse
                 }
-                CountAgentsRequest -> CountResponse(agentDomainService.count())
+                CountAgentsRequest -> {
+                    val readableProjectIds = remoteAuthorization.readableProjectIds(user)
+                    CountResponse(
+                        agentDomainService.findAll().count {
+                            it.projectId == null || it.projectId in readableProjectIds
+                        }
+                    )
+                }
                 is FindAgentSkillsRequest -> AgentSkillsResponse(
                     agentSkillDomainService.findByProject(request.projectId)
                 )
@@ -308,10 +335,15 @@ class GromozekaRemoteServer(
                     SavedResponse
                 }
                 is FindPromptRequest -> PromptResponse(promptDomainService.findById(request.promptId))
-                is FindPromptsRequest -> PromptsResponse(
-                    request.projectId?.let { promptDomainService.findByProject(it) }
-                        ?: promptDomainService.findAll()
-                )
+                is FindPromptsRequest -> {
+                    val readableProjectIds = remoteAuthorization.readableProjectIds(user)
+                    PromptsResponse(
+                        request.projectId?.let { promptDomainService.findByProject(it) }
+                            ?: promptDomainService.findAll().filter {
+                                it.projectId == null || it.projectId in readableProjectIds
+                            }
+                    )
+                }
                 is CreatePromptRequest -> PromptResponse(
                     promptDomainService.createPrompt(request.projectId, request.name, request.content)
                 )
@@ -323,17 +355,26 @@ class GromozekaRemoteServer(
                     SavedResponse
                 }
                 is CreateProjectRequest -> ProjectResponse(
-                    projectDomainService.create(request.name, request.description)
+                    projectAccessService.create(user.id, request.name, request.description)
                 )
                 is UpdateProjectRequest -> ProjectResponse(
-                    projectDomainService.update(request.projectId, request.name, request.description)
+                    projectAccessService.update(
+                        user.id,
+                        request.projectId,
+                        request.name,
+                        request.description,
+                    )
                 )
                 is DeleteProjectRequest -> {
-                    projectDomainService.delete(request.projectId)
+                    projectAccessService.delete(user.id, request.projectId)
                     SavedResponse
                 }
-                is FindProjectByIdRequest -> NullableProjectResponse(projectDomainService.findById(request.projectId))
-                is UpdateProjectLastUsedRequest -> NullableProjectResponse(projectDomainService.updateLastUsed(request.projectId))
+                is FindProjectByIdRequest -> NullableProjectResponse(
+                    projectAccessService.findById(user.id, request.projectId)
+                )
+                is UpdateProjectLastUsedRequest -> NullableProjectResponse(
+                    projectAccessService.updateLastUsed(user.id, request.projectId)
+                )
                 is CreateConversationRequest -> ConversationResponse(
                     conversationDomainService.create(
                         request.projectId,
@@ -344,19 +385,27 @@ class GromozekaRemoteServer(
 
                 is FindConversationRequest -> ConversationResponse(conversationDomainService.findById(request.conversationId))
                 is GetProjectRequest -> ProjectResponse(conversationDomainService.getProject(request.conversationId))
-                is FindRecentProjectsRequest -> ProjectsResponse(projectDomainService.findRecent(request.limit))
-                FindProjectsRequest -> ProjectsResponse(projectDomainService.findAll())
+                is FindRecentProjectsRequest -> ProjectsResponse(
+                    projectAccessService.findRecent(user.id, request.limit)
+                )
+                FindProjectsRequest -> ProjectsResponse(projectAccessService.findAll(user.id))
                 is FindConversationsByProjectRequest -> ConversationsResponse(
                     conversationDomainService.findByProject(request.projectId)
                 )
                 GetConversationTabLayoutRequest -> ConversationTabLayoutResponse(
-                    conversationTabLayoutService.snapshot()
+                    filterConversationTabLayout(user, conversationTabLayoutService.snapshot())
                 )
                 is OpenConversationTabRequest -> ConversationTabLayoutResponse(
-                    conversationTabLayoutService.open(request.conversationId)
+                    filterConversationTabLayout(
+                        user,
+                        conversationTabLayoutService.open(request.conversationId),
+                    )
                 )
                 is CloseConversationTabRequest -> ConversationTabLayoutResponse(
-                    conversationTabLayoutService.close(request.conversationId)
+                    filterConversationTabLayout(
+                        user,
+                        conversationTabLayoutService.close(request.conversationId),
+                    )
                 )
                 is FindWorkspaceRequest -> WorkspaceResponse(workspaceCatalogService.findById(request.workspaceId))
                 is FindWorkspacesByProjectRequest -> WorkspacesResponse(
@@ -422,10 +471,16 @@ class GromozekaRemoteServer(
                     )
                 )
 
-                is SearchConversationsRequest -> ConversationProjectItemsResponse(
-                    conversationNameSearchService.searchConversations(request.query)
-                        .map { (conversation, project) -> ConversationProjectItem(conversation, project) }
-                )
+                is SearchConversationsRequest -> {
+                    val readableProjectIds = remoteAuthorization.readableProjectIds(user)
+                    ConversationProjectItemsResponse(
+                        conversationNameSearchService.searchConversations(request.query)
+                            .filter { (_, project) -> project.id in readableProjectIds }
+                            .map { (conversation, project) ->
+                                ConversationProjectItem(conversation, project)
+                            }
+                    )
+                }
 
                 is MemoryActionRequest -> {
                     runMemoryAction(request.conversationId, request.action)
@@ -479,8 +534,14 @@ class GromozekaRemoteServer(
         sender: RemoteSessionSender,
         command: ObserveConversationCommand,
         encoding: RemoteProtocolEncoding,
+        user: User,
     ) {
         try {
+            remoteAuthorization.requireConversation(
+                user,
+                command.conversationId,
+                com.gromozeka.domain.model.ProjectPermission.READ,
+            )
             var liveEventsStarted = false
             conversationRuntimeService.observeConversation(command.conversationId, command.afterEventSequence)
                 .collect { event ->
@@ -554,14 +615,31 @@ class GromozekaRemoteServer(
         sender: RemoteSessionSender,
         command: ObserveConversationTabLayoutCommand,
         encoding: RemoteProtocolEncoding,
+        user: User,
     ) {
         conversationTabLayoutService.observe().collect { layout ->
             sender.send(
                 command.subscriptionId,
-                ConversationTabLayoutSnapshotEvent(command.subscriptionId, layout),
+                ConversationTabLayoutSnapshotEvent(
+                    command.subscriptionId,
+                    filterConversationTabLayout(user, layout),
+                ),
                 encoding,
             )
         }
+    }
+
+    private suspend fun filterConversationTabLayout(
+        user: User,
+        layout: ConversationTabLayout,
+    ): ConversationTabLayout {
+        val readableProjectIds = remoteAuthorization.readableProjectIds(user)
+        return layout.copy(
+            conversationIds = layout.conversationIds.filter { conversationId ->
+                conversationDomainService.findById(conversationId)
+                    ?.projectId in readableProjectIds
+            }
+        )
     }
 
     private suspend fun handleSynthesizeSpeechStream(

@@ -5,6 +5,8 @@ import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.Tool
 import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.service.ProjectAccessDeniedException
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
@@ -26,8 +28,27 @@ private val controlMcpLog = KLoggers.logger("GromozekaControlMcp")
 
 internal data class ControlMcpTool(
     val definition: Tool,
-    val execute: suspend (JsonObject) -> JsonObject,
+    val accessPolicy: ControlMcpAccessPolicy,
+    val execute: suspend ControlMcpCallContext.(JsonObject) -> JsonObject,
 )
+
+internal enum class ControlMcpAccessPolicy {
+    AUTHENTICATED,
+    SERVER_OWNER,
+}
+
+internal data class ControlMcpCallContext(
+    val caller: AuthenticatedMcpCaller,
+) {
+    val user: User
+        get() = caller.user
+
+    fun requireServerOwner() {
+        if (user.role != User.Role.OWNER) {
+            throw ControlMcpToolException("forbidden", "Server owner permission is required")
+        }
+    }
+}
 
 internal class ControlMcpToolException(
     val code: String,
@@ -110,7 +131,8 @@ internal fun controlMcpTool(
     readOnly: Boolean,
     destructive: Boolean = false,
     idempotent: Boolean = false,
-    execute: suspend (JsonObject) -> JsonObject,
+    accessPolicy: ControlMcpAccessPolicy = ControlMcpAccessPolicy.AUTHENTICATED,
+    execute: suspend ControlMcpCallContext.(JsonObject) -> JsonObject,
 ): ControlMcpTool = ControlMcpTool(
     definition = Tool(
         name = name,
@@ -124,12 +146,19 @@ internal fun controlMcpTool(
             openWorldHint = false,
         ),
     ),
+    accessPolicy = accessPolicy,
     execute = execute,
 )
 
-internal suspend fun ControlMcpTool.invoke(arguments: JsonObject): CallToolResult {
+internal suspend fun ControlMcpTool.invoke(
+    context: ControlMcpCallContext,
+    arguments: JsonObject,
+): CallToolResult {
     val structured = try {
-        val result = execute(arguments)
+        if (accessPolicy == ControlMcpAccessPolicy.SERVER_OWNER) {
+            context.requireServerOwner()
+        }
+        val result = execute(context, arguments)
         buildJsonObject {
             put("success", true)
             put("result", result)
@@ -158,6 +187,7 @@ internal suspend fun ControlMcpTool.invoke(arguments: JsonObject): CallToolResul
 private fun Throwable.toControlMcpFailure(): JsonObject {
     val (code, safeMessage) = when (this) {
         is ControlMcpToolException -> code to message
+        is ProjectAccessDeniedException -> "forbidden" to message.orEmpty()
         is IllegalArgumentException -> "invalid_argument" to (message ?: "Invalid argument")
         is IllegalStateException -> "invalid_state" to (message ?: "Invalid state")
         else -> "internal_error" to "Control operation failed"

@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import com.gromozeka.domain.model.User
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -28,7 +29,7 @@ class GromozekaControlMcpProtocolTest {
         }
         val server = GromozekaControlMcpServerFactory(
             listOf(provider(tool))
-        ).create()
+        ).create(testControlMcpCaller())
 
         val result = server.tools.getValue("grz_test_read").callForTest(
             io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest(
@@ -56,7 +57,10 @@ class GromozekaControlMcpProtocolTest {
             buildJsonObject { put("enabled", input.optionalBoolean("enabled", false)) }
         }
 
-        val result = tool.invoke(buildJsonObject { put("enabled", "true") })
+        val result = tool.invoke(
+            testControlMcpContext(),
+            buildJsonObject { put("enabled", "true") },
+        )
 
         assertTrue(result.isError == true)
         val error = result.textOutput()["error"]!!.jsonObject
@@ -74,7 +78,7 @@ class GromozekaControlMcpProtocolTest {
             throw RuntimeException("database password is secret")
         }
 
-        val result = tool.invoke(buildJsonObject {})
+        val result = tool.invoke(testControlMcpContext(), buildJsonObject {})
 
         assertTrue(result.isError == true)
         val text = (result.content.single() as TextContent).text.orEmpty()
@@ -93,8 +97,34 @@ class GromozekaControlMcpProtocolTest {
         }
 
         assertFailsWith<CancellationException> {
-            runBlocking { tool.invoke(buildJsonObject {}) }
+            runBlocking { tool.invoke(testControlMcpContext(), buildJsonObject {}) }
         }
+    }
+
+    @Test
+    fun `server owner policy rejects members before tool execution`() = runBlocking {
+        var executed = false
+        val tool = controlMcpTool(
+            name = "grz_test_owner_only",
+            description = "Owner-only test tool.",
+            readOnly = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+        ) {
+            executed = true
+            buildJsonObject {}
+        }
+
+        val result = tool.invoke(
+            testControlMcpContext(User.Role.MEMBER),
+            buildJsonObject {},
+        )
+
+        assertTrue(result.isError == true)
+        assertFalse(executed)
+        assertEquals(
+            "forbidden",
+            result.textOutput()["error"]?.jsonObject?.get("code")?.jsonPrimitive?.content,
+        )
     }
 
     @Test

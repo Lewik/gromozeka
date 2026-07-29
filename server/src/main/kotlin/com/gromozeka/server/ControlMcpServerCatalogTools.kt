@@ -27,6 +27,7 @@ internal class ControlMcpServerCatalogTools(
             name = "grz_mcp_server_list",
             description = "List centrally managed external MCP servers, their exact Workers, revisions, snapshots, and refresh state.",
             readOnly = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) {
             buildJsonObject {
                 put(
@@ -40,6 +41,7 @@ internal class ControlMcpServerCatalogTools(
             description = "Read one centrally managed external MCP server by stable id.",
             inputSchema = serverIdSchema(),
             readOnly = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val id = McpServerId(input.requiredString("serverId"))
             val server = managementService.get(id)
@@ -53,6 +55,7 @@ internal class ControlMcpServerCatalogTools(
             description = "Connect and fully validate an external MCP server on one exact online Worker, then persist and activate it. No retry occurs after execution starts.",
             inputSchema = configMutationSchema(requireRevision = false),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val server = managementService.create(
                 input.decodeRequired("config", McpServerConfig.serializer())
@@ -67,6 +70,7 @@ internal class ControlMcpServerCatalogTools(
                 "Stored environment and HTTP header values are preserved unless replaced in config or explicitly removed.",
             inputSchema = configMutationSchema(requireRevision = true),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val server = managementService.update(
                 config = input.decodeRequired("config", McpServerConfig.serializer()),
@@ -87,6 +91,7 @@ internal class ControlMcpServerCatalogTools(
             description = "Explicitly fetch and validate the current MCP tool list, replace its stored snapshot, and clear refreshAvailable.",
             inputSchema = serverIdSchema(requireRevision = true),
             readOnly = false,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val server = managementService.refresh(
                 serverId = McpServerId(input.requiredString("serverId")),
@@ -102,6 +107,7 @@ internal class ControlMcpServerCatalogTools(
             inputSchema = serverIdSchema(requireRevision = true),
             readOnly = false,
             destructive = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val id = McpServerId(input.requiredString("serverId"))
             managementService.delete(

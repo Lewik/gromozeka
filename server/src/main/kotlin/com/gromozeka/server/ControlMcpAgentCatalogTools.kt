@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.AgentSkillFile
 import com.gromozeka.domain.model.AgentSkillPackage
 import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.RuntimeCatalogTemplates
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
@@ -13,6 +14,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.PromptDomainService
+import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
@@ -32,6 +34,7 @@ internal class ControlMcpAgentCatalogTools(
     private val promptService: PromptDomainService,
     private val skillService: AgentSkillDomainService,
     private val templateService: RuntimeCatalogTemplateService,
+    private val projectAccessService: ProjectAccessService,
 ) : ControlMcpToolProvider {
     override val tools: List<ControlMcpTool> = listOf(
         controlMcpTool(
@@ -51,10 +54,19 @@ internal class ControlMcpAgentCatalogTools(
             inputSchema = optionalProjectSchema(),
             readOnly = true,
         ) { input ->
-            val projectId = input.optionalString("projectId")
-            val agents = projectId
-                ?.let { agentService.findByProject(Project.Id(it)) }
-                ?: agentService.findAll()
+            val projectId = input.optionalString("projectId")?.let(Project::Id)
+            val agents = if (projectId != null) {
+                projectAccessService.requirePermission(user.id, projectId, ProjectPermission.READ)
+                agentService.findByProject(projectId)
+            } else {
+                val readableProjectIds = projectAccessService.findAll(user.id).mapTo(
+                    mutableSetOf(),
+                    Project::id,
+                )
+                agentService.findAll().filter {
+                    it.projectId == null || it.projectId in readableProjectIds
+                }
+            }
             listResult("agents", AgentDefinition.serializer(), agents)
         },
         controlMcpTool(
@@ -64,10 +76,12 @@ internal class ControlMcpAgentCatalogTools(
             readOnly = true,
         ) { input ->
             val id = input.requiredString("agentId")
+            val agent = agentService.findById(AgentDefinition.Id(id)) ?: notFound("Agent", id)
+            requireAgentAccess(agent, ProjectPermission.READ)
             entityResult(
                 "agent",
                 AgentDefinition.serializer(),
-                agentService.findById(AgentDefinition.Id(id)) ?: notFound("Agent", id),
+                agent,
             )
         },
         controlMcpTool(
@@ -76,11 +90,13 @@ internal class ControlMcpAgentCatalogTools(
             inputSchema = agentWriteSchema(includeId = false, includeProjectId = true),
             readOnly = false,
         ) { input ->
+            val projectId = input.optionalString("projectId")?.let(Project::Id)
+            requireScopeAccess(projectId, ProjectPermission.WRITE)
             entityResult(
                 "agent",
                 AgentDefinition.serializer(),
                 agentService.createAgent(
-                    projectId = input.optionalString("projectId")?.let(Project::Id),
+                    projectId = projectId,
                     name = input.requiredString("name"),
                     prompts = input.requiredStringList("promptIds").map(Prompt::Id),
                     runtimeSelection = input.decodeObject("runtimeSelection", AiRuntimeSelection.serializer()),
@@ -101,11 +117,14 @@ internal class ControlMcpAgentCatalogTools(
             readOnly = false,
         ) { input ->
             val id = input.requiredString("agentId")
+            val agentId = AgentDefinition.Id(id)
+            val existing = agentService.findById(agentId) ?: notFound("Agent", id)
+            requireAgentAccess(existing, ProjectPermission.WRITE)
             entityResult(
                 "agent",
                 AgentDefinition.serializer(),
                 agentService.update(
-                    id = AgentDefinition.Id(id),
+                    id = agentId,
                     name = input.requiredString("name"),
                     prompts = input.requiredStringList("promptIds").map(Prompt::Id),
                     description = input.optionalString("description"),
@@ -132,12 +151,18 @@ internal class ControlMcpAgentCatalogTools(
             ),
             readOnly = false,
         ) { input ->
+            val sourceId = AgentDefinition.Id(input.requiredString("sourceAgentId"))
+            val source = agentService.findById(sourceId)
+                ?: notFound("Agent", sourceId.value)
+            requireAgentAccess(source, ProjectPermission.READ)
+            val projectId = input.optionalString("projectId")?.let(Project::Id)
+            requireScopeAccess(projectId, ProjectPermission.WRITE)
             entityResult(
                 "agent",
                 AgentDefinition.serializer(),
                 agentService.duplicateAgent(
-                    projectId = input.optionalString("projectId")?.let(Project::Id),
-                    sourceAgentId = AgentDefinition.Id(input.requiredString("sourceAgentId")),
+                    projectId = projectId,
+                    sourceAgentId = sourceId,
                     name = input.requiredString("name"),
                 )
             )
@@ -150,7 +175,10 @@ internal class ControlMcpAgentCatalogTools(
             destructive = true,
         ) { input ->
             val id = input.requiredString("agentId")
-            agentService.delete(AgentDefinition.Id(id))
+            val agentId = AgentDefinition.Id(id)
+            val existing = agentService.findById(agentId) ?: notFound("Agent", id)
+            requireAgentAccess(existing, ProjectPermission.WRITE)
+            agentService.delete(agentId)
             deletedResult("agent", id)
         },
         controlMcpTool(
@@ -159,10 +187,19 @@ internal class ControlMcpAgentCatalogTools(
             inputSchema = optionalProjectSchema(),
             readOnly = true,
         ) { input ->
-            val projectId = input.optionalString("projectId")
-            val prompts = projectId
-                ?.let { promptService.findByProject(Project.Id(it)) }
-                ?: promptService.findAll()
+            val projectId = input.optionalString("projectId")?.let(Project::Id)
+            val prompts = if (projectId != null) {
+                projectAccessService.requirePermission(user.id, projectId, ProjectPermission.READ)
+                promptService.findByProject(projectId)
+            } else {
+                val readableProjectIds = projectAccessService.findAll(user.id).mapTo(
+                    mutableSetOf(),
+                    Project::id,
+                )
+                promptService.findAll().filter {
+                    it.projectId == null || it.projectId in readableProjectIds
+                }
+            }
             listResult("prompts", Prompt.serializer(), prompts)
         },
         controlMcpTool(
@@ -172,10 +209,12 @@ internal class ControlMcpAgentCatalogTools(
             readOnly = true,
         ) { input ->
             val id = input.requiredString("promptId")
+            val prompt = promptService.findById(Prompt.Id(id)) ?: notFound("Prompt", id)
+            requirePromptAccess(prompt, ProjectPermission.READ)
             entityResult(
                 "prompt",
                 Prompt.serializer(),
-                promptService.findById(Prompt.Id(id)) ?: notFound("Prompt", id),
+                prompt,
             )
         },
         controlMcpTool(
@@ -184,11 +223,13 @@ internal class ControlMcpAgentCatalogTools(
             inputSchema = promptWriteSchema(includeId = false, includeProjectId = true),
             readOnly = false,
         ) { input ->
+            val projectId = input.optionalString("projectId")?.let(Project::Id)
+            requireScopeAccess(projectId, ProjectPermission.WRITE)
             entityResult(
                 "prompt",
                 Prompt.serializer(),
                 promptService.createPrompt(
-                    projectId = input.optionalString("projectId")?.let(Project::Id),
+                    projectId = projectId,
                     name = input.requiredString("name"),
                     content = input.requiredRawString("content"),
                 )
@@ -201,11 +242,14 @@ internal class ControlMcpAgentCatalogTools(
             readOnly = false,
         ) { input ->
             val id = input.requiredString("promptId")
+            val promptId = Prompt.Id(id)
+            val existing = promptService.findById(promptId) ?: notFound("Prompt", id)
+            requirePromptAccess(existing, ProjectPermission.WRITE)
             entityResult(
                 "prompt",
                 Prompt.serializer(),
                 promptService.updatePrompt(
-                    id = Prompt.Id(id),
+                    id = promptId,
                     name = input.requiredString("name"),
                     content = input.requiredRawString("content"),
                 ) ?: notFound("Prompt", id),
@@ -219,7 +263,10 @@ internal class ControlMcpAgentCatalogTools(
             destructive = true,
         ) { input ->
             val id = input.requiredString("promptId")
-            promptService.deletePrompt(Prompt.Id(id))
+            val promptId = Prompt.Id(id)
+            val existing = promptService.findById(promptId) ?: notFound("Prompt", id)
+            requirePromptAccess(existing, ProjectPermission.WRITE)
+            promptService.deletePrompt(promptId)
             deletedResult("prompt", id)
         },
         controlMcpTool(
@@ -228,10 +275,12 @@ internal class ControlMcpAgentCatalogTools(
             inputSchema = idSchema("projectId", "Project id."),
             readOnly = true,
         ) { input ->
+            val projectId = Project.Id(input.requiredString("projectId"))
+            projectAccessService.requirePermission(user.id, projectId, ProjectPermission.READ)
             listResult(
                 "skills",
                 AgentSkill.serializer(),
-                skillService.findByProject(Project.Id(input.requiredString("projectId"))),
+                skillService.findByProject(projectId),
             )
         },
         controlMcpTool(
@@ -241,10 +290,16 @@ internal class ControlMcpAgentCatalogTools(
             readOnly = true,
         ) { input ->
             val id = input.requiredString("skillId")
+            val skill = skillService.findById(AgentSkill.Id(id)) ?: notFound("Agent Skill", id)
+            projectAccessService.requirePermission(
+                user.id,
+                skill.projectId,
+                ProjectPermission.READ,
+            )
             entityResult(
                 "skill",
                 AgentSkill.serializer(),
-                skillService.findById(AgentSkill.Id(id)) ?: notFound("Agent Skill", id),
+                skill,
             )
         },
         controlMcpTool(
@@ -263,12 +318,14 @@ internal class ControlMcpAgentCatalogTools(
             readOnly = false,
             idempotent = true,
         ) { input ->
+            val projectId = Project.Id(input.requiredString("projectId"))
+            projectAccessService.requirePermission(user.id, projectId, ProjectPermission.WRITE)
             val source = input.toInlineSkillPackage()
             entityResult(
                 "skill",
                 AgentSkill.serializer(),
                 skillService.importPackage(
-                    projectId = Project.Id(input.requiredString("projectId")),
+                    projectId = projectId,
                     source = source,
                 )
             )
@@ -280,7 +337,10 @@ internal class ControlMcpAgentCatalogTools(
             readOnly = true,
         ) { input ->
             val id = input.requiredString("skillId")
-            val packageValue = skillService.exportPackage(AgentSkill.Id(id))
+            val skillId = AgentSkill.Id(id)
+            val skill = skillService.findById(skillId) ?: notFound("Agent Skill", id)
+            projectAccessService.requirePermission(user.id, skill.projectId, ProjectPermission.READ)
+            val packageValue = skillService.exportPackage(skillId)
                 ?: notFound("Agent Skill", id)
             packageValue.toControlJson()
         },
@@ -292,10 +352,40 @@ internal class ControlMcpAgentCatalogTools(
             destructive = true,
         ) { input ->
             val id = input.requiredString("skillId")
-            skillService.delete(AgentSkill.Id(id))
+            val skillId = AgentSkill.Id(id)
+            val skill = skillService.findById(skillId) ?: notFound("Agent Skill", id)
+            projectAccessService.requirePermission(user.id, skill.projectId, ProjectPermission.WRITE)
+            skillService.delete(skillId)
             deletedResult("agent_skill", id)
         },
     )
+
+    private suspend fun ControlMcpCallContext.requireAgentAccess(
+        agent: AgentDefinition,
+        permission: ProjectPermission,
+    ) {
+        requireScopeAccess(agent.projectId, permission)
+    }
+
+    private suspend fun ControlMcpCallContext.requirePromptAccess(
+        prompt: Prompt,
+        permission: ProjectPermission,
+    ) {
+        requireScopeAccess(prompt.projectId, permission)
+    }
+
+    private suspend fun ControlMcpCallContext.requireScopeAccess(
+        projectId: Project.Id?,
+        permission: ProjectPermission,
+    ) {
+        if (projectId == null) {
+            if (permission != ProjectPermission.READ) {
+                requireServerOwner()
+            }
+        } else {
+            projectAccessService.requirePermission(user.id, projectId, permission)
+        }
+    }
 }
 
 private fun optionalProjectSchema() =

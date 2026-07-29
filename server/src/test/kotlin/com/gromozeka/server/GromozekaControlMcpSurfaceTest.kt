@@ -16,7 +16,7 @@ class GromozekaControlMcpSurfaceTest {
         val server = GromozekaControlMcpServerFactory(
             listOf(
                 ControlMcpProjectWorkspaceTools(
-                    projectService = mock(),
+                    projectAccessService = mock(),
                     workspaceService = mock(),
                     workspaceManagementService = mock(),
                     workerRegistry = mock(),
@@ -26,6 +26,7 @@ class GromozekaControlMcpSurfaceTest {
                     promptService = mock(),
                     skillService = mock(),
                     templateService = mock(),
+                    projectAccessService = mock(),
                 ),
                 ControlMcpAiSettingsTools(
                     aiConfigurationService = mock(),
@@ -36,7 +37,7 @@ class GromozekaControlMcpSurfaceTest {
                     managementService = mock(),
                 ),
             )
-        ).create()
+        ).create(testControlMcpCaller())
 
         assertEquals(
             setOf(
