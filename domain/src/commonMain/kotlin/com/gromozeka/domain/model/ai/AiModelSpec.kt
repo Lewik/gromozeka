@@ -70,6 +70,9 @@ data class AiModelSpec(
 
         @Serializable
         data class Embeddings(
+            /**
+             * Output dimensions returned when the request does not override them.
+             */
             val dimensions: Int? = null,
             val maxInputTokens: Int? = null,
         ) {

@@ -329,6 +329,17 @@
     }
   },
   {
+    "id": "qwen3-embedding-4b",
+    "provider": "CUSTOM",
+    "capabilities": ["EMBEDDINGS"],
+    "limits": {
+      "embeddings": {
+        "dimensions": 2560,
+        "maxInputTokens": 32768
+      }
+    }
+  },
+  {
     "id": "gpt-4o-transcribe",
     "provider": "OPENAI",
     "capabilities": ["SPEECH_TO_TEXT"]

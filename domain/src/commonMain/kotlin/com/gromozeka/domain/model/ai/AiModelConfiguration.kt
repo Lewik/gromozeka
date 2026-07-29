@@ -16,6 +16,9 @@ import kotlin.jvm.JvmInline
  * assistant chat calls using this model configuration.
  * @property defaultParameters optional model-level defaults. Per-call options may
  * override them when the application workflow explicitly needs that.
+ * @property requestedEmbeddingDimensions optional output dimension override sent
+ * to embedding APIs. `null` uses the model's default dimensions without sending
+ * an API override.
  */
 @Serializable
 data class AiModelConfiguration(
@@ -26,10 +29,14 @@ data class AiModelConfiguration(
     val enabled: Boolean = true,
     val assistantResponseFormat: AssistantResponseFormat = AssistantResponseFormat.JSON_SCHEMA,
     val defaultParameters: DefaultParameters = DefaultParameters(),
+    val requestedEmbeddingDimensions: Int? = null,
 ) {
     init {
         require(providerModelId.isNotBlank()) { "AI provider model id must not be blank" }
         require(displayName.isNotBlank()) { "AI model configuration display name must not be blank" }
+        require(requestedEmbeddingDimensions == null || requestedEmbeddingDimensions > 0) {
+            "Requested AI embedding dimensions must be positive"
+        }
     }
 
     @Serializable
@@ -72,6 +79,11 @@ data class AiModelConfiguration(
         }
     }
 }
+
+fun AiModelConfiguration.resolveEmbeddingDimensions(modelSpec: AiModelSpec): Int =
+    requestedEmbeddingDimensions
+        ?: modelSpec.limits.embeddings?.dimensions
+        ?: error("AI embedding model $providerModelId must declare default or requested dimensions")
 
 /**
  * Agent or workflow overrides applied on top of a selected model configuration.

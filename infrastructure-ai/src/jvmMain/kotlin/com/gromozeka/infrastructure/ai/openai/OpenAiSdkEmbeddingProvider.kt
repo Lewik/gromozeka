@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelCapability
+import com.gromozeka.domain.model.ai.resolveEmbeddingDimensions
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
@@ -32,8 +33,8 @@ class OpenAiSdkEmbeddingProvider(
         require(AiModelCapability.EMBEDDINGS in spec.capabilities) {
             "AI model ${runtime.modelConfiguration.providerModelId} does not support embeddings"
         }
-        val dimensions = spec.limits.embeddings?.dimensions
-            ?: error("AI embedding model ${runtime.modelConfiguration.providerModelId} must declare dimensions")
+        val dimensions = runtime.modelConfiguration.resolveEmbeddingDimensions(spec)
+        val requestedDimensions = runtime.modelConfiguration.requestedEmbeddingDimensions
 
         val cachedVectors = mutableMapOf<Int, List<Float>>()
         val missingInputs = mutableListOf<String>()
@@ -53,15 +54,15 @@ class OpenAiSdkEmbeddingProvider(
         var promptTokens = 0
         if (missingInputs.isNotEmpty()) {
             val client = clientFactory.createClient(runtime.connection)
-            val params = EmbeddingCreateParams.builder()
-                .model(runtime.modelConfiguration.providerModelId)
-                .inputOfArrayOfStrings(missingInputs)
-                .dimensions(dimensions.toLong())
-                .encodingFormat(EmbeddingCreateParams.EncodingFormat.FLOAT)
-                .build()
+            val params = embeddingCreateParams(
+                modelId = runtime.modelConfiguration.providerModelId,
+                inputs = missingInputs,
+                requestedDimensions = requestedDimensions,
+            )
             log.info {
                 "Calling OpenAI embedding runtime: connectionKind=${runtime.connection.kind} " +
-                    "model=${runtime.modelConfiguration.providerModelId} inputs=${missingInputs.size} dimensions=$dimensions"
+                    "model=${runtime.modelConfiguration.providerModelId} inputs=${missingInputs.size} " +
+                    "dimensions=$dimensions requestedDimensions=${requestedDimensions ?: "provider-default"}"
             }
             val response = withContext(Dispatchers.IO) {
                 client.embeddings().create(params)
@@ -102,3 +103,17 @@ class OpenAiSdkEmbeddingProvider(
         )
     }
 }
+
+internal fun embeddingCreateParams(
+    modelId: String,
+    inputs: List<String>,
+    requestedDimensions: Int?,
+): EmbeddingCreateParams =
+    EmbeddingCreateParams.builder()
+        .model(modelId)
+        .inputOfArrayOfStrings(inputs)
+        .apply {
+            requestedDimensions?.let { dimensions(it.toLong()) }
+        }
+        .encodingFormat(EmbeddingCreateParams.EncodingFormat.FLOAT)
+        .build()

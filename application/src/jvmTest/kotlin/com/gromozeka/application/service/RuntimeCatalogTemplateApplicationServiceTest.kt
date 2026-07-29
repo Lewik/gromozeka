@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
 import com.gromozeka.domain.model.ai.AiReasoningEffort
@@ -19,6 +20,18 @@ class RuntimeCatalogTemplateApplicationServiceTest {
 
         assertEquals(272_000, spec.contextWindowTokens)
         assertEquals(217_600, spec.autoCompactionThresholdTokens)
+    }
+
+    @Test
+    fun exposesQwen3Embedding4bWithNativeDimensions() {
+        val catalog = RuntimeCatalogTemplateApplicationService().getTemplates().aiCatalog
+        val spec = catalog.modelSpecs.single {
+            it.provider == AiProvider.CUSTOM && it.id == "qwen3-embedding-4b"
+        }
+
+        assertEquals(setOf(AiModelCapability.EMBEDDINGS), spec.capabilities)
+        assertEquals(2_560, spec.limits.embeddings?.dimensions)
+        assertEquals(32_768, spec.limits.embeddings?.maxInputTokens)
     }
 
     @Test

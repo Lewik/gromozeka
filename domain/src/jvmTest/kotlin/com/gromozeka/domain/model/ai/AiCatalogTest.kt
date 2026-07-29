@@ -86,6 +86,45 @@ class AiCatalogTest {
     }
 
     @Test
+    fun acceptsRequestedDimensionsForEmbeddingModel() {
+        val catalog = testCatalog()
+
+        val updated = catalog.copy(
+            modelConfigurations = catalog.modelConfigurations.map { configuration ->
+                if (configuration.id == EMBEDDING_CONFIGURATION_ID) {
+                    configuration.copy(requestedEmbeddingDimensions = 1_024)
+                } else {
+                    configuration
+                }
+            }
+        )
+
+        assertEquals(
+            1_024,
+            updated.modelConfigurations
+                .single { it.id == EMBEDDING_CONFIGURATION_ID }
+                .requestedEmbeddingDimensions,
+        )
+    }
+
+    @Test
+    fun rejectsRequestedDimensionsForNonEmbeddingModel() {
+        val catalog = testCatalog()
+
+        assertFailsWith<IllegalArgumentException> {
+            catalog.copy(
+                modelConfigurations = catalog.modelConfigurations.map { configuration ->
+                    if (configuration.id == CHAT_CONFIGURATION_ID) {
+                        configuration.copy(requestedEmbeddingDimensions = 1_024)
+                    } else {
+                        configuration
+                    }
+                }
+            )
+        }
+    }
+
+    @Test
     fun rejectsClaudeCodeWebToolsBackedByAnotherProvider() {
         val catalog = testCatalog()
 

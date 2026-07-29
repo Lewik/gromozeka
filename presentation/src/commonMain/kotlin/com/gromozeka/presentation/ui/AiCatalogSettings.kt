@@ -431,6 +431,9 @@ private fun ModelConfigurationsEditor(
                                 it.id == configuration.providerModelId &&
                                     it.provider == connection.kind.provider
                             }?.capabilities?.forEach { add(it.name.lowercase()) }
+                            configuration.requestedEmbeddingDimensions?.let {
+                                add("embedding ${it}d override")
+                            }
                             if (assignments.isNotEmpty()) add("${assignments.size} assignments")
                         },
                         onEdit = { editing = configuration },
@@ -457,6 +460,7 @@ private fun ModelConfigurationsEditor(
         ModelConfigurationDialog(
             existing = editing,
             connections = draft.connections,
+            modelSpecs = draft.modelSpecs,
             onDismiss = {
                 creating = false
                 editing = null
@@ -998,6 +1002,7 @@ private fun createConnection(
 private fun ModelConfigurationDialog(
     existing: AiModelConfiguration?,
     connections: List<AiConnection>,
+    modelSpecs: List<AiModelSpec>,
     onDismiss: () -> Unit,
     onSave: (AiModelConfiguration) -> Unit,
 ) {
@@ -1022,6 +1027,9 @@ private fun ModelConfigurationDialog(
     var timeoutSeconds by remember {
         mutableStateOf(existing?.defaultParameters?.timeoutSeconds?.toString().orEmpty())
     }
+    var requestedEmbeddingDimensions by remember {
+        mutableStateOf(existing?.requestedEmbeddingDimensions?.toString().orEmpty())
+    }
     var reasoningMode by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.mode) }
     var reasoningEffort by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.effort) }
     var reasoningDisplay by remember { mutableStateOf(existing?.defaultParameters?.reasoning?.display) }
@@ -1029,6 +1037,12 @@ private fun ModelConfigurationDialog(
         mutableStateOf(existing?.defaultParameters?.reasoning?.budgetTokens?.toString().orEmpty())
     }
     var error by remember { mutableStateOf<String?>(null) }
+    val selectedConnection = connections.firstOrNull { it.id == connectionId }
+    val selectedModelSpec = modelSpecs.firstOrNull {
+        it.provider == selectedConnection?.kind?.provider &&
+            it.id == providerModelId.trim()
+    }
+    val supportsEmbeddings = selectedModelSpec?.capabilities?.contains(AiModelCapability.EMBEDDINGS) == true
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1103,6 +1117,18 @@ private fun ModelConfigurationDialog(
                         modifier = Modifier.weight(1f),
                     )
                 }
+                if (supportsEmbeddings) {
+                    OptionalNumberField(
+                        value = requestedEmbeddingDimensions,
+                        onValueChange = { requestedEmbeddingDimensions = it },
+                        label = "Requested embedding dimensions",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        "Leave empty to use the model default without sending a dimensions parameter.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 Text("Default reasoning", style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NullableEnumDropdown(
@@ -1167,6 +1193,11 @@ private fun ModelConfigurationDialog(
                             reasoning = reasoning,
                             timeoutSeconds = timeoutSeconds.optionalInt("Timeout"),
                         ),
+                        requestedEmbeddingDimensions = if (supportsEmbeddings) {
+                            requestedEmbeddingDimensions.optionalInt("Requested embedding dimensions")
+                        } else {
+                            null
+                        },
                     )
                 }.onSuccess(onSave).onFailure { error = it.message }
             }) {
@@ -1315,7 +1346,7 @@ private fun ModelSpecDialog(
                         OptionalNumberField(
                             embeddingDimensions,
                             { embeddingDimensions = it },
-                            "Dimensions",
+                            "Default dimensions",
                             Modifier.weight(1f),
                         )
                         OptionalNumberField(

@@ -43,10 +43,20 @@ data class AiCatalog(
             "Every primary AI runtime purpose must have an assignment"
         }
 
-        modelConfigurations.filter { it.enabled }.forEach { configuration ->
-            require(modelSpecFor(configuration) != null) {
-                "Enabled AI model configuration ${configuration.id.value} must have a model spec for " +
-                    configuration.providerModelId
+        modelConfigurations.forEach { configuration ->
+            val spec = modelSpecFor(configuration)
+            if (configuration.enabled) {
+                require(spec != null) {
+                    "Enabled AI model configuration ${configuration.id.value} must have a model spec for " +
+                        configuration.providerModelId
+                }
+            }
+            require(
+                configuration.requestedEmbeddingDimensions == null ||
+                    spec?.capabilities?.contains(AiModelCapability.EMBEDDINGS) == true
+            ) {
+                "AI model configuration ${configuration.id.value} requests embedding dimensions " +
+                    "for a model without embeddings capability"
             }
         }
         runtimeAssignments.forEach { assignment ->

@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.model.ai.resolveEmbeddingDimensions
 import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryEmbeddingRecord
 import com.gromozeka.domain.model.memory.MemoryEntity
@@ -309,8 +310,7 @@ class DefaultMemoryEmbeddingIndexer(
         }
         val embeddingLimits = spec.limits.embeddings
             ?: error("AI embedding model ${runtime.modelConfiguration.providerModelId} must declare embedding limits")
-        val dimensions = embeddingLimits.dimensions
-            ?: error("AI embedding model ${runtime.modelConfiguration.providerModelId} must declare dimensions")
+        val dimensions = runtime.modelConfiguration.resolveEmbeddingDimensions(spec)
         return ResolvedEmbeddingRuntime(
             selection = selection,
             modelConfigurationId = runtime.modelConfiguration.id.value,
