@@ -66,7 +66,7 @@ services:
     environment:
       <<: *app-environment
       GROMOZEKA_MCP_ALLOWED_HOSTS: ${GROMOZEKA_MCP_ALLOWED_HOSTS:-localhost,127.0.0.1,[::1]}
-      GROMOZEKA_AI_RUNTIME_ENABLED_CONNECTION_IDS: openai-api
+      GROMOZEKA_AI_RUNTIME_ENABLED_CONNECTION_IDS: openai-subscription,openai-api
       OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY is required}
     volumes:
       - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/home:/var/lib/gromozeka
