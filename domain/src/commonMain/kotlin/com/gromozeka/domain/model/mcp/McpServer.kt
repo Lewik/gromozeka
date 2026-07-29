@@ -39,6 +39,23 @@ data class McpServerConfig(
     }
 }
 
+data class McpTransportValueRemovals(
+    val environmentVariables: Set<String> = emptySet(),
+    val httpHeaders: Set<String> = emptySet(),
+) {
+    init {
+        require(environmentVariables.none(String::isBlank)) {
+            "MCP environment variable names to remove must not be blank"
+        }
+        require(httpHeaders.none(String::isBlank)) {
+            "MCP HTTP header names to remove must not be blank"
+        }
+        require(httpHeaders.map(String::lowercase).distinct().size == httpHeaders.size) {
+            "MCP HTTP header names to remove must be unique ignoring case"
+        }
+    }
+}
+
 @Serializable
 sealed interface McpServerTransport {
     @Serializable
@@ -69,6 +86,9 @@ sealed interface McpServerTransport {
             }
             require(headers.keys.none(String::isBlank)) {
                 "MCP Streamable HTTP header names must not be blank"
+            }
+            require(headers.keys.map(String::lowercase).distinct().size == headers.size) {
+                "MCP Streamable HTTP header names must be unique ignoring case"
             }
         }
     }

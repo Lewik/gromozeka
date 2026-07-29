@@ -54,6 +54,9 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
+import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
+import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelCapability
@@ -67,6 +70,7 @@ import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
+import com.gromozeka.domain.model.ai.apiKeyOrNull
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkerCatalogEntry
@@ -94,6 +98,7 @@ private data class AiCatalogDraft(
     val runtimeAssignments: List<AiRuntimeAssignment>,
     val defaultAgentId: com.gromozeka.domain.model.AgentDefinition.Id,
     val webTools: AiWebToolConfiguration,
+    val secretMutations: List<AiCatalogSecretMutation> = emptyList(),
 ) {
     fun toCatalog(): AiCatalog = AiCatalog(
         connections = connections,
@@ -103,6 +108,13 @@ private data class AiCatalogDraft(
         defaultAgentId = defaultAgentId,
         webTools = webTools,
     )
+
+    fun withSecretMutation(mutation: AiCatalogSecretMutation?): AiCatalogDraft {
+        if (mutation == null) return this
+        return copy(
+            secretMutations = secretMutations.filterNot { it.slot == mutation.slot } + mutation
+        )
+    }
 
     companion object {
         fun from(catalog: AiCatalog): AiCatalogDraft = AiCatalogDraft(
@@ -156,7 +168,10 @@ fun AiCatalogSettings(
         return
     }
 
-    val isDirty = runCatching { currentDraft.toCatalog() != currentSnapshot.catalog }.getOrDefault(true)
+    val isDirty = runCatching {
+        currentDraft.toCatalog() != currentSnapshot.catalog ||
+            currentDraft.secretMutations.isNotEmpty()
+    }.getOrDefault(true)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -212,6 +227,7 @@ fun AiCatalogSettings(
                                     aiConfigurationService.replaceCatalog(
                                         currentDraft.toCatalog(),
                                         currentSnapshot.revision,
+                                        currentDraft.secretMutations,
                                     )
                                 }.onFailure {
                                     error = it.message ?: it::class.simpleName
@@ -265,6 +281,7 @@ fun AiCatalogSettings(
                     draft = currentDraft,
                     templateCatalog = templates.aiCatalog,
                     workers = workers,
+                    secretStates = currentSnapshot.secretStates,
                     onChange = { draft = it },
                     onError = { error = it },
                 )
@@ -496,6 +513,7 @@ private fun ConnectionsEditor(
     draft: AiCatalogDraft,
     templateCatalog: AiCatalog,
     workers: List<WorkerCatalogEntry>,
+    secretStates: List<AiCatalogSecretState>,
     onChange: (AiCatalogDraft) -> Unit,
     onError: (String?) -> Unit,
 ) {
@@ -530,7 +548,13 @@ private fun ConnectionsEditor(
                     if (modelCount > 0) {
                         onError("Connection ${connection.displayName} still has $modelCount model configurations")
                     } else {
-                        onChange(draft.copy(connections = draft.connections.filterNot { it.id == connection.id }))
+                        val slot = AiCatalogSecretSlot.ConnectionApiKey(connection.id)
+                        onChange(
+                            draft.copy(
+                                connections = draft.connections.filterNot { it.id == connection.id },
+                                secretMutations = draft.secretMutations.filterNot { it.slot == slot },
+                            )
+                        )
                     }
                 },
             )
@@ -540,16 +564,20 @@ private fun ConnectionsEditor(
     if (creating || editing != null) {
         ConnectionDialog(
             existing = editing,
+            existingSecretState = editing?.let { connection ->
+                val slot = AiCatalogSecretSlot.ConnectionApiKey(connection.id)
+                secretStates.firstOrNull { it.slot == slot }
+            },
             workers = workers,
             onDismiss = {
                 creating = false
                 editing = null
             },
-            onSave = { connection ->
+            onSave = { connection, secretMutation ->
                 onChange(
                     draft.copy(
                         connections = draft.connections.filterNot { it.id == connection.id } + connection
-                    )
+                    ).withSecretMutation(secretMutation)
                 )
                 creating = false
                 editing = null
@@ -746,9 +774,10 @@ private fun <T> CatalogDropdown(
 @Composable
 private fun ConnectionDialog(
     existing: AiConnection?,
+    existingSecretState: AiCatalogSecretState?,
     workers: List<WorkerCatalogEntry>,
     onDismiss: () -> Unit,
-    onSave: (AiConnection) -> Unit,
+    onSave: (AiConnection, AiCatalogSecretMutation?) -> Unit,
 ) {
     var kind by remember { mutableStateOf(existing?.kind ?: AiConnection.Kind.OPENAI_API) }
     var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
@@ -783,7 +812,16 @@ private fun ConnectionDialog(
     }
     val existingSecret = (existing as? AiConnection.ApiKeyAiConnection)?.apiKey
     var secretMode by remember {
-        mutableStateOf(if (existingSecret is SecretRef.Inline) "Inline" else "Environment")
+        mutableStateOf(
+            if (
+                existingSecret is SecretRef.Inline ||
+                existingSecretState?.source == AiCatalogSecretState.Source.INLINE
+            ) {
+                "Inline"
+            } else {
+                "Environment"
+            }
+        )
     }
     var secretValue by remember {
         mutableStateOf(
@@ -794,6 +832,7 @@ private fun ConnectionDialog(
             }
         )
     }
+    var removeConfiguredSecret by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -866,11 +905,17 @@ private fun ConnectionDialog(
                         value = secretMode,
                         options = listOf("Environment", "Inline"),
                         optionLabel = { it },
-                        onSelect = { secretMode = it },
+                        onSelect = {
+                            secretMode = it
+                            removeConfiguredSecret = false
+                        },
                     )
                     OutlinedTextField(
                         value = secretValue,
-                        onValueChange = { secretValue = it },
+                        onValueChange = {
+                            secretValue = it
+                            removeConfiguredSecret = false
+                        },
                         label = {
                             Text(if (secretMode == "Environment") "Environment variable" else "API key")
                         },
@@ -882,6 +927,39 @@ private fun ConnectionDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (existingSecretState?.source == AiCatalogSecretState.Source.INLINE) {
+                        Text(
+                            text = if (removeConfiguredSecret) {
+                                "The stored API key will be removed."
+                            } else {
+                                "An API key is stored on the Server. Leave this field empty to keep it."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (removeConfiguredSecret) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                    if (existingSecretState != null) {
+                        TextButton(
+                            onClick = {
+                                removeConfiguredSecret = !removeConfiguredSecret
+                                if (removeConfiguredSecret) {
+                                    secretValue = ""
+                                }
+                            },
+                        ) {
+                            Text(
+                                if (removeConfiguredSecret) {
+                                    "Keep configured API key"
+                                } else {
+                                    "Remove configured API key"
+                                }
+                            )
+                        }
+                    }
                 }
                 if (kind == AiConnection.Kind.ANTHROPIC_BEDROCK) {
                     OutlinedTextField(
@@ -931,7 +1009,7 @@ private fun ConnectionDialog(
             Button(
                 onClick = {
                     runCatching {
-                        createConnection(
+                        val connection = createConnection(
                             kind = kind,
                             id = id,
                             name = name,
@@ -946,7 +1024,19 @@ private fun ConnectionDialog(
                             awsProfile = awsProfile,
                             executionTarget = executionTarget,
                         )
-                    }.onSuccess(onSave).onFailure { error = it.message }
+                        val slot = AiCatalogSecretSlot.ConnectionApiKey(connection.id)
+                        val secretMutation = when {
+                            removeConfiguredSecret -> AiCatalogSecretMutation.Remove(slot)
+                            connection.apiKeyOrNull() != null -> AiCatalogSecretMutation.Set(
+                                slot = slot,
+                                value = checkNotNull(connection.apiKeyOrNull()),
+                            )
+                            else -> null
+                        }
+                        connection to secretMutation
+                    }.onSuccess { (connection, secretMutation) ->
+                        onSave(connection, secretMutation)
+                    }.onFailure { error = it.message }
                 },
             ) {
                 Text("Apply")

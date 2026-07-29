@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiConfigurationService
@@ -1241,6 +1242,7 @@ class ConversationRuntimeDispatcherTest {
         override suspend fun replaceCatalog(
             catalog: AiCatalog,
             expectedRevision: Long,
+            secretMutations: List<AiCatalogSecretMutation>,
         ): AiCatalogSnapshot = error("AI catalog replacement is outside this test")
 
         override suspend fun reload(): AiCatalogSnapshot =

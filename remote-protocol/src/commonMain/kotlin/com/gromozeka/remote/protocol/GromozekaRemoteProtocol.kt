@@ -22,7 +22,12 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
+import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.redactInlineSecrets
+import com.gromozeka.domain.model.ai.secretStates
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
@@ -124,6 +129,7 @@ data object GetAiCatalogRequest : ClientRequest
 data class SaveAiCatalogRequest(
     val catalog: AiCatalog,
     val expectedRevision: Long,
+    val secretMutations: List<AiCatalogSecretMutation> = emptyList(),
 ) : ClientRequest
 
 @Serializable
@@ -667,8 +673,46 @@ data class SettingsResponse(
 @Serializable
 @SerialName("ai_catalog")
 data class AiCatalogResponse(
-    val snapshot: AiCatalogSnapshot,
+    val snapshot: RemoteAiCatalogSnapshot,
 ) : ServerResponse
+
+@Serializable
+data class RemoteAiCatalogSnapshot(
+    val catalog: AiCatalog,
+    val revision: Long,
+    val runtimeEnabledConnectionIds: Set<AiConnection.Id>,
+    val secretStates: List<AiCatalogSecretState>,
+) {
+    init {
+        require(
+            catalog.secretStates().none {
+                it.source == AiCatalogSecretState.Source.INLINE
+            }
+        ) {
+            "Remote AI catalog snapshot must not contain inline secret values"
+        }
+    }
+
+    fun toDomainSnapshot(): AiCatalogSnapshot =
+        AiCatalogSnapshot(
+            catalog = catalog,
+            revision = revision,
+            runtimeEnabledConnectionIds = runtimeEnabledConnectionIds,
+            secretStates = secretStates,
+        )
+
+    companion object {
+        fun from(snapshot: AiCatalogSnapshot): RemoteAiCatalogSnapshot {
+            val redacted = snapshot.redactInlineSecrets()
+            return RemoteAiCatalogSnapshot(
+                catalog = redacted.catalog,
+                revision = redacted.revision,
+                runtimeEnabledConnectionIds = redacted.runtimeEnabledConnectionIds,
+                secretStates = redacted.secretStates,
+            )
+        }
+    }
+}
 
 @Serializable
 data class PersonalAccessTokenView(

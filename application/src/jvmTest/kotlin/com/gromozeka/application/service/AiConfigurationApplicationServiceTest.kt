@@ -7,9 +7,12 @@ import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
+import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
+import com.gromozeka.domain.model.ai.redactInlineSecrets
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AiCatalogRepository
 import com.gromozeka.domain.service.SettingsProvider
@@ -17,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
@@ -100,6 +104,72 @@ class AiConfigurationApplicationServiceTest {
         assertEquals(jinaKey, updated.catalog.webTools.jinaReader.apiKey)
         assertTrue(updated.catalog.webTools.braveSearch.enabled)
         assertTrue(updated.catalog.webTools.jinaReader.enabled)
+    }
+
+    @Test
+    fun `redacted catalog replacement preserves secrets unless explicitly mutated`() = runBlocking {
+        val connectionKey = SecretRef.Inline("connection-secret")
+        val braveKey = SecretRef.Inline("brave-secret")
+        val initialCatalog = seed.aiCatalog.copy(
+            connections = seed.aiCatalog.connections.map { connection ->
+                if (connection is AiConnection.OpenAiApi) {
+                    connection.copy(apiKey = connectionKey)
+                } else {
+                    connection
+                }
+            },
+            webTools = AiWebToolConfiguration(
+                braveSearch = AiWebToolConfiguration.BraveSearch(
+                    enabled = true,
+                    apiKey = braveKey,
+                )
+            ),
+        )
+        val repository = TestAiCatalogRepository(initialCatalog, revision = 4)
+        val service = service(repository)
+        service.initialize()
+        val redacted = service.snapshot.redactInlineSecrets()
+        val openAiConnection = redacted.catalog.connections
+            .filterIsInstance<AiConnection.OpenAiApi>()
+            .single()
+
+        val preserved = service.replaceCatalog(
+            catalog = redacted.catalog.copy(
+                connections = redacted.catalog.connections.map { connection ->
+                    if (connection.id == openAiConnection.id) {
+                        openAiConnection.copy(displayName = "Renamed")
+                    } else {
+                        connection
+                    }
+                }
+            ),
+            expectedRevision = 4,
+        )
+
+        assertEquals(
+            connectionKey,
+            assertIs<AiConnection.OpenAiApi>(
+                preserved.catalog.connections.single { it.id == openAiConnection.id }
+            ).apiKey,
+        )
+        assertEquals(braveKey, preserved.catalog.webTools.braveSearch.apiKey)
+
+        val removed = service.replaceCatalog(
+            catalog = preserved.catalog.redactInlineSecrets(),
+            expectedRevision = 5,
+            secretMutations = listOf(
+                AiCatalogSecretMutation.Remove(
+                    AiCatalogSecretSlot.ConnectionApiKey(openAiConnection.id)
+                )
+            ),
+        )
+
+        assertNull(
+            assertIs<AiConnection.OpenAiApi>(
+                removed.catalog.connections.single { it.id == openAiConnection.id }
+            ).apiKey
+        )
+        assertEquals(braveKey, removed.catalog.webTools.braveSearch.apiKey)
     }
 
     private fun service(repository: AiCatalogRepository) =

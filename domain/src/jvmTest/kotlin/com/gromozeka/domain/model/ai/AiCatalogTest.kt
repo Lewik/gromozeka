@@ -2,10 +2,13 @@ package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.SecretRef
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AiCatalogTest {
@@ -138,6 +141,47 @@ class AiCatalogTest {
                 )
             )
         }
+    }
+
+    @Test
+    fun redactsInlineSecretsWithoutLosingConfiguredSecretState() {
+        val inlineKey = SecretRef.Inline("inline-secret")
+        val environmentKey = SecretRef.EnvironmentVariable("JINA_API_KEY")
+        val catalog = testCatalog().copy(
+            connections = testCatalog().connections.map { connection ->
+                assertIs<AiConnection.OpenAiApi>(connection).copy(apiKey = inlineKey)
+            },
+            webTools = AiWebToolConfiguration(
+                braveSearch = AiWebToolConfiguration.BraveSearch(
+                    enabled = true,
+                    apiKey = inlineKey,
+                ),
+                jinaReader = AiWebToolConfiguration.JinaReader(
+                    enabled = true,
+                    apiKey = environmentKey,
+                ),
+            ),
+        )
+
+        val redacted = AiCatalogSnapshot(catalog, revision = 1).redactInlineSecrets()
+
+        assertNull(
+            assertIs<AiConnection.OpenAiApi>(redacted.catalog.connections.single()).apiKey
+        )
+        assertNull(redacted.catalog.webTools.braveSearch.apiKey)
+        assertEquals(environmentKey, redacted.catalog.webTools.jinaReader.apiKey)
+        assertEquals(
+            AiCatalogSecretState.Source.INLINE,
+            redacted.secretStates.single {
+                it.slot == AiCatalogSecretSlot.ConnectionApiKey(CONNECTION_ID)
+            }.source,
+        )
+        assertEquals(
+            "JINA_API_KEY",
+            redacted.secretStates.single {
+                it.slot == AiCatalogSecretSlot.JinaReaderApiKey
+            }.environmentVariableName,
+        )
     }
 
     private fun testCatalog(connectionEnabled: Boolean = true): AiCatalog {

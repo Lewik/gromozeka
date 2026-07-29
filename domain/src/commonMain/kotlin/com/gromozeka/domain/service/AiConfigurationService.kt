@@ -3,6 +3,7 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -32,6 +33,7 @@ interface AiConfigurationService : AiConfigurationProvider {
     suspend fun replaceCatalog(
         catalog: AiCatalog,
         expectedRevision: Long = snapshot.revision,
+        secretMutations: List<AiCatalogSecretMutation> = emptyList(),
     ): AiCatalogSnapshot
 
     suspend fun reload(): AiCatalogSnapshot

@@ -31,6 +31,9 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
+import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
+import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.presentation.services.LogEncryptor
@@ -1364,8 +1367,17 @@ private fun WebToolSettingsEditor(
     var draft by remember(currentSnapshot.revision) {
         mutableStateOf(currentSnapshot.catalog.webTools)
     }
+    var secretMutations by remember(currentSnapshot.revision) {
+        mutableStateOf(emptyList<AiCatalogSecretMutation>())
+    }
     var isSaving by remember { mutableStateOf(false) }
     var error by remember(currentSnapshot.revision) { mutableStateOf<String?>(null) }
+    val braveSecretState = currentSnapshot.secretStates.firstOrNull {
+        it.slot == AiCatalogSecretSlot.BraveSearchApiKey
+    }
+    val jinaSecretState = currentSnapshot.secretStates.firstOrNull {
+        it.slot == AiCatalogSecretSlot.JinaReaderApiKey
+    }
     val claudeModels = currentSnapshot.catalog.modelConfigurations
         .filter { configuration ->
             configuration.enabled &&
@@ -1377,7 +1389,7 @@ private fun WebToolSettingsEditor(
     val claudeModelById = claudeModels.associateBy(AiModelConfiguration::id)
     val selectedClaudeModel = draft.claudeCode.modelConfigurationId
     val canEnableClaudeTools = selectedClaudeModel in claudeModelById
-    val isDirty = draft != currentSnapshot.catalog.webTools
+    val isDirty = draft != currentSnapshot.catalog.webTools || secretMutations.isNotEmpty()
 
     SettingsGroup(title = "Web tools") {
         SwitchSettingItem(
@@ -1396,8 +1408,42 @@ private fun WebToolSettingsEditor(
                 description = translation.settings.braveApiKeyDescription,
                 value = draft.braveSearch.apiKey.secretText(),
                 onValueChange = { value ->
+                    val secret = value.inlineSecretOrNull()
                     draft = draft.copy(
-                        braveSearch = draft.braveSearch.copy(apiKey = value.inlineSecretOrNull()),
+                        braveSearch = draft.braveSearch.copy(apiKey = secret),
+                    )
+                    secretMutations = secretMutations.withSecretMutation(
+                        secret?.let {
+                            AiCatalogSecretMutation.Set(
+                                slot = AiCatalogSecretSlot.BraveSearchApiKey,
+                                value = it,
+                            )
+                        },
+                        AiCatalogSecretSlot.BraveSearchApiKey,
+                    )
+                },
+            )
+            ConfiguredSecretControls(
+                state = braveSecretState,
+                pendingMutation = secretMutations.forSlot(AiCatalogSecretSlot.BraveSearchApiKey),
+                onRemove = {
+                    draft = draft.copy(
+                        braveSearch = draft.braveSearch.copy(apiKey = null)
+                    )
+                    secretMutations = secretMutations.withSecretMutation(
+                        AiCatalogSecretMutation.Remove(AiCatalogSecretSlot.BraveSearchApiKey),
+                        AiCatalogSecretSlot.BraveSearchApiKey,
+                    )
+                },
+                onKeep = {
+                    draft = draft.copy(
+                        braveSearch = draft.braveSearch.copy(
+                            apiKey = currentSnapshot.catalog.webTools.braveSearch.apiKey
+                        )
+                    )
+                    secretMutations = secretMutations.withSecretMutation(
+                        null,
+                        AiCatalogSecretSlot.BraveSearchApiKey,
                     )
                 },
             )
@@ -1419,8 +1465,42 @@ private fun WebToolSettingsEditor(
                 description = translation.settings.jinaApiKeyDescription,
                 value = draft.jinaReader.apiKey.secretText(),
                 onValueChange = { value ->
+                    val secret = value.inlineSecretOrNull()
                     draft = draft.copy(
-                        jinaReader = draft.jinaReader.copy(apiKey = value.inlineSecretOrNull()),
+                        jinaReader = draft.jinaReader.copy(apiKey = secret),
+                    )
+                    secretMutations = secretMutations.withSecretMutation(
+                        secret?.let {
+                            AiCatalogSecretMutation.Set(
+                                slot = AiCatalogSecretSlot.JinaReaderApiKey,
+                                value = it,
+                            )
+                        },
+                        AiCatalogSecretSlot.JinaReaderApiKey,
+                    )
+                },
+            )
+            ConfiguredSecretControls(
+                state = jinaSecretState,
+                pendingMutation = secretMutations.forSlot(AiCatalogSecretSlot.JinaReaderApiKey),
+                onRemove = {
+                    draft = draft.copy(
+                        jinaReader = draft.jinaReader.copy(apiKey = null)
+                    )
+                    secretMutations = secretMutations.withSecretMutation(
+                        AiCatalogSecretMutation.Remove(AiCatalogSecretSlot.JinaReaderApiKey),
+                        AiCatalogSecretSlot.JinaReaderApiKey,
+                    )
+                },
+                onKeep = {
+                    draft = draft.copy(
+                        jinaReader = draft.jinaReader.copy(
+                            apiKey = currentSnapshot.catalog.webTools.jinaReader.apiKey
+                        )
+                    )
+                    secretMutations = secretMutations.withSecretMutation(
+                        null,
+                        AiCatalogSecretSlot.JinaReaderApiKey,
                     )
                 },
             )
@@ -1509,6 +1589,7 @@ private fun WebToolSettingsEditor(
                             aiConfigurationService.replaceCatalog(
                                 catalog = latest.catalog.copy(webTools = draft),
                                 expectedRevision = latest.revision,
+                                secretMutations = secretMutations,
                             )
                         }.onFailure {
                             error = it.message ?: it::class.simpleName
@@ -1529,6 +1610,45 @@ private fun WebToolSettingsEditor(
         }
     }
 }
+
+@Composable
+private fun ConfiguredSecretControls(
+    state: AiCatalogSecretState?,
+    pendingMutation: AiCatalogSecretMutation?,
+    onRemove: () -> Unit,
+    onKeep: () -> Unit,
+) {
+    if (state == null) return
+    val removing = pendingMutation is AiCatalogSecretMutation.Remove
+    Text(
+        text = when {
+            removing -> "The configured API key will be removed."
+            state.source == AiCatalogSecretState.Source.INLINE ->
+                "An API key is stored on the Server. Leave the field empty to keep it."
+            else -> "Using environment variable ${state.environmentVariableName}."
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = if (removing) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+    )
+    TextButton(onClick = if (removing) onKeep else onRemove) {
+        Text(if (removing) "Keep configured API key" else "Remove configured API key")
+    }
+}
+
+private fun List<AiCatalogSecretMutation>.forSlot(
+    slot: AiCatalogSecretSlot,
+): AiCatalogSecretMutation? =
+    firstOrNull { it.slot == slot }
+
+private fun List<AiCatalogSecretMutation>.withSecretMutation(
+    mutation: AiCatalogSecretMutation?,
+    slot: AiCatalogSecretSlot,
+): List<AiCatalogSecretMutation> =
+    filterNot { it.slot == slot } + listOfNotNull(mutation)
 
 @Composable
 private fun SettingsGroup(

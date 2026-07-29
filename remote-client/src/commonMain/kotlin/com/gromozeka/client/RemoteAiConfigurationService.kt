@@ -1,6 +1,7 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiConfigurationService
@@ -24,14 +25,16 @@ internal class RemoteAiConfigurationService(
     override suspend fun replaceCatalog(
         catalog: AiCatalog,
         expectedRevision: Long,
+        secretMutations: List<AiCatalogSecretMutation>,
     ): AiCatalogSnapshot =
         client.requestTyped<SaveAiCatalogRequest, AiCatalogResponse>(
-            SaveAiCatalogRequest(catalog, expectedRevision)
-        ).snapshot.also { mutableSnapshotFlow.value = it }
+            SaveAiCatalogRequest(catalog, expectedRevision, secretMutations)
+        ).snapshot.toDomainSnapshot().also { mutableSnapshotFlow.value = it }
 
     override suspend fun reload(): AiCatalogSnapshot =
         client.requestTyped<GetAiCatalogRequest, AiCatalogResponse>(GetAiCatalogRequest)
             .snapshot
+            .toDomainSnapshot()
             .also { mutableSnapshotFlow.value = it }
 
     override suspend fun refreshIfChanged() {

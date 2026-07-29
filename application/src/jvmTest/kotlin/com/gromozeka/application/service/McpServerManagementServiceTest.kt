@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
 import com.gromozeka.domain.model.mcp.McpServerTransport
+import com.gromozeka.domain.model.mcp.McpTransportValueRemovals
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.repository.AiToolCapabilityCatalogRepository
 import com.gromozeka.domain.repository.McpServerRepository
@@ -60,6 +61,161 @@ class McpServerManagementServiceTest {
             }
 
             assertEquals("Worker is offline: test-worker", error.message)
+            assertEquals(null, fixture.request)
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `update preserves omitted environment values and applies replacements and removals`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            val currentConfig = fixture.server.config.copy(
+                transport = McpServerTransport.Stdio(
+                    command = "mcp-server",
+                    environment = mapOf(
+                        "KEEP" to "kept-secret",
+                        "REPLACE" to "old-secret",
+                        "REMOVE" to "removed-secret",
+                    ),
+                )
+            )
+            fixture.repository.create(fixture.server.copy(config = currentConfig))
+
+            fixture.service.update(
+                config = currentConfig.copy(
+                    displayName = "Updated MCP",
+                    transport = McpServerTransport.Stdio(
+                        command = "mcp-server",
+                        environment = mapOf(
+                            "REPLACE" to "new-secret",
+                            "ADD" to "added-secret",
+                        ),
+                    ),
+                ),
+                expectedRevision = 1,
+                transportValueRemovals = McpTransportValueRemovals(
+                    environmentVariables = setOf("REMOVE")
+                ),
+            )
+
+            val command = fixture.request?.command as WorkerControlRequest.Command.ApplyMcpServer
+            val transport = command.config.transport as McpServerTransport.Stdio
+            assertEquals(
+                mapOf(
+                    "KEEP" to "kept-secret",
+                    "REPLACE" to "new-secret",
+                    "ADD" to "added-secret",
+                ),
+                transport.environment,
+            )
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `HTTP header updates are merged and removed case insensitively`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            val currentConfig = fixture.server.config.copy(
+                transport = McpServerTransport.StreamableHttp(
+                    url = "https://mcp.example.test",
+                    headers = mapOf(
+                        "Authorization" to "old-token",
+                        "X-Keep" to "kept-value",
+                        "X-Remove" to "removed-value",
+                    ),
+                )
+            )
+            fixture.repository.create(fixture.server.copy(config = currentConfig))
+
+            fixture.service.update(
+                config = currentConfig.copy(
+                    transport = McpServerTransport.StreamableHttp(
+                        url = "https://mcp.example.test/v2",
+                        headers = mapOf(
+                            "authorization" to "new-token",
+                            "X-Add" to "added-value",
+                        ),
+                    ),
+                ),
+                expectedRevision = 1,
+                transportValueRemovals = McpTransportValueRemovals(
+                    httpHeaders = setOf("x-remove")
+                ),
+            )
+
+            val command = fixture.request?.command as WorkerControlRequest.Command.ApplyMcpServer
+            val transport = command.config.transport as McpServerTransport.StreamableHttp
+            assertEquals(
+                mapOf(
+                    "X-Keep" to "kept-value",
+                    "authorization" to "new-token",
+                    "X-Add" to "added-value",
+                ),
+                transport.headers,
+            )
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `update rejects stale revisions before contacting the worker`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            fixture.repository.create(fixture.server)
+
+            val error = assertFailsWith<IllegalArgumentException> {
+                fixture.service.update(
+                    config = fixture.server.config,
+                    expectedRevision = 2,
+                )
+            }
+
+            assertEquals(
+                "MCP server revision conflict: expected 2, actual 1",
+                error.message,
+            )
+            assertEquals(null, fixture.request)
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `update rejects replacing and removing the same HTTP header`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            val currentConfig = fixture.server.config.copy(
+                transport = McpServerTransport.StreamableHttp(
+                    url = "https://mcp.example.test",
+                    headers = mapOf("Authorization" to "old-token"),
+                )
+            )
+            fixture.repository.create(fixture.server.copy(config = currentConfig))
+
+            val error = assertFailsWith<IllegalArgumentException> {
+                fixture.service.update(
+                    config = currentConfig.copy(
+                        transport = McpServerTransport.StreamableHttp(
+                            url = "https://mcp.example.test",
+                            headers = mapOf("authorization" to "new-token"),
+                        )
+                    ),
+                    expectedRevision = 1,
+                    transportValueRemovals = McpTransportValueRemovals(
+                        httpHeaders = setOf("AUTHORIZATION")
+                    ),
+                )
+            }
+
+            assertEquals(
+                "MCP HTTP headers cannot be replaced and removed in the same update",
+                error.message,
+            )
             assertEquals(null, fixture.request)
         } finally {
             fixture.close()

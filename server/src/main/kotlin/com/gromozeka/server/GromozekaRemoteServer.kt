@@ -204,11 +204,16 @@ class GromozekaRemoteServer(
                     settingsService.saveSettings(request.settings)
                     SavedResponse
                 }
-                GetAiCatalogRequest -> AiCatalogResponse(aiConfigurationService.snapshot)
+                GetAiCatalogRequest -> AiCatalogResponse(
+                    RemoteAiCatalogSnapshot.from(aiConfigurationService.snapshot)
+                )
                 is SaveAiCatalogRequest -> AiCatalogResponse(
-                    aiConfigurationService.replaceCatalog(
-                        request.catalog,
-                        request.expectedRevision,
+                    RemoteAiCatalogSnapshot.from(
+                        aiConfigurationService.replaceCatalog(
+                            request.catalog,
+                            request.expectedRevision,
+                            request.secretMutations,
+                        )
                     )
                 )
                 ListPersonalAccessTokensRequest -> PersonalAccessTokensResponse(

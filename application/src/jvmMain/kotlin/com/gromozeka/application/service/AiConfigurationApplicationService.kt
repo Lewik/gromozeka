@@ -3,6 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
+import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -10,6 +12,7 @@ import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
+import com.gromozeka.domain.model.ai.withApiKey
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AiCatalogRepository
 import com.gromozeka.domain.repository.AiModelSpecRepository
@@ -46,9 +49,15 @@ class AiConfigurationApplicationService(
     override suspend fun replaceCatalog(
         catalog: AiCatalog,
         expectedRevision: Long,
+        secretMutations: List<AiCatalogSecretMutation>,
     ): AiCatalogSnapshot {
-        validateAgentReferences(catalog)
-        val updated = repository.replace(expectedRevision, catalog).withRuntimeEnvironment()
+        val resolvedCatalog = catalog.resolveSecrets(
+            existing = snapshot.catalog,
+            mutations = secretMutations,
+        )
+        validateSecretRequirements(resolvedCatalog)
+        validateAgentReferences(resolvedCatalog)
+        val updated = repository.replace(expectedRevision, resolvedCatalog).withRuntimeEnvironment()
         mutableSnapshotFlow.value = updated
         return updated
     }
@@ -57,6 +66,7 @@ class AiConfigurationApplicationService(
         val loaded = checkNotNull(repository.find()) {
             "Runtime configuration catalog is not initialized"
         }.withRuntimeEnvironment()
+        validateSecretRequirements(loaded.catalog)
         mutableSnapshotFlow.value = loaded
         return loaded
     }
@@ -231,9 +241,89 @@ class AiConfigurationApplicationService(
         }
     }
 
+    private fun validateSecretRequirements(catalog: AiCatalog) {
+        require(!catalog.webTools.braveSearch.enabled || catalog.webTools.braveSearch.apiKey != null) {
+            "Brave Search requires an API key when enabled"
+        }
+        require(!catalog.webTools.jinaReader.enabled || catalog.webTools.jinaReader.apiKey != null) {
+            "Jina Reader requires an API key when enabled"
+        }
+    }
+
     private fun AiCatalogSnapshot.withRuntimeEnvironment(): AiCatalogSnapshot =
         copy(runtimeEnabledConnectionIds = settingsProvider.runtimeEnabledAiConnectionIds)
 }
+
+private fun AiCatalog.resolveSecrets(
+    existing: AiCatalog,
+    mutations: List<AiCatalogSecretMutation>,
+): AiCatalog {
+    require(mutations.map(AiCatalogSecretMutation::slot).distinct().size == mutations.size) {
+        "AI catalog secret mutations must be unique by slot"
+    }
+    val withPreservedSecrets = copy(
+        connections = connections.map { connection ->
+            connection.preserveCompatibleApiKey(
+                existing.connections.firstOrNull { it.id == connection.id }
+            )
+        },
+        webTools = webTools.preserveSecretsFrom(existing.webTools),
+    )
+    return mutations.fold(withPreservedSecrets, AiCatalog::applySecretMutation)
+}
+
+private fun AiCatalog.applySecretMutation(
+    mutation: AiCatalogSecretMutation,
+): AiCatalog {
+    val secret = when (mutation) {
+        is AiCatalogSecretMutation.Set -> mutation.value
+        is AiCatalogSecretMutation.Remove -> null
+    }
+    return when (val slot = mutation.slot) {
+        is AiCatalogSecretSlot.ConnectionApiKey -> {
+            val index = connections.indexOfFirst { it.id == slot.connectionId }
+            require(index >= 0) {
+                "AI connection not found for secret mutation: ${slot.connectionId.value}"
+            }
+            val connection = connections[index]
+            require(connection is AiConnection.ApiKeyAiConnection) {
+                "AI connection does not support API keys: ${slot.connectionId.value}"
+            }
+            copy(
+                connections = connections.toMutableList().apply {
+                    this[index] = connection.withApiKey(secret)
+                }
+            )
+        }
+        AiCatalogSecretSlot.BraveSearchApiKey -> copy(
+            webTools = webTools.copy(
+                braveSearch = webTools.braveSearch.copy(apiKey = secret)
+            )
+        )
+        AiCatalogSecretSlot.JinaReaderApiKey -> copy(
+            webTools = webTools.copy(
+                jinaReader = webTools.jinaReader.copy(apiKey = secret)
+            )
+        )
+    }
+}
+
+private fun AiConnection.preserveCompatibleApiKey(existing: AiConnection?): AiConnection =
+    when (this) {
+        is AiConnection.OpenAiApi -> copy(
+            apiKey = apiKey ?: (existing as? AiConnection.OpenAiApi)?.apiKey
+        )
+        is AiConnection.OpenAiCompatible -> copy(
+            apiKey = apiKey ?: (existing as? AiConnection.OpenAiCompatible)?.apiKey
+        )
+        is AiConnection.AnthropicApi -> copy(
+            apiKey = apiKey ?: (existing as? AiConnection.AnthropicApi)?.apiKey
+        )
+        is AiConnection.GeminiApi -> copy(
+            apiKey = apiKey ?: (existing as? AiConnection.GeminiApi)?.apiKey
+        )
+        else -> this
+    }
 
 private fun AiConnection.preserveSecretFrom(
     existing: AiConnection?,

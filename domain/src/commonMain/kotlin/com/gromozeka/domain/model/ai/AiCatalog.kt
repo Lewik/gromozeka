@@ -30,13 +30,6 @@ data class AiCatalog(
         require(runtimeAssignments.map { it.purpose }.distinct().size == runtimeAssignments.size) {
             "AI runtime assignment purposes must be unique"
         }
-        require(!webTools.braveSearch.enabled || webTools.braveSearch.apiKey != null) {
-            "Brave Search requires an API key when enabled"
-        }
-        require(!webTools.jinaReader.enabled || webTools.jinaReader.apiKey != null) {
-            "Jina Reader requires an API key when enabled"
-        }
-
         val assignedPurposes = runtimeAssignments.map { it.purpose }
         val requiredPurposes = AiRuntimeAssignment.Purpose.entries.filter { it.requiresExplicitAssignment }
         require(assignedPurposes.containsAll(requiredPurposes)) {
@@ -138,9 +131,13 @@ data class AiCatalogSnapshot(
     val catalog: AiCatalog,
     val revision: Long,
     val runtimeEnabledConnectionIds: Set<AiConnection.Id> = emptySet(),
+    val secretStates: List<AiCatalogSecretState> = catalog.secretStates(),
 ) {
     init {
         require(revision >= 0) { "AI catalog revision must not be negative" }
+        require(secretStates.map(AiCatalogSecretState::slot).distinct().size == secretStates.size) {
+            "AI catalog secret states must be unique by slot"
+        }
     }
 
     fun supportsPurpose(

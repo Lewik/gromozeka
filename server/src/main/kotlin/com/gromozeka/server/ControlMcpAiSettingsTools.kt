@@ -48,6 +48,7 @@ internal class ControlMcpAiSettingsTools(
                     AI catalog mutations require the latest expectedRevision. Read grz_ai_catalog_get again after a revision conflict.
                     Web tool configuration is part of the central AI catalog and is shared by all Workers.
                     External MCP servers are assigned to one exact Worker. Create, update, refresh, and delete are explicit operations against its current live Worker session and are never retried automatically after execution starts.
+                    External MCP environment and HTTP header values are never returned. Read configuredTransportValues for their names; update sends only add/replace values plus explicit removal lists.
                     MCP tools/list_changed notifications only set refreshAvailable; call grz_mcp_server_refresh explicitly to accept a changed tool snapshot.
                     Inline secrets are returned as null with configuredInlineSecretPaths. Keep them null and use the mutation's preserve-existing-secret option to retain their values.
                     Destructive operations never guess replacements and return dependency errors when an entity is still referenced.

@@ -3,6 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.mcp.McpServer
 import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.model.mcp.McpServerTransport
+import com.gromozeka.domain.model.mcp.McpTransportValueRemovals
 import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
@@ -36,12 +38,22 @@ class McpServerManagementService(
     suspend fun update(
         config: McpServerConfig,
         expectedRevision: Long,
-    ): McpServer =
-        apply(
+        transportValueRemovals: McpTransportValueRemovals = McpTransportValueRemovals(),
+    ): McpServer {
+        val current = repository.find(config.id)
+            ?: error("MCP server not found: ${config.id.value}")
+        require(current.revision == expectedRevision) {
+            "MCP server revision conflict: expected $expectedRevision, actual ${current.revision}"
+        }
+        return apply(
             kind = McpServerMutationKind.UPDATE,
-            config = config,
+            config = config.mergeTransportValuesFrom(
+                existing = current.config,
+                removals = transportValueRemovals,
+            ),
             expectedRevision = expectedRevision,
         )
+    }
 
     suspend fun refresh(
         serverId: McpServerId,
@@ -135,3 +147,76 @@ class McpServerManagementService(
             "Unexpected worker control status: $status"
         }
 }
+
+private fun McpServerConfig.mergeTransportValuesFrom(
+    existing: McpServerConfig,
+    removals: McpTransportValueRemovals,
+): McpServerConfig {
+    val requestedTransport = transport
+    val existingTransport = existing.transport
+    return copy(
+        transport = when {
+            requestedTransport is McpServerTransport.Stdio &&
+                existingTransport is McpServerTransport.Stdio -> {
+                require(removals.httpHeaders.isEmpty()) {
+                    "HTTP header removals require a Streamable HTTP MCP transport"
+                }
+                require(
+                    requestedTransport.environment.keys.intersect(
+                        removals.environmentVariables
+                    ).isEmpty()
+                ) {
+                    "MCP environment variables cannot be replaced and removed in the same update"
+                }
+                requestedTransport.copy(
+                    environment = (existingTransport.environment + requestedTransport.environment) -
+                        removals.environmentVariables
+                )
+            }
+            requestedTransport is McpServerTransport.StreamableHttp &&
+                existingTransport is McpServerTransport.StreamableHttp -> {
+                require(removals.environmentVariables.isEmpty()) {
+                    "Environment variable removals require a stdio MCP transport"
+                }
+                require(
+                    requestedTransport.headers.keys.none { replacement ->
+                        removals.httpHeaders.any { removal ->
+                            replacement.equals(removal, ignoreCase = true)
+                        }
+                    }
+                ) {
+                    "MCP HTTP headers cannot be replaced and removed in the same update"
+                }
+                requestedTransport.copy(
+                    headers = existingTransport.headers.mergeHttpHeaders(
+                        replacements = requestedTransport.headers,
+                        removals = removals.httpHeaders,
+                    )
+                )
+            }
+            else -> {
+                require(
+                    removals.environmentVariables.isEmpty() &&
+                        removals.httpHeaders.isEmpty()
+                ) {
+                    "Transport value removals cannot be applied while changing MCP transport type"
+                }
+                requestedTransport
+            }
+        }
+    )
+}
+
+private fun Map<String, String>.mergeHttpHeaders(
+    replacements: Map<String, String>,
+    removals: Set<String>,
+): Map<String, String> =
+    toMutableMap().apply {
+        replacements.forEach { (name, value) ->
+            keys.firstOrNull { it.equals(name, ignoreCase = true) }?.let(::remove)
+            put(name, value)
+        }
+        removals.forEach { name ->
+            keys.filter { it.equals(name, ignoreCase = true) }.forEach(::remove)
+        }
+    }
