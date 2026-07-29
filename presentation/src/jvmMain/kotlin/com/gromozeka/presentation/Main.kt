@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -17,8 +18,11 @@ import com.gromozeka.client.saveRemoteUrl
 import com.gromozeka.presentation.ui.ChatWindow
 import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.RemoteServerSetupScreen
+import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import com.gromozeka.remote.protocol.AuthenticationStatusResponse
 
 fun main() {
     val log = KLoggers.logger("ChatApplication")
@@ -42,15 +46,30 @@ fun main() {
         var initializationError by remember {
             mutableStateOf(initialResolution.exceptionOrNull()?.message)
         }
+        var authenticationError by remember { mutableStateOf<String?>(null) }
+        var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
+        var authenticationConnection by remember { mutableStateOf<RemoteAuthenticationConnection?>(null) }
         var remoteApp by remember { mutableStateOf<RemoteStartedApp?>(null) }
+        val scope = rememberCoroutineScope()
 
         LaunchedEffect(remoteUrl, connectionAttempt) {
             val targetUrl = remoteUrl ?: return@LaunchedEffect
             connecting = true
             initializationError = null
+            authenticationError = null
+            authenticationStatus = null
+            remoteApp?.close()
+            remoteApp = null
+            authenticationConnection?.close()
             try {
-                log.info("Initializing remote UI client: $targetUrl")
-                remoteApp = startRemotePresentation(targetUrl, settingsStore)
+                val connection = RemoteAuthenticationConnection(targetUrl, "Desktop client")
+                authenticationConnection = connection
+                val status = connection.status()
+                authenticationStatus = status
+                if (status.authenticatedUser != null) {
+                    log.info("Initializing authenticated remote UI client: $targetUrl")
+                    remoteApp = startRemotePresentation(targetUrl, settingsStore, connection.httpClient)
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
@@ -63,6 +82,7 @@ fun main() {
         DisposableEffect(Unit) {
             onDispose {
                 remoteApp?.close()
+                authenticationConnection?.close()
             }
         }
 
@@ -84,15 +104,45 @@ fun main() {
                 state = rememberWindowState(size = DpSize(640.dp, 480.dp)),
             ) {
                 GromozekaTheme {
-                    RemoteServerSetupScreen(
-                        initialAddress = remoteUrl.orEmpty(),
-                        connecting = connecting,
-                        connectionError = initializationError,
-                        onConnect = { address ->
-                            remoteUrl = settingsStore.saveRemoteUrl(address)
-                            connectionAttempt += 1
-                        },
-                    )
+                    val status = authenticationStatus
+                    if (remoteUrl != null && initializationError == null && status != null) {
+                        RemoteAuthenticationScreen(
+                            initialized = status.initialized,
+                            submitting = connecting,
+                            error = authenticationError,
+                            onSubmit = { input ->
+                                val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
+                                scope.launch {
+                                    connecting = true
+                                    authenticationError = null
+                                    try {
+                                        connection.authenticate(status.initialized, input)
+                                        authenticationStatus = connection.status()
+                                        remoteApp = startRemotePresentation(
+                                            requireNotNull(remoteUrl),
+                                            settingsStore,
+                                            connection.httpClient,
+                                        )
+                                    } catch (error: CancellationException) {
+                                        throw error
+                                    } catch (error: Throwable) {
+                                        authenticationError = error.message ?: error.toString()
+                                    }
+                                    connecting = false
+                                }
+                            },
+                        )
+                    } else {
+                        RemoteServerSetupScreen(
+                            initialAddress = remoteUrl.orEmpty(),
+                            connecting = connecting,
+                            connectionError = initializationError,
+                            onConnect = { address ->
+                                remoteUrl = settingsStore.saveRemoteUrl(address)
+                                connectionAttempt += 1
+                            },
+                        )
+                    }
                 }
             }
         }

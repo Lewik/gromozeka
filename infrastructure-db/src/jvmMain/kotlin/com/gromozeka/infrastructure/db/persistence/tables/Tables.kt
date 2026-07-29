@@ -16,6 +16,38 @@ internal object Projects : Table("projects") {
     override val primaryKey = PrimaryKey(id)
 }
 
+internal object Users : Table("users") {
+    val id = varchar("id", 255)
+    val username = varchar("username", 128).uniqueIndex()
+    val displayName = varchar("display_name", 255)
+    val status = varchar("status", 32)
+    val createdAt = timestamp("created_at")
+    val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object LocalPasswordCredentials : Table("local_password_credentials") {
+    val userId = varchar("user_id", 255).references(Users.id, onDelete = ReferenceOption.CASCADE)
+    val passwordHash = text("password_hash")
+    val passwordChangedAt = timestamp("password_changed_at")
+
+    override val primaryKey = PrimaryKey(userId)
+}
+
+internal object UserSessions : Table("user_sessions") {
+    val id = varchar("id", 255)
+    val userId = varchar("user_id", 255).references(Users.id, onDelete = ReferenceOption.CASCADE)
+    val tokenHash = varchar("token_hash", 64).uniqueIndex()
+    val createdAt = timestamp("created_at")
+    val lastSeenAt = timestamp("last_seen_at")
+    val expiresAt = timestamp("expires_at")
+    val revokedAt = timestamp("revoked_at").nullable()
+    val clientLabel = varchar("client_label", 255).nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
 internal object Workspaces : Table("workspaces") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)

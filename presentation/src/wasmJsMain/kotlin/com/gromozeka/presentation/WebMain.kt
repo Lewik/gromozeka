@@ -26,8 +26,11 @@ import com.gromozeka.presentation.services.BrowserUIStateStore
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
+import com.gromozeka.remote.protocol.AuthenticationStatusResponse
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.launch
 import org.w3c.dom.events.Event
 
 private data class WebLayoutHints(
@@ -51,21 +54,32 @@ private fun GromozekaWebApp() {
     var remoteApp by remember { mutableStateOf<RemoteAppComponents?>(null) }
     val currentRemoteApp by rememberUpdatedState(remoteApp)
     var startupError by remember { mutableStateOf<String?>(null) }
+    var authenticationError by remember { mutableStateOf<String?>(null) }
+    var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
+    var authenticating by remember { mutableStateOf(false) }
+    val remoteUrl = remember { resolveRemoteUrl() }
+    val authenticationConnection = remember {
+        RemoteAuthenticationConnection(remoteUrl, "Web client")
+    }
 
     LaunchedEffect(Unit) {
         runCatching {
-            createRemoteAppComponents(
-                remoteUrl = resolveRemoteUrl(),
-                scope = scope,
-                clientHomeDirectory = "browser",
-                clientPlatform = layoutHints.clientPlatform,
-                uiStateStore = BrowserUIStateStore(),
-                remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
-                audioRecorder = BrowserClientAudioRecorder(),
-                audioPlayer = BrowserClientAudioPlayer(),
-            )
-        }.onSuccess { app ->
-            remoteApp = app
+            authenticationConnection.status()
+        }.onSuccess { status ->
+            authenticationStatus = status
+            if (status.authenticatedUser != null) {
+                remoteApp = createRemoteAppComponents(
+                    remoteUrl = remoteUrl,
+                    scope = scope,
+                    clientHomeDirectory = "browser",
+                    clientPlatform = layoutHints.clientPlatform,
+                    uiStateStore = BrowserUIStateStore(),
+                    remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
+                    audioRecorder = BrowserClientAudioRecorder(),
+                    audioPlayer = BrowserClientAudioPlayer(),
+                    httpClient = authenticationConnection.httpClient,
+                )
+            }
         }.onFailure { error ->
             startupError = error.message ?: error.toString()
         }
@@ -74,6 +88,7 @@ private fun GromozekaWebApp() {
     DisposableEffect(Unit) {
         onDispose {
             currentRemoteApp?.close()
+            authenticationConnection.close()
         }
     }
 
@@ -105,6 +120,38 @@ private fun GromozekaWebApp() {
             forceCompactLayout = layoutHints.forceCompactLayout,
             clientPlatform = layoutHints.clientPlatform,
         )
+        authenticationStatus != null -> GromozekaTheme {
+            val status = requireNotNull(authenticationStatus)
+            RemoteAuthenticationScreen(
+                initialized = status.initialized,
+                submitting = authenticating,
+                error = authenticationError,
+                onSubmit = { input ->
+                    scope.launch {
+                        authenticating = true
+                        authenticationError = null
+                        try {
+                            authenticationConnection.authenticate(status.initialized, input)
+                            authenticationStatus = authenticationConnection.status()
+                            remoteApp = createRemoteAppComponents(
+                                remoteUrl = remoteUrl,
+                                scope = scope,
+                                clientHomeDirectory = "browser",
+                                clientPlatform = layoutHints.clientPlatform,
+                                uiStateStore = BrowserUIStateStore(),
+                                remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
+                                audioRecorder = BrowserClientAudioRecorder(),
+                                audioPlayer = BrowserClientAudioPlayer(),
+                                httpClient = authenticationConnection.httpClient,
+                            )
+                        } catch (error: Throwable) {
+                            authenticationError = error.message ?: error.toString()
+                        }
+                        authenticating = false
+                    }
+                },
+            )
+        }
         startupError != null -> GromozekaTheme {
             StartupError(startupError!!)
         }

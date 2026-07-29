@@ -44,6 +44,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.mcp.kotlin.sdk)
     implementation(libs.klog)
+    implementation(libs.spring.security.crypto)
+    implementation(libs.bouncycastle.provider)
 
     testImplementation(project(":remote-client"))
     testImplementation(libs.spring.boot.starter.test)

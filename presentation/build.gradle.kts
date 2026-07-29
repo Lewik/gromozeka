@@ -52,6 +52,7 @@ kotlin {
                 implementation(project(":device-telemetry"))
                 implementation(project(":domain"))
                 implementation(project(":remote-client"))
+                implementation(libs.ktor.client.core)
                 implementation(project(":shared"))
 
                 implementation(compose.runtime)

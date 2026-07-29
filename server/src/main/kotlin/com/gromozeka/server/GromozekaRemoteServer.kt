@@ -22,11 +22,14 @@ import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.domain.service.WorkerCatalogService
+import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.infrastructure.ai.openai.SttService
 import com.gromozeka.infrastructure.ai.openai.TtsService
 import com.gromozeka.remote.protocol.*
 import io.ktor.server.websocket.DefaultWebSocketServerSession
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
+import io.ktor.websocket.close
 import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
 import io.ktor.websocket.send
@@ -35,6 +38,8 @@ import com.gromozeka.shared.uuid.uuid7
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -68,6 +73,7 @@ class GromozekaRemoteServer(
     private val memoryStore: MemoryStore,
     private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
     private val clientPresentationRegistry: ClientPresentationRegistry,
+    private val authenticationService: AuthenticationService,
 ) {
     private val log = KLoggers.logger(this)
     private val memoryActionItemRevisionJson = Json {
@@ -75,14 +81,34 @@ class GromozekaRemoteServer(
         classDiscriminator = "memoryType"
     }
 
-    suspend fun handle(session: DefaultWebSocketServerSession) {
+    internal suspend fun handle(
+        session: DefaultWebSocketServerSession,
+        authenticatedSession: AuthenticatedRemoteSession,
+    ) {
         val connectionId = uuid7()
         val sender = RemoteSessionSender(session)
         val conversationSubscriptions = mutableMapOf<String, Job>()
         val conversationTabLayoutSubscriptions = mutableMapOf<String, Job>()
         coroutineScope {
+            val authenticationMonitor = launch {
+                while (isActive) {
+                    delay(AUTHENTICATION_RECHECK_INTERVAL_MILLIS)
+                    if (authenticationService.authenticate(authenticatedSession.token) == null) {
+                        session.close(
+                            CloseReason(
+                                CloseReason.Codes.VIOLATED_POLICY,
+                                "Authentication session is no longer active",
+                            )
+                        )
+                        break
+                    }
+                }
+            }
             try {
                 for (frame in session.incoming) {
+                    check(authenticationService.authenticate(authenticatedSession.token) != null) {
+                        "Authentication session is no longer active"
+                    }
                     val decoded = when (frame) {
                         is Frame.Binary -> RemoteProtocolEncoding.CBOR to RemoteProtocolCodec.decodeClientBinary(frame.readBytes())
                         is Frame.Text -> RemoteProtocolEncoding.JSON to RemoteProtocolCodec.decodeClientText(frame.readText())
@@ -144,6 +170,7 @@ class GromozekaRemoteServer(
                 log.error(error) { "Remote WebSocket session failed: ${error.message}" }
                 throw error
             } finally {
+                authenticationMonitor.cancel()
                 conversationSubscriptions.values.forEach { it.cancel() }
                 conversationSubscriptions.clear()
                 conversationTabLayoutSubscriptions.values.forEach { it.cancel() }
@@ -632,6 +659,7 @@ class GromozekaRemoteServer(
     }
 
     private companion object {
+        const val AUTHENTICATION_RECHECK_INTERVAL_MILLIS = 30_000L
         val closedMemoryActionItemStatuses = setOf(MemoryActionItem.Status.DONE, MemoryActionItem.Status.CANCELLED)
         const val OPENAI_TTS_PCM_SAMPLE_RATE = 24_000
         const val OPENAI_TTS_PCM_CHANNELS = 1

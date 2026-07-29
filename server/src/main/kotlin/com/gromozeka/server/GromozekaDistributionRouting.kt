@@ -18,11 +18,13 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import com.gromozeka.remote.protocol.WorkerEnrollmentConsumeRequest
+import com.gromozeka.domain.service.AuthenticationService
 
 private const val DEFAULT_RELEASE_REPOSITORY = "Lewik/gromozeka"
 
 internal fun Routing.gromozekaDistributions(
     workerEnrollmentService: WorkerEnrollmentService,
+    authenticationService: AuthenticationService,
     serverVersion: String = currentServerVersion(),
     releaseRepository: String = configuredReleaseRepository(),
     configuredDownloadBaseUrl: String? = configuredDistributionBaseUrl(),
@@ -47,8 +49,16 @@ internal fun Routing.gromozekaDistributions(
         call.respondText(manifestJson, ContentType.Application.Json)
     }
     post("/api/worker-enrollments") {
+        if (call.authenticateOrNull(authenticationService) == null) {
+            call.respondText(
+                """{"error":"Authentication required"}""",
+                ContentType.Application.Json,
+                HttpStatusCode.Unauthorized,
+            )
+            return@post
+        }
         call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-        if (!call.isSecureEnrollmentTransport()) {
+        if (!call.isSecureTransport()) {
             call.respondText(
                 """{"error":"Worker enrollment requires HTTPS"}""",
                 ContentType.Application.Json,
@@ -74,7 +84,7 @@ internal fun Routing.gromozekaDistributions(
     }
     post("/api/worker-enrollments/consume") {
         call.response.headers.append(HttpHeaders.CacheControl, "no-store")
-        if (!call.isSecureEnrollmentTransport()) {
+        if (!call.isSecureTransport()) {
             call.respondText(
                 """{"error":"Worker enrollment requires HTTPS"}""",
                 ContentType.Application.Json,
@@ -157,19 +167,12 @@ private fun configuredDistributionBaseUrl(): String? =
     System.getProperty("gromozeka.distribution.base-url")
         ?: System.getenv("GROMOZEKA_DISTRIBUTION_BASE_URL")
 
-private fun io.ktor.server.application.ApplicationCall.isSecureEnrollmentTransport(): Boolean {
-    val connection = request.local
-    return connection.scheme.equals("https", ignoreCase = true) ||
-        connection.remoteAddress in loopbackAddresses
-}
-
 @Serializable
 private data class EnrollmentError(val error: String)
 
 private val releaseVersion = Regex("""\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?""")
 private const val MAX_ENROLLMENT_REQUEST_BYTES = 8 * 1024
 private const val DEVELOPMENT_SERVER_VERSION = "0.0.0-dev"
-private val loopbackAddresses = setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")
 
 internal fun distributionArtifacts(releaseDownloadBaseUrl: String) = listOf(
     DistributionArtifact(

@@ -30,8 +30,11 @@ import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.RemoteServerSetupScreen
+import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
+import com.gromozeka.remote.protocol.AuthenticationStatusResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
 import platform.UIKit.UIViewController
@@ -62,23 +65,38 @@ private fun GromozekaIosApp() {
     var startupError by remember {
         mutableStateOf(initialResolution.exceptionOrNull()?.message)
     }
+    var authenticationError by remember { mutableStateOf<String?>(null) }
+    var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
+    var authenticationConnection by remember { mutableStateOf<RemoteAuthenticationConnection?>(null) }
 
     LaunchedEffect(remoteUrl, connectionAttempt) {
         val targetUrl = remoteUrl ?: return@LaunchedEffect
         connecting = true
         startupError = null
+        authenticationError = null
+        authenticationStatus = null
+        remoteApp?.close()
+        remoteApp = null
+        authenticationConnection?.close()
         try {
-            remoteApp = createRemoteAppComponents(
-                remoteUrl = targetUrl,
-                scope = scope,
-                clientHomeDirectory = "ios",
-                clientPlatform = ClientPlatform.IOS,
-                uiStateStore = InMemoryUIStateStore(),
-                remoteClientSettingsStore = settingsStore,
-                audioRecorder = IosClientAudioRecorder(),
-                audioPlayer = IosClientAudioPlayer(),
-                deviceLocationService = NoOpDeviceLocationService,
-            )
+            val connection = RemoteAuthenticationConnection(targetUrl, "iOS client")
+            authenticationConnection = connection
+            val status = connection.status()
+            authenticationStatus = status
+            if (status.authenticatedUser != null) {
+                remoteApp = createRemoteAppComponents(
+                    remoteUrl = targetUrl,
+                    scope = scope,
+                    clientHomeDirectory = "ios",
+                    clientPlatform = ClientPlatform.IOS,
+                    uiStateStore = InMemoryUIStateStore(),
+                    remoteClientSettingsStore = settingsStore,
+                    audioRecorder = IosClientAudioRecorder(),
+                    audioPlayer = IosClientAudioPlayer(),
+                    deviceLocationService = NoOpDeviceLocationService,
+                    httpClient = connection.httpClient,
+                )
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -95,6 +113,7 @@ private fun GromozekaIosApp() {
     DisposableEffect(Unit) {
         onDispose {
             currentRemoteApp?.close()
+            authenticationConnection?.close()
         }
     }
 
@@ -107,6 +126,39 @@ private fun GromozekaIosApp() {
                 forceCompactLayout = true,
                 clientPlatform = ClientPlatform.IOS,
             )
+
+            remoteUrl != null && startupError == null && authenticationStatus != null ->
+                RemoteAuthenticationScreen(
+                    initialized = requireNotNull(authenticationStatus).initialized,
+                    submitting = connecting,
+                    error = authenticationError,
+                    onSubmit = { input ->
+                        val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
+                        scope.launch {
+                            connecting = true
+                            authenticationError = null
+                            try {
+                                connection.authenticate(requireNotNull(authenticationStatus).initialized, input)
+                                authenticationStatus = connection.status()
+                                remoteApp = createRemoteAppComponents(
+                                    remoteUrl = requireNotNull(remoteUrl),
+                                    scope = scope,
+                                    clientHomeDirectory = "ios",
+                                    clientPlatform = ClientPlatform.IOS,
+                                    uiStateStore = InMemoryUIStateStore(),
+                                    remoteClientSettingsStore = settingsStore,
+                                    audioRecorder = IosClientAudioRecorder(),
+                                    audioPlayer = IosClientAudioPlayer(),
+                                    deviceLocationService = NoOpDeviceLocationService,
+                                    httpClient = connection.httpClient,
+                                )
+                            } catch (error: Throwable) {
+                                authenticationError = error.message ?: error.toString()
+                            }
+                            connecting = false
+                        }
+                    },
+                )
 
             remoteUrl == null || startupError != null -> RemoteServerSetupScreen(
                 initialAddress = remoteUrl.orEmpty(),

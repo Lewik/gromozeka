@@ -14,10 +14,12 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import io.ktor.client.HttpClient
 
 internal suspend fun startRemotePresentation(
     remoteUrl: String,
     remoteClientSettingsStore: DesktopRemoteClientSettingsStore,
+    httpClient: HttpClient? = null,
 ): RemoteStartedApp {
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     val clientHomeDirectory = System.getProperty("GROMOZEKA_CLIENT_HOME")
@@ -33,6 +35,7 @@ internal suspend fun startRemotePresentation(
             audioPlayer = DesktopClientAudioPlayer(),
             systemAudioMuteService = DesktopSystemAudioMuteService(),
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
+            httpClient = httpClient,
         )
     } catch (error: Throwable) {
         scope.cancel()

@@ -68,6 +68,22 @@ heartbeat. `grz_get_worker_environment` recollects the complete profile and
 volatile capacity, process, executable, and project-mount data on the selected
 Worker when current facts are needed.
 
+## Identity And Authentication
+
+The Server owns user identity. Local username/password credentials are the
+initial login method; future OAuth or OIDC identities must attach to the same
+stable User instead of creating a parallel account model.
+
+Public registration is closed. An empty Server prints a one-time first-owner
+bootstrap token to its log. Clients use that token once to create the first
+User, after which ordinary login issues an opaque, revocable Server session.
+Only a hash of each session token is persisted. Local passwords are stored as
+Argon2id hashes, and repeated failed logins are rate-limited.
+
+Browser clients use an HttpOnly, SameSite session cookie. Secure cookies are
+enabled by default when the Server listens on a non-loopback address and can be
+overridden explicitly with `GROMOZEKA_AUTH_SECURE_COOKIE=true|false`.
+
 ## Development Model
 
 Typed domain contracts and KDoc are the primary coordination mechanism. Read

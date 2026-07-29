@@ -4,13 +4,21 @@ import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import com.gromozeka.domain.tool.Tool
+import com.gromozeka.domain.service.AuthenticationService
+import com.gromozeka.domain.service.FirstUserBootstrapToken
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.install
+import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.conditionalheaders.ConditionalHeaders
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.routing
+import io.ktor.server.routing.route
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
+import io.ktor.util.AttributeKey
 import io.modelcontextprotocol.kotlin.sdk.server.mcpStreamableHttp
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
@@ -56,7 +64,11 @@ fun main() {
     val controlMcpServerFactory = context.getBean(GromozekaControlMcpServerFactory::class.java)
     val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
     val workerEnrollmentService = context.getBean(WorkerEnrollmentService::class.java)
+    val authenticationService = context.getBean(AuthenticationService::class.java)
+    val bootstrapToken = context.getBean(FirstUserBootstrapToken::class.java)
+    val authenticationAttemptLimiter = context.getBean(AuthenticationAttemptLimiter::class.java)
     val webRoot = resolveWebRoot()
+    val secureCookie = resolveSecureCookie(host)
     val mcpHttpSecurity = resolveMcpHttpSecurityConfiguration(
         System.getProperty("gromozeka.mcp.allowed-hosts")
             ?: System.getenv("GROMOZEKA_MCP_ALLOWED_HOSTS"),
@@ -65,6 +77,21 @@ fun main() {
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
     val ktorServer = embeddedServer(CIO, port = port, host = host) {
+        val websocketAuthentication = createRouteScopedPlugin("GromozekaWebSocketAuthentication") {
+            onCall { call ->
+                val authenticatedSession = try {
+                    call.requireAuthenticated(authenticationService)
+                } catch (_: MissingAuthenticationException) {
+                    call.respondText(
+                        """{"message":"Authentication required"}""",
+                        ContentType.Application.Json,
+                        HttpStatusCode.Unauthorized,
+                    )
+                    return@onCall
+                }
+                call.attributes.put(authenticatedRemoteSessionKey, authenticatedSession)
+            }
+        }
         mcpStreamableHttp(
             path = "/mcp",
             allowedHosts = mcpHttpSecurity.allowedHosts,
@@ -80,16 +107,28 @@ fun main() {
             controlMcpServerFactory.create()
         }
         install(WebSockets) {
-            maxFrameSize = Long.MAX_VALUE
+            maxFrameSize = MAX_WEBSOCKET_FRAME_BYTES
             masking = false
         }
         install(ConditionalHeaders)
         routing {
-            webSocket("/ws") {
-                remoteServer.handle(this)
+            gromozekaAuthentication(
+                authenticationService = authenticationService,
+                bootstrapToken = bootstrapToken,
+                attemptLimiter = authenticationAttemptLimiter,
+                secureCookie = secureCookie,
+            )
+            route("/ws") {
+                install(websocketAuthentication)
+                webSocket {
+                    remoteServer.handle(
+                        this,
+                        call.attributes[authenticatedRemoteSessionKey],
+                    )
+                }
             }
-            gromozekaMemoryHttp(memoryToolApplicationService)
-            gromozekaDistributions(workerEnrollmentService)
+            gromozekaMemoryHttp(memoryToolApplicationService, authenticationService)
+            gromozekaDistributions(workerEnrollmentService, authenticationService)
             gromozekaWeb(webRoot)
         }
     }.start(wait = false)
@@ -102,6 +141,13 @@ fun main() {
     println("==== Gromozeka MCP Streamable HTTP: http://$host:$port/mcp ====")
     println("==== Gromozeka Control MCP Streamable HTTP: http://$host:$port/mcp/control ====")
     println("==== Gromozeka memory HTTP: http://$host:$port/memory/status ====")
+    runBlocking {
+        if (authenticationService.hasUsers()) {
+            bootstrapToken.disable()
+        } else {
+            println("==== First-user bootstrap token: ${bootstrapToken.currentToken()} ====")
+        }
+    }
     Thread.currentThread().join()
 }
 
@@ -146,6 +192,19 @@ private fun resolveSpringProfile(): String =
         null, "prod", "production" -> "prod"
         else -> error("Unsupported GROMOZEKA_MODE=${System.getProperty("GROMOZEKA_MODE")}")
     }
+
+private fun resolveSecureCookie(host: String): Boolean {
+    val configured = System.getProperty("gromozeka.auth.secure-cookie")
+        ?: System.getenv("GROMOZEKA_AUTH_SECURE_COOKIE")
+    if (configured != null) {
+        return configured.toBooleanStrictOrNull()
+            ?: error("GROMOZEKA_AUTH_SECURE_COOKIE must be true or false")
+    }
+    return !host.isLoopbackBinding()
+}
+
+private fun String.isLoopbackBinding(): Boolean =
+    this == "127.0.0.1" || this == "::1" || equals("localhost", ignoreCase = true)
 
 private fun determineLogPath(mode: String?): String {
     val customHome = System.getProperty("GROMOZEKA_HOME")
@@ -202,3 +261,7 @@ class GromozekaServerApplication(
         System.setProperty("GROMOZEKA_HOME", settingsService.gromozekaHome.absolutePath)
     }
 }
+
+private const val MAX_WEBSOCKET_FRAME_BYTES = 16L * 1024 * 1024
+private val authenticatedRemoteSessionKey =
+    AttributeKey<AuthenticatedRemoteSession>("gromozeka-authenticated-remote-session")

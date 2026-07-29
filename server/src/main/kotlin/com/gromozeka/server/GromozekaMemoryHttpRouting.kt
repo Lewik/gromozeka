@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.MemoryToolApplicationService
+import com.gromozeka.domain.service.AuthenticationService
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
@@ -17,8 +18,19 @@ private val memoryHttpJson = Json {
     encodeDefaults = true
 }
 
-fun Routing.gromozekaMemoryHttp(memoryToolApplicationService: MemoryToolApplicationService) {
+fun Routing.gromozekaMemoryHttp(
+    memoryToolApplicationService: MemoryToolApplicationService,
+    authenticationService: AuthenticationService,
+) {
     get("/memory/status") {
+        if (call.authenticateOrNull(authenticationService) == null) {
+            call.respondText(
+                """{"success":false,"error":"Authentication required"}""",
+                ContentType.Application.Json,
+                HttpStatusCode.Unauthorized,
+            )
+            return@get
+        }
         val runId = call.request.queryParameters["run_id"]?.trim()?.takeIf { it.isNotEmpty() }
         val includeChildren = call.request.queryParameters["include_children"]?.toBooleanStrictOrNull() ?: true
         val maxDepth = call.request.queryParameters["max_depth"]?.toIntOrNull() ?: 4

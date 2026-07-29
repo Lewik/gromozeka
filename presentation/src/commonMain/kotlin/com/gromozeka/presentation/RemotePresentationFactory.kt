@@ -35,6 +35,7 @@ import com.gromozeka.presentation.ui.viewmodel.LoadingViewModel
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.RemoteClientPlatform
 import com.gromozeka.domain.service.SettingsService
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 
 suspend fun createRemoteAppComponents(
@@ -51,6 +52,7 @@ suspend fun createRemoteAppComponents(
         NoOpClientSideSpeechToTextService
     },
     deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
+    httpClient: HttpClient? = null,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
         url = remoteUrl,
@@ -58,6 +60,7 @@ suspend fun createRemoteAppComponents(
         clientHomeDirectory = clientHomeDirectory,
         clientPlatform = clientPlatform.toRemoteClientPlatform(),
         clientSettingsStore = remoteClientSettingsStore,
+        httpClient = httpClient,
     )
 
     try {
