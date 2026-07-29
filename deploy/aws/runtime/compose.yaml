@@ -60,7 +60,7 @@ services:
     image: ${GROMOZEKA_SERVER_IMAGE:?GROMOZEKA_SERVER_IMAGE is required}
     restart: unless-stopped
     init: true
-    mem_limit: 768m
+    mem_limit: 2176m
     security_opt:
       - no-new-privileges:true
     environment:
