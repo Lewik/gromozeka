@@ -47,6 +47,7 @@ data class UserSession(
     val isRevoked: Boolean
         get() = revokedAt != null
 
+    @Serializable
     @JvmInline
     value class Id(val value: String) {
         init {
@@ -65,4 +66,44 @@ data class IssuedUserSession(
     val sessionId: UserSession.Id,
     val token: String,
     val expiresAt: Instant,
+)
+
+data class PersonalAccessToken(
+    val id: Id,
+    val userId: User.Id,
+    val name: String,
+    val tokenHash: String,
+    val tokenPrefix: String,
+    val scopes: Set<Scope>,
+    val createdAt: Instant,
+    val expiresAt: Instant?,
+    val lastUsedAt: Instant?,
+    val revokedAt: Instant?,
+) {
+    val isRevoked: Boolean
+        get() = revokedAt != null
+
+    @Serializable
+    @JvmInline
+    value class Id(val value: String) {
+        init {
+            require(value.isNotBlank()) { "Personal access token id must not be blank" }
+        }
+    }
+
+    @Serializable
+    enum class Scope {
+        MCP_MEMORY,
+        MCP_CONTROL,
+    }
+}
+
+data class IssuedPersonalAccessToken(
+    val token: PersonalAccessToken,
+    val rawToken: String,
+)
+
+data class AuthenticatedPersonalAccessToken(
+    val user: User,
+    val token: PersonalAccessToken,
 )

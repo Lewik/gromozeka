@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.LocalPasswordCredential
+import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
@@ -131,6 +132,7 @@ private class FakeIdentityRepository : IdentityRepository {
     val users = mutableListOf<User>()
     val credentials = mutableListOf<LocalPasswordCredential>()
     val sessions = mutableListOf<UserSession>()
+    val personalAccessTokens = mutableListOf<PersonalAccessToken>()
 
     override suspend fun countUsers(): Long = users.size.toLong()
 
@@ -184,6 +186,47 @@ private class FakeIdentityRepository : IdentityRepository {
         val before = sessions.size
         sessions.removeAll { it.expiresAt < expiredBefore }
         return before - sessions.size
+    }
+
+    override suspend fun createPersonalAccessToken(token: PersonalAccessToken) {
+        personalAccessTokens += token
+    }
+
+    override suspend fun listPersonalAccessTokens(userId: User.Id): List<PersonalAccessToken> =
+        personalAccessTokens.filter { it.userId == userId }
+
+    override suspend fun countActivePersonalAccessTokens(
+        userId: User.Id,
+        now: kotlinx.datetime.Instant,
+    ): Long =
+        personalAccessTokens.count {
+            it.userId == userId &&
+                !it.isRevoked &&
+                (it.expiresAt?.let { expiresAt -> expiresAt > now } ?: true)
+        }.toLong()
+
+    override suspend fun findPersonalAccessTokenByHash(tokenHash: String): PersonalAccessToken? =
+        personalAccessTokens.singleOrNull { it.tokenHash == tokenHash }
+
+    override suspend fun touchPersonalAccessToken(
+        id: PersonalAccessToken.Id,
+        lastUsedAt: kotlinx.datetime.Instant,
+    ) {
+        val index = personalAccessTokens.indexOfFirst { it.id == id }
+        personalAccessTokens[index] = personalAccessTokens[index].copy(lastUsedAt = lastUsedAt)
+    }
+
+    override suspend fun revokePersonalAccessToken(
+        userId: User.Id,
+        id: PersonalAccessToken.Id,
+        revokedAt: kotlinx.datetime.Instant,
+    ): Boolean {
+        val index = personalAccessTokens.indexOfFirst {
+            it.userId == userId && it.id == id && !it.isRevoked
+        }
+        if (index < 0) return false
+        personalAccessTokens[index] = personalAccessTokens[index].copy(revokedAt = revokedAt)
+        return true
     }
 }
 

@@ -128,6 +128,7 @@ suspend fun createRemoteAppComponents(
             clientPresentationService = remoteServices.clientPresentationService,
             distributionService = remoteServices.distributionService,
             memoryActionItemService = remoteServices.memoryActionItemService,
+            personalAccessTokenService = remoteServices.personalAccessTokenService,
             liveInterpreterService = remoteServices.liveInterpreterService,
             clientSideSpeechToTextService = clientSideSpeechToTextService,
             liveAudioStreamer = RollingClientLiveAudioStreamer(audioRecorder) {

@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.MemoryAction
+import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SpeechAudioFormat
@@ -33,6 +34,7 @@ import com.gromozeka.domain.service.WorkerCatalogEntry
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlinx.datetime.Instant
 import kotlin.jvm.JvmInline
 
 @Serializable
@@ -122,6 +124,24 @@ data object GetAiCatalogRequest : ClientRequest
 data class SaveAiCatalogRequest(
     val catalog: AiCatalog,
     val expectedRevision: Long,
+) : ClientRequest
+
+@Serializable
+@SerialName("list_personal_access_tokens")
+data object ListPersonalAccessTokensRequest : ClientRequest
+
+@Serializable
+@SerialName("create_personal_access_token")
+data class CreatePersonalAccessTokenRequest(
+    val name: String,
+    val scopes: Set<PersonalAccessToken.Scope>,
+    val expiresInDays: Int?,
+) : ClientRequest
+
+@Serializable
+@SerialName("revoke_personal_access_token")
+data class RevokePersonalAccessTokenRequest(
+    val tokenId: PersonalAccessToken.Id,
 ) : ClientRequest
 
 @Serializable
@@ -648,6 +668,37 @@ data class SettingsResponse(
 @SerialName("ai_catalog")
 data class AiCatalogResponse(
     val snapshot: AiCatalogSnapshot,
+) : ServerResponse
+
+@Serializable
+data class PersonalAccessTokenView(
+    val id: PersonalAccessToken.Id,
+    val name: String,
+    val tokenPrefix: String,
+    val scopes: Set<PersonalAccessToken.Scope>,
+    val createdAt: Instant,
+    val expiresAt: Instant?,
+    val lastUsedAt: Instant?,
+    val revokedAt: Instant?,
+)
+
+@Serializable
+@SerialName("personal_access_tokens")
+data class PersonalAccessTokensResponse(
+    val tokens: List<PersonalAccessTokenView>,
+) : ServerResponse
+
+@Serializable
+@SerialName("issued_personal_access_token")
+data class IssuedPersonalAccessTokenResponse(
+    val token: PersonalAccessTokenView,
+    val rawToken: String,
+) : ServerResponse
+
+@Serializable
+@SerialName("personal_access_token_revoked")
+data class PersonalAccessTokenRevokedResponse(
+    val revoked: Boolean,
 ) : ServerResponse
 
 @Serializable

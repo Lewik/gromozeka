@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.ktor.server.conditional.headers)
     implementation(libs.ktor.server.sse)
     implementation(libs.ktor.server.websockets)
+    implementation(libs.ktor.server.status.pages)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.mcp.kotlin.sdk)
@@ -49,6 +50,7 @@ dependencies {
 
     testImplementation(project(":remote-client"))
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlinx.datetime)
     testImplementation(kotlin("test"))
 }

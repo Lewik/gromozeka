@@ -92,6 +92,8 @@ class GromozekaRemoteServices(
     val memoryActionItemService: RemoteMemoryActionItemService = RemoteMemoryActionItemService(client)
     val clientPresentationService: RemoteClientPresentationService = RemoteClientPresentationService(client)
     val distributionService: RemoteDistributionService = RemoteDistributionService(client)
+    val personalAccessTokenService: RemotePersonalAccessTokenService =
+        RemotePersonalAccessTokenService(client)
 
     suspend fun initialize() {
         remoteSettingsService.refreshFromServer()

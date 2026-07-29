@@ -6,6 +6,7 @@ import com.gromozeka.client.RemoteClientPresentationService
 import com.gromozeka.client.RemoteDistributionService
 import com.gromozeka.client.RemoteLiveInterpreterService
 import com.gromozeka.client.RemoteMemoryActionItemService
+import com.gromozeka.client.RemotePersonalAccessTokenService
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
@@ -46,6 +47,7 @@ data class AppComponents(
     val clientPresentationService: RemoteClientPresentationService,
     val distributionService: RemoteDistributionService,
     val memoryActionItemService: RemoteMemoryActionItemService,
+    val personalAccessTokenService: RemotePersonalAccessTokenService,
     val liveInterpreterService: RemoteLiveInterpreterService,
     val clientSideSpeechToTextService: ClientSideSpeechToTextService,
     val liveAudioStreamer: ClientLiveAudioStreamer,

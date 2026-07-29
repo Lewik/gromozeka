@@ -6,6 +6,7 @@ import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.FirstUserBootstrapToken
+import com.gromozeka.domain.service.PersonalAccessTokenService
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.install
@@ -67,6 +68,7 @@ fun main() {
     val authenticationService = context.getBean(AuthenticationService::class.java)
     val bootstrapToken = context.getBean(FirstUserBootstrapToken::class.java)
     val authenticationAttemptLimiter = context.getBean(AuthenticationAttemptLimiter::class.java)
+    val personalAccessTokenService = context.getBean(PersonalAccessTokenService::class.java)
     val webRoot = resolveWebRoot()
     val secureCookie = resolveSecureCookie(host)
     val mcpHttpSecurity = resolveMcpHttpSecurityConfiguration(
@@ -77,6 +79,7 @@ fun main() {
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
     val ktorServer = embeddedServer(CIO, port = port, host = host) {
+        installMcpAuthentication(authenticationService, personalAccessTokenService)
         val websocketAuthentication = createRouteScopedPlugin("GromozekaWebSocketAuthentication") {
             onCall { call ->
                 val authenticatedSession = try {

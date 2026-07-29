@@ -23,6 +23,7 @@ import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.domain.service.WorkerCatalogService
 import com.gromozeka.domain.service.AuthenticationService
+import com.gromozeka.domain.service.PersonalAccessTokenService
 import com.gromozeka.infrastructure.ai.openai.SttService
 import com.gromozeka.infrastructure.ai.openai.TtsService
 import com.gromozeka.remote.protocol.*
@@ -43,11 +44,13 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.days
 
 @Service
 class GromozekaRemoteServer(
@@ -74,6 +77,7 @@ class GromozekaRemoteServer(
     private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
     private val clientPresentationRegistry: ClientPresentationRegistry,
     private val authenticationService: AuthenticationService,
+    private val personalAccessTokenService: PersonalAccessTokenService,
 ) {
     private val log = KLoggers.logger(this)
     private val memoryActionItemRevisionJson = Json {
@@ -138,7 +142,13 @@ class GromozekaRemoteServer(
                                         ClientActivityKind.USER_INTERACTION,
                                     )
                                 }
-                                handleRequest(sender, envelope.id, payload, encoding)
+                                handleRequest(
+                                    sender = sender,
+                                    requestId = envelope.id,
+                                    request = payload,
+                                    encoding = encoding,
+                                    authenticatedSession = authenticatedSession,
+                                )
                             }
                             is ObserveConversationCommand -> {
                                 conversationSubscriptions[payload.subscriptionId]?.cancel()
@@ -185,6 +195,7 @@ class GromozekaRemoteServer(
         requestId: String,
         request: ClientRequest,
         encoding: RemoteProtocolEncoding,
+        authenticatedSession: AuthenticatedRemoteSession,
     ) {
         val response = runCatching {
             when (request) {
@@ -198,6 +209,35 @@ class GromozekaRemoteServer(
                     aiConfigurationService.replaceCatalog(
                         request.catalog,
                         request.expectedRevision,
+                    )
+                )
+                ListPersonalAccessTokensRequest -> PersonalAccessTokensResponse(
+                    personalAccessTokenService.list(authenticatedSession.principal.user.id)
+                        .map { it.toPersonalAccessTokenView() }
+                )
+                is CreatePersonalAccessTokenRequest -> {
+                    val expiresAt = request.expiresInDays?.let { lifetimeDays ->
+                        require(lifetimeDays in 1..MAX_PERSONAL_ACCESS_TOKEN_LIFETIME_DAYS) {
+                            "Personal access token lifetime must be between 1 and " +
+                                "$MAX_PERSONAL_ACCESS_TOKEN_LIFETIME_DAYS days"
+                        }
+                        Clock.System.now() + lifetimeDays.days
+                    }
+                    val issued = personalAccessTokenService.issue(
+                        userId = authenticatedSession.principal.user.id,
+                        name = request.name,
+                        scopes = request.scopes,
+                        expiresAt = expiresAt,
+                    )
+                    IssuedPersonalAccessTokenResponse(
+                        token = issued.token.toPersonalAccessTokenView(),
+                        rawToken = issued.rawToken,
+                    )
+                }
+                is RevokePersonalAccessTokenRequest -> PersonalAccessTokenRevokedResponse(
+                    personalAccessTokenService.revoke(
+                        userId = authenticatedSession.principal.user.id,
+                        tokenId = request.tokenId,
                     )
                 )
                 GetRuntimeCatalogTemplatesRequest -> RuntimeCatalogTemplatesResponse(
@@ -660,12 +700,25 @@ class GromozekaRemoteServer(
 
     private companion object {
         const val AUTHENTICATION_RECHECK_INTERVAL_MILLIS = 30_000L
+        const val MAX_PERSONAL_ACCESS_TOKEN_LIFETIME_DAYS = 3_650
         val closedMemoryActionItemStatuses = setOf(MemoryActionItem.Status.DONE, MemoryActionItem.Status.CANCELLED)
         const val OPENAI_TTS_PCM_SAMPLE_RATE = 24_000
         const val OPENAI_TTS_PCM_CHANNELS = 1
         const val OPENAI_TTS_PCM_BITS_PER_SAMPLE = 16
     }
 }
+
+private fun com.gromozeka.domain.model.PersonalAccessToken.toPersonalAccessTokenView() =
+    PersonalAccessTokenView(
+        id = id,
+        name = name,
+        tokenPrefix = tokenPrefix,
+        scopes = scopes,
+        createdAt = createdAt,
+        expiresAt = expiresAt,
+        lastUsedAt = lastUsedAt,
+        revokedAt = revokedAt,
+    )
 
 private class RemoteSessionSender(
     private val session: DefaultWebSocketServerSession,

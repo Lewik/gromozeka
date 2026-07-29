@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteClientSettings
 import com.gromozeka.client.RemoteDistributionService
+import com.gromozeka.client.RemotePersonalAccessTokenService
 import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
@@ -68,6 +69,7 @@ private enum class SettingsSection(val title: String) {
     AiRuntime("AI"),
     Behavior("Behavior"),
     Tools("Tools"),
+    Security("Security"),
     Downloads("Downloads"),
     Advanced("Advanced"),
 }
@@ -89,6 +91,7 @@ fun SettingsPanel(
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     workerCatalogService: WorkerCatalogService,
     distributionService: RemoteDistributionService,
+    personalAccessTokenService: RemotePersonalAccessTokenService,
     ollamaModelService: OllamaModelService,
     coroutineScope: CoroutineScope,
     onOpenTab: () -> Unit,
@@ -631,6 +634,16 @@ fun SettingsPanel(
                         selectedSection == SettingsSection.Downloads
                     ) {
                         DistributionSettings(distributionService)
+                    }
+
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Security
+                    ) {
+                        PersonalAccessTokenSettings(
+                            service = personalAccessTokenService,
+                            coroutineScope = coroutineScope,
+                        )
                     }
 
                     if (

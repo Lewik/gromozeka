@@ -48,6 +48,28 @@ internal object UserSessions : Table("user_sessions") {
     override val primaryKey = PrimaryKey(id)
 }
 
+internal object PersonalAccessTokens : Table("personal_access_tokens") {
+    val id = varchar("id", 255)
+    val userId = varchar("user_id", 255).references(Users.id, onDelete = ReferenceOption.CASCADE)
+    val name = varchar("name", 128)
+    val tokenHash = varchar("token_hash", 64).uniqueIndex()
+    val tokenPrefix = varchar("token_prefix", 32)
+    val createdAt = timestamp("created_at")
+    val expiresAt = timestamp("expires_at").nullable()
+    val lastUsedAt = timestamp("last_used_at").nullable()
+    val revokedAt = timestamp("revoked_at").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object PersonalAccessTokenScopes : Table("personal_access_token_scopes") {
+    val tokenId = varchar("token_id", 255)
+        .references(PersonalAccessTokens.id, onDelete = ReferenceOption.CASCADE)
+    val scope = varchar("scope", 64)
+
+    override val primaryKey = PrimaryKey(tokenId, scope)
+}
+
 internal object Workspaces : Table("workspaces") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)

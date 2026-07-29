@@ -1,10 +1,13 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.LocalPasswordCredential
+import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.infrastructure.db.persistence.tables.LocalPasswordCredentials
+import com.gromozeka.infrastructure.db.persistence.tables.PersonalAccessTokenScopes
+import com.gromozeka.infrastructure.db.persistence.tables.PersonalAccessTokens
 import com.gromozeka.infrastructure.db.persistence.tables.UserSessions
 import com.gromozeka.infrastructure.db.persistence.tables.Users
 import kotlinx.datetime.Instant
@@ -12,10 +15,14 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Service
 
@@ -136,6 +143,86 @@ class ExposedIdentityRepository : IdentityRepository {
         }
     }
 
+    override suspend fun createPersonalAccessToken(token: PersonalAccessToken): Unit = dbQuery {
+        PersonalAccessTokens.insert {
+            it[id] = token.id.value
+            it[userId] = token.userId.value
+            it[name] = token.name
+            it[tokenHash] = token.tokenHash
+            it[tokenPrefix] = token.tokenPrefix
+            it[createdAt] = token.createdAt.toKotlin()
+            it[expiresAt] = token.expiresAt?.toKotlin()
+            it[lastUsedAt] = token.lastUsedAt?.toKotlin()
+            it[revokedAt] = token.revokedAt?.toKotlin()
+        }
+        PersonalAccessTokenScopes.batchInsert(token.scopes) { scope ->
+            this[PersonalAccessTokenScopes.tokenId] = token.id.value
+            this[PersonalAccessTokenScopes.scope] = scope.name
+        }
+    }
+
+    override suspend fun listPersonalAccessTokens(userId: User.Id): List<PersonalAccessToken> = dbQuery {
+        val rows = PersonalAccessTokens.selectAll()
+            .where { PersonalAccessTokens.userId eq userId.value }
+            .orderBy(PersonalAccessTokens.createdAt)
+            .toList()
+        val scopesByToken = loadPersonalAccessTokenScopes(rows.map { it[PersonalAccessTokens.id] })
+        rows.map { it.toPersonalAccessToken(scopesByToken.getValue(it[PersonalAccessTokens.id])) }
+    }
+
+    override suspend fun countActivePersonalAccessTokens(userId: User.Id, now: Instant): Long = dbQuery {
+        PersonalAccessTokens.selectAll()
+            .where {
+                (PersonalAccessTokens.userId eq userId.value) and
+                    PersonalAccessTokens.revokedAt.isNull() and
+                    (
+                        PersonalAccessTokens.expiresAt.isNull() or
+                            (PersonalAccessTokens.expiresAt greater now.toKotlin())
+                        )
+            }
+            .count()
+    }
+
+    override suspend fun findPersonalAccessTokenByHash(tokenHash: String): PersonalAccessToken? = dbQuery {
+        val row = PersonalAccessTokens.selectAll()
+            .where { PersonalAccessTokens.tokenHash eq tokenHash }
+            .singleOrNull()
+            ?: return@dbQuery null
+        val tokenId = row[PersonalAccessTokens.id]
+        val scopes = loadPersonalAccessTokenScopes(listOf(tokenId)).getValue(tokenId)
+        row.toPersonalAccessToken(scopes)
+    }
+
+    override suspend fun touchPersonalAccessToken(
+        id: PersonalAccessToken.Id,
+        lastUsedAt: Instant,
+    ): Unit = dbQuery {
+        PersonalAccessTokens.update(
+            where = {
+                (PersonalAccessTokens.id eq id.value) and
+                    PersonalAccessTokens.revokedAt.isNull()
+            },
+        ) {
+            it[PersonalAccessTokens.lastUsedAt] = lastUsedAt.toKotlin()
+        }
+    }
+
+    override suspend fun revokePersonalAccessToken(
+        userId: User.Id,
+        id: PersonalAccessToken.Id,
+        revokedAt: Instant,
+    ): Boolean = dbQuery {
+        PersonalAccessTokens.update(
+            where = {
+                (PersonalAccessTokens.id eq id.value) and
+                    (PersonalAccessTokens.userId eq userId.value) and
+                    PersonalAccessTokens.revokedAt.isNull()
+            },
+        ) {
+            it[PersonalAccessTokens.revokedAt] = revokedAt.toKotlin()
+        } == 1
+    }
+
     private fun ResultRow.toUser(): User =
         User(
             id = User.Id(this[Users.id]),
@@ -163,5 +250,37 @@ class ExposedIdentityRepository : IdentityRepository {
             expiresAt = this[UserSessions.expiresAt].toKotlinx(),
             revokedAt = this[UserSessions.revokedAt]?.toKotlinx(),
             clientLabel = this[UserSessions.clientLabel],
+        )
+
+    private fun loadPersonalAccessTokenScopes(
+        tokenIds: List<String>,
+    ): Map<String, Set<PersonalAccessToken.Scope>> {
+        if (tokenIds.isEmpty()) return emptyMap()
+        val scopes = PersonalAccessTokenScopes.selectAll()
+            .where { PersonalAccessTokenScopes.tokenId inList tokenIds }
+            .groupBy(
+                keySelector = { it[PersonalAccessTokenScopes.tokenId] },
+                valueTransform = {
+                    PersonalAccessToken.Scope.valueOf(it[PersonalAccessTokenScopes.scope])
+                },
+            )
+            .mapValues { (_, values) -> values.toSet() }
+        return tokenIds.associateWith { scopes[it].orEmpty() }
+    }
+
+    private fun ResultRow.toPersonalAccessToken(
+        scopes: Set<PersonalAccessToken.Scope>,
+    ): PersonalAccessToken =
+        PersonalAccessToken(
+            id = PersonalAccessToken.Id(this[PersonalAccessTokens.id]),
+            userId = User.Id(this[PersonalAccessTokens.userId]),
+            name = this[PersonalAccessTokens.name],
+            tokenHash = this[PersonalAccessTokens.tokenHash],
+            tokenPrefix = this[PersonalAccessTokens.tokenPrefix],
+            scopes = scopes,
+            createdAt = this[PersonalAccessTokens.createdAt].toKotlinx(),
+            expiresAt = this[PersonalAccessTokens.expiresAt]?.toKotlinx(),
+            lastUsedAt = this[PersonalAccessTokens.lastUsedAt]?.toKotlinx(),
+            revokedAt = this[PersonalAccessTokens.revokedAt]?.toKotlinx(),
         )
 }
