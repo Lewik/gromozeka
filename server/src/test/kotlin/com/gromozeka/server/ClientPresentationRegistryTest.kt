@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
 import com.gromozeka.remote.protocol.ClientActivityKind
 import com.gromozeka.remote.protocol.ClientInstanceId
 import com.gromozeka.remote.protocol.ClientSessionId
@@ -32,13 +33,13 @@ class ClientPresentationRegistryTest {
         registry.registerClient("connection-2", "client-2", "session-2", secondClientEvents)
 
         registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
-        assertTrue(registry.present(assistantMessage("message-1", "First response")))
+        assertTrue(registry.present(USER_1, assistantMessage("message-1", "First response")))
         assertEquals("First response", assertIs<PlayMessageTtsDirective>(firstClientEvents.single()).text)
         assertTrue(secondClientEvents.isEmpty())
 
         registry.activate("connection-2", ClientActivityKind.WINDOW_FOCUSED)
         assertSame(StopTtsDirective, firstClientEvents.last())
-        assertTrue(registry.present(assistantMessage("message-2", "Second response")))
+        assertTrue(registry.present(USER_1, assistantMessage("message-2", "Second response")))
         assertEquals("Second response", assertIs<PlayMessageTtsDirective>(secondClientEvents.single()).text)
     }
 
@@ -50,8 +51,8 @@ class ClientPresentationRegistryTest {
         registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
         val message = assistantMessage("message-1", "Only once")
 
-        assertTrue(registry.present(message))
-        assertFalse(registry.present(message))
+        assertTrue(registry.present(USER_1, message))
+        assertFalse(registry.present(USER_1, message))
 
         assertEquals(1, events.filterIsInstance<PlayMessageTtsDirective>().size)
     }
@@ -65,10 +66,10 @@ class ClientPresentationRegistryTest {
         registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
         registry.disconnect("connection-1")
 
-        assertFalse(registry.present(assistantMessage("message-1", "While disconnected")))
+        assertFalse(registry.present(USER_1, assistantMessage("message-1", "While disconnected")))
 
         registry.registerClient("connection-2", "client-1", "session-1", reconnectedEvents)
-        assertTrue(registry.present(assistantMessage("message-2", "After reconnect")))
+        assertTrue(registry.present(USER_1, assistantMessage("message-2", "After reconnect")))
 
         assertEquals("After reconnect", assertIs<PlayMessageTtsDirective>(reconnectedEvents.single()).text)
     }
@@ -81,6 +82,7 @@ class ClientPresentationRegistryTest {
         val firstClientEvents = mutableListOf<ServerPayload>()
         val secondClientEvents = mutableListOf<ServerPayload>()
         registry.register(
+            userId = USER_1,
             connectionId = "connection-1",
             command = registration("client-1", "session-1"),
             encoding = RemoteProtocolEncoding.CBOR,
@@ -96,7 +98,7 @@ class ClientPresentationRegistryTest {
         registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
 
         val presentation = async {
-            registry.present(assistantMessage("message-1", "First response"))
+            registry.present(USER_1, assistantMessage("message-1", "First response"))
         }
         playStarted.await()
         val activationStarted = CompletableDeferred<Unit>()
@@ -116,13 +118,40 @@ class ClientPresentationRegistryTest {
         assertSame(StopTtsDirective, firstClientEvents[1])
     }
 
+    @Test
+    fun isolatesActivityAndPresentationBetweenUsers() = runBlocking {
+        val registry = ClientPresentationRegistry()
+        val firstUserEvents = mutableListOf<ServerPayload>()
+        val secondUserEvents = mutableListOf<ServerPayload>()
+        registry.registerClient("connection-1", "client", "session", firstUserEvents, USER_1)
+        registry.registerClient("connection-2", "client", "session", secondUserEvents, USER_2)
+
+        registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
+        registry.activate("connection-2", ClientActivityKind.USER_INTERACTION)
+
+        assertTrue(firstUserEvents.isEmpty())
+        assertTrue(secondUserEvents.isEmpty())
+        assertTrue(registry.present(USER_1, assistantMessage("shared-message", "First user response")))
+        assertTrue(registry.present(USER_2, assistantMessage("shared-message", "Second user response")))
+        assertEquals(
+            "First user response",
+            assertIs<PlayMessageTtsDirective>(firstUserEvents.single()).text,
+        )
+        assertEquals(
+            "Second user response",
+            assertIs<PlayMessageTtsDirective>(secondUserEvents.single()).text,
+        )
+    }
+
     private suspend fun ClientPresentationRegistry.registerClient(
         connectionId: String,
         clientInstanceId: String,
         clientSessionId: String,
         events: MutableList<ServerPayload>,
+        userId: User.Id = USER_1,
     ) {
         register(
+            userId = userId,
             connectionId = connectionId,
             command = registration(clientInstanceId, clientSessionId),
             encoding = RemoteProtocolEncoding.CBOR,
@@ -158,4 +187,9 @@ class ClientPresentationRegistryTest {
             ),
             createdAt = Clock.System.now(),
         )
+
+    private companion object {
+        val USER_1 = User.Id("user-1")
+        val USER_2 = User.Id("user-2")
+    }
 }

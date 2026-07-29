@@ -129,6 +129,7 @@ class GromozekaRemoteServer(
                         }
                         when (val payload = envelope.payload) {
                             is RegisterClientSessionCommand -> clientPresentationRegistry.register(
+                                userId = authenticatedSession.principal.user.id,
                                 connectionId = connectionId,
                                 command = payload,
                                 encoding = encoding,
@@ -572,7 +573,7 @@ class GromozekaRemoteServer(
                                 encoding,
                             )
                             if (liveEventsStarted) {
-                                clientPresentationRegistry.present(event.message)
+                                clientPresentationRegistry.present(user.id, event.message)
                             }
                         }
                         is ConversationRuntimeEvent.ExecutionCompleted -> sender.send(
