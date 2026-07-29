@@ -91,6 +91,7 @@ class GromozekaRemoteServices(
     val liveInterpreterService: RemoteLiveInterpreterService = RemoteLiveInterpreterService(client)
     val memoryActionItemService: RemoteMemoryActionItemService = RemoteMemoryActionItemService(client)
     val clientPresentationService: RemoteClientPresentationService = RemoteClientPresentationService(client)
+    val distributionService: RemoteDistributionService = RemoteDistributionService(client)
 
     suspend fun initialize() {
         remoteSettingsService.refreshFromServer()

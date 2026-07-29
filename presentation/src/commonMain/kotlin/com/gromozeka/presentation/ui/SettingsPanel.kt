@@ -7,18 +7,24 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteClientSettings
+import com.gromozeka.client.RemoteDistributionService
+import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
@@ -31,6 +37,12 @@ import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
+import com.gromozeka.remote.protocol.DistributionArchitecture
+import com.gromozeka.remote.protocol.DistributionArtifact
+import com.gromozeka.remote.protocol.DistributionComponent
+import com.gromozeka.remote.protocol.DistributionFormat
+import com.gromozeka.remote.protocol.DistributionManifest
+import com.gromozeka.remote.protocol.DistributionOperatingSystem
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.theming.data.Theme
@@ -53,6 +65,7 @@ private enum class SettingsSection(val title: String) {
     AiRuntime("AI"),
     Behavior("Behavior"),
     Tools("Tools"),
+    Downloads("Downloads"),
     Advanced("Advanced"),
 }
 
@@ -71,6 +84,7 @@ fun SettingsPanel(
     settingsService: SettingsService,
     aiConfigurationService: AiConfigurationService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
+    distributionService: RemoteDistributionService,
     ollamaModelService: OllamaModelService,
     coroutineScope: CoroutineScope,
     onOpenTab: () -> Unit,
@@ -564,6 +578,13 @@ fun SettingsPanel(
                     }
 
                     if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Downloads
+                    ) {
+                        DistributionSettings(distributionService)
+                    }
+
+                    if (
                         contentMode == SettingsPanelContentMode.Quick ||
                         (
                             contentMode == SettingsPanelContentMode.Full &&
@@ -1011,6 +1032,252 @@ fun SettingsPanel(
             }
             }
         }
+}
+
+@Composable
+private fun DistributionSettings(distributionService: RemoteDistributionService) {
+    var reloadKey by remember { mutableIntStateOf(0) }
+    var loadState by remember { mutableStateOf<DistributionLoadState>(DistributionLoadState.Loading) }
+
+    LaunchedEffect(reloadKey) {
+        loadState = DistributionLoadState.Loading
+        loadState = try {
+            DistributionLoadState.Ready(distributionService.getManifest())
+        } catch (error: Throwable) {
+            DistributionLoadState.Failed(error.message ?: error::class.simpleName.orEmpty())
+        }
+    }
+
+    when (val state = loadState) {
+        DistributionLoadState.Loading -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+
+        is DistributionLoadState.Failed -> {
+            SettingsGroup(title = "Downloads") {
+                Text(
+                    text = state.message.ifBlank { "Could not load distributions." },
+                    color = MaterialTheme.colorScheme.error,
+                )
+                OutlinedButton(onClick = { reloadKey++ }) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Retry")
+                }
+            }
+        }
+
+        is DistributionLoadState.Ready -> {
+            DistributionCatalog(state.manifest)
+            WorkerEnrollmentSettings(
+                availability = state.manifest.workerEnrollment.available,
+                unavailableReason = state.manifest.workerEnrollment.unavailableReason,
+                distributionService = distributionService,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DistributionCatalog(manifest: DistributionManifest) {
+    val uriHandler = LocalUriHandler.current
+
+    SettingsGroup(title = "Downloads") {
+        Text(
+            text = "Native clients and trusted standalone Workers for Server ${manifest.serverVersion}.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            text = "Downloads come directly from the matching GitHub Release.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        DistributionComponent.entries.forEach { component ->
+            Text(
+                text = component.displayName(),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            manifest.artifacts
+                .filter { it.component == component }
+                .forEach { artifact ->
+                    DistributionArtifactItem(artifact) {
+                        uriHandler.openUri(artifact.downloadUrl)
+                    }
+                }
+        }
+
+        TextButton(onClick = { uriHandler.openUri(manifest.checksumsUrl) }) {
+            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("SHA-256 checksums")
+        }
+    }
+}
+
+@Composable
+private fun DistributionArtifactItem(
+    artifact: DistributionArtifact,
+    onDownload: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "${artifact.operatingSystem.displayName()} ${artifact.architecture.displayName()}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = "${artifact.format.displayName()} · ${artifact.fileName}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FilledTonalButton(
+                onClick = onDownload,
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                Icon(Icons.Default.Download, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Download")
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkerEnrollmentSettings(
+    availability: Boolean,
+    unavailableReason: String?,
+    distributionService: RemoteDistributionService,
+) {
+    val scope = rememberCoroutineScope()
+    var enrollmentState by remember {
+        mutableStateOf<WorkerEnrollmentState>(WorkerEnrollmentState.Idle)
+    }
+
+    SettingsGroup(title = "Add a Worker") {
+        if (!availability) {
+            Text(
+                text = unavailableReason ?: "Worker enrollment is unavailable on this Server.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return@SettingsGroup
+        }
+
+        Text(
+            text = "Generate a one-time token, extract the Worker archive, then run the command for its operating system.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        Button(
+            enabled = enrollmentState !is WorkerEnrollmentState.Loading,
+            onClick = {
+                scope.launch {
+                    enrollmentState = WorkerEnrollmentState.Loading
+                    enrollmentState = try {
+                        WorkerEnrollmentState.Ready(distributionService.createWorkerEnrollment())
+                    } catch (error: Throwable) {
+                        WorkerEnrollmentState.Failed(error.message ?: error::class.simpleName.orEmpty())
+                    }
+                }
+            },
+        ) {
+            if (enrollmentState is WorkerEnrollmentState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Text("Generate enrollment token")
+            }
+        }
+
+        when (val state = enrollmentState) {
+            WorkerEnrollmentState.Idle,
+            WorkerEnrollmentState.Loading -> Unit
+
+            is WorkerEnrollmentState.Failed -> Text(
+                text = state.message.ifBlank { "Could not generate an enrollment token." },
+                color = MaterialTheme.colorScheme.error,
+            )
+
+            is WorkerEnrollmentState.Ready -> WorkerEnrollmentCommands(state.instructions)
+        }
+    }
+}
+
+@Composable
+private fun WorkerEnrollmentCommands(instructions: WorkerEnrollmentInstructions) {
+    SelectionContainer {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Text(
+                text = "macOS / Linux\n${instructions.macOsLinuxCommand}\n\n" +
+                    "Windows\n${instructions.windowsCommand}\n\n" +
+                    "Token expires at ${instructions.expiresAt}",
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+private sealed interface DistributionLoadState {
+    data object Loading : DistributionLoadState
+    data class Ready(val manifest: DistributionManifest) : DistributionLoadState
+    data class Failed(val message: String) : DistributionLoadState
+}
+
+private sealed interface WorkerEnrollmentState {
+    data object Idle : WorkerEnrollmentState
+    data object Loading : WorkerEnrollmentState
+    data class Ready(val instructions: WorkerEnrollmentInstructions) : WorkerEnrollmentState
+    data class Failed(val message: String) : WorkerEnrollmentState
+}
+
+private fun DistributionComponent.displayName(): String =
+    when (this) {
+        DistributionComponent.CLIENT -> "Clients"
+        DistributionComponent.WORKER -> "Workers"
+    }
+
+private fun DistributionOperatingSystem.displayName(): String =
+    when (this) {
+        DistributionOperatingSystem.MACOS -> "macOS"
+        DistributionOperatingSystem.WINDOWS -> "Windows"
+        DistributionOperatingSystem.LINUX -> "Linux"
+    }
+
+private fun DistributionArchitecture.displayName(): String =
+    when (this) {
+        DistributionArchitecture.ARM64 -> "ARM64"
+        DistributionArchitecture.X64 -> "x64"
+    }
+
+private fun DistributionFormat.displayName(): String =
+    when (this) {
+        DistributionFormat.DMG -> "DMG"
+        DistributionFormat.PORTABLE_ZIP -> "portable ZIP"
+        DistributionFormat.TAR_GZ -> "tar.gz"
     }
 
 @Composable

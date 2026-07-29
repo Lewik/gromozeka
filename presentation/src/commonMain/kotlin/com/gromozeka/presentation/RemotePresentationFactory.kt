@@ -123,6 +123,7 @@ suspend fun createRemoteAppComponents(
             remoteClientSettingsService = remoteServices.clientSettingsService,
             remoteConnectionState = remoteServices.connectionState,
             clientPresentationService = remoteServices.clientPresentationService,
+            distributionService = remoteServices.distributionService,
             memoryActionItemService = remoteServices.memoryActionItemService,
             liveInterpreterService = remoteServices.liveInterpreterService,
             clientSideSpeechToTextService = clientSideSpeechToTextService,

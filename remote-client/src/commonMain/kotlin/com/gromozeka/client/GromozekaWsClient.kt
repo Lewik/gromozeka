@@ -48,9 +48,13 @@ import com.gromozeka.remote.protocol.StopObserveConversationTabLayoutCommand
 import com.gromozeka.remote.protocol.SynthesizeSpeechStreamCommand
 import com.gromozeka.shared.uuid.uuid7
 import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocketSession
+import io.ktor.http.isSuccess
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
@@ -85,6 +89,10 @@ internal class GromozekaWsClient(
     private val clientInstanceId: ClientInstanceId,
     private val clientPlatform: RemoteClientPlatform,
 ) {
+    internal val serverHttpBaseUrl = url
+        .replaceFirst("wss://", "https://")
+        .replaceFirst("ws://", "http://")
+        .removeSuffix("/ws")
     private val clientSessionId = ClientSessionId(uuid7())
     private val encodingState = MutableStateFlow(encoding)
     private val connectMutex = Mutex()
@@ -137,6 +145,27 @@ internal class GromozekaWsClient(
             }
         }
     }
+
+    internal suspend fun getServerResource(path: String): String {
+        val response = httpClient.get(serverResourceUrl(path))
+        val body = response.bodyAsText()
+        check(response.status.isSuccess()) {
+            "Server request failed with HTTP ${response.status.value}: $body"
+        }
+        return body
+    }
+
+    internal suspend fun postServerResource(path: String): String {
+        val response = httpClient.post(serverResourceUrl(path))
+        val body = response.bodyAsText()
+        check(response.status.isSuccess()) {
+            "Server request failed with HTTP ${response.status.value}: $body"
+        }
+        return body
+    }
+
+    private fun serverResourceUrl(path: String): String =
+        "$serverHttpBaseUrl/${path.trimStart('/')}"
 
     fun observeConversation(
         conversationId: Conversation.Id,
