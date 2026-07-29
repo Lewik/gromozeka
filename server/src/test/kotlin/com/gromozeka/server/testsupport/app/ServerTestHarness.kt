@@ -48,13 +48,7 @@ class ServerTestHarness(
             put("logging.file.path", homeDirectory.resolve("logs").toString())
             put("gromozeka.runtime.rabbit.enabled", "false")
             put("gromozeka.runtime.server.enabled", "true")
-            put("gromozeka.runtime.worker.enabled", "true")
-            put("gromozeka.runtime.worker.id", "e2e-worker")
-            put(
-                "gromozeka.runtime.worker.capabilities",
-                "CONVERSATION_TURN,LLM_RUNTIME,TOOL_EXECUTION,MEMORY_PIPELINE",
-            )
-            put("gromozeka.runtime.worker.version", "test")
+            put("gromozeka.runtime.worker.enabled", "false")
             putAll(systemProperties)
         }
         previousSystemProperties = applySystemProperties(properties)

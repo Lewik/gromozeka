@@ -6,7 +6,7 @@ The Worker is a standalone process. The Server never starts an embedded Worker.
 
 A Gromozeka Worker is a trusted, unsandboxed executor. Enrolling a Worker authorizes the Gromozeka control plane and its selected models to invoke configured tools with the effective permissions of the Worker process.
 
-The Worker is not an autonomous agent and does not decide goals or policy. It executes durable tasks assigned by the control plane, including LLM, memory, and tool work when those capabilities are enabled. Gromozeka does not add per-command approvals, command denylists, or a filesystem sandbox. Run the Worker under the operating-system account, container, or virtual machine whose permissions represent the intended hard boundary. See [Always YOLO](../README.md#always-yolo) for the complete execution trust model.
+The Worker is not an autonomous agent and does not decide goals or policy. It executes exact Worker-targeted durable tasks assigned by the control plane, including configured tools and finite AI request-response operations. Conversation turns and memory pipelines remain on the Server. Gromozeka does not add per-command approvals, command denylists, or a filesystem sandbox. Run the Worker under the operating-system account, container, or virtual machine whose permissions represent the intended hard boundary. See [Always YOLO](../README.md#always-yolo) for the complete execution trust model.
 
 Start a Worker with an external YAML file:
 

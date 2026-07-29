@@ -55,6 +55,7 @@ import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
@@ -68,6 +69,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
+import com.gromozeka.domain.service.WorkerCatalogEntry
+import com.gromozeka.domain.service.WorkerCatalogService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -117,6 +120,7 @@ private data class AiCatalogDraft(
 fun AiCatalogSettings(
     aiConfigurationService: AiConfigurationService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
+    workerCatalogService: WorkerCatalogService,
     coroutineScope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
@@ -125,7 +129,14 @@ fun AiCatalogSettings(
     var draft by remember { mutableStateOf(snapshot?.catalog?.let(AiCatalogDraft::from)) }
     var isSaving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var workers by remember { mutableStateOf(emptyList<WorkerCatalogEntry>()) }
     val templates = remember { runtimeCatalogTemplateService.getTemplates() }
+
+    LaunchedEffect(workerCatalogService) {
+        runCatching { workerCatalogService.listWorkers() }
+            .onSuccess { workers = it }
+            .onFailure { error = it.message ?: it::class.simpleName }
+    }
 
     LaunchedEffect(snapshot?.revision) {
         draft = snapshot?.catalog?.let(AiCatalogDraft::from)
@@ -253,6 +264,7 @@ fun AiCatalogSettings(
                 AiCatalogSection.Connections -> ConnectionsEditor(
                     draft = currentDraft,
                     templateCatalog = templates.aiCatalog,
+                    workers = workers,
                     onChange = { draft = it },
                     onError = { error = it },
                 )
@@ -483,6 +495,7 @@ private fun ModelConfigurationsEditor(
 private fun ConnectionsEditor(
     draft: AiCatalogDraft,
     templateCatalog: AiCatalog,
+    workers: List<WorkerCatalogEntry>,
     onChange: (AiCatalogDraft) -> Unit,
     onError: (String?) -> Unit,
 ) {
@@ -510,6 +523,7 @@ private fun ConnectionsEditor(
                 badges = listOf(
                     if (connection.enabled) "enabled" else "disabled",
                     "$modelCount models",
+                    connection.executionTarget.displayLabel(workers),
                 ),
                 onEdit = { editing = connection },
                 onDelete = {
@@ -526,6 +540,7 @@ private fun ConnectionsEditor(
     if (creating || editing != null) {
         ConnectionDialog(
             existing = editing,
+            workers = workers,
             onDismiss = {
                 creating = false
                 editing = null
@@ -731,6 +746,7 @@ private fun <T> CatalogDropdown(
 @Composable
 private fun ConnectionDialog(
     existing: AiConnection?,
+    workers: List<WorkerCatalogEntry>,
     onDismiss: () -> Unit,
     onSave: (AiConnection) -> Unit,
 ) {
@@ -738,6 +754,9 @@ private fun ConnectionDialog(
     var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
     var name by remember { mutableStateOf(existing?.displayName.orEmpty()) }
     var enabled by remember { mutableStateOf(existing?.enabled ?: true) }
+    var executionTarget by remember {
+        mutableStateOf(existing?.executionTarget ?: AiExecutionTarget.Server)
+    }
     var baseUrl by remember {
         mutableStateOf((existing as? AiConnection.HttpAiConnection)?.baseUrl.orEmpty())
     }
@@ -814,6 +833,24 @@ private fun ConnectionDialog(
                     Spacer(Modifier.width(8.dp))
                     Text("Enabled")
                 }
+                val targetOptions = buildList {
+                    add(AiExecutionTarget.Server)
+                    workers.forEach { add(AiExecutionTarget.Worker(it.workerId.value)) }
+                    if (executionTarget !in this) add(executionTarget)
+                }
+                LabeledDropdown(
+                    label = "Execution target",
+                    value = executionTarget,
+                    options = targetOptions,
+                    optionLabel = { it.displayLabel(workers) },
+                    onSelect = { executionTarget = it },
+                )
+                Text(
+                    "Finite LLM, embedding, speech-to-text, and text-to-speech requests use this exact target. " +
+                        "Streaming and live voice require Server.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (kind in httpConnectionKinds) {
                     OutlinedTextField(
                         value = baseUrl,
@@ -907,6 +944,7 @@ private fun ConnectionDialog(
                             processIdleTtlMinutes = processIdleTtlMinutes,
                             awsRegion = awsRegion,
                             awsProfile = awsProfile,
+                            executionTarget = executionTarget,
                         )
                     }.onSuccess(onSave).onFailure { error = it.message }
                 },
@@ -931,6 +969,7 @@ private fun createConnection(
     processIdleTtlMinutes: String,
     awsRegion: String,
     awsProfile: String,
+    executionTarget: AiExecutionTarget,
 ): AiConnection {
     val connectionId = AiConnection.Id(id.trim())
     val displayName = name.trim()
@@ -939,64 +978,82 @@ private fun createConnection(
     }
     return when (kind) {
         AiConnection.Kind.OPENAI_API -> AiConnection.OpenAiApi(
-            connectionId,
-            displayName,
-            enabled,
-            baseUrl.trim().ifBlank { null },
-            secret,
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            baseUrl = baseUrl.trim().ifBlank { null },
+            apiKey = secret,
+            executionTarget = executionTarget,
         )
         AiConnection.Kind.OPENAI_SUBSCRIPTION -> AiConnection.OpenAiSubscription(
-            connectionId,
-            displayName,
-            enabled,
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            executionTarget = executionTarget,
         )
         AiConnection.Kind.OPENAI_COMPATIBLE -> AiConnection.OpenAiCompatible(
-            connectionId,
-            displayName,
-            enabled,
-            baseUrl.trim(),
-            secret,
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            baseUrl = baseUrl.trim(),
+            apiKey = secret,
+            executionTarget = executionTarget,
         )
         AiConnection.Kind.ANTHROPIC_API -> AiConnection.AnthropicApi(
-            connectionId,
-            displayName,
-            enabled,
-            baseUrl.trim().ifBlank { null },
-            secret,
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            baseUrl = baseUrl.trim().ifBlank { null },
+            apiKey = secret,
+            executionTarget = executionTarget,
         )
         AiConnection.Kind.ANTHROPIC_BEDROCK -> AiConnection.AnthropicBedrock(
-            connectionId,
-            displayName,
-            enabled,
-            baseUrl.trim().ifBlank { null },
-            awsRegion.trim().ifBlank { null },
-            awsProfile.trim().ifBlank { null },
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            baseUrl = baseUrl.trim().ifBlank { null },
+            awsRegion = awsRegion.trim().ifBlank { null },
+            awsProfile = awsProfile.trim().ifBlank { null },
+            executionTarget = executionTarget,
         )
         AiConnection.Kind.CLAUDE_CODE -> AiConnection.ClaudeCode(
-            connectionId,
-            displayName,
-            enabled,
-            executablePath.trim(),
-            maxCachedProcesses.toIntOrNull()
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            executablePath = executablePath.trim(),
+            maxCachedProcesses = maxCachedProcesses.toIntOrNull()
                 ?: error("Cached process limit must be a positive integer"),
-            processIdleTtlMinutes.toIntOrNull()
+            processIdleTtlMinutes = processIdleTtlMinutes.toIntOrNull()
                 ?: error("Idle TTL must be a positive integer"),
+            executionTarget = executionTarget,
         )
         AiConnection.Kind.GEMINI_API -> AiConnection.GeminiApi(
-            connectionId,
-            displayName,
-            enabled,
-            baseUrl.trim().ifBlank { null },
-            secret,
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            baseUrl = baseUrl.trim().ifBlank { null },
+            apiKey = secret,
+            executionTarget = executionTarget,
         )
         AiConnection.Kind.OLLAMA -> AiConnection.Ollama(
-            connectionId,
-            displayName,
-            enabled,
-            baseUrl.trim(),
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            baseUrl = baseUrl.trim(),
+            executionTarget = executionTarget,
         )
     }
 }
+
+private fun AiExecutionTarget.displayLabel(workers: List<WorkerCatalogEntry>): String =
+    when (this) {
+        AiExecutionTarget.Server -> "Server"
+        is AiExecutionTarget.Worker -> {
+            val worker = workers.firstOrNull { it.workerId.value == workerId }
+            val status = worker?.status?.name?.lowercase() ?: "unknown"
+            "Worker $workerId · $status"
+        }
+    }
 
 @Composable
 private fun ModelConfigurationDialog(

@@ -1,6 +1,6 @@
 package com.gromozeka.server
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.remote.protocol.WorkerEnrollmentAvailability
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.gromozeka.remote.protocol.WorkerEnrollmentToken
@@ -27,9 +27,10 @@ data class WorkerEnrollmentProperties(
     val rabbitmqAddresses: String = "",
     val rabbitmqUsername: String = "",
     val rabbitmqPassword: String = "",
-    val capabilities: Set<ConversationRuntimeWorkerCapability> = setOf(
-        ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-        ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+    val capabilities: Set<ConversationRuntimeCapability> = setOf(
+        ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+        ConversationRuntimeCapability.TOOL_EXECUTION,
+        ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
     ),
 ) {
     fun unavailableReason(): String? {

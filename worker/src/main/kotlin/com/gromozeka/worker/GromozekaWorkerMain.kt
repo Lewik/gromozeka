@@ -110,6 +110,10 @@ private fun determineLogPath(mode: String?): String {
             pattern = ["com\\.gromozeka\\.infrastructure\\.ai\\.mcp\\.tools\\..*"]
         ),
         ComponentScan.Filter(
+            type = FilterType.REGEX,
+            pattern = ["com\\.gromozeka\\.application\\.service\\.memory\\..*"]
+        ),
+        ComponentScan.Filter(
             type = FilterType.ASSIGNABLE_TYPE,
             classes = [InternalMcpToolsRegistrar::class]
         ),

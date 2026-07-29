@@ -30,8 +30,9 @@ import org.springframework.stereotype.Service
 
 @Service
 @ConditionalOnProperty(
-    name = ["gromozeka.runtime.worker.enabled"],
+    name = ["gromozeka.runtime.server.enabled"],
     havingValue = "true",
+    matchIfMissing = true,
 )
 class MemoryOperationExecutor internal constructor(
     private val contextResolver: MemoryOperationContextResolver,

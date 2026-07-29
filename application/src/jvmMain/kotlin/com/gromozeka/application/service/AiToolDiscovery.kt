@@ -283,7 +283,6 @@ class SearchToolsToolCallback(
         }
 
         val projectId = context.requiredProjectId()
-        val workerId = context.requiredWorkerId()
         val agentId = context.requiredAgentDefinitionId()
         val conversationId = context.requiredConversationId()
         val project = projectDomainService.findById(projectId)
@@ -297,7 +296,6 @@ class SearchToolsToolCallback(
         val preparedCatalog = agentSkillRuntimeCatalogService.prepare(
             agent = agent,
             projectId = project.id,
-            runtimeWorkerId = workerId,
             toolCatalog = distributedToolCatalog.snapshot(project),
         ).toolCatalog
         val loadedToolNames = runtimeCatalogService.loadedToolNames(

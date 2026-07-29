@@ -8,6 +8,7 @@ import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiEmbeddingVector
 import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.DirectAiEmbeddingProvider
 import com.gromozeka.infrastructure.db.persistence.EmbeddingCacheService
 import com.openai.models.embeddings.EmbeddingCreateParams
 import klog.KLoggers
@@ -20,7 +21,7 @@ class OpenAiSdkEmbeddingProvider(
     private val clientFactory: OpenAiSdkClientFactory,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val embeddingCacheService: EmbeddingCacheService,
-) : AiEmbeddingProvider {
+) : DirectAiEmbeddingProvider {
     private val log = KLoggers.logger(this)
 
     override suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse {

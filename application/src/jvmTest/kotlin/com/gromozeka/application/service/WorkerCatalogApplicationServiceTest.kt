@@ -1,6 +1,6 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
@@ -48,7 +48,7 @@ class WorkerCatalogApplicationServiceTest {
                     ConversationRuntimeWorkerId(workerId),
                     ConversationRuntimeWorkerSessionId("session-$workerId"),
                 ),
-                capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
                 tools = emptyList(),
                 environmentProfile = testWorkerEnvironmentProfile(at),
                 version = "test",

@@ -1,15 +1,11 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.application.service.testWorkerEnvironmentProfile
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
-import com.gromozeka.domain.service.ConversationRuntimeWorkerId
-import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
-import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
-import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
+import com.gromozeka.domain.service.ConversationRuntimeServerSessionId
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -188,11 +184,7 @@ class MemoryStatusToolRendererTest {
     }
 
     @Test
-    fun queueStatusRendersDurableRunsAndOnlineWorkers() {
-        val workerIdentity = ConversationRuntimeWorkerIdentity(
-            workerId = ConversationRuntimeWorkerId("memory-worker"),
-            sessionId = ConversationRuntimeWorkerSessionId("session-1"),
-        )
+    fun queueStatusRendersDurableRunsAndServerExecutor() {
         val json = Json.parseToJsonElement(
             MemoryToolResultRenderer.queueStatusJsonString(
                 MemoryOperationQueueStatus(
@@ -203,25 +195,17 @@ class MemoryStatusToolRendererTest {
                         runType = MemoryRun.Type.REMEMBER,
                         operation = MemoryOperationKind.REMEMBER,
                         namespace = namespace,
-                        startedAt = createdAt,
+                            startedAt = createdAt,
                             executionLease = MemoryRun.ExecutionLease(
-                                ownerId = workerIdentity.workerId.value,
-                                ownerSessionId = workerIdentity.sessionId.value,
+                                ownerId = "server",
+                                ownerSessionId = "server-session-1",
                                 expiresAt = Instant.parse("2026-05-13T20:30:00Z"),
                             ),
                             leaseExpired = false,
                         )
                     ),
-                    onlineWorkers = listOf(
-                        ConversationRuntimeWorkerRegistration(
-                            identity = workerIdentity,
-                            capabilities = setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE),
-                            tools = emptyList(),
-                            environmentProfile = testWorkerEnvironmentProfile(createdAt),
-                            version = "test",
-                            startedAt = createdAt,
-                            lastHeartbeatAt = createdAt,
-                        )
+                    executor = ConversationRuntimeExecutorIdentity.Server(
+                        ConversationRuntimeServerSessionId("server-session-1")
                     ),
                 ),
             )
@@ -236,8 +220,13 @@ class MemoryStatusToolRendererTest {
                 .single().jsonObject
                 .getValue("run_id").jsonPrimitive.content,
         )
-        assertEquals("memory-worker", json.getValue("online_workers").jsonArray.single().jsonObject
-            .getValue("worker_id").jsonPrimitive.content)
+        assertEquals("server", json.getValue("executor").jsonObject.getValue("kind").jsonPrimitive.content)
+        assertEquals("server", json.getValue("executor").jsonObject.getValue("id").jsonPrimitive.content)
+        assertEquals(
+            "server-session-1",
+            json.getValue("executor").jsonObject.getValue("session_id").jsonPrimitive.content,
+        )
+        assertEquals("false", json.getValue("distributed").jsonPrimitive.content)
         assertEquals("memory_runs", json.getValue("source_of_truth").jsonPrimitive.content)
         assertEquals("resume_queued_fail_interrupted", json.getValue("restart_policy").jsonPrimitive.content)
     }

@@ -55,6 +55,7 @@ services:
         condition: service_healthy
 
   worker:
+    profiles: ["worker"]
     image: ghcr.io/lewik/gromozeka-worker:${GROMOZEKA_VERSION:-latest}
     restart: unless-stopped
     init: true
@@ -69,7 +70,7 @@ services:
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       GROMOZEKA_RUNTIME_WORKER_ID: compose-primary
       GROMOZEKA_RUNTIME_WORKER_VERSION: ${GROMOZEKA_VERSION:-latest}
-      GROMOZEKA_RUNTIME_WORKER_CAPABILITIES: CONVERSATION_TURN,LLM_RUNTIME,TOOL_EXECUTION,LOCAL_AGENT_TOOL,MEMORY_PIPELINE
+      GROMOZEKA_RUNTIME_WORKER_CAPABILITIES: AI_REQUEST_RESPONSE,TOOL_EXECUTION,LOCAL_AGENT_TOOL
     volumes:
       - gromozeka-home:/var/lib/gromozeka
     depends_on:

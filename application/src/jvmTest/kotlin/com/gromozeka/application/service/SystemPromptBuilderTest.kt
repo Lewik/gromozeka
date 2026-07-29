@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
+import com.gromozeka.domain.model.RuntimeEnvironmentExecutor
 import com.gromozeka.domain.model.Workspace
 import kotlinx.datetime.Instant
 import kotlin.test.Test
@@ -15,10 +16,12 @@ class SystemPromptBuilderTest {
     @Test
     fun `standalone environment does not invent project or workspace`() {
         val prompt = builder.buildEnvironmentInfo(
-            RuntimeEnvironmentContext.Standalone("cloud-worker")
+            RuntimeEnvironmentContext.Standalone(
+                RuntimeEnvironmentExecutor.Worker("cloud-worker")
+            )
         )
 
-        assertContains(prompt, "Runtime worker: cloud-worker")
+        assertContains(prompt, "Runtime executor: Worker cloud-worker")
         assertContains(prompt, "Runtime scope: standalone")
         assertFalse(prompt.contains("Workspace root path"))
         assertFalse(prompt.contains("Platform:"))

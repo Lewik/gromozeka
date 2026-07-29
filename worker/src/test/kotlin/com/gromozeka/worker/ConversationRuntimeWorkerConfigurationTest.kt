@@ -1,7 +1,7 @@
 package com.gromozeka.worker
 
 import com.gromozeka.domain.service.AiToolProvider
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -36,8 +36,8 @@ class ConversationRuntimeWorkerConfigurationTest {
                 assertEquals("macbook-primary", descriptor.id.value)
                 assertEquals(
                     setOf(
-                        ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                        ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+                        ConversationRuntimeCapability.TOOL_EXECUTION,
+                        ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
                     ),
                     descriptor.capabilities,
                 )
@@ -66,18 +66,34 @@ class ConversationRuntimeWorkerConfigurationTest {
                 TestTool("generic"),
                 TestTool(
                     "local",
-                    setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL),
+                    setOf(ConversationRuntimeCapability.LOCAL_AGENT_TOOL),
                 ),
             )
         )
             .withPropertyValues(
                 "gromozeka.runtime.worker.id=llm-worker",
-                "gromozeka.runtime.worker.capabilities[0]=LLM_RUNTIME",
-                "gromozeka.runtime.worker.capabilities[1]=MEMORY_PIPELINE",
+                "gromozeka.runtime.worker.capabilities[0]=AI_REQUEST_RESPONSE",
             )
             .run { context ->
                 val descriptor = context.getBean(ConversationRuntimeWorkerDescriptor::class.java)
                 assertTrue(descriptor.tools.isEmpty())
+            }
+    }
+
+    @Test
+    fun `fails fast when Worker declares Server orchestration capability`() {
+        contextRunner()
+            .withPropertyValues(
+                "gromozeka.runtime.worker.id=invalid-worker",
+                "gromozeka.runtime.worker.capabilities[0]=MEMORY_PIPELINE",
+            )
+            .run { context ->
+                assertNotNull(context.startupFailure)
+                assertTrue(
+                    context.startupFailure
+                        ?.causeChain()
+                        ?.any { it.message?.contains("belong to Server") == true } == true
+                )
             }
     }
 
@@ -88,7 +104,7 @@ class ConversationRuntimeWorkerConfigurationTest {
                 TestTool("generic"),
                 TestTool(
                     "local",
-                    setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL),
+                    setOf(ConversationRuntimeCapability.LOCAL_AGENT_TOOL),
                 ),
             )
         )
@@ -108,7 +124,7 @@ class ConversationRuntimeWorkerConfigurationTest {
 
 private class TestTool(
     name: String,
-    requiredCapabilities: Set<ConversationRuntimeWorkerCapability> = emptySet(),
+    requiredCapabilities: Set<ConversationRuntimeCapability> = emptySet(),
 ) : AiToolCallback {
     override val definition = AiToolDefinition(
         name = name,

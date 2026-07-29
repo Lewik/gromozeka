@@ -7,10 +7,29 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlin.jvm.JvmInline
 
+@Serializable
+@JsonClassDiscriminator("executionTargetKind")
+sealed interface AiExecutionTarget {
+    @Serializable
+    @SerialName("server")
+    data object Server : AiExecutionTarget
+
+    @Serializable
+    @SerialName("worker")
+    data class Worker(
+        val workerId: String,
+    ) : AiExecutionTarget {
+        init {
+            require(workerId.isNotBlank()) { "AI execution target Worker id must not be blank" }
+        }
+    }
+}
+
 /**
  * Concrete way to reach an AI provider.
  *
- * A connection is account/endpoint/protocol configuration, not a model choice.
+ * A connection is account/endpoint/protocol and execution-location configuration,
+ * not a model choice.
  * Concrete subclasses intentionally encode provider-specific auth and endpoint
  * shape, so impossible combinations fail at compile time instead of leaking into
  * runtime validation.
@@ -22,6 +41,7 @@ sealed interface AiConnection {
     val displayName: String
     val enabled: Boolean
     val kind: Kind
+    val executionTarget: AiExecutionTarget
 
     @Serializable
     @JvmInline
@@ -56,6 +76,7 @@ sealed interface AiConnection {
         override val id: Id,
         override val displayName: String,
         override val enabled: Boolean = false,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection {
         override val kind = Kind.OPENAI_SUBSCRIPTION
 
@@ -72,6 +93,7 @@ sealed interface AiConnection {
         override val enabled: Boolean = false,
         override val baseUrl: String? = null,
         override val apiKey: SecretRef? = null,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
         override val kind = Kind.OPENAI_API
 
@@ -89,6 +111,7 @@ sealed interface AiConnection {
         override val enabled: Boolean = true,
         override val baseUrl: String,
         override val apiKey: SecretRef? = null,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
         override val kind = Kind.OPENAI_COMPATIBLE
 
@@ -106,6 +129,7 @@ sealed interface AiConnection {
         override val enabled: Boolean = true,
         override val baseUrl: String? = null,
         override val apiKey: SecretRef? = null,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
         override val kind = Kind.ANTHROPIC_API
 
@@ -124,6 +148,7 @@ sealed interface AiConnection {
         override val baseUrl: String? = null,
         override val awsRegion: String? = null,
         override val awsProfile: String? = null,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection, HttpAiConnection, AwsAiConnection {
         override val kind = Kind.ANTHROPIC_BEDROCK
 
@@ -144,6 +169,7 @@ sealed interface AiConnection {
         val executablePath: String = "claude",
         val maxCachedProcesses: Int = DEFAULT_MAX_CACHED_PROCESSES,
         val processIdleTtlMinutes: Int = DEFAULT_PROCESS_IDLE_TTL_MINUTES,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection {
         override val kind = Kind.CLAUDE_CODE
 
@@ -168,6 +194,7 @@ sealed interface AiConnection {
         override val enabled: Boolean = true,
         override val baseUrl: String? = null,
         override val apiKey: SecretRef? = null,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
         override val kind = Kind.GEMINI_API
 
@@ -184,6 +211,7 @@ sealed interface AiConnection {
         override val displayName: String,
         override val enabled: Boolean = true,
         override val baseUrl: String,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection, HttpAiConnection {
         override val kind = Kind.OLLAMA
 

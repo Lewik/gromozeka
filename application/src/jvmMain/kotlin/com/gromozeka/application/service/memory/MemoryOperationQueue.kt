@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
-import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import klog.KLoggers
@@ -243,7 +243,7 @@ data class MemoryOperationResultDelivery(
 data class MemoryOperationQueueStatus(
     val queuedJobs: Int,
     val activeJobs: List<ActiveMemoryOperation>,
-    val onlineWorkers: List<ConversationRuntimeWorkerRegistration>,
+    val executor: ConversationRuntimeExecutorIdentity.Server,
 )
 
 data class ActiveMemoryOperation(
@@ -258,8 +258,9 @@ data class ActiveMemoryOperation(
 
 @Service
 @ConditionalOnProperty(
-    name = ["gromozeka.runtime.worker.enabled"],
+    name = ["gromozeka.runtime.server.enabled"],
     havingValue = "true",
+    matchIfMissing = true,
 )
 class MemoryOperationQueue(
     @Qualifier("applicationScope") private val coroutineScope: CoroutineScope,
@@ -283,7 +284,7 @@ class MemoryOperationQueue(
                     throw error
                 } catch (error: Throwable) {
                     log.error(error) {
-                        "Memory operation worker failed: run=${job.runId.value} " +
+                        "Memory operation processor failed: run=${job.runId.value} " +
                             "operation=${job.operation.wireName} error=${error.message}"
                     }
                 } finally {

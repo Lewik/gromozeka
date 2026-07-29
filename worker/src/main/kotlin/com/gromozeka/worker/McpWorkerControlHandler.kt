@@ -6,19 +6,10 @@ import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
 import com.gromozeka.domain.tool.AiToolDescriptor
+import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.supportedBy
 import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Service
-
-@Configuration
-class WorkerControlConfiguration {
-    @Bean
-    fun conversationRuntimeWorkerIdentity(
-        runtimeWorker: ConversationRuntimeWorker,
-    ) = runtimeWorker.identity
-}
 
 @Service
 class McpWorkerControlHandler(
@@ -57,6 +48,7 @@ class McpWorkerControlHandler(
     private suspend fun updateAdvertisedTools() {
         val descriptors = aiToolProvider.getTools()
             .supportedBy(runtimeWorker.capabilities)
+            .filter { it.metadata.executionScope != AiToolExecutionScope.CONVERSATION_RUNTIME }
             .map { AiToolDescriptor(it.definition, it.metadata) }
             .sortedBy { it.definition.name }
         runtimeWorker.updateAdvertisedTools(descriptors)

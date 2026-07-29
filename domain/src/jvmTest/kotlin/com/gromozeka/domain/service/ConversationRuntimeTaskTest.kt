@@ -16,7 +16,8 @@ class ConversationRuntimeTaskTest {
         assertFailsWith<IllegalArgumentException> {
             userTurnTask(
                 requirements = ConversationRuntimeTaskRequirements(
-                    capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                    capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                    target = ConversationRuntimeTaskTarget.Server,
                 ),
             )
         }
@@ -33,19 +34,12 @@ class ConversationRuntimeTaskTest {
     }
 
     @Test
-    fun `local agent tool requirements need tool execution and tool tasks need exact target`() {
+    fun `local agent tool requirements need tool execution`() {
         assertFailsWith<IllegalArgumentException> {
             ConversationRuntimeTaskRequirements(
-                capabilities = setOf(ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL),
-            )
-        }
-        assertFailsWith<IllegalArgumentException> {
-            toolExecutionTask(
-                requirements = ConversationRuntimeTaskRequirements(
-                    capabilities = setOf(
-                        ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                        ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
-                    ),
+                capabilities = setOf(ConversationRuntimeCapability.LOCAL_AGENT_TOOL),
+                target = ConversationRuntimeTaskTarget.Worker(
+                    workerId = ConversationRuntimeWorkerId("worker-1"),
                 ),
             )
         }
@@ -76,9 +70,10 @@ class ConversationRuntimeTaskTest {
     private fun userTurnRequirements(): ConversationRuntimeTaskRequirements =
         ConversationRuntimeTaskRequirements(
             capabilities = setOf(
-                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ConversationRuntimeCapability.CONVERSATION_TURN,
+                ConversationRuntimeCapability.MEMORY_PIPELINE,
             ),
+            target = ConversationRuntimeTaskTarget.Server,
         )
 
     private fun toolExecutionTask(

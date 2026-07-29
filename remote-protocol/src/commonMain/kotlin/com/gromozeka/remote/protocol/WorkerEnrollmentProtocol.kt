@@ -1,6 +1,6 @@
 package com.gromozeka.remote.protocol
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -30,5 +30,5 @@ data class WorkerEnrollmentBootstrap(
     val rabbitmqAddresses: String,
     val rabbitmqUsername: String,
     val rabbitmqPassword: String,
-    val capabilities: Set<ConversationRuntimeWorkerCapability>,
+    val capabilities: Set<ConversationRuntimeCapability>,
 )

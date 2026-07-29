@@ -9,7 +9,7 @@ import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -53,7 +53,6 @@ class ConversationRuntimeToolRoutingService(
         project: Project,
         toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
         catalog: DistributedAiToolCatalogSnapshot,
-        runtimeWorkerId: ConversationRuntimeWorkerId? = null,
     ): ConversationRuntimeToolRoutingResult {
         val resolved = mutableListOf<ResolvedToolCall>()
         val errors = mutableListOf<ConversationRuntimeToolRoutingError>()
@@ -62,16 +61,14 @@ class ConversationRuntimeToolRoutingService(
             val entry = catalog.entries[toolCall.call.name]
             if (entry == null) {
                 errors += toolCall.routingError(
-                    "Tool '${toolCall.call.name}' is not advertised by any online worker."
+                    "Tool '${toolCall.call.name}' is not available in the current runtime."
                 )
                 return@forEach
             }
 
             val target = when (entry.descriptor.metadata.executionScope) {
-                AiToolExecutionScope.CONVERSATION_RUNTIME -> resolveRuntimeWorkerTarget(
+                AiToolExecutionScope.CONVERSATION_RUNTIME -> resolveServerTarget(
                     toolCall = toolCall,
-                    entry = entry,
-                    runtimeWorkerId = runtimeWorkerId,
                     errors = errors,
                 )
                 AiToolExecutionScope.WORKER -> resolveWorkerTarget(toolCall, entry, errors)
@@ -120,11 +117,10 @@ class ConversationRuntimeToolRoutingService(
             )
         }
 
-        val workerIds = resolved.mapTo(mutableSetOf()) { it.target.workerId }
-        val mountIds = resolved.mapNotNullTo(mutableSetOf()) { it.target.workspaceMountId }
-        if (workerIds.size != 1 || mountIds.size > 1) {
+        val targets = resolved.mapTo(mutableSetOf(), ResolvedToolCall::target)
+        if (targets.size != 1) {
             val message =
-                "One assistant response can currently execute tools on only one exact worker/mount target. " +
+                "One assistant response can currently execute tools on only one exact execution target. " +
                     "Issue calls for different targets in separate assistant responses."
             return ConversationRuntimeToolRoutingResult.Rejected(
                 toolCalls.map { it.routingError(message) }
@@ -132,25 +128,20 @@ class ConversationRuntimeToolRoutingService(
         }
 
         val capabilities = buildSet {
-            add(ConversationRuntimeWorkerCapability.TOOL_EXECUTION)
+            add(ConversationRuntimeCapability.TOOL_EXECUTION)
             resolved.forEach { addAll(it.requiredCapabilities) }
         }
         return ConversationRuntimeToolRoutingResult.Accepted(
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = capabilities,
-                target = ConversationRuntimeTaskTarget(
-                    workerId = workerIds.single(),
-                    workspaceMountId = mountIds.singleOrNull(),
-                ),
+                target = targets.single(),
             ),
             returnDirect = resolved.all { it.returnDirect },
         )
     }
 
-    private fun resolveRuntimeWorkerTarget(
+    private fun resolveServerTarget(
         toolCall: Conversation.Message.ContentItem.ToolCall,
-        entry: DistributedAiTool,
-        runtimeWorkerId: ConversationRuntimeWorkerId?,
         errors: MutableList<ConversationRuntimeToolRoutingError>,
     ): ConversationRuntimeTaskTarget? {
         if (AI_TOOL_EXECUTION_TARGET_FIELD in toolCall.call.input.jsonObject) {
@@ -160,19 +151,7 @@ class ConversationRuntimeToolRoutingService(
             )
             return null
         }
-        if (runtimeWorkerId == null) {
-            errors += toolCall.routingError(
-                "Current conversation runtime worker is unavailable for tool '${toolCall.call.name}'."
-            )
-            return null
-        }
-        if (entry.workers.none { it.workerId == runtimeWorkerId }) {
-            errors += toolCall.routingError(
-                "Current worker '${runtimeWorkerId.value}' does not advertise tool '${toolCall.call.name}'."
-            )
-            return null
-        }
-        return ConversationRuntimeTaskTarget(workerId = runtimeWorkerId)
+        return ConversationRuntimeTaskTarget.Server
     }
 
     private fun resolveWorkerTarget(
@@ -194,7 +173,7 @@ class ConversationRuntimeToolRoutingService(
             )
             return null
         }
-        return ConversationRuntimeTaskTarget(workerId = workerId)
+        return ConversationRuntimeTaskTarget.Worker(workerId = workerId)
     }
 
     private suspend fun resolveMountTarget(
@@ -228,7 +207,7 @@ class ConversationRuntimeToolRoutingService(
             return null
         }
         val workspace = validateProjectMount(conversation, project, toolCall, mount, errors) ?: return null
-        return ConversationRuntimeTaskTarget(
+        return ConversationRuntimeTaskTarget.Worker(
             workerId = com.gromozeka.domain.service.ConversationRuntimeWorkerId(mount.workerId),
             workspaceMountId = mount.id,
         )
@@ -282,7 +261,7 @@ class ConversationRuntimeToolRoutingService(
             return null
         }
         validateProjectMount(conversation, project, toolCall, mount, errors) ?: return null
-        return ConversationRuntimeTaskTarget(
+        return ConversationRuntimeTaskTarget.Worker(
             workerId = commandTask.workerId,
             workspaceMountId = commandTask.workspaceMountId,
         )
@@ -336,7 +315,7 @@ class ConversationRuntimeToolRoutingService(
             return null
         }
         validateProjectMount(conversation, project, toolCall, mount, errors) ?: return null
-        return ConversationRuntimeTaskTarget(
+        return ConversationRuntimeTaskTarget.Worker(
             workerId = monitor.workerId,
             workspaceMountId = monitor.workspaceMountId,
         )
@@ -375,7 +354,7 @@ class ConversationRuntimeToolRoutingService(
 
     private data class ResolvedToolCall(
         val target: ConversationRuntimeTaskTarget,
-        val requiredCapabilities: Set<ConversationRuntimeWorkerCapability>,
+        val requiredCapabilities: Set<ConversationRuntimeCapability>,
         val returnDirect: Boolean,
     )
 }

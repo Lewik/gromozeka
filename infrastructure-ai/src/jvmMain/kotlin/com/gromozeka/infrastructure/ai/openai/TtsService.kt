@@ -1,19 +1,28 @@
 package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.TtsTask
+import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
-import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.AiRequestResponseExecutionClient
+import com.gromozeka.domain.service.AiSpeechSynthesisRequest
+import com.gromozeka.domain.service.AiSpeechSynthesisResponse
+import com.gromozeka.domain.service.AudioController
+import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
+import com.gromozeka.domain.service.DirectAiTextToSpeechProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.openai.models.audio.speech.SpeechCreateParams
 import com.openai.models.audio.speech.SpeechModel
+import java.io.ByteArrayOutputStream
+import java.io.File
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
-import java.io.File
 
 @Service
 class TtsService(
@@ -21,38 +30,24 @@ class TtsService(
     private val settingsProvider: SettingsProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val audioController: AudioController,
-) {
+    private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
+    private val remoteClients: List<AiRequestResponseExecutionClient>,
+) : DirectAiTextToSpeechProvider {
     private val log = KLoggers.logger(this)
 
     suspend fun generateSpeech(
         text: String,
         voiceTone: String = "neutral colleague",
-    ): File? = withContext(Dispatchers.IO) {
-        try {
-            if (text.isBlank()) return@withContext null
-
-            val runtime = textToSpeechRuntime()
-            val settings = settingsProvider.userProfile.speechSettings.textToSpeech
-            val client = clientFactory.createClient(runtime.connection)
-            val outputFile = File.createTempFile("tts_output", ".wav")
-            val response = client.audio().speech().create(
-                speechParamsBuilder(text, voiceTone, runtime.modelConfiguration.providerModelId, settings.voice, settings.speed)
-                    .responseFormat(SpeechCreateParams.ResponseFormat.WAV)
-                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
-                    .build()
-            )
-
-            response.use { httpResponse ->
-                httpResponse.body().use { input ->
-                    outputFile.outputStream().use(input::copyTo)
-                }
+    ): File? {
+        if (text.isBlank()) return null
+        return runCatching {
+            val response = synthesizeConfigured(configuredRequest(text, voiceTone))
+            File.createTempFile("tts_output", ".${response.fileExtension}").apply {
+                writeBytes(response.audioData)
             }
-
-            outputFile
-        } catch (e: Exception) {
-            log.warn(e) { "Failed to generate speech: ${e.message}" }
-            null
-        }
+        }.onFailure { error ->
+            log.warn(error) { "Failed to generate speech: ${error.message}" }
+        }.getOrNull()
     }
 
     fun streamSpeechPcm(
@@ -61,12 +56,17 @@ class TtsService(
     ): Flow<TtsAudioChunk> = flow {
         if (text.isBlank()) return@flow
 
-        val runtime = textToSpeechRuntime()
-        val settings = settingsProvider.userProfile.speechSettings.textToSpeech
-        val client = clientFactory.createClient(runtime.connection)
+        val configured = configuredRequest(text, voiceTone)
+        require(configured.target == AiExecutionTarget.Server) {
+            "Streaming speech synthesis requires a Server-targeted runtime"
+        }
+        val runtime = aiConfigurationProvider.resolveAiRuntime(configured.request.selection)
         val response = withContext(Dispatchers.IO) {
-            client.audio().speech().create(
-                speechParamsBuilder(text, voiceTone, runtime.modelConfiguration.providerModelId, settings.voice, settings.speed)
+            clientFactory.createClient(runtime.connection).audio().speech().create(
+                speechParamsBuilder(
+                    request = configured.request,
+                    modelName = runtime.modelConfiguration.providerModelId,
+                )
                     .responseFormat(SpeechCreateParams.ResponseFormat.PCM)
                     .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
                     .build()
@@ -85,6 +85,30 @@ class TtsService(
         }
     }
 
+    override suspend fun synthesize(request: AiSpeechSynthesisRequest): AiSpeechSynthesisResponse =
+        withContext(Dispatchers.IO) {
+            val runtime = aiConfigurationProvider.resolveAiRuntime(request.selection)
+            val response = clientFactory.createClient(runtime.connection).audio().speech().create(
+                speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
+                    .responseFormat(SpeechCreateParams.ResponseFormat.WAV)
+                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
+                    .build()
+            )
+            val audioData = response.use { httpResponse ->
+                httpResponse.body().use { input ->
+                    ByteArrayOutputStream().use { output ->
+                        input.copyTo(output)
+                        output.toByteArray()
+                    }
+                }
+            }
+            AiSpeechSynthesisResponse(
+                audioData = audioData,
+                mediaType = "audio/wav",
+                fileExtension = "wav",
+            )
+        }
+
     suspend fun playAudio(audioFile: File) {
         audioController.playAudioFile(audioFile.absolutePath)
     }
@@ -101,22 +125,51 @@ class TtsService(
         }
     }
 
-    private fun textToSpeechRuntime() =
-        aiConfigurationProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.TEXT_TO_SPEECH)
-
-    private fun speechParamsBuilder(
+    private fun configuredRequest(
         text: String,
         voiceTone: String,
+    ): ConfiguredSpeechSynthesis {
+        val selection = aiConfigurationProvider.runtimeSelectionFor(
+            AiRuntimeAssignment.Purpose.TEXT_TO_SPEECH
+        )
+        val runtime = aiConfigurationProvider.resolveAiRuntime(selection)
+        val settings = settingsProvider.userProfile.speechSettings.textToSpeech
+        return ConfiguredSpeechSynthesis(
+            target = runtime.connection.executionTarget,
+            request = AiSpeechSynthesisRequest(
+                selection = selection,
+                text = text,
+                voiceTone = voiceTone,
+                voice = settings.voice,
+                speed = settings.speed,
+            ),
+        )
+    }
+
+    private suspend fun synthesizeConfigured(
+        configured: ConfiguredSpeechSynthesis,
+    ): AiSpeechSynthesisResponse =
+        when (val target = configured.target) {
+            AiExecutionTarget.Server -> synthesize(configured.request)
+            is AiExecutionTarget.Worker -> remoteClient().synthesize(
+                target = workerTargetResolver.requireOnline(
+                    ConversationRuntimeWorkerId(target.workerId),
+                    ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                ),
+                request = configured.request,
+            )
+        }
+
+    private fun speechParamsBuilder(
+        request: AiSpeechSynthesisRequest,
         modelName: String,
-        voice: String,
-        speed: Float,
     ): SpeechCreateParams.Builder =
         SpeechCreateParams.builder()
-            .input(text)
+            .input(request.text)
             .model(SpeechModel.of(modelName))
-            .voice(voice)
-            .instructions(voiceInstructions(voiceTone))
-            .speed(speed.coerceIn(0.25f, 4.0f).toDouble())
+            .voice(request.voice)
+            .instructions(voiceInstructions(request.voiceTone))
+            .speed(request.speed.coerceIn(0.25f, 4.0f).toDouble())
 
     private fun voiceInstructions(voiceTone: String): String =
         buildString {
@@ -127,6 +180,21 @@ class TtsService(
                 append('.')
             }
         }
+
+    private fun remoteClient(): AiRequestResponseExecutionClient =
+        remoteClients.singleOrNull()
+            ?: error(
+                if (remoteClients.isEmpty()) {
+                    "Worker-targeted speech synthesis requires Rabbit runtime transport"
+                } else {
+                    "Multiple AI request-response transports are configured"
+                }
+            )
+
+    private data class ConfiguredSpeechSynthesis(
+        val target: AiExecutionTarget,
+        val request: AiSpeechSynthesisRequest,
+    )
 }
 
 data class TtsAudioChunk(

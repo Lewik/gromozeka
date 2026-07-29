@@ -6,7 +6,6 @@ import com.gromozeka.domain.model.AgentSkillPackage
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AgentSkillRepository
-import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -49,7 +48,6 @@ class AgentSkillRuntimeCatalogService(
     suspend fun prepare(
         agent: AgentDefinition,
         projectId: Project.Id,
-        runtimeWorkerId: ConversationRuntimeWorkerId,
         toolCatalog: DistributedAiToolCatalogSnapshot,
     ): AgentSkillRuntimeCatalog {
         val skills = skillRepository.findByIds(agent.skills)
@@ -68,11 +66,8 @@ class AgentSkillRuntimeCatalogService(
         }
 
         agentSkillToolNames.forEach { toolName ->
-            val entry = toolCatalog.entries[toolName]
+            toolCatalog.entries[toolName]
                 ?: error("Current runtime does not provide required Agent Skill tool '$toolName'")
-            require(entry.workers.any { it.workerId == runtimeWorkerId }) {
-                "Current runtime worker '${runtimeWorkerId.value}' does not provide Agent Skill tool '$toolName'"
-            }
         }
 
         val names = skills.map(AgentSkill::name)

@@ -9,7 +9,8 @@ import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.runBlocking
@@ -194,7 +195,8 @@ class BackgroundActivityCompletionApplicationServiceTest {
                 placement = QueuedMessagePlacement.END_OF_TURN,
                 idempotencyKey = "incident-1",
                 requirements = ConversationRuntimeTaskRequirements(
-                    setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
+                    capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                    target = ConversationRuntimeTaskTarget.Server,
                 ),
                 createdAt = Instant.fromEpochMilliseconds(2_000),
             )
@@ -294,7 +296,8 @@ class BackgroundActivityCompletionApplicationServiceTest {
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = id,
             requirements = ConversationRuntimeTaskRequirements(
-                setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
+                capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                target = ConversationRuntimeTaskTarget.Server,
             ),
             createdAt = Instant.fromEpochMilliseconds(1_000),
         )

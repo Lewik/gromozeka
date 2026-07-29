@@ -3,6 +3,7 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
+import com.gromozeka.domain.model.RuntimeEnvironmentExecutor
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -10,11 +11,12 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.DefaultAgentProvider
+import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolCallback
-import com.gromozeka.domain.tool.supportedBy
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -31,8 +33,9 @@ internal data class MemoryOperationContext(
 
 @Service
 @ConditionalOnProperty(
-    name = ["gromozeka.runtime.worker.enabled"],
+    name = ["gromozeka.runtime.server.enabled"],
     havingValue = "true",
+    matchIfMissing = true,
 )
 class MemoryOperationContextResolver(
     private val conversationService: ConversationDomainService,
@@ -40,11 +43,20 @@ class MemoryOperationContextResolver(
     private val agentPromptAssemblyService: AgentPromptAssemblyService,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val workspaceService: WorkspaceDomainService,
-    private val runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
+    private val projectService: ProjectDomainService,
+    runtimeExecutorDescriptor: ConversationRuntimeExecutorDescriptor,
     private val aiToolProvider: AiToolProvider,
     private val messageRepository: MessageRepository,
     private val threadMessageRepository: ThreadMessageRepository,
 ) {
+    private val runtimeExecutor = runtimeExecutorDescriptor.identity.toRuntimeEnvironmentExecutor()
+
+    init {
+        require(runtimeExecutorDescriptor.identity is ConversationRuntimeExecutorIdentity.Server) {
+            "Memory operation context must be resolved on Server"
+        }
+    }
+
     internal suspend fun resolveConversation(
         conversationId: Conversation.Id,
         threadId: Conversation.Thread.Id? = null,
@@ -57,7 +69,7 @@ class MemoryOperationContextResolver(
             )
         val runtimeContext = RuntimeEnvironmentContext.ProjectBound(
             project = conversationService.getProject(conversationId),
-            workerId = runtimeWorkerDescriptor.id.value,
+            executor = runtimeExecutor,
         )
         return MemoryOperationContext(
             conversation = conversation,
@@ -73,7 +85,9 @@ class MemoryOperationContextResolver(
 
     internal suspend fun resolveStandalone(): MemoryOperationContext {
         val agent = defaultAgentProvider.getDefault()
-        val runtimeContext = RuntimeEnvironmentContext.Standalone(runtimeWorkerDescriptor.id.value)
+        val runtimeContext = RuntimeEnvironmentContext.Standalone(
+            runtimeExecutor
+        )
         return MemoryOperationContext(
             conversation = null,
             agent = agent,
@@ -84,10 +98,18 @@ class MemoryOperationContextResolver(
         )
     }
 
-    internal suspend fun resolveWorkspace(
-        runtimeContext: RuntimeEnvironmentContext.WorkspaceBound,
-    ): MemoryOperationContext {
+    internal suspend fun resolveWorkspaceId(workspaceId: Workspace.Id): MemoryOperationContext {
+        val workspace = workspaceService.findById(workspaceId)
+            ?: throw IllegalArgumentException("Workspace not found: ${workspaceId.value}")
+        val project = projectService.findById(workspace.projectId)
+            ?: throw IllegalStateException(
+                "Project not found for workspace ${workspaceId.value}: ${workspace.projectId.value}"
+            )
         val agent = defaultAgentProvider.getDefault()
+        val runtimeContext = RuntimeEnvironmentContext.ProjectBound(
+            project = project,
+            executor = runtimeExecutor,
+        )
         return MemoryOperationContext(
             conversation = null,
             agent = agent,
@@ -97,9 +119,6 @@ class MemoryOperationContextResolver(
             threadMessages = emptyList(),
         )
     }
-
-    internal suspend fun resolveWorkspaceId(workspaceId: Workspace.Id): MemoryOperationContext =
-        resolveWorkspace(workspaceService.resolveRuntime(workspaceId, runtimeWorkerDescriptor.id.value))
 
     internal suspend fun loadTargetMessage(
         conversationId: Conversation.Id,
@@ -118,9 +137,14 @@ class MemoryOperationContextResolver(
 
     private fun memoryTools(): List<AiToolCallback> =
         aiToolProvider.getTools()
-            .supportedBy(runtimeWorkerDescriptor.capabilities)
             .withoutMemoryManagementTools()
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
 }
+
+private fun ConversationRuntimeExecutorIdentity.toRuntimeEnvironmentExecutor(): RuntimeEnvironmentExecutor =
+    when (this) {
+        is ConversationRuntimeExecutorIdentity.Server -> RuntimeEnvironmentExecutor.Server
+        is ConversationRuntimeExecutorIdentity.Worker -> RuntimeEnvironmentExecutor.Worker(identity.workerId.value)
+    }

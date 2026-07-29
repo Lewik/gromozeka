@@ -8,10 +8,8 @@ gromozeka:
       id: cloud-primary
       version: dev
       capabilities:
-        - CONVERSATION_TURN
-        - LLM_RUNTIME
+        - AI_REQUEST_RESPONSE
         - TOOL_EXECUTION
-        - MEMORY_PIPELINE
 
 spring:
   rabbitmq:

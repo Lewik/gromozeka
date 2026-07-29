@@ -6,21 +6,24 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
+import com.gromozeka.domain.service.ConversationRuntimeServerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -58,18 +61,18 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.markWorkItemPublished(conversationId, firstWork.single().sequence, "publisher-1", Clock.System.now()))
         assertNull(coordinator.claimAsEligibleWorker(second, worker("worker-1")))
         assertEquals(first, coordinator.claimAsEligibleWorker(first, worker("worker-2")))
-        assertTrue(coordinator.confirmActiveTaskOwner(conversationId, first.id, worker("worker-2")))
-        assertFalse(coordinator.confirmActiveTaskOwner(conversationId, first.id, worker("worker-1")))
+        assertTrue(coordinator.confirmActiveTaskOwner(conversationId, first.id, executor(worker("worker-2"))))
+        assertFalse(coordinator.confirmActiveTaskOwner(conversationId, first.id, executor(worker("worker-1"))))
 
         assertTrue(
             coordinator.markActiveTaskStarted(
                 conversationId,
                 first.id,
-                worker("worker-2"),
+                executor(worker("worker-2")),
                 Clock.System.now(),
             )
         )
-        assertTrue(coordinator.completeActiveTask(conversationId, first.id, worker("worker-2")))
+        assertTrue(coordinator.completeActiveTask(conversationId, first.id, executor(worker("worker-2"))))
         val secondWork = coordinator.claimUnpublishedWorkItems(
             leaseOwnerId = "publisher-1",
             now = Instant.fromEpochMilliseconds(10_001),
@@ -121,7 +124,7 @@ class InMemoryConversationRuntimeStoresTest {
             coordinator.takeActiveInsertions(
                 conversationId,
                 active.id,
-                worker("worker-1"),
+                executor(worker("worker-1")),
                 QueuedMessagePlacement.AFTER_TOOL_RESULT,
             ).map { it.id },
         )
@@ -144,11 +147,11 @@ class InMemoryConversationRuntimeStoresTest {
             coordinator.markActiveTaskStarted(
                 conversationId,
                 active.id,
-                worker("worker-1"),
+                executor(worker("worker-1")),
                 Clock.System.now(),
             )
         )
-        assertTrue(coordinator.completeActiveTask(conversationId, active.id, worker("worker-1")))
+        assertTrue(coordinator.completeActiveTask(conversationId, active.id, executor(worker("worker-1"))))
 
         val promoted = coordinator.claimAsEligibleWorker(steering, worker("worker-2"))
         assertEquals(steering.id, promoted?.id)
@@ -157,11 +160,11 @@ class InMemoryConversationRuntimeStoresTest {
             coordinator.markActiveTaskStarted(
                 conversationId,
                 promoted!!.id,
-                worker("worker-2"),
+                executor(worker("worker-2")),
                 Clock.System.now(),
             )
         )
-        assertTrue(coordinator.completeActiveTask(conversationId, promoted.id, worker("worker-2")))
+        assertTrue(coordinator.completeActiveTask(conversationId, promoted.id, executor(worker("worker-2"))))
 
         assertEquals(
             queued.id,
@@ -179,8 +182,8 @@ class InMemoryConversationRuntimeStoresTest {
             coordinator.claimDeliveredTask(
                 conversationId = conversationId,
                 taskId = llmTask.id,
-                worker = worker("turn-worker"),
-                workerCapabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                executor = executor(worker("turn-worker")),
+                executorCapabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
                 workerWorkspaceMountIds = emptySet(),
             )
         )
@@ -189,10 +192,10 @@ class InMemoryConversationRuntimeStoresTest {
             coordinator.claimDeliveredTask(
                 conversationId = conversationId,
                 taskId = llmTask.id,
-                worker = worker("llm-worker"),
-                workerCapabilities = setOf(
-                    ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                executor = executor(worker("llm-worker")),
+                executorCapabilities = setOf(
+                    ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                    ConversationRuntimeCapability.MEMORY_PIPELINE,
                 ),
                 workerWorkspaceMountIds = emptySet(),
             )
@@ -260,20 +263,20 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.submit(queued))
 
         assertNull(coordinator.claimAsEligibleWorker(task, second))
-        assertTrue(coordinator.confirmActiveTaskOwner(conversationId, task.id, first))
-        assertFalse(coordinator.confirmActiveTaskOwner(conversationId, task.id, second))
-        assertEquals(first, coordinator.listActiveTaskAssignments().single().worker)
+        assertTrue(coordinator.confirmActiveTaskOwner(conversationId, task.id, executor(first)))
+        assertFalse(coordinator.confirmActiveTaskOwner(conversationId, task.id, executor(second)))
+        assertEquals(executor(first), coordinator.listActiveTaskAssignments().single().executor)
 
-        assertTrue(coordinator.markActiveTaskStarted(conversationId, task.id, first, Clock.System.now()))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, task.id, executor(first), Clock.System.now()))
         val incident = coordinator.markActiveTaskInDoubt(
             conversationId = conversationId,
             taskId = task.id,
-            worker = first,
+            executor = executor(first),
             message = "Worker session disappeared",
             errorType = "WorkerUnavailable",
         )
         assertEquals(task.id, incident?.task?.id)
-        assertFalse(coordinator.completeActiveTask(conversationId, task.id, first))
+        assertFalse(coordinator.completeActiveTask(conversationId, task.id, executor(first)))
         assertNull(coordinator.claimAsEligibleWorker(task, second))
 
         val snapshot = coordinator.snapshot(conversationId)
@@ -297,12 +300,12 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.submit(task))
         assertEquals(task, coordinator.claimAsEligibleWorker(task, worker))
         assertNull(coordinator.listActiveTaskAssignments().single().startedAt)
-        assertFalse(coordinator.completeActiveTask(conversationId, task.id, worker))
+        assertFalse(coordinator.completeActiveTask(conversationId, task.id, executor(worker)))
         assertFailsWith<IllegalStateException> {
             coordinator.markActiveTaskInDoubt(
                 conversationId = conversationId,
                 taskId = task.id,
-                worker = worker,
+                executor = executor(worker),
                 message = "Must not be unknown before execution starts",
             )
         }
@@ -310,7 +313,7 @@ class InMemoryConversationRuntimeStoresTest {
         val incident = coordinator.recordClaimedTaskDeliveryFailure(
             conversationId = conversationId,
             taskId = task.id,
-            worker = worker,
+            executor = executor(worker),
             message = "Worker disappeared before execution",
         )
 
@@ -350,7 +353,7 @@ class InMemoryConversationRuntimeStoresTest {
             toolName = "read_file",
             status = ConversationRuntimeToolExecution.Status.RUNNING,
             runtimeTaskId = task.id,
-            worker = worker("worker-1"),
+            executor = executor(worker("worker-1")),
             startedAt = Clock.System.now(),
         )
 
@@ -572,7 +575,8 @@ class InMemoryConversationRuntimeStoresTest {
             reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
             taskId = ConversationRuntimeTask.Id("task-1"),
             requirements = ConversationRuntimeTaskRequirements(
-                capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                target = ConversationRuntimeTaskTarget.Server,
             ),
             createdAt = Clock.System.now(),
         )
@@ -642,7 +646,7 @@ class InMemoryConversationRuntimeStoresTest {
     ): ConversationRuntimeWorkerRegistration =
         ConversationRuntimeWorkerRegistration(
             identity = identity,
-            capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+            capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
             tools = emptyList(),
             environmentProfile = testWorkerEnvironmentProfile(at),
             version = "test",
@@ -657,9 +661,19 @@ class InMemoryConversationRuntimeStoresTest {
         claimDeliveredTask(
             conversationId = task.conversationId,
             taskId = task.id,
-            worker = worker,
-            workerCapabilities = task.requirements.capabilities,
-            workerWorkspaceMountIds = task.requirements.target?.workspaceMountId?.let(::setOf).orEmpty(),
+            executor = executor(worker),
+            executorCapabilities = task.requirements.capabilities,
+            workerWorkspaceMountIds = (task.requirements.target as? ConversationRuntimeTaskTarget.Worker)
+                ?.workspaceMountId
+                ?.let(::setOf)
+                .orEmpty(),
+        )
+
+    private fun executor(
+        worker: ConversationRuntimeWorkerIdentity,
+    ): ConversationRuntimeExecutorIdentity.Server =
+        ConversationRuntimeExecutorIdentity.Server(
+            ConversationRuntimeServerSessionId(worker.sessionId.value)
         )
 
     private fun task(
@@ -685,9 +699,10 @@ class InMemoryConversationRuntimeStoresTest {
             idempotencyKey = "test:$messageId",
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(
-                    ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                    ConversationRuntimeCapability.CONVERSATION_TURN,
+                    ConversationRuntimeCapability.MEMORY_PIPELINE,
                 ),
+                target = ConversationRuntimeTaskTarget.Server,
             ),
             createdAt = Clock.System.now(),
         )
@@ -706,9 +721,10 @@ class InMemoryConversationRuntimeStoresTest {
             idempotencyKey = "test:$messageId",
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(
-                    ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                    ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                    ConversationRuntimeCapability.MEMORY_PIPELINE,
                 ),
+                target = ConversationRuntimeTaskTarget.Server,
             ),
             createdAt = Clock.System.now(),
         )

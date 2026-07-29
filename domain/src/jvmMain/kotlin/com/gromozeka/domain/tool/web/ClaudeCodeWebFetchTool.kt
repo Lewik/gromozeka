@@ -1,6 +1,6 @@
 package com.gromozeka.domain.tool.web
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.Tool
@@ -32,7 +32,7 @@ interface ClaudeCodeWebFetchTool : Tool<ClaudeCodeWebFetchRequest, String> {
 
     override val metadata: AiToolMetadata
         get() = AiToolMetadata(
-            requiredRuntimeCapabilities = setOf(ConversationRuntimeWorkerCapability.LLM_RUNTIME),
+            requiredRuntimeCapabilities = setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE),
             executionScope = AiToolExecutionScope.WORKER,
         )
 

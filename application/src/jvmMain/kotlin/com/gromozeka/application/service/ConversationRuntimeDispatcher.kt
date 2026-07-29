@@ -12,9 +12,11 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -205,9 +207,10 @@ class ConversationRuntimeDispatcher(
                 idempotencyKey = "conversation:${conversationId.value}:memory-run:${runId.value}:delivery",
                 requirements = ConversationRuntimeTaskRequirements(
                     capabilities = setOf(
-                        ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                        ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                        ConversationRuntimeCapability.CONVERSATION_TURN,
+                        ConversationRuntimeCapability.MEMORY_PIPELINE,
                     ),
+                    target = ConversationRuntimeTaskTarget.Server,
                 ),
                 createdAt = Clock.System.now(),
             )
@@ -228,7 +231,8 @@ class ConversationRuntimeDispatcher(
                 idempotencyKey =
                     "conversation:${conversationId.value}:background-activity:$sourceKey",
                 requirements = ConversationRuntimeTaskRequirements(
-                    capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                    capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                    target = ConversationRuntimeTaskTarget.Server,
                 ),
                 createdAt = Clock.System.now(),
             )
@@ -306,14 +310,17 @@ class ConversationRuntimeDispatcher(
         val staleBefore = now - ConversationRuntimeTiming.workerRegistrationStaleAfter
         val registrations = runtimeWorkerRegistry.list().associateBy { it.identity.workerId }
         val incidents = runtimeCoordinator.listActiveTaskAssignments().mapNotNull { assignment ->
-            val registration = registrations[assignment.worker.workerId]
-            val unavailableReason = registration.unavailableReason(assignment.worker, staleBefore)
+            val expectedWorker = (assignment.executor as? ConversationRuntimeExecutorIdentity.Worker)
+                ?.identity
+                ?: return@mapNotNull null
+            val registration = registrations[expectedWorker.workerId]
+            val unavailableReason = registration.unavailableReason(expectedWorker, staleBefore)
                 ?: return@mapNotNull null
             if (assignment.startedAt == null) {
                 runtimeCoordinator.recordClaimedTaskDeliveryFailure(
                     conversationId = assignment.conversationId,
                     taskId = assignment.task.id,
-                    worker = assignment.worker,
+                    executor = assignment.executor,
                     message = "$unavailableReason before task execution started; the task was not executed",
                     errorType = "WorkerUnavailable",
                 )
@@ -321,7 +328,7 @@ class ConversationRuntimeDispatcher(
                 runtimeCoordinator.markActiveTaskInDoubt(
                     conversationId = assignment.conversationId,
                     taskId = assignment.task.id,
-                    worker = assignment.worker,
+                    executor = assignment.executor,
                     message = "$unavailableReason while task execution was active; the task outcome is unknown",
                     errorType = "WorkerUnavailable",
                 )
@@ -503,9 +510,10 @@ class ConversationRuntimeDispatcher(
             idempotencyKey = "conversation:${conversationId.value}:message:${userMessage.id.value}",
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(
-                    ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                    ConversationRuntimeCapability.CONVERSATION_TURN,
+                    ConversationRuntimeCapability.MEMORY_PIPELINE,
                 ),
+                target = ConversationRuntimeTaskTarget.Server,
             ),
             createdAt = Clock.System.now(),
         )

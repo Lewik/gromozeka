@@ -4,8 +4,6 @@ gromozeka:
       id: local-dev
       version: dev
       capabilities:
-        - CONVERSATION_TURN
-        - LLM_RUNTIME
+        - AI_REQUEST_RESPONSE
         - TOOL_EXECUTION
         - LOCAL_AGENT_TOOL
-        - MEMORY_PIPELINE

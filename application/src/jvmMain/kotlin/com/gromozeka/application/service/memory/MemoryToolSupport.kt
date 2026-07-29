@@ -15,6 +15,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 
 const val MEMORY_REMEMBER_TOOL_NAME = "memory_remember"
 const val MEMORY_FORGET_SOURCE_TOOL_NAME = "memory_forget_source"
@@ -376,8 +377,8 @@ object MemoryToolResultRenderer {
                             put("namespace", active.namespace.value)
                             active.startedAt?.let { put("started_at", it.toString()) }
                             active.executionLease?.let { lease ->
-                                put("worker_id", lease.ownerId)
-                                put("worker_session_id", lease.ownerSessionId)
+                                put("executor_id", lease.ownerId)
+                                put("executor_session_id", lease.ownerSessionId)
                                 put("lease_expires_at", lease.expiresAt.toString())
                             }
                             put("lease_expired", active.leaseExpired)
@@ -385,21 +386,13 @@ object MemoryToolResultRenderer {
                     )
                 }
             }
-            put("worker_count", operationStatus.onlineWorkers.size)
-            putJsonArray("online_workers") {
-                operationStatus.onlineWorkers.forEach { worker ->
-                    add(
-                        buildJsonObject {
-                            put("worker_id", worker.identity.workerId.value)
-                            put("worker_session_id", worker.identity.sessionId.value)
-                            put("version", worker.version)
-                            put("last_heartbeat_at", worker.lastHeartbeatAt.toString())
-                        }
-                    )
-                }
+            putJsonObject("executor") {
+                put("kind", "server")
+                put("id", "server")
+                put("session_id", operationStatus.executor.sessionId.value)
             }
             put("source_of_truth", "memory_runs")
-            put("distributed", true)
+            put("distributed", false)
             put("restart_policy", "resume_queued_fail_interrupted")
         }.toString()
 

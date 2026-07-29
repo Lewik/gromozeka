@@ -10,6 +10,7 @@ import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeActiveTaskAssignment
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventLogEntry
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
@@ -17,12 +18,13 @@ import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkOutboxEntry
 import com.gromozeka.domain.model.WorkspaceMount
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.Dispatchers
@@ -95,8 +97,8 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun claimDeliveredTask(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
-        workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
+        executor: ConversationRuntimeExecutorIdentity,
+        executorCapabilities: Set<ConversationRuntimeCapability>,
         workerWorkspaceMountIds: Set<WorkspaceMount.Id>,
     ): ConversationRuntimeTask? =
         mutateRecord(conversationId, createIfMissing = false) { record ->
@@ -109,10 +111,15 @@ class PostgresConversationRuntimeCoordinator(
                     return@mutateRecord null
                 }
                 val activeTask = record.activeTask ?: return@mutateRecord null
-                if (state.activeWorker != worker) {
+                if (state.activeExecutor != executor) {
                     return@mutateRecord null
                 }
-                if (!activeTask.requirements.isSatisfiedBy(worker.workerId, workerCapabilities, workerWorkspaceMountIds)) {
+                if (!activeTask.requirements.isSatisfiedBy(
+                        executor,
+                        executorCapabilities,
+                        workerWorkspaceMountIds,
+                    )
+                ) {
                     return@mutateRecord null
                 }
                 return@mutateRecord activeTask
@@ -126,7 +133,7 @@ class PostgresConversationRuntimeCoordinator(
                 return@mutateRecord null
             }
             val task = record.pendingTasks[taskIndex]
-            if (!task.requirements.isSatisfiedBy(worker.workerId, workerCapabilities, workerWorkspaceMountIds)) {
+            if (!task.requirements.isSatisfiedBy(executor, executorCapabilities, workerWorkspaceMountIds)) {
                 return@mutateRecord null
             }
 
@@ -141,17 +148,17 @@ class PostgresConversationRuntimeCoordinator(
             )).copy(
                 controlState = ConversationExecutionState.ControlState.RUNNING,
                 activeTaskId = task.id,
-                activeWorker = worker,
+                activeExecutor = executor,
                 activeTaskStartedAt = null,
                 updatedAt = now,
             )
             record.appendTrace(
                 conversationId = conversationId,
                 taskId = task.id,
-                worker = worker,
+                executor = executor,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_CLAIMED,
                 status = ConversationRuntimeTraceEntry.Status.STARTED,
-                message = "Runtime task claimed by ${worker.workerId.value}/${worker.sessionId.value}",
+                message = "Runtime task claimed by $executor",
             )
             record.bumpRevision()
             task
@@ -160,12 +167,12 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun completeActiveTask(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val state = record.state ?: return@mutateRecord false
             if (state.activeTaskId != taskId ||
-                state.activeWorker != worker ||
+                state.activeExecutor != executor ||
                 state.activeTaskStartedAt == null
             ) {
                 return@mutateRecord false
@@ -177,7 +184,7 @@ class PostgresConversationRuntimeCoordinator(
             record.state = state.copy(
                 controlState = completedControlState,
                 activeTaskId = null,
-                activeWorker = null,
+                activeExecutor = null,
                 activeTaskStartedAt = null,
                 updatedAt = Clock.System.now(),
             )
@@ -188,7 +195,7 @@ class PostgresConversationRuntimeCoordinator(
             record.appendTrace(
                 conversationId = conversationId,
                 taskId = taskId,
-                worker = worker,
+                executor = executor,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_COMPLETED,
                 status = ConversationRuntimeTraceEntry.Status.COMPLETED,
                 message = "Runtime task completed",
@@ -217,12 +224,12 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun markActiveTaskStarted(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         startedAt: Instant,
     ): Boolean =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val state = record.state ?: return@mutateRecord false
-            if (state.activeTaskId != taskId || state.activeWorker != worker) {
+            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
                 return@mutateRecord false
             }
             if (state.activeTaskStartedAt != null) {
@@ -235,7 +242,7 @@ class PostgresConversationRuntimeCoordinator(
             record.appendTrace(
                 conversationId = conversationId,
                 taskId = taskId,
-                worker = worker,
+                executor = executor,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_STARTED,
                 status = ConversationRuntimeTraceEntry.Status.STARTED,
                 message = "Runtime task execution started",
@@ -247,22 +254,22 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun confirmActiveTaskOwner(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
         readRecord(conversationId)?.state?.let { state ->
-            state.activeTaskId == taskId && state.activeWorker == worker
+            state.activeTaskId == taskId && state.activeExecutor == executor
         } ?: false
 
     override suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         message: String,
         errorType: String?,
     ): ConversationRuntimeTaskIncident? =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val state = record.state ?: return@mutateRecord null
-            if (state.activeTaskId != taskId || state.activeWorker != worker) {
+            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
                 return@mutateRecord null
             }
             check(state.activeTaskStartedAt != null) {
@@ -279,13 +286,13 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun recordClaimedTaskDeliveryFailure(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         message: String,
         errorType: String?,
     ): ConversationRuntimeTaskIncident? =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val state = record.state ?: return@mutateRecord null
-            if (state.activeTaskId != taskId || state.activeWorker != worker) {
+            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
                 return@mutateRecord null
             }
             check(state.activeTaskStartedAt == null) {
@@ -302,7 +309,7 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun recordPendingTaskDeliveryFailure(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         message: String,
         errorType: String?,
     ): ConversationRuntimeTaskIncident? =
@@ -315,7 +322,7 @@ class PostgresConversationRuntimeCoordinator(
                 kind = ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
                 message = message,
                 errorType = errorType,
-                worker = worker,
+                executor = executor,
                 executionStartedAt = null,
                 occurredAt = Clock.System.now(),
             )
@@ -324,7 +331,7 @@ class PostgresConversationRuntimeCoordinator(
             record.appendTrace(
                 conversationId = conversationId,
                 taskId = task.id,
-                worker = worker,
+                executor = executor,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_FAILED,
                 status = ConversationRuntimeTraceEntry.Status.FAILED,
                 message = "${ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED}: " +
@@ -348,11 +355,11 @@ class PostgresConversationRuntimeCoordinator(
         readAllRecords().mapNotNull { record ->
             val task = record.activeTask ?: return@mapNotNull null
             val state = record.state ?: return@mapNotNull null
-            val worker = state.activeWorker ?: return@mapNotNull null
+            val executor = state.activeExecutor ?: return@mapNotNull null
             ConversationRuntimeActiveTaskAssignment(
                 conversationId = record.conversationId,
                 task = task,
-                worker = worker,
+                executor = executor,
                 startedAt = state.activeTaskStartedAt,
             )
         }
@@ -390,7 +397,7 @@ class PostgresConversationRuntimeCoordinator(
     ): Boolean =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val state = record.state ?: return@mutateRecord false
-            if (state.activeTaskId != execution.runtimeTaskId || state.activeWorker != execution.worker) {
+            if (state.activeTaskId != execution.runtimeTaskId || state.activeExecutor != execution.executor) {
                 return@mutateRecord false
             }
             val executions = record.toolExecutions.toMutableList()
@@ -404,7 +411,7 @@ class PostgresConversationRuntimeCoordinator(
             record.appendTrace(
                 conversationId = conversationId,
                 taskId = execution.runtimeTaskId,
-                worker = execution.worker,
+                executor = execution.executor,
                 kind = ConversationRuntimeTraceEntry.Kind.TOOL_EXECUTION,
                 status = when (execution.status) {
                     ConversationRuntimeToolExecution.Status.RUNNING -> ConversationRuntimeTraceEntry.Status.STARTED
@@ -420,11 +427,11 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun clearToolExecutions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val state = record.state ?: return@mutateRecord false
-            if (state.activeTaskId != taskId || state.activeWorker != worker) {
+            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
                 return@mutateRecord false
             }
             if (record.toolExecutions.isNotEmpty()) {
@@ -765,12 +772,12 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun takeActiveInsertions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         placement: QueuedMessagePlacement,
     ): List<ConversationRuntimeTask> =
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val state = record.state ?: return@mutateRecord emptyList()
-            if (state.activeTaskId != taskId || state.activeWorker != worker) {
+            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
                 return@mutateRecord emptyList()
             }
             val ready = record.pendingTasks.filter { it.placement == placement }
@@ -1345,7 +1352,7 @@ class PostgresConversationRuntimeCoordinator(
         fun appendTrace(
             conversationId: Conversation.Id,
             taskId: ConversationRuntimeTask.Id? = null,
-            worker: ConversationRuntimeWorkerIdentity? = null,
+            executor: ConversationRuntimeExecutorIdentity? = null,
             kind: ConversationRuntimeTraceEntry.Kind,
             status: ConversationRuntimeTraceEntry.Status,
             message: String? = null,
@@ -1355,7 +1362,7 @@ class PostgresConversationRuntimeCoordinator(
                 sequence = traceSequence,
                 conversationId = conversationId,
                 taskId = taskId,
-                worker = worker,
+                executor = executor,
                 kind = kind,
                 status = status,
                 message = message,
@@ -1389,7 +1396,7 @@ class PostgresConversationRuntimeCoordinator(
                 kind = kind,
                 message = message,
                 errorType = errorType,
-                worker = currentState.activeWorker,
+                executor = currentState.activeExecutor,
                 executionStartedAt = currentState.activeTaskStartedAt,
                 occurredAt = Clock.System.now(),
             )
@@ -1397,7 +1404,7 @@ class PostgresConversationRuntimeCoordinator(
             appendTrace(
                 conversationId = conversationId,
                 taskId = task.id,
-                worker = currentState.activeWorker,
+                executor = currentState.activeExecutor,
                 kind = when (kind) {
                     ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED ->
                         ConversationRuntimeTraceEntry.Kind.TASK_FAILED
@@ -1428,7 +1435,7 @@ class PostgresConversationRuntimeCoordinator(
                         else -> currentState.controlState
                     },
                     activeTaskId = null,
-                    activeWorker = null,
+                    activeExecutor = null,
                     activeTaskStartedAt = null,
                     updatedAt = Clock.System.now(),
                 )
@@ -1449,7 +1456,8 @@ class PostgresConversationRuntimeCoordinator(
                 placement = QueuedMessagePlacement.END_OF_TURN,
                 idempotencyKey = "${incident.task.idempotencyKey}:incident",
                 requirements = ConversationRuntimeTaskRequirements(
-                    capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+                    capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                    target = ConversationRuntimeTaskTarget.Server,
                 ),
                 createdAt = incident.occurredAt,
             )

@@ -95,4 +95,26 @@ class AiConnectionTest {
         assertEquals(17, restored.maxCachedProcesses)
         assertEquals(95, restored.processIdleTtlMinutes)
     }
+
+    @Test
+    fun executionTargetSurvivesSerialization() {
+        val connection: AiConnection = AiConnection.OpenAiApi(
+            id = AiConnection.Id("worker-openai"),
+            displayName = "Worker OpenAI",
+            executionTarget = AiExecutionTarget.Worker("macbook-primary"),
+        )
+
+        val restored = Json.decodeFromString<AiConnection>(
+            Json.encodeToString(connection),
+        )
+
+        assertEquals(AiExecutionTarget.Worker("macbook-primary"), restored.executionTarget)
+    }
+
+    @Test
+    fun workerExecutionTargetRequiresWorkerId() {
+        assertFailsWith<IllegalArgumentException> {
+            AiExecutionTarget.Worker(" ")
+        }
+    }
 }

@@ -14,7 +14,7 @@ import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RunningCommandProcess
@@ -44,8 +44,8 @@ class DefaultCommandTaskServiceTest {
     private val workerDescriptor = ConversationRuntimeWorkerDescriptor(
         id = ConversationRuntimeWorkerId("command-worker"),
         capabilities = setOf(
-            ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-            ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+            ConversationRuntimeCapability.TOOL_EXECUTION,
+            ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
         ),
         environmentProfile = testWorkerEnvironmentProfile(),
     )

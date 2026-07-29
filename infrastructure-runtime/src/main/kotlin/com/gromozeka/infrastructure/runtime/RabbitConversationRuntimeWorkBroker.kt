@@ -1,12 +1,13 @@
 package com.gromozeka.infrastructure.runtime
 
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
 import com.gromozeka.domain.service.ConversationRuntimeWorkDelivery
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
-import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import klog.KLoggers
 import kotlinx.coroutines.CompletableDeferred
@@ -65,16 +66,13 @@ internal class RabbitConversationRuntimeWorkPublisher(
 }
 
 @Service
-@ConditionalOnProperty(
-    name = ["gromozeka.runtime.rabbit.enabled", "gromozeka.runtime.worker.enabled"],
-    havingValue = "true",
-)
+@ConditionalOnProperty(name = ["gromozeka.runtime.rabbit.enabled"], havingValue = "true")
 internal class RabbitConversationRuntimeWorkConsumer(
     private val connectionFactory: ConnectionFactory,
     private val rabbitTemplate: RabbitTemplate,
     private val topology: RabbitConversationRuntimeWorkTopology,
     @Value("\${gromozeka.runtime.rabbit.max-redeliveries:8}") private val maxRedeliveries: Int,
-    runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
+    runtimeExecutorDescriptor: ConversationRuntimeExecutorDescriptor,
 ) : ConversationRuntimeWorkConsumer, SmartLifecycle {
     private val log = KLoggers.logger(this)
     private val json = Json {
@@ -82,9 +80,9 @@ internal class RabbitConversationRuntimeWorkConsumer(
         ignoreUnknownKeys = false
     }
     private val channel = Channel<ConversationRuntimeWorkDelivery>(Channel.UNLIMITED)
-    private val consumerRoutes = runtimeWorkerDescriptor.consumerRoutes()
-    private val workerCapabilities = runtimeWorkerDescriptor.capabilities
-    private val workerId = runtimeWorkerDescriptor.id
+    private val consumerRoute = RabbitRuntimeWorkRoute.from(runtimeExecutorDescriptor.identity)
+    private val executor = runtimeExecutorDescriptor.identity
+    private val executorCapabilities = runtimeExecutorDescriptor.capabilities
     private var listenerContainer: SimpleMessageListenerContainer? = null
 
     @Volatile
@@ -102,13 +100,8 @@ internal class RabbitConversationRuntimeWorkConsumer(
             return
         }
 
-        consumerRoutes.forEach(topology::declareRoute)
-        val listenerQueueNames = consumerRoutes
-            .map(topology::queueName)
-            .distinct()
-        check(listenerQueueNames.isNotEmpty()) {
-            "Conversation runtime worker has no Rabbit routes: worker=${workerId.value} capabilities=$workerCapabilities"
-        }
+        topology.declareRoute(consumerRoute)
+        val listenerQueueNames = listOf(topology.queueName(consumerRoute))
         listenerContainer = SimpleMessageListenerContainer(connectionFactory).apply {
             setQueueNames(*listenerQueueNames.toTypedArray())
             setPrefetchCount(1)
@@ -156,8 +149,8 @@ internal class RabbitConversationRuntimeWorkConsumer(
         running = true
         log.info {
             "Rabbit runtime work consumer started: exchange=${topology.exchangeName} " +
-                "queues=${listenerQueueNames.size} routes=${consumerRoutes.size} " +
-                "worker=${workerId.value} workerCapabilities=${workerCapabilities.joinToString()}"
+                "queue=${listenerQueueNames.single()} route=${consumerRoute.id} " +
+                "executor=$executor capabilities=${executorCapabilities.joinToString()}"
         }
     }
 
@@ -356,10 +349,8 @@ internal class RabbitConversationRuntimeWorkTopology(
 internal sealed interface RabbitRuntimeWorkRoute {
     val id: String
 
-    data class Shared(
-        val lane: RabbitRuntimeWorkLane,
-    ) : RabbitRuntimeWorkRoute {
-        override val id: String = "lane-${lane.name.lowercase().replace('_', '-')}.global"
+    data object Server : RabbitRuntimeWorkRoute {
+        override val id: String = "server"
     }
 
     data class Worker(
@@ -370,48 +361,18 @@ internal sealed interface RabbitRuntimeWorkRoute {
 
     companion object {
         fun from(requirements: ConversationRuntimeTaskRequirements): RabbitRuntimeWorkRoute =
-            requirements.target
-                ?.let { Worker(it.workerId) }
-                ?: Shared(RabbitRuntimeWorkLane.fromSharedCapabilities(requirements.capabilities))
+            when (val target = requirements.target) {
+                ConversationRuntimeTaskTarget.Server -> Server
+                is ConversationRuntimeTaskTarget.Worker -> Worker(target.workerId)
+            }
+
+        fun from(executor: ConversationRuntimeExecutorIdentity): RabbitRuntimeWorkRoute =
+            when (executor) {
+                is ConversationRuntimeExecutorIdentity.Server -> Server
+                is ConversationRuntimeExecutorIdentity.Worker -> Worker(executor.identity.workerId)
+            }
     }
 }
-
-internal enum class RabbitRuntimeWorkLane(
-    val requiredCapabilities: Set<ConversationRuntimeWorkerCapability>,
-) {
-    CONVERSATION(
-        setOf(
-            ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-            ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
-        )
-    ),
-    LLM(
-        setOf(
-            ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-            ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
-        )
-    ),
-    MEMORY(setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE)),
-    INCIDENT(setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN));
-
-    companion object {
-        fun fromSharedCapabilities(capabilities: Set<ConversationRuntimeWorkerCapability>): RabbitRuntimeWorkLane =
-            entries.singleOrNull { it.requiredCapabilities == capabilities }
-                ?: error(
-                    "Unsupported shared Rabbit runtime capability profile: " +
-                        capabilities.sortedBy { it.name }.joinToString()
-                )
-    }
-}
-
-internal fun ConversationRuntimeWorkerDescriptor.consumerRoutes(): List<RabbitRuntimeWorkRoute> {
-    return listOf(RabbitRuntimeWorkRoute.Worker(id)) +
-        capabilities.consumerLanes().map(RabbitRuntimeWorkRoute::Shared)
-}
-
-private fun Set<ConversationRuntimeWorkerCapability>.consumerLanes(): Set<RabbitRuntimeWorkLane> =
-    RabbitRuntimeWorkLane.entries
-        .filterTo(mutableSetOf()) { containsAll(it.requiredCapabilities) }
 
 private fun workerRouteId(workerId: ConversationRuntimeWorkerId): String =
     "${Integer.toUnsignedString(workerId.value.hashCode(), 36)}-${workerId.value.routeToken()}"

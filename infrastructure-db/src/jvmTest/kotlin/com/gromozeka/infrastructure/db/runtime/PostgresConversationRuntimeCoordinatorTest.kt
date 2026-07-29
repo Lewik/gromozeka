@@ -9,7 +9,9 @@ import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
+import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
@@ -75,7 +77,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                 coordinator.markActiveTaskStarted(
                     conversationId = conversationId,
                     taskId = claimedTask.id,
-                    worker = firstWorker,
+                    executor = executor(firstWorker),
                     startedAt = startedAt,
                 )
             )
@@ -84,14 +86,14 @@ class PostgresConversationRuntimeCoordinatorTest {
             val incident = coordinator.markActiveTaskInDoubt(
                 conversationId = conversationId,
                 taskId = claimedTask.id,
-                worker = firstWorker,
+                executor = executor(firstWorker),
                 message = "Worker heartbeat was lost",
                 errorType = "WorkerUnavailable",
             )
 
             assertEquals(ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN, incident?.kind)
             assertEquals(startedAt, incident?.executionStartedAt)
-            assertFalse(coordinator.completeActiveTask(conversationId, claimedTask.id, firstWorker))
+            assertFalse(coordinator.completeActiveTask(conversationId, claimedTask.id, executor(firstWorker)))
             val snapshot = coordinator.snapshot(conversationId)
             assertNull(snapshot.activeTask)
             assertEquals(claimedTask.id, snapshot.incidents.single().task.id)
@@ -329,8 +331,11 @@ class PostgresConversationRuntimeCoordinatorTest {
             idempotencyKey = "test:$messageId",
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(
-                    ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                    ConversationRuntimeCapability.CONVERSATION_TURN,
+                    ConversationRuntimeCapability.MEMORY_PIPELINE,
+                ),
+                target = ConversationRuntimeTaskTarget.Worker(
+                    ConversationRuntimeWorkerId("worker-1")
                 ),
             ),
             createdAt = createdAt,
@@ -344,10 +349,13 @@ class PostgresConversationRuntimeCoordinatorTest {
         claimDeliveredTask(
             conversationId = task.conversationId,
             taskId = task.id,
-            worker = worker,
-            workerCapabilities = task.requirements.capabilities,
+            executor = executor(worker),
+            executorCapabilities = task.requirements.capabilities,
             workerWorkspaceMountIds = emptySet(),
         )
+
+    private fun executor(worker: ConversationRuntimeWorkerIdentity): ConversationRuntimeExecutorIdentity =
+        ConversationRuntimeExecutorIdentity.Worker(worker)
 
     private fun worker(
         workerId: String,

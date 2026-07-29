@@ -1,5 +1,6 @@
 package com.gromozeka.domain.model
 
+import com.gromozeka.domain.model.ai.AiExecutionTarget
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -69,6 +70,7 @@ data class UserProfile(
                 val serverStartupTimeoutSeconds: Int = 300,
                 val audioContext: AudioContext = AudioContext(),
                 val liveStreaming: LiveStreaming = LiveStreaming(),
+                val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
             ) {
                 init {
                     require(executablePath.isNotBlank()) { "Local Whisper executable path must not be blank" }

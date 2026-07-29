@@ -5,12 +5,6 @@ import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
-import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
-import com.gromozeka.domain.service.ConversationRuntimeWorkerId
-import com.gromozeka.domain.service.WorkerEnvironmentProfile
-import com.gromozeka.domain.service.WorkerNativeShell
-import com.gromozeka.domain.service.WorkerOperatingSystem
 import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
 import com.gromozeka.application.service.InMemoryConversationRuntimeWorkQueue
 import com.gromozeka.infrastructure.ai.openai.OpenAiSdkEmbeddingProvider
@@ -95,25 +89,4 @@ class E2eSupportConfig {
     fun conversationRuntimeWorkQueue(): InMemoryConversationRuntimeWorkQueue =
         InMemoryConversationRuntimeWorkQueue()
 
-    @Bean
-    fun conversationRuntimeWorkerDescriptor(): ConversationRuntimeWorkerDescriptor =
-        ConversationRuntimeWorkerDescriptor(
-            id = ConversationRuntimeWorkerId("e2e-worker"),
-            capabilities = ConversationRuntimeWorkerCapability.entries.toSet(),
-            environmentProfile = WorkerEnvironmentProfile(
-                observedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(1),
-                operatingSystem = WorkerOperatingSystem(
-                    family = WorkerOperatingSystem.Family.LINUX,
-                    name = "Test Linux",
-                    version = "1",
-                ),
-                architecture = "x86_64",
-                nativeShell = WorkerNativeShell(WorkerNativeShell.Kind.POSIX_SH, "/bin/sh"),
-                timezoneId = "UTC",
-                localeTag = "en-US",
-                logicalProcessorCount = 4,
-                totalMemoryBytes = 8_589_934_592,
-                availableExecutables = listOf("sh"),
-            ),
-        )
 }

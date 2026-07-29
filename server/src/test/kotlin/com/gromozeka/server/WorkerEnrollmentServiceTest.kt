@@ -1,6 +1,6 @@
 package com.gromozeka.server
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import kotlinx.coroutines.runBlocking
 import java.time.Clock
 import java.time.Instant
@@ -22,7 +22,7 @@ class WorkerEnrollmentServiceTest {
 
         assertEquals("macbook-primary", bootstrap.workerId)
         assertEquals("jdbc:postgresql://db.example/gromozeka", bootstrap.postgresJdbcUrl)
-        assertEquals(setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION), bootstrap.capabilities)
+        assertEquals(setOf(ConversationRuntimeCapability.TOOL_EXECUTION), bootstrap.capabilities)
         assertFailsWith<IllegalArgumentException> {
             service.consume(token.token, "second-worker")
         }
@@ -65,6 +65,6 @@ class WorkerEnrollmentServiceTest {
             rabbitmqAddresses = "amqps://rabbit.example:5671",
             rabbitmqUsername = "worker",
             rabbitmqPassword = "rabbit-secret",
-            capabilities = setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION),
+            capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
         )
 }

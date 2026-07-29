@@ -5,7 +5,7 @@ import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
-import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.ToolCancellationSignal
@@ -15,7 +15,6 @@ import kotlinx.coroutines.*
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.jsonObject
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import kotlin.coroutines.coroutineContext
 
@@ -34,10 +33,6 @@ data class ToolExecutionResult(
  * to actually run concurrently. Errors in one tool don't affect others.
  */
 @Service
-@ConditionalOnProperty(
-    name = ["gromozeka.runtime.worker.enabled"],
-    havingValue = "true",
-)
 class ParallelToolExecutor(
     private val aiToolProvider: AiToolProvider,
     private val toolApprovalService: ToolApprovalService,
@@ -55,39 +50,53 @@ class ParallelToolExecutor(
         toolCalls: List<ContentItem.ToolCall>,
         toolContext: ToolExecutionContext,
         runtimeTaskId: ConversationRuntimeTask.Id?,
-        worker: ConversationRuntimeWorkerIdentity?,
+        executor: ConversationRuntimeExecutorIdentity,
         expectedTarget: ConversationRuntimeTaskTarget,
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit = {},
     ): ToolExecutionResult {
         if (toolCalls.isEmpty()) return ToolExecutionResult(emptyList(), false)
 
+        require(expectedTarget.matches(executor)) {
+            "Runtime task target $expectedTarget does not match executor $executor"
+        }
         val callbackMap = buildCallbackMap()
         toolCalls.forEach { toolCall ->
             val callback = callbackMap[toolCall.call.name]
-                ?: error("Worker does not advertise requested tool: ${toolCall.call.name}")
+                ?: error("Runtime executor does not provide requested tool: ${toolCall.call.name}")
             when (callback.metadata.executionScope) {
                 AiToolExecutionScope.CONVERSATION_RUNTIME -> {
+                    require(expectedTarget == ConversationRuntimeTaskTarget.Server) {
+                        "Conversation runtime tool ${toolCall.call.name} cannot execute on Worker"
+                    }
                     require(AI_TOOL_EXECUTION_TARGET_FIELD !in toolCall.call.input.jsonObject) {
                         "Conversation runtime tool ${toolCall.call.name} must not declare execution_target"
                     }
                 }
                 AiToolExecutionScope.WORKER -> {
                     val requestedTarget = toolCall.call.input.parseExecutionTarget()
-                    require(requestedTarget.workerId == expectedTarget.workerId) {
+                    val workerTarget = expectedTarget as? ConversationRuntimeTaskTarget.Worker
+                        ?: error("Worker tool ${toolCall.call.name} cannot execute on Server")
+                    require(requestedTarget.workerId == workerTarget.workerId) {
                         "Tool ${toolCall.call.name} targets worker ${requestedTarget.workerId?.value}, " +
-                            "but runtime task targets ${expectedTarget.workerId.value}"
+                            "but runtime task targets ${workerTarget.workerId.value}"
                     }
                 }
                 AiToolExecutionScope.WORKSPACE -> {
                     val requestedTarget = toolCall.call.input.parseExecutionTarget()
-                    require(requestedTarget.workspaceMountId == expectedTarget.workspaceMountId) {
+                    val workerTarget = expectedTarget as? ConversationRuntimeTaskTarget.Worker
+                        ?: error("Workspace tool ${toolCall.call.name} cannot execute on Server")
+                    require(requestedTarget.workspaceMountId == workerTarget.workspaceMountId) {
                         "Tool ${toolCall.call.name} targets workspace mount " +
                             "${requestedTarget.workspaceMountId?.value}, but runtime task targets " +
-                            "${expectedTarget.workspaceMountId?.value}"
+                            "${workerTarget.workspaceMountId?.value}"
                     }
                 }
-                AiToolExecutionScope.COMMAND_TASK_OWNER -> Unit
-                AiToolExecutionScope.COMMAND_MONITOR_OWNER -> Unit
+                AiToolExecutionScope.COMMAND_TASK_OWNER,
+                AiToolExecutionScope.COMMAND_MONITOR_OWNER -> require(
+                    expectedTarget is ConversationRuntimeTaskTarget.Worker
+                ) {
+                    "Command owner tool ${toolCall.call.name} cannot execute on Server"
+                }
             }
         }
 
@@ -99,7 +108,7 @@ class ParallelToolExecutor(
                         callbackMap = callbackMap,
                         toolContext = toolContext,
                         runtimeTaskId = runtimeTaskId,
-                        worker = worker,
+                        executor = executor,
                         onToolExecutionChanged = onToolExecutionChanged,
                     )
                 }
@@ -120,7 +129,7 @@ class ParallelToolExecutor(
         callbackMap: Map<String, AiToolCallback>,
         toolContext: ToolExecutionContext,
         runtimeTaskId: ConversationRuntimeTask.Id?,
-        worker: ConversationRuntimeWorkerIdentity?,
+        executor: ConversationRuntimeExecutorIdentity,
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit,
     ): ContentItem.ToolResult {
         return try {
@@ -129,7 +138,7 @@ class ParallelToolExecutor(
                 toolName = toolCall.call.name,
                 status = ConversationRuntimeToolExecution.Status.RUNNING,
                 runtimeTaskId = runtimeTaskId,
-                worker = worker,
+                executor = executor,
                 startedAt = Clock.System.now(),
             )
             onToolExecutionChanged(started)
@@ -154,7 +163,7 @@ class ParallelToolExecutor(
                 toolName = toolCall.call.name,
                 status = ConversationRuntimeToolExecution.Status.FAILED,
                 runtimeTaskId = runtimeTaskId,
-                worker = worker,
+                executor = executor,
                 startedAt = Clock.System.now(),
                 completedAt = Clock.System.now(),
                 isError = true,
@@ -170,6 +179,14 @@ class ParallelToolExecutor(
     private fun buildCallbackMap(): Map<String, AiToolCallback> {
         return aiToolProvider.getTools().associateBy { it.definition.name }
     }
+
+    private fun ConversationRuntimeTaskTarget.matches(executor: ConversationRuntimeExecutorIdentity): Boolean =
+        when (this) {
+            ConversationRuntimeTaskTarget.Server -> executor is ConversationRuntimeExecutorIdentity.Server
+            is ConversationRuntimeTaskTarget.Worker ->
+                executor is ConversationRuntimeExecutorIdentity.Worker &&
+                    executor.identity.workerId == workerId
+        }
 
     private suspend fun executeSingleTool(
         toolCall: ContentItem.ToolCall,

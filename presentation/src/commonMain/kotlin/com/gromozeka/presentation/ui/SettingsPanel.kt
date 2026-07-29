@@ -30,11 +30,14 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
+import com.gromozeka.domain.service.WorkerCatalogService
+import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import com.gromozeka.remote.protocol.DistributionArchitecture
@@ -84,6 +87,7 @@ fun SettingsPanel(
     settingsService: SettingsService,
     aiConfigurationService: AiConfigurationService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
+    workerCatalogService: WorkerCatalogService,
     distributionService: RemoteDistributionService,
     ollamaModelService: OllamaModelService,
     coroutineScope: CoroutineScope,
@@ -108,6 +112,7 @@ fun SettingsPanel(
     val soundSettings = deviceSettings.soundSettings
     val desktopInputSettings = settings.desktopInputSettings
     val desktopWindowSettings = settings.desktopWindowSettings
+    var workers by remember { mutableStateOf(emptyList<WorkerCatalogEntry>()) }
     var selectedSection by remember(contentMode) {
         mutableStateOf(SettingsSection.AiRuntime)
     }
@@ -116,6 +121,9 @@ fun SettingsPanel(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             themeService.refreshThemes()
+            runCatching { workerCatalogService.listWorkers() }
+                .onSuccess { workers = it }
+                .onFailure { log.warn(it) { "Failed to load Workers for settings: ${it.message}" } }
         }
     }
 
@@ -320,6 +328,46 @@ fun SettingsPanel(
 
                             if (speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER) {
                                 val localWhisper = speechToText.localWhisper
+                                val executionTargets = buildList {
+                                    add(AiExecutionTarget.Server)
+                                    workers.forEach {
+                                        add(AiExecutionTarget.Worker(it.workerId.value))
+                                    }
+                                    if (localWhisper.executionTarget !in this) {
+                                        add(localWhisper.executionTarget)
+                                    }
+                                }
+
+                                DropdownSettingItem(
+                                    label = "Whisper execution target",
+                                    description = "Finite transcription runs on this exact target. Live interpretation requires Server.",
+                                    value = localWhisper.executionTarget,
+                                    options = executionTargets,
+                                    optionLabel = { target ->
+                                        when (target) {
+                                            AiExecutionTarget.Server -> "Server"
+                                            is AiExecutionTarget.Worker -> {
+                                                val status = workers.firstOrNull {
+                                                    it.workerId.value == target.workerId
+                                                }?.status?.name?.lowercase() ?: "unknown"
+                                                "Worker ${target.workerId} · $status"
+                                            }
+                                        }
+                                    },
+                                    onValueChange = { target ->
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    speechSettings = speechSettings.copy(
+                                                        speechToText = speechSettings.speechToText.copy(
+                                                            localWhisper = localWhisper.copy(executionTarget = target)
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    },
+                                )
 
                                 TextFieldSettingItem(
                                     label = "Whisper executable",
@@ -484,6 +532,7 @@ fun SettingsPanel(
                         AiCatalogSettings(
                             aiConfigurationService = aiConfigurationService,
                             runtimeCatalogTemplateService = runtimeCatalogTemplateService,
+                            workerCatalogService = workerCatalogService,
                             coroutineScope = coroutineScope,
                         )
                     }

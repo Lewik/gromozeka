@@ -55,6 +55,7 @@ data class DistributedAiToolCatalogSnapshot(
 class DistributedAiToolCatalog(
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
     private val workspaceService: WorkspaceDomainService,
+    private val aiToolProvider: com.gromozeka.domain.service.AiToolProvider,
 ) {
     private val json = Json
 
@@ -75,9 +76,11 @@ class DistributedAiToolCatalog(
             registration.identity.workerId to projectMounts
                 .filter { it.workerId == registration.identity.workerId.value }
         }
-        val entries = onlineRegistrations
+        val workerEntries = onlineRegistrations
             .flatMap { registration ->
-                registration.tools.map { descriptor -> descriptor.definition.name to (registration to descriptor) }
+                registration.tools
+                    .filter { it.metadata.executionScope != AiToolExecutionScope.CONVERSATION_RUNTIME }
+                    .map { descriptor -> descriptor.definition.name to (registration to descriptor) }
             }
             .groupBy(keySelector = { it.first }, valueTransform = { it.second })
             .mapNotNull { (toolName, advertised) ->
@@ -106,7 +109,22 @@ class DistributedAiToolCatalog(
                     ?.let { toolName to DistributedAiTool(descriptor, it) }
             }
             .toMap()
-            .toSortedMap()
+        val serverEntries = aiToolProvider.getTools()
+            .asSequence()
+            .filter(AiToolCallback::available)
+            .filter { it.metadata.executionScope == AiToolExecutionScope.CONVERSATION_RUNTIME }
+            .map { callback ->
+                callback.definition.name to DistributedAiTool(
+                    descriptor = AiToolDescriptor(callback.definition, callback.metadata),
+                    workers = emptyList(),
+                )
+            }
+            .toMap()
+        val duplicateNames = workerEntries.keys intersect serverEntries.keys
+        check(duplicateNames.isEmpty()) {
+            "Server and Workers advertise conflicting tool execution scopes: ${duplicateNames.sorted().joinToString()}"
+        }
+        val entries = (workerEntries + serverEntries).toSortedMap()
         val callbacks = entries.values.map(::modelCallback)
         val environmentTopology = buildEnvironmentTopology(
             project = project,

@@ -26,6 +26,11 @@ class OpenAiSubscriptionRuntimeBackend(
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.OPENAI_SUBSCRIPTION
 
+    override fun capabilities(
+        connection: AiConnection,
+        modelConfiguration: AiModelConfiguration,
+    ): AiRuntimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true)
+
     override fun createRuntime(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,

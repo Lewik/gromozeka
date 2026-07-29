@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiRuntime
-import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.DirectAiRuntimeProvider
 import com.gromozeka.domain.service.AiConfigurationProvider
 import kotlinx.coroutines.flow.Flow
 import org.springframework.stereotype.Service
@@ -15,21 +15,30 @@ import org.springframework.stereotype.Service
 internal class RoutingAiRuntimeProvider(
     private val backends: List<AiRuntimeBackend>,
     private val aiConfigurationProvider: AiConfigurationProvider,
-) : AiRuntimeProvider {
+) : DirectAiRuntimeProvider {
+
+    override fun capabilities(selection: AiRuntimeSelection): AiRuntimeCapabilities {
+        val resolved = aiConfigurationProvider.resolveAiRuntime(selection)
+        val backend = backendFor(resolved.connection.kind)
+        return backend.capabilities(resolved.connection, resolved.modelConfiguration)
+    }
 
     override fun getRuntime(
         selection: AiRuntimeSelection,
         workspaceRootPath: String?
     ): AiRuntime {
         val resolved = aiConfigurationProvider.resolveAiRuntime(selection)
-        val backend = backends.firstOrNull { it.supports(resolved.connection.kind) }
-            ?: error("No AI runtime backend registered for connection kind ${resolved.connection.kind}")
+        val backend = backendFor(resolved.connection.kind)
 
         return ModelDefaultAiRuntime(
             delegate = backend.createRuntime(resolved.connection, resolved.modelConfiguration, workspaceRootPath),
             defaults = resolved.modelConfiguration.defaultParameters,
         )
     }
+
+    private fun backendFor(connectionKind: com.gromozeka.domain.model.ai.AiConnection.Kind): AiRuntimeBackend =
+        backends.firstOrNull { it.supports(connectionKind) }
+            ?: error("No AI runtime backend registered for connection kind $connectionKind")
 }
 
 class ModelDefaultAiRuntime(

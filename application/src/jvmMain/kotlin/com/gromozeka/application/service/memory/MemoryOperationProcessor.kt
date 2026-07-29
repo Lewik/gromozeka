@@ -1,10 +1,10 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.application.service.ConversationRuntimeWorker
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
-import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.MemoryRunLifecycleEvent
 import com.gromozeka.domain.service.MemoryRunLifecycleEventPublisher
 import java.util.concurrent.atomic.AtomicReference
@@ -29,14 +29,15 @@ import org.springframework.stereotype.Service
 
 @Service
 @ConditionalOnProperty(
-    name = ["gromozeka.runtime.worker.enabled"],
+    name = ["gromozeka.runtime.server.enabled"],
     havingValue = "true",
+    matchIfMissing = true,
 )
-class MemoryOperationWorker(
+class MemoryOperationProcessor(
     private val executor: MemoryOperationExecutor,
     private val operationQueue: MemoryOperationQueue,
     private val memoryStore: MemoryStore,
-    private val runtimeWorker: ConversationRuntimeWorker,
+    runtimeExecutorDescriptor: ConversationRuntimeExecutorDescriptor,
     private val lifecycleEventPublisher: MemoryRunLifecycleEventPublisher,
 ) {
     private val log = KLoggers.logger(this)
@@ -45,20 +46,28 @@ class MemoryOperationWorker(
         ignoreUnknownKeys = false
         classDiscriminator = "requestType"
     }
+    private val runtimeExecutor = runtimeExecutorDescriptor.identity
+    private val runtimeCapabilities = runtimeExecutorDescriptor.capabilities
+
+    init {
+        require(runtimeExecutor is ConversationRuntimeExecutorIdentity.Server) {
+            "Memory operation orchestration must run on Server"
+        }
+    }
 
     @EventListener(ApplicationReadyEvent::class)
     fun start() {
-        if (ConversationRuntimeWorkerCapability.MEMORY_PIPELINE !in runtimeWorker.capabilities) {
+        if (ConversationRuntimeCapability.MEMORY_PIPELINE !in runtimeCapabilities) {
             return
         }
         operationQueue.start(
-            jobSource = { discoverJobs(runtimeWorker.identity) },
-            processor = { job -> process(job, runtimeWorker.identity) },
+            jobSource = { discoverJobs(runtimeExecutor) },
+            processor = { job -> process(job, runtimeExecutor) },
         )
     }
 
     private suspend fun discoverJobs(
-        worker: ConversationRuntimeWorkerIdentity,
+        runtimeExecutor: ConversationRuntimeExecutorIdentity,
     ): List<MemoryOperationJob> {
         val now = Clock.System.now()
         val unfinishedRuns = memoryStore.findRunsByStatuses(
@@ -69,14 +78,14 @@ class MemoryOperationWorker(
             if (run.status == MemoryRun.Status.RUNNING) {
                 val lease = run.executionLease
                 val previousSessionWasReplaced =
-                    lease?.ownerId == worker.workerId.value &&
-                        lease.ownerSessionId != worker.sessionId.value
+                    lease?.ownerId == runtimeExecutor.ownerId() &&
+                        lease.ownerSessionId != runtimeExecutor.sessionId()
                 val leaseExpired = lease == null || lease.expiresAt <= now
                 if (previousSessionWasReplaced || leaseExpired) {
                     if (failUnrecoverableRun(
                             run = run,
-                            summary = "Memory operation was interrupted by Worker shutdown",
-                            reason = "The owning Worker stopped before completion; the operation was not retried to avoid duplicate memory writes.",
+                            summary = "Memory operation was interrupted by Server shutdown",
+                            reason = "The owning Server stopped before completion; the operation was not retried to avoid duplicate memory writes.",
                         )
                     ) {
                         log.warn {
@@ -153,7 +162,7 @@ class MemoryOperationWorker(
 
     private suspend fun process(
         job: MemoryOperationJob,
-        worker: ConversationRuntimeWorkerIdentity,
+        runtimeExecutor: ConversationRuntimeExecutorIdentity,
     ) = coroutineScope {
         val storedRun = memoryStore.findRunById(job.runId)
             ?: throw IllegalStateException("Queued memory operation run not found: ${job.runId.value}")
@@ -176,7 +185,7 @@ class MemoryOperationWorker(
         val claimedRun = storedRun.copy(
             status = MemoryRun.Status.RUNNING,
             summary = "${request.kind.displayName()} running",
-            executionLease = worker.memoryExecutionLease(startedAt),
+            executionLease = runtimeExecutor.memoryExecutionLease(startedAt),
             startedAt = startedAt,
             completedAt = null,
             errorText = null,
@@ -203,7 +212,7 @@ class MemoryOperationWorker(
             while (currentCoroutineContext().isActive) {
                 delay(MEMORY_OPERATION_LEASE_RENEW_INTERVAL_MILLIS)
                 updateOwnedRun { current ->
-                    current.copy(executionLease = worker.memoryExecutionLease(Clock.System.now()))
+                    current.copy(executionLease = runtimeExecutor.memoryExecutionLease(Clock.System.now()))
                 }
             }
         }
@@ -304,14 +313,26 @@ class MemoryOperationWorker(
             MemoryOperationKind.MAINTENANCE -> "Memory maintenance"
         }
 
-    private fun ConversationRuntimeWorkerIdentity.memoryExecutionLease(now: Instant): MemoryRun.ExecutionLease =
+    private fun ConversationRuntimeExecutorIdentity.memoryExecutionLease(now: Instant): MemoryRun.ExecutionLease =
         MemoryRun.ExecutionLease(
-            ownerId = workerId.value,
-            ownerSessionId = sessionId.value,
+            ownerId = ownerId(),
+            ownerSessionId = sessionId(),
             expiresAt = Instant.fromEpochMilliseconds(
                 now.toEpochMilliseconds() + MEMORY_OPERATION_LEASE_DURATION_MILLIS
             ),
         )
+
+    private fun ConversationRuntimeExecutorIdentity.ownerId(): String =
+        when (this) {
+            is ConversationRuntimeExecutorIdentity.Server -> "server"
+            is ConversationRuntimeExecutorIdentity.Worker -> identity.workerId.value
+        }
+
+    private fun ConversationRuntimeExecutorIdentity.sessionId(): String =
+        when (this) {
+            is ConversationRuntimeExecutorIdentity.Server -> sessionId.value
+            is ConversationRuntimeExecutorIdentity.Worker -> identity.sessionId.value
+        }
 
     private companion object {
         const val MEMORY_OPERATION_LEASE_DURATION_MILLIS = 30 * 60 * 1_000L

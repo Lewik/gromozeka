@@ -1,6 +1,6 @@
 package com.gromozeka.worker
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.encodeToString
@@ -26,8 +26,8 @@ class WorkerEnrollmentClientTest {
             rabbitmqUsername = "worker",
             rabbitmqPassword = "rabbit-secret",
             capabilities = setOf(
-                ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+                ConversationRuntimeCapability.TOOL_EXECUTION,
+                ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
             ),
         )
         var requestBody = ""

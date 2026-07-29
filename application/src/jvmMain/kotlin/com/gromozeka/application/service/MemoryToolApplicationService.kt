@@ -21,8 +21,8 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
-import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.shared.uuid.uuid7
@@ -30,18 +30,26 @@ import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.server.enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+)
 class MemoryToolApplicationService(
     private val conversationService: ConversationDomainService,
     private val workspaceService: WorkspaceDomainService,
     private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val memoryEmbeddingIndexer: MemoryEmbeddingIndexer,
     private val memoryStore: MemoryStore,
-    private val runtimeWorkerRegistry: ConversationRuntimeWorkerRegistry,
+    runtimeExecutorDescriptor: ConversationRuntimeExecutorDescriptor,
 ) {
     private val log = KLoggers.logger(this)
+    private val runtimeExecutor = runtimeExecutorDescriptor.identity as? ConversationRuntimeExecutorIdentity.Server
+        ?: error("Memory tools must run on Server")
 
     suspend fun memoryRunStatus(
         runIdValue: String,
@@ -75,12 +83,6 @@ class MemoryToolApplicationService(
                 statuses = setOf(MemoryRun.Status.QUEUED, MemoryRun.Status.RUNNING),
                 runTypes = MEMORY_OPERATION_RUN_TYPES,
             )
-            val onlineWorkers = runtimeWorkerRegistry.list()
-                .filter { registration ->
-                    ConversationRuntimeWorkerCapability.MEMORY_PIPELINE in registration.capabilities &&
-                        registration.isOnline(now - ConversationRuntimeTiming.workerRegistrationStaleAfter)
-                }
-                .sortedBy { it.identity.workerId.value }
             val activeJobs = unfinishedRuns
                 .filter { it.status == MemoryRun.Status.RUNNING }
                 .sortedBy { it.startedAt }
@@ -104,7 +106,7 @@ class MemoryToolApplicationService(
                 MemoryOperationQueueStatus(
                     queuedJobs = unfinishedRuns.count { it.status == MemoryRun.Status.QUEUED },
                     activeJobs = activeJobs,
-                    onlineWorkers = onlineWorkers,
+                    executor = runtimeExecutor,
                 )
             )
         }.getOrElse { error ->

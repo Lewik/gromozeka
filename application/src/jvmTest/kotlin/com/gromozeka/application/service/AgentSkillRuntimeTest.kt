@@ -60,7 +60,6 @@ class AgentSkillRuntimeTest {
         val prepared = service.prepare(
             agent = agent(listOf(skill.id)),
             projectId = projectId,
-            runtimeWorkerId = workerId,
             toolCatalog = toolCatalog(),
         )
 
@@ -86,7 +85,6 @@ class AgentSkillRuntimeTest {
         val prepared = service.prepare(
             agent = agent(emptyList()),
             projectId = projectId,
-            runtimeWorkerId = workerId,
             toolCatalog = toolCatalog(),
         )
 

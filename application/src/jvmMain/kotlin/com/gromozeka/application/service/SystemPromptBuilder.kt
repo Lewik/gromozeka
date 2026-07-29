@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
+import com.gromozeka.domain.model.RuntimeEnvironmentExecutor
 import org.springframework.stereotype.Service
 import java.io.File
 import java.time.LocalDate
@@ -16,7 +17,7 @@ class SystemPromptBuilder {
     /**
      * Generates environment information block.
      * 
-     * @param runtimeContext environment visible to the executing worker
+     * @param runtimeContext environment visible to the executing runtime
      * @return Environment info block wrapped in <env> tag
      */
     fun buildEnvironmentInfo(runtimeContext: RuntimeEnvironmentContext): String {
@@ -24,7 +25,12 @@ class SystemPromptBuilder {
 
         return buildString {
             appendLine("<env>")
-            appendLine("Runtime worker: ${runtimeContext.workerId}")
+            appendLine(
+                when (val executor = runtimeContext.executor) {
+                    RuntimeEnvironmentExecutor.Server -> "Runtime executor: Server"
+                    is RuntimeEnvironmentExecutor.Worker -> "Runtime executor: Worker ${executor.workerId}"
+                }
+            )
             when (runtimeContext) {
                 is RuntimeEnvironmentContext.Standalone ->
                     appendLine("Runtime scope: standalone; no Project or Filesystem Workspace is selected")

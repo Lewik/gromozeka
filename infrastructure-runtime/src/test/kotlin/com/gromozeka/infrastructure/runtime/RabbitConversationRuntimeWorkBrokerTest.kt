@@ -2,16 +2,17 @@ package com.gromozeka.infrastructure.runtime
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
+import com.gromozeka.domain.service.ConversationRuntimeServerSessionId
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
-import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
-import com.gromozeka.domain.service.WorkerEnvironmentProfile
-import com.gromozeka.domain.service.WorkerNativeShell
-import com.gromozeka.domain.service.WorkerOperatingSystem
+import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -24,33 +25,34 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class RabbitConversationRuntimeWorkBrokerTest {
 
     @Test
-    fun `rabbit routing rejects unknown shared capability profiles`() {
-        assertFailsWith<IllegalStateException> {
-            RabbitRuntimeWorkRoute.from(
-                ConversationRuntimeTaskRequirements(
-                    capabilities = setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION),
-                )
+    fun `rabbit routing sends orchestration work to Server`() {
+        val route = RabbitRuntimeWorkRoute.from(
+            ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                target = ConversationRuntimeTaskTarget.Server,
             )
-        }
+        )
+
+        assertEquals(RabbitRuntimeWorkRoute.Server, route)
     }
 
     @Test
-    fun `rabbit routing sends targeted work directly to its worker`() {
+    fun `rabbit routing sends Worker work to its exact stable id`() {
         val workerId = ConversationRuntimeWorkerId("claude-worker")
-
         val route = RabbitRuntimeWorkRoute.from(
             ConversationRuntimeTaskRequirements(
                 capabilities = setOf(
-                    ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                    ConversationRuntimeWorkerCapability.LLM_RUNTIME,
+                    ConversationRuntimeCapability.TOOL_EXECUTION,
+                    ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
                 ),
-                target = ConversationRuntimeTaskTarget(workerId),
+                target = ConversationRuntimeTaskTarget.Worker(
+                    workerId = workerId,
+                    workspaceMountId = WorkspaceMount.Id("mount-1"),
+                ),
             )
         )
 
@@ -58,33 +60,7 @@ class RabbitConversationRuntimeWorkBrokerTest {
     }
 
     @Test
-    fun `rabbit routing supports conversation incident work`() {
-        val route = RabbitRuntimeWorkRoute.from(
-            ConversationRuntimeTaskRequirements(
-                capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
-            )
-        )
-
-        assertEquals(RabbitRuntimeWorkRoute.Shared(RabbitRuntimeWorkLane.INCIDENT), route)
-    }
-
-    @Test
-    fun `worker consumes tasks addressed to its stable worker id`() {
-        val descriptor = ConversationRuntimeWorkerDescriptor(
-            id = ConversationRuntimeWorkerId("local-worker"),
-            capabilities = setOf(
-                ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
-            ),
-            environmentProfile = testWorkerEnvironmentProfile(),
-        )
-        val workerRoute = RabbitRuntimeWorkRoute.Worker(descriptor.id)
-
-        assertTrue(workerRoute in descriptor.consumerRoutes())
-    }
-
-    @Test
-    fun `rabbit work queue delivers only work matching worker capabilities`() = runBlocking {
+    fun `rabbit work queue delivers only to the exact Server or Worker route`() = runBlocking {
         if (System.getenv("GROMOZEKA_RABBIT_RUNTIME_TEST") != "true") {
             return@runBlocking
         }
@@ -94,36 +70,6 @@ class RabbitConversationRuntimeWorkBrokerTest {
         val admin = RabbitAdmin(connectionFactory)
         val exchangeName = "gromozeka.runtime.work.test.${uuid7()}"
         val queueName = "gromozeka.runtime.work.test.${uuid7()}"
-        val conversationId = Conversation.Id("conversation-1")
-        val llmItem = workItem(
-            conversationId = conversationId,
-            taskId = "llm-task",
-            capabilities = setOf(
-                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
-            ),
-        )
-        val turnItem = workItem(
-            conversationId = conversationId,
-            taskId = "turn-task",
-            capabilities = setOf(
-                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
-            ),
-        )
-        val localToolItem = workItem(
-            conversationId = conversationId,
-            taskId = "local-tool-task",
-            capabilities = setOf(
-                ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
-                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-            ),
-            target = ConversationRuntimeTaskTarget(
-                workerId = ConversationRuntimeWorkerId("local-worker"),
-                workspaceMountId = WorkspaceMount.Id("mount-1"),
-            ),
-        )
         val topology = RabbitConversationRuntimeWorkTopology(
             connectionFactory = connectionFactory,
             exchangeName = exchangeName,
@@ -134,107 +80,98 @@ class RabbitConversationRuntimeWorkBrokerTest {
             rabbitTemplate = RabbitTemplate(connectionFactory),
             topology = topology,
         )
-        val turnWorkerDescriptor = ConversationRuntimeWorkerDescriptor(
-            id = ConversationRuntimeWorkerId("turn-worker"),
-            capabilities = setOf(
-                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+        val serverDescriptor = ConversationRuntimeExecutorDescriptor(
+            identity = ConversationRuntimeExecutorIdentity.Server(
+                ConversationRuntimeServerSessionId("server-session")
             ),
-            environmentProfile = testWorkerEnvironmentProfile(),
+            capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
         )
-        val localWorkerDescriptor = ConversationRuntimeWorkerDescriptor(
-            id = ConversationRuntimeWorkerId("local-worker"),
-            capabilities = setOf(
-                ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
-                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-            ),
-            environmentProfile = testWorkerEnvironmentProfile(),
+        val targetWorkerId = ConversationRuntimeWorkerId("target-worker")
+        val targetWorkerDescriptor = workerDescriptor(targetWorkerId)
+        val otherWorkerDescriptor = workerDescriptor(ConversationRuntimeWorkerId("other-worker"))
+        val serverConsumer = consumer(connectionFactory, topology, serverDescriptor)
+        val targetWorkerConsumer = consumer(connectionFactory, topology, targetWorkerDescriptor)
+        val otherWorkerConsumer = consumer(connectionFactory, topology, otherWorkerDescriptor)
+        val conversationId = Conversation.Id("conversation-1")
+        val serverItem = workItem(
+            conversationId = conversationId,
+            taskId = "server-task",
+            capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+            target = ConversationRuntimeTaskTarget.Server,
         )
-        val wrongWorkerDescriptor = ConversationRuntimeWorkerDescriptor(
-            id = ConversationRuntimeWorkerId("wrong-worker"),
-            capabilities = setOf(
-                ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
-                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-            ),
-            environmentProfile = testWorkerEnvironmentProfile(),
-        )
-        val turnConsumer = RabbitConversationRuntimeWorkConsumer(
-            connectionFactory = connectionFactory,
-            rabbitTemplate = RabbitTemplate(connectionFactory),
-            topology = topology,
-            maxRedeliveries = 8,
-            runtimeWorkerDescriptor = turnWorkerDescriptor,
-        )
-        val localConsumer = RabbitConversationRuntimeWorkConsumer(
-            connectionFactory = connectionFactory,
-            rabbitTemplate = RabbitTemplate(connectionFactory),
-            topology = topology,
-            maxRedeliveries = 8,
-            runtimeWorkerDescriptor = localWorkerDescriptor,
-        )
-        val wrongWorkerConsumer = RabbitConversationRuntimeWorkConsumer(
-            connectionFactory = connectionFactory,
-            rabbitTemplate = RabbitTemplate(connectionFactory),
-            topology = topology,
-            maxRedeliveries = 8,
-            runtimeWorkerDescriptor = wrongWorkerDescriptor,
+        val workerItem = workItem(
+            conversationId = conversationId,
+            taskId = "worker-task",
+            capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
+            target = ConversationRuntimeTaskTarget.Worker(targetWorkerId),
         )
 
         try {
-            turnConsumer.start()
+            serverConsumer.start()
+            otherWorkerConsumer.start()
 
-            publisher.submit(llmItem)
-            assertNull(withTimeoutOrNull(300) { turnConsumer.deliveries.first() })
+            publisher.submit(workerItem)
+            assertNull(withTimeoutOrNull(300) { serverConsumer.deliveries.first() })
+            assertNull(withTimeoutOrNull(300) { otherWorkerConsumer.deliveries.first() })
 
-            publisher.submit(turnItem)
-            val delivery = withTimeout(2_000) { turnConsumer.deliveries.first() }
-            assertEquals(turnItem, delivery.item)
-            assertEquals(0, delivery.redeliveryCount)
-            delivery.redeliver()
-            val redelivery = withTimeout(2_000) { turnConsumer.deliveries.first() }
-            assertEquals(turnItem, redelivery.item)
-            assertEquals(1, redelivery.redeliveryCount)
-            redelivery.acknowledge()
+            targetWorkerConsumer.start()
+            val workerDelivery = withTimeout(2_000) { targetWorkerConsumer.deliveries.first() }
+            assertEquals(workerItem, workerDelivery.item)
+            workerDelivery.acknowledge()
 
-            publisher.submit(localToolItem)
-            assertNull(withTimeoutOrNull(300) { turnConsumer.deliveries.first() })
-            wrongWorkerConsumer.start()
-            assertNull(withTimeoutOrNull(300) { wrongWorkerConsumer.deliveries.first() })
-
-            localConsumer.start()
-            val localDelivery = withTimeout(2_000) { localConsumer.deliveries.first() }
-            assertEquals(localToolItem, localDelivery.item)
-            localDelivery.acknowledge()
+            publisher.submit(serverItem)
+            val serverDelivery = withTimeout(2_000) { serverConsumer.deliveries.first() }
+            assertEquals(serverItem, serverDelivery.item)
+            serverDelivery.acknowledge()
         } finally {
-            turnConsumer.stop()
-            localConsumer.stop()
-            wrongWorkerConsumer.stop()
-            val declaredRoutes = buildSet {
-                addAll(turnWorkerDescriptor.consumerRoutes())
-                addAll(localWorkerDescriptor.consumerRoutes())
-                addAll(wrongWorkerDescriptor.consumerRoutes())
-                add(RabbitRuntimeWorkRoute.from(llmItem.requirements))
-                add(RabbitRuntimeWorkRoute.from(localToolItem.requirements))
+            serverConsumer.stop()
+            targetWorkerConsumer.stop()
+            otherWorkerConsumer.stop()
+            setOf(
+                RabbitRuntimeWorkRoute.Server,
+                RabbitRuntimeWorkRoute.Worker(targetWorkerId),
+                RabbitRuntimeWorkRoute.Worker(ConversationRuntimeWorkerId("other-worker")),
+            ).map(topology::queueName).forEach { routeQueueName ->
+                admin.deleteQueue(routeQueueName)
+                admin.deleteQueue("$routeQueueName.dlq")
             }
-            declaredRoutes
-                .map(topology::queueName)
-                .forEach { routeQueueName ->
-                    admin.deleteQueue(routeQueueName)
-                    admin.deleteQueue("$routeQueueName.dlq")
-                }
             admin.deleteExchange(exchangeName)
             admin.deleteExchange("$exchangeName.dlx")
             connectionFactory.destroy()
         }
     }
 
+    private fun consumer(
+        connectionFactory: CachingConnectionFactory,
+        topology: RabbitConversationRuntimeWorkTopology,
+        descriptor: ConversationRuntimeExecutorDescriptor,
+    ): RabbitConversationRuntimeWorkConsumer =
+        RabbitConversationRuntimeWorkConsumer(
+            connectionFactory = connectionFactory,
+            rabbitTemplate = RabbitTemplate(connectionFactory),
+            topology = topology,
+            maxRedeliveries = 8,
+            runtimeExecutorDescriptor = descriptor,
+        )
+
+    private fun workerDescriptor(
+        workerId: ConversationRuntimeWorkerId,
+    ): ConversationRuntimeExecutorDescriptor =
+        ConversationRuntimeExecutorDescriptor(
+            identity = ConversationRuntimeExecutorIdentity.Worker(
+                ConversationRuntimeWorkerIdentity(
+                    workerId = workerId,
+                    sessionId = ConversationRuntimeWorkerSessionId("${workerId.value}-session"),
+                )
+            ),
+            capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
+        )
+
     private fun workItem(
         conversationId: Conversation.Id,
         taskId: String,
-        capabilities: Set<ConversationRuntimeWorkerCapability>,
-        target: ConversationRuntimeTaskTarget? = null,
+        capabilities: Set<ConversationRuntimeCapability>,
+        target: ConversationRuntimeTaskTarget,
     ): ConversationRuntimeWorkItem =
         ConversationRuntimeWorkItem(
             conversationId = conversationId,
@@ -246,22 +183,4 @@ class RabbitConversationRuntimeWorkBrokerTest {
             ),
             createdAt = Clock.System.now(),
         )
-
 }
-
-private fun testWorkerEnvironmentProfile(): WorkerEnvironmentProfile =
-    WorkerEnvironmentProfile(
-        observedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(1),
-        operatingSystem = WorkerOperatingSystem(
-            family = WorkerOperatingSystem.Family.LINUX,
-            name = "Test Linux",
-            version = "1",
-        ),
-        architecture = "x86_64",
-        nativeShell = WorkerNativeShell(WorkerNativeShell.Kind.POSIX_SH, "/bin/sh"),
-        timezoneId = "UTC",
-        localeTag = "en-US",
-        logicalProcessorCount = 4,
-        totalMemoryBytes = 8_589_934_592,
-        availableExecutables = listOf("sh"),
-    )

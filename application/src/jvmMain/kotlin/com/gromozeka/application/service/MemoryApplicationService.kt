@@ -50,8 +50,14 @@ import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Service
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.server.enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+)
 class MemoryApplicationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,

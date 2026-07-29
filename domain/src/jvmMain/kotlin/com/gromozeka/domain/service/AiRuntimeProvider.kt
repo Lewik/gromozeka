@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.Flow
  * or hybrid transports.
  */
 interface AiRuntimeProvider {
+    fun capabilities(selection: AiRuntimeSelection): AiRuntimeCapabilities =
+        getRuntime(selection, workspaceRootPath = null).capabilities
+
     fun getRuntime(
         selection: AiRuntimeSelection,
         workspaceRootPath: String?
@@ -28,3 +31,5 @@ interface AiRuntime {
 
     fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse>
 }
+
+interface DirectAiRuntimeProvider : AiRuntimeProvider

@@ -1,6 +1,6 @@
 package com.gromozeka.domain.tool
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.serialization.Serializable
@@ -24,7 +24,7 @@ interface AiToolCallback {
 }
 
 fun List<AiToolCallback>.supportedBy(
-    capabilities: Set<ConversationRuntimeWorkerCapability>,
+    capabilities: Set<ConversationRuntimeCapability>,
 ): List<AiToolCallback> =
     filter { capabilities.containsAll(it.metadata.requiredRuntimeCapabilities) }
 
@@ -39,7 +39,7 @@ data class AiToolDefinition(
 @Serializable
 data class AiToolMetadata(
     val returnDirect: Boolean = false,
-    val requiredRuntimeCapabilities: Set<ConversationRuntimeWorkerCapability> = emptySet(),
+    val requiredRuntimeCapabilities: Set<ConversationRuntimeCapability> = emptySet(),
     val executionScope: AiToolExecutionScope = AiToolExecutionScope.WORKER,
 )
 

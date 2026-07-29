@@ -51,6 +51,17 @@ including shell, filesystem, and Git tools, select an exact Workspace Mount.
 The Server does not inspect a Worker's filesystem, guess a target, reassign a
 call, or retry work automatically.
 
+Conversation turns and memory pipelines always run on the Server. A Worker can
+execute configured tools and finite AI request-response operations, but it does
+not own conversation or memory orchestration.
+
+Every AI connection has an exact execution target: the Server or one named
+Worker. Finite LLM calls, embeddings, speech transcription, and speech synthesis
+use that target. Realtime and long-lived streaming AI sessions are Server-only.
+An unavailable or incompatible target fails explicitly; Gromozeka does not fall
+back to another Worker or to the Server and does not automatically retry an
+operation whose outcome may be unknown.
+
 Each Worker registration advertises a stable environment profile collected at
 startup. The execution topology uses that profile without changing on every
 heartbeat. `grz_get_worker_environment` recollects the complete profile and

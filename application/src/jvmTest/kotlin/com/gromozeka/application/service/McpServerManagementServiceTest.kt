@@ -9,7 +9,7 @@ import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.repository.AiToolCapabilityCatalogRepository
 import com.gromozeka.domain.repository.McpServerRepository
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
@@ -128,7 +128,7 @@ class McpServerManagementServiceTest {
                 registry.register(
                     registration = ConversationRuntimeWorkerRegistration(
                         identity = identity,
-                        capabilities = setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION),
+                        capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
                         tools = emptyList(),
                         environmentProfile = testWorkerEnvironmentProfile(registrationTime),
                         version = "test",

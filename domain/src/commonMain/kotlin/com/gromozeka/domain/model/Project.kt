@@ -125,36 +125,30 @@ data class WorkspaceExecutionContext(
  * Filesystem operations resolve an exact [WorkspaceExecutionContext].
  */
 sealed interface RuntimeEnvironmentContext {
-    val workerId: String
+    val executor: RuntimeEnvironmentExecutor
     val workspaceRootPath: String?
 
     data class Standalone(
-        override val workerId: String,
+        override val executor: RuntimeEnvironmentExecutor,
     ) : RuntimeEnvironmentContext {
-        init {
-            require(workerId.isNotBlank()) { "Runtime worker id must not be blank" }
-        }
-
         override val workspaceRootPath: String? = null
     }
 
     data class ProjectBound(
         val project: Project,
-        override val workerId: String,
+        override val executor: RuntimeEnvironmentExecutor,
     ) : RuntimeEnvironmentContext {
-        init {
-            require(workerId.isNotBlank()) { "Runtime worker id must not be blank" }
-        }
-
         override val workspaceRootPath: String? = null
     }
 
     data class WorkspaceBound(
         val project: Project,
         val workspace: Workspace,
-        override val workerId: String,
+        val workerId: String,
         val localMount: WorkspaceMount?,
     ) : RuntimeEnvironmentContext {
+        override val executor: RuntimeEnvironmentExecutor = RuntimeEnvironmentExecutor.Worker(workerId)
+
         init {
             require(workerId.isNotBlank()) { "Runtime worker id must not be blank" }
             require(workspace.projectId == project.id) {
@@ -172,6 +166,18 @@ sealed interface RuntimeEnvironmentContext {
 
         override val workspaceRootPath: String?
             get() = localMount?.rootPath
+    }
+}
+
+sealed interface RuntimeEnvironmentExecutor {
+    data object Server : RuntimeEnvironmentExecutor
+
+    data class Worker(
+        val workerId: String,
+    ) : RuntimeEnvironmentExecutor {
+        init {
+            require(workerId.isNotBlank()) { "Runtime worker id must not be blank" }
+        }
     }
 }
 

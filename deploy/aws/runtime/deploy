@@ -2,16 +2,15 @@
 
 set -euo pipefail
 
-if [[ "$#" -ne 5 ]]; then
-  echo "Usage: deploy SERVER_IMAGE WORKER_IMAGE RELEASE_VERSION AWS_REGION ARTIFACT_BUCKET" >&2
+if [[ "$#" -ne 4 ]]; then
+  echo "Usage: deploy SERVER_IMAGE RELEASE_VERSION AWS_REGION ARTIFACT_BUCKET" >&2
   exit 2
 fi
 
 server_image="$1"
-worker_image="$2"
-release_version="$3"
-aws_region="$4"
-artifact_bucket="$5"
+release_version="$2"
+aws_region="$3"
+artifact_bucket="$4"
 runtime_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir="${GROMOZEKA_DATA_DIR:-/data/gromozeka}"
 secrets_file="$data_dir/runtime/runtime.env"
@@ -54,7 +53,6 @@ aws ecr get-login-password --region "$aws_region" \
   | docker login --username AWS --password-stdin "$registry"
 
 export GROMOZEKA_SERVER_IMAGE="$server_image"
-export GROMOZEKA_WORKER_IMAGE="$worker_image"
 export GROMOZEKA_RELEASE_VERSION="$release_version"
 
 tailscale_running="false"
@@ -84,30 +82,21 @@ compose config --quiet
 compose pull
 compose up --detach --remove-orphans --wait --wait-timeout 300
 
-worker_registered="false"
-for _ in $(seq 1 60); do
-  registrations="$(
-    compose exec -T postgres \
-      psql -U gromozeka -d gromozeka -Atc \
-      "select count(*) from conversation_runtime_workers where worker_id = 'cloud-primary';"
-  )"
-  if [[ "$registrations" == "1" ]]; then
-    worker_registered="true"
-    break
-  fi
-  sleep 2
-done
+compose exec -T postgres \
+  psql -U gromozeka -d gromozeka -v ON_ERROR_STOP=1 \
+  -c "delete from conversation_runtime_workers where worker_id = 'cloud-primary';"
 
-[[ "$worker_registered" == "true" ]] || {
-  echo "Cloud Worker did not register in PostgreSQL" >&2
-  compose logs --tail 200 worker >&2
-  exit 1
-}
+while IFS= read -r queue_name; do
+  [[ -n "$queue_name" ]] || continue
+  compose exec -T rabbitmq rabbitmqctl delete_queue "$queue_name"
+done < <(
+  compose exec -T rabbitmq rabbitmqctl list_queues --silent name \
+    | awk '/^gromozeka\.runtime\.work\.lane-/ || /^gromozeka\.runtime\.work\..*\.[0-9]+(\.dlq)?$/ || /^gromozeka\.runtime\.work\.worker-.*cloud-primary(\.dlq)?$/'
+)
 
 umask 077
-printf 'GROMOZEKA_SERVER_IMAGE=%q\nGROMOZEKA_WORKER_IMAGE=%q\nGROMOZEKA_RELEASE_VERSION=%q\nGROMOZEKA_MCP_ALLOWED_HOSTS=%q\n' \
+printf 'GROMOZEKA_SERVER_IMAGE=%q\nGROMOZEKA_RELEASE_VERSION=%q\nGROMOZEKA_MCP_ALLOWED_HOSTS=%q\n' \
   "$server_image" \
-  "$worker_image" \
   "$release_version" \
   "$GROMOZEKA_MCP_ALLOWED_HOSTS" \
   > "$deployment_file"

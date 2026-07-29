@@ -53,7 +53,6 @@ cat > "$backup_dir/manifest.txt" <<EOF
 created_at=$timestamp
 release_version=$GROMOZEKA_RELEASE_VERSION
 server_image=$GROMOZEKA_SERVER_IMAGE
-worker_image=$GROMOZEKA_WORKER_IMAGE
 EOF
 
 aws s3 cp \

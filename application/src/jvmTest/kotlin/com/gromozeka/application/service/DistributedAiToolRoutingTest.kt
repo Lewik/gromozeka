@@ -9,13 +9,16 @@ import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
@@ -23,6 +26,7 @@ import com.gromozeka.domain.tool.CommandMonitorOwnerToolMetadata
 import com.gromozeka.domain.tool.CommandTaskOwnerToolMetadata
 import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.WorkerInspectionToolMetadata
+import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
@@ -90,16 +94,18 @@ class DistributedAiToolRoutingTest {
     )
 
     @Test
-    fun `conversation runtime tools route to current worker without explicit target`() = runBlocking {
+    fun `conversation runtime tools execute on Server without an explicit target`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
-        registerWorker(workerRegistry, "worker-a", listOf(conversationRuntimeTool))
-        registerWorker(workerRegistry, "worker-b", listOf(conversationRuntimeTool))
         val workspaceService = TestWorkspaceDomainService(
             projects = listOf(project),
             workspaces = emptyList(),
             mounts = emptyList(),
         )
-        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val catalog = distributedCatalog(
+            workerRegistry = workerRegistry,
+            workspaceService = workspaceService,
+            serverTools = listOf(conversationRuntimeTool),
+        ).snapshot(project)
         val routing = ConversationRuntimeToolRoutingService(
             runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
             workspaceService = workspaceService,
@@ -117,19 +123,29 @@ class DistributedAiToolRoutingTest {
             project = project,
             toolCalls = listOf(call),
             catalog = catalog,
-            runtimeWorkerId = ConversationRuntimeWorkerId("worker-b"),
+        )
+        val explicitTargetCall = call.copy(
+            call = call.call.copy(
+                input = JsonObject(
+                    call.call.input.jsonObject + (
+                        AI_TOOL_EXECUTION_TARGET_FIELD to buildJsonObject {
+                            put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-a")
+                        }
+                    )
+                )
+            )
         )
         val rejected = routing.route(
             conversation = conversation(project.id),
             project = project,
-            toolCalls = listOf(call),
+            toolCalls = listOf(explicitTargetCall),
             catalog = catalog,
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
-        assertEquals(ConversationRuntimeWorkerId("worker-b"), accepted.requirements.target?.workerId)
+        assertEquals(ConversationRuntimeTaskTarget.Server, accepted.requirements.target)
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)
-        assertTrue(rejected.errors.single().message.contains("unavailable"))
+        assertTrue(rejected.errors.single().message.contains("must not declare execution_target"))
     }
 
     @Test
@@ -142,7 +158,7 @@ class DistributedAiToolRoutingTest {
             workspaces = emptyList(),
             mounts = emptyList(),
         )
-        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
         val call = Conversation.Message.ContentItem.ToolCall(
             id = Conversation.Message.ContentItem.ToolCall.Id("inspect-worker-b"),
             call = Conversation.Message.ContentItem.ToolCall.Data(
@@ -166,16 +182,17 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(result)
-        assertEquals(ConversationRuntimeWorkerId("worker-b"), result.requirements.target?.workerId)
-        assertEquals(null, result.requirements.target?.workspaceMountId)
+        val target = assertIs<ConversationRuntimeTaskTarget.Worker>(result.requirements.target)
+        assertEquals(ConversationRuntimeWorkerId("worker-b"), target.workerId)
+        assertEquals(null, target.workspaceMountId)
         val schema = Json.parseToJsonElement(
             catalog.tools.single().definition.inputSchema
         ).jsonObject
-        val target = schema.getValue("properties").jsonObject
+        val targetSchema = schema.getValue("properties").jsonObject
             .getValue(AI_TOOL_EXECUTION_TARGET_FIELD).jsonObject
         assertEquals(
             setOf(AI_TOOL_EXECUTION_WORKER_ID_FIELD),
-            target.getValue("properties").jsonObject.keys,
+            targetSchema.getValue("properties").jsonObject.keys,
         )
     }
 
@@ -196,7 +213,7 @@ class DistributedAiToolRoutingTest {
             ),
         )
 
-        val snapshot = DistributedAiToolCatalog(workerRegistry, workspaceService)
+        val snapshot = distributedCatalog(workerRegistry, workspaceService)
             .snapshot(project)
 
         val entry = snapshot.entries.getValue(workspaceTool.definition.name)
@@ -243,7 +260,7 @@ class DistributedAiToolRoutingTest {
             workspaces = listOf(workspaceA, workspaceB, foreignWorkspace),
             mounts = listOf(mountA, mountB, foreignMount),
         )
-        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService)
+        val catalog = distributedCatalog(workerRegistry, workspaceService)
             .snapshot(project)
         val routing = ConversationRuntimeToolRoutingService(
             runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
@@ -269,8 +286,9 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
-        assertEquals(ConversationRuntimeWorkerId("worker-b"), accepted.requirements.target?.workerId)
-        assertEquals(mountB.id, accepted.requirements.target?.workspaceMountId)
+        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(accepted.requirements.target)
+        assertEquals(ConversationRuntimeWorkerId("worker-b"), acceptedTarget.workerId)
+        assertEquals(mountB.id, acceptedTarget.workspaceMountId)
     }
 
     @Test
@@ -289,7 +307,7 @@ class DistributedAiToolRoutingTest {
         val conversation = conversation(project.id)
         val task = commandTask(conversation.id, "task-b", mountB, "worker-b")
         coordinator.upsertCommandTask(task)
-        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
         val routing = ConversationRuntimeToolRoutingService(coordinator, workspaceService)
 
         val accepted = routing.route(
@@ -300,8 +318,9 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
-        assertEquals(task.workerId, accepted.requirements.target?.workerId)
-        assertEquals(task.workspaceMountId, accepted.requirements.target?.workspaceMountId)
+        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(accepted.requirements.target)
+        assertEquals(task.workerId, acceptedTarget.workerId)
+        assertEquals(task.workspaceMountId, acceptedTarget.workspaceMountId)
         val schema = Json.parseToJsonElement(
             catalog.tools.single().definition.inputSchema
         ).jsonObject
@@ -322,7 +341,7 @@ class DistributedAiToolRoutingTest {
         val conversation = conversation(project.id)
         val task = commandTask(conversation.id, "task-b", mountB, "worker-b")
         coordinator.upsertCommandTask(task)
-        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
         val baseCall = ownerToolCall(monitorCommandTool.definition.name, "task_id", task.id.value)
         val call = baseCall.copy(
                 call = Conversation.Message.ContentItem.ToolCall.Data(
@@ -362,7 +381,7 @@ class DistributedAiToolRoutingTest {
         val conversation = conversation(project.id)
         val monitor = commandMonitor(conversation.id, "monitor-b", mountB, "worker-b")
         coordinator.synchronizeCommandMonitor(monitor)
-        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
         val routing = ConversationRuntimeToolRoutingService(coordinator, workspaceService)
         val call = ownerToolCall(
             getCommandMonitorTool.definition.name,
@@ -379,8 +398,9 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
-        assertEquals(monitor.workerId, accepted.requirements.target?.workerId)
-        assertEquals(monitor.workspaceMountId, accepted.requirements.target?.workspaceMountId)
+        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(accepted.requirements.target)
+        assertEquals(monitor.workerId, acceptedTarget.workerId)
+        assertEquals(monitor.workspaceMountId, acceptedTarget.workspaceMountId)
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)
         assertTrue(rejected.errors.single().message.contains("was not found"))
     }
@@ -400,7 +420,7 @@ class DistributedAiToolRoutingTest {
         val conversation = conversation(project.id)
         val monitor = commandMonitor(conversation.id, "monitor-b", mountB, "worker-b")
         coordinator.synchronizeCommandMonitor(monitor)
-        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService).snapshot(project)
+        val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
 
         val result = ConversationRuntimeToolRoutingService(coordinator, workspaceService).route(
             conversation = conversation,
@@ -428,7 +448,7 @@ class DistributedAiToolRoutingTest {
             workspaces = listOf(workspaceA),
             mounts = listOf(mount(workspaceA.id, "worker-a", "/checkout/a")),
         )
-        val catalog = DistributedAiToolCatalog(workerRegistry, workspaceService)
+        val catalog = distributedCatalog(workerRegistry, workspaceService)
 
         val online = catalog.snapshot(project)
         val identity = workerRegistry.find(ConversationRuntimeWorkerId("worker-a"))!!.identity
@@ -461,8 +481,8 @@ class DistributedAiToolRoutingTest {
                         sessionId = ConversationRuntimeWorkerSessionId("session-$workerId"),
                     ),
                     capabilities = setOf(
-                        ConversationRuntimeWorkerCapability.TOOL_EXECUTION,
-                        ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL,
+                        ConversationRuntimeCapability.TOOL_EXECUTION,
+                        ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
                     ),
                     tools = tools,
                     environmentProfile = testWorkerEnvironmentProfile(registeredAt),
@@ -474,6 +494,30 @@ class DistributedAiToolRoutingTest {
             )
         )
     }
+
+    private fun distributedCatalog(
+        workerRegistry: InMemoryConversationRuntimeWorkerRegistry,
+        workspaceService: WorkspaceDomainService,
+        serverTools: List<AiToolDescriptor> = emptyList(),
+    ): DistributedAiToolCatalog =
+        DistributedAiToolCatalog(
+            workerRegistry = workerRegistry,
+            workspaceService = workspaceService,
+            aiToolProvider = object : AiToolProvider {
+                override fun getTools(): List<AiToolCallback> =
+                    serverTools.map { descriptor ->
+                        object : AiToolCallback {
+                            override val definition = descriptor.definition
+                            override val metadata = descriptor.metadata
+
+                            override fun call(
+                                toolInput: String,
+                                context: ToolExecutionContext?,
+                            ): String = error("Tool execution is outside this routing test")
+                        }
+                    }
+            },
+        )
 
     private fun project(id: String): Project =
         Project(

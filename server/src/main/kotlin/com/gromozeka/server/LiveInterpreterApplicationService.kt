@@ -175,7 +175,7 @@ class LiveInterpreterApplicationService(
                     "bytes=${chunk.data.size} format=${chunk.format}"
             }
             emit(LiveInterpreterStatusEvent(sessionId, "Transcribing segment ${chunk.sequenceNumber}"))
-            val transcript = sttService.transcribe(
+            val transcript = sttService.transcribeServerOnly(
                 audioData = chunk.data,
                 format = chunk.format,
                 language = sourceLanguageCode,

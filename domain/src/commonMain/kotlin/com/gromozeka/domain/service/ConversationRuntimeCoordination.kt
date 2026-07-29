@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlin.jvm.JvmInline
 
 /**
@@ -39,11 +40,6 @@ data class ConversationRuntimeTask(
         if (payload is Payload.UserTurn) {
             require(payload.userMessage.conversationId == conversationId) {
                 "Conversation runtime task ${id.value} user message belongs to another conversation"
-            }
-        }
-        if (payload is Payload.ToolExecution) {
-            require(requirements.target != null) {
-                "Conversation tool execution task ${id.value} requires an exact worker target"
             }
         }
     }
@@ -154,73 +150,90 @@ data class ConversationRuntimeTask(
 
     fun isInternalRuntimeStep(): Boolean = payload !is Payload.UserTurn
 
-    private fun Payload.requiredCapabilities(): Set<ConversationRuntimeWorkerCapability> =
+    private fun Payload.requiredCapabilities(): Set<ConversationRuntimeCapability> =
         when (this) {
             is Payload.UserTurn -> setOf(
-                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ConversationRuntimeCapability.CONVERSATION_TURN,
+                ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
             is Payload.LlmCall -> setOf(
-                ConversationRuntimeWorkerCapability.LLM_RUNTIME,
-                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
-            is Payload.ToolExecution -> setOf(ConversationRuntimeWorkerCapability.TOOL_EXECUTION)
+            is Payload.ToolExecution -> setOf(ConversationRuntimeCapability.TOOL_EXECUTION)
             is Payload.ToolResultProcessing -> setOf(
-                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ConversationRuntimeCapability.CONVERSATION_TURN,
+                ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
-            is Payload.MemoryRecall -> setOf(ConversationRuntimeWorkerCapability.MEMORY_PIPELINE)
+            is Payload.MemoryRecall -> setOf(ConversationRuntimeCapability.MEMORY_PIPELINE)
             is Payload.MemoryRunCompletion -> setOf(
-                ConversationRuntimeWorkerCapability.CONVERSATION_TURN,
-                ConversationRuntimeWorkerCapability.MEMORY_PIPELINE,
+                ConversationRuntimeCapability.CONVERSATION_TURN,
+                ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
-            is Payload.BackgroundActivityCompletion -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
-            is Payload.ExecutionIncident -> setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN)
+            is Payload.BackgroundActivityCompletion -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+            is Payload.ExecutionIncident -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
         }
 }
 
 /**
- * Worker selection contract for distributed runtime implementations.
+ * Exact execution contract for distributed runtime implementations.
  *
- * `capabilities` says what the worker must be able to do.
- * `target` pins execution to one worker and, when needed, one mounted workspace.
+ * `capabilities` says what the selected executor must be able to do.
+ * `target` pins execution to the Server or one Worker and, when needed, one mounted workspace.
  */
 @Serializable
 data class ConversationRuntimeTaskRequirements(
-    val capabilities: Set<ConversationRuntimeWorkerCapability>,
-    val target: ConversationRuntimeTaskTarget? = null,
+    val capabilities: Set<ConversationRuntimeCapability>,
+    val target: ConversationRuntimeTaskTarget,
 ) {
     init {
-        require(capabilities.isNotEmpty()) { "Conversation runtime task must require at least one worker capability" }
-        if (ConversationRuntimeWorkerCapability.LOCAL_AGENT_TOOL in capabilities) {
-            require(ConversationRuntimeWorkerCapability.TOOL_EXECUTION in capabilities) {
+        require(capabilities.isNotEmpty()) { "Conversation runtime task must require at least one executor capability" }
+        if (ConversationRuntimeCapability.LOCAL_AGENT_TOOL in capabilities) {
+            require(ConversationRuntimeCapability.TOOL_EXECUTION in capabilities) {
                 "Local agent tool capability requires tool execution capability"
             }
         }
     }
 
     fun isSatisfiedBy(
-        workerId: ConversationRuntimeWorkerId,
-        workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
+        executor: ConversationRuntimeExecutorIdentity,
+        executorCapabilities: Set<ConversationRuntimeCapability>,
         workerWorkspaceMountIds: Set<WorkspaceMount.Id>,
     ): Boolean =
-        workerCapabilities.containsAll(capabilities) &&
-            (target == null || (
-                target.workerId == workerId &&
-                    (target.workspaceMountId == null || target.workspaceMountId in workerWorkspaceMountIds)
-                ))
+        executorCapabilities.containsAll(capabilities) &&
+            when (val exactTarget = target) {
+                ConversationRuntimeTaskTarget.Server ->
+                    executor is ConversationRuntimeExecutorIdentity.Server
+
+                is ConversationRuntimeTaskTarget.Worker ->
+                    executor is ConversationRuntimeExecutorIdentity.Worker &&
+                        exactTarget.workerId == executor.identity.workerId &&
+                        (
+                            exactTarget.workspaceMountId == null ||
+                                exactTarget.workspaceMountId in workerWorkspaceMountIds
+                            )
+            }
 }
 
 @Serializable
-data class ConversationRuntimeTaskTarget(
-    val workerId: ConversationRuntimeWorkerId,
-    val workspaceMountId: WorkspaceMount.Id? = null,
-)
+@JsonClassDiscriminator("targetKind")
+sealed interface ConversationRuntimeTaskTarget {
+    @Serializable
+    @SerialName("server")
+    data object Server : ConversationRuntimeTaskTarget
+
+    @Serializable
+    @SerialName("worker")
+    data class Worker(
+        val workerId: ConversationRuntimeWorkerId,
+        val workspaceMountId: WorkspaceMount.Id? = null,
+    ) : ConversationRuntimeTaskTarget
+}
 
 @Serializable
-enum class ConversationRuntimeWorkerCapability {
+enum class ConversationRuntimeCapability {
     CONVERSATION_TURN,
-    LLM_RUNTIME,
+    AI_REQUEST_RESPONSE,
     TOOL_EXECUTION,
     LOCAL_AGENT_TOOL,
     MEMORY_PIPELINE,
@@ -249,15 +262,49 @@ data class ConversationRuntimeWorkerIdentity(
 )
 
 @Serializable
+@JvmInline
+value class ConversationRuntimeServerSessionId(val value: String) {
+    init {
+        require(value.isNotBlank()) { "Conversation runtime Server session id must not be blank" }
+    }
+}
+
+@Serializable
+@JsonClassDiscriminator("executorKind")
+sealed interface ConversationRuntimeExecutorIdentity {
+    @Serializable
+    @SerialName("server")
+    data class Server(
+        val sessionId: ConversationRuntimeServerSessionId,
+    ) : ConversationRuntimeExecutorIdentity
+
+    @Serializable
+    @SerialName("worker")
+    data class Worker(
+        val identity: ConversationRuntimeWorkerIdentity,
+    ) : ConversationRuntimeExecutorIdentity
+}
+
+data class ConversationRuntimeExecutorDescriptor(
+    val identity: ConversationRuntimeExecutorIdentity,
+    val capabilities: Set<ConversationRuntimeCapability>,
+) {
+    init {
+        require(capabilities.isNotEmpty()) { "Conversation runtime executor must declare at least one capability" }
+    }
+}
+
+@Serializable
 data class ConversationRuntimeWorkerDescriptor(
     val id: ConversationRuntimeWorkerId,
-    val capabilities: Set<ConversationRuntimeWorkerCapability>,
+    val capabilities: Set<ConversationRuntimeCapability>,
     val tools: List<AiToolDescriptor> = emptyList(),
     val environmentProfile: WorkerEnvironmentProfile,
 ) {
     init {
         require(capabilities.isNotEmpty()) { "Conversation runtime worker must declare at least one capability" }
-        require(tools.isEmpty() || ConversationRuntimeWorkerCapability.TOOL_EXECUTION in capabilities) {
+        validateWorkerCapabilities(capabilities)
+        require(tools.isEmpty() || ConversationRuntimeCapability.TOOL_EXECUTION in capabilities) {
             "A worker advertising tools must declare TOOL_EXECUTION"
         }
         require(tools.all { capabilities.containsAll(it.metadata.requiredRuntimeCapabilities) }) {
@@ -272,7 +319,7 @@ data class ConversationRuntimeWorkerDescriptor(
 @Serializable
 data class ConversationRuntimeWorkerRegistration(
     val identity: ConversationRuntimeWorkerIdentity,
-    val capabilities: Set<ConversationRuntimeWorkerCapability>,
+    val capabilities: Set<ConversationRuntimeCapability>,
     val tools: List<AiToolDescriptor>,
     val environmentProfile: WorkerEnvironmentProfile,
     val version: String,
@@ -282,7 +329,8 @@ data class ConversationRuntimeWorkerRegistration(
 ) {
     init {
         require(capabilities.isNotEmpty()) { "Conversation runtime worker must declare at least one capability" }
-        require(tools.isEmpty() || ConversationRuntimeWorkerCapability.TOOL_EXECUTION in capabilities) {
+        validateWorkerCapabilities(capabilities)
+        require(tools.isEmpty() || ConversationRuntimeCapability.TOOL_EXECUTION in capabilities) {
             "A worker advertising tools must declare TOOL_EXECUTION"
         }
         require(tools.all { capabilities.containsAll(it.metadata.requiredRuntimeCapabilities) }) {
@@ -329,6 +377,13 @@ interface ConversationRuntimeWorkerRegistry {
     suspend fun list(): List<ConversationRuntimeWorkerRegistration>
 }
 
+interface ConversationRuntimeWorkerTargetResolver {
+    suspend fun requireOnline(
+        workerId: ConversationRuntimeWorkerId,
+        capability: ConversationRuntimeCapability,
+    ): ConversationRuntimeWorkerIdentity
+}
+
 @Serializable
 enum class ConversationRuntimeControlAction {
     PAUSE,
@@ -342,19 +397,19 @@ data class ConversationExecutionState(
     val conversationId: Conversation.Id,
     val controlState: ControlState,
     val activeTaskId: ConversationRuntimeTask.Id?,
-    val activeWorker: ConversationRuntimeWorkerIdentity? = null,
+    val activeExecutor: ConversationRuntimeExecutorIdentity? = null,
     val activeTaskStartedAt: Instant? = null,
     val updatedAt: Instant,
 ) {
     init {
-        require(activeTaskId != null || activeWorker == null) {
-            "Conversation runtime cannot have an active worker without an active task"
+        require(activeTaskId != null || activeExecutor == null) {
+            "Conversation runtime cannot have an active executor without an active task"
         }
         require(activeTaskId != null || activeTaskStartedAt == null) {
             "Conversation runtime cannot have an execution start without an active task"
         }
-        require(activeTaskStartedAt == null || activeWorker != null) {
-            "Conversation runtime cannot start execution without an active worker"
+        require(activeTaskStartedAt == null || activeExecutor != null) {
+            "Conversation runtime cannot start execution without an active executor"
         }
     }
 
@@ -368,13 +423,30 @@ data class ConversationExecutionState(
     }
 }
 
+private fun validateWorkerCapabilities(capabilities: Set<ConversationRuntimeCapability>) {
+    require(
+        capabilities.none {
+            it == ConversationRuntimeCapability.CONVERSATION_TURN ||
+                it == ConversationRuntimeCapability.MEMORY_PIPELINE
+        }
+    ) {
+        "Conversation orchestration and memory pipeline capabilities belong to Server"
+    }
+    require(
+        ConversationRuntimeCapability.LOCAL_AGENT_TOOL !in capabilities ||
+            ConversationRuntimeCapability.TOOL_EXECUTION in capabilities
+    ) {
+        "LOCAL_AGENT_TOOL requires TOOL_EXECUTION"
+    }
+}
+
 @Serializable
 data class ConversationRuntimeToolExecution(
     val toolCallId: ContentItem.ToolCall.Id,
     val toolName: String,
     val status: Status,
     val runtimeTaskId: ConversationRuntimeTask.Id?,
-    val worker: ConversationRuntimeWorkerIdentity? = null,
+    val executor: ConversationRuntimeExecutorIdentity,
     val startedAt: Instant,
     val completedAt: Instant? = null,
     val isError: Boolean? = null,
@@ -405,7 +477,7 @@ data class ConversationRuntimeTaskIncident(
     val kind: Kind,
     val message: String,
     val errorType: String? = null,
-    val worker: ConversationRuntimeWorkerIdentity?,
+    val executor: ConversationRuntimeExecutorIdentity?,
     val executionStartedAt: Instant?,
     val occurredAt: Instant,
 ) {
@@ -426,7 +498,7 @@ data class ConversationRuntimeTaskIncident(
 data class ConversationRuntimeActiveTaskAssignment(
     val conversationId: Conversation.Id,
     val task: ConversationRuntimeTask,
-    val worker: ConversationRuntimeWorkerIdentity,
+    val executor: ConversationRuntimeExecutorIdentity,
     val startedAt: Instant?,
 )
 
@@ -435,7 +507,7 @@ data class ConversationRuntimeTraceEntry(
     val sequence: Long,
     val conversationId: Conversation.Id,
     val taskId: ConversationRuntimeTask.Id?,
-    val worker: ConversationRuntimeWorkerIdentity?,
+    val executor: ConversationRuntimeExecutorIdentity?,
     val kind: Kind,
     val status: Status,
     val message: String? = null,
@@ -603,23 +675,23 @@ interface ConversationRuntimeCoordinator {
     suspend fun submit(task: ConversationRuntimeTask): Boolean
 
     /**
-     * Atomically assigns a pending task to one worker session.
+     * Atomically assigns a pending task to one executor session.
      *
      * The assignment has no expiry and cannot move to another session. Repeating the claim is idempotent only for
-     * the exact same [worker].
+     * the exact same [executor].
      */
     suspend fun claimDeliveredTask(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
-        workerCapabilities: Set<ConversationRuntimeWorkerCapability>,
+        executor: ConversationRuntimeExecutorIdentity,
+        executorCapabilities: Set<ConversationRuntimeCapability>,
         workerWorkspaceMountIds: Set<WorkspaceMount.Id>,
     ): ConversationRuntimeTask?
 
     suspend fun completeActiveTask(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
     ): Boolean
 
     /**
@@ -628,14 +700,14 @@ interface ConversationRuntimeCoordinator {
     suspend fun markActiveTaskStarted(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         startedAt: Instant,
     ): Boolean
 
     suspend fun confirmActiveTaskOwner(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
     ): Boolean
 
     /**
@@ -647,7 +719,7 @@ interface ConversationRuntimeCoordinator {
     suspend fun markActiveTaskInDoubt(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         message: String,
         errorType: String? = null,
     ): ConversationRuntimeTaskIncident?
@@ -658,18 +730,18 @@ interface ConversationRuntimeCoordinator {
     suspend fun recordClaimedTaskDeliveryFailure(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         message: String,
         errorType: String? = null,
     ): ConversationRuntimeTaskIncident?
 
     /**
-     * Permanently closes a task that could not reach a worker before any durable claim was created.
+     * Permanently closes a task that could not reach its executor before any durable claim was created.
      */
     suspend fun recordPendingTaskDeliveryFailure(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         message: String,
         errorType: String? = null,
     ): ConversationRuntimeTaskIncident?
@@ -691,7 +763,7 @@ interface ConversationRuntimeCoordinator {
     suspend fun clearToolExecutions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
     ): Boolean
 
     suspend fun upsertMemoryOperation(
@@ -770,7 +842,7 @@ interface ConversationRuntimeCoordinator {
     suspend fun takeActiveInsertions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
-        worker: ConversationRuntimeWorkerIdentity,
+        executor: ConversationRuntimeExecutorIdentity,
         placement: QueuedMessagePlacement,
     ): List<ConversationRuntimeTask>
 

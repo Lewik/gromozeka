@@ -8,6 +8,7 @@ gromozeka:
       id: macbook-primary
       version: dev
       capabilities:
+        - AI_REQUEST_RESPONSE
         - TOOL_EXECUTION
         - LOCAL_AGENT_TOOL
 

@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.db.runtime
 
-import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
@@ -115,7 +115,7 @@ class PostgresConversationRuntimeWorkerRegistryTest {
     ): ConversationRuntimeWorkerRegistration =
         ConversationRuntimeWorkerRegistration(
             identity = identity,
-            capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+            capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
             tools = emptyList(),
             environmentProfile = workerEnvironmentProfile(at),
             version = "test",

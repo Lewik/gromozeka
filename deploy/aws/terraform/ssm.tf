@@ -5,7 +5,7 @@ resource "aws_ssm_document" "deploy" {
 
   content = jsonencode({
     schemaVersion = "2.2"
-    description   = "Deploy immutable Gromozeka server and worker images."
+    description   = "Deploy an immutable Gromozeka Server image."
     parameters = {
       ReleaseVersion = {
         type           = "String"
@@ -32,7 +32,7 @@ resource "aws_ssm_document" "deploy" {
             "archive_path=$(mktemp /tmp/gromozeka-runtime.XXXXXX.tar.gz)",
             "trap 'rm -f \"$archive_path\"; [[ -z \"$${release_tmp:-}\" ]] || rm -rf \"$release_tmp\"' EXIT",
             "if [[ ! -f \"$release_dir/.bundle-ready\" ]]; then release_tmp=\"$${release_dir}.new.$$\"; install -d -m 0755 \"$release_tmp\"; aws s3 cp 's3://${aws_s3_bucket.artifacts.id}/{{ RuntimeBundleKey }}' \"$archive_path\" --region '${var.aws_region}'; tar -xzf \"$archive_path\" -C \"$release_tmp\"; chmod 0755 \"$release_tmp/deploy\" \"$release_tmp/backup\"; touch \"$release_tmp/.bundle-ready\"; mv \"$release_tmp\" \"$release_dir\"; release_tmp=\"\"; fi",
-            "\"$release_dir/deploy\" '${aws_ecr_repository.server.repository_url}:{{ ReleaseVersion }}' '${aws_ecr_repository.worker.repository_url}:{{ ReleaseVersion }}' '{{ ReleaseVersion }}' '${var.aws_region}' '${aws_s3_bucket.artifacts.id}'",
+            "\"$release_dir/deploy\" '${aws_ecr_repository.server.repository_url}:{{ ReleaseVersion }}' '{{ ReleaseVersion }}' '${var.aws_region}' '${aws_s3_bucket.artifacts.id}'",
             "ln -sfn \"$release_dir\" /opt/gromozeka/runtime.next",
             "mv -Tf /opt/gromozeka/runtime.next /opt/gromozeka/runtime",
             "touch \"$release_dir\"",
