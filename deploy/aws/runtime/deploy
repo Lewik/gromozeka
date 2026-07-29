@@ -88,7 +88,7 @@ compose exec -T postgres \
 
 while IFS= read -r queue_name; do
   [[ -n "$queue_name" ]] || continue
-  compose exec -T rabbitmq rabbitmqctl delete_queue "$queue_name"
+  compose exec -T rabbitmq rabbitmqctl delete_queue "$queue_name" </dev/null
 done < <(
   compose exec -T rabbitmq rabbitmqctl list_queues --silent name \
     | awk '/^gromozeka\.runtime\.work\.lane-/ || /^gromozeka\.runtime\.work\..*\.[0-9]+(\.dlq)?$/ || /^gromozeka\.runtime\.work\.worker-.*cloud-primary(\.dlq)?$/'
