@@ -249,7 +249,7 @@ jobs:
           server_archive="release-asset/gromozeka-server-${{ matrix.platform }}-${{ matrix.architecture }}.tar.gz"
           server_root="gromozeka-server-${{ matrix.platform }}-${{ matrix.architecture }}"
           tar -tzf "$server_archive" "$server_root/web/index.html"
-          tar -tzf "$server_archive" | grep -Eq "^$server_root/web/.+\\.wasm\\.gz$"
+          tar -tzf "$server_archive" | grep -E "^$server_root/web/.+\\.wasm\\.gz$" >/dev/null
       - uses: actions/upload-artifact@v4
         with:
           name: standalone-${{ matrix.platform }}-${{ matrix.architecture }}
