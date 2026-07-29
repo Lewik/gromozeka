@@ -24,6 +24,7 @@ data class DistributionArtifact(
 @Serializable
 enum class DistributionComponent {
     CLIENT,
+    SERVER,
     WORKER,
 }
 

@@ -92,10 +92,18 @@ jobs:
         run: >
           ./gradlew
           :presentation:build
+          :presentation:wasmJsBrowserDistribution
           :server:test
           :worker:test
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
+      - name: Stage production Web client
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-web-assets
+          path: presentation/build/dist/wasmJs/productionExecutable
+          if-no-files-found: error
+          retention-days: 1
 
   client-macos:
     needs: [metadata, verify]
@@ -131,6 +139,7 @@ jobs:
           name: client-macos-arm64
           path: release-asset/gromozeka-client-macos-arm64.dmg
           if-no-files-found: error
+          retention-days: 1
 
   client-windows:
     needs: [metadata, verify]
@@ -181,8 +190,9 @@ jobs:
           name: client-windows-x64
           path: release-asset/gromozeka-client-windows-x64.zip
           if-no-files-found: error
+          retention-days: 1
 
-  worker-unix:
+  standalone-unix:
     needs: [metadata, verify]
     strategy:
       fail-fast: false
@@ -203,33 +213,51 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@v6
-      - name: Build Worker
+      - name: Build Server and Worker
         run: >
           ./gradlew
+          :server:bootJar
           :worker:bootJar
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
-      - name: Package Worker with Java runtime
+      - name: Restore production Web client
+        uses: actions/download-artifact@v4
+        with:
+          name: server-web-assets
+          path: presentation/build/dist/wasmJs/productionExecutable
+      - name: Package Server and Worker with Java runtimes
         shell: bash
         run: |
-          chmod +x deploy/distribution/package-worker.sh
-          deploy/distribution/package-worker.sh \
-            "${{ matrix.platform }}" \
-            "${{ matrix.architecture }}" \
-            release-asset
-          archive="release-asset/gromozeka-worker-${{ matrix.platform }}-${{ matrix.architecture }}.tar.gz"
-          package_root="gromozeka-worker-${{ matrix.platform }}-${{ matrix.architecture }}"
-          tar -tzf "$archive" \
-            "$package_root/runtime/bin/java" \
-            "$package_root/app/gromozeka-worker.jar" \
-            "$package_root/LICENSE"
+          chmod +x deploy/distribution/package-jvm-component.sh
+          for component in server worker; do
+            deploy/distribution/package-jvm-component.sh \
+              "$component" \
+              "${{ matrix.platform }}" \
+              "${{ matrix.architecture }}" \
+              release-asset
+            archive="release-asset/gromozeka-$component-${{ matrix.platform }}-${{ matrix.architecture }}.tar.gz"
+            package_root="gromozeka-$component-${{ matrix.platform }}-${{ matrix.architecture }}"
+            tar -tzf "$archive" \
+              "$package_root/runtime/bin/java" \
+              "$package_root/app/gromozeka-$component.jar" \
+              "$package_root/bin/gromozeka-$component" \
+              "$package_root/config/$component.yaml.example" \
+              "$package_root/README.md" \
+              "$package_root/LICENSE"
+          done
+
+          server_archive="release-asset/gromozeka-server-${{ matrix.platform }}-${{ matrix.architecture }}.tar.gz"
+          server_root="gromozeka-server-${{ matrix.platform }}-${{ matrix.architecture }}"
+          tar -tzf "$server_archive" "$server_root/web/index.html"
+          tar -tzf "$server_archive" | grep -Eq "^$server_root/web/.+\\.wasm\\.gz$"
       - uses: actions/upload-artifact@v4
         with:
-          name: worker-${{ matrix.platform }}-${{ matrix.architecture }}
-          path: release-asset/gromozeka-worker-${{ matrix.platform }}-${{ matrix.architecture }}.tar.gz
+          name: standalone-${{ matrix.platform }}-${{ matrix.architecture }}
+          path: release-asset/gromozeka-*.tar.gz
           if-no-files-found: error
+          retention-days: 1
 
-  worker-windows:
+  standalone-windows:
     needs: [metadata, verify]
     runs-on: windows-latest
     timeout-minutes: 60
@@ -240,46 +268,69 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@v6
-      - name: Build Worker
+      - name: Build Server and Worker
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
         run: |
           & ./gradlew.bat `
+            :server:bootJar `
             :worker:bootJar `
             "-Pgromozeka.version=$env:RELEASE_VERSION" `
             -q
-      - name: Package Worker with Java runtime
+      - name: Restore production Web client
+        uses: actions/download-artifact@v4
+        with:
+          name: server-web-assets
+          path: presentation/build/dist/wasmJs/productionExecutable
+      - name: Package Server and Worker with Java runtimes
         shell: pwsh
         run: |
-          deploy/distribution/package-worker.ps1 -OutputDirectory release-asset
-          $Archive = "release-asset/gromozeka-worker-windows-x64.zip"
-          if (-not (Test-Path $Archive)) {
-            throw "Worker archive was not created"
-          }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $Zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $Archive))
-          try {
-            $Entries = $Zip.Entries.FullName.Replace("\", "/")
-            $RequiredEntries = @(
-              "gromozeka-worker-windows-x64/runtime/bin/java.exe",
-              "gromozeka-worker-windows-x64/app/gromozeka-worker.jar",
-              "gromozeka-worker-windows-x64/LICENSE"
-            )
-            foreach ($Entry in $RequiredEntries) {
-              if ($Entries -notcontains $Entry) {
-                throw "Worker archive is missing $Entry"
+          foreach ($Component in @("server", "worker")) {
+            deploy/distribution/package-jvm-component.ps1 `
+              -Component $Component `
+              -OutputDirectory release-asset
+            $Archive = "release-asset/gromozeka-$Component-windows-x64.zip"
+            if (-not (Test-Path $Archive)) {
+              throw "$Component archive was not created"
+            }
+            $PackageRoot = "gromozeka-$Component-windows-x64"
+            $Zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $Archive))
+            try {
+              $Entries = $Zip.Entries.FullName.Replace("\", "/")
+              $RequiredEntries = @(
+                "$PackageRoot/runtime/bin/java.exe",
+                "$PackageRoot/app/gromozeka-$Component.jar",
+                "$PackageRoot/bin/gromozeka-$Component.cmd",
+                "$PackageRoot/config/$Component.yaml.example",
+                "$PackageRoot/README.md",
+                "$PackageRoot/LICENSE"
+              )
+              foreach ($Entry in $RequiredEntries) {
+                if ($Entries -notcontains $Entry) {
+                  throw "$Component archive is missing $Entry"
+                }
+              }
+              if ($Component -eq "server") {
+                if ($Entries -notcontains "$PackageRoot/web/index.html") {
+                  throw "Server archive is missing the Web client"
+                }
+                if (-not ($Entries | Where-Object { $_ -like "$PackageRoot/web/*.wasm.gz" })) {
+                  throw "Server archive is missing precompressed Wasm"
+                }
               }
             }
-          }
-          finally {
-            $Zip.Dispose()
+            finally {
+              $Zip.Dispose()
+            }
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: worker-windows-x64
-          path: release-asset/gromozeka-worker-windows-x64.zip
+          name: standalone-windows-x64
+          path: release-asset/gromozeka-*.zip
           if-no-files-found: error
+          retention-days: 1
 
   images:
     needs: [metadata, verify]
@@ -296,12 +347,16 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@v6
+      - name: Restore production Web client
+        uses: actions/download-artifact@v4
+        with:
+          name: server-web-assets
+          path: presentation/build/dist/wasmJs/productionExecutable
       - name: Assemble image inputs
         run: >
           ./gradlew
           :server:bootJar
           :worker:bootJar
-          :presentation:wasmJsBrowserDistribution
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
       - uses: docker/setup-buildx-action@v4
@@ -383,8 +438,8 @@ jobs:
       - metadata
       - client-macos
       - client-windows
-      - worker-unix
-      - worker-windows
+      - standalone-unix
+      - standalone-windows
       - images
     runs-on: ubuntu-latest
     permissions:
@@ -397,10 +452,10 @@ jobs:
           pattern: client-*
           path: downloaded-artifacts
           merge-multiple: true
-      - name: Download Worker artifacts
+      - name: Download standalone Server and Worker artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: worker-*
+          pattern: standalone-*
           path: downloaded-artifacts
           merge-multiple: true
       - name: Prepare release assets
@@ -418,6 +473,9 @@ jobs:
             sha256sum \
               gromozeka-client-macos-arm64.dmg \
               gromozeka-client-windows-x64.zip \
+              gromozeka-server-macos-arm64.tar.gz \
+              gromozeka-server-windows-x64.zip \
+              gromozeka-server-linux-x64.tar.gz \
               gromozeka-worker-macos-arm64.tar.gz \
               gromozeka-worker-windows-x64.zip \
               gromozeka-worker-linux-x64.tar.gz \
@@ -433,6 +491,9 @@ jobs:
 
           - macOS ARM64 Client: `gromozeka-client-macos-arm64.dmg`
           - Windows x64 portable Client: `gromozeka-client-windows-x64.zip`
+          - macOS ARM64 standalone Server: `gromozeka-server-macos-arm64.tar.gz`
+          - Windows x64 standalone Server: `gromozeka-server-windows-x64.zip`
+          - Linux x64 standalone Server: `gromozeka-server-linux-x64.tar.gz`
           - macOS ARM64 Worker: `gromozeka-worker-macos-arm64.tar.gz`
           - Windows x64 Worker: `gromozeka-worker-windows-x64.zip`
           - Linux x64 Worker: `gromozeka-worker-linux-x64.tar.gz`

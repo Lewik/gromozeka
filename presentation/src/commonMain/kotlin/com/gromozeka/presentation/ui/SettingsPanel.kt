@@ -1140,7 +1140,7 @@ private fun DistributionCatalog(manifest: DistributionManifest) {
 
     SettingsGroup(title = "Downloads") {
         Text(
-            text = "Native clients and trusted standalone Workers for Server ${manifest.serverVersion}.",
+            text = "Native clients, standalone Servers, and trusted Workers for version ${manifest.serverVersion}.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
@@ -1306,6 +1306,7 @@ private sealed interface WorkerEnrollmentState {
 private fun DistributionComponent.displayName(): String =
     when (this) {
         DistributionComponent.CLIENT -> "Clients"
+        DistributionComponent.SERVER -> "Servers"
         DistributionComponent.WORKER -> "Workers"
     }
 

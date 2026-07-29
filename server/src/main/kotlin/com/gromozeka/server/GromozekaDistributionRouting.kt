@@ -171,7 +171,7 @@ private const val MAX_ENROLLMENT_REQUEST_BYTES = 8 * 1024
 private const val DEVELOPMENT_SERVER_VERSION = "0.0.0-dev"
 private val loopbackAddresses = setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")
 
-private fun distributionArtifacts(releaseDownloadBaseUrl: String) = listOf(
+internal fun distributionArtifacts(releaseDownloadBaseUrl: String) = listOf(
     DistributionArtifact(
         id = "client-macos-arm64",
         component = DistributionComponent.CLIENT,
@@ -189,6 +189,33 @@ private fun distributionArtifacts(releaseDownloadBaseUrl: String) = listOf(
         format = DistributionFormat.PORTABLE_ZIP,
         fileName = "gromozeka-client-windows-x64.zip",
         downloadUrl = "$releaseDownloadBaseUrl/gromozeka-client-windows-x64.zip",
+    ),
+    DistributionArtifact(
+        id = "server-macos-arm64",
+        component = DistributionComponent.SERVER,
+        operatingSystem = DistributionOperatingSystem.MACOS,
+        architecture = DistributionArchitecture.ARM64,
+        format = DistributionFormat.TAR_GZ,
+        fileName = "gromozeka-server-macos-arm64.tar.gz",
+        downloadUrl = "$releaseDownloadBaseUrl/gromozeka-server-macos-arm64.tar.gz",
+    ),
+    DistributionArtifact(
+        id = "server-windows-x64",
+        component = DistributionComponent.SERVER,
+        operatingSystem = DistributionOperatingSystem.WINDOWS,
+        architecture = DistributionArchitecture.X64,
+        format = DistributionFormat.PORTABLE_ZIP,
+        fileName = "gromozeka-server-windows-x64.zip",
+        downloadUrl = "$releaseDownloadBaseUrl/gromozeka-server-windows-x64.zip",
+    ),
+    DistributionArtifact(
+        id = "server-linux-x64",
+        component = DistributionComponent.SERVER,
+        operatingSystem = DistributionOperatingSystem.LINUX,
+        architecture = DistributionArchitecture.X64,
+        format = DistributionFormat.TAR_GZ,
+        fileName = "gromozeka-server-linux-x64.tar.gz",
+        downloadUrl = "$releaseDownloadBaseUrl/gromozeka-server-linux-x64.tar.gz",
     ),
     DistributionArtifact(
         id = "worker-macos-arm64",
