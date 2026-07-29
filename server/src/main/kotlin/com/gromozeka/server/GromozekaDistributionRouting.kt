@@ -49,7 +49,8 @@ internal fun Routing.gromozekaDistributions(
         call.respondText(manifestJson, ContentType.Application.Json)
     }
     post("/api/worker-enrollments") {
-        if (call.authenticateOrNull(authenticationService) == null) {
+        val authenticatedSession = call.authenticateOrNull(authenticationService)
+        if (authenticatedSession == null) {
             call.respondText(
                 """{"error":"Authentication required"}""",
                 ContentType.Application.Json,
@@ -66,7 +67,7 @@ internal fun Routing.gromozekaDistributions(
             )
             return@post
         }
-        runCatching { workerEnrollmentService.create() }
+        runCatching { workerEnrollmentService.create(authenticatedSession.user.id) }
             .onSuccess {
                 call.respondText(
                     Json.encodeToString(it),

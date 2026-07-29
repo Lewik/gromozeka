@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.WorkspaceDomainService
+import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolDescriptor
@@ -56,6 +57,7 @@ class DistributedAiToolCatalog(
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
     private val workspaceService: WorkspaceDomainService,
     private val aiToolProvider: com.gromozeka.domain.service.AiToolProvider,
+    private val workerAccessService: WorkerAccessService,
 ) {
     private val json = Json
 
@@ -64,13 +66,17 @@ class DistributedAiToolCatalog(
     ): DistributedAiToolCatalogSnapshot {
         val now = Clock.System.now()
         val staleBefore = now - ConversationRuntimeTiming.workerRegistrationStaleAfter
+        val availableWorkerIds = workerAccessService.listAvailableToProject(project.id)
+            .mapTo(mutableSetOf()) { it.id }
         val knownRegistrations = workerRegistry.list()
+            .filter { it.identity.workerId in availableWorkerIds }
             .sortedBy { it.identity.workerId.value }
         val onlineRegistrations = knownRegistrations.filter { it.isOnline(staleBefore) }
         val projectWorkspaces = workspaceService.findByProject(project.id)
             .associateBy { it.id }
         val projectMounts = projectWorkspaces.keys
             .flatMap { workspaceService.findMounts(it) }
+            .filter { ConversationRuntimeWorkerId(it.workerId) in availableWorkerIds }
             .sortedBy { it.id.value }
         val mountsByOnlineWorker = onlineRegistrations.associate { registration ->
             registration.identity.workerId to projectMounts

@@ -7,6 +7,11 @@ import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.WorkerPermission
+import com.gromozeka.domain.model.WorkerProjectGrant
+import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.model.WorkerUserGrant
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.AiToolProvider
@@ -17,6 +22,8 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkspaceDomainService
+import com.gromozeka.domain.service.WorkerAccessDeniedException
+import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDescriptor
@@ -52,6 +59,9 @@ class DistributedAiToolRoutingTest {
     private val workspaceA = workspace("workspace-a", project.id)
     private val workspaceB = workspace("workspace-b", project.id)
     private val foreignWorkspace = workspace("workspace-foreign", otherProject.id)
+    private val workerAccessService = TestProjectWorkerAccessService(
+        setOf("worker-a", "worker-b", "foreign-worker")
+    )
     private val workspaceTool = AiToolDescriptor(
         definition = AiToolDefinition(
             name = "grz_read_file",
@@ -109,6 +119,7 @@ class DistributedAiToolRoutingTest {
         val routing = ConversationRuntimeToolRoutingService(
             runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
             workspaceService = workspaceService,
+            workerAccessService = workerAccessService,
         )
         val call = Conversation.Message.ContentItem.ToolCall(
             id = Conversation.Message.ContentItem.ToolCall.Id("activate-skill"),
@@ -174,6 +185,7 @@ class DistributedAiToolRoutingTest {
         val result = ConversationRuntimeToolRoutingService(
             runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
             workspaceService = workspaceService,
+            workerAccessService = workerAccessService,
         ).route(
             conversation = conversation(project.id),
             project = project,
@@ -248,6 +260,60 @@ class DistributedAiToolRoutingTest {
     }
 
     @Test
+    fun `catalog and routing reject workers unavailable to the project`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(workerEnvironmentTool))
+        registerWorker(workerRegistry, "worker-b", listOf(workerEnvironmentTool))
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = emptyList(),
+            mounts = emptyList(),
+        )
+        val restrictedWorkerAccess = TestProjectWorkerAccessService(setOf("worker-a"))
+        val restrictedCatalog = distributedCatalog(
+            workerRegistry = workerRegistry,
+            workspaceService = workspaceService,
+            workerAccessService = restrictedWorkerAccess,
+        ).snapshot(project)
+
+        assertEquals(
+            setOf(ConversationRuntimeWorkerId("worker-a")),
+            restrictedCatalog.entries
+                .getValue(workerEnvironmentTool.definition.name)
+                .workers
+                .mapTo(mutableSetOf()) { it.workerId },
+        )
+        assertFalse(restrictedCatalog.environmentPrompt.contains("worker-b"))
+
+        val staleCatalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
+        val result = ConversationRuntimeToolRoutingService(
+            runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
+            workspaceService = workspaceService,
+            workerAccessService = restrictedWorkerAccess,
+        ).route(
+            conversation = conversation(project.id),
+            project = project,
+            toolCalls = listOf(
+                Conversation.Message.ContentItem.ToolCall(
+                    id = Conversation.Message.ContentItem.ToolCall.Id("inspect-worker-b"),
+                    call = Conversation.Message.ContentItem.ToolCall.Data(
+                        name = workerEnvironmentTool.definition.name,
+                        input = buildJsonObject {
+                            putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                                put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-b")
+                            }
+                        },
+                    ),
+                )
+            ),
+            catalog = staleCatalog,
+        )
+
+        assertIs<ConversationRuntimeToolRoutingResult.Rejected>(result)
+        assertTrue(result.errors.single().message.contains("not available to project"))
+    }
+
+    @Test
     fun `routing rejects a foreign mount and derives worker from an accepted mount`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         registerWorker(workerRegistry, "worker-a", listOf(workspaceTool))
@@ -265,6 +331,7 @@ class DistributedAiToolRoutingTest {
         val routing = ConversationRuntimeToolRoutingService(
             runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
             workspaceService = workspaceService,
+            workerAccessService = workerAccessService,
         )
         val conversation = conversation(project.id)
 
@@ -308,7 +375,7 @@ class DistributedAiToolRoutingTest {
         val task = commandTask(conversation.id, "task-b", mountB, "worker-b")
         coordinator.upsertCommandTask(task)
         val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
-        val routing = ConversationRuntimeToolRoutingService(coordinator, workspaceService)
+        val routing = ConversationRuntimeToolRoutingService(coordinator, workspaceService, workerAccessService)
 
         val accepted = routing.route(
             conversation = conversation,
@@ -356,7 +423,7 @@ class DistributedAiToolRoutingTest {
                 ),
             )
 
-        val result = ConversationRuntimeToolRoutingService(coordinator, workspaceService).route(
+        val result = ConversationRuntimeToolRoutingService(coordinator, workspaceService, workerAccessService).route(
             conversation = conversation,
             project = project,
             toolCalls = listOf(call),
@@ -382,7 +449,7 @@ class DistributedAiToolRoutingTest {
         val monitor = commandMonitor(conversation.id, "monitor-b", mountB, "worker-b")
         coordinator.synchronizeCommandMonitor(monitor)
         val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
-        val routing = ConversationRuntimeToolRoutingService(coordinator, workspaceService)
+        val routing = ConversationRuntimeToolRoutingService(coordinator, workspaceService, workerAccessService)
         val call = ownerToolCall(
             getCommandMonitorTool.definition.name,
             "monitor_id",
@@ -422,7 +489,7 @@ class DistributedAiToolRoutingTest {
         coordinator.synchronizeCommandMonitor(monitor)
         val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
 
-        val result = ConversationRuntimeToolRoutingService(coordinator, workspaceService).route(
+        val result = ConversationRuntimeToolRoutingService(coordinator, workspaceService, workerAccessService).route(
             conversation = conversation,
             project = project,
             toolCalls = listOf(
@@ -499,6 +566,7 @@ class DistributedAiToolRoutingTest {
         workerRegistry: InMemoryConversationRuntimeWorkerRegistry,
         workspaceService: WorkspaceDomainService,
         serverTools: List<AiToolDescriptor> = emptyList(),
+        workerAccessService: WorkerAccessService = this.workerAccessService,
     ): DistributedAiToolCatalog =
         DistributedAiToolCatalog(
             workerRegistry = workerRegistry,
@@ -517,6 +585,7 @@ class DistributedAiToolRoutingTest {
                         }
                     }
             },
+            workerAccessService = workerAccessService,
         )
 
     private fun project(id: String): Project =
@@ -641,6 +710,91 @@ class DistributedAiToolRoutingTest {
             createdAt = now,
             updatedAt = now,
         )
+
+    private inner class TestProjectWorkerAccessService(
+        workerIds: Set<String>,
+    ) : WorkerAccessService {
+        private val workers = workerIds.associate { workerId ->
+            val id = ConversationRuntimeWorkerId(workerId)
+            id to WorkerResource(
+                id = id,
+                displayName = workerId,
+                ownerUserId = User.Id("test-owner"),
+                organizationAccess = false,
+                status = WorkerResource.Status.ACTIVE,
+                createdAt = now,
+                updatedAt = now,
+            )
+        }
+
+        override suspend fun findAccessible(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+            projectId: Project.Id?,
+        ): WorkerResource? = workers[workerId]
+
+        override suspend fun listAccessible(actor: User): List<WorkerResource> = workers.values.toList()
+
+        override suspend fun listAvailableToProject(projectId: Project.Id): List<WorkerResource> =
+            workers.values.toList()
+
+        override suspend fun requirePermission(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+            permission: WorkerPermission,
+            projectId: Project.Id?,
+        ): WorkerResource = workers[workerId] ?: throw WorkerAccessDeniedException()
+
+        override suspend fun requireProjectAccess(
+            workerId: ConversationRuntimeWorkerId,
+            projectId: Project.Id,
+        ): WorkerResource = workers[workerId] ?: throw WorkerAccessDeniedException()
+
+        override suspend fun listUserGrants(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+        ): List<WorkerUserGrant> = emptyList()
+
+        override suspend fun grantUser(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+            userId: User.Id,
+        ): WorkerUserGrant = error("Worker grants are outside this test")
+
+        override suspend fun revokeUser(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+            userId: User.Id,
+        ): Boolean = error("Worker grants are outside this test")
+
+        override suspend fun listProjectGrants(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+        ): List<WorkerProjectGrant> = emptyList()
+
+        override suspend fun grantProject(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+            projectId: Project.Id,
+        ): WorkerProjectGrant = error("Worker grants are outside this test")
+
+        override suspend fun revokeProject(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+            projectId: Project.Id,
+        ): Boolean = error("Worker grants are outside this test")
+
+        override suspend fun setOrganizationAccess(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+            enabled: Boolean,
+        ): WorkerResource = error("Worker access changes are outside this test")
+
+        override suspend fun revokeWorker(
+            actor: User,
+            workerId: ConversationRuntimeWorkerId,
+        ): WorkerResource = error("Worker revocation is outside this test")
+    }
 
     private class TestWorkspaceDomainService(
         projects: List<Project>,

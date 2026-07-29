@@ -1,11 +1,12 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.remote.protocol.WorkerEnrollmentAvailability
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.gromozeka.remote.protocol.WorkerEnrollmentToken
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -68,31 +69,33 @@ class WorkerEnrollmentConfiguration {
     @Bean
     fun workerEnrollmentService(
         properties: WorkerEnrollmentProperties,
-    ): WorkerEnrollmentService = WorkerEnrollmentService(properties)
+        repository: WorkerEnrollmentRepository,
+    ): WorkerEnrollmentService = WorkerEnrollmentService(properties, repository)
 }
 
 class WorkerEnrollmentService(
     private val properties: WorkerEnrollmentProperties,
+    private val repository: WorkerEnrollmentRepository,
     private val clock: Clock = Clock.systemUTC(),
     private val secureRandom: SecureRandom = SecureRandom(),
 ) {
-    private val mutex = Mutex()
-    private val tokensByHash = mutableMapOf<String, Instant>()
-
     fun availability(): WorkerEnrollmentAvailability =
         properties.unavailableReason()?.let {
             WorkerEnrollmentAvailability(available = false, unavailableReason = it)
         } ?: WorkerEnrollmentAvailability(available = true)
 
-    suspend fun create(): WorkerEnrollmentToken {
+    suspend fun create(ownerUserId: User.Id): WorkerEnrollmentToken {
         properties.unavailableReason()?.let { error(it) }
         val tokenBytes = ByteArray(32).also(secureRandom::nextBytes)
         val token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes)
-        val expiresAt = clock.instant().plus(Duration.ofMinutes(properties.tokenTtlMinutes))
-        mutex.withLock {
-            removeExpiredTokens()
-            tokensByHash[tokenHash(token)] = expiresAt
-        }
+        val createdAt = clock.instant()
+        val expiresAt = createdAt.plus(Duration.ofMinutes(properties.tokenTtlMinutes))
+        repository.issue(
+            tokenHash = tokenHash(token),
+            ownerUserId = ownerUserId,
+            createdAt = createdAt.toKotlinx(),
+            expiresAt = expiresAt.toKotlinx(),
+        )
         return WorkerEnrollmentToken(token = token, expiresAt = expiresAt.toString())
     }
 
@@ -103,23 +106,23 @@ class WorkerEnrollmentService(
         }
         require(token.length in 40..128) { "Worker enrollment token is invalid or expired" }
 
-        val accepted = mutex.withLock {
-            removeExpiredTokens()
-            tokensByHash.remove(tokenHash(token)) != null
-        }
-        require(accepted) { "Worker enrollment token is invalid or expired" }
-        return properties.bootstrap(workerId)
-    }
-
-    private fun removeExpiredTokens() {
-        val now = clock.instant()
-        tokensByHash.entries.removeAll { (_, expiresAt) -> !expiresAt.isAfter(now) }
+        val worker = repository.consume(
+            tokenHash = tokenHash(token),
+            workerId = ConversationRuntimeWorkerId(workerId),
+            displayName = workerId,
+            consumedAt = clock.instant().toKotlinx(),
+        )
+        require(worker != null) { "Worker enrollment token is invalid or expired" }
+        return properties.bootstrap(worker.id.value)
     }
 
     private fun tokenHash(token: String): String =
         MessageDigest.getInstance("SHA-256")
             .digest(token.encodeToByteArray())
             .joinToString("") { "%02x".format(it) }
+
+    private fun Instant.toKotlinx(): kotlinx.datetime.Instant =
+        kotlinx.datetime.Instant.fromEpochMilliseconds(toEpochMilli())
 }
 
 private val workerIdPattern = Regex("""[A-Za-z0-9][A-Za-z0-9._-]{0,63}""")

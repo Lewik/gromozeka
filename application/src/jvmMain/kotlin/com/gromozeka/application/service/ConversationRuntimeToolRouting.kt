@@ -12,6 +12,8 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.WorkspaceDomainService
+import com.gromozeka.domain.service.WorkerAccessDeniedException
+import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolExecutionTarget
 import kotlinx.serialization.json.JsonElement
@@ -47,6 +49,7 @@ data class ConversationRuntimeToolRoutingError(
 class ConversationRuntimeToolRoutingService(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val workspaceService: WorkspaceDomainService,
+    private val workerAccessService: WorkerAccessService,
 ) {
     suspend fun route(
         conversation: Conversation,
@@ -94,6 +97,17 @@ class ConversationRuntimeToolRoutingService(
                     errors = errors,
                 )
             } ?: return@forEach
+
+            if (target is ConversationRuntimeTaskTarget.Worker) {
+                try {
+                    workerAccessService.requireProjectAccess(target.workerId, project.id)
+                } catch (_: WorkerAccessDeniedException) {
+                    errors += toolCall.routingError(
+                        "Worker '${target.workerId.value}' is not available to project '${project.id.value}'."
+                    )
+                    return@forEach
+                }
+            }
 
             resolved += ResolvedToolCall(
                 target = target,

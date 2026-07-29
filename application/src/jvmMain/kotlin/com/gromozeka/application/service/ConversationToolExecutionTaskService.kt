@@ -15,6 +15,7 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.WorkspaceDomainService
+import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
@@ -40,6 +41,7 @@ class ConversationToolExecutionTaskService(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val parallelToolExecutor: ParallelToolExecutor,
+    private val workerAccessService: WorkerAccessService,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -61,6 +63,9 @@ class ConversationToolExecutionTaskService(
             "Tool execution task ${task.id.value} targets $target but is running on $executor"
         }
         val workerTarget = target as? ConversationRuntimeTaskTarget.Worker
+        workerTarget?.let {
+            workerAccessService.requireProjectAccess(it.workerId, project.id)
+        }
         val workspaceContext = workerTarget?.workspaceMountId?.let { mountId ->
             workspaceService.resolveExecution(mountId).also { resolved ->
                 require(resolved.project.id == project.id) {

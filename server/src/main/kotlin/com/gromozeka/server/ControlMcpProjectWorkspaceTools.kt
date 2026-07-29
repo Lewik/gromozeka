@@ -4,8 +4,14 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.WorkerPermission
+import com.gromozeka.domain.model.WorkerProjectGrant
+import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.model.WorkerUserGrant
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ProjectAccessService
+import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import kotlinx.serialization.builtins.ListSerializer
@@ -20,6 +26,7 @@ internal class ControlMcpProjectWorkspaceTools(
     private val workspaceService: WorkspaceDomainService,
     private val workspaceManagementService: WorkspaceManagementService,
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
+    private val workerAccessService: WorkerAccessService,
 ) : ControlMcpToolProvider {
     override val tools: List<ControlMcpTool> = listOf(
         controlMcpTool(
@@ -205,13 +212,19 @@ internal class ControlMcpProjectWorkspaceTools(
                 required = listOf("workspaceId", "workerId", "rootPath"),
             ),
             readOnly = false,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val workspaceId = Workspace.Id(input.requiredString("workspaceId"))
-            requireWorkspace(workspaceId, ProjectPermission.WRITE)
+            val workspace = requireWorkspace(workspaceId, ProjectPermission.WRITE)
+            val workerId = ConversationRuntimeWorkerId(input.requiredString("workerId"))
+            workerAccessService.requirePermission(
+                actor = user,
+                workerId = workerId,
+                permission = WorkerPermission.USE,
+                projectId = workspace.projectId,
+            )
             val execution = workspaceService.attachFilesystem(
                 workspaceId = workspaceId,
-                workerId = input.requiredString("workerId"),
+                workerId = workerId.value,
                 rootPath = input.requiredString("rootPath"),
             )
             buildJsonObject {
@@ -226,7 +239,6 @@ internal class ControlMcpProjectWorkspaceTools(
             inputSchema = idSchema("mountId", "Workspace mount id."),
             readOnly = false,
             destructive = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) { input ->
             val id = input.requiredString("mountId")
             val mountId = WorkspaceMount.Id(id)
@@ -239,17 +251,180 @@ internal class ControlMcpProjectWorkspaceTools(
             name = "grz_worker_list",
             description = "List registered worker sessions, capabilities, advertised tools, and heartbeat state.",
             readOnly = true,
-            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) {
+            val accessibleWorkerIds = workerAccessService.listAccessible(user)
+                .mapTo(mutableSetOf()) { it.id }
             buildJsonObject {
                 put(
                     "workers",
                     controlMcpJson.encodeToJsonElement(
                         ListSerializer(com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration.serializer()),
-                        workerRegistry.list(),
+                        workerRegistry.list().filter { it.identity.workerId in accessibleWorkerIds },
                     )
                 )
             }
+        },
+        controlMcpTool(
+            name = "grz_worker_access_get",
+            description = "Read one worker's owner, organization access, and explicit user and project grants.",
+            inputSchema = idSchema("workerId", "Worker id."),
+            readOnly = true,
+        ) { input ->
+            val workerId = ConversationRuntimeWorkerId(input.requiredString("workerId"))
+            val worker = workerAccessService.requirePermission(
+                actor = user,
+                workerId = workerId,
+                permission = WorkerPermission.MANAGE,
+            )
+            buildJsonObject {
+                put("worker", controlMcpJson.encodeToJsonElement(WorkerResource.serializer(), worker))
+                put(
+                    "userGrants",
+                    controlMcpJson.encodeToJsonElement(
+                        ListSerializer(WorkerUserGrant.serializer()),
+                        workerAccessService.listUserGrants(user, workerId),
+                    )
+                )
+                put(
+                    "projectGrants",
+                    controlMcpJson.encodeToJsonElement(
+                        ListSerializer(WorkerProjectGrant.serializer()),
+                        workerAccessService.listProjectGrants(user, workerId),
+                    )
+                )
+            }
+        },
+        controlMcpTool(
+            name = "grz_worker_user_grant",
+            description = "Allow one active user to use a worker.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "workerId" to ControlMcpSchemas.string("Worker id."),
+                    "userId" to ControlMcpSchemas.string("User id."),
+                ),
+                required = listOf("workerId", "userId"),
+            ),
+            readOnly = false,
+            idempotent = true,
+        ) { input ->
+            entityResult(
+                "grant",
+                WorkerUserGrant.serializer(),
+                workerAccessService.grantUser(
+                    actor = user,
+                    workerId = ConversationRuntimeWorkerId(input.requiredString("workerId")),
+                    userId = com.gromozeka.domain.model.User.Id(input.requiredString("userId")),
+                )
+            )
+        },
+        controlMcpTool(
+            name = "grz_worker_user_revoke",
+            description = "Remove one user's direct access to a worker.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "workerId" to ControlMcpSchemas.string("Worker id."),
+                    "userId" to ControlMcpSchemas.string("User id."),
+                ),
+                required = listOf("workerId", "userId"),
+            ),
+            readOnly = false,
+            destructive = true,
+            idempotent = true,
+        ) { input ->
+            val workerId = input.requiredString("workerId")
+            val userId = input.requiredString("userId")
+            workerAccessService.revokeUser(
+                actor = user,
+                workerId = ConversationRuntimeWorkerId(workerId),
+                userId = com.gromozeka.domain.model.User.Id(userId),
+            )
+            deletedResult("worker_user_grant", "$workerId:$userId")
+        },
+        controlMcpTool(
+            name = "grz_worker_project_grant",
+            description = "Allow writable members of one project to use a worker.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "workerId" to ControlMcpSchemas.string("Worker id."),
+                    "projectId" to ControlMcpSchemas.string("Project id."),
+                ),
+                required = listOf("workerId", "projectId"),
+            ),
+            readOnly = false,
+            idempotent = true,
+        ) { input ->
+            entityResult(
+                "grant",
+                WorkerProjectGrant.serializer(),
+                workerAccessService.grantProject(
+                    actor = user,
+                    workerId = ConversationRuntimeWorkerId(input.requiredString("workerId")),
+                    projectId = Project.Id(input.requiredString("projectId")),
+                )
+            )
+        },
+        controlMcpTool(
+            name = "grz_worker_project_revoke",
+            description = "Remove one project's access to a worker.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "workerId" to ControlMcpSchemas.string("Worker id."),
+                    "projectId" to ControlMcpSchemas.string("Project id."),
+                ),
+                required = listOf("workerId", "projectId"),
+            ),
+            readOnly = false,
+            destructive = true,
+            idempotent = true,
+        ) { input ->
+            val workerId = input.requiredString("workerId")
+            val projectId = input.requiredString("projectId")
+            workerAccessService.revokeProject(
+                actor = user,
+                workerId = ConversationRuntimeWorkerId(workerId),
+                projectId = Project.Id(projectId),
+            )
+            deletedResult("worker_project_grant", "$workerId:$projectId")
+        },
+        controlMcpTool(
+            name = "grz_worker_organization_access_set",
+            description = "Enable or disable worker use for every authenticated user.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "workerId" to ControlMcpSchemas.string("Worker id."),
+                    "enabled" to ControlMcpSchemas.boolean("Whether organization-wide use is enabled."),
+                ),
+                required = listOf("workerId", "enabled"),
+            ),
+            readOnly = false,
+            idempotent = true,
+        ) { input ->
+            entityResult(
+                "worker",
+                WorkerResource.serializer(),
+                workerAccessService.setOrganizationAccess(
+                    actor = user,
+                    workerId = ConversationRuntimeWorkerId(input.requiredString("workerId")),
+                    enabled = input.optionalBoolean("enabled", false),
+                )
+            )
+        },
+        controlMcpTool(
+            name = "grz_worker_revoke",
+            description = "Revoke a worker and all future use. This is destructive.",
+            inputSchema = idSchema("workerId", "Worker id."),
+            readOnly = false,
+            destructive = true,
+            idempotent = true,
+        ) { input ->
+            entityResult(
+                "worker",
+                WorkerResource.serializer(),
+                workerAccessService.revokeWorker(
+                    actor = user,
+                    workerId = ConversationRuntimeWorkerId(input.requiredString("workerId")),
+                )
+            )
         },
     )
 

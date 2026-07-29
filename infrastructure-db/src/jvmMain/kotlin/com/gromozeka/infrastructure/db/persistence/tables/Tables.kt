@@ -41,6 +41,54 @@ internal object ProjectMemberships : Table("project_memberships") {
     override val primaryKey = PrimaryKey(projectId, userId)
 }
 
+internal object Workers : Table("workers") {
+    val id = varchar("id", 64)
+    val displayName = varchar("display_name", 255)
+    val ownerUserId = varchar("owner_user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.RESTRICT)
+    val organizationAccess = bool("organization_access")
+    val status = varchar("status", 32)
+    val createdAt = timestamp("created_at")
+    val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+internal object WorkerUserGrants : Table("worker_user_grants") {
+    val workerId = varchar("worker_id", 64)
+        .references(Workers.id, onDelete = ReferenceOption.CASCADE)
+    val userId = varchar("user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.CASCADE)
+    val createdAt = timestamp("created_at")
+    val createdByUserId = varchar("created_by_user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.RESTRICT)
+
+    override val primaryKey = PrimaryKey(workerId, userId)
+}
+
+internal object WorkerProjectGrants : Table("worker_project_grants") {
+    val workerId = varchar("worker_id", 64)
+        .references(Workers.id, onDelete = ReferenceOption.CASCADE)
+    val projectId = varchar("project_id", 255)
+        .references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val createdAt = timestamp("created_at")
+    val createdByUserId = varchar("created_by_user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.RESTRICT)
+
+    override val primaryKey = PrimaryKey(workerId, projectId)
+}
+
+internal object WorkerEnrollmentTokens : Table("worker_enrollment_tokens") {
+    val tokenHash = varchar("token_hash", 64)
+    val ownerUserId = varchar("owner_user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.CASCADE)
+    val createdAt = timestamp("created_at")
+    val expiresAt = timestamp("expires_at")
+    val consumedAt = timestamp("consumed_at").nullable()
+
+    override val primaryKey = PrimaryKey(tokenHash)
+}
+
 internal object LocalPasswordCredentials : Table("local_password_credentials") {
     val userId = varchar("user_id", 255).references(Users.id, onDelete = ReferenceOption.CASCADE)
     val passwordHash = text("password_hash")

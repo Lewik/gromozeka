@@ -24,6 +24,7 @@ import com.gromozeka.domain.service.UserConversationTabLayoutService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.domain.service.WorkerCatalogService
+import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.PersonalAccessTokenService
 import com.gromozeka.infrastructure.ai.openai.SttService
@@ -69,6 +70,7 @@ class GromozekaRemoteServer(
     private val workspaceCatalogService: WorkspaceCatalogService,
     private val workspaceManagementService: WorkspaceManagementService,
     private val workerCatalogService: WorkerCatalogService,
+    private val workerAccessService: WorkerAccessService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
@@ -415,7 +417,14 @@ class GromozekaRemoteServer(
                 is FindWorkspaceMountsRequest -> WorkspaceMountsResponse(
                     workspaceCatalogService.findMounts(request.workspaceId)
                 )
-                ListWorkersRequest -> WorkersResponse(workerCatalogService.listWorkers())
+                ListWorkersRequest -> {
+                    val accessibleWorkerIds = workerAccessService.listAccessible(user)
+                        .mapTo(mutableSetOf()) { it.id }
+                    WorkersResponse(
+                        workerCatalogService.listWorkers()
+                            .filter { it.workerId in accessibleWorkerIds }
+                    )
+                }
                 is CreateFilesystemWorkspaceRequest -> WorkspaceResponse(
                     workspaceManagementService.create(request.projectId, request.name)
                 )

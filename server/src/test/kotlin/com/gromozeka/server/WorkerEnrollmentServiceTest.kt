@@ -1,7 +1,12 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Instant as KotlinInstant
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -15,14 +20,16 @@ class WorkerEnrollmentServiceTest {
 
     @Test
     fun `token can bootstrap exactly one worker`() = runBlocking {
-        val service = WorkerEnrollmentService(configuredProperties(), clock)
-        val token = service.create()
+        val repository = TestWorkerEnrollmentRepository()
+        val service = WorkerEnrollmentService(configuredProperties(), repository, clock)
+        val token = service.create(USER_ID)
 
         val bootstrap = service.consume(token.token, "macbook-primary")
 
         assertEquals("macbook-primary", bootstrap.workerId)
         assertEquals("jdbc:postgresql://db.example/gromozeka", bootstrap.postgresJdbcUrl)
         assertEquals(setOf(ConversationRuntimeCapability.TOOL_EXECUTION), bootstrap.capabilities)
+        assertEquals(USER_ID, repository.worker?.ownerUserId)
         assertFailsWith<IllegalArgumentException> {
             service.consume(token.token, "second-worker")
         }
@@ -30,22 +37,24 @@ class WorkerEnrollmentServiceTest {
 
     @Test
     fun `disabled or incomplete enrollment fails closed`() = runBlocking {
-        val disabled = WorkerEnrollmentService(WorkerEnrollmentProperties(), clock)
+        val repository = TestWorkerEnrollmentRepository()
+        val disabled = WorkerEnrollmentService(WorkerEnrollmentProperties(), repository, clock)
         assertTrue(!disabled.availability().available)
-        assertFailsWith<IllegalStateException> { disabled.create() }
+        assertFailsWith<IllegalStateException> { disabled.create(USER_ID) }
 
         val incomplete = WorkerEnrollmentService(
             WorkerEnrollmentProperties(enabled = true),
+            repository,
             clock,
         )
         assertTrue(!incomplete.availability().available)
-        assertFailsWith<IllegalStateException> { incomplete.create() }
+        assertFailsWith<IllegalStateException> { incomplete.create(USER_ID) }
     }
 
     @Test
     fun `worker id is validated before consuming token`() = runBlocking {
-        val service = WorkerEnrollmentService(configuredProperties(), clock)
-        val token = service.create()
+        val service = WorkerEnrollmentService(configuredProperties(), TestWorkerEnrollmentRepository(), clock)
+        val token = service.create(USER_ID)
 
         assertFailsWith<IllegalArgumentException> {
             service.consume(token.token, "../unsafe")
@@ -67,4 +76,50 @@ class WorkerEnrollmentServiceTest {
             rabbitmqPassword = "rabbit-secret",
             capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
         )
+
+    private companion object {
+        val USER_ID = User.Id("user-1")
+    }
+}
+
+private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
+    private var enrollment: Enrollment? = null
+    var worker: WorkerResource? = null
+        private set
+
+    override suspend fun issue(
+        tokenHash: String,
+        ownerUserId: User.Id,
+        createdAt: KotlinInstant,
+        expiresAt: KotlinInstant,
+    ) {
+        enrollment = Enrollment(tokenHash, ownerUserId, expiresAt)
+    }
+
+    override suspend fun consume(
+        tokenHash: String,
+        workerId: ConversationRuntimeWorkerId,
+        displayName: String,
+        consumedAt: KotlinInstant,
+    ): WorkerResource? {
+        val issued = enrollment
+            ?.takeIf { it.tokenHash == tokenHash && it.expiresAt > consumedAt }
+            ?: return null
+        enrollment = null
+        return WorkerResource(
+            id = workerId,
+            displayName = displayName,
+            ownerUserId = issued.ownerUserId,
+            organizationAccess = false,
+            status = WorkerResource.Status.ACTIVE,
+            createdAt = consumedAt,
+            updatedAt = consumedAt,
+        ).also { worker = it }
+    }
+
+    private data class Enrollment(
+        val tokenHash: String,
+        val ownerUserId: User.Id,
+        val expiresAt: KotlinInstant,
+    )
 }

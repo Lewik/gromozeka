@@ -37,7 +37,6 @@ class GromozekaRemoteAuthorization(
             is SaveSettingsRequest,
             GetAiCatalogRequest,
             is SaveAiCatalogRequest,
-            ListWorkersRequest,
             -> requireServerOwner(user)
 
             ListPersonalAccessTokensRequest,
@@ -54,6 +53,7 @@ class GromozekaRemoteAuthorization(
             is SynthesizeSpeechRequest,
             is StartLiveInterpreterRequest,
             is CreateProjectRequest,
+            ListWorkersRequest,
             -> Unit
 
             is FindAgentRequest ->
@@ -218,8 +218,7 @@ class GromozekaRemoteAuthorization(
                 requireWorkspace(user, request.workspaceId, ProjectPermission.ADMIN)
 
             is DeleteWorkspaceMountRequest -> {
-                requireServerOwner(user)
-                requireMount(user, request.mountId, ProjectPermission.WRITE)
+                requireMount(user, request.mountId, ProjectPermission.ADMIN)
             }
         }
     }
