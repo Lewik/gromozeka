@@ -15,6 +15,7 @@ data class AuthenticatedUserView(
     val id: User.Id,
     val username: String,
     val displayName: String,
+    val role: User.Role,
 )
 
 @Serializable
@@ -49,4 +50,5 @@ fun User.toAuthenticatedUserView(): AuthenticatedUserView =
         id = id,
         username = username,
         displayName = displayName,
+        role = role,
     )

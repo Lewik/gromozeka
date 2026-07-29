@@ -21,10 +21,24 @@ internal object Users : Table("users") {
     val username = varchar("username", 128).uniqueIndex()
     val displayName = varchar("display_name", 255)
     val status = varchar("status", 32)
+    val role = varchar("role", 32)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 
     override val primaryKey = PrimaryKey(id)
+}
+
+internal object ProjectMemberships : Table("project_memberships") {
+    val projectId = varchar("project_id", 255)
+        .references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val userId = varchar("user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.CASCADE)
+    val role = varchar("role", 32)
+    val createdAt = timestamp("created_at")
+    val createdByUserId = varchar("created_by_user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.RESTRICT)
+
+    override val primaryKey = PrimaryKey(projectId, userId)
 }
 
 internal object LocalPasswordCredentials : Table("local_password_credentials") {

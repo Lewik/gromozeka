@@ -6,12 +6,14 @@ import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
+import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.FirstUserBootstrapToken
 import com.gromozeka.domain.service.PasswordHasher
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -23,6 +25,7 @@ import kotlin.time.Duration.Companion.minutes
 @Service
 class AuthenticationApplicationService(
     private val identityRepository: IdentityRepository,
+    private val projectMembershipRepository: ProjectMembershipRepository,
     private val passwordHasher: PasswordHasher,
     private val bootstrapToken: FirstUserBootstrapToken,
 ) : AuthenticationService {
@@ -32,6 +35,7 @@ class AuthenticationApplicationService(
     override suspend fun hasUsers(): Boolean =
         identityRepository.countUsers() > 0
 
+    @Transactional
     override suspend fun createFirstUser(
         bootstrapToken: String,
         username: String,
@@ -51,6 +55,7 @@ class AuthenticationApplicationService(
             username = normalizedUsername,
             displayName = normalizedDisplayName,
             status = User.Status.ACTIVE,
+            role = User.Role.OWNER,
             createdAt = now,
             updatedAt = now,
         )
@@ -62,6 +67,7 @@ class AuthenticationApplicationService(
                 passwordChangedAt = now,
             ),
         )
+        projectMembershipRepository.assignUnownedProjectsToFirstOwner(user.id, now)
         this.bootstrapToken.disable()
         return issueSession(user, clientLabel, now)
     }

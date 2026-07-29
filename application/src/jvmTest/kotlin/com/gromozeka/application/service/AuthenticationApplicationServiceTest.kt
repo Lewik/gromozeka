@@ -2,9 +2,12 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.PersonalAccessToken
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
+import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.service.FirstUserBootstrapToken
 import com.gromozeka.domain.service.PasswordHasher
 import kotlinx.datetime.Clock
@@ -18,9 +21,11 @@ import kotlin.time.Duration.Companion.seconds
 
 class AuthenticationApplicationServiceTest {
     private val repository = FakeIdentityRepository()
+    private val projectMembershipRepository = FakeProjectMembershipRepository()
     private val bootstrapToken = FakeBootstrapToken("bootstrap")
     private val service = AuthenticationApplicationService(
         identityRepository = repository,
+        projectMembershipRepository = projectMembershipRepository,
         passwordHasher = FakePasswordHasher(),
         bootstrapToken = bootstrapToken,
     )
@@ -37,7 +42,9 @@ class AuthenticationApplicationServiceTest {
 
         assertEquals("owner", issued.user.username)
         assertEquals("Project Owner", issued.user.displayName)
+        assertEquals(User.Role.OWNER, issued.user.role)
         assertTrue(bootstrapToken.disabled)
+        assertEquals(issued.user.id, projectMembershipRepository.assignedFirstOwner)
         assertEquals(1, repository.users.size)
         assertNotNull(service.authenticate(issued.token))
     }
@@ -128,7 +135,7 @@ private class FakeBootstrapToken(
     }
 }
 
-private class FakeIdentityRepository : IdentityRepository {
+internal class FakeIdentityRepository : IdentityRepository {
     val users = mutableListOf<User>()
     val credentials = mutableListOf<LocalPasswordCredential>()
     val sessions = mutableListOf<UserSession>()
@@ -227,6 +234,44 @@ private class FakeIdentityRepository : IdentityRepository {
         if (index < 0) return false
         personalAccessTokens[index] = personalAccessTokens[index].copy(revokedAt = revokedAt)
         return true
+    }
+}
+
+internal class FakeProjectMembershipRepository : ProjectMembershipRepository {
+    private val memberships = linkedMapOf<Pair<Project.Id, User.Id>, ProjectMembership>()
+    var assignedFirstOwner: User.Id? = null
+        private set
+
+    override suspend fun save(membership: ProjectMembership): ProjectMembership {
+        memberships[membership.projectId to membership.userId] = membership
+        return membership
+    }
+
+    override suspend fun find(
+        projectId: Project.Id,
+        userId: User.Id,
+    ): ProjectMembership? = memberships[projectId to userId]
+
+    override suspend fun findByProject(projectId: Project.Id): List<ProjectMembership> =
+        memberships.values.filter { it.projectId == projectId }
+
+    override suspend fun findByUser(userId: User.Id): List<ProjectMembership> =
+        memberships.values.filter { it.userId == userId }
+
+    override suspend fun delete(
+        projectId: Project.Id,
+        userId: User.Id,
+    ): Boolean = memberships.remove(projectId to userId) != null
+
+    override suspend fun countOwners(projectId: Project.Id): Long =
+        findByProject(projectId).count { it.role == ProjectMembership.Role.OWNER }.toLong()
+
+    override suspend fun assignUnownedProjectsToFirstOwner(
+        userId: User.Id,
+        createdAt: kotlinx.datetime.Instant,
+    ): Int {
+        assignedFirstOwner = userId
+        return 0
     }
 }
 

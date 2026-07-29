@@ -10,6 +10,7 @@ data class User(
     val username: String,
     val displayName: String,
     val status: Status,
+    val role: Role = Role.MEMBER,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
@@ -25,6 +26,12 @@ data class User(
     enum class Status {
         ACTIVE,
         DISABLED,
+    }
+
+    @Serializable
+    enum class Role {
+        OWNER,
+        MEMBER,
     }
 }
 

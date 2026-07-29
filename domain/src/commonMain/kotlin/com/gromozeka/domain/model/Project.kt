@@ -39,6 +39,35 @@ data class Project(
     value class Id(val value: String)
 }
 
+@Serializable
+data class ProjectMembership(
+    val projectId: Project.Id,
+    val userId: User.Id,
+    val role: Role,
+    val createdAt: Instant,
+    val createdByUserId: User.Id,
+) {
+    @Serializable
+    enum class Role {
+        OWNER,
+        EDITOR,
+        VIEWER;
+
+        fun allows(permission: ProjectPermission): Boolean = when (this) {
+            OWNER -> true
+            EDITOR -> permission != ProjectPermission.ADMIN
+            VIEWER -> permission == ProjectPermission.READ
+        }
+    }
+}
+
+@Serializable
+enum class ProjectPermission {
+    READ,
+    WRITE,
+    ADMIN,
+}
+
 /**
  * Logical workspace inside a project.
  *

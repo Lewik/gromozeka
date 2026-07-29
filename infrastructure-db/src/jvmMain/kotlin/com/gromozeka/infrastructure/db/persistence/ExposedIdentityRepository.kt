@@ -56,6 +56,7 @@ class ExposedIdentityRepository : IdentityRepository {
             it[username] = user.username
             it[displayName] = user.displayName
             it[status] = user.status.name
+            it[role] = user.role.name
             it[createdAt] = user.createdAt.toKotlin()
             it[updatedAt] = user.updatedAt.toKotlin()
         }
@@ -229,6 +230,7 @@ class ExposedIdentityRepository : IdentityRepository {
             username = this[Users.username],
             displayName = this[Users.displayName],
             status = User.Status.valueOf(this[Users.status]),
+            role = User.Role.valueOf(this[Users.role]),
             createdAt = this[Users.createdAt].toKotlinx(),
             updatedAt = this[Users.updatedAt].toKotlinx(),
         )
