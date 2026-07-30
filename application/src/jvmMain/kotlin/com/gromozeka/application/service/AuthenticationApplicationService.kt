@@ -3,6 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AuthenticatedUser
 import com.gromozeka.domain.model.IssuedUserSession
 import com.gromozeka.domain.model.LocalPasswordCredential
+import com.gromozeka.domain.model.SecurityAuditEvent
+import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
@@ -10,6 +12,7 @@ import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.FirstUserBootstrapToken
 import com.gromozeka.domain.service.PasswordHasher
+import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
@@ -27,6 +30,7 @@ class AuthenticationApplicationService(
     private val projectMembershipRepository: ProjectMembershipRepository,
     private val passwordHasher: PasswordHasher,
     private val bootstrapToken: FirstUserBootstrapToken,
+    private val securityAuditRecorder: SecurityAuditRecorder,
 ) : AuthenticationService {
     private val secureRandom = SecureRandom()
     private val dummyPasswordHash = passwordHasher.hash(DUMMY_PASSWORD.toCharArray())
@@ -68,7 +72,17 @@ class AuthenticationApplicationService(
         )
         projectMembershipRepository.assignUnownedProjectsToFirstOwner(user.id, now)
         this.bootstrapToken.disable()
-        return issueSession(user, clientLabel, now)
+        val session = issueSession(user, clientLabel, now)
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = user.id,
+                action = SecurityAuditEvent.Action.RUNTIME_BOOTSTRAPPED,
+                targetType = SecurityAuditEvent.TargetType.RUNTIME,
+                targetId = "runtime",
+                attributes = mapOf("ownerUsername" to user.username),
+            )
+        )
+        return session
     }
 
     override suspend fun login(

@@ -40,6 +40,7 @@ class GromozekaControlMcpSurfaceTest {
                 ControlMcpIdentityTools(
                     userAdministrationService = mock(),
                     userDirectoryService = mock(),
+                    securityAuditService = mock(),
                 ),
             )
         ).create(testControlMcpCaller())
@@ -100,6 +101,7 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_user_update",
                 "grz_user_password_reset",
                 "grz_user_directory",
+                "grz_security_audit_list",
                 "grz_project_membership_list",
                 "grz_project_membership_set",
                 "grz_project_membership_remove",

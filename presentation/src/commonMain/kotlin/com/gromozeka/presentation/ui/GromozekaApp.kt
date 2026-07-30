@@ -518,6 +518,8 @@ fun GromozekaAppContent(
                                                                     distributionService = appComponents.distributionService,
                                                                     personalAccessTokenService = appComponents.personalAccessTokenService,
                                                                     userAdministrationService = appComponents.userAdministrationService,
+                                                                    securityAuditService = appComponents.securityAuditService,
+                                                                    userDirectoryService = appComponents.userDirectoryService,
                                                                     canAdministerUsers =
                                                                         appComponents.authenticatedUser.role == User.Role.OWNER,
                                                                     ollamaModelService = appComponents.ollamaModelService,
@@ -649,6 +651,8 @@ fun GromozekaAppContent(
                                     distributionService = appComponents.distributionService,
                                     personalAccessTokenService = appComponents.personalAccessTokenService,
                                     userAdministrationService = appComponents.userAdministrationService,
+                                    securityAuditService = appComponents.securityAuditService,
+                                    userDirectoryService = appComponents.userDirectoryService,
                                     canAdministerUsers =
                                         appComponents.authenticatedUser.role == User.Role.OWNER,
                                     ollamaModelService = appComponents.ollamaModelService,
@@ -759,6 +763,8 @@ fun GromozekaAppContent(
                                     distributionService = appComponents.distributionService,
                                     personalAccessTokenService = appComponents.personalAccessTokenService,
                                     userAdministrationService = appComponents.userAdministrationService,
+                                    securityAuditService = appComponents.securityAuditService,
+                                    userDirectoryService = appComponents.userDirectoryService,
                                     canAdministerUsers =
                                         appComponents.authenticatedUser.role == User.Role.OWNER,
                                     ollamaModelService = appComponents.ollamaModelService,

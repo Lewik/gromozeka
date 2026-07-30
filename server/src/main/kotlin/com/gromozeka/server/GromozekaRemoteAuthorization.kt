@@ -38,6 +38,7 @@ class GromozekaRemoteAuthorization(
             GetAiCatalogRequest,
             is SaveAiCatalogRequest,
             ListUsersRequest,
+            is ListSecurityAuditEventsRequest,
             is CreateUserRequest,
             is UpdateUserRequest,
             is ResetUserPasswordRequest,

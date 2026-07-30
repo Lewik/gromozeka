@@ -26,6 +26,12 @@ The current development shape is split:
 - `:presentation` owns UI code and can run either as a JVM desktop client or as a Wasm web client.
 - The server listens on `/ws` for remote UI traffic and serves already-built Wasm static files from `presentation/build/dist/wasmJs/developmentExecutable` by default.
 
+One Server deployment is one isolated Runtime. A Runtime can have several users,
+projects, and workers, but it is not a shared database for unrelated customer
+organizations. A future managed service should provision separate Runtime
+instances behind a management control plane instead of turning the Runtime
+itself into a pooled multi-tenant service.
+
 Legacy and auxiliary integrations still exist in the codebase, but the current default development path is the OpenAI subscription runtime plus PostgreSQL-backed typed memory.
 
 ## Always YOLO

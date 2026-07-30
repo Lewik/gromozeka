@@ -96,6 +96,8 @@ class GromozekaRemoteServices(
         RemotePersonalAccessTokenService(client)
     val userAdministrationService: RemoteUserAdministrationService =
         RemoteUserAdministrationService(client)
+    val securityAuditService: RemoteSecurityAuditService =
+        RemoteSecurityAuditService(client)
     val userDirectoryService: RemoteUserDirectoryService =
         RemoteUserDirectoryService(client)
     val projectMembershipService: RemoteProjectMembershipService =

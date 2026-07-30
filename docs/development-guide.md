@@ -74,6 +74,13 @@ The Server owns user identity. Local username/password credentials are the
 initial login method; future OAuth or OIDC identities must attach to the same
 stable User instead of creating a parallel account model.
 
+One Server deployment is one isolated Gromozeka Runtime. A Runtime can contain
+multiple Users, Projects, and Workers, but it does not contain several pooled
+customer organizations. A future managed control plane may provision several
+Runtimes for one account or organization; each Runtime still owns its own
+database, queues, secrets, users, and workers. On-premises installations use
+the same Runtime shape without the managed control plane.
+
 Public registration is closed. An empty Server prints a one-time first-owner
 bootstrap token to its log. Clients use that token once to create the first
 User, after which ordinary login issues an opaque, revocable Server session.
@@ -83,6 +90,13 @@ Argon2id hashes, and repeated failed logins are rate-limited.
 Browser clients use an HttpOnly, SameSite session cookie. Secure cookies are
 enabled by default when the Server listens on a non-loopback address and can be
 overridden explicitly with `GROMOZEKA_AUTH_SECURE_COOKIE=true|false`.
+
+Runtime Owners can inspect an append-only audit trail of successful identity
+and access changes. Audit events contain typed actor, target, project, and
+non-secret change metadata. They never contain passwords, raw access or
+enrollment tokens, prompts, tool payloads, or conversation content. Login
+attempts and ordinary activity remain operational logs rather than durable
+security-audit events.
 
 ## Memory Banks
 

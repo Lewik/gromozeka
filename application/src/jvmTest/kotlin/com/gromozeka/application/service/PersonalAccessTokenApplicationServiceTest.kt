@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.PersonalAccessToken
+import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
@@ -10,6 +11,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -26,7 +28,11 @@ class PersonalAccessTokenApplicationServiceTest {
         updatedAt = Clock.System.now(),
     )
     private val repository = TokenIdentityRepository(user)
-    private val service = PersonalAccessTokenApplicationService(repository)
+    private val securityAuditRecorder = FakeSecurityAuditRecorder()
+    private val service = PersonalAccessTokenApplicationService(
+        identityRepository = repository,
+        securityAuditRecorder = securityAuditRecorder,
+    )
 
     @Test
     fun `issued token is stored only as a hash and authenticates required scope`() = runBlocking {
@@ -42,6 +48,9 @@ class PersonalAccessTokenApplicationServiceTest {
         assertEquals(64, issued.token.tokenHash.length)
         assertNotNull(service.authenticate(issued.rawToken, PersonalAccessToken.Scope.MCP_MEMORY))
         assertNull(service.authenticate(issued.rawToken, PersonalAccessToken.Scope.MCP_CONTROL))
+        val auditRecord = securityAuditRecorder.records.single()
+        assertEquals(SecurityAuditEvent.Action.PERSONAL_ACCESS_TOKEN_ISSUED, auditRecord.action)
+        assertFalse(auditRecord.attributes.values.any { issued.rawToken in it })
     }
 
     @Test
@@ -56,6 +65,13 @@ class PersonalAccessTokenApplicationServiceTest {
         assertTrue(service.revoke(user.id, issued.token.id))
 
         assertNull(service.authenticate(issued.rawToken, PersonalAccessToken.Scope.MCP_MEMORY))
+        assertEquals(
+            listOf(
+                SecurityAuditEvent.Action.PERSONAL_ACCESS_TOKEN_ISSUED,
+                SecurityAuditEvent.Action.PERSONAL_ACCESS_TOKEN_REVOKED,
+            ),
+            securityAuditRecorder.records.map { it.action },
+        )
     }
 
     @Test

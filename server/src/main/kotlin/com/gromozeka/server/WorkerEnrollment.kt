@@ -1,7 +1,10 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.SecurityAuditEvent
+import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.repository.WorkerEnrollmentRepository
+import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.remote.protocol.WorkerEnrollmentAvailability
@@ -53,12 +56,18 @@ class WorkerEnrollmentConfiguration {
     fun workerEnrollmentService(
         properties: WorkerEnrollmentProperties,
         repository: WorkerEnrollmentRepository,
-    ): WorkerEnrollmentService = WorkerEnrollmentService(properties, repository)
+        securityAuditRecorder: SecurityAuditRecorder,
+    ): WorkerEnrollmentService = WorkerEnrollmentService(
+        properties = properties,
+        repository = repository,
+        securityAuditRecorder = securityAuditRecorder,
+    )
 }
 
 class WorkerEnrollmentService(
     private val properties: WorkerEnrollmentProperties,
     private val repository: WorkerEnrollmentRepository,
+    private val securityAuditRecorder: SecurityAuditRecorder,
     private val clock: Clock = Clock.systemUTC(),
     private val secureRandom: SecureRandom = SecureRandom(),
 ) {
@@ -79,6 +88,15 @@ class WorkerEnrollmentService(
             createdAt = createdAt.toKotlinx(),
             expiresAt = expiresAt.toKotlinx(),
         )
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = ownerUserId,
+                action = SecurityAuditEvent.Action.WORKER_ENROLLMENT_CREATED,
+                targetType = SecurityAuditEvent.TargetType.RUNTIME,
+                targetId = "runtime",
+                attributes = mapOf("expiresAt" to expiresAt.toString()),
+            )
+        )
         return WorkerEnrollmentToken(token = token, expiresAt = expiresAt.toString())
     }
 
@@ -98,6 +116,14 @@ class WorkerEnrollmentService(
             consumedAt = clock.instant().toKotlinx(),
         )
         require(worker != null) { "Worker enrollment token is invalid or expired" }
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = worker.ownerUserId,
+                action = SecurityAuditEvent.Action.WORKER_ENROLLED,
+                targetType = SecurityAuditEvent.TargetType.WORKER,
+                targetId = worker.id.value,
+            )
+        )
         return properties.bootstrap(worker.id.value, gatewayCredential)
     }
 

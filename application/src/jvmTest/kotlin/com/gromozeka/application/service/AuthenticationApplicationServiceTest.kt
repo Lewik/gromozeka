@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
+import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
@@ -23,11 +24,13 @@ class AuthenticationApplicationServiceTest {
     private val repository = FakeIdentityRepository()
     private val projectMembershipRepository = FakeProjectMembershipRepository()
     private val bootstrapToken = FakeBootstrapToken("bootstrap")
+    private val securityAuditRecorder = FakeSecurityAuditRecorder()
     private val service = AuthenticationApplicationService(
         identityRepository = repository,
         projectMembershipRepository = projectMembershipRepository,
         passwordHasher = FakePasswordHasher(),
         bootstrapToken = bootstrapToken,
+        securityAuditRecorder = securityAuditRecorder,
     )
 
     @Test
@@ -47,6 +50,11 @@ class AuthenticationApplicationServiceTest {
         assertEquals(issued.user.id, projectMembershipRepository.assignedFirstOwner)
         assertEquals(1, repository.users.size)
         assertNotNull(service.authenticate(issued.token))
+        assertEquals(
+            SecurityAuditEvent.Action.RUNTIME_BOOTSTRAPPED,
+            securityAuditRecorder.records.single().action,
+        )
+        assertEquals(issued.user.id, securityAuditRecorder.records.single().actorUserId)
     }
 
     @Test

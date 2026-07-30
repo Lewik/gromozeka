@@ -3,9 +3,12 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AuthenticatedPersonalAccessToken
 import com.gromozeka.domain.model.IssuedPersonalAccessToken
 import com.gromozeka.domain.model.PersonalAccessToken
+import com.gromozeka.domain.model.SecurityAuditEvent
+import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.service.PersonalAccessTokenService
+import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -20,6 +23,7 @@ import kotlin.time.Duration.Companion.minutes
 @Service
 class PersonalAccessTokenApplicationService(
     private val identityRepository: IdentityRepository,
+    private val securityAuditRecorder: SecurityAuditRecorder,
 ) : PersonalAccessTokenService {
     private val secureRandom = SecureRandom()
 
@@ -65,6 +69,18 @@ class PersonalAccessTokenApplicationService(
             revokedAt = null,
         )
         identityRepository.createPersonalAccessToken(token)
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = user.id,
+                action = SecurityAuditEvent.Action.PERSONAL_ACCESS_TOKEN_ISSUED,
+                targetType = SecurityAuditEvent.TargetType.PERSONAL_ACCESS_TOKEN,
+                targetId = token.id.value,
+                attributes = mapOf(
+                    "name" to token.name,
+                    "scopes" to token.scopes.map { it.name }.sorted().joinToString(","),
+                ),
+            )
+        )
         return IssuedPersonalAccessToken(token, rawToken)
     }
 
@@ -74,8 +90,20 @@ class PersonalAccessTokenApplicationService(
     override suspend fun revoke(
         userId: User.Id,
         tokenId: PersonalAccessToken.Id,
-    ): Boolean =
-        identityRepository.revokePersonalAccessToken(userId, tokenId, Clock.System.now())
+    ): Boolean {
+        val revoked = identityRepository.revokePersonalAccessToken(userId, tokenId, Clock.System.now())
+        if (revoked) {
+            securityAuditRecorder.record(
+                SecurityAuditRecord(
+                    actorUserId = userId,
+                    action = SecurityAuditEvent.Action.PERSONAL_ACCESS_TOKEN_REVOKED,
+                    targetType = SecurityAuditEvent.TargetType.PERSONAL_ACCESS_TOKEN,
+                    targetId = tokenId.value,
+                )
+            )
+        }
+        return revoked
+    }
 
     override suspend fun authenticate(
         rawToken: String,

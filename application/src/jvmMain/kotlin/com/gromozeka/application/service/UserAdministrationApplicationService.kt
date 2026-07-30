@@ -2,11 +2,14 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.ProjectMembership
+import com.gromozeka.domain.model.SecurityAuditEvent
+import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.service.LastActiveRuntimeOwnerException
 import com.gromozeka.domain.service.PasswordHasher
+import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.domain.service.SoleProjectOwnerException
 import com.gromozeka.domain.service.UserAdministrationDeniedException
 import com.gromozeka.domain.service.UserAdministrationService
@@ -21,6 +24,7 @@ class UserAdministrationApplicationService(
     private val identityRepository: IdentityRepository,
     private val projectMembershipRepository: ProjectMembershipRepository,
     private val passwordHasher: PasswordHasher,
+    private val securityAuditRecorder: SecurityAuditRecorder,
 ) : UserAdministrationService {
     override suspend fun list(actor: User): List<User> {
         requireOwner(actor)
@@ -51,7 +55,7 @@ class UserAdministrationApplicationService(
             createdAt = now,
             updatedAt = now,
         )
-        return identityRepository.createUser(
+        val created = identityRepository.createUser(
             user,
             LocalPasswordCredential(
                 userId = user.id,
@@ -59,6 +63,20 @@ class UserAdministrationApplicationService(
                 passwordChangedAt = now,
             ),
         )
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actor.id,
+                action = SecurityAuditEvent.Action.USER_CREATED,
+                targetType = SecurityAuditEvent.TargetType.USER,
+                targetId = created.id.value,
+                attributes = mapOf(
+                    "displayName" to created.displayName,
+                    "username" to created.username,
+                    "role" to created.role.name,
+                ),
+            )
+        )
+        return created
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
@@ -72,6 +90,17 @@ class UserAdministrationApplicationService(
         requireOwner(actor)
         val existing = identityRepository.findUserById(userId)
             ?: throw IllegalArgumentException("User not found: ${userId.value}")
+        val normalizedDisplayName = LocalIdentityInputPolicy.normalizeDisplayName(
+            displayName,
+            existing.username,
+        )
+        if (
+            existing.displayName == normalizedDisplayName &&
+            existing.status == status &&
+            existing.role == role
+        ) {
+            return existing
+        }
         val removesActiveOwner = existing.status == User.Status.ACTIVE &&
             existing.role == User.Role.OWNER &&
             (status != User.Status.ACTIVE || role != User.Role.OWNER)
@@ -84,10 +113,7 @@ class UserAdministrationApplicationService(
 
         val updated = identityRepository.updateUser(
             existing.copy(
-                displayName = LocalIdentityInputPolicy.normalizeDisplayName(
-                    displayName,
-                    existing.username,
-                ),
+                displayName = normalizedDisplayName,
                 status = status,
                 role = role,
                 updatedAt = Clock.System.now(),
@@ -100,6 +126,22 @@ class UserAdministrationApplicationService(
                 identityRepository.revokeAllPersonalAccessTokens(userId, now)
             }
         }
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actor.id,
+                action = SecurityAuditEvent.Action.USER_UPDATED,
+                targetType = SecurityAuditEvent.TargetType.USER,
+                targetId = updated.id.value,
+                attributes = mapOf(
+                    "previousDisplayName" to existing.displayName,
+                    "displayName" to updated.displayName,
+                    "previousRole" to existing.role.name,
+                    "role" to updated.role.name,
+                    "previousStatus" to existing.status.name,
+                    "status" to updated.status.name,
+                ),
+            )
+        )
         return updated
     }
 
@@ -123,6 +165,14 @@ class UserAdministrationApplicationService(
         )
         identityRepository.revokeAllSessions(userId, now)
         identityRepository.revokeAllPersonalAccessTokens(userId, now)
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actor.id,
+                action = SecurityAuditEvent.Action.USER_PASSWORD_RESET,
+                targetType = SecurityAuditEvent.TargetType.USER,
+                targetId = userId.value,
+            )
+        )
     }
 
     private suspend fun requireUserIsNotSoleProjectOwner(user: User) {

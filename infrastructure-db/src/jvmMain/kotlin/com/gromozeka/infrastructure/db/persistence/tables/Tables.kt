@@ -132,6 +132,20 @@ internal object PersonalAccessTokenScopes : Table("personal_access_token_scopes"
     override val primaryKey = PrimaryKey(tokenId, scope)
 }
 
+internal object SecurityAuditEvents : Table("security_audit_events") {
+    val id = varchar("id", 255)
+    val occurredAt = timestamp("occurred_at")
+    val actorUserId = varchar("actor_user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.RESTRICT)
+    val action = varchar("action", 64)
+    val targetType = varchar("target_type", 64)
+    val targetId = varchar("target_id", 255)
+    val projectId = varchar("project_id", 255).nullable()
+    val attributesJson = text("attributes_json")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
 internal object Workspaces : Table("workspaces") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)

@@ -13,6 +13,7 @@ import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.RuntimeCatalogTemplates
@@ -155,6 +156,12 @@ data class RevokePersonalAccessTokenRequest(
 @Serializable
 @SerialName("list_users")
 data object ListUsersRequest : ClientRequest
+
+@Serializable
+@SerialName("list_security_audit_events")
+data class ListSecurityAuditEventsRequest(
+    val limit: Int = 100,
+) : ClientRequest
 
 @Serializable
 @SerialName("create_user")
@@ -805,6 +812,12 @@ data class PersonalAccessTokenRevokedResponse(
 @SerialName("users")
 data class UsersResponse(
     val users: List<User>,
+) : ServerResponse
+
+@Serializable
+@SerialName("security_audit_events")
+data class SecurityAuditEventsResponse(
+    val events: List<SecurityAuditEvent>,
 ) : ServerResponse
 
 @Serializable

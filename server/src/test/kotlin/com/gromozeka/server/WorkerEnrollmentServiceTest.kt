@@ -2,9 +2,12 @@ package com.gromozeka.server
 
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.model.SecurityAuditEvent
+import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.SecurityAuditRecorder
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant as KotlinInstant
 import java.time.Clock
@@ -21,7 +24,8 @@ class WorkerEnrollmentServiceTest {
     @Test
     fun `token can bootstrap exactly one worker`() = runBlocking {
         val repository = TestWorkerEnrollmentRepository()
-        val service = WorkerEnrollmentService(configuredProperties(), repository, clock)
+        val securityAuditRecorder = TestSecurityAuditRecorder()
+        val service = workerEnrollmentService(configuredProperties(), repository, securityAuditRecorder)
         val token = service.create(USER_ID)
 
         val bootstrap = service.consume(token.token, "macbook-primary")
@@ -30,6 +34,13 @@ class WorkerEnrollmentServiceTest {
         assertTrue(bootstrap.gatewayCredential.length >= 40)
         assertEquals(setOf(ConversationRuntimeCapability.TOOL_EXECUTION), bootstrap.capabilities)
         assertEquals(USER_ID, repository.worker?.ownerUserId)
+        assertEquals(
+            listOf(
+                SecurityAuditEvent.Action.WORKER_ENROLLMENT_CREATED,
+                SecurityAuditEvent.Action.WORKER_ENROLLED,
+            ),
+            securityAuditRecorder.records.map { it.action },
+        )
         assertFailsWith<IllegalArgumentException> {
             service.consume(token.token, "second-worker")
         }
@@ -38,14 +49,15 @@ class WorkerEnrollmentServiceTest {
     @Test
     fun `disabled or incomplete enrollment fails closed`() = runBlocking {
         val repository = TestWorkerEnrollmentRepository()
-        val disabled = WorkerEnrollmentService(WorkerEnrollmentProperties(), repository, clock)
+        val disabled = workerEnrollmentService(WorkerEnrollmentProperties(), repository)
         assertTrue(!disabled.availability().available)
         assertFailsWith<IllegalStateException> { disabled.create(USER_ID) }
 
         val incomplete = WorkerEnrollmentService(
-            WorkerEnrollmentProperties(enabled = true, capabilities = emptySet()),
-            repository,
-            clock,
+            properties = WorkerEnrollmentProperties(enabled = true, capabilities = emptySet()),
+            repository = repository,
+            securityAuditRecorder = TestSecurityAuditRecorder(),
+            clock = clock,
         )
         assertTrue(!incomplete.availability().available)
         assertFailsWith<IllegalStateException> { incomplete.create(USER_ID) }
@@ -53,7 +65,7 @@ class WorkerEnrollmentServiceTest {
 
     @Test
     fun `worker id is validated before consuming token`() = runBlocking {
-        val service = WorkerEnrollmentService(configuredProperties(), TestWorkerEnrollmentRepository(), clock)
+        val service = workerEnrollmentService(configuredProperties(), TestWorkerEnrollmentRepository())
         val token = service.create(USER_ID)
 
         assertFailsWith<IllegalArgumentException> {
@@ -71,8 +83,28 @@ class WorkerEnrollmentServiceTest {
             capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
         )
 
+    private fun workerEnrollmentService(
+        properties: WorkerEnrollmentProperties,
+        repository: WorkerEnrollmentRepository,
+        securityAuditRecorder: TestSecurityAuditRecorder = TestSecurityAuditRecorder(),
+    ): WorkerEnrollmentService =
+        WorkerEnrollmentService(
+            properties = properties,
+            repository = repository,
+            securityAuditRecorder = securityAuditRecorder,
+            clock = clock,
+        )
+
     private companion object {
         val USER_ID = User.Id("user-1")
+    }
+}
+
+private class TestSecurityAuditRecorder : SecurityAuditRecorder {
+    val records = mutableListOf<SecurityAuditRecord>()
+
+    override suspend fun record(record: SecurityAuditRecord) {
+        records += record
     }
 }
 

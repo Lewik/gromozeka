@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
+import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.WorkerPermission
 import com.gromozeka.domain.model.WorkerProjectGrant
@@ -39,10 +40,12 @@ class WorkerAccessApplicationServiceTest {
     }
     private val repository = FakeWorkerAccessRepository()
     private val connectionRevocationService = FakeWorkerConnectionRevocationService()
+    private val securityAuditRecorder = FakeSecurityAuditRecorder()
     private val projectAccessService = ProjectAccessApplicationService(
         projectService = WorkerTestProjectService(project),
         membershipRepository = membershipRepository,
         identityRepository = identityRepository,
+        securityAuditRecorder = FakeSecurityAuditRecorder(),
     )
     private val service = WorkerAccessApplicationService(
         repository = repository,
@@ -50,6 +53,7 @@ class WorkerAccessApplicationServiceTest {
         membershipRepository = membershipRepository,
         projectAccessService = projectAccessService,
         workerConnectionRevocationService = connectionRevocationService,
+        securityAuditRecorder = securityAuditRecorder,
     )
     private val worker = workerResource(owner)
 
@@ -75,6 +79,14 @@ class WorkerAccessApplicationServiceTest {
         service.setRuntimeWideAccess(owner, worker.id, true)
 
         assertNotNull(service.findAccessible(outsider, worker.id))
+        assertEquals(
+            listOf(
+                SecurityAuditEvent.Action.WORKER_USER_GRANT_SET,
+                SecurityAuditEvent.Action.WORKER_PROJECT_GRANT_SET,
+                SecurityAuditEvent.Action.WORKER_RUNTIME_ACCESS_UPDATED,
+            ),
+            securityAuditRecorder.records.map { it.action },
+        )
         Unit
     }
 

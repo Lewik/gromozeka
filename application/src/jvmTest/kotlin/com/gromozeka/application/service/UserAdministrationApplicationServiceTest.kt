@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
+import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.service.LastActiveRuntimeOwnerException
@@ -22,10 +23,12 @@ import kotlin.time.Duration.Companion.days
 class UserAdministrationApplicationServiceTest {
     private val identityRepository = FakeIdentityRepository()
     private val projectMembershipRepository = FakeProjectMembershipRepository()
+    private val securityAuditRecorder = FakeSecurityAuditRecorder()
     private val service = UserAdministrationApplicationService(
         identityRepository = identityRepository,
         projectMembershipRepository = projectMembershipRepository,
         passwordHasher = UserAdministrationPasswordHasher(),
+        securityAuditRecorder = securityAuditRecorder,
     )
     private val owner = user("owner", User.Role.OWNER)
 
@@ -47,6 +50,30 @@ class UserAdministrationApplicationServiceTest {
         assertEquals("developer", created.username)
         assertEquals(User.Role.MEMBER, created.role)
         assertNotNull(identityRepository.findPasswordCredential(created.id))
+        assertEquals(SecurityAuditEvent.Action.USER_CREATED, securityAuditRecorder.records.single().action)
+        assertEquals(created.id.value, securityAuditRecorder.records.single().targetId)
+    }
+
+    @Test
+    fun `unchanged user update does not append audit noise`() = runUserAdministrationTest {
+        val member = service.create(
+            actor = owner,
+            username = "unchanged-member",
+            displayName = "Unchanged Member",
+            password = "sufficiently long password".toCharArray(),
+            role = User.Role.MEMBER,
+        )
+        val eventsBeforeUpdate = securityAuditRecorder.records.size
+
+        service.update(
+            actor = owner,
+            userId = member.id,
+            displayName = member.displayName,
+            status = member.status,
+            role = member.role,
+        )
+
+        assertEquals(eventsBeforeUpdate, securityAuditRecorder.records.size)
     }
 
     @Test

@@ -26,6 +26,8 @@ import com.gromozeka.client.RemoteClientSettings
 import com.gromozeka.client.RemoteDistributionService
 import com.gromozeka.client.RemotePersonalAccessTokenService
 import com.gromozeka.client.RemoteUserAdministrationService
+import com.gromozeka.client.RemoteSecurityAuditService
+import com.gromozeka.client.RemoteUserDirectoryService
 import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
@@ -97,6 +99,8 @@ fun SettingsPanel(
     distributionService: RemoteDistributionService,
     personalAccessTokenService: RemotePersonalAccessTokenService,
     userAdministrationService: RemoteUserAdministrationService,
+    securityAuditService: RemoteSecurityAuditService,
+    userDirectoryService: RemoteUserDirectoryService,
     canAdministerUsers: Boolean,
     ollamaModelService: OllamaModelService,
     coroutineScope: CoroutineScope,
@@ -654,6 +658,12 @@ fun SettingsPanel(
                             Spacer(modifier = Modifier.height(24.dp))
                             UserAdministrationSettings(
                                 service = userAdministrationService,
+                                coroutineScope = coroutineScope,
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            SecurityAuditSettings(
+                                service = securityAuditService,
+                                userDirectoryService = userDirectoryService,
                                 coroutineScope = coroutineScope,
                             )
                         }

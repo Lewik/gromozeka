@@ -2,6 +2,8 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectPermission
+import com.gromozeka.domain.model.SecurityAuditEvent
+import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.WorkerPermission
 import com.gromozeka.domain.model.WorkerProjectGrant
@@ -12,6 +14,7 @@ import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.repository.WorkerAccessRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ProjectAccessService
+import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.domain.service.WorkerAccessDeniedException
 import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.service.WorkerConnectionRevocationService
@@ -26,6 +29,7 @@ class WorkerAccessApplicationService(
     private val membershipRepository: ProjectMembershipRepository,
     private val projectAccessService: ProjectAccessService,
     private val workerConnectionRevocationService: WorkerConnectionRevocationService,
+    private val securityAuditRecorder: SecurityAuditRecorder,
 ) : WorkerAccessService {
     override suspend fun findAccessible(
         actor: User,
@@ -105,15 +109,25 @@ class WorkerAccessApplicationService(
         val worker = requirePermission(actor, workerId, WorkerPermission.MANAGE)
         require(userId != worker.ownerUserId) { "Worker owner already has access" }
         requireActiveUser(userId)
-        return repository.findUserGrant(workerId, userId)
-            ?: repository.saveUserGrant(
-                WorkerUserGrant(
-                    workerId = workerId,
-                    userId = userId,
-                    createdAt = Clock.System.now(),
-                    createdByUserId = actor.id,
-                )
+        repository.findUserGrant(workerId, userId)?.let { return it }
+        val grant = repository.saveUserGrant(
+            WorkerUserGrant(
+                workerId = workerId,
+                userId = userId,
+                createdAt = Clock.System.now(),
+                createdByUserId = actor.id,
             )
+        )
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actor.id,
+                action = SecurityAuditEvent.Action.WORKER_USER_GRANT_SET,
+                targetType = SecurityAuditEvent.TargetType.USER,
+                targetId = userId.value,
+                attributes = mapOf("workerId" to workerId.value),
+            )
+        )
+        return grant
     }
 
     @Transactional
@@ -123,7 +137,19 @@ class WorkerAccessApplicationService(
         userId: User.Id,
     ): Boolean {
         requirePermission(actor, workerId, WorkerPermission.MANAGE)
-        return repository.deleteUserGrant(workerId, userId)
+        val removed = repository.deleteUserGrant(workerId, userId)
+        if (removed) {
+            securityAuditRecorder.record(
+                SecurityAuditRecord(
+                    actorUserId = actor.id,
+                    action = SecurityAuditEvent.Action.WORKER_USER_GRANT_REMOVED,
+                    targetType = SecurityAuditEvent.TargetType.USER,
+                    targetId = userId.value,
+                    attributes = mapOf("workerId" to workerId.value),
+                )
+            )
+        }
+        return removed
     }
 
     override suspend fun listProjectGrants(
@@ -142,15 +168,26 @@ class WorkerAccessApplicationService(
     ): WorkerProjectGrant {
         requirePermission(actor, workerId, WorkerPermission.MANAGE)
         projectAccessService.requirePermission(actor.id, projectId, ProjectPermission.ADMIN)
-        return repository.findProjectGrant(workerId, projectId)
-            ?: repository.saveProjectGrant(
-                WorkerProjectGrant(
-                    workerId = workerId,
-                    projectId = projectId,
-                    createdAt = Clock.System.now(),
-                    createdByUserId = actor.id,
-                )
+        repository.findProjectGrant(workerId, projectId)?.let { return it }
+        val grant = repository.saveProjectGrant(
+            WorkerProjectGrant(
+                workerId = workerId,
+                projectId = projectId,
+                createdAt = Clock.System.now(),
+                createdByUserId = actor.id,
             )
+        )
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actor.id,
+                action = SecurityAuditEvent.Action.WORKER_PROJECT_GRANT_SET,
+                targetType = SecurityAuditEvent.TargetType.PROJECT,
+                targetId = projectId.value,
+                projectId = projectId,
+                attributes = mapOf("workerId" to workerId.value),
+            )
+        )
+        return grant
     }
 
     @Transactional
@@ -160,7 +197,20 @@ class WorkerAccessApplicationService(
         projectId: Project.Id,
     ): Boolean {
         requirePermission(actor, workerId, WorkerPermission.MANAGE)
-        return repository.deleteProjectGrant(workerId, projectId)
+        val removed = repository.deleteProjectGrant(workerId, projectId)
+        if (removed) {
+            securityAuditRecorder.record(
+                SecurityAuditRecord(
+                    actorUserId = actor.id,
+                    action = SecurityAuditEvent.Action.WORKER_PROJECT_GRANT_REMOVED,
+                    targetType = SecurityAuditEvent.TargetType.PROJECT,
+                    targetId = projectId.value,
+                    projectId = projectId,
+                    attributes = mapOf("workerId" to workerId.value),
+                )
+            )
+        }
+        return removed
     }
 
     @Transactional
@@ -173,12 +223,22 @@ class WorkerAccessApplicationService(
         if (worker.runtimeWideAccess == enabled) {
             return worker
         }
-        return repository.saveWorker(
+        val updated = repository.saveWorker(
             worker.copy(
                 runtimeWideAccess = enabled,
                 updatedAt = Clock.System.now(),
             )
         )
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actor.id,
+                action = SecurityAuditEvent.Action.WORKER_RUNTIME_ACCESS_UPDATED,
+                targetType = SecurityAuditEvent.TargetType.WORKER,
+                targetId = workerId.value,
+                attributes = mapOf("enabled" to enabled.toString()),
+            )
+        )
+        return updated
     }
 
     @Transactional
@@ -194,6 +254,14 @@ class WorkerAccessApplicationService(
             )
         )
         workerConnectionRevocationService.disconnectRevokedWorker(workerId)
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actor.id,
+                action = SecurityAuditEvent.Action.WORKER_REVOKED,
+                targetType = SecurityAuditEvent.TargetType.WORKER,
+                targetId = workerId.value,
+            )
+        )
         return revoked
     }
 

@@ -16,6 +16,7 @@ import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.GetAiCatalogRequest
 import com.gromozeka.remote.protocol.ListProjectMembershipsRequest
+import com.gromozeka.remote.protocol.ListSecurityAuditEventsRequest
 import com.gromozeka.remote.protocol.ListUsersRequest
 import com.gromozeka.remote.protocol.RemoveProjectMembershipRequest
 import com.gromozeka.remote.protocol.SetProjectMembershipRequest
@@ -55,6 +56,11 @@ class GromozekaRemoteAuthorizationTest {
         }
 
         authorization.authorize(testUser(User.Role.OWNER), ListUsersRequest)
+        authorization.authorize(testUser(User.Role.OWNER), ListSecurityAuditEventsRequest())
+
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(testUser(User.Role.MEMBER), ListSecurityAuditEventsRequest())
+        }
     }
 
     @Test

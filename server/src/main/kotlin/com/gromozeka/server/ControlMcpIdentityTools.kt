@@ -1,10 +1,14 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.SecurityAuditEvent
+import com.gromozeka.domain.service.SecurityAuditService
 import com.gromozeka.domain.service.UserAdministrationService
 import com.gromozeka.domain.service.UserDirectoryService
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 
@@ -12,6 +16,7 @@ import org.springframework.stereotype.Service
 internal class ControlMcpIdentityTools(
     private val userAdministrationService: UserAdministrationService,
     private val userDirectoryService: UserDirectoryService,
+    private val securityAuditService: SecurityAuditService,
 ) : ControlMcpToolProvider {
     override val tools: List<ControlMcpTool> = listOf(
         controlMcpTool(
@@ -41,6 +46,31 @@ internal class ControlMcpIdentityTools(
                     controlMcpJson.encodeToJsonElement(
                         ListSerializer(User.serializer()),
                         userAdministrationService.list(user),
+                    )
+                )
+            }
+        },
+        controlMcpTool(
+            name = "grz_security_audit_list",
+            description = "List recent successful identity and access changes in this isolated Runtime.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "limit" to ControlMcpSchemas.integer(
+                        description = "Maximum number of newest events to return, from 1 to 500.",
+                        minimum = 1,
+                    ),
+                ),
+            ),
+            readOnly = true,
+            accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
+        ) { input ->
+            val limit = input["limit"]?.jsonPrimitive?.intOrNull ?: 100
+            buildJsonObject {
+                put(
+                    "events",
+                    controlMcpJson.encodeToJsonElement(
+                        ListSerializer(SecurityAuditEvent.serializer()),
+                        securityAuditService.listRecent(user, limit),
                     )
                 )
             }

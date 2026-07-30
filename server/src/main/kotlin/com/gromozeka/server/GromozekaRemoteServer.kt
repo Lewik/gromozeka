@@ -19,6 +19,7 @@ import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
+import com.gromozeka.domain.service.SecurityAuditService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.UserConversationTabLayoutService
 import com.gromozeka.domain.service.UserAdministrationService
@@ -85,6 +86,7 @@ class GromozekaRemoteServer(
     private val authenticationService: AuthenticationService,
     private val personalAccessTokenService: PersonalAccessTokenService,
     private val userAdministrationService: UserAdministrationService,
+    private val securityAuditService: SecurityAuditService,
     private val userDirectoryService: UserDirectoryService,
     private val remoteAuthorization: GromozekaRemoteAuthorization,
 ) {
@@ -269,6 +271,9 @@ class GromozekaRemoteServer(
                 )
                 ListUsersRequest -> UsersResponse(
                     userAdministrationService.list(user)
+                )
+                is ListSecurityAuditEventsRequest -> SecurityAuditEventsResponse(
+                    securityAuditService.listRecent(user, request.limit)
                 )
                 is CreateUserRequest -> UserResponse(
                     request.password.usePasswordChars { password ->

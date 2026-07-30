@@ -10,6 +10,7 @@ import com.gromozeka.client.RemotePersonalAccessTokenService
 import com.gromozeka.client.RemoteUserAdministrationService
 import com.gromozeka.client.RemoteUserDirectoryService
 import com.gromozeka.client.RemoteProjectMembershipService
+import com.gromozeka.client.RemoteSecurityAuditService
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
@@ -54,6 +55,7 @@ data class AppComponents(
     val memoryActionItemService: RemoteMemoryActionItemService,
     val personalAccessTokenService: RemotePersonalAccessTokenService,
     val userAdministrationService: RemoteUserAdministrationService,
+    val securityAuditService: RemoteSecurityAuditService,
     val userDirectoryService: RemoteUserDirectoryService,
     val projectMembershipService: RemoteProjectMembershipService,
     val liveInterpreterService: RemoteLiveInterpreterService,

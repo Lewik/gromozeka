@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.ProjectPermission
+import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.ProjectAccessDeniedException
 import com.gromozeka.domain.service.ProjectDomainService
@@ -23,10 +24,12 @@ class ProjectAccessApplicationServiceTest {
     }
     private val membershipRepository = FakeProjectMembershipRepository()
     private val projectService = FakeProjectDomainService()
+    private val securityAuditRecorder = FakeSecurityAuditRecorder()
     private val service = ProjectAccessApplicationService(
         projectService = projectService,
         membershipRepository = membershipRepository,
         identityRepository = identityRepository,
+        securityAuditRecorder = securityAuditRecorder,
     )
 
     @Test
@@ -39,6 +42,7 @@ class ProjectAccessApplicationServiceTest {
             membershipRepository.find(project.id, owner.id)?.role,
         )
         assertEquals(null, service.findById(outsider.id, project.id))
+        assertEquals(SecurityAuditEvent.Action.PROJECT_CREATED, securityAuditRecorder.records.single().action)
     }
 
     @Test

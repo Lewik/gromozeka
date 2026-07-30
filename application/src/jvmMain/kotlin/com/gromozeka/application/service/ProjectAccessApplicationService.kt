@@ -3,12 +3,15 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.ProjectPermission
+import com.gromozeka.domain.model.SecurityAuditEvent
+import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.service.ProjectAccessDeniedException
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.SecurityAuditRecorder
 import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
@@ -19,6 +22,7 @@ class ProjectAccessApplicationService(
     private val projectService: ProjectDomainService,
     private val membershipRepository: ProjectMembershipRepository,
     private val identityRepository: IdentityRepository,
+    private val securityAuditRecorder: SecurityAuditRecorder,
 ) : ProjectAccessService {
     @Transactional
     override suspend fun create(
@@ -36,6 +40,15 @@ class ProjectAccessApplicationService(
                 role = ProjectMembership.Role.OWNER,
                 createdAt = Clock.System.now(),
                 createdByUserId = actorUserId,
+            )
+        )
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actorUserId,
+                action = SecurityAuditEvent.Action.PROJECT_CREATED,
+                targetType = SecurityAuditEvent.TargetType.PROJECT,
+                targetId = project.id.value,
+                projectId = project.id,
             )
         )
         return project
@@ -85,6 +98,15 @@ class ProjectAccessApplicationService(
     ) {
         requirePermission(actorUserId, id, ProjectPermission.ADMIN)
         projectService.delete(id)
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actorUserId,
+                action = SecurityAuditEvent.Action.PROJECT_DELETED,
+                targetType = SecurityAuditEvent.TargetType.PROJECT,
+                targetId = id.value,
+                projectId = id,
+            )
+        )
     }
 
     @Transactional
@@ -144,7 +166,10 @@ class ProjectAccessApplicationService(
         ) {
             throw IllegalStateException("A project must have at least one owner")
         }
-        return membershipRepository.save(
+        if (existing?.role == role) {
+            return existing
+        }
+        val membership = membershipRepository.save(
             existing?.copy(role = role)
                 ?: ProjectMembership(
                     projectId = projectId,
@@ -154,6 +179,20 @@ class ProjectAccessApplicationService(
                     createdByUserId = actorUserId,
                 )
         )
+        securityAuditRecorder.record(
+            SecurityAuditRecord(
+                actorUserId = actorUserId,
+                action = SecurityAuditEvent.Action.PROJECT_MEMBERSHIP_SET,
+                targetType = SecurityAuditEvent.TargetType.USER,
+                targetId = userId.value,
+                projectId = projectId,
+                attributes = buildMap {
+                    existing?.role?.let { put("previousRole", it.name) }
+                    put("role", role.name)
+                },
+            )
+        )
+        return membership
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
@@ -170,7 +209,20 @@ class ProjectAccessApplicationService(
         ) {
             throw IllegalStateException("A project must have at least one owner")
         }
-        return membershipRepository.delete(projectId, userId)
+        val removed = membershipRepository.delete(projectId, userId)
+        if (removed) {
+            securityAuditRecorder.record(
+                SecurityAuditRecord(
+                    actorUserId = actorUserId,
+                    action = SecurityAuditEvent.Action.PROJECT_MEMBERSHIP_REMOVED,
+                    targetType = SecurityAuditEvent.TargetType.USER,
+                    targetId = userId.value,
+                    projectId = projectId,
+                    attributes = mapOf("previousRole" to existing.role.name),
+                )
+            )
+        }
+        return removed
     }
 
     private suspend fun readableProjectIds(actorUserId: User.Id): Set<Project.Id> =
