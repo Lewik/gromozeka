@@ -297,15 +297,28 @@ class DefaultCommandTaskService(
     }
 
     private suspend fun recoverPersistedTasksWhenAvailable() {
+        var consecutiveFailures = 0L
         while (currentCoroutineContext().isActive) {
             try {
                 recoverPersistedTasks()
+                if (consecutiveFailures > 0) {
+                    log.info {
+                        "Command recovery resumed after $consecutiveFailures unavailable control-plane checks"
+                    }
+                }
                 return
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                log.warn(error) {
-                    "Command recovery is waiting for the control plane: ${error.message}"
+                consecutiveFailures += 1
+                if (
+                    consecutiveFailures == 1L ||
+                    consecutiveFailures % CONTROL_PLANE_WAIT_LOG_INTERVAL_ATTEMPTS == 0L
+                ) {
+                    log.warn {
+                        "Command recovery is waiting for the control plane " +
+                            "(attempt $consecutiveFailures): ${error::class.simpleName}: ${error.message}"
+                    }
                 }
                 delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
             }
@@ -893,6 +906,7 @@ class DefaultCommandTaskService(
     private companion object {
         const val COMMAND_STATE_POLL_INTERVAL_MILLIS = 100L
         const val CONTROL_PLANE_RETRY_INTERVAL_MILLIS = 1_000L
+        const val CONTROL_PLANE_WAIT_LOG_INTERVAL_ATTEMPTS = 60L
         const val CONTROL_PLANE_WARNING_INTERVAL_NANOS = 30_000_000_000L
         const val CANCELLATION_POLL_INTERVAL_NANOS = 1_000_000_000L
         const val MAX_OUTPUT_CHUNK_BYTES = 64 * 1024

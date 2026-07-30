@@ -237,15 +237,29 @@ class DefaultCommandMonitorService(
     }
 
     private suspend fun recoverPersistedMonitorsWhenAvailable() {
+        var consecutiveFailures = 0L
         while (currentCoroutineContext().isActive) {
             try {
                 recoverPersistedMonitors()
+                if (consecutiveFailures > 0) {
+                    log.info {
+                        "Command monitor recovery resumed after " +
+                            "$consecutiveFailures unavailable control-plane checks"
+                    }
+                }
                 return
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                log.warn(error) {
-                    "Command monitor recovery is waiting for the control plane: ${error.message}"
+                consecutiveFailures += 1
+                if (
+                    consecutiveFailures == 1L ||
+                    consecutiveFailures % CONTROL_PLANE_WAIT_LOG_INTERVAL_ATTEMPTS == 0L
+                ) {
+                    log.warn {
+                        "Command monitor recovery is waiting for the control plane " +
+                            "(attempt $consecutiveFailures): ${error::class.simpleName}: ${error.message}"
+                    }
                 }
                 delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
             }
@@ -891,6 +905,7 @@ class DefaultCommandMonitorService(
         const val STATE_POLL_INTERVAL_NANOS = 500_000_000L
         const val PROGRESS_SYNC_INTERVAL_NANOS = 1_000_000_000L
         const val CONTROL_PLANE_RETRY_INTERVAL_MILLIS = 1_000L
+        const val CONTROL_PLANE_WAIT_LOG_INTERVAL_ATTEMPTS = 60L
         const val CONTROL_PLANE_WARNING_INTERVAL_NANOS = 30_000_000_000L
         const val SOURCE_CHUNK_BYTES = 64 * 1024
         const val MAX_SOURCE_CHUNKS_PER_PASS = 4

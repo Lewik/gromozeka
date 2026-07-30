@@ -54,6 +54,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.SmartLifecycle
 import org.springframework.stereotype.Service
 import java.net.URI
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @ConfigurationProperties("gromozeka.worker-gateway")
@@ -116,15 +117,43 @@ class WorkerGatewayClient(
             check(!termination.isCompleted) { "Worker Gateway cannot restart after termination" }
             running = true
             connectionJob = scope.launch {
+                var consecutiveFailures = 0L
+                var lastFailureLogAtNanos: Long? = null
                 while (isActive) {
                     try {
                         connect()
+                        consecutiveFailures = 0
+                        lastFailureLogAtNanos = null
+                        if (isActive) {
+                            log.warn {
+                                "Worker Gateway disconnected; reconnecting: " +
+                                    "worker=${identity.workerId.value}"
+                            }
+                        }
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Throwable) {
-                        log.warn(error) {
-                            "Worker Gateway connection failed: worker=${identity.workerId.value} " +
-                                "error=${error.message}"
+                        consecutiveFailures += 1
+                        val now = System.nanoTime()
+                        if (
+                            lastFailureLogAtNanos == null ||
+                            now - lastFailureLogAtNanos >= FAILURE_LOG_INTERVAL.inWholeNanoseconds
+                        ) {
+                            lastFailureLogAtNanos = now
+                            if (error.isExpectedConnectionFailure()) {
+                                log.warn {
+                                    "Worker Gateway is unavailable " +
+                                        "(attempt $consecutiveFailures): " +
+                                        "worker=${identity.workerId.value} " +
+                                        "error=${error::class.simpleName}: ${error.message}"
+                                }
+                            } else {
+                                log.warn(error) {
+                                    "Worker Gateway connection failed " +
+                                        "(attempt $consecutiveFailures): " +
+                                        "worker=${identity.workerId.value} error=${error.message}"
+                                }
+                            }
                         }
                     }
                     if (isActive) {
@@ -293,8 +322,18 @@ class WorkerGatewayClient(
     private fun Frame.decodeMessage(): WorkerGatewayMessage? =
         (this as? Frame.Binary)?.let { WorkerGatewayCodec.decode(it.readBytes()) }
 
+    private fun Throwable.isExpectedConnectionFailure(): Boolean =
+        generateSequence(this, Throwable::cause).any {
+            it is java.net.ConnectException ||
+                it is java.net.NoRouteToHostException ||
+                it is java.net.SocketTimeoutException ||
+                it is java.net.UnknownHostException ||
+                it is java.nio.channels.UnresolvedAddressException
+        }
+
     private companion object {
         val HANDSHAKE_TIMEOUT = 15.seconds
+        val FAILURE_LOG_INTERVAL = 1.minutes
         const val OUTGOING_BUFFER_SIZE = 256
         val requestConcurrency = Semaphore(64)
     }
