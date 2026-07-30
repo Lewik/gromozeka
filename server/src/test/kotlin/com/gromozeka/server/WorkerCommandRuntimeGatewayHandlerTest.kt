@@ -128,7 +128,7 @@ class WorkerCommandRuntimeGatewayHandlerTest {
             id = workerId,
             displayName = "Worker",
             ownerUserId = User.Id("user-1"),
-            organizationAccess = false,
+            runtimeWideAccess = false,
             status = WorkerResource.Status.ACTIVE,
             createdAt = now,
             updatedAt = now,

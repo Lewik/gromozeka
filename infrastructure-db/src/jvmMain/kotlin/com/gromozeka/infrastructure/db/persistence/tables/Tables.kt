@@ -46,7 +46,7 @@ internal object Workers : Table("workers") {
     val displayName = varchar("display_name", 255)
     val ownerUserId = varchar("owner_user_id", 255)
         .references(Users.id, onDelete = ReferenceOption.RESTRICT)
-    val organizationAccess = bool("organization_access")
+    val runtimeWideAccess = bool("runtime_wide_access")
     val status = varchar("status", 32)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")

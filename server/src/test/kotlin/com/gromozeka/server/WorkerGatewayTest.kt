@@ -271,7 +271,7 @@ class WorkerGatewayTest {
             id = ConversationRuntimeWorkerId(workerId),
             displayName = workerId,
             ownerUserId = User.Id("owner"),
-            organizationAccess = false,
+            runtimeWideAccess = false,
             status = WorkerResource.Status.ACTIVE,
             createdAt = Instant.parse("2026-07-30T00:00:00Z"),
             updatedAt = Instant.parse("2026-07-30T00:00:00Z"),

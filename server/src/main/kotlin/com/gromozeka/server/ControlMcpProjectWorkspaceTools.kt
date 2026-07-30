@@ -266,7 +266,7 @@ internal class ControlMcpProjectWorkspaceTools(
         },
         controlMcpTool(
             name = "grz_worker_access_get",
-            description = "Read one worker's owner, organization access, and explicit user and project grants.",
+            description = "Read one worker's owner, runtime-wide access, and explicit user and project grants.",
             inputSchema = idSchema("workerId", "Worker id."),
             readOnly = true,
         ) { input ->
@@ -387,12 +387,12 @@ internal class ControlMcpProjectWorkspaceTools(
             deletedResult("worker_project_grant", "$workerId:$projectId")
         },
         controlMcpTool(
-            name = "grz_worker_organization_access_set",
+            name = "grz_worker_runtime_access_set",
             description = "Enable or disable worker use for every authenticated user.",
             inputSchema = ControlMcpSchemas.objectSchema(
                 properties = mapOf(
                     "workerId" to ControlMcpSchemas.string("Worker id."),
-                    "enabled" to ControlMcpSchemas.boolean("Whether organization-wide use is enabled."),
+                    "enabled" to ControlMcpSchemas.boolean("Whether runtime-wide use is enabled."),
                 ),
                 required = listOf("workerId", "enabled"),
             ),
@@ -402,7 +402,7 @@ internal class ControlMcpProjectWorkspaceTools(
             entityResult(
                 "worker",
                 WorkerResource.serializer(),
-                workerAccessService.setOrganizationAccess(
+                workerAccessService.setRuntimeWideAccess(
                     actor = user,
                     workerId = ConversationRuntimeWorkerId(input.requiredString("workerId")),
                     enabled = input.optionalBoolean("enabled", false),

@@ -92,7 +92,7 @@ class PostgresWorkerEnrollmentRepository(
                             id = workerId,
                             displayName = displayName,
                             ownerUserId = ownerUserId,
-                            organizationAccess = false,
+                            runtimeWideAccess = false,
                             status = WorkerResource.Status.ACTIVE,
                             createdAt = consumedAt,
                             updatedAt = consumedAt,
@@ -125,7 +125,7 @@ class PostgresWorkerEnrollmentRepository(
                     SELECT w.id,
                            w.display_name,
                            w.owner_user_id,
-                           w.organization_access,
+                           w.runtime_wide_access,
                            w.status,
                            w.created_at,
                            w.updated_at
@@ -175,7 +175,7 @@ class PostgresWorkerEnrollmentRepository(
     ): WorkerResource? =
         prepareStatement(
             """
-            SELECT id, display_name, owner_user_id, organization_access, status, created_at, updated_at
+            SELECT id, display_name, owner_user_id, runtime_wide_access, status, created_at, updated_at
             FROM workers
             WHERE id = ?
             FOR UPDATE
@@ -194,7 +194,7 @@ class PostgresWorkerEnrollmentRepository(
                 id,
                 display_name,
                 owner_user_id,
-                organization_access,
+                runtime_wide_access,
                 status,
                 created_at,
                 updated_at
@@ -205,7 +205,7 @@ class PostgresWorkerEnrollmentRepository(
             statement.setString(1, worker.id.value)
             statement.setString(2, worker.displayName)
             statement.setString(3, worker.ownerUserId.value)
-            statement.setBoolean(4, worker.organizationAccess)
+            statement.setBoolean(4, worker.runtimeWideAccess)
             statement.setString(5, worker.status.name)
             statement.setTimestamp(6, worker.createdAt.toTimestamp())
             statement.setTimestamp(7, worker.updatedAt.toTimestamp())
@@ -270,7 +270,7 @@ class PostgresWorkerEnrollmentRepository(
             id = ConversationRuntimeWorkerId(getString("id")),
             displayName = getString("display_name"),
             ownerUserId = User.Id(getString("owner_user_id")),
-            organizationAccess = getBoolean("organization_access"),
+            runtimeWideAccess = getBoolean("runtime_wide_access"),
             status = WorkerResource.Status.valueOf(getString("status")),
             createdAt = getTimestamp("created_at").toKotlinxInstant(),
             updatedAt = getTimestamp("updated_at").toKotlinxInstant(),

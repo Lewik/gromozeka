@@ -720,7 +720,7 @@ class DistributedAiToolRoutingTest {
                 id = id,
                 displayName = workerId,
                 ownerUserId = User.Id("test-owner"),
-                organizationAccess = false,
+                runtimeWideAccess = false,
                 status = WorkerResource.Status.ACTIVE,
                 createdAt = now,
                 updatedAt = now,
@@ -784,7 +784,7 @@ class DistributedAiToolRoutingTest {
             projectId: Project.Id,
         ): Boolean = error("Worker grants are outside this test")
 
-        override suspend fun setOrganizationAccess(
+        override suspend fun setRuntimeWideAccess(
             actor: User,
             workerId: ConversationRuntimeWorkerId,
             enabled: Boolean,

@@ -64,7 +64,7 @@ interface WorkerAccessService {
         projectId: Project.Id,
     ): Boolean
 
-    suspend fun setOrganizationAccess(
+    suspend fun setRuntimeWideAccess(
         actor: User,
         workerId: ConversationRuntimeWorkerId,
         enabled: Boolean,

@@ -72,7 +72,7 @@ class WorkerAccessApplicationServiceTest {
         assertEquals(setOf(worker.id), service.listAccessible(projectUser).mapTo(mutableSetOf()) { it.id })
         assertNull(service.findAccessible(outsider, worker.id, project.id))
 
-        service.setOrganizationAccess(owner, worker.id, true)
+        service.setRuntimeWideAccess(owner, worker.id, true)
 
         assertNotNull(service.findAccessible(outsider, worker.id))
         Unit
@@ -84,7 +84,7 @@ class WorkerAccessApplicationServiceTest {
         service.grantUser(owner, worker.id, sharedUser.id)
 
         assertFailsWith<WorkerAccessDeniedException> {
-            service.setOrganizationAccess(sharedUser, worker.id, true)
+            service.setRuntimeWideAccess(sharedUser, worker.id, true)
         }
         assertNotNull(
             service.requirePermission(serverOwner, worker.id, WorkerPermission.MANAGE)
@@ -239,7 +239,7 @@ private fun workerResource(owner: User): WorkerResource {
         id = ConversationRuntimeWorkerId("worker-1"),
         displayName = "Worker 1",
         ownerUserId = owner.id,
-        organizationAccess = false,
+        runtimeWideAccess = false,
         status = WorkerResource.Status.ACTIVE,
         createdAt = now,
         updatedAt = now,

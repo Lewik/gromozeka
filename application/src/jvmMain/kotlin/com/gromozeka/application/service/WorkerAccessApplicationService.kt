@@ -46,7 +46,7 @@ class WorkerAccessApplicationService(
             .filter { it.status == WorkerResource.Status.ACTIVE }
             .filter {
                 it.ownerUserId == actor.id ||
-                    it.organizationAccess ||
+                    it.runtimeWideAccess ||
                     it.id in directlyGrantedIds ||
                     it.id in projectGrantedIds
             }
@@ -56,7 +56,7 @@ class WorkerAccessApplicationService(
         val projectGrantedIds = repository.findWorkerIdsGrantedToProjects(setOf(projectId))
         return repository.listWorkers()
             .filter { it.status == WorkerResource.Status.ACTIVE }
-            .filter { it.organizationAccess || it.id in projectGrantedIds }
+            .filter { it.runtimeWideAccess || it.id in projectGrantedIds }
     }
 
     override suspend fun requirePermission(
@@ -82,7 +82,7 @@ class WorkerAccessApplicationService(
         val worker = repository.findWorker(workerId)
             ?.takeIf { it.status == WorkerResource.Status.ACTIVE }
             ?: throw WorkerAccessDeniedException()
-        if (!worker.organizationAccess && repository.findProjectGrant(workerId, projectId) == null) {
+        if (!worker.runtimeWideAccess && repository.findProjectGrant(workerId, projectId) == null) {
             throw WorkerAccessDeniedException()
         }
         return worker
@@ -164,18 +164,18 @@ class WorkerAccessApplicationService(
     }
 
     @Transactional
-    override suspend fun setOrganizationAccess(
+    override suspend fun setRuntimeWideAccess(
         actor: User,
         workerId: ConversationRuntimeWorkerId,
         enabled: Boolean,
     ): WorkerResource {
         val worker = requirePermission(actor, workerId, WorkerPermission.MANAGE)
-        if (worker.organizationAccess == enabled) {
+        if (worker.runtimeWideAccess == enabled) {
             return worker
         }
         return repository.saveWorker(
             worker.copy(
-                organizationAccess = enabled,
+                runtimeWideAccess = enabled,
                 updatedAt = Clock.System.now(),
             )
         )
@@ -205,11 +205,11 @@ class WorkerAccessApplicationService(
         if (projectId != null) {
             return projectAccessService.can(actor.id, projectId, ProjectPermission.WRITE) &&
                 (
-                    worker.organizationAccess ||
+                    worker.runtimeWideAccess ||
                         repository.findProjectGrant(worker.id, projectId) != null
                     )
         }
-        if (worker.ownerUserId == actor.id || worker.organizationAccess) {
+        if (worker.ownerUserId == actor.id || worker.runtimeWideAccess) {
             return true
         }
         if (repository.findUserGrant(worker.id, actor.id) != null) {

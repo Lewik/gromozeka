@@ -61,7 +61,7 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_worker_user_revoke",
                 "grz_worker_project_grant",
                 "grz_worker_project_revoke",
-                "grz_worker_organization_access_set",
+                "grz_worker_runtime_access_set",
                 "grz_worker_revoke",
                 "grz_runtime_template_get",
                 "grz_agent_list",

@@ -9,7 +9,7 @@ data class WorkerResource(
     val id: ConversationRuntimeWorkerId,
     val displayName: String,
     val ownerUserId: User.Id,
-    val organizationAccess: Boolean,
+    val runtimeWideAccess: Boolean,
     val status: Status,
     val createdAt: Instant,
     val updatedAt: Instant,

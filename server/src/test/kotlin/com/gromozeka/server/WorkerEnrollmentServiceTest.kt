@@ -107,7 +107,7 @@ private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
             id = workerId,
             displayName = displayName,
             ownerUserId = issued.ownerUserId,
-            organizationAccess = false,
+            runtimeWideAccess = false,
             status = WorkerResource.Status.ACTIVE,
             createdAt = consumedAt,
             updatedAt = consumedAt,
