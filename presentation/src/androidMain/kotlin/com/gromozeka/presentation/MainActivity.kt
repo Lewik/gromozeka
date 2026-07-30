@@ -131,6 +131,7 @@ private fun GromozekaAndroidApp(
             if (status.authenticatedUser != null) {
                 val app = createRemoteAppComponents(
                     remoteUrl = targetUrl,
+                    authenticatedUser = requireNotNull(status.authenticatedUser),
                     scope = scope,
                     clientHomeDirectory = "android",
                     clientPlatform = ClientPlatform.ANDROID,
@@ -184,9 +185,11 @@ private fun GromozekaAndroidApp(
                             authenticationError = null
                             try {
                                 connection.authenticate(requireNotNull(authenticationStatus).initialized, input)
-                                authenticationStatus = connection.status()
+                                val authenticatedStatus = connection.status()
+                                authenticationStatus = authenticatedStatus
                                 val app = createRemoteAppComponents(
                                     remoteUrl = requireNotNull(remoteUrl),
+                                    authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
                                     scope = scope,
                                     clientHomeDirectory = "android",
                                     clientPlatform = ClientPlatform.ANDROID,

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteClientSettings
 import com.gromozeka.client.RemoteDistributionService
 import com.gromozeka.client.RemotePersonalAccessTokenService
+import com.gromozeka.client.RemoteUserAdministrationService
 import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
@@ -95,6 +96,8 @@ fun SettingsPanel(
     workerCatalogService: WorkerCatalogService,
     distributionService: RemoteDistributionService,
     personalAccessTokenService: RemotePersonalAccessTokenService,
+    userAdministrationService: RemoteUserAdministrationService,
+    canAdministerUsers: Boolean,
     ollamaModelService: OllamaModelService,
     coroutineScope: CoroutineScope,
     onOpenTab: () -> Unit,
@@ -647,6 +650,13 @@ fun SettingsPanel(
                             service = personalAccessTokenService,
                             coroutineScope = coroutineScope,
                         )
+                        if (canAdministerUsers) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            UserAdministrationSettings(
+                                service = userAdministrationService,
+                                coroutineScope = coroutineScope,
+                            )
+                        }
                     }
 
                     if (

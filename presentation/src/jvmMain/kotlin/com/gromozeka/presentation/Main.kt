@@ -68,7 +68,12 @@ fun main() {
                 authenticationStatus = status
                 if (status.authenticatedUser != null) {
                     log.info("Initializing authenticated remote UI client: $targetUrl")
-                    remoteApp = startRemotePresentation(targetUrl, settingsStore, connection.httpClient)
+                    remoteApp = startRemotePresentation(
+                        remoteUrl = targetUrl,
+                        authenticatedUser = requireNotNull(status.authenticatedUser),
+                        remoteClientSettingsStore = settingsStore,
+                        httpClient = connection.httpClient,
+                    )
                 }
             } catch (error: CancellationException) {
                 throw error
@@ -117,11 +122,13 @@ fun main() {
                                     authenticationError = null
                                     try {
                                         connection.authenticate(status.initialized, input)
-                                        authenticationStatus = connection.status()
+                                        val authenticatedStatus = connection.status()
+                                        authenticationStatus = authenticatedStatus
                                         remoteApp = startRemotePresentation(
-                                            requireNotNull(remoteUrl),
-                                            settingsStore,
-                                            connection.httpClient,
+                                            remoteUrl = requireNotNull(remoteUrl),
+                                            authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
+                                            remoteClientSettingsStore = settingsStore,
+                                            httpClient = connection.httpClient,
                                         )
                                     } catch (error: CancellationException) {
                                         throw error

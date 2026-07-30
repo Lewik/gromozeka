@@ -7,6 +7,7 @@ import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextServic
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.WindowStateService
 import com.gromozeka.presentation.ui.ClientPlatform
+import com.gromozeka.remote.protocol.AuthenticatedUserView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,6 +19,7 @@ import io.ktor.client.HttpClient
 
 internal suspend fun startRemotePresentation(
     remoteUrl: String,
+    authenticatedUser: AuthenticatedUserView,
     remoteClientSettingsStore: DesktopRemoteClientSettingsStore,
     httpClient: HttpClient? = null,
 ): RemoteStartedApp {
@@ -27,6 +29,7 @@ internal suspend fun startRemotePresentation(
     val remoteApp = try {
         createRemoteAppComponents(
             remoteUrl = remoteUrl,
+            authenticatedUser = authenticatedUser,
             scope = scope,
             clientHomeDirectory = clientHomeDirectory,
             clientPlatform = ClientPlatform.DESKTOP,

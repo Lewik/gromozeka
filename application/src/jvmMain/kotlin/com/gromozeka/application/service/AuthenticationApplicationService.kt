@@ -18,7 +18,6 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 import java.util.HexFormat
-import java.util.Locale
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -44,9 +43,9 @@ class AuthenticationApplicationService(
         clientLabel: String?,
     ): IssuedUserSession {
         check(!hasUsers()) { "The first user has already been created" }
-        val normalizedUsername = normalizeUsername(username)
-        val normalizedDisplayName = normalizeDisplayName(displayName, normalizedUsername)
-        validatePassword(password)
+        val normalizedUsername = LocalIdentityInputPolicy.normalizeUsername(username)
+        val normalizedDisplayName = LocalIdentityInputPolicy.normalizeDisplayName(displayName, normalizedUsername)
+        LocalIdentityInputPolicy.validatePassword(password)
         check(this.bootstrapToken.consume(bootstrapToken)) { "Invalid or expired bootstrap token" }
 
         val now = Clock.System.now()
@@ -77,7 +76,7 @@ class AuthenticationApplicationService(
         password: CharArray,
         clientLabel: String?,
     ): IssuedUserSession {
-        val normalizedUsername = normalizeUsername(username)
+        val normalizedUsername = LocalIdentityInputPolicy.normalizeUsername(username)
         val user = identityRepository.findUserByUsername(normalizedUsername)
         val credential = user?.let { identityRepository.findPasswordCredential(it.id) }
         val passwordMatches = passwordHasher.verify(
@@ -156,32 +155,6 @@ class AuthenticationApplicationService(
         )
     }
 
-    private fun normalizeUsername(username: String): String {
-        val normalized = username.trim().lowercase(Locale.ROOT)
-        require(normalized.length in USERNAME_LENGTH) {
-            "Username must contain ${USERNAME_LENGTH.first} to ${USERNAME_LENGTH.last} characters"
-        }
-        require(normalized.matches(USERNAME_PATTERN)) {
-            "Username may contain lowercase letters, numbers, dots, underscores, and hyphens"
-        }
-        return normalized
-    }
-
-    private fun normalizeDisplayName(displayName: String, fallback: String): String =
-        displayName.trim()
-            .ifEmpty { fallback }
-            .also {
-                require(it.length <= MAX_DISPLAY_NAME_LENGTH) {
-                    "Display name must not exceed $MAX_DISPLAY_NAME_LENGTH characters"
-                }
-            }
-
-    private fun validatePassword(password: CharArray) {
-        require(password.size in PASSWORD_LENGTH) {
-            "Password must contain ${PASSWORD_LENGTH.first} to ${PASSWORD_LENGTH.last} characters"
-        }
-    }
-
     private fun hashToken(token: String): String =
         HexFormat.of().formatHex(
             MessageDigest.getInstance("SHA-256")
@@ -189,10 +162,6 @@ class AuthenticationApplicationService(
         )
 
     private companion object {
-        val USERNAME_LENGTH = 3..128
-        val PASSWORD_LENGTH = 12..1024
-        val USERNAME_PATTERN = Regex("[a-z0-9][a-z0-9._-]*")
-        const val MAX_DISPLAY_NAME_LENGTH = 255
         const val MAX_CLIENT_LABEL_LENGTH = 255
         const val SESSION_TOKEN_BYTES = 32
         val SESSION_LIFETIME = 30.days

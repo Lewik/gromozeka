@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,8 +50,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ProjectMembership
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.client.RemoteProjectMembershipService
+import com.gromozeka.client.RemoteUserDirectoryService
+import com.gromozeka.remote.protocol.UserDirectoryEntry
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
@@ -60,6 +67,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun ProjectManagerScreen(
     projectService: ProjectDomainService,
+    projectMembershipService: RemoteProjectMembershipService,
+    userDirectoryService: RemoteUserDirectoryService,
     onBack: () -> Unit,
     onManageWorkspaces: (Project.Id?) -> Unit,
     onChanged: () -> Unit,
@@ -71,6 +80,7 @@ fun ProjectManagerScreen(
     var editorProject by remember { mutableStateOf<Project?>(null) }
     var showCreateEditor by remember { mutableStateOf(false) }
     var projectToDelete by remember { mutableStateOf<Project?>(null) }
+    var membersProject by remember { mutableStateOf<Project?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var reloadKey by remember { mutableIntStateOf(0) }
@@ -154,6 +164,9 @@ fun ProjectManagerScreen(
                                 CompactButton(onClick = { onManageWorkspaces(selectedProject.id) }) {
                                     Text(strings.manageWorkspaces)
                                 }
+                                CompactButton(onClick = { membersProject = selectedProject }) {
+                                    Text(strings.manageMembers)
+                                }
                                 CompactButton(
                                     onClick = { projectToDelete = selectedProject },
                                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
@@ -215,6 +228,16 @@ fun ProjectManagerScreen(
                         .onFailure { error = it.message ?: strings.operationFailed }
                 }
             },
+        )
+    }
+
+    membersProject?.let { project ->
+        ProjectMembersDialog(
+            project = project,
+            projectMembershipService = projectMembershipService,
+            userDirectoryService = userDirectoryService,
+            strings = strings,
+            onDismiss = { membersProject = null },
         )
     }
 }
@@ -666,6 +689,220 @@ private fun ConfirmDestructiveDialog(
 }
 
 @Composable
+private fun ProjectMembersDialog(
+    project: Project,
+    projectMembershipService: RemoteProjectMembershipService,
+    userDirectoryService: RemoteUserDirectoryService,
+    strings: ManagementStrings,
+    onDismiss: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var memberships by remember(project.id) { mutableStateOf<List<ProjectMembership>>(emptyList()) }
+    var users by remember(project.id) { mutableStateOf<List<UserDirectoryEntry>>(emptyList()) }
+    var selectedUserId by remember(project.id) { mutableStateOf<User.Id?>(null) }
+    var selectedRole by remember(project.id) { mutableStateOf(ProjectMembership.Role.EDITOR) }
+    var loading by remember(project.id) { mutableStateOf(true) }
+    var error by remember(project.id) { mutableStateOf<String?>(null) }
+
+    fun reload() {
+        scope.launch {
+            loading = true
+            error = null
+            runCatching {
+                projectMembershipService.list(project.id) to userDirectoryService.list()
+            }.onSuccess { (loadedMemberships, loadedUsers) ->
+                memberships = loadedMemberships
+                users = loadedUsers
+                selectedUserId = selectedUserId?.takeIf { selected ->
+                    loadedUsers.any { it.id == selected } &&
+                        loadedMemberships.none { it.userId == selected }
+                }
+            }.onFailure { failure ->
+                error = failure.message ?: strings.operationFailed
+            }
+            loading = false
+        }
+    }
+
+    LaunchedEffect(project.id) { reload() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${strings.members}: ${project.name}") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                error?.let { ManagerError(it) }
+                if (loading) {
+                    CircularProgressIndicator()
+                } else {
+                    val usersById = users.associateBy(UserDirectoryEntry::id)
+                    LazyColumn(
+                        modifier = Modifier.weight(1f, fill = false),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(memberships, key = { it.userId.value }) { membership ->
+                            val directoryUser = usersById[membership.userId]
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = MaterialTheme.shapes.small,
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column {
+                                            Text(
+                                                directoryUser?.displayName ?: membership.userId.value,
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                            directoryUser?.let {
+                                                Text(
+                                                    "@${it.username}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+                                        TextButton(
+                                            enabled = !loading,
+                                            onClick = {
+                                                scope.launch {
+                                                    loading = true
+                                                    runCatching {
+                                                        projectMembershipService.remove(
+                                                            project.id,
+                                                            membership.userId,
+                                                        )
+                                                    }.onSuccess { reload() }
+                                                        .onFailure {
+                                                            error = it.message ?: strings.operationFailed
+                                                            loading = false
+                                                        }
+                                                }
+                                            },
+                                        ) {
+                                            Text(strings.remove)
+                                        }
+                                    }
+                                    ProjectRoleSelector(
+                                        role = membership.role,
+                                        enabled = !loading,
+                                        strings = strings,
+                                        onRoleChange = { role ->
+                                            scope.launch {
+                                                loading = true
+                                                runCatching {
+                                                    projectMembershipService.set(
+                                                        project.id,
+                                                        membership.userId,
+                                                        role,
+                                                    )
+                                                }.onSuccess { reload() }
+                                                    .onFailure {
+                                                        error = it.message ?: strings.operationFailed
+                                                        loading = false
+                                                    }
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    val availableUsers = users.filter { user ->
+                        memberships.none { it.userId == user.id }
+                    }
+                    if (availableUsers.isNotEmpty()) {
+                        HorizontalDivider()
+                        Text(strings.addMember, style = MaterialTheme.typography.titleSmall)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(availableUsers, key = { it.id.value }) { user ->
+                                FilterChip(
+                                    selected = selectedUserId == user.id,
+                                    onClick = { selectedUserId = user.id },
+                                    label = { Text(user.displayName) },
+                                )
+                            }
+                        }
+                        ProjectRoleSelector(
+                            role = selectedRole,
+                            enabled = !loading,
+                            strings = strings,
+                            onRoleChange = { selectedRole = it },
+                        )
+                        CompactButton(
+                            enabled = selectedUserId != null && !loading,
+                            onClick = {
+                                val userId = requireNotNull(selectedUserId)
+                                scope.launch {
+                                    loading = true
+                                    runCatching {
+                                        projectMembershipService.set(
+                                            project.id,
+                                            userId,
+                                            selectedRole,
+                                        )
+                                    }.onSuccess {
+                                        selectedUserId = null
+                                        reload()
+                                    }.onFailure {
+                                        error = it.message ?: strings.operationFailed
+                                        loading = false
+                                    }
+                                }
+                            },
+                        ) {
+                            Text(strings.add)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(strings.close)
+            }
+        },
+    )
+}
+
+@Composable
+private fun ProjectRoleSelector(
+    role: ProjectMembership.Role,
+    enabled: Boolean,
+    strings: ManagementStrings,
+    onRoleChange: (ProjectMembership.Role) -> Unit,
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        items(ProjectMembership.Role.entries) { candidate ->
+            FilterChip(
+                selected = role == candidate,
+                enabled = enabled,
+                onClick = { onRoleChange(candidate) },
+                label = {
+                    Text(
+                        when (candidate) {
+                            ProjectMembership.Role.OWNER -> strings.ownerRole
+                            ProjectMembership.Role.EDITOR -> strings.editorRole
+                            ProjectMembership.Role.VIEWER -> strings.viewerRole
+                        }
+                    )
+                },
+            )
+        }
+    }
+}
+
+@Composable
 private fun IdLine(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -741,6 +978,15 @@ private data class ManagementStrings(
     val selectProject: String,
     val selectWorkspace: String,
     val manageWorkspaces: String,
+    val manageMembers: String,
+    val members: String,
+    val addMember: String,
+    val add: String,
+    val remove: String,
+    val close: String,
+    val ownerRole: String,
+    val editorRole: String,
+    val viewerRole: String,
     val mounts: String,
     val mountExplanation: String,
     val deleteProject: String,
@@ -777,6 +1023,15 @@ private data class ManagementStrings(
             selectProject = "Select a project",
             selectWorkspace = "Select a workspace",
             manageWorkspaces = "Manage workspaces",
+            manageMembers = "Manage members",
+            members = "Project members",
+            addMember = "Add member",
+            add = "Add",
+            remove = "Remove",
+            close = "Close",
+            ownerRole = "Owner",
+            editorRole = "Editor",
+            viewerRole = "Viewer",
             mounts = "Workspace mounts",
             mountExplanation = "A mount is the exact worker-local filesystem location used for tool execution.",
             deleteProject = "Delete project?",
@@ -813,6 +1068,15 @@ private data class ManagementStrings(
             selectProject = "Выберите проект",
             selectWorkspace = "Выберите рабочее пространство",
             manageWorkspaces = "Управлять пространствами",
+            manageMembers = "Участники",
+            members = "Участники проекта",
+            addMember = "Добавить участника",
+            add = "Добавить",
+            remove = "Убрать",
+            close = "Закрыть",
+            ownerRole = "Владелец",
+            editorRole = "Редактор",
+            viewerRole = "Читатель",
             mounts = "Workspace mounts",
             mountExplanation = "Mount — точное расположение файловой системы на конкретном worker для выполнения tools.",
             deleteProject = "Удалить проект?",

@@ -3,6 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.AgentDomainService
@@ -14,6 +15,10 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.GetAiCatalogRequest
+import com.gromozeka.remote.protocol.ListProjectMembershipsRequest
+import com.gromozeka.remote.protocol.ListUsersRequest
+import com.gromozeka.remote.protocol.RemoveProjectMembershipRequest
+import com.gromozeka.remote.protocol.SetProjectMembershipRequest
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
 import com.gromozeka.remote.protocol.UpdateProjectRequest
 import kotlinx.coroutines.runBlocking
@@ -41,6 +46,15 @@ class GromozekaRemoteAuthorizationTest {
         }
 
         authorization.authorize(testUser(User.Role.OWNER), GetAiCatalogRequest)
+    }
+
+    @Test
+    fun `user administration requires runtime owner`() = runBlocking {
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(testUser(User.Role.MEMBER), ListUsersRequest)
+        }
+
+        authorization.authorize(testUser(User.Role.OWNER), ListUsersRequest)
     }
 
     @Test
@@ -82,6 +96,40 @@ class GromozekaRemoteAuthorizationTest {
             user.id,
             conversation.projectId,
             ProjectPermission.WRITE,
+        )
+    }
+
+    @Test
+    fun `project membership reads and mutations use different permissions`() = runBlocking {
+        val user = testUser()
+        val projectId = Project.Id("project")
+
+        authorization.authorize(user, ListProjectMembershipsRequest(projectId))
+        authorization.authorize(
+            user,
+            SetProjectMembershipRequest(
+                projectId = projectId,
+                userId = User.Id("member"),
+                role = ProjectMembership.Role.EDITOR,
+            ),
+        )
+        authorization.authorize(
+            user,
+            RemoveProjectMembershipRequest(
+                projectId = projectId,
+                userId = User.Id("member"),
+            ),
+        )
+
+        Mockito.verify(projectAccessService).requirePermission(
+            user.id,
+            projectId,
+            ProjectPermission.READ,
+        )
+        Mockito.verify(projectAccessService, Mockito.times(2)).requirePermission(
+            user.id,
+            projectId,
+            ProjectPermission.ADMIN,
         )
     }
 

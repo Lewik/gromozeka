@@ -78,10 +78,14 @@ private class TokenIdentityRepository(
     val tokens = mutableListOf<PersonalAccessToken>()
 
     override suspend fun countUsers(): Long = 1
+    override suspend fun countActiveOwners(): Long =
+        if (user.status == User.Status.ACTIVE && user.role == User.Role.OWNER) 1 else 0
+    override suspend fun listUsers(): List<User> = listOf(user)
     override suspend fun findUserById(id: User.Id): User? = user.takeIf { it.id == id }
     override suspend fun findUserByUsername(normalizedUsername: String): User? =
         user.takeIf { it.username == normalizedUsername }
     override suspend fun createUser(user: User, credential: LocalPasswordCredential): User = unsupported()
+    override suspend fun updateUser(user: User): User = unsupported()
     override suspend fun findPasswordCredential(userId: User.Id): LocalPasswordCredential? = null
     override suspend fun updatePasswordCredential(credential: LocalPasswordCredential) = unsupported<Unit>()
     override suspend fun createSession(session: UserSession) = unsupported<Unit>()
@@ -122,6 +126,12 @@ private class TokenIdentityRepository(
         if (index < 0) return false
         tokens[index] = tokens[index].copy(revokedAt = revokedAt)
         return true
+    }
+
+    override suspend fun revokeAllPersonalAccessTokens(userId: User.Id, revokedAt: Instant) {
+        tokens.indices
+            .filter { tokens[it].userId == userId }
+            .forEach { index -> tokens[index] = tokens[index].copy(revokedAt = revokedAt) }
     }
 }
 

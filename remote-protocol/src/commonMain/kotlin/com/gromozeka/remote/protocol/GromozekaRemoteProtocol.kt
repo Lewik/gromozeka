@@ -11,12 +11,14 @@ import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.RuntimeCatalogTemplates
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -148,6 +150,60 @@ data class CreatePersonalAccessTokenRequest(
 @SerialName("revoke_personal_access_token")
 data class RevokePersonalAccessTokenRequest(
     val tokenId: PersonalAccessToken.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("list_users")
+data object ListUsersRequest : ClientRequest
+
+@Serializable
+@SerialName("create_user")
+data class CreateUserRequest(
+    val username: String,
+    val displayName: String,
+    val password: String,
+    val role: User.Role,
+) : ClientRequest
+
+@Serializable
+@SerialName("update_user")
+data class UpdateUserRequest(
+    val userId: User.Id,
+    val displayName: String,
+    val status: User.Status,
+    val role: User.Role,
+) : ClientRequest
+
+@Serializable
+@SerialName("reset_user_password")
+data class ResetUserPasswordRequest(
+    val userId: User.Id,
+    val password: String,
+) : ClientRequest
+
+@Serializable
+@SerialName("list_user_directory")
+data object ListUserDirectoryRequest : ClientRequest
+
+@Serializable
+@SerialName("list_project_memberships")
+data class ListProjectMembershipsRequest(
+    val projectId: Project.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("set_project_membership")
+data class SetProjectMembershipRequest(
+    val projectId: Project.Id,
+    val userId: User.Id,
+    val role: ProjectMembership.Role,
+) : ClientRequest
+
+@Serializable
+@SerialName("remove_project_membership")
+data class RemoveProjectMembershipRequest(
+    val projectId: Project.Id,
+    val userId: User.Id,
 ) : ClientRequest
 
 @Serializable
@@ -743,6 +799,53 @@ data class IssuedPersonalAccessTokenResponse(
 @SerialName("personal_access_token_revoked")
 data class PersonalAccessTokenRevokedResponse(
     val revoked: Boolean,
+) : ServerResponse
+
+@Serializable
+@SerialName("users")
+data class UsersResponse(
+    val users: List<User>,
+) : ServerResponse
+
+@Serializable
+@SerialName("user")
+data class UserResponse(
+    val user: User,
+) : ServerResponse
+
+@Serializable
+@SerialName("user_password_reset")
+data object UserPasswordResetResponse : ServerResponse
+
+@Serializable
+data class UserDirectoryEntry(
+    val id: User.Id,
+    val username: String,
+    val displayName: String,
+)
+
+@Serializable
+@SerialName("user_directory")
+data class UserDirectoryResponse(
+    val users: List<UserDirectoryEntry>,
+) : ServerResponse
+
+@Serializable
+@SerialName("project_memberships")
+data class ProjectMembershipsResponse(
+    val memberships: List<ProjectMembership>,
+) : ServerResponse
+
+@Serializable
+@SerialName("project_membership")
+data class ProjectMembershipResponse(
+    val membership: ProjectMembership,
+) : ServerResponse
+
+@Serializable
+@SerialName("project_membership_removed")
+data class ProjectMembershipRemovedResponse(
+    val removed: Boolean,
 ) : ServerResponse
 
 @Serializable

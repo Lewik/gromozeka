@@ -143,6 +143,11 @@ internal class FakeIdentityRepository : IdentityRepository {
 
     override suspend fun countUsers(): Long = users.size.toLong()
 
+    override suspend fun countActiveOwners(): Long =
+        users.count { it.status == User.Status.ACTIVE && it.role == User.Role.OWNER }.toLong()
+
+    override suspend fun listUsers(): List<User> = users.sortedBy { it.username }
+
     override suspend fun findUserById(id: User.Id): User? =
         users.singleOrNull { it.id == id }
 
@@ -156,6 +161,11 @@ internal class FakeIdentityRepository : IdentityRepository {
         check(users.none { it.username == user.username })
         users += user
         credentials += credential
+        return user
+    }
+
+    override suspend fun updateUser(user: User): User {
+        users[users.indexOfFirst { it.id == user.id }] = user
         return user
     }
 
@@ -234,6 +244,17 @@ internal class FakeIdentityRepository : IdentityRepository {
         if (index < 0) return false
         personalAccessTokens[index] = personalAccessTokens[index].copy(revokedAt = revokedAt)
         return true
+    }
+
+    override suspend fun revokeAllPersonalAccessTokens(
+        userId: User.Id,
+        revokedAt: kotlinx.datetime.Instant,
+    ) {
+        personalAccessTokens.indices
+            .filter { personalAccessTokens[it].userId == userId }
+            .forEach { index ->
+                personalAccessTokens[index] = personalAccessTokens[index].copy(revokedAt = revokedAt)
+            }
     }
 }
 

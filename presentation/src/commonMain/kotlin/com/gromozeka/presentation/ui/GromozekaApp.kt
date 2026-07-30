@@ -47,6 +47,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.User
 import com.gromozeka.presentation.AppComponents
 import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
@@ -516,6 +517,9 @@ fun GromozekaAppContent(
                                                                     workerCatalogService = appComponents.workerCatalogService,
                                                                     distributionService = appComponents.distributionService,
                                                                     personalAccessTokenService = appComponents.personalAccessTokenService,
+                                                                    userAdministrationService = appComponents.userAdministrationService,
+                                                                    canAdministerUsers =
+                                                                        appComponents.authenticatedUser.role == User.Role.OWNER,
                                                                     ollamaModelService = appComponents.ollamaModelService,
                                                                     coroutineScope = coroutineScope,
                                                                     onOpenTab = createNewSessionInCurrentProject,
@@ -547,6 +551,8 @@ fun GromozekaAppContent(
 
                                                                 ProjectArea.PROJECTS -> ProjectManagerScreen(
                                                                     projectService = appComponents.projectService,
+                                                                    projectMembershipService = appComponents.projectMembershipService,
+                                                                    userDirectoryService = appComponents.userDirectoryService,
                                                                     onBack = { projectArea = ProjectArea.CONVERSATIONS },
                                                                     onManageWorkspaces = { projectId ->
                                                                         workspaceManagerProjectId = projectId
@@ -642,6 +648,9 @@ fun GromozekaAppContent(
                                     workerCatalogService = appComponents.workerCatalogService,
                                     distributionService = appComponents.distributionService,
                                     personalAccessTokenService = appComponents.personalAccessTokenService,
+                                    userAdministrationService = appComponents.userAdministrationService,
+                                    canAdministerUsers =
+                                        appComponents.authenticatedUser.role == User.Role.OWNER,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
                                     onOpenTab = createNewSessionInCurrentProject,
@@ -749,6 +758,9 @@ fun GromozekaAppContent(
                                     workerCatalogService = appComponents.workerCatalogService,
                                     distributionService = appComponents.distributionService,
                                     personalAccessTokenService = appComponents.personalAccessTokenService,
+                                    userAdministrationService = appComponents.userAdministrationService,
+                                    canAdministerUsers =
+                                        appComponents.authenticatedUser.role == User.Role.OWNER,
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
                                     onOpenTab = createNewSessionInCurrentProject,

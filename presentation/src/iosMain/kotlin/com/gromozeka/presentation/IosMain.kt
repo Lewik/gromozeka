@@ -86,6 +86,7 @@ private fun GromozekaIosApp() {
             if (status.authenticatedUser != null) {
                 remoteApp = createRemoteAppComponents(
                     remoteUrl = targetUrl,
+                    authenticatedUser = requireNotNull(status.authenticatedUser),
                     scope = scope,
                     clientHomeDirectory = "ios",
                     clientPlatform = ClientPlatform.IOS,
@@ -139,9 +140,11 @@ private fun GromozekaIosApp() {
                             authenticationError = null
                             try {
                                 connection.authenticate(requireNotNull(authenticationStatus).initialized, input)
-                                authenticationStatus = connection.status()
+                                val authenticatedStatus = connection.status()
+                                authenticationStatus = authenticatedStatus
                                 remoteApp = createRemoteAppComponents(
                                     remoteUrl = requireNotNull(remoteUrl),
+                                    authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
                                     scope = scope,
                                     clientHomeDirectory = "ios",
                                     clientPlatform = ClientPlatform.IOS,

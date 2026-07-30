@@ -32,6 +32,21 @@ class ExposedIdentityRepository : IdentityRepository {
         Users.selectAll().count()
     }
 
+    override suspend fun countActiveOwners(): Long = dbQuery {
+        Users.selectAll()
+            .where {
+                (Users.status eq User.Status.ACTIVE.name) and
+                    (Users.role eq User.Role.OWNER.name)
+            }
+            .count()
+    }
+
+    override suspend fun listUsers(): List<User> = dbQuery {
+        Users.selectAll()
+            .orderBy(Users.username)
+            .map { it.toUser() }
+    }
+
     override suspend fun findUserById(id: User.Id): User? = dbQuery {
         Users.selectAll()
             .where { Users.id eq id.value }
@@ -65,6 +80,19 @@ class ExposedIdentityRepository : IdentityRepository {
             it[passwordHash] = credential.passwordHash
             it[passwordChangedAt] = credential.passwordChangedAt.toKotlin()
         }
+        user
+    }
+
+    override suspend fun updateUser(user: User): User = dbQuery {
+        val updated = Users.update(
+            where = { Users.id eq user.id.value },
+        ) {
+            it[displayName] = user.displayName
+            it[status] = user.status.name
+            it[role] = user.role.name
+            it[updatedAt] = user.updatedAt.toKotlin()
+        }
+        check(updated == 1) { "User does not exist: ${user.id.value}" }
         user
     }
 
@@ -222,6 +250,20 @@ class ExposedIdentityRepository : IdentityRepository {
         ) {
             it[PersonalAccessTokens.revokedAt] = revokedAt.toKotlin()
         } == 1
+    }
+
+    override suspend fun revokeAllPersonalAccessTokens(
+        userId: User.Id,
+        revokedAt: Instant,
+    ): Unit = dbQuery {
+        PersonalAccessTokens.update(
+            where = {
+                (PersonalAccessTokens.userId eq userId.value) and
+                    PersonalAccessTokens.revokedAt.isNull()
+            },
+        ) {
+            it[PersonalAccessTokens.revokedAt] = revokedAt.toKotlin()
+        }
     }
 
     private fun ResultRow.toUser(): User =

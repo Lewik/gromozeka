@@ -21,6 +21,8 @@ import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.UserConversationTabLayoutService
+import com.gromozeka.domain.service.UserAdministrationService
+import com.gromozeka.domain.service.UserDirectoryService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.domain.service.WorkerCatalogService
@@ -82,6 +84,8 @@ class GromozekaRemoteServer(
     private val clientPresentationRegistry: ClientPresentationRegistry,
     private val authenticationService: AuthenticationService,
     private val personalAccessTokenService: PersonalAccessTokenService,
+    private val userAdministrationService: UserAdministrationService,
+    private val userDirectoryService: UserDirectoryService,
     private val remoteAuthorization: GromozekaRemoteAuthorization,
 ) {
     private val log = KLoggers.logger(this)
@@ -261,6 +265,66 @@ class GromozekaRemoteServer(
                     personalAccessTokenService.revoke(
                         userId = authenticatedSession.principal.user.id,
                         tokenId = request.tokenId,
+                    )
+                )
+                ListUsersRequest -> UsersResponse(
+                    userAdministrationService.list(user)
+                )
+                is CreateUserRequest -> UserResponse(
+                    request.password.usePasswordChars { password ->
+                        userAdministrationService.create(
+                            actor = user,
+                            username = request.username,
+                            displayName = request.displayName,
+                            password = password,
+                            role = request.role,
+                        )
+                    }
+                )
+                is UpdateUserRequest -> UserResponse(
+                    userAdministrationService.update(
+                        actor = user,
+                        userId = request.userId,
+                        displayName = request.displayName,
+                        status = request.status,
+                        role = request.role,
+                    )
+                )
+                is ResetUserPasswordRequest -> {
+                    request.password.usePasswordChars { password ->
+                        userAdministrationService.resetPassword(
+                            actor = user,
+                            userId = request.userId,
+                            password = password,
+                        )
+                    }
+                    UserPasswordResetResponse
+                }
+                ListUserDirectoryRequest -> UserDirectoryResponse(
+                    userDirectoryService.listActive().map {
+                        UserDirectoryEntry(
+                            id = it.id,
+                            username = it.username,
+                            displayName = it.displayName,
+                        )
+                    }
+                )
+                is ListProjectMembershipsRequest -> ProjectMembershipsResponse(
+                    projectAccessService.listMemberships(user.id, request.projectId)
+                )
+                is SetProjectMembershipRequest -> ProjectMembershipResponse(
+                    projectAccessService.setMembership(
+                        actorUserId = user.id,
+                        projectId = request.projectId,
+                        userId = request.userId,
+                        role = request.role,
+                    )
+                )
+                is RemoveProjectMembershipRequest -> ProjectMembershipRemovedResponse(
+                    projectAccessService.removeMembership(
+                        actorUserId = user.id,
+                        projectId = request.projectId,
+                        userId = request.userId,
                     )
                 )
                 GetRuntimeCatalogTemplatesRequest -> RuntimeCatalogTemplatesResponse(
@@ -814,6 +878,15 @@ private fun com.gromozeka.domain.model.PersonalAccessToken.toPersonalAccessToken
         lastUsedAt = lastUsedAt,
         revokedAt = revokedAt,
     )
+
+internal suspend fun <T> String.usePasswordChars(block: suspend (CharArray) -> T): T {
+    val password = toCharArray()
+    return try {
+        block(password)
+    } finally {
+        password.fill('\u0000')
+    }
+}
 
 private class RemoteSessionSender(
     private val session: DefaultWebSocketServerSession,

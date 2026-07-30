@@ -8,9 +8,12 @@ import kotlinx.datetime.Instant
 
 interface IdentityRepository {
     suspend fun countUsers(): Long
+    suspend fun countActiveOwners(): Long
+    suspend fun listUsers(): List<User>
     suspend fun findUserById(id: User.Id): User?
     suspend fun findUserByUsername(normalizedUsername: String): User?
     suspend fun createUser(user: User, credential: LocalPasswordCredential): User
+    suspend fun updateUser(user: User): User
     suspend fun findPasswordCredential(userId: User.Id): LocalPasswordCredential?
     suspend fun updatePasswordCredential(credential: LocalPasswordCredential)
     suspend fun createSession(session: UserSession)
@@ -29,4 +32,5 @@ interface IdentityRepository {
         id: PersonalAccessToken.Id,
         revokedAt: Instant,
     ): Boolean
+    suspend fun revokeAllPersonalAccessTokens(userId: User.Id, revokedAt: Instant)
 }

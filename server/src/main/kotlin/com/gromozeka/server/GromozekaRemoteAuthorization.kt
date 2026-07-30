@@ -37,11 +37,16 @@ class GromozekaRemoteAuthorization(
             is SaveSettingsRequest,
             GetAiCatalogRequest,
             is SaveAiCatalogRequest,
+            ListUsersRequest,
+            is CreateUserRequest,
+            is UpdateUserRequest,
+            is ResetUserPasswordRequest,
             -> requireServerOwner(user)
 
             ListPersonalAccessTokensRequest,
             is CreatePersonalAccessTokenRequest,
             is RevokePersonalAccessTokenRequest,
+            ListUserDirectoryRequest,
             GetRuntimeCatalogTemplatesRequest,
             GetDefaultAgentRequest,
             CountAgentsRequest,
@@ -131,6 +136,28 @@ class GromozekaRemoteAuthorization(
                     request.projectId,
                     ProjectPermission.ADMIN,
                 )
+
+            is ListProjectMembershipsRequest ->
+                projectAccessService.requirePermission(
+                    user.id,
+                    request.projectId,
+                    ProjectPermission.READ,
+                )
+
+            is SetProjectMembershipRequest,
+            is RemoveProjectMembershipRequest,
+            -> {
+                val projectId = when (request) {
+                    is SetProjectMembershipRequest -> request.projectId
+                    is RemoveProjectMembershipRequest -> request.projectId
+                    else -> error("Unreachable project membership request")
+                }
+                projectAccessService.requirePermission(
+                    user.id,
+                    projectId,
+                    ProjectPermission.ADMIN,
+                )
+            }
 
             is FindProjectByIdRequest,
             is UpdateProjectLastUsedRequest,

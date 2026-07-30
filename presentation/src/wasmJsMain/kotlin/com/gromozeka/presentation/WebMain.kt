@@ -70,6 +70,7 @@ private fun GromozekaWebApp() {
             if (status.authenticatedUser != null) {
                 remoteApp = createRemoteAppComponents(
                     remoteUrl = remoteUrl,
+                    authenticatedUser = requireNotNull(status.authenticatedUser),
                     scope = scope,
                     clientHomeDirectory = "browser",
                     clientPlatform = layoutHints.clientPlatform,
@@ -132,9 +133,11 @@ private fun GromozekaWebApp() {
                         authenticationError = null
                         try {
                             authenticationConnection.authenticate(status.initialized, input)
-                            authenticationStatus = authenticationConnection.status()
+                            val authenticatedStatus = authenticationConnection.status()
+                            authenticationStatus = authenticatedStatus
                             remoteApp = createRemoteAppComponents(
                                 remoteUrl = remoteUrl,
+                                authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
                                 scope = scope,
                                 clientHomeDirectory = "browser",
                                 clientPlatform = layoutHints.clientPlatform,

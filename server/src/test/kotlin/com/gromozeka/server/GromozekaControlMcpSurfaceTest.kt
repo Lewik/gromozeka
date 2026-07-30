@@ -37,6 +37,10 @@ class GromozekaControlMcpSurfaceTest {
                 ControlMcpServerCatalogTools(
                     managementService = mock(),
                 ),
+                ControlMcpIdentityTools(
+                    userAdministrationService = mock(),
+                    userDirectoryService = mock(),
+                ),
             )
         ).create(testControlMcpCaller())
 
@@ -91,6 +95,14 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_default_agent_set",
                 "grz_user_profile_get",
                 "grz_user_profile_update",
+                "grz_user_list",
+                "grz_user_create",
+                "grz_user_update",
+                "grz_user_password_reset",
+                "grz_user_directory",
+                "grz_project_membership_list",
+                "grz_project_membership_set",
+                "grz_project_membership_remove",
                 "grz_web_tools_update",
                 "grz_mcp_server_list",
                 "grz_mcp_server_get",

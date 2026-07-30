@@ -33,6 +33,7 @@ import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.presentation.ui.viewmodel.LoadingViewModel
 import com.gromozeka.presentation.ui.ClientPlatform
+import com.gromozeka.remote.protocol.AuthenticatedUserView
 import com.gromozeka.remote.protocol.RemoteClientPlatform
 import com.gromozeka.domain.service.SettingsService
 import io.ktor.client.HttpClient
@@ -40,6 +41,7 @@ import kotlinx.coroutines.CoroutineScope
 
 suspend fun createRemoteAppComponents(
     remoteUrl: String,
+    authenticatedUser: AuthenticatedUserView,
     scope: CoroutineScope,
     clientHomeDirectory: String,
     clientPlatform: ClientPlatform,
@@ -118,6 +120,7 @@ suspend fun createRemoteAppComponents(
 
     return RemoteAppComponents(
         components = AppComponents(
+            authenticatedUser = authenticatedUser,
             appViewModel = appViewModel,
             ttsQueueService = ttsQueue,
             settingsService = remoteServices.settingsService,
@@ -129,6 +132,9 @@ suspend fun createRemoteAppComponents(
             distributionService = remoteServices.distributionService,
             memoryActionItemService = remoteServices.memoryActionItemService,
             personalAccessTokenService = remoteServices.personalAccessTokenService,
+            userAdministrationService = remoteServices.userAdministrationService,
+            userDirectoryService = remoteServices.userDirectoryService,
+            projectMembershipService = remoteServices.projectMembershipService,
             liveInterpreterService = remoteServices.liveInterpreterService,
             clientSideSpeechToTextService = clientSideSpeechToTextService,
             liveAudioStreamer = RollingClientLiveAudioStreamer(audioRecorder) {

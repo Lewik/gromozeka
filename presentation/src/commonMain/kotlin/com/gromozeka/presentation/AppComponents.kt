@@ -7,6 +7,9 @@ import com.gromozeka.client.RemoteDistributionService
 import com.gromozeka.client.RemoteLiveInterpreterService
 import com.gromozeka.client.RemoteMemoryActionItemService
 import com.gromozeka.client.RemotePersonalAccessTokenService
+import com.gromozeka.client.RemoteUserAdministrationService
+import com.gromozeka.client.RemoteUserDirectoryService
+import com.gromozeka.client.RemoteProjectMembershipService
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
@@ -34,9 +37,11 @@ import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.presentation.ui.viewmodel.LoadingViewModel
+import com.gromozeka.remote.protocol.AuthenticatedUserView
 import kotlinx.coroutines.flow.StateFlow
 
 data class AppComponents(
+    val authenticatedUser: AuthenticatedUserView,
     val appViewModel: AppViewModel,
     val ttsQueueService: TtsQueue,
     val settingsService: com.gromozeka.domain.service.SettingsService,
@@ -48,6 +53,9 @@ data class AppComponents(
     val distributionService: RemoteDistributionService,
     val memoryActionItemService: RemoteMemoryActionItemService,
     val personalAccessTokenService: RemotePersonalAccessTokenService,
+    val userAdministrationService: RemoteUserAdministrationService,
+    val userDirectoryService: RemoteUserDirectoryService,
+    val projectMembershipService: RemoteProjectMembershipService,
     val liveInterpreterService: RemoteLiveInterpreterService,
     val clientSideSpeechToTextService: ClientSideSpeechToTextService,
     val liveAudioStreamer: ClientLiveAudioStreamer,

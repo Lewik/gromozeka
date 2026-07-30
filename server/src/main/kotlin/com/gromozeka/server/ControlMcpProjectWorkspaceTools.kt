@@ -1,7 +1,9 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.ProjectPermission
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.WorkerPermission
@@ -112,6 +114,74 @@ internal class ControlMcpProjectWorkspaceTools(
             val id = input.requiredString("projectId")
             projectAccessService.delete(user.id, Project.Id(id))
             deletedResult("project", id)
+        },
+        controlMcpTool(
+            name = "grz_project_membership_list",
+            description = "List users and roles assigned to one project.",
+            inputSchema = idSchema("projectId", "Project id."),
+            readOnly = true,
+        ) { input ->
+            val projectId = Project.Id(input.requiredString("projectId"))
+            buildJsonObject {
+                put(
+                    "memberships",
+                    controlMcpJson.encodeToJsonElement(
+                        ListSerializer(ProjectMembership.serializer()),
+                        projectAccessService.listMemberships(user.id, projectId),
+                    )
+                )
+            }
+        },
+        controlMcpTool(
+            name = "grz_project_membership_set",
+            description = "Add a Runtime user to a project or replace that user's project role.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "projectId" to ControlMcpSchemas.string("Project id."),
+                    "userId" to ControlMcpSchemas.string("Runtime user id."),
+                    "role" to ControlMcpSchemas.string(
+                        description = "Project role.",
+                        enum = ProjectMembership.Role.entries.map { it.name },
+                    ),
+                ),
+                required = listOf("projectId", "userId", "role"),
+            ),
+            readOnly = false,
+            idempotent = true,
+        ) { input ->
+            entityResult(
+                "membership",
+                ProjectMembership.serializer(),
+                projectAccessService.setMembership(
+                    actorUserId = user.id,
+                    projectId = Project.Id(input.requiredString("projectId")),
+                    userId = User.Id(input.requiredString("userId")),
+                    role = ProjectMembership.Role.valueOf(input.requiredString("role")),
+                ),
+            )
+        },
+        controlMcpTool(
+            name = "grz_project_membership_remove",
+            description = "Remove a Runtime user's access to one project.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "projectId" to ControlMcpSchemas.string("Project id."),
+                    "userId" to ControlMcpSchemas.string("Runtime user id."),
+                ),
+                required = listOf("projectId", "userId"),
+            ),
+            readOnly = false,
+            destructive = true,
+            idempotent = true,
+        ) { input ->
+            val projectId = input.requiredString("projectId")
+            val userId = input.requiredString("userId")
+            projectAccessService.removeMembership(
+                actorUserId = user.id,
+                projectId = Project.Id(projectId),
+                userId = User.Id(userId),
+            )
+            deletedResult("project_membership", "$projectId:$userId")
         },
         controlMcpTool(
             name = "grz_workspace_list",

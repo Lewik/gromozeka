@@ -94,6 +94,12 @@ class GromozekaRemoteServices(
     val distributionService: RemoteDistributionService = RemoteDistributionService(client)
     val personalAccessTokenService: RemotePersonalAccessTokenService =
         RemotePersonalAccessTokenService(client)
+    val userAdministrationService: RemoteUserAdministrationService =
+        RemoteUserAdministrationService(client)
+    val userDirectoryService: RemoteUserDirectoryService =
+        RemoteUserDirectoryService(client)
+    val projectMembershipService: RemoteProjectMembershipService =
+        RemoteProjectMembershipService(client)
 
     suspend fun initialize() {
         remoteSettingsService.refreshFromServer()

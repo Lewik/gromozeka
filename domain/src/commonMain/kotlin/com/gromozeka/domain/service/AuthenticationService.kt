@@ -35,11 +35,53 @@ interface AuthenticationService {
     suspend fun revokeAllSessions(userId: User.Id)
 }
 
+interface UserAdministrationService {
+    suspend fun list(actor: User): List<User>
+
+    suspend fun create(
+        actor: User,
+        username: String,
+        displayName: String,
+        password: CharArray,
+        role: User.Role,
+    ): User
+
+    suspend fun update(
+        actor: User,
+        userId: User.Id,
+        displayName: String,
+        status: User.Status,
+        role: User.Role,
+    ): User
+
+    suspend fun resetPassword(
+        actor: User,
+        userId: User.Id,
+        password: CharArray,
+    )
+}
+
+interface UserDirectoryService {
+    suspend fun listActive(): List<User>
+}
+
 interface FirstUserBootstrapToken {
     fun currentToken(): String?
     fun consume(candidate: String): Boolean
     fun disable()
 }
+
+class UserAdministrationDeniedException :
+    IllegalStateException("Runtime owner permission is required")
+
+class LastActiveRuntimeOwnerException :
+    IllegalStateException("A runtime must have at least one active owner")
+
+class SoleProjectOwnerException(projectIds: List<String>) :
+    IllegalStateException(
+        "Disable is blocked because the user is the sole owner of projects: " +
+            projectIds.sorted().joinToString(),
+    )
 
 interface PersonalAccessTokenService {
     suspend fun issue(

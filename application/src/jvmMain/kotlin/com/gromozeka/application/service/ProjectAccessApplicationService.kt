@@ -11,6 +11,7 @@ import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.ProjectDomainService
 import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 
 @Service
@@ -126,7 +127,7 @@ class ProjectAccessApplicationService(
         return membershipRepository.findByProject(projectId)
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     override suspend fun setMembership(
         actorUserId: User.Id,
         projectId: Project.Id,
@@ -155,7 +156,7 @@ class ProjectAccessApplicationService(
         )
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     override suspend fun removeMembership(
         actorUserId: User.Id,
         projectId: Project.Id,
