@@ -70,6 +70,10 @@ fun main() {
     val personalAccessTokenService = context.getBean(PersonalAccessTokenService::class.java)
     val webRoot = resolveWebRoot()
     val secureCookie = resolveSecureCookie(host)
+    val trustForwardedHttps = resolveTrustForwardedHttps(
+        System.getProperty("gromozeka.trust-forwarded-https")
+            ?: System.getenv("GROMOZEKA_TRUST_FORWARDED_HTTPS"),
+    )
     val mcpHttpSecurity = resolveMcpHttpSecurityConfiguration(
         System.getProperty("gromozeka.mcp.allowed-hosts")
             ?: System.getenv("GROMOZEKA_MCP_ALLOWED_HOSTS"),
@@ -78,6 +82,7 @@ fun main() {
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
     val ktorServer = embeddedServer(CIO, port = port, host = host) {
+        attributes.put(trustForwardedHttpsKey, trustForwardedHttps)
         install(gromozekaBrowserSecurityHeaders)
         installHttpAuthenticationErrors()
         installMcpAuthentication(authenticationService, personalAccessTokenService)

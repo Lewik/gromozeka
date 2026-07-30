@@ -235,6 +235,12 @@ http://<machine-tailscale-or-lan-ip>:8765/
 
 For private phone/laptop access inside a tailnet, use Tailscale Serve instead of exposing Gromozeka publicly. The Wasm client does not need a separate HTTPS build. It resolves `/ws` from the page URL, so an `https://` page uses `wss://` automatically.
 
+When TLS terminates in Tailscale Serve or another trusted reverse proxy, set
+`GROMOZEKA_TRUST_FORWARDED_HTTPS=true`. This trusts an exact
+`X-Forwarded-Proto: https` header, so only enable it when untrusted clients
+cannot reach the Server directly. The AWS deployment enables it because the
+container port is published only on the instance loopback interface.
+
 Build the Wasm web client:
 
 ```bash
