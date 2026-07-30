@@ -2,6 +2,7 @@ package com.gromozeka.server
 
 import com.gromozeka.application.service.AiConversationMessageMapper
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -28,7 +29,10 @@ import com.gromozeka.remote.protocol.StartLiveInterpreterRequest
 import com.gromozeka.remote.protocol.StopLiveInterpreterCommand
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
@@ -40,7 +44,17 @@ import kotlinx.datetime.Clock
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.coroutineContext
+
+internal data class LiveInterpreterSessionOwner(
+    val userId: User.Id,
+    val connectionId: String,
+) {
+    init {
+        require(connectionId.isNotBlank()) { "Live interpreter connection id must not be blank" }
+    }
+}
 
 @Service
 class LiveInterpreterApplicationService(
@@ -52,13 +66,15 @@ class LiveInterpreterApplicationService(
     private val log = KLoggers.logger(this)
     private val sessions = ConcurrentHashMap<String, LiveInterpreterSession>()
 
-    fun start(
+    internal fun start(
+        owner: LiveInterpreterSessionOwner,
         request: StartLiveInterpreterRequest,
         eventSink: suspend (ServerPayload) -> Unit,
     ): LiveInterpreterStartedResponse {
         val sessionId = uuid7()
         val session = LiveInterpreterSession(
             sessionId = sessionId,
+            owner = owner,
             targetLanguage = request.targetLanguage.ifBlank { "ru" },
             sourceLanguageCode = request.sourceLanguageCode.ifBlank { "auto" },
             sourceLanguageHint = request.sourceLanguageHint.ifBlank {
@@ -82,31 +98,53 @@ class LiveInterpreterApplicationService(
         return LiveInterpreterStartedResponse(sessionId)
     }
 
-    suspend fun append(command: LiveInterpreterAudioChunkCommand) {
+    internal suspend fun append(
+        owner: LiveInterpreterSessionOwner,
+        command: LiveInterpreterAudioChunkCommand,
+    ): Boolean {
         val session = sessions[command.sessionId]
-        if (session == null) {
-            log.warn { "Live interpreter chunk ignored for missing session=${command.sessionId}" }
-            return
+        if (session == null || session.owner != owner) {
+            log.warn { "Live interpreter chunk ignored for inaccessible session=${command.sessionId}" }
+            return false
         }
-        session.append(command.chunk)
+        return session.append(command.chunk)
     }
 
-    suspend fun append(command: LiveInterpreterTranscriptChunkCommand) {
+    internal suspend fun append(
+        owner: LiveInterpreterSessionOwner,
+        command: LiveInterpreterTranscriptChunkCommand,
+    ): Boolean {
         val session = sessions[command.sessionId]
-        if (session == null) {
-            log.warn { "Live interpreter transcript ignored for missing session=${command.sessionId}" }
-            return
+        if (session == null || session.owner != owner) {
+            log.warn { "Live interpreter transcript ignored for inaccessible session=${command.sessionId}" }
+            return false
         }
-        session.append(command.chunk)
+        return session.append(command.chunk)
     }
 
-    suspend fun stop(command: StopLiveInterpreterCommand) {
-        val session = sessions.remove(command.sessionId) ?: return
-        session.stop()
+    internal suspend fun stop(
+        owner: LiveInterpreterSessionOwner,
+        command: StopLiveInterpreterCommand,
+    ): Boolean {
+        val session = sessions[command.sessionId]
+        if (session == null || session.owner != owner) {
+            log.warn { "Live interpreter stop ignored for inaccessible session=${command.sessionId}" }
+            return false
+        }
+        return session.stop()
+    }
+
+    internal suspend fun stopOwnedBy(owner: LiveInterpreterSessionOwner): Int {
+        val ownedSessions = sessions.values
+            .filter { it.owner == owner }
+            .filter { sessions.remove(it.sessionId, it) }
+        ownedSessions.forEach { it.cancel() }
+        return ownedSessions.size
     }
 
     private inner class LiveInterpreterSession(
         val sessionId: String,
+        val owner: LiveInterpreterSessionOwner,
         val targetLanguage: String,
         val sourceLanguageCode: String,
         val sourceLanguageHint: String,
@@ -120,12 +158,14 @@ class LiveInterpreterApplicationService(
         private val transcriptState = LiveInterpreterTranscriptState()
         private val transcriptStateMutex = Mutex()
         private val emitMutex = Mutex()
+        private val acceptingInput = AtomicBoolean(true)
         private var nextFinalSequenceNumber = 0
+        private lateinit var job: Job
 
         fun start() {
-            scope.launch {
+            job = scope.launch {
                 emit(LiveInterpreterStatusEvent(sessionId, "Live interpreter is listening"))
-                runCatching {
+                try {
                     coroutineScope {
                         val transcriptionJob = launch { runTranscriptionLoop() }
                         val stabilizationJob = launch { runStabilizationLoop() }
@@ -136,30 +176,43 @@ class LiveInterpreterApplicationService(
 
                         joinAll(transcriptionJob, stabilizationJob, translationJob)
                     }
-                }.onFailure { error ->
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
                     log.warn(error) { "Live interpreter failed: session=$sessionId error=${error.message}" }
                     emit(LiveInterpreterFailedEvent(sessionId, error.message ?: "Live interpreter failed"))
-                }.also {
+                } finally {
                     sessions.remove(sessionId, this@LiveInterpreterSession)
-                    emit(LiveInterpreterStoppedEvent(sessionId))
+                    if (coroutineContext.isActive) {
+                        emit(LiveInterpreterStoppedEvent(sessionId))
+                    }
                 }
             }
         }
 
-        suspend fun append(chunk: RemoteLiveAudioChunk) {
-            chunks.send(chunk)
-        }
+        fun append(chunk: RemoteLiveAudioChunk): Boolean =
+            acceptingInput.get() && chunks.trySend(chunk).isSuccess
 
-        suspend fun append(chunk: RemoteLiveTranscriptChunk) {
+        suspend fun append(chunk: RemoteLiveTranscriptChunk): Boolean {
+            if (!acceptingInput.get()) return false
             recordTranscriptDraft(
                 sequenceNumber = chunk.sequenceNumber,
                 transcript = chunk.text.trim(),
                 source = "client",
             )
+            return true
         }
 
-        suspend fun stop() {
+        fun stop(): Boolean {
+            if (!acceptingInput.compareAndSet(true, false)) return false
             chunks.close()
+            return true
+        }
+
+        suspend fun cancel() {
+            acceptingInput.set(false)
+            chunks.cancel()
+            job.cancelAndJoin()
         }
 
         private suspend fun runTranscriptionLoop() {
@@ -246,7 +299,7 @@ class LiveInterpreterApplicationService(
             }
             val newestDraft = context.pendingDrafts.maxOf { it.sequenceNumber }
             emit(LiveInterpreterStatusEvent(sessionId, "Stabilizing transcript draft $newestDraft"))
-            val finalizedOriginalSegments = runCatching {
+            val finalizedOriginalSegments = try {
                 val response = stabilizeTranscript(context)
                 log.info {
                     "Live interpreter stabilizer response: session=$sessionId pending=${context.pendingDrafts.size} " +
@@ -256,7 +309,9 @@ class LiveInterpreterApplicationService(
                 transcriptStateMutex.withLock {
                     transcriptState.applyStabilizerResponse(response)
                 }
-            }.onFailure { error ->
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
                 log.warn(error) {
                     "Live interpreter transcript stabilization failed: session=$sessionId " +
                         "draft=$newestDraft error=${error.message}"
@@ -267,7 +322,8 @@ class LiveInterpreterApplicationService(
                         message = "Transcript stabilization failed for draft $newestDraft: ${error.message}"
                     )
                 )
-            }.getOrNull().orEmpty()
+                emptyList()
+            }
             emitPendingDrafts()
 
             if (finalizedOriginalSegments.isEmpty()) {
@@ -310,12 +366,14 @@ class LiveInterpreterApplicationService(
 
         private suspend fun translateFinalizedOriginal(finalizedOriginal: LiveInterpreterFinalizedOriginal) {
             emit(LiveInterpreterStatusEvent(sessionId, "Translating finalized transcript ${finalizedOriginal.sequenceNumber}"))
-            val translation = runCatching {
+            val translation = try {
                 val context = transcriptStateMutex.withLock {
                     transcriptState.translationContext(finalizedOriginal.segments)
                 }
                 translate(context)
-            }.getOrElse { error ->
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
                 log.warn(error) {
                     "Live interpreter translation failed: session=$sessionId " +
                         "sequence=${finalizedOriginal.sequenceNumber} error=${error.message}"
@@ -431,14 +489,17 @@ class LiveInterpreterApplicationService(
         }
 
         private suspend fun emit(payload: ServerPayload) {
-            runCatching {
+            try {
                 emitMutex.withLock {
                     eventSink(payload)
                 }
-            }
-                .onFailure { error ->
-                    log.warn(error) { "Live interpreter event send failed: session=$sessionId error=${error.message}" }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                log.warn(error) {
+                    "Live interpreter event send failed: session=$sessionId error=${error.message}"
                 }
+            }
         }
     }
 

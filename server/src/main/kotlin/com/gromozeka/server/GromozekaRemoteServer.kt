@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.MemoryAction
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
@@ -91,6 +92,7 @@ class GromozekaRemoteServer(
     private val remoteAuthorization: GromozekaRemoteAuthorization,
 ) {
     private val log = KLoggers.logger(this)
+    private val sessionAccessGuard = RemoteSessionAccessGuard(authenticationService, remoteAuthorization)
     private val memoryActionItemRevisionJson = Json {
         encodeDefaults = true
         classDiscriminator = "memoryType"
@@ -104,6 +106,10 @@ class GromozekaRemoteServer(
         val sender = RemoteSessionSender(session)
         val conversationSubscriptions = mutableMapOf<String, Job>()
         val conversationTabLayoutSubscriptions = mutableMapOf<String, Job>()
+        val liveInterpreterOwner = LiveInterpreterSessionOwner(
+            userId = authenticatedSession.principal.user.id,
+            connectionId = connectionId,
+        )
         coroutineScope {
             val authenticationMonitor = launch {
                 while (isActive) {
@@ -121,9 +127,7 @@ class GromozekaRemoteServer(
             }
             try {
                 for (frame in session.incoming) {
-                    check(authenticationService.authenticate(authenticatedSession.token) != null) {
-                        "Authentication session is no longer active"
-                    }
+                    val currentUser = sessionAccessGuard.requireUser(authenticatedSession)
                     val decoded = when (frame) {
                         is Frame.Binary -> RemoteProtocolEncoding.CBOR to RemoteProtocolCodec.decodeClientBinary(frame.readBytes())
                         is Frame.Text -> RemoteProtocolEncoding.JSON to RemoteProtocolCodec.decodeClientText(frame.readText())
@@ -137,7 +141,7 @@ class GromozekaRemoteServer(
                         }
                         when (val payload = envelope.payload) {
                             is RegisterClientSessionCommand -> clientPresentationRegistry.register(
-                                userId = authenticatedSession.principal.user.id,
+                                userId = currentUser.id,
                                 connectionId = connectionId,
                                 command = payload,
                                 encoding = encoding,
@@ -159,7 +163,8 @@ class GromozekaRemoteServer(
                                     requestId = envelope.id,
                                     request = payload,
                                     encoding = encoding,
-                                    authenticatedSession = authenticatedSession,
+                                    user = currentUser,
+                                    liveInterpreterOwner = liveInterpreterOwner,
                                 )
                             }
                             is ObserveConversationCommand -> {
@@ -169,7 +174,7 @@ class GromozekaRemoteServer(
                                         sender,
                                         payload,
                                         encoding,
-                                        authenticatedSession.principal.user,
+                                        authenticatedSession,
                                     )
                                 }
                             }
@@ -181,7 +186,7 @@ class GromozekaRemoteServer(
                                         sender,
                                         payload,
                                         encoding,
-                                        authenticatedSession.principal.user,
+                                        authenticatedSession,
                                     )
                                 }
                             }
@@ -190,9 +195,12 @@ class GromozekaRemoteServer(
                             is SynthesizeSpeechStreamCommand -> launch {
                                 handleSynthesizeSpeechStream(sender, envelope.id, payload, encoding)
                             }
-                            is LiveInterpreterAudioChunkCommand -> liveInterpreterApplicationService.append(payload)
-                            is LiveInterpreterTranscriptChunkCommand -> liveInterpreterApplicationService.append(payload)
-                            is StopLiveInterpreterCommand -> liveInterpreterApplicationService.stop(payload)
+                            is LiveInterpreterAudioChunkCommand ->
+                                liveInterpreterApplicationService.append(liveInterpreterOwner, payload)
+                            is LiveInterpreterTranscriptChunkCommand ->
+                                liveInterpreterApplicationService.append(liveInterpreterOwner, payload)
+                            is StopLiveInterpreterCommand ->
+                                liveInterpreterApplicationService.stop(liveInterpreterOwner, payload)
                         }
                     }
                 }
@@ -207,6 +215,7 @@ class GromozekaRemoteServer(
                 conversationSubscriptions.clear()
                 conversationTabLayoutSubscriptions.values.forEach { it.cancel() }
                 conversationTabLayoutSubscriptions.clear()
+                liveInterpreterApplicationService.stopOwnedBy(liveInterpreterOwner)
                 clientPresentationRegistry.disconnect(connectionId)
             }
         }
@@ -217,10 +226,10 @@ class GromozekaRemoteServer(
         requestId: String,
         request: ClientRequest,
         encoding: RemoteProtocolEncoding,
-        authenticatedSession: AuthenticatedRemoteSession,
+        user: User,
+        liveInterpreterOwner: LiveInterpreterSessionOwner,
     ) {
-        val response = runCatching {
-            val user = authenticatedSession.principal.user
+        val response = try {
             remoteAuthorization.authorize(user, request)
             when (request) {
                 GetSettingsRequest -> SettingsResponse(settingsService.settings)
@@ -241,7 +250,7 @@ class GromozekaRemoteServer(
                     )
                 )
                 ListPersonalAccessTokensRequest -> PersonalAccessTokensResponse(
-                    personalAccessTokenService.list(authenticatedSession.principal.user.id)
+                    personalAccessTokenService.list(user.id)
                         .map { it.toPersonalAccessTokenView() }
                 )
                 is CreatePersonalAccessTokenRequest -> {
@@ -253,7 +262,7 @@ class GromozekaRemoteServer(
                         Clock.System.now() + lifetimeDays.days
                     }
                     val issued = personalAccessTokenService.issue(
-                        userId = authenticatedSession.principal.user.id,
+                        userId = user.id,
                         name = request.name,
                         scopes = request.scopes,
                         expiresAt = expiresAt,
@@ -265,7 +274,7 @@ class GromozekaRemoteServer(
                 }
                 is RevokePersonalAccessTokenRequest -> PersonalAccessTokenRevokedResponse(
                     personalAccessTokenService.revoke(
-                        userId = authenticatedSession.principal.user.id,
+                        userId = user.id,
                         tokenId = request.tokenId,
                     )
                 )
@@ -597,11 +606,14 @@ class GromozekaRemoteServer(
 
                 is TranscribeAudioRequest -> transcribeAudio(request.recording)
                 is SynthesizeSpeechRequest -> synthesizeSpeech(request)
-                is StartLiveInterpreterRequest -> liveInterpreterApplicationService.start(request) { payload ->
-                    sender.send(uuid7(), payload, encoding)
-                }
+                is StartLiveInterpreterRequest ->
+                    liveInterpreterApplicationService.start(liveInterpreterOwner, request) { payload ->
+                        sender.send(uuid7(), payload, encoding)
+                    }
             }
-        }.getOrElse { error ->
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             log.warn(error) { "Remote request failed: ${request::class.simpleName}: ${error.message}" }
             ErrorResponse(error.message ?: "Unknown server error", error::class.simpleName)
         }
@@ -613,17 +625,17 @@ class GromozekaRemoteServer(
         sender: RemoteSessionSender,
         command: ObserveConversationCommand,
         encoding: RemoteProtocolEncoding,
-        user: User,
+        authenticatedSession: AuthenticatedRemoteSession,
     ) {
         try {
-            remoteAuthorization.requireConversation(
-                user,
-                command.conversationId,
-                com.gromozeka.domain.model.ProjectPermission.READ,
-            )
+            sessionAccessGuard.requireConversationRead(authenticatedSession, command.conversationId)
             var liveEventsStarted = false
             conversationRuntimeService.observeConversation(command.conversationId, command.afterEventSequence)
                 .collect { event ->
+                    val currentUser = sessionAccessGuard.requireConversationRead(
+                        authenticatedSession,
+                        command.conversationId,
+                    )
                     when (event) {
                         is ConversationRuntimeEvent.SnapshotUpdated -> {
                             sender.send(
@@ -651,7 +663,7 @@ class GromozekaRemoteServer(
                                 encoding,
                             )
                             if (liveEventsStarted) {
-                                clientPresentationRegistry.present(user.id, event.message)
+                                clientPresentationRegistry.present(currentUser.id, event.message)
                             }
                         }
                         is ConversationRuntimeEvent.ExecutionCompleted -> sender.send(
@@ -694,9 +706,10 @@ class GromozekaRemoteServer(
         sender: RemoteSessionSender,
         command: ObserveConversationTabLayoutCommand,
         encoding: RemoteProtocolEncoding,
-        user: User,
+        authenticatedSession: AuthenticatedRemoteSession,
     ) {
-        conversationTabLayoutService.observe(user.id).collect { layout ->
+        conversationTabLayoutService.observe(authenticatedSession.principal.user.id).collect { layout ->
+            val user = sessionAccessGuard.requireUser(authenticatedSession)
             sender.send(
                 command.subscriptionId,
                 ConversationTabLayoutSnapshotEvent(
@@ -727,7 +740,7 @@ class GromozekaRemoteServer(
         command: SynthesizeSpeechStreamCommand,
         encoding: RemoteProtocolEncoding,
     ) {
-        runCatching {
+        try {
             log.info {
                 "Remote speech synthesis stream requested: stream=${command.streamId} " +
                     "textChars=${command.text.length} tone=${command.tone}"
@@ -758,7 +771,9 @@ class GromozekaRemoteServer(
                 "Remote speech synthesis stream completed: stream=${command.streamId} chunks=$sequenceNumber"
             }
             sender.send(requestId, SpeechSynthesisCompletedEvent(command.streamId), encoding)
-        }.onFailure { error ->
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             log.warn(error) { "Remote speech synthesis stream failed: stream=${command.streamId} error=${error.message}" }
             sender.send(requestId, SpeechSynthesisFailedEvent(command.streamId, error.message ?: "Unknown TTS error"), encoding)
         }
