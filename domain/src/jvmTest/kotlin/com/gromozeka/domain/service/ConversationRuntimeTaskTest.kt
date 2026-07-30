@@ -45,6 +45,20 @@ class ConversationRuntimeTaskTest {
         }
     }
 
+    @Test
+    fun `tool orchestration task must remain Server owned`() {
+        assertFailsWith<IllegalArgumentException> {
+            toolExecutionTask(
+                requirements = ConversationRuntimeTaskRequirements(
+                    capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
+                    target = ConversationRuntimeTaskTarget.Worker(
+                        workerId = ConversationRuntimeWorkerId("worker-1"),
+                    ),
+                ),
+            )
+        }
+    }
+
     private fun userTurnTask(
         messageConversationId: Conversation.Id = conversationId,
         requirements: ConversationRuntimeTaskRequirements,
@@ -96,6 +110,7 @@ class ConversationRuntimeTaskTest {
                     )
                 ),
                 returnDirect = false,
+                executionTarget = requirements.target,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "test:tool-task-1",

@@ -1076,10 +1076,14 @@ class ConversationEngineService(
                 iteration = iteration,
                 toolCalls = toolCalls,
                 returnDirect = routing.returnDirect,
+                executionTarget = routing.requirements.target,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:tools:$iteration",
-            requirements = routing.requirements,
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
+                target = ConversationRuntimeTaskTarget.Server,
+            ),
             createdAt = Clock.System.now(),
         )
 

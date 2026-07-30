@@ -1,6 +1,7 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
+import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -29,6 +30,12 @@ sealed interface WorkerGatewayMessage {
     @SerialName("heartbeat")
     data class Heartbeat(
         val sentAt: Instant,
+    ) : WorkerGatewayMessage
+
+    @Serializable
+    @SerialName("tool_catalog_updated")
+    data class ToolCatalogUpdated(
+        val tools: List<AiToolDescriptor>,
     ) : WorkerGatewayMessage
 
     @Serializable

@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.WorkerToolCatalogPublisher
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -44,7 +45,7 @@ class ConversationRuntimeWorker(
     @Value("\${gromozeka.runtime.worker.heartbeat-interval-millis:5000}")
     private val heartbeatIntervalMillis: Long = ConversationRuntimeTiming.workerHeartbeatIntervalMillis,
     @Qualifier("applicationScope") private val parentScope: CoroutineScope,
-) : SmartLifecycle {
+) : SmartLifecycle, WorkerToolCatalogPublisher {
     private val log = KLoggers.logger(this)
     private val startedAt = Clock.System.now()
     private val runtimeWorker = runtimeWorkerIdentity
@@ -70,7 +71,7 @@ class ConversationRuntimeWorker(
     val identity: ConversationRuntimeWorkerIdentity
         get() = runtimeWorker
 
-    val capabilities: Set<ConversationRuntimeCapability>
+    override val capabilities: Set<ConversationRuntimeCapability>
         get() = runtimeWorkerCapabilities
 
     override fun start() {
@@ -159,7 +160,7 @@ class ConversationRuntimeWorker(
 
     suspend fun awaitTermination(): Throwable? = termination.await()
 
-    suspend fun updateAdvertisedTools(tools: List<AiToolDescriptor>) {
+    override suspend fun updateAdvertisedTools(tools: List<AiToolDescriptor>) {
         require(tools.all { runtimeWorkerCapabilities.containsAll(it.metadata.requiredRuntimeCapabilities) }) {
             "Worker must declare every capability required by its advertised tools"
         }

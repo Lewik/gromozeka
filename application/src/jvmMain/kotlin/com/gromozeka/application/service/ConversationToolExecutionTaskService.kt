@@ -16,6 +16,8 @@ import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkerAccessService
+import com.gromozeka.domain.service.WorkerToolExecutionClient
+import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
@@ -42,6 +44,8 @@ class ConversationToolExecutionTaskService(
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val parallelToolExecutor: ParallelToolExecutor,
     private val workerAccessService: WorkerAccessService,
+    private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
+    private val workerToolExecutionClient: WorkerToolExecutionClient,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -58,10 +62,10 @@ class ConversationToolExecutionTaskService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val project = conversationService.getProject(conversationId)
-        val target = task.requirements.target
-        require(target.matches(executor)) {
-            "Tool execution task ${task.id.value} targets $target but is running on $executor"
+        require(task.requirements.target.matches(executor)) {
+            "Tool execution task ${task.id.value} targets ${task.requirements.target} but is running on $executor"
         }
+        val target = payload.executionTarget
         val workerTarget = target as? ConversationRuntimeTaskTarget.Worker
         workerTarget?.let {
             workerAccessService.requireProjectAccess(it.workerId, project.id)
@@ -104,16 +108,58 @@ class ConversationToolExecutionTaskService(
             )
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             clearRuntimeToolExecutions(conversationId, task.id, executor)
-            val executionResult = parallelToolExecutor.executeParallel(
-                toolCalls = payload.toolCalls,
-                toolContext = toolContext,
-                runtimeTaskId = task.id,
-                executor = executor,
-                expectedTarget = target,
-                onToolExecutionChanged = { execution ->
-                    upsertRuntimeToolExecution(conversationId, execution)
-                },
-            )
+            val executionResult = when (target) {
+                ConversationRuntimeTaskTarget.Server ->
+                    parallelToolExecutor.executeParallel(
+                        toolCalls = payload.toolCalls,
+                        toolContext = toolContext,
+                        runtimeTaskId = task.id,
+                        executor = executor,
+                        expectedTarget = target,
+                        onToolExecutionChanged = { execution ->
+                            upsertRuntimeToolExecution(conversationId, execution)
+                        },
+                    )
+
+                is ConversationRuntimeTaskTarget.Worker -> {
+                    val targetIdentity = workerTargetResolver.requireOnline(
+                        target.workerId,
+                        ConversationRuntimeCapability.TOOL_EXECUTION,
+                    )
+                    val startedAt = markRemoteToolExecutionsRunning(
+                        conversationId = conversationId,
+                        task = task,
+                        executor = executor,
+                        toolCalls = payload.toolCalls,
+                    )
+                    try {
+                        workerToolExecutionClient.execute(
+                            target = targetIdentity,
+                            executionTarget = target,
+                            toolCalls = payload.toolCalls,
+                            toolContext = toolContext,
+                        ).also { result ->
+                            markRemoteToolExecutionsCompleted(
+                                conversationId = conversationId,
+                                task = task,
+                                executor = executor,
+                                results = result.results,
+                                startedAt = startedAt,
+                            )
+                        }.let { ToolExecutionResult(it.results, it.returnDirect) }
+                    } catch (error: Throwable) {
+                        if (error is CancellationException) throw error
+                        markRemoteToolExecutionsFailed(
+                            conversationId = conversationId,
+                            task = task,
+                            executor = executor,
+                            toolCalls = payload.toolCalls,
+                            startedAt = startedAt,
+                        )
+                        throw error
+                    }
+                }
+            }
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
 
             val toolResultMessage = Conversation.Message(
@@ -216,6 +262,83 @@ class ConversationToolExecutionTaskService(
             )
         }
         publishRuntimeSnapshot(conversationId)
+    }
+
+    private suspend fun markRemoteToolExecutionsRunning(
+        conversationId: Conversation.Id,
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
+    ): kotlinx.datetime.Instant {
+        val startedAt = Clock.System.now()
+        toolCalls.forEach { toolCall ->
+            upsertRuntimeToolExecution(
+                conversationId,
+                ConversationRuntimeToolExecution(
+                    toolCallId = toolCall.id,
+                    toolName = toolCall.call.name,
+                    status = ConversationRuntimeToolExecution.Status.RUNNING,
+                    runtimeTaskId = task.id,
+                    executor = executor,
+                    startedAt = startedAt,
+                ),
+            )
+        }
+        return startedAt
+    }
+
+    private suspend fun markRemoteToolExecutionsCompleted(
+        conversationId: Conversation.Id,
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        results: List<Conversation.Message.ContentItem.ToolResult>,
+        startedAt: kotlinx.datetime.Instant,
+    ) {
+        val completedAt = Clock.System.now()
+        results.forEach { result ->
+            upsertRuntimeToolExecution(
+                conversationId,
+                ConversationRuntimeToolExecution(
+                    toolCallId = result.toolUseId,
+                    toolName = result.toolName,
+                    status = if (result.isError) {
+                        ConversationRuntimeToolExecution.Status.FAILED
+                    } else {
+                        ConversationRuntimeToolExecution.Status.COMPLETED
+                    },
+                    runtimeTaskId = task.id,
+                    executor = executor,
+                    startedAt = startedAt,
+                    completedAt = completedAt,
+                    isError = result.isError,
+                ),
+            )
+        }
+    }
+
+    private suspend fun markRemoteToolExecutionsFailed(
+        conversationId: Conversation.Id,
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
+        startedAt: kotlinx.datetime.Instant,
+    ) {
+        val failedAt = Clock.System.now()
+        toolCalls.forEach { toolCall ->
+            upsertRuntimeToolExecution(
+                conversationId,
+                ConversationRuntimeToolExecution(
+                    toolCallId = toolCall.id,
+                    toolName = toolCall.call.name,
+                    status = ConversationRuntimeToolExecution.Status.FAILED,
+                    runtimeTaskId = task.id,
+                    executor = executor,
+                    startedAt = startedAt,
+                    completedAt = failedAt,
+                    isError = true,
+                ),
+            )
+        }
     }
 
     private suspend fun clearRuntimeToolExecutions(

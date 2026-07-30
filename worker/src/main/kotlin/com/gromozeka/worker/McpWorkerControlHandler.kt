@@ -1,7 +1,7 @@
 package com.gromozeka.worker
 
-import com.gromozeka.application.service.ConversationRuntimeWorker
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.service.WorkerToolCatalogPublisher
 import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service
 class McpWorkerControlHandler(
     private val mcpConfigurationService: McpConfigurationService,
     private val aiToolProvider: AiToolProvider,
-    private val runtimeWorker: ConversationRuntimeWorker,
+    private val toolCatalogPublisher: WorkerToolCatalogPublisher,
 ) : WorkerControlHandler {
     override suspend fun handle(request: WorkerControlRequest): WorkerControlResult =
         when (val command = request.command) {
@@ -47,10 +47,10 @@ class McpWorkerControlHandler(
 
     private suspend fun updateAdvertisedTools() {
         val descriptors = aiToolProvider.getTools()
-            .supportedBy(runtimeWorker.capabilities)
+            .supportedBy(toolCatalogPublisher.capabilities)
             .filter { it.metadata.executionScope != AiToolExecutionScope.CONVERSATION_RUNTIME }
             .map { AiToolDescriptor(it.definition, it.metadata) }
             .sortedBy { it.definition.name }
-        runtimeWorker.updateAdvertisedTools(descriptors)
+        toolCatalogPublisher.updateAdvertisedTools(descriptors)
     }
 }

@@ -42,6 +42,11 @@ data class ConversationRuntimeTask(
                 "Conversation runtime task ${id.value} user message belongs to another conversation"
             }
         }
+        if (payload is Payload.ToolExecution) {
+            require(requirements.target == ConversationRuntimeTaskTarget.Server) {
+                "Conversation runtime tool orchestration must remain Server-owned"
+            }
+        }
     }
 
     @Serializable
@@ -77,6 +82,7 @@ data class ConversationRuntimeTask(
             val iteration: Int,
             val toolCalls: List<ContentItem.ToolCall>,
             val returnDirect: Boolean,
+            val executionTarget: ConversationRuntimeTaskTarget,
         ) : Payload {
             init {
                 require(iteration >= 1) { "Conversation tool execution iteration must be positive" }
@@ -176,10 +182,10 @@ data class ConversationRuntimeTask(
 }
 
 /**
- * Exact execution contract for distributed runtime implementations.
+ * Exact execution contract for conversation orchestration.
  *
- * `capabilities` says what the selected executor must be able to do.
- * `target` pins execution to the Server or one Worker and, when needed, one mounted workspace.
+ * Worker-side effects are represented by [ConversationRuntimeTask.Payload.ToolExecution.executionTarget];
+ * the durable conversation task itself remains Server-owned.
  */
 @Serializable
 data class ConversationRuntimeTaskRequirements(

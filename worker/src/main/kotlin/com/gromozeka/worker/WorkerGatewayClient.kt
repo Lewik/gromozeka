@@ -3,15 +3,21 @@ package com.gromozeka.worker
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.AiRequestResponseExecutionHandler
 import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
+import com.gromozeka.domain.service.WorkerToolCatalogPublisher
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.infrastructure.runtime.AiRequestResponseGatewayCodec
+import com.gromozeka.application.service.ParallelToolExecutor
+import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.remote.protocol.WorkerToolExecutionRequest
+import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
@@ -45,8 +51,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.SmartLifecycle
+import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 import java.net.URI
+import kotlinx.coroutines.channels.SendChannel
 import kotlin.time.Duration.Companion.seconds
 
 @ConfigurationProperties("gromozeka.worker-gateway")
@@ -67,6 +75,7 @@ data class WorkerGatewayProperties(
 }
 
 @Service
+@Primary
 @EnableConfigurationProperties(WorkerGatewayProperties::class)
 @ConditionalOnProperty(
     name = ["gromozeka.worker-gateway.enabled"],
@@ -78,10 +87,17 @@ class WorkerGatewayClient(
     descriptor: ConversationRuntimeWorkerDescriptor,
     private val operationHandler: WorkerGatewayOperationHandler,
     @Qualifier("applicationScope") private val scope: CoroutineScope,
-) : SmartLifecycle {
+) : SmartLifecycle, WorkerToolCatalogPublisher {
     private val log = KLoggers.logger(this)
     private val gatewayUrl: String
-    private val registration: ConversationRuntimeWorkerRegistration
+    private val startedAt = Clock.System.now()
+    override val capabilities: Set<com.gromozeka.domain.service.ConversationRuntimeCapability> =
+        descriptor.capabilities
+    private val environmentProfile = descriptor.environmentProfile
+    @Volatile
+    private var runtimeTools = descriptor.tools
+    @Volatile
+    private var activeOutgoing: SendChannel<WorkerGatewayMessage>? = null
     private val client = HttpClient(CIO) {
         install(WebSockets)
     }
@@ -94,16 +110,6 @@ class WorkerGatewayClient(
     init {
         properties.validate()
         gatewayUrl = workerGatewayWebSocketUrl(properties.serverUrl)
-        val startedAt = Clock.System.now()
-        registration = ConversationRuntimeWorkerRegistration(
-            identity = identity,
-            capabilities = descriptor.capabilities,
-            tools = descriptor.tools,
-            environmentProfile = descriptor.environmentProfile,
-            version = currentWorkerVersion(),
-            startedAt = startedAt,
-            lastHeartbeatAt = startedAt,
-        )
     }
 
     override fun start() {
@@ -156,13 +162,32 @@ class WorkerGatewayClient(
 
     override fun getPhase(): Int = 100
 
+    override suspend fun updateAdvertisedTools(tools: List<com.gromozeka.domain.tool.AiToolDescriptor>) {
+        runtimeTools = tools
+        activeOutgoing?.send(WorkerGatewayMessage.ToolCatalogUpdated(tools))
+            ?: error("Worker Gateway is offline; tool catalog update was not delivered")
+    }
+
     private suspend fun connect() {
         val socket = client.webSocketSession {
             url(gatewayUrl)
             header(HttpHeaders.Authorization, "Bearer ${properties.credential}")
         }
         try {
-            socket.sendMessage(WorkerGatewayMessage.Hello(registration))
+            val connectedAt = Clock.System.now()
+            socket.sendMessage(
+                WorkerGatewayMessage.Hello(
+                    ConversationRuntimeWorkerRegistration(
+                        identity = identity,
+                        capabilities = capabilities,
+                        tools = runtimeTools,
+                        environmentProfile = environmentProfile,
+                        version = currentWorkerVersion(),
+                        startedAt = startedAt,
+                        lastHeartbeatAt = connectedAt,
+                    )
+                )
+            )
             val welcome = withTimeout(HANDSHAKE_TIMEOUT) {
                 socket.receiveMessage()
             }
@@ -183,6 +208,7 @@ class WorkerGatewayClient(
             }
             coroutineScope {
                 val outgoing = Channel<WorkerGatewayMessage>(OUTGOING_BUFFER_SIZE)
+                activeOutgoing = outgoing
                 val writer = launch {
                     for (message in outgoing) {
                         socket.sendMessage(message)
@@ -214,6 +240,7 @@ class WorkerGatewayClient(
                         }
                     }
                 } finally {
+                    activeOutgoing = null
                     outgoing.close()
                     heartbeatJob.cancelAndJoin()
                     writer.cancelAndJoin()
@@ -255,6 +282,7 @@ class WorkerGatewayClient(
 class WorkerGatewayOperationHandler(
     private val workerControlHandler: WorkerControlHandler,
     private val aiRequestResponseHandler: AiRequestResponseExecutionHandler,
+    private val parallelToolExecutor: ParallelToolExecutor,
 ) {
     private val json = Json {
         encodeDefaults = true
@@ -282,8 +310,27 @@ class WorkerGatewayOperationHandler(
                 WorkerGatewayOperation.AI_REQUEST_RESPONSE ->
                     AiRequestResponseGatewayCodec.execute(request.payload, aiRequestResponseHandler)
 
-                WorkerGatewayOperation.TOOL_EXECUTION ->
-                    error("Worker Gateway operation ${request.operation} is not implemented")
+                WorkerGatewayOperation.TOOL_EXECUTION -> {
+                    val toolRequest = json.decodeFromString<WorkerToolExecutionRequest>(
+                        request.payload.decodeToString()
+                    )
+                    require(toolRequest.executionTarget.workerId == identity.workerId) {
+                        "Tool execution request targets another Worker"
+                    }
+                    val result = parallelToolExecutor.executeParallel(
+                        toolCalls = toolRequest.toolCalls,
+                        toolContext = ToolExecutionContext(toolRequest.toolContext),
+                        runtimeTaskId = null,
+                        executor = ConversationRuntimeExecutorIdentity.Worker(identity),
+                        expectedTarget = toolRequest.executionTarget,
+                    )
+                    json.encodeToString(
+                        WorkerToolExecutionResponse(
+                            results = result.results,
+                            returnDirect = result.returnDirect,
+                        )
+                    ).encodeToByteArray()
+                }
             }
             WorkerGatewayMessage.Response(
                 requestId = request.id,

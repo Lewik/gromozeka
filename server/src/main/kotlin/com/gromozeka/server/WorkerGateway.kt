@@ -259,6 +259,20 @@ class WorkerGatewayService(
                                 }
                             }
 
+                            is WorkerGatewayMessage.ToolCatalogUpdated -> {
+                                val updated = workerRegistry.updateTools(
+                                    identity = registration.identity,
+                                    tools = message.tools,
+                                    at = Clock.System.now(),
+                                )
+                                if (!updated) {
+                                    return@coroutineScope socket.fail(
+                                        "WORKER_SESSION_LOST",
+                                        "Worker runtime session is no longer current",
+                                    )
+                                }
+                            }
+
                             is WorkerGatewayMessage.Hello ->
                                 return@coroutineScope socket.fail(
                                     "DUPLICATE_HELLO",
