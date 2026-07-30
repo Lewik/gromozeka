@@ -6,8 +6,9 @@ import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
 import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
-import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.McpServerRefreshPublisher
+import com.gromozeka.domain.service.McpServerRevision
 import com.gromozeka.domain.service.McpServerMutationKind
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.Tool
@@ -18,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
+import org.springframework.beans.factory.support.StaticListableBeanFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -26,7 +28,7 @@ import kotlin.test.assertTrue
 
 class McpConfigurationServiceTest {
     @Test
-    fun `create validates live tools then persists and activates accepted snapshot`() = runBlocking {
+    fun `create validates live tools then activates accepted snapshot`() = runBlocking {
         fixture(tools = tools("Search", "Read", "Write")).use { fixture ->
             val config = fixture.config(
                 allowedTools = setOf("Search", "Read"),
@@ -44,14 +46,13 @@ class McpConfigurationServiceTest {
                 listOf("mcp__test_server__Read", "mcp__test_server__Search"),
                 fixture.service.getTools().map { it.definition.name },
             )
-            assertEquals(created, fixture.repository.find(config.id))
             assertFalse(fixture.client.closed)
             assertFalse(fixture.client.forceClosed)
         }
     }
 
     @Test
-    fun `failed update leaves persisted and active revision untouched`() = runBlocking {
+    fun `failed update leaves active revision untouched`() = runBlocking {
         val firstClient = FakeMcpConnectedClient(tools("Search"))
         val failedCandidate = FakeMcpConnectedClient(
             tools = emptyList(),
@@ -69,8 +70,6 @@ class McpConfigurationServiceTest {
                 )
             }
 
-            assertEquals(1, fixture.repository.find(config.id)?.revision)
-            assertEquals("Test MCP", fixture.repository.find(config.id)?.config?.displayName)
             assertEquals(listOf("mcp__test_server__Search"), fixture.service.getTools().map { it.definition.name })
             assertFalse(firstClient.closed)
             assertTrue(failedCandidate.forceClosed)
@@ -78,17 +77,17 @@ class McpConfigurationServiceTest {
     }
 
     @Test
-    fun `tools list changed only marks accepted revision for explicit refresh`() = runBlocking {
+    fun `tools list changed publishes accepted revision for explicit refresh`() = runBlocking {
         fixture(tools = tools("Search")).use { fixture ->
             val config = fixture.config()
             fixture.service.apply(McpServerMutationKind.CREATE, config, null)
 
             fixture.client.notifyToolsListChanged()
 
-            val persisted = fixture.repository.find(config.id)
-            assertEquals(1, persisted?.revision)
-            assertTrue(persisted?.refreshAvailable == true)
-            assertEquals(listOf("Search"), persisted?.snapshot?.tools?.map { it.remoteName })
+            assertEquals(
+                listOf(McpServerRevision(config.id, 1)),
+                fixture.refreshPublisher.references,
+            )
         }
     }
 
@@ -104,12 +103,11 @@ class McpConfigurationServiceTest {
                 config = config.copy(displayName = "Updated"),
                 expectedRevision = 1,
             )
+            fixture.refreshPublisher.references.clear()
 
             original.notifyToolsListChanged()
 
-            val persisted = fixture.repository.find(config.id)
-            assertEquals(2, persisted?.revision)
-            assertFalse(persisted?.refreshAvailable == true)
+            assertTrue(fixture.refreshPublisher.references.isEmpty())
         }
     }
 
@@ -141,23 +139,22 @@ class McpConfigurationServiceTest {
 
     @Test
     fun `startup keeps accepted snapshot active when remote tool shape drifted`() = runBlocking {
-        val repository = InMemoryMcpServerRepository()
         val config = testConfig(allowedTools = setOf("old_tool"))
         val persisted = server(config, listOf("old_tool"))
-        repository.create(persisted)
         val observed = FakeMcpConnectedClient(tools("new_tool"))
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val refreshPublisher = RecordingRefreshPublisher()
         val service = McpConfigurationService(
             workerId = WORKER_ID.value,
-            repository = repository,
             clientFactory = QueueMcpClientFactory(listOf(observed)),
+            refreshPublisher = refreshPublisher.provider(),
             coroutineScope = scope,
         )
         try {
-            service.initialize()
+            val refreshAvailable = service.synchronize(listOf(persisted))
 
             assertEquals(listOf("mcp__test_server__old_tool"), service.getTools().map { it.definition.name })
-            assertTrue(repository.find(config.id)?.refreshAvailable == true)
+            assertEquals(listOf(McpServerRevision(config.id, 1)), refreshAvailable)
             assertFalse(observed.closed)
         } finally {
             service.shutdown()
@@ -179,13 +176,13 @@ class McpConfigurationServiceTest {
     private class Fixture(
         clients: List<FakeMcpConnectedClient>,
     ) : AutoCloseable {
-        val repository = InMemoryMcpServerRepository()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val refreshPublisher = RecordingRefreshPublisher()
         val client = clients.first()
         val service = McpConfigurationService(
             workerId = WORKER_ID.value,
-            repository = repository,
             clientFactory = QueueMcpClientFactory(clients),
+            refreshPublisher = refreshPublisher.provider(),
             coroutineScope = scope,
         )
 
@@ -207,6 +204,21 @@ class McpConfigurationServiceTest {
                 allowedTools = allowedTools,
             )
     }
+}
+
+private class RecordingRefreshPublisher : McpServerRefreshPublisher {
+    val references = mutableListOf<McpServerRevision>()
+
+    override suspend fun publishRefreshAvailable(
+        serverId: McpServerId,
+        expectedRevision: Long,
+    ) {
+        references += McpServerRevision(serverId, expectedRevision)
+    }
+
+    fun provider() =
+        StaticListableBeanFactory(mapOf("refreshPublisher" to this))
+            .getBeanProvider(McpServerRefreshPublisher::class.java)
 }
 
 private class QueueMcpClientFactory(
@@ -256,61 +268,6 @@ private class FakeMcpConnectedClient(
 
     fun notifyToolsListChanged() {
         checkNotNull(toolsListChangedHandler).invoke()
-    }
-}
-
-private class InMemoryMcpServerRepository : McpServerRepository {
-    private val servers = mutableMapOf<McpServerId, McpServer>()
-
-    override suspend fun find(id: McpServerId): McpServer? = servers[id]
-
-    override suspend fun list(): List<McpServer> = servers.values.sortedBy { it.config.id.value }
-
-    override suspend fun listByWorker(workerId: ConversationRuntimeWorkerId): List<McpServer> =
-        list().filter { it.config.workerId == workerId }
-
-    override suspend fun create(server: McpServer): Boolean {
-        if (servers.containsKey(server.config.id)) {
-            return false
-        }
-        servers[server.config.id] = server
-        return true
-    }
-
-    override suspend fun replace(
-        server: McpServer,
-        expectedRevision: Long,
-    ): Boolean {
-        val current = servers[server.config.id] ?: return false
-        if (current.revision != expectedRevision) {
-            return false
-        }
-        servers[server.config.id] = server
-        return true
-    }
-
-    override suspend fun markRefreshAvailable(
-        id: McpServerId,
-        expectedRevision: Long,
-    ): Boolean {
-        val current = servers[id] ?: return false
-        if (current.revision != expectedRevision) {
-            return false
-        }
-        servers[id] = current.copy(refreshAvailable = true)
-        return true
-    }
-
-    override suspend fun delete(
-        id: McpServerId,
-        expectedRevision: Long,
-    ): Boolean {
-        val current = servers[id] ?: return false
-        if (current.revision != expectedRevision) {
-            return false
-        }
-        servers.remove(id)
-        return true
     }
 }
 

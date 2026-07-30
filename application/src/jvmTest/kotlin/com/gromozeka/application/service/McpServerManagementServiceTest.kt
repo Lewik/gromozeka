@@ -37,7 +37,10 @@ class McpServerManagementServiceTest {
         try {
             val created = fixture.service.create(fixture.server.config)
 
-            assertEquals(fixture.server, created)
+            assertEquals(fixture.server.config, created.config)
+            assertEquals(fixture.server.snapshot, created.snapshot)
+            assertEquals(1, created.revision)
+            assertEquals(created, fixture.repository.find(created.config.id))
             assertEquals(fixture.identity, fixture.request?.target)
             val command = fixture.request?.command as WorkerControlRequest.Command.ApplyMcpServer
             assertEquals(fixture.server.config, command.config)
@@ -262,12 +265,29 @@ class McpServerManagementServiceTest {
         private val controlClient = object : WorkerControlClient {
             override suspend fun execute(request: WorkerControlRequest): WorkerControlResult {
                 this@Fixture.request = request
-                repository.create(server)
-                return WorkerControlResult(
-                    requestId = request.id,
-                    status = WorkerControlResult.Status.SUCCEEDED,
-                    mcpServer = server,
-                )
+                return when (val command = request.command) {
+                    is WorkerControlRequest.Command.ApplyMcpServer -> {
+                        val current = repository.find(command.config.id)
+                        WorkerControlResult(
+                            requestId = request.id,
+                            status = WorkerControlResult.Status.SUCCEEDED,
+                            mcpServer = server.copy(
+                                config = command.config,
+                                revision = (current?.revision ?: 0) + 1,
+                            ),
+                        )
+                    }
+                    is WorkerControlRequest.Command.DeleteMcpServer ->
+                        WorkerControlResult(
+                            requestId = request.id,
+                            status = WorkerControlResult.Status.DELETED,
+                        )
+                    is WorkerControlRequest.Command.SynchronizeMcpServers ->
+                        WorkerControlResult(
+                            requestId = request.id,
+                            status = WorkerControlResult.Status.SYNCHRONIZED,
+                        )
+                }
             }
         }
         val service = McpServerManagementService(
@@ -315,7 +335,12 @@ private class TestMcpServerRepository : McpServerRepository {
     override suspend fun create(server: McpServer): Boolean =
         servers.putIfAbsent(server.config.id, server) == null
 
-    override suspend fun replace(server: McpServer, expectedRevision: Long): Boolean = error("Not used")
+    override suspend fun replace(server: McpServer, expectedRevision: Long): Boolean {
+        val current = servers[server.config.id] ?: return false
+        if (current.revision != expectedRevision) return false
+        servers[server.config.id] = server
+        return true
+    }
 
     override suspend fun markRefreshAvailable(id: McpServerId, expectedRevision: Long): Boolean = error("Not used")
 

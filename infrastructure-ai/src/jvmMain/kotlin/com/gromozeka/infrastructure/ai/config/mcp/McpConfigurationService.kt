@@ -5,35 +5,33 @@ import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
-import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
+import com.gromozeka.domain.service.McpServerRefreshPublisher
+import com.gromozeka.domain.service.McpServerRevision
 import com.gromozeka.domain.service.McpServerMutationKind
 import com.gromozeka.domain.tool.AiToolCallback
 import io.modelcontextprotocol.kotlin.sdk.types.McpJson
 import io.modelcontextprotocol.kotlin.sdk.types.Tool
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
-import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.context.annotation.DependsOn
 import org.springframework.stereotype.Service
 
 @Service
-@DependsOn("database")
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class McpConfigurationService(
     @Value("\${gromozeka.runtime.worker.id}") workerId: String,
-    private val repository: McpServerRepository,
     private val clientFactory: McpClientFactory,
+    private val refreshPublisher: ObjectProvider<McpServerRefreshPublisher>,
     @Qualifier("mcpCoroutineScope") private val coroutineScope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
@@ -43,24 +41,51 @@ class McpConfigurationService(
     @Volatile
     private var activeServers: Map<McpServerId, ActiveMcpServer> = emptyMap()
 
-    @PostConstruct
-    fun initialize() {
-        runBlocking {
-            repository.listByWorker(workerId).forEach { server ->
-                runCatching { activatePersisted(server) }
+    fun getTools(): List<AiToolCallback> =
+        activeServers.values
+            .sortedBy { it.server.config.id.value }
+            .flatMap(ActiveMcpServer::tools)
+
+    suspend fun synchronize(servers: List<McpServer>): List<McpServerRevision> =
+        mutationMutex.withLock {
+            require(servers.map { it.config.id }.distinct().size == servers.size) {
+                "Worker MCP synchronization contains duplicate server ids"
+            }
+            require(servers.all { it.config.workerId == workerId }) {
+                "Worker MCP synchronization contains a server assigned to another Worker"
+            }
+
+            val next = linkedMapOf<McpServerId, ActiveMcpServer>()
+            val refreshAvailable = mutableListOf<McpServerRevision>()
+            servers.sortedBy { it.config.id.value }.forEach { server ->
+                val current = activeServers[server.config.id]
+                if (current?.matches(server) == true) {
+                    next[server.config.id] = current
+                    return@forEach
+                }
+                runCatching { preparePersisted(server) }
+                    .onSuccess { prepared ->
+                        next[server.config.id] = prepared.active
+                        if (prepared.refreshAvailable) {
+                            refreshAvailable += McpServerRevision(
+                                serverId = server.config.id,
+                                revision = server.revision,
+                            )
+                        }
+                    }
                     .onFailure { error ->
                         log.error(error) {
                             "Failed to activate persisted MCP server ${server.config.id.value}: ${error.message}"
                         }
                     }
             }
-        }
-    }
 
-    fun getTools(): List<AiToolCallback> =
-        activeServers.values
-            .sortedBy { it.server.config.id.value }
-            .flatMap(ActiveMcpServer::tools)
+            activeServers.values
+                .filterNot { active -> next[active.server.config.id] === active }
+                .forEach(::close)
+            activeServers = next
+            refreshAvailable
+        }
 
     suspend fun apply(
         kind: McpServerMutationKind,
@@ -70,7 +95,7 @@ class McpConfigurationService(
         require(config.workerId == workerId) {
             "MCP server ${config.id.value} targets worker ${config.workerId.value}, not ${workerId.value}"
         }
-        val current = repository.find(config.id)
+        val current = activeServers[config.id]?.server
         validateMutation(kind, config, expectedRevision, current)
 
         val candidate = connect(config)
@@ -86,14 +111,6 @@ class McpConfigurationService(
                 updatedAt = now,
             )
             val activeCandidate = prepareActive(replacement, candidate)
-            val persisted = if (current == null) {
-                repository.create(replacement)
-            } else {
-                repository.replace(replacement, checkNotNull(expectedRevision))
-            }
-            check(persisted) {
-                "MCP server ${config.id.value} changed concurrently; read it again before retrying"
-            }
             activate(activeCandidate)
             replacement
         } catch (error: Throwable) {
@@ -106,22 +123,17 @@ class McpConfigurationService(
         serverId: McpServerId,
         expectedRevision: Long,
     ) = mutationMutex.withLock {
-        val current = repository.find(serverId)
+        val current = activeServers[serverId]?.server
             ?: error("MCP server not found: ${serverId.value}")
         require(current.config.workerId == workerId) {
             "MCP server ${serverId.value} belongs to worker ${current.config.workerId.value}"
         }
-        require(repository.delete(serverId, expectedRevision)) {
-            "MCP server ${serverId.value} changed concurrently; read it again before retrying"
+        require(current.revision == expectedRevision) {
+            "MCP server revision conflict: expected=$expectedRevision actual=${current.revision}"
         }
         val removed = activeServers[serverId]
         activeServers = activeServers - serverId
-        removed?.let {
-            runCatching(it.client::close)
-                .onFailure { error ->
-                    log.warn(error) { "Failed to close deleted MCP server client ${serverId.value}" }
-                }
-        }
+        removed?.let(::close)
     }
 
     @PreDestroy
@@ -135,28 +147,32 @@ class McpConfigurationService(
         activeServers = emptyMap()
     }
 
-    private suspend fun activatePersisted(server: McpServer) {
+    private suspend fun preparePersisted(server: McpServer): PreparedMcpServer {
         val client = connect(server.config)
         try {
             val observedTools = client.listAllTools()
             val observedSnapshot = runCatching {
                 snapshot(server.config, client, observedTools)
             }.getOrElse { error ->
-                repository.markRefreshAvailable(server.config.id, server.revision)
                 log.warn(error) {
                     "MCP server ${server.config.id.value} no longer matches its accepted snapshot; " +
                         "explicit refresh is required"
                 }
-                activate(prepareActive(server, client))
-                return
+                return PreparedMcpServer(
+                    active = prepareActive(server, client),
+                    refreshAvailable = true,
+                )
             }
-            if (observedSnapshot.fingerprint != server.snapshot.fingerprint) {
-                repository.markRefreshAvailable(server.config.id, server.revision)
+            val refreshAvailable = observedSnapshot.fingerprint != server.snapshot.fingerprint
+            if (refreshAvailable) {
                 log.warn {
                     "MCP server ${server.config.id.value} tools changed; explicit refresh is required"
                 }
             }
-            activate(prepareActive(server, client))
+            return PreparedMcpServer(
+                active = prepareActive(server, client),
+                refreshAvailable = refreshAvailable,
+            )
         } catch (error: Throwable) {
             client.forceClose()
             throw error
@@ -246,14 +262,10 @@ class McpConfigurationService(
                 if (active?.client !== client || active.server.revision != server.revision) {
                     return@launch
                 }
-                val current = repository.find(server.config.id)
-                if (
-                    current != null &&
-                    current.config.workerId == workerId &&
-                    current.revision == server.revision
-                ) {
-                    repository.markRefreshAvailable(current.config.id, current.revision)
-                }
+                refreshPublisher.getIfAvailable()?.publishRefreshAvailable(
+                    serverId = server.config.id,
+                    expectedRevision = server.revision,
+                )
             }
         }
         return active
@@ -264,12 +276,7 @@ class McpConfigurationService(
         val previous = activeServers[server.config.id]
         activeServers = activeServers + (server.config.id to active)
         previous?.let {
-            runCatching(it.client::close)
-                .onFailure { error ->
-                    log.warn(error) {
-                        "Failed to close replaced MCP server client ${server.config.id.value}"
-                    }
-                }
+            close(it)
         }
         log.info {
             "Activated MCP server ${server.config.id.value} revision=${server.revision} " +
@@ -312,5 +319,24 @@ class McpConfigurationService(
         val server: McpServer,
         val client: McpConnectedClient,
         val tools: List<AiToolCallback>,
+    ) {
+        fun matches(other: McpServer): Boolean =
+            server.config == other.config &&
+                server.snapshot == other.snapshot &&
+                server.revision == other.revision
+    }
+
+    private data class PreparedMcpServer(
+        val active: ActiveMcpServer,
+        val refreshAvailable: Boolean,
     )
+
+    private fun close(server: ActiveMcpServer) {
+        runCatching(server.client::close)
+            .onFailure { error ->
+                log.warn(error) {
+                    "Failed to close MCP server client ${server.server.config.id.value}"
+                }
+            }
+    }
 }

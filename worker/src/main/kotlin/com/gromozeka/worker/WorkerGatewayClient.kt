@@ -8,7 +8,6 @@ import com.gromozeka.domain.service.AiRequestResponseExecutionHandler
 import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
-import com.gromozeka.domain.service.WorkerToolCatalogPublisher
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
@@ -16,6 +15,7 @@ import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.AiRequestResponseGatewayCodec
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
 import com.gromozeka.remote.protocol.WorkerToolExecutionRequest
 import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
 import io.ktor.client.HttpClient
@@ -51,10 +51,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.SmartLifecycle
-import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 import java.net.URI
-import kotlinx.coroutines.channels.SendChannel
 import kotlin.time.Duration.Companion.seconds
 
 @ConfigurationProperties("gromozeka.worker-gateway")
@@ -75,7 +73,6 @@ data class WorkerGatewayProperties(
 }
 
 @Service
-@Primary
 @EnableConfigurationProperties(WorkerGatewayProperties::class)
 @ConditionalOnProperty(
     name = ["gromozeka.worker-gateway.enabled"],
@@ -86,18 +83,16 @@ class WorkerGatewayClient(
     private val identity: ConversationRuntimeWorkerIdentity,
     descriptor: ConversationRuntimeWorkerDescriptor,
     private val operationHandler: WorkerGatewayOperationHandler,
+    private val mcpConfigurationService: McpConfigurationService,
+    private val workerToolCatalog: WorkerToolCatalog,
+    private val outbound: WorkerGatewayOutbound,
     @Qualifier("applicationScope") private val scope: CoroutineScope,
-) : SmartLifecycle, WorkerToolCatalogPublisher {
+) : SmartLifecycle {
     private val log = KLoggers.logger(this)
     private val gatewayUrl: String
     private val startedAt = Clock.System.now()
-    override val capabilities: Set<com.gromozeka.domain.service.ConversationRuntimeCapability> =
-        descriptor.capabilities
+    private val capabilities = descriptor.capabilities
     private val environmentProfile = descriptor.environmentProfile
-    @Volatile
-    private var runtimeTools = descriptor.tools
-    @Volatile
-    private var activeOutgoing: SendChannel<WorkerGatewayMessage>? = null
     private val client = HttpClient(CIO) {
         install(WebSockets)
     }
@@ -162,12 +157,6 @@ class WorkerGatewayClient(
 
     override fun getPhase(): Int = 100
 
-    override suspend fun updateAdvertisedTools(tools: List<com.gromozeka.domain.tool.AiToolDescriptor>) {
-        runtimeTools = tools
-        activeOutgoing?.send(WorkerGatewayMessage.ToolCatalogUpdated(tools))
-            ?: error("Worker Gateway is offline; tool catalog update was not delivered")
-    }
-
     private suspend fun connect() {
         val socket = client.webSocketSession {
             url(gatewayUrl)
@@ -180,7 +169,7 @@ class WorkerGatewayClient(
                     ConversationRuntimeWorkerRegistration(
                         identity = identity,
                         capabilities = capabilities,
-                        tools = runtimeTools,
+                        tools = outbound.currentTools(),
                         environmentProfile = environmentProfile,
                         version = currentWorkerVersion(),
                         startedAt = startedAt,
@@ -192,10 +181,19 @@ class WorkerGatewayClient(
                 socket.receiveMessage()
             }
             when (welcome) {
-                is WorkerGatewayMessage.Welcome -> require(
-                    welcome.protocolVersion == WORKER_GATEWAY_PROTOCOL_VERSION
-                ) {
-                    "Server selected unsupported Worker Gateway protocol ${welcome.protocolVersion}"
+                is WorkerGatewayMessage.Welcome -> {
+                    require(welcome.protocolVersion == WORKER_GATEWAY_PROTOCOL_VERSION) {
+                        "Server selected unsupported Worker Gateway protocol ${welcome.protocolVersion}"
+                    }
+                    val refreshAvailable = mcpConfigurationService.synchronize(welcome.mcpServers)
+                    val runtimeTools = workerToolCatalog.snapshot()
+                    outbound.replaceBeforeReady(runtimeTools)
+                    socket.sendMessage(
+                        WorkerGatewayMessage.Ready(
+                            tools = runtimeTools,
+                            refreshAvailableMcpServers = refreshAvailable,
+                        )
+                    )
                 }
 
                 is WorkerGatewayMessage.Failure ->
@@ -208,7 +206,7 @@ class WorkerGatewayClient(
             }
             coroutineScope {
                 val outgoing = Channel<WorkerGatewayMessage>(OUTGOING_BUFFER_SIZE)
-                activeOutgoing = outgoing
+                outbound.attach(outgoing)
                 val writer = launch {
                     for (message in outgoing) {
                         socket.sendMessage(message)
@@ -240,7 +238,7 @@ class WorkerGatewayClient(
                         }
                     }
                 } finally {
-                    activeOutgoing = null
+                    outbound.detach(outgoing)
                     outgoing.close()
                     heartbeatJob.cancelAndJoin()
                     writer.cancelAndJoin()

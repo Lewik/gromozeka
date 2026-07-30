@@ -1,10 +1,12 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.McpServerRevision
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
@@ -165,6 +167,7 @@ class WorkerGatewaySession(
 class WorkerGatewayService(
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
     private val sessionRegistry: WorkerGatewaySessionRegistry,
+    private val mcpServerRepository: McpServerRepository,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -188,14 +191,33 @@ class WorkerGatewayService(
             )
         }
 
-        val registration = hello.registration.copy(
+        val initialRegistration = hello.registration.copy(
             lastHeartbeatAt = Clock.System.now(),
             stoppedAt = null,
         )
-        if (registration.identity.workerId != authenticatedWorker.id) {
+        if (initialRegistration.identity.workerId != authenticatedWorker.id) {
             return socket.fail("WORKER_ID_MISMATCH", "Worker credential does not match the declared Worker")
         }
 
+        socket.sendMessage(
+            WorkerGatewayMessage.Welcome(
+                heartbeatIntervalSeconds = HEARTBEAT_INTERVAL.seconds,
+                mcpServers = mcpServerRepository.listByWorker(authenticatedWorker.id),
+            )
+        )
+        val ready = try {
+            withTimeout(READY_TIMEOUT.toMillis()) {
+                socket.receiveMessage()
+            } as? WorkerGatewayMessage.Ready
+                ?: return socket.fail("EXPECTED_READY", "Worker Gateway must synchronize before becoming ready")
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            return socket.fail("INVALID_READY", "Worker Gateway readiness was not received")
+        }
+        ready.refreshAvailableMcpServers.forEach { reference ->
+            markMcpRefreshAvailable(authenticatedWorker.id, reference)
+        }
+        val registration = initialRegistration.copy(tools = ready.tools)
         val gatewaySession = WorkerGatewaySession(registration.identity)
         if (!sessionRegistry.attach(gatewaySession)) {
             return socket.fail("WORKER_ALREADY_CONNECTED", "Worker already has an active Gateway session")
@@ -224,11 +246,6 @@ class WorkerGatewayService(
                         socket.sendMessage(message)
                     }
                 }
-                gatewaySession.send(
-                    WorkerGatewayMessage.Welcome(
-                        heartbeatIntervalSeconds = HEARTBEAT_INTERVAL.seconds,
-                    )
-                )
                 try {
                     for (frame in socket.incoming) {
                         val message = frame.decodeMessage()
@@ -273,6 +290,16 @@ class WorkerGatewayService(
                                 }
                             }
 
+                            is WorkerGatewayMessage.McpServerRefreshAvailable -> {
+                                markMcpRefreshAvailable(
+                                    workerId = registration.identity.workerId,
+                                    reference = McpServerRevision(
+                                        serverId = message.serverId,
+                                        revision = message.expectedRevision,
+                                    ),
+                                )
+                            }
+
                             is WorkerGatewayMessage.Hello ->
                                 return@coroutineScope socket.fail(
                                     "DUPLICATE_HELLO",
@@ -280,6 +307,7 @@ class WorkerGatewayService(
                                 )
 
                             is WorkerGatewayMessage.Welcome,
+                            is WorkerGatewayMessage.Ready,
                             is WorkerGatewayMessage.Request,
                             is WorkerGatewayMessage.Failure ->
                                 return@coroutineScope socket.fail(
@@ -306,6 +334,21 @@ class WorkerGatewayService(
                 "Worker Gateway disconnected: worker=${registration.identity.workerId.value} " +
                     "session=${registration.identity.sessionId.value}"
             }
+        }
+    }
+
+    private suspend fun markMcpRefreshAvailable(
+        workerId: ConversationRuntimeWorkerId,
+        reference: McpServerRevision,
+    ) {
+        val server = mcpServerRepository.find(reference.serverId)
+            ?: error("Worker reported an unknown MCP server: ${reference.serverId.value}")
+        require(server.config.workerId == workerId) {
+            "Worker ${workerId.value} cannot update MCP server ${reference.serverId.value} " +
+                "assigned to ${server.config.workerId.value}"
+        }
+        if (server.revision == reference.revision) {
+            mcpServerRepository.markRefreshAvailable(reference.serverId, reference.revision)
         }
     }
 
@@ -337,6 +380,7 @@ class WorkerGatewayService(
 
     private companion object {
         val HELLO_TIMEOUT: Duration = Duration.ofSeconds(15)
+        val READY_TIMEOUT: Duration = Duration.ofMinutes(5)
         val HEARTBEAT_INTERVAL: Duration = Duration.ofSeconds(10)
         val HEARTBEAT_STALE_AFTER: Duration = Duration.ofSeconds(30)
     }

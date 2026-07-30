@@ -84,6 +84,15 @@ class McpServerManagementService(
         check(result.status == WorkerControlResult.Status.DELETED) {
             result.failureMessage()
         }
+        try {
+            check(repository.delete(serverId, expectedRevision)) {
+                "MCP server $serverId changed concurrently; read it again before retrying"
+            }
+        } catch (error: Throwable) {
+            runCatching { synchronizeWorker(current.config.workerId) }
+                .onFailure(error::addSuppressed)
+            throw error
+        }
     }
 
     private suspend fun apply(
@@ -102,7 +111,40 @@ class McpServerManagementService(
         check(result.status == WorkerControlResult.Status.SUCCEEDED) {
             result.failureMessage()
         }
-        val server = checkNotNull(result.mcpServer)
+        val server = try {
+            val observed = checkNotNull(result.mcpServer)
+            val current = repository.find(config.id)
+            when (kind) {
+                McpServerMutationKind.CREATE -> require(current == null) {
+                    "MCP server already exists: ${config.id.value}"
+                }
+                McpServerMutationKind.UPDATE,
+                McpServerMutationKind.REFRESH -> requireNotNull(current) {
+                    "MCP server not found: ${config.id.value}"
+                }
+            }
+            val now = Clock.System.now()
+            val candidate = observed.copy(
+                revision = (current?.revision ?: 0) + 1,
+                refreshAvailable = false,
+                createdAt = current?.createdAt ?: now,
+                updatedAt = now,
+            )
+            val persisted = when (kind) {
+                McpServerMutationKind.CREATE -> repository.create(candidate)
+                McpServerMutationKind.UPDATE,
+                McpServerMutationKind.REFRESH ->
+                    repository.replace(candidate, checkNotNull(expectedRevision))
+            }
+            check(persisted) {
+                "MCP server ${config.id.value} changed concurrently; read it again before retrying"
+            }
+            candidate
+        } catch (error: Throwable) {
+            runCatching { synchronizeWorker(config.workerId) }
+                .onFailure(error::addSuppressed)
+            throw error
+        }
         capabilityCatalogService.scheduleSource(
             AiToolCapabilitySource(
                 id = server.config.id.sourceId,
@@ -111,6 +153,18 @@ class McpServerManagementService(
             )
         )
         return server
+    }
+
+    private suspend fun synchronizeWorker(workerId: ConversationRuntimeWorkerId) {
+        val result = execute(
+            workerId = workerId,
+            command = WorkerControlRequest.Command.SynchronizeMcpServers(
+                repository.listByWorker(workerId)
+            ),
+        )
+        check(result.status == WorkerControlResult.Status.SYNCHRONIZED) {
+            result.failureMessage()
+        }
     }
 
     private suspend fun execute(

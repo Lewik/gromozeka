@@ -1,20 +1,16 @@
 package com.gromozeka.worker
 
-import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.WorkerToolCatalogPublisher
 import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
-import com.gromozeka.domain.tool.AiToolDescriptor
-import com.gromozeka.domain.tool.AiToolExecutionScope
-import com.gromozeka.domain.tool.supportedBy
 import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
 import org.springframework.stereotype.Service
 
 @Service
 class McpWorkerControlHandler(
     private val mcpConfigurationService: McpConfigurationService,
-    private val aiToolProvider: AiToolProvider,
+    private val workerToolCatalog: WorkerToolCatalog,
     private val toolCatalogPublisher: WorkerToolCatalogPublisher,
 ) : WorkerControlHandler {
     override suspend fun handle(request: WorkerControlRequest): WorkerControlResult =
@@ -43,14 +39,17 @@ class McpWorkerControlHandler(
                     status = WorkerControlResult.Status.DELETED,
                 )
             }
+            is WorkerControlRequest.Command.SynchronizeMcpServers -> {
+                mcpConfigurationService.synchronize(command.servers)
+                updateAdvertisedTools()
+                WorkerControlResult(
+                    requestId = request.id,
+                    status = WorkerControlResult.Status.SYNCHRONIZED,
+                )
+            }
         }
 
     private suspend fun updateAdvertisedTools() {
-        val descriptors = aiToolProvider.getTools()
-            .supportedBy(toolCatalogPublisher.capabilities)
-            .filter { it.metadata.executionScope != AiToolExecutionScope.CONVERSATION_RUNTIME }
-            .map { AiToolDescriptor(it.definition, it.metadata) }
-            .sortedBy { it.definition.name }
-        toolCatalogPublisher.updateAdvertisedTools(descriptors)
+        toolCatalogPublisher.updateAdvertisedTools(workerToolCatalog.snapshot())
     }
 }

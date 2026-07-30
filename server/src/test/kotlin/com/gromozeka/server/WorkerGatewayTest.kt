@@ -3,6 +3,9 @@ package com.gromozeka.server
 import com.gromozeka.application.service.InMemoryConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -78,7 +81,11 @@ class WorkerGatewayTest {
         )
         val runtimeRegistry = InMemoryConversationRuntimeWorkerRegistry()
         val sessionRegistry = WorkerGatewaySessionRegistry()
-        val gatewayService = WorkerGatewayService(runtimeRegistry, sessionRegistry)
+        val gatewayService = WorkerGatewayService(
+            runtimeRegistry,
+            sessionRegistry,
+            EmptyMcpServerRepository,
+        )
         val authenticationService = WorkerGatewayAuthenticationService(repository)
 
         application {
@@ -120,6 +127,13 @@ class WorkerGatewayTest {
             send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Hello(registration))))
             val welcome = WorkerGatewayCodec.decode((incoming.receive() as Frame.Binary).readBytes())
             assertTrue(welcome is WorkerGatewayMessage.Welcome)
+            assertTrue(welcome.mcpServers.isEmpty())
+            send(
+                Frame.Binary(
+                    true,
+                    WorkerGatewayCodec.encode(WorkerGatewayMessage.Ready(tools = emptyList())),
+                )
+            )
             val response = async {
                 sessionRegistry.execute(
                     target = identity,
@@ -197,6 +211,23 @@ class WorkerGatewayTest {
         MessageDigest.getInstance("SHA-256")
             .digest(value.encodeToByteArray())
             .joinToString("") { "%02x".format(it) }
+}
+
+private data object EmptyMcpServerRepository : McpServerRepository {
+    override suspend fun find(id: McpServerId): McpServer? = null
+
+    override suspend fun list(): List<McpServer> = emptyList()
+
+    override suspend fun listByWorker(workerId: ConversationRuntimeWorkerId): List<McpServer> = emptyList()
+
+    override suspend fun create(server: McpServer): Boolean = error("Not used")
+
+    override suspend fun replace(server: McpServer, expectedRevision: Long): Boolean = error("Not used")
+
+    override suspend fun markRefreshAvailable(id: McpServerId, expectedRevision: Long): Boolean =
+        error("Not used")
+
+    override suspend fun delete(id: McpServerId, expectedRevision: Long): Boolean = error("Not used")
 }
 
 private class GatewayAuthenticationRepository(

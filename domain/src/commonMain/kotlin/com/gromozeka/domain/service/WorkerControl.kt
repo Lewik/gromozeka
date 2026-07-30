@@ -47,6 +47,18 @@ data class WorkerControlRequest(
                 require(expectedRevision > 0) { "MCP delete expected revision must be positive" }
             }
         }
+
+        @Serializable
+        @SerialName("synchronize_mcp_servers")
+        data class SynchronizeMcpServers(
+            val servers: List<McpServer>,
+        ) : Command {
+            init {
+                require(servers.map { it.config.id }.distinct().size == servers.size) {
+                    "MCP synchronization server ids must be unique"
+                }
+            }
+        }
     }
 }
 
@@ -69,6 +81,7 @@ data class WorkerControlResult(
         require(
             (status == Status.SUCCEEDED && mcpServer != null && errorCode == null && errorMessage == null) ||
                 (status == Status.DELETED && mcpServer == null && errorCode == null && errorMessage == null) ||
+                (status == Status.SYNCHRONIZED && mcpServer == null && errorCode == null && errorMessage == null) ||
                 (status == Status.FAILED && mcpServer == null && !errorCode.isNullOrBlank() && !errorMessage.isNullOrBlank())
         ) {
             "Worker control result payload does not match status $status"
@@ -79,6 +92,7 @@ data class WorkerControlResult(
     enum class Status {
         SUCCEEDED,
         DELETED,
+        SYNCHRONIZED,
         FAILED,
     }
 }
@@ -89,4 +103,21 @@ interface WorkerControlClient {
 
 fun interface WorkerControlHandler {
     suspend fun handle(request: WorkerControlRequest): WorkerControlResult
+}
+
+fun interface McpServerRefreshPublisher {
+    suspend fun publishRefreshAvailable(
+        serverId: McpServerId,
+        expectedRevision: Long,
+    )
+}
+
+@Serializable
+data class McpServerRevision(
+    val serverId: McpServerId,
+    val revision: Long,
+) {
+    init {
+        require(revision > 0) { "MCP server revision must be positive" }
+    }
 }

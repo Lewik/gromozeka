@@ -1,5 +1,8 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.service.McpServerRevision
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlinx.datetime.Instant
@@ -23,7 +26,15 @@ sealed interface WorkerGatewayMessage {
     @SerialName("welcome")
     data class Welcome(
         val heartbeatIntervalSeconds: Long,
+        val mcpServers: List<McpServer>,
         val protocolVersion: Int = WORKER_GATEWAY_PROTOCOL_VERSION,
+    ) : WorkerGatewayMessage
+
+    @Serializable
+    @SerialName("ready")
+    data class Ready(
+        val tools: List<AiToolDescriptor>,
+        val refreshAvailableMcpServers: List<McpServerRevision> = emptyList(),
     ) : WorkerGatewayMessage
 
     @Serializable
@@ -37,6 +48,17 @@ sealed interface WorkerGatewayMessage {
     data class ToolCatalogUpdated(
         val tools: List<AiToolDescriptor>,
     ) : WorkerGatewayMessage
+
+    @Serializable
+    @SerialName("mcp_server_refresh_available")
+    data class McpServerRefreshAvailable(
+        val serverId: McpServerId,
+        val expectedRevision: Long,
+    ) : WorkerGatewayMessage {
+        init {
+            require(expectedRevision > 0) { "MCP server expected revision must be positive" }
+        }
+    }
 
     @Serializable
     @SerialName("request")
@@ -122,7 +144,7 @@ enum class WorkerGatewayOperation {
     TOOL_EXECUTION,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 1
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 2
 
 @OptIn(ExperimentalSerializationApi::class)
 object WorkerGatewayCodec {
