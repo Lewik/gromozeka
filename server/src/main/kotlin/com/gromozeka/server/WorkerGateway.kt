@@ -168,6 +168,7 @@ class WorkerGatewayService(
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
     private val sessionRegistry: WorkerGatewaySessionRegistry,
     private val mcpServerRepository: McpServerRepository,
+    private val serverRequestHandler: WorkerGatewayServerRequestHandler,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -276,6 +277,14 @@ class WorkerGatewayService(
                                 }
                             }
 
+                            is WorkerGatewayMessage.Request -> launch {
+                                workerRequestConcurrency.withPermit {
+                                    gatewaySession.send(
+                                        executeWorkerRequest(registration.identity, message)
+                                    )
+                                }
+                            }
+
                             is WorkerGatewayMessage.ToolCatalogUpdated -> {
                                 val updated = workerRegistry.updateTools(
                                     identity = registration.identity,
@@ -308,7 +317,6 @@ class WorkerGatewayService(
 
                             is WorkerGatewayMessage.Welcome,
                             is WorkerGatewayMessage.Ready,
-                            is WorkerGatewayMessage.Request,
                             is WorkerGatewayMessage.Failure ->
                                 return@coroutineScope socket.fail(
                                     "UNEXPECTED_MESSAGE",
@@ -336,6 +344,25 @@ class WorkerGatewayService(
             }
         }
     }
+
+    private suspend fun executeWorkerRequest(
+        identity: ConversationRuntimeWorkerIdentity,
+        request: WorkerGatewayMessage.Request,
+    ): WorkerGatewayMessage.Response =
+        runCatching {
+            WorkerGatewayMessage.Response(
+                requestId = request.id,
+                status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
+                payload = serverRequestHandler.execute(identity, request),
+            )
+        }.getOrElse { error ->
+            WorkerGatewayMessage.Response(
+                requestId = request.id,
+                status = WorkerGatewayMessage.Response.Status.FAILED,
+                errorCode = error::class.simpleName ?: "WorkerRequestFailure",
+                errorMessage = error.message ?: "Worker request failed",
+            )
+        }
 
     private suspend fun markMcpRefreshAvailable(
         workerId: ConversationRuntimeWorkerId,
@@ -383,6 +410,7 @@ class WorkerGatewayService(
         val READY_TIMEOUT: Duration = Duration.ofMinutes(5)
         val HEARTBEAT_INTERVAL: Duration = Duration.ofSeconds(10)
         val HEARTBEAT_STALE_AFTER: Duration = Duration.ofSeconds(30)
+        val workerRequestConcurrency = Semaphore(64)
     }
 }
 

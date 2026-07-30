@@ -6,8 +6,8 @@ import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorOutput
 import com.gromozeka.domain.service.CommandMonitorService
 import com.gromozeka.domain.service.CommandMonitorSpec
+import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.CancelCommandMonitorRequest
 import com.gromozeka.domain.tool.filesystem.GetCommandMonitorRequest
@@ -44,7 +44,7 @@ class GrzMonitorCommandToolImpl(
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzGetCommandMonitorToolImpl(
     private val commandMonitorService: CommandMonitorService,
-    private val runtimeCoordinator: ConversationRuntimeCoordinator,
+    private val runtimeState: CommandRuntimeStateService,
 ) : GrzGetCommandMonitorTool {
     override fun execute(request: GetCommandMonitorRequest, context: ToolExecutionContext?): Map<String, Any> =
         runBlocking {
@@ -56,7 +56,7 @@ class GrzGetCommandMonitorToolImpl(
                 afterByte = request.after_byte,
                 waitMillis = request.wait_ms,
             )?.let { output ->
-                val matchingEvents = runtimeCoordinator.findCommandMonitorEvents(conversationId, monitorId)
+                val matchingEvents = runtimeState.findCommandMonitorEvents(conversationId, monitorId)
                     .filter {
                         it.outputEndByte > output.outputStartByte &&
                             it.outputEndByte <= output.nextOutputByte
@@ -93,18 +93,18 @@ class GrzCancelCommandMonitorToolImpl(
 @Service
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzListCommandsAndMonitorsToolImpl(
-    private val runtimeCoordinator: ConversationRuntimeCoordinator,
+    private val runtimeState: CommandRuntimeStateService,
 ) : GrzListCommandsAndMonitorsTool {
     override fun execute(
         request: ListCommandsAndMonitorsRequest,
         context: ToolExecutionContext?,
     ): Map<String, Any> = runBlocking {
         val conversationId = context.requiredConversationId()
-        val commands = runtimeCoordinator.findCommandTasks()
+        val commands = runtimeState.findCommandTasks()
             .filter { it.conversationId == conversationId }
             .filter { request.include_terminal || !it.isTerminal }
             .sortedBy { it.createdAt }
-        val monitors = runtimeCoordinator.findCommandMonitors()
+        val monitors = runtimeState.findCommandMonitors()
             .filter { it.conversationId == conversationId }
             .filter { request.include_terminal || !it.isTerminal }
             .sortedBy { it.createdAt }

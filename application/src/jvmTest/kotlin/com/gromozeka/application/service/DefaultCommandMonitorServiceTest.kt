@@ -16,6 +16,7 @@ import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
@@ -384,9 +385,12 @@ class DefaultCommandMonitorServiceTest {
         lifecycleEventPublisher: CommandMonitorLifecycleEventPublisher = CommandMonitorLifecycleEventPublisher { },
     ) = DefaultCommandMonitorService(
         processRunner = runner,
-        runtimeCoordinator = coordinator,
-        runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-        lifecycleEventPublisher = lifecycleEventPublisher,
+        runtimeState = ServerCommandRuntimeStateService(
+            runtimeCoordinator = coordinator,
+            runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            commandTaskLifecycleEventPublisher = CommandTaskLifecycleEventPublisher { },
+            commandMonitorLifecycleEventPublisher = lifecycleEventPublisher,
+        ),
         runtimeWorkerDescriptor = objectProvider(workerDescriptor),
     )
 

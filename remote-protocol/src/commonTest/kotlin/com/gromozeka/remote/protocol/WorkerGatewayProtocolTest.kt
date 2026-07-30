@@ -13,4 +13,23 @@ class WorkerGatewayProtocolTest {
 
         assertEquals(expected, WorkerGatewayCodec.decode(WorkerGatewayCodec.encode(expected)))
     }
+
+    @Test
+    fun `worker command runtime messages round trip through binary codec`() {
+        val request = WorkerCommandRuntimeRequest.FindCommandTasks
+        val response = WorkerCommandRuntimeResponse.CommandTasksResult(emptyList())
+
+        assertEquals(
+            request,
+            WorkerCommandRuntimeGatewayCodec.decodeRequest(
+                WorkerCommandRuntimeGatewayCodec.encodeRequest(request)
+            ),
+        )
+        assertEquals(
+            response,
+            WorkerCommandRuntimeGatewayCodec.decodeResponse(
+                WorkerCommandRuntimeGatewayCodec.encodeResponse(response)
+            ),
+        )
+    }
 }

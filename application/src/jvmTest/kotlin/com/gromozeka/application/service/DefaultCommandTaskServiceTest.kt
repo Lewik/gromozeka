@@ -8,6 +8,7 @@ import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.CommandMonitorLifecycleEventPublisher
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionResult
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandTask
@@ -236,9 +237,7 @@ class DefaultCommandTaskServiceTest {
 
             val recoveredService = DefaultCommandTaskService(
                 processRunner = runner,
-                runtimeCoordinator = coordinator,
-                runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-                lifecycleEventPublisher = noOpLifecycleEventPublisher(),
+                runtimeState = runtimeState(coordinator),
                 runtimeWorkerDescriptor = objectProvider(workerDescriptor),
             )
             try {
@@ -275,9 +274,7 @@ class DefaultCommandTaskServiceTest {
 
             val recoveredService = DefaultCommandTaskService(
                 processRunner = runner,
-                runtimeCoordinator = coordinator,
-                runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-                lifecycleEventPublisher = noOpLifecycleEventPublisher(),
+                runtimeState = runtimeState(coordinator),
                 runtimeWorkerDescriptor = objectProvider(workerDescriptor),
             )
             try {
@@ -374,9 +371,7 @@ class DefaultCommandTaskServiceTest {
         val coordinator = ToggleableCommandTaskCoordinator(storedCoordinator)
         val service = DefaultCommandTaskService(
             processRunner = runner,
-            runtimeCoordinator = coordinator,
-            runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-            lifecycleEventPublisher = noOpLifecycleEventPublisher(),
+            runtimeState = runtimeState(coordinator),
             runtimeWorkerDescriptor = objectProvider(workerDescriptor),
         )
         try {
@@ -545,9 +540,7 @@ class DefaultCommandTaskServiceTest {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val service = DefaultCommandTaskService(
             processRunner = runner,
-            runtimeCoordinator = coordinator,
-            runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-            lifecycleEventPublisher = lifecycleEventPublisher,
+            runtimeState = runtimeState(coordinator, lifecycleEventPublisher),
             runtimeWorkerDescriptor = objectProvider(workerDescriptor),
         )
         try {
@@ -557,6 +550,16 @@ class DefaultCommandTaskServiceTest {
             projectDirectory.deleteRecursively()
         }
     }
+
+    private fun runtimeState(
+        coordinator: ConversationRuntimeCoordinator,
+        lifecycleEventPublisher: CommandTaskLifecycleEventPublisher = noOpLifecycleEventPublisher(),
+    ) = ServerCommandRuntimeStateService(
+        runtimeCoordinator = coordinator,
+        runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+        commandTaskLifecycleEventPublisher = lifecycleEventPublisher,
+        commandMonitorLifecycleEventPublisher = CommandMonitorLifecycleEventPublisher { },
+    )
 
     private fun context(
         projectDirectory: File,

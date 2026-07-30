@@ -142,9 +142,10 @@ enum class WorkerGatewayOperation {
     WORKER_CONTROL,
     AI_REQUEST_RESPONSE,
     TOOL_EXECUTION,
+    COMMAND_RUNTIME_STATE,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 2
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 3
 
 @OptIn(ExperimentalSerializationApi::class)
 object WorkerGatewayCodec {

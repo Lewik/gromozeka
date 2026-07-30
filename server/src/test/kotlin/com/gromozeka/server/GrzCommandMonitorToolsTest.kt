@@ -1,6 +1,8 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.InMemoryConversationRuntimeCoordinator
+import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
+import com.gromozeka.application.service.ServerCommandRuntimeStateService
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.CommandMonitor
@@ -8,7 +10,10 @@ import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorOutput
 import com.gromozeka.domain.service.CommandMonitorService
 import com.gromozeka.domain.service.CommandMonitorSpec
+import com.gromozeka.domain.service.CommandMonitorLifecycleEventPublisher
+import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -81,10 +86,11 @@ class GrzCommandMonitorToolsTest {
     fun `tool contracts expose owner routing modes and bounded long polling`() {
         val service = RecordingCommandMonitorService()
         val coordinator = InMemoryConversationRuntimeCoordinator()
+        val runtimeState = commandRuntimeState(coordinator)
         val monitor = GrzMonitorCommandToolImpl(service)
-        val get = GrzGetCommandMonitorToolImpl(service, coordinator)
+        val get = GrzGetCommandMonitorToolImpl(service, runtimeState)
         val cancel = GrzCancelCommandMonitorToolImpl(service)
-        val list = GrzListCommandsAndMonitorsToolImpl(coordinator)
+        val list = GrzListCommandsAndMonitorsToolImpl(runtimeState)
         val callbacks = ToolsRegistrationConfig()
             .toolCallbacksRegistrar(listOf(monitor, get, cancel, list))
             .callbacks
@@ -147,7 +153,7 @@ class GrzCommandMonitorToolsTest {
                 hasMoreOutput = false,
             )
         )
-        val tool = GrzGetCommandMonitorToolImpl(service, coordinator)
+        val tool = GrzGetCommandMonitorToolImpl(service, commandRuntimeState(coordinator))
 
         val result = tool.execute(
             GetCommandMonitorRequest(
@@ -208,7 +214,7 @@ class GrzCommandMonitorToolsTest {
                 worker = "worker-c",
             )
         )
-        val tool = GrzListCommandsAndMonitorsToolImpl(coordinator)
+        val tool = GrzListCommandsAndMonitorsToolImpl(commandRuntimeState(coordinator))
 
         val activeResult = tool.execute(ListCommandsAndMonitorsRequest(include_terminal = false), context())
         val allResult = tool.execute(ListCommandsAndMonitorsRequest(include_terminal = true), context())
@@ -225,6 +231,16 @@ class GrzCommandMonitorToolsTest {
 
     private fun context(): ToolExecutionContext =
         ToolExecutionContext(mapOf("conversationId" to conversationId.value))
+
+    private fun commandRuntimeState(
+        coordinator: InMemoryConversationRuntimeCoordinator,
+    ): CommandRuntimeStateService =
+        ServerCommandRuntimeStateService(
+            runtimeCoordinator = coordinator,
+            runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            commandTaskLifecycleEventPublisher = CommandTaskLifecycleEventPublisher { },
+            commandMonitorLifecycleEventPublisher = CommandMonitorLifecycleEventPublisher { },
+        )
 
     private fun commandTask(
         id: String,

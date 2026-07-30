@@ -1,6 +1,5 @@
 package com.gromozeka.worker
 
-import com.gromozeka.application.service.ConversationRuntimeWorker
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import kotlinx.coroutines.runBlocking
@@ -34,9 +33,9 @@ fun main(args: Array<String>) {
         .profiles(resolveSpringProfile())
         .run(*args)
 
-    val worker = context.getBean(ConversationRuntimeWorker::class.java)
-    check(worker.isRunning) { "Conversation runtime Worker did not start" }
-    val failure = runBlocking { worker.awaitTermination() }
+    val gateway = context.getBean(WorkerGatewayClient::class.java)
+    check(gateway.isRunning) { "Worker Gateway did not start" }
+    val failure = runBlocking { gateway.awaitTermination() }
     context.close()
     if (failure != null) {
         throw IllegalStateException("Conversation runtime Worker terminated unexpectedly", failure)

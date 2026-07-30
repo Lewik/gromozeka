@@ -12,7 +12,6 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiConfigurationService
-import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -31,16 +30,12 @@ import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
-import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.ConversationRuntimeServerSessionId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.WorkspaceDomainService
-import com.gromozeka.domain.tool.AiToolCallback
-import com.gromozeka.domain.tool.AiToolDefinition
-import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +58,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonObject
 import org.springframework.beans.factory.ObjectProvider
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -76,81 +70,6 @@ private const val TEST_EVENT_TIMEOUT_MS = 10_000L
 class ConversationRuntimeDispatcherTest {
     private val conversationId = Conversation.Id("conversation-runtime-dispatcher-test")
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
-
-    @Test
-    fun `worker terminates when its registry session is lost`() = runBlocking {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val registryDelegate = InMemoryConversationRuntimeWorkerRegistry()
-        val registry = object : ConversationRuntimeWorkerRegistry by registryDelegate {
-            override suspend fun heartbeat(
-                identity: ConversationRuntimeWorkerIdentity,
-                at: kotlinx.datetime.Instant,
-            ): Boolean = false
-        }
-        val worker = registrationWorker(
-            registry = registry,
-            descriptor = ConversationRuntimeWorkerDescriptor(
-                id = ConversationRuntimeWorkerId("lost-session-worker"),
-                capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
-                environmentProfile = testWorkerEnvironmentProfile(),
-            ),
-            scope = scope,
-            heartbeatIntervalMillis = 10,
-        )
-
-        try {
-            worker.start()
-            val failure = withTimeout(1_000) { worker.awaitTermination() }
-            assertTrue(failure?.message?.contains("lost registration") == true)
-            assertFalse(worker.isRunning)
-        } finally {
-            worker.stop()
-            scope.cancel()
-        }
-    }
-
-    @Test
-    fun `worker stays alive across transient heartbeat failures`() = runBlocking {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val registryDelegate = InMemoryConversationRuntimeWorkerRegistry()
-        val heartbeatAttempts = AtomicInteger()
-        val registry = object : ConversationRuntimeWorkerRegistry by registryDelegate {
-            override suspend fun heartbeat(
-                identity: ConversationRuntimeWorkerIdentity,
-                at: kotlinx.datetime.Instant,
-            ): Boolean {
-                if (heartbeatAttempts.incrementAndGet() <= 2) {
-                    error("Control plane is unavailable")
-                }
-                return registryDelegate.heartbeat(identity, at)
-            }
-        }
-        val worker = registrationWorker(
-            registry = registry,
-            descriptor = ConversationRuntimeWorkerDescriptor(
-                id = ConversationRuntimeWorkerId("recovering-heartbeat-worker"),
-                capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
-                environmentProfile = testWorkerEnvironmentProfile(),
-            ),
-            scope = scope,
-            heartbeatIntervalMillis = 10,
-        )
-
-        try {
-            worker.start()
-            withTimeout(1_000) {
-                while (heartbeatAttempts.get() < 3) {
-                    delay(10)
-                }
-            }
-
-            assertTrue(worker.isRunning)
-            assertNull(withTimeoutOrNull(100) { worker.awaitTermination() })
-        } finally {
-            worker.stop()
-            scope.cancel()
-        }
-    }
 
     @Test
     fun `dispatcher starts idle conversation for after tool result message`() = runBlocking {
@@ -494,44 +413,6 @@ class ConversationRuntimeDispatcherTest {
             assertNull(snapshot.activeTask)
         } finally {
             executor.stop()
-            scope.cancel()
-        }
-    }
-
-    @Test
-    fun `worker refreshes advertised tools without restarting`() = runBlocking {
-        val registry = InMemoryConversationRuntimeWorkerRegistry()
-        val provider = MutableAiToolProvider()
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val workerId = ConversationRuntimeWorkerId("dynamic-tools-worker")
-        val worker = registrationWorker(
-            registry = registry,
-            descriptor = ConversationRuntimeWorkerDescriptor(
-                id = workerId,
-                capabilities = setOf(
-                    ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
-                    ConversationRuntimeCapability.TOOL_EXECUTION,
-                ),
-                environmentProfile = testWorkerEnvironmentProfile(),
-            ),
-            scope = scope,
-            heartbeatIntervalMillis = 20,
-            aiToolProvider = provider,
-        )
-
-        try {
-            worker.start()
-            provider.enabled = true
-            waitUntil {
-                registry.find(workerId)?.tools?.map { it.definition.name } == listOf("dynamic_tool")
-            }
-
-            provider.enabled = false
-            waitUntil {
-                registry.find(workerId)?.tools?.isEmpty() == true
-            }
-        } finally {
-            worker.stop()
             scope.cancel()
         }
     }
@@ -1015,28 +896,6 @@ class ConversationRuntimeDispatcherTest {
         }
     }
 
-    private fun registrationWorker(
-        registry: ConversationRuntimeWorkerRegistry,
-        descriptor: ConversationRuntimeWorkerDescriptor,
-        scope: CoroutineScope,
-        workspaceMounts: Map<WorkspaceMount.Id, Workspace.Id> = emptyMap(),
-        heartbeatIntervalMillis: Long = ConversationRuntimeTiming.workerHeartbeatIntervalMillis,
-        aiConfigurationService: AiConfigurationService = TestAiConfigurationService(),
-        aiToolProvider: AiToolProvider = EmptyAiToolProvider,
-        identity: ConversationRuntimeWorkerIdentity = workerIdentity(descriptor.id),
-    ): ConversationRuntimeWorker =
-        ConversationRuntimeWorker(
-            runtimeWorkerRegistry = registry,
-            workspaceService = StaticWorkspaceDomainService(descriptor.id.value, workspaceMounts),
-            aiConfigurationService = aiConfigurationService,
-            aiToolProvider = aiToolProvider,
-            runtimeWorkerDescriptor = descriptor,
-            runtimeWorkerIdentity = identity,
-            workerVersion = "test",
-            heartbeatIntervalMillis = heartbeatIntervalMillis,
-            parentScope = scope,
-        )
-
     private fun runtimeExecutor(
         coordinator: InMemoryConversationRuntimeCoordinator,
         eventBus: InMemoryConversationRuntimeEventBus,
@@ -1066,40 +925,6 @@ class ConversationRuntimeDispatcherTest {
         )
     }
 
-    private fun runtimeWorkerNode(
-        coordinator: InMemoryConversationRuntimeCoordinator,
-        eventBus: InMemoryConversationRuntimeEventBus,
-        workQueue: ConversationRuntimeWorkConsumer,
-        registry: ConversationRuntimeWorkerRegistry,
-        runner: ConversationRuntimeTaskRunner,
-        descriptor: ConversationRuntimeWorkerDescriptor,
-        scope: CoroutineScope,
-        workspaceMounts: Map<WorkspaceMount.Id, Workspace.Id> = emptyMap(),
-    ): TestRuntimeWorkerNode {
-        val identity = workerIdentity(descriptor.id)
-        return TestRuntimeWorkerNode(
-            worker = registrationWorker(
-                registry = registry,
-                descriptor = descriptor,
-                scope = scope,
-                workspaceMounts = workspaceMounts,
-                identity = identity,
-            ),
-            executor = runtimeExecutor(
-                coordinator = coordinator,
-                eventBus = eventBus,
-                workQueue = workQueue,
-                runner = runner,
-                descriptor = ConversationRuntimeExecutorDescriptor(
-                    identity = ConversationRuntimeExecutorIdentity.Worker(identity),
-                    capabilities = descriptor.capabilities,
-                ),
-                scope = scope,
-                workspaceMounts = workspaceMounts,
-            ),
-        )
-    }
-
     private fun serverExecutorDescriptor(
         sessionId: String,
         capabilities: Set<ConversationRuntimeCapability>,
@@ -1124,21 +949,6 @@ class ConversationRuntimeDispatcherTest {
         fun start() = delegate.start()
 
         fun stop() = delegate.stop()
-    }
-
-    private class TestRuntimeWorkerNode(
-        private val worker: ConversationRuntimeWorker,
-        private val executor: TestRuntimeExecutor,
-    ) {
-        fun start() {
-            worker.start()
-            executor.start()
-        }
-
-        fun stop() {
-            executor.stop()
-            worker.stop()
-        }
     }
 
     private class TestAiConfigurationService(
@@ -1383,29 +1193,4 @@ class ConversationRuntimeDispatcherTest {
         }
     }
 
-}
-
-private object EmptyAiToolProvider : AiToolProvider {
-    override fun getTools() = emptyList<AiToolCallback>()
-}
-
-private class MutableAiToolProvider : AiToolProvider {
-    @Volatile
-    var enabled = false
-
-    override fun getTools(): List<AiToolCallback> =
-        if (enabled) listOf(DynamicTool) else emptyList()
-
-    private object DynamicTool : AiToolCallback {
-        override val definition = AiToolDefinition(
-            name = "dynamic_tool",
-            description = "Dynamic test tool",
-            inputSchema = """{"type":"object","properties":{}}""",
-        )
-
-        override fun call(
-            toolInput: String,
-            context: ToolExecutionContext?,
-        ): String = "ok"
-    }
 }

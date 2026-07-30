@@ -30,6 +30,7 @@ import io.ktor.websocket.close
 import io.ktor.websocket.readBytes
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -97,6 +98,7 @@ class WorkerGatewayClient(
         install(WebSockets)
     }
     private val lifecycleLock = Any()
+    private val termination = CompletableDeferred<Throwable?>()
     private var connectionJob: Job? = null
 
     @Volatile
@@ -110,6 +112,7 @@ class WorkerGatewayClient(
     override fun start() {
         synchronized(lifecycleLock) {
             if (running) return
+            check(!termination.isCompleted) { "Worker Gateway cannot restart after termination" }
             running = true
             connectionJob = scope.launch {
                 while (isActive) {
@@ -127,6 +130,15 @@ class WorkerGatewayClient(
                         delay(properties.reconnectDelaySeconds.seconds)
                     }
                 }
+            }.also { job ->
+                job.invokeOnCompletion { error ->
+                    if (running) {
+                        running = false
+                        termination.complete(
+                            error ?: IllegalStateException("Worker Gateway connection loop stopped")
+                        )
+                    }
+                }
             }
         }
     }
@@ -140,6 +152,7 @@ class WorkerGatewayClient(
             }
             connectionJob = null
             client.close()
+            termination.complete(null)
         }
     }
 
@@ -156,6 +169,8 @@ class WorkerGatewayClient(
     override fun isAutoStartup(): Boolean = true
 
     override fun getPhase(): Int = 100
+
+    suspend fun awaitTermination(): Throwable? = termination.await()
 
     private suspend fun connect() {
         val socket = client.webSocketSession {
@@ -226,6 +241,12 @@ class WorkerGatewayClient(
                             is WorkerGatewayMessage.Request -> launch {
                                 requestConcurrency.withPermit {
                                     outgoing.send(operationHandler.execute(identity, message))
+                                }
+                            }
+
+                            is WorkerGatewayMessage.Response -> {
+                                if (!outbound.accept(message)) {
+                                    error("Worker Gateway Server returned a response for an unknown request")
                                 }
                             }
 
@@ -329,6 +350,9 @@ class WorkerGatewayOperationHandler(
                         )
                     ).encodeToByteArray()
                 }
+
+                WorkerGatewayOperation.COMMAND_RUNTIME_STATE ->
+                    error("Server cannot invoke the Worker command runtime state operation")
             }
             WorkerGatewayMessage.Response(
                 requestId = request.id,

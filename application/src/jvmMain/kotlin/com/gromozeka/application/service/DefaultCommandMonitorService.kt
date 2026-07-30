@@ -5,19 +5,16 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorLifecycleEvent
-import com.gromozeka.domain.service.CommandMonitorLifecycleEventPublisher
 import com.gromozeka.domain.service.CommandMonitorOutput
 import com.gromozeka.domain.service.CommandMonitorService
 import com.gromozeka.domain.service.CommandMonitorSpec
+import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.MAX_COMMAND_MONITOR_WAIT_MILLIS
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.ConversationRuntimeEvent
-import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
@@ -60,9 +57,7 @@ import kotlin.math.min
 )
 class DefaultCommandMonitorService(
     private val processRunner: CommandProcessRunner,
-    private val runtimeCoordinator: ConversationRuntimeCoordinator,
-    private val runtimeEventBus: ConversationRuntimeEventBus,
-    private val lifecycleEventPublisher: CommandMonitorLifecycleEventPublisher,
+    private val runtimeState: CommandRuntimeStateService,
     private val runtimeWorkerDescriptor: ObjectProvider<ConversationRuntimeWorkerDescriptor>,
 ) : CommandMonitorService {
     private val log = KLoggers.logger(this)
@@ -74,8 +69,8 @@ class DefaultCommandMonitorService(
     private val monitorMutexes = Array(MONITOR_MUTEX_STRIPES) { Mutex() }
 
     @EventListener(ApplicationReadyEvent::class)
-    fun recoverOnStartup() = runBlocking {
-        recoverPersistedMonitors()
+    fun recoverOnStartup() {
+        scope.launch { recoverPersistedMonitorsWhenAvailable() }
     }
 
     override suspend fun start(
@@ -83,7 +78,7 @@ class DefaultCommandMonitorService(
         context: ToolExecutionContext,
     ): CommandMonitor {
         val conversationId = context.requiredConversationId()
-        val sourceTask = runtimeCoordinator.findCommandTask(conversationId, spec.commandTaskId)
+        val sourceTask = runtimeState.findCommandTask(conversationId, spec.commandTaskId)
             ?: error("Command task not found: ${spec.commandTaskId.value}")
         check(sourceTask.workerId == workerId) {
             "Command task ${sourceTask.id.value} belongs to worker ${sourceTask.workerId.value}, not ${workerId.value}"
@@ -200,7 +195,7 @@ class DefaultCommandMonitorService(
         conversationId: Conversation.Id,
         monitorId: CommandMonitor.Id,
     ): Boolean = monitorMutex(monitorId).withLock {
-        val stored = runtimeCoordinator.findCommandMonitor(conversationId, monitorId) ?: return@withLock false
+        val stored = runtimeState.findCommandMonitor(conversationId, monitorId) ?: return@withLock false
         if (stored.workerId != workerId || stored.isTerminal) return@withLock false
         val active = activeMonitors[monitorId]
         if (active != null) {
@@ -224,7 +219,7 @@ class DefaultCommandMonitorService(
     }
 
     internal suspend fun recoverPersistedMonitors() = lifecycleMutex.withLock {
-        runtimeCoordinator.findCommandMonitors()
+        runtimeState.findCommandMonitors()
             .asSequence()
             .filter { it.workerId == workerId && !it.isTerminal }
             .sortedBy { it.createdAt }
@@ -239,6 +234,22 @@ class DefaultCommandMonitorService(
                     )
                 }
             }
+    }
+
+    private suspend fun recoverPersistedMonitorsWhenAvailable() {
+        while (currentCoroutineContext().isActive) {
+            try {
+                recoverPersistedMonitors()
+                return
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                log.warn(error) {
+                    "Command monitor recovery is waiting for the control plane: ${error.message}"
+                }
+                delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+            }
+        }
     }
 
     private suspend fun monitor(active: ActiveMonitor) {
@@ -342,11 +353,11 @@ class DefaultCommandMonitorService(
 
     private suspend fun refreshControlPlaneState(active: ActiveMonitor) {
         try {
-            val storedMonitor = runtimeCoordinator.findCommandMonitor(
+            val storedMonitor = runtimeState.findCommandMonitor(
                 active.monitor.conversationId,
                 active.monitor.id,
             ) ?: error("Command monitor disappeared from runtime state: ${active.monitor.id.value}")
-            val sourceTask = runtimeCoordinator.findCommandTask(
+            val sourceTask = runtimeState.findCommandTask(
                 active.monitor.conversationId,
                 active.monitor.commandTaskId,
             ) ?: error("Source command disappeared from runtime state: ${active.monitor.commandTaskId.value}")
@@ -570,7 +581,7 @@ class DefaultCommandMonitorService(
     private suspend fun synchronize(
         monitor: CommandMonitor,
         events: List<CommandMonitorEvent> = emptyList(),
-    ) = runtimeCoordinator.synchronizeCommandMonitor(monitor, events).also { result ->
+    ) = runtimeState.synchronizeCommandMonitor(monitor, events).also { result ->
         result.evictedMonitors.forEach { evicted ->
             runCatching { processRunner.deleteOutputArtifacts(evicted.outputFile) }
                 .onFailure { error ->
@@ -753,7 +764,7 @@ class DefaultCommandMonitorService(
     ) {
         if (monitor.agentDefinitionId == null) return
         try {
-            lifecycleEventPublisher.publish(
+            runtimeState.publishCommandMonitorLifecycle(
                 CommandMonitorLifecycleEvent(
                     conversationId = monitor.conversationId,
                     monitorId = monitor.id,
@@ -773,12 +784,7 @@ class DefaultCommandMonitorService(
 
     private suspend fun publishSnapshot(conversationId: Conversation.Id) {
         try {
-            runtimeEventBus.publish(
-                ConversationRuntimeEvent.SnapshotUpdated(
-                    conversationId = conversationId,
-                    snapshot = runtimeCoordinator.snapshot(conversationId),
-                )
-            )
+            runtimeState.publishSnapshot(conversationId)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -792,7 +798,7 @@ class DefaultCommandMonitorService(
     ): CommandMonitor? {
         val active = activeMonitors[monitorId]
         if (active != null) return active.mutex.withLock { active.monitor }
-        return runtimeCoordinator.findCommandMonitor(conversationId, monitorId)
+        return runtimeState.findCommandMonitor(conversationId, monitorId)
     }
 
     private fun warnControlPlaneUnavailable(active: ActiveMonitor, error: Throwable) {

@@ -32,6 +32,8 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readBytes
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Instant
 import java.security.MessageDigest
 import java.time.Duration
@@ -85,6 +87,7 @@ class WorkerGatewayTest {
             runtimeRegistry,
             sessionRegistry,
             EmptyMcpServerRepository,
+            WorkerGatewayServerRequestHandler { _, _ -> error("Unexpected Worker request") },
         )
         val authenticationService = WorkerGatewayAuthenticationService(repository)
 
@@ -134,6 +137,11 @@ class WorkerGatewayTest {
                     WorkerGatewayCodec.encode(WorkerGatewayMessage.Ready(tools = emptyList())),
                 )
             )
+            withTimeout(5_000) {
+                while (sessionRegistry.find(identity.workerId) == null) {
+                    delay(10)
+                }
+            }
             val response = async {
                 sessionRegistry.execute(
                     target = identity,

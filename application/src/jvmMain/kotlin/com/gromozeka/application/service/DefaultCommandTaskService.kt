@@ -8,14 +8,11 @@ import com.gromozeka.domain.service.CommandProcessRunner
 import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEvent
-import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
 import com.gromozeka.domain.service.CommandTaskOutput
 import com.gromozeka.domain.service.CommandTaskService
-import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.ConversationRuntimeEvent
-import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -65,9 +62,7 @@ import kotlin.time.Duration.Companion.seconds
 )
 class DefaultCommandTaskService(
     private val processRunner: CommandProcessRunner,
-    private val runtimeCoordinator: ConversationRuntimeCoordinator,
-    private val runtimeEventBus: ConversationRuntimeEventBus,
-    private val lifecycleEventPublisher: CommandTaskLifecycleEventPublisher,
+    private val runtimeState: CommandRuntimeStateService,
     private val runtimeWorkerDescriptor: ObjectProvider<ConversationRuntimeWorkerDescriptor>,
     @Value("\${gromozeka.runtime.command-output.retention-hours:168}")
     private val outputRetentionHours: Long = DEFAULT_OUTPUT_RETENTION_HOURS,
@@ -91,8 +86,8 @@ class DefaultCommandTaskService(
     }
 
     @EventListener(ApplicationReadyEvent::class)
-    fun recoverOnStartup() = runBlocking {
-        recoverPersistedTasks()
+    fun recoverOnStartup() {
+        scope.launch { recoverPersistedTasksWhenAvailable() }
         scope.launch { runOutputGarbageCollectionLoop() }
     }
 
@@ -179,7 +174,7 @@ class DefaultCommandTaskService(
         require(waitMillis in 0..MAX_COMMAND_TASK_WAIT_MILLIS) {
             "wait_ms must be between 0 and $MAX_COMMAND_TASK_WAIT_MILLIS"
         }
-        val initial = runtimeCoordinator.findCommandTask(conversationId, taskId) ?: return null
+        val initial = runtimeState.findCommandTask(conversationId, taskId) ?: return null
         check(initial.workerId == workerId) {
             "Command task ${taskId.value} belongs to worker ${initial.workerId.value}, not ${workerId.value}"
         }
@@ -204,7 +199,7 @@ class DefaultCommandTaskService(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
     ): Boolean = taskMutex(taskId).withLock {
-        val stored = runtimeCoordinator.findCommandTask(conversationId, taskId) ?: return@withLock false
+        val stored = runtimeState.findCommandTask(conversationId, taskId) ?: return@withLock false
         if (stored.workerId != workerId) return@withLock false
         if (stored.isTerminal) return@withLock false
 
@@ -278,13 +273,17 @@ class DefaultCommandTaskService(
     }
 
     override suspend fun cancelAll(conversationId: Conversation.Id): Int {
-        val tasks = runtimeCoordinator.snapshot(conversationId).commandTasks
-            .filter { it.workerId == workerId && it.status == CommandTask.Status.WORKING }
+        val tasks = runtimeState.findCommandTasks()
+            .filter {
+                it.conversationId == conversationId &&
+                    it.workerId == workerId &&
+                    it.status == CommandTask.Status.WORKING
+            }
         return tasks.count { cancel(conversationId, it.id) }
     }
 
     internal suspend fun recoverPersistedTasks() = lifecycleMutex.withLock {
-        val tasks = runtimeCoordinator.findCommandTasks()
+        val tasks = runtimeState.findCommandTasks()
             .filter { it.workerId == workerId }
         runCatching {
             garbageCollectOutputArtifacts(tasks)
@@ -297,9 +296,25 @@ class DefaultCommandTaskService(
             .forEach { recoverPersistedTask(it) }
     }
 
+    private suspend fun recoverPersistedTasksWhenAvailable() {
+        while (currentCoroutineContext().isActive) {
+            try {
+                recoverPersistedTasks()
+                return
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                log.warn(error) {
+                    "Command recovery is waiting for the control plane: ${error.message}"
+                }
+                delay(CONTROL_PLANE_RETRY_INTERVAL_MILLIS)
+            }
+        }
+    }
+
     private suspend fun recoverPersistedTask(candidate: CommandTask) {
         taskMutex(candidate.id).withLock {
-            val task = runtimeCoordinator.findCommandTask(candidate.conversationId, candidate.id)
+            val task = runtimeState.findCommandTask(candidate.conversationId, candidate.id)
                 ?: return@withLock
             if (task.isTerminal || activeCommands.containsKey(task.id)) return@withLock
 
@@ -511,7 +526,7 @@ class DefaultCommandTaskService(
     private suspend fun pollCancellationRequest(activeCommand: ActiveCommand): Boolean =
         try {
             val task = activeCommand.task
-            runtimeCoordinator.findCommandTask(task.conversationId, task.id)
+            runtimeState.findCommandTask(task.conversationId, task.id)
                 ?.cancellationRequestedAt != null
         } catch (error: CancellationException) {
             throw error
@@ -607,7 +622,7 @@ class DefaultCommandTaskService(
             return
         }
         try {
-            lifecycleEventPublisher.publish(
+            runtimeState.publishCommandTaskLifecycle(
                 CommandTaskLifecycleEvent(
                     conversationId = task.conversationId,
                     taskId = task.id,
@@ -625,7 +640,7 @@ class DefaultCommandTaskService(
     }
 
     private suspend fun persistCommandTask(task: CommandTask) {
-        runtimeCoordinator.upsertCommandTask(task).evictedTasks.forEach { evictedTask ->
+        runtimeState.upsertCommandTask(task).evictedTasks.forEach { evictedTask ->
             runCatching { processRunner.deleteOutputArtifacts(evictedTask.outputFile) }
                 .onFailure { error ->
                     log.warn(error) { "Failed to delete evicted command output: ${evictedTask.outputFile}" }
@@ -646,9 +661,9 @@ class DefaultCommandTaskService(
     private suspend fun garbageCollectOutputArtifacts(
         tasks: List<CommandTask>? = null,
     ) {
-        val workerTasks = tasks ?: runtimeCoordinator.findCommandTasks()
+        val workerTasks = tasks ?: runtimeState.findCommandTasks()
             .filter { it.workerId == workerId }
-        val workerMonitors = runtimeCoordinator.findCommandMonitors()
+        val workerMonitors = runtimeState.findCommandMonitors()
             .filter { it.workerId == workerId }
         val activeMonitors = workerMonitors.filterNot(CommandMonitor::isTerminal)
         val protectedSourceTaskIds = activeMonitors.mapTo(mutableSetOf()) { it.commandTaskId }
@@ -773,12 +788,7 @@ class DefaultCommandTaskService(
 
     private suspend fun publishSnapshot(conversationId: Conversation.Id) {
         try {
-            runtimeEventBus.publish(
-                ConversationRuntimeEvent.SnapshotUpdated(
-                    conversationId = conversationId,
-                    snapshot = runtimeCoordinator.snapshot(conversationId),
-                )
-            )
+            runtimeState.publishSnapshot(conversationId)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -794,7 +804,7 @@ class DefaultCommandTaskService(
         if (activeCommand != null) {
             return activeCommand.mutex.withLock { activeCommand.task }
         }
-        return runtimeCoordinator.findCommandTask(conversationId, taskId)
+        return runtimeState.findCommandTask(conversationId, taskId)
     }
 
     private fun taskMutex(taskId: CommandTask.Id): Mutex {
