@@ -3,9 +3,15 @@ package com.gromozeka.worker
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
+import com.gromozeka.domain.service.AiRequestResponseExecutionHandler
+import com.gromozeka.domain.service.WorkerControlHandler
+import com.gromozeka.domain.service.WorkerControlRequest
+import com.gromozeka.domain.service.WorkerControlResult
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
+import com.gromozeka.remote.protocol.WorkerGatewayOperation
+import com.gromozeka.infrastructure.runtime.AiRequestResponseGatewayCodec
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
@@ -21,12 +27,19 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.Clock
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -63,6 +76,7 @@ class WorkerGatewayClient(
     private val properties: WorkerGatewayProperties,
     private val identity: ConversationRuntimeWorkerIdentity,
     descriptor: ConversationRuntimeWorkerDescriptor,
+    private val operationHandler: WorkerGatewayOperationHandler,
     @Qualifier("applicationScope") private val scope: CoroutineScope,
 ) : SmartLifecycle {
     private val log = KLoggers.logger(this)
@@ -167,25 +181,43 @@ class WorkerGatewayClient(
             log.info {
                 "Worker Gateway connected: worker=${identity.workerId.value} url=$gatewayUrl"
             }
-            val heartbeatJob = scope.launch {
-                while (isActive && socket.isActive) {
-                    delay(welcome.heartbeatIntervalSeconds.seconds)
-                    socket.sendMessage(WorkerGatewayMessage.Heartbeat(Clock.System.now()))
-                }
-            }
-            try {
-                for (frame in socket.incoming) {
-                    val message = frame.decodeMessage()
-                        ?: error("Worker Gateway Server sent a non-binary frame")
-                    when (message) {
-                        is WorkerGatewayMessage.Failure ->
-                            error("Worker Gateway failed: ${message.code}: ${message.message}")
-
-                        else -> error("Worker Gateway Server sent an unexpected ${message::class.simpleName}")
+            coroutineScope {
+                val outgoing = Channel<WorkerGatewayMessage>(OUTGOING_BUFFER_SIZE)
+                val writer = launch {
+                    for (message in outgoing) {
+                        socket.sendMessage(message)
                     }
                 }
-            } finally {
-                heartbeatJob.cancelAndJoin()
+                val heartbeatJob = launch {
+                    while (isActive && socket.isActive) {
+                        delay(welcome.heartbeatIntervalSeconds.seconds)
+                        outgoing.send(WorkerGatewayMessage.Heartbeat(Clock.System.now()))
+                    }
+                }
+                try {
+                    for (frame in socket.incoming) {
+                        val message = frame.decodeMessage()
+                            ?: error("Worker Gateway Server sent a non-binary frame")
+                        when (message) {
+                            is WorkerGatewayMessage.Request -> launch {
+                                requestConcurrency.withPermit {
+                                    outgoing.send(operationHandler.execute(identity, message))
+                                }
+                            }
+
+                            is WorkerGatewayMessage.Failure ->
+                                error("Worker Gateway failed: ${message.code}: ${message.message}")
+
+                            else -> error(
+                                "Worker Gateway Server sent an unexpected ${message::class.simpleName}"
+                            )
+                        }
+                    }
+                } finally {
+                    outgoing.close()
+                    heartbeatJob.cancelAndJoin()
+                    writer.cancelAndJoin()
+                }
             }
         } finally {
             socket.close()
@@ -210,7 +242,62 @@ class WorkerGatewayClient(
 
     private companion object {
         val HANDSHAKE_TIMEOUT = 15.seconds
+        const val OUTGOING_BUFFER_SIZE = 256
+        val requestConcurrency = Semaphore(64)
     }
+}
+
+@Service
+@ConditionalOnProperty(
+    name = ["gromozeka.worker-gateway.enabled"],
+    havingValue = "true",
+)
+class WorkerGatewayOperationHandler(
+    private val workerControlHandler: WorkerControlHandler,
+    private val aiRequestResponseHandler: AiRequestResponseExecutionHandler,
+) {
+    private val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = false
+    }
+
+    suspend fun execute(
+        identity: ConversationRuntimeWorkerIdentity,
+        request: WorkerGatewayMessage.Request,
+    ): WorkerGatewayMessage.Response =
+        runCatching {
+            val payload = when (request.operation) {
+                WorkerGatewayOperation.WORKER_CONTROL -> {
+                    val controlRequest = json.decodeFromString<WorkerControlRequest>(
+                        request.payload.decodeToString()
+                    )
+                    require(controlRequest.target == identity) {
+                        "Worker control request targets another Worker session"
+                    }
+                    json.encodeToString<WorkerControlResult>(
+                        workerControlHandler.handle(controlRequest)
+                    ).encodeToByteArray()
+                }
+
+                WorkerGatewayOperation.AI_REQUEST_RESPONSE ->
+                    AiRequestResponseGatewayCodec.execute(request.payload, aiRequestResponseHandler)
+
+                WorkerGatewayOperation.TOOL_EXECUTION ->
+                    error("Worker Gateway operation ${request.operation} is not implemented")
+            }
+            WorkerGatewayMessage.Response(
+                requestId = request.id,
+                status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
+                payload = payload,
+            )
+        }.getOrElse { error ->
+            WorkerGatewayMessage.Response(
+                requestId = request.id,
+                status = WorkerGatewayMessage.Response.Status.FAILED,
+                errorCode = error::class.simpleName ?: "WorkerOperationFailure",
+                errorMessage = error.message ?: "Worker operation failed",
+            )
+        }
 }
 
 internal fun workerGatewayWebSocketUrl(serverUrl: String): String {

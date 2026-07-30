@@ -5,9 +5,11 @@ import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
+import com.gromozeka.shared.uuid.uuid7
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
@@ -22,6 +24,13 @@ import io.ktor.websocket.close
 import io.ktor.websocket.readBytes
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -66,11 +75,91 @@ class WorkerGatewaySessionRegistry {
 
     fun find(workerId: ConversationRuntimeWorkerId): WorkerGatewaySession? =
         sessions[workerId]
+
+    suspend fun execute(
+        target: ConversationRuntimeWorkerIdentity,
+        operation: WorkerGatewayOperation,
+        payload: ByteArray,
+        timeout: Duration,
+    ): ByteArray {
+        val session = sessions[target.workerId]
+            ?: error("Worker Gateway is offline: ${target.workerId.value}")
+        require(session.identity == target) {
+            "Worker Gateway session changed before request dispatch: expected=$target actual=${session.identity}"
+        }
+        return session.execute(operation, payload, timeout)
+    }
 }
 
-data class WorkerGatewaySession(
+class WorkerGatewaySession(
     val identity: ConversationRuntimeWorkerIdentity,
-)
+) {
+    private val outgoing = Channel<WorkerGatewayMessage>(OUTGOING_BUFFER_SIZE)
+    private val pending = ConcurrentHashMap<String, CompletableDeferred<WorkerGatewayMessage.Response>>()
+    private val inFlight = Semaphore(MAX_IN_FLIGHT_REQUESTS)
+
+    suspend fun execute(
+        operation: WorkerGatewayOperation,
+        payload: ByteArray,
+        timeout: Duration,
+    ): ByteArray =
+        inFlight.withPermit {
+            require(payload.size <= MAX_GATEWAY_PAYLOAD_BYTES) {
+                "Worker Gateway request exceeds the configured limit: ${payload.size} > $MAX_GATEWAY_PAYLOAD_BYTES bytes"
+            }
+            val request = WorkerGatewayMessage.Request(
+                id = uuid7(),
+                operation = operation,
+                payload = payload,
+            )
+            val response = CompletableDeferred<WorkerGatewayMessage.Response>()
+            check(pending.putIfAbsent(request.id, response) == null) {
+                "Duplicate Worker Gateway request id: ${request.id}"
+            }
+            try {
+                outgoing.send(request)
+                val result = try {
+                    withTimeout(timeout.toMillis()) {
+                        response.await()
+                    }
+                } catch (error: Throwable) {
+                    if (error is CancellationException) throw error
+                    throw IllegalStateException(
+                        "Worker Gateway request ${request.id} failed before a response was received; " +
+                            "the outcome is unknown and Gromozeka will not retry it automatically",
+                        error,
+                    )
+                }
+                if (result.status == WorkerGatewayMessage.Response.Status.FAILED) {
+                    error("Worker operation failed [${result.errorCode}]: ${result.errorMessage}")
+                }
+                requireNotNull(result.payload)
+            } finally {
+                pending.remove(request.id, response)
+            }
+        }
+
+    suspend fun send(message: WorkerGatewayMessage) {
+        outgoing.send(message)
+    }
+
+    fun outgoingMessages(): Channel<WorkerGatewayMessage> = outgoing
+
+    fun accept(response: WorkerGatewayMessage.Response): Boolean =
+        pending[response.requestId]?.complete(response) == true
+
+    fun close(cause: Throwable) {
+        outgoing.close(cause)
+        pending.values.forEach { it.completeExceptionally(cause) }
+        pending.clear()
+    }
+
+    private companion object {
+        const val OUTGOING_BUFFER_SIZE = 256
+        const val MAX_IN_FLIGHT_REQUESTS = 64
+        const val MAX_GATEWAY_PAYLOAD_BYTES = 64 * 1024 * 1024
+    }
+}
 
 @Service
 class WorkerGatewayService(
@@ -125,39 +214,73 @@ class WorkerGatewayService(
                 )
             }
             registered = true
-            socket.sendMessage(
-                WorkerGatewayMessage.Welcome(
-                    heartbeatIntervalSeconds = HEARTBEAT_INTERVAL.seconds,
-                )
-            )
             log.info {
                 "Worker Gateway connected: worker=${registration.identity.workerId.value} " +
                     "session=${registration.identity.sessionId.value}"
             }
-
-            for (frame in socket.incoming) {
-                val message = frame.decodeMessage()
-                    ?: return socket.fail("INVALID_FRAME", "Worker Gateway accepts binary protocol frames only")
-                when (message) {
-                    is WorkerGatewayMessage.Heartbeat -> {
-                        val heartbeatAccepted = workerRegistry.heartbeat(
-                            identity = registration.identity,
-                            at = Clock.System.now(),
-                        )
-                        if (!heartbeatAccepted) {
-                            return socket.fail(
-                                "WORKER_SESSION_LOST",
-                                "Worker runtime session is no longer current",
+            coroutineScope {
+                val writer = launch {
+                    for (message in gatewaySession.outgoingMessages()) {
+                        socket.sendMessage(message)
+                    }
+                }
+                gatewaySession.send(
+                    WorkerGatewayMessage.Welcome(
+                        heartbeatIntervalSeconds = HEARTBEAT_INTERVAL.seconds,
+                    )
+                )
+                try {
+                    for (frame in socket.incoming) {
+                        val message = frame.decodeMessage()
+                            ?: return@coroutineScope socket.fail(
+                                "INVALID_FRAME",
+                                "Worker Gateway accepts binary protocol frames only",
                             )
+                        when (message) {
+                            is WorkerGatewayMessage.Heartbeat -> {
+                                val heartbeatAccepted = workerRegistry.heartbeat(
+                                    identity = registration.identity,
+                                    at = Clock.System.now(),
+                                )
+                                if (!heartbeatAccepted) {
+                                    return@coroutineScope socket.fail(
+                                        "WORKER_SESSION_LOST",
+                                        "Worker runtime session is no longer current",
+                                    )
+                                }
+                            }
+
+                            is WorkerGatewayMessage.Response -> {
+                                if (!gatewaySession.accept(message)) {
+                                    return@coroutineScope socket.fail(
+                                        "UNKNOWN_RESPONSE",
+                                        "Worker returned a response for an unknown or expired request",
+                                    )
+                                }
+                            }
+
+                            is WorkerGatewayMessage.Hello ->
+                                return@coroutineScope socket.fail(
+                                    "DUPLICATE_HELLO",
+                                    "Worker Gateway hello was already accepted",
+                                )
+
+                            is WorkerGatewayMessage.Welcome,
+                            is WorkerGatewayMessage.Request,
+                            is WorkerGatewayMessage.Failure ->
+                                return@coroutineScope socket.fail(
+                                    "UNEXPECTED_MESSAGE",
+                                    "Worker sent a Server-only Gateway message",
+                                )
                         }
                     }
-
-                    is WorkerGatewayMessage.Hello ->
-                        return socket.fail("DUPLICATE_HELLO", "Worker Gateway hello was already accepted")
-
-                    is WorkerGatewayMessage.Welcome,
-                    is WorkerGatewayMessage.Failure ->
-                        return socket.fail("UNEXPECTED_MESSAGE", "Worker sent a Server-only Gateway message")
+                } finally {
+                    gatewaySession.close(
+                        IllegalStateException(
+                            "Worker Gateway disconnected: worker=${registration.identity.workerId.value}"
+                        )
+                    )
+                    writer.cancelAndJoin()
                 }
             }
         } finally {

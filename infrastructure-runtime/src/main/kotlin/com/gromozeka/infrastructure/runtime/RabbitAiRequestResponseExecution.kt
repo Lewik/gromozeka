@@ -346,6 +346,82 @@ class RabbitAiRequestResponseTopology(
     }
 }
 
+object AiRequestResponseGatewayCodec {
+    private val json = aiRequestResponseJson()
+
+    fun encodeCallRequest(
+        selection: AiRuntimeSelection,
+        workspaceRootPath: String?,
+        request: AiRuntimeRequest,
+    ): ByteArray =
+        encodeOperation(
+            AiRequestResponseOperation.Call(
+                selection = selection,
+                workspaceRootPath = workspaceRootPath,
+                request = request.toWire(),
+            )
+        )
+
+    fun decodeCallResponse(payload: ByteArray): AiRuntimeResponse =
+        decodePayload<AiRequestResponsePayload.Call>(payload).response.toRuntime()
+
+    fun encodeEmbeddingRequest(request: AiEmbeddingRequest): ByteArray =
+        encodeOperation(AiRequestResponseOperation.Embed(request.toWire()))
+
+    fun decodeEmbeddingResponse(payload: ByteArray): AiEmbeddingResponse =
+        decodePayload<AiRequestResponsePayload.Embed>(payload).response.toRuntime()
+
+    fun encodeTranscriptionRequest(request: AiSpeechTranscriptionRequest): ByteArray =
+        encodeOperation(AiRequestResponseOperation.Transcribe(request.toWire()))
+
+    fun decodeTranscriptionResponse(payload: ByteArray): String =
+        decodePayload<AiRequestResponsePayload.Transcribe>(payload).text
+
+    fun encodeSynthesisRequest(request: AiSpeechSynthesisRequest): ByteArray =
+        encodeOperation(AiRequestResponseOperation.Synthesize(request.toWire()))
+
+    fun decodeSynthesisResponse(payload: ByteArray): AiSpeechSynthesisResponse =
+        decodePayload<AiRequestResponsePayload.Synthesize>(payload).response.toRuntime()
+
+    suspend fun execute(
+        payload: ByteArray,
+        handler: AiRequestResponseExecutionHandler,
+    ): ByteArray {
+        val result = when (val operation = decodeOperation(payload)) {
+            is AiRequestResponseOperation.Call -> AiRequestResponsePayload.Call(
+                handler.call(
+                    selection = operation.selection,
+                    workspaceRootPath = operation.workspaceRootPath,
+                    request = operation.request.toRuntime(),
+                ).toWire()
+            )
+
+            is AiRequestResponseOperation.Embed -> AiRequestResponsePayload.Embed(
+                handler.embed(operation.request.toRuntime()).toWire()
+            )
+
+            is AiRequestResponseOperation.Transcribe -> AiRequestResponsePayload.Transcribe(
+                handler.transcribe(operation.request.toRuntime())
+            )
+
+            is AiRequestResponseOperation.Synthesize -> AiRequestResponsePayload.Synthesize(
+                handler.synthesize(operation.request.toRuntime()).toWire()
+            )
+        }
+        return json.encodeToString(AiRequestResponsePayload.serializer(), result).encodeToByteArray()
+    }
+
+    private fun encodeOperation(operation: AiRequestResponseOperation): ByteArray =
+        json.encodeToString(AiRequestResponseOperation.serializer(), operation).encodeToByteArray()
+
+    private fun decodeOperation(payload: ByteArray): AiRequestResponseOperation =
+        json.decodeFromString(AiRequestResponseOperation.serializer(), payload.decodeToString())
+
+    private inline fun <reified T : AiRequestResponsePayload> decodePayload(payload: ByteArray): T =
+        json.decodeFromString(AiRequestResponsePayload.serializer(), payload.decodeToString()) as? T
+            ?: error("Worker Gateway AI response payload type mismatch: expected ${T::class.simpleName}")
+}
+
 @Serializable
 private data class AiRequestResponseRequest(
     val id: String,

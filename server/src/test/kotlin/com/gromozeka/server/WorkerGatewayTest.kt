@@ -14,6 +14,7 @@ import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
+import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import io.ktor.client.plugins.websocket.WebSockets as ClientWebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.header
@@ -27,8 +28,10 @@ import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readBytes
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
 import kotlinx.datetime.Instant
 import java.security.MessageDigest
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -74,7 +77,8 @@ class WorkerGatewayTest {
             worker = worker,
         )
         val runtimeRegistry = InMemoryConversationRuntimeWorkerRegistry()
-        val gatewayService = WorkerGatewayService(runtimeRegistry, WorkerGatewaySessionRegistry())
+        val sessionRegistry = WorkerGatewaySessionRegistry()
+        val gatewayService = WorkerGatewayService(runtimeRegistry, sessionRegistry)
         val authenticationService = WorkerGatewayAuthenticationService(repository)
 
         application {
@@ -116,6 +120,31 @@ class WorkerGatewayTest {
             send(Frame.Binary(true, WorkerGatewayCodec.encode(WorkerGatewayMessage.Hello(registration))))
             val welcome = WorkerGatewayCodec.decode((incoming.receive() as Frame.Binary).readBytes())
             assertTrue(welcome is WorkerGatewayMessage.Welcome)
+            val response = async {
+                sessionRegistry.execute(
+                    target = identity,
+                    operation = WorkerGatewayOperation.WORKER_CONTROL,
+                    payload = "request".encodeToByteArray(),
+                    timeout = Duration.ofSeconds(5),
+                )
+            }
+            val request = WorkerGatewayCodec.decode((incoming.receive() as Frame.Binary).readBytes())
+                as WorkerGatewayMessage.Request
+            assertEquals(WorkerGatewayOperation.WORKER_CONTROL, request.operation)
+            assertEquals("request", request.payload.decodeToString())
+            send(
+                Frame.Binary(
+                    true,
+                    WorkerGatewayCodec.encode(
+                        WorkerGatewayMessage.Response(
+                            requestId = request.id,
+                            status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
+                            payload = "response".encodeToByteArray(),
+                        )
+                    ),
+                )
+            )
+            assertEquals("response", response.await().decodeToString())
             send(
                 Frame.Binary(
                     true,

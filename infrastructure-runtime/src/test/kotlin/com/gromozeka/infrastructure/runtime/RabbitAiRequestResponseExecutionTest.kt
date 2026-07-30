@@ -27,6 +27,51 @@ import kotlin.test.assertEquals
 
 class RabbitAiRequestResponseExecutionTest {
     @Test
+    fun `gateway codec preserves every finite AI operation`() = runBlocking {
+        val handler = TestHandler()
+
+        val callResponse = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeCallRequest(
+                handler.selection,
+                null,
+                handler.runtimeRequest,
+            ),
+            handler,
+        )
+        assertEquals(
+            handler.runtimeResponse,
+            AiRequestResponseGatewayCodec.decodeCallResponse(callResponse),
+        )
+
+        val embeddingResponse = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeEmbeddingRequest(handler.embeddingRequest),
+            handler,
+        )
+        assertEquals(
+            handler.embeddingResponse,
+            AiRequestResponseGatewayCodec.decodeEmbeddingResponse(embeddingResponse),
+        )
+
+        val transcriptionResponse = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeTranscriptionRequest(handler.transcriptionRequest),
+            handler,
+        )
+        assertEquals(
+            handler.transcript,
+            AiRequestResponseGatewayCodec.decodeTranscriptionResponse(transcriptionResponse),
+        )
+
+        val synthesisResponse = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeSynthesisRequest(handler.synthesisRequest),
+            handler,
+        )
+        val synthesis = AiRequestResponseGatewayCodec.decodeSynthesisResponse(synthesisResponse)
+        assertContentEquals(handler.synthesisResponse.audioData, synthesis.audioData)
+        assertEquals(handler.synthesisResponse.mediaType, synthesis.mediaType)
+        assertEquals(handler.synthesisResponse.fileExtension, synthesis.fileExtension)
+    }
+
+    @Test
     fun `rabbit round trip preserves every finite AI operation`() = runBlocking {
         if (System.getenv("GROMOZEKA_RABBIT_RUNTIME_TEST") != "true") {
             return@runBlocking
