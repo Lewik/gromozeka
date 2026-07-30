@@ -17,11 +17,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import org.postgresql.ds.PGSimpleDataSource
-import java.sql.Connection
 import java.util.UUID
 import javax.sql.DataSource
 import kotlin.test.Test
@@ -114,7 +112,7 @@ class PostgresConversationRuntimeCoordinatorTest {
     }
 
     @Test
-    fun `work outbox claim skips a conversation locked by another transaction`() = runBlocking {
+    fun `ready work index follows durable runtime state`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
             return@runBlocking
         }
@@ -150,19 +148,15 @@ class PostgresConversationRuntimeCoordinatorTest {
             assertTrue(coordinator.submit(lockedTask))
             assertTrue(coordinator.submit(availableTask))
 
-            runtimeDataSource.connection.use { lockConnection ->
-                lockConversation(lockConnection, lockedTask.conversationId)
-                val claimed = withTimeout(3_000) {
-                    coordinator.claimUnpublishedWorkItems(
-                        leaseOwnerId = "publisher-1",
-                        now = Instant.fromEpochMilliseconds(3_000),
-                        leaseUntil = Instant.fromEpochMilliseconds(13_000),
-                        limit = 1,
-                    )
-                }
-                assertEquals(listOf(availableTask.id), claimed.map { it.item.taskId })
-                lockConnection.rollback()
-            }
+            assertEquals(
+                listOf(lockedTask.id, availableTask.id),
+                coordinator.listReadyWorkItems(limit = 10).map { it.taskId },
+            )
+            assertEquals(lockedTask, coordinator.claim(lockedTask, worker("worker-1", "session-1")))
+            assertEquals(
+                listOf(availableTask.id),
+                coordinator.listReadyWorkItems(limit = 10).map { it.taskId },
+            )
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->
@@ -296,21 +290,6 @@ class PostgresConversationRuntimeCoordinatorTest {
         }
     }
 
-    private fun lockConversation(
-        connection: Connection,
-        conversationId: Conversation.Id,
-    ) {
-        connection.autoCommit = false
-        connection.prepareStatement(
-            "SELECT conversation_id FROM conversation_runtime_records WHERE conversation_id = ? FOR UPDATE"
-        ).use { statement ->
-            statement.setString(1, conversationId.value)
-            statement.executeQuery().use { result ->
-                assertTrue(result.next())
-            }
-        }
-    }
-
     private fun userTurnTask(
         conversationId: Conversation.Id,
         messageId: String,
@@ -375,16 +354,19 @@ class PostgresConversationRuntimeCoordinatorTest {
         }
 
     private fun createRuntimeSchema(dataSource: DataSource) {
-        val migration = checkNotNull(
-            javaClass.classLoader.getResource("db/migration/postgres/V4__conversation_runtime_records.sql")
-        ).readText()
         dataSource.connection.use { connection ->
             connection.createStatement().use { statement ->
-                migration
-                    .split(';')
-                    .map(String::trim)
-                    .filter(String::isNotEmpty)
-                    .forEach(statement::execute)
+                listOf(
+                    "db/migration/postgres/V4__conversation_runtime_records.sql",
+                    "db/migration/postgres/V31__conversation_runtime_ready_work.sql",
+                ).forEach { resource ->
+                    checkNotNull(javaClass.classLoader.getResource(resource))
+                        .readText()
+                        .split(';')
+                        .map(String::trim)
+                        .filter(String::isNotEmpty)
+                        .forEach(statement::execute)
+                }
             }
         }
     }

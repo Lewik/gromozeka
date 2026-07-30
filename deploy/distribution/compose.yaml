@@ -16,20 +16,6 @@ services:
       timeout: 5s
       retries: 30
 
-  rabbitmq:
-    image: rabbitmq:4.2-management
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: gromozeka
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-
   server:
     image: ghcr.io/lewik/gromozeka-server:${GROMOZEKA_VERSION:-latest}
     restart: unless-stopped
@@ -39,10 +25,6 @@ services:
       GROMOZEKA_POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/gromozeka
       GROMOZEKA_POSTGRES_USERNAME: gromozeka
       GROMOZEKA_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: "5672"
-      SPRING_RABBITMQ_USERNAME: gromozeka
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       GROMOZEKA_MCP_ALLOWED_HOSTS: ${GROMOZEKA_MCP_ALLOWED_HOSTS:-localhost,127.0.0.1,[::1]}
     volumes:
       - gromozeka-home:/var/lib/gromozeka
@@ -50,8 +32,6 @@ services:
       - "${GROMOZEKA_BIND:-127.0.0.1:8765}:8765"
     depends_on:
       postgres:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
 
   worker:
@@ -71,6 +51,5 @@ services:
 
 volumes:
   postgres-data:
-  rabbitmq-data:
   gromozeka-home:
   gromozeka-worker-home:

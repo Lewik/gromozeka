@@ -13,15 +13,8 @@ bash -c 'set -euo pipefail
 ROOT_DIR="$(pwd)"
 POSTGRES_HOST="${GROMOZEKA_POSTGRES_HOST:-127.0.0.1}"
 POSTGRES_PORT="${GROMOZEKA_POSTGRES_PORT:-5432}"
-RABBIT_HOST="${GROMOZEKA_RABBIT_HOST:-127.0.0.1}"
-RABBIT_PORT="${GROMOZEKA_RABBIT_PORT:-5672}"
 if ! nc -z "$POSTGRES_HOST" "$POSTGRES_PORT" >/dev/null 2>&1; then
   echo "Postgres is not available at $POSTGRES_HOST:$POSTGRES_PORT." >&2
-  echo "Start it with the \"Start Runtime Infra\" action first." >&2
-  exit 1
-fi
-if ! nc -z "$RABBIT_HOST" "$RABBIT_PORT" >/dev/null 2>&1; then
-  echo "RabbitMQ is not available at $RABBIT_HOST:$RABBIT_PORT." >&2
   echo "Start it with the \"Start Runtime Infra\" action first." >&2
   exit 1
 fi
@@ -40,7 +33,7 @@ command = '''
 bash -c 'set -euo pipefail
 ROOT_DIR="$(pwd)"
 export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$ROOT_DIR/dev-data/client/.gromozeka}"
-docker compose -f "$ROOT_DIR/server/src/main/resources/docker-compose.yml" up -d postgres rabbitmq'
+docker compose -f "$ROOT_DIR/server/src/main/resources/docker-compose.yml" up -d postgres'
 '''
 
 [[actions]]
@@ -49,7 +42,7 @@ icon = "tool"
 command = '''
 bash -c 'set -euo pipefail
 ROOT_DIR="$(pwd)"
-docker compose -f "$ROOT_DIR/server/src/main/resources/docker-compose.yml" stop postgres rabbitmq'
+docker compose -f "$ROOT_DIR/server/src/main/resources/docker-compose.yml" stop postgres'
 '''
 
 [[actions]]

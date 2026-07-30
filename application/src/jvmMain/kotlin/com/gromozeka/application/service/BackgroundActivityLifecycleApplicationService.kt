@@ -3,9 +3,9 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
-import com.gromozeka.domain.service.CommandMonitorLifecycleEventConsumer
+import com.gromozeka.domain.service.CommandMonitorLifecycleEventStream
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.CommandTaskLifecycleEventConsumer
+import com.gromozeka.domain.service.CommandTaskLifecycleEventStream
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -31,8 +31,8 @@ import java.util.concurrent.atomic.AtomicBoolean
     matchIfMissing = true,
 )
 class BackgroundActivityLifecycleApplicationService(
-    private val commandEventConsumer: CommandTaskLifecycleEventConsumer,
-    private val monitorEventConsumer: CommandMonitorLifecycleEventConsumer,
+    private val commandEventStream: CommandTaskLifecycleEventStream,
+    private val monitorEventStream: CommandMonitorLifecycleEventStream,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
     @Qualifier("applicationScope") private val coroutineScope: CoroutineScope,
@@ -47,7 +47,15 @@ class BackgroundActivityLifecycleApplicationService(
         collectCommandEvents()
         collectMonitorEvents()
         reconcileChangedConversations()
-        reconcilePeriodically()
+        coroutineScope.launch {
+            try {
+                reconcileAll()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                log.warn(error) { "Background activity startup reconciliation failed: ${error.message}" }
+            }
+        }
     }
 
     internal suspend fun reconcileAll() {
@@ -66,18 +74,16 @@ class BackgroundActivityLifecycleApplicationService(
 
     private fun collectCommandEvents() {
         coroutineScope.launch {
-            commandEventConsumer.deliveries.collect { delivery ->
+            commandEventStream.events.collect { event ->
                 try {
-                    changedConversations.send(delivery.event.conversationId)
-                    delivery.acknowledge()
+                    changedConversations.send(event.conversationId)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Throwable) {
                     log.warn(error) {
-                        "Command lifecycle event handling failed; DB reconciliation will recover it: " +
-                            "task=${delivery.event.taskId.value} error=${error.message}"
+                        "Command lifecycle event handling failed; startup reconciliation can recover it: " +
+                            "task=${event.taskId.value} error=${error.message}"
                     }
-                    delivery.reject()
                 }
             }
         }
@@ -85,18 +91,16 @@ class BackgroundActivityLifecycleApplicationService(
 
     private fun collectMonitorEvents() {
         coroutineScope.launch {
-            monitorEventConsumer.deliveries.collect { delivery ->
+            monitorEventStream.events.collect { event ->
                 try {
-                    changedConversations.send(delivery.event.conversationId)
-                    delivery.acknowledge()
+                    changedConversations.send(event.conversationId)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Throwable) {
                     log.warn(error) {
-                        "Command monitor lifecycle event handling failed; DB reconciliation will recover it: " +
-                            "monitor=${delivery.event.monitorId.value} error=${error.message}"
+                        "Command monitor lifecycle event handling failed; startup reconciliation can recover it: " +
+                            "monitor=${event.monitorId.value} error=${error.message}"
                     }
-                    delivery.reject()
                 }
             }
         }
@@ -127,26 +131,11 @@ class BackgroundActivityLifecycleApplicationService(
         }
     }
 
-    private fun reconcilePeriodically() {
-        coroutineScope.launch {
-            while (currentCoroutineContext().isActive) {
-                try {
-                    reconcileAll()
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    log.warn(error) { "Background activity reconciliation failed: ${error.message}" }
-                }
-                delay(RECONCILIATION_INTERVAL_MILLIS)
-            }
-        }
-    }
-
     private suspend fun submitPendingNotification(conversationId: Conversation.Id) {
         submitPendingNotification(
             conversationId = conversationId,
-            commandTasks = runtimeCoordinator.findCommandTasks(),
-            monitors = runtimeCoordinator.findCommandMonitors(),
+            commandTasks = runtimeCoordinator.findCommandTasks(conversationId),
+            monitors = runtimeCoordinator.findCommandMonitors(conversationId),
         )
     }
 
@@ -211,6 +200,5 @@ class BackgroundActivityLifecycleApplicationService(
 
     private companion object {
         const val COALESCING_WINDOW_MILLIS = 250L
-        const val RECONCILIATION_INTERVAL_MILLIS = 5_000L
     }
 }

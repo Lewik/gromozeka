@@ -10,7 +10,6 @@ import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import com.gromozeka.domain.service.CommandTaskOutput
 import com.gromozeka.domain.service.CommandTaskService
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
@@ -513,7 +512,6 @@ class DefaultCommandTaskService(
         setTerminalState(activeCommand, status, exitCode, statusMessage)
         persistCommandTask(activeCommand.task)
         publishSnapshot(activeCommand.task.conversationId)
-        publishTerminalLifecycleEvent(activeCommand.task)
     }
 
     private fun setTerminalState(
@@ -553,7 +551,6 @@ class DefaultCommandTaskService(
             val task = activeCommand.task
             persistCommandTask(task)
             publishSnapshot(task.conversationId)
-            publishTerminalLifecycleEvent(task)
             activeCommand.lastControlPlaneWarningAtNanos = null
             true
         } catch (error: CancellationException) {
@@ -607,7 +604,6 @@ class DefaultCommandTaskService(
         )
         persistCommandTask(completedTask)
         publishSnapshot(task.conversationId)
-        publishTerminalLifecycleEvent(completedTask)
         runCatching { garbageCollectOutputArtifacts() }
             .onFailure { error ->
                 log.warn(error) { "Failed to apply command output retention: ${error.message}" }
@@ -625,32 +621,6 @@ class DefaultCommandTaskService(
             }
             activeCommand.task
         }
-
-    private suspend fun publishTerminalLifecycleEvent(task: CommandTask) {
-        if (!task.isTerminal ||
-            task.agentDefinitionId == null ||
-            task.completionNotificationRequestedAt == null ||
-            task.completionNotificationDeliveredAt != null
-        ) {
-            return
-        }
-        try {
-            runtimeState.publishCommandTaskLifecycle(
-                CommandTaskLifecycleEvent(
-                    conversationId = task.conversationId,
-                    taskId = task.id,
-                    status = task.status,
-                    occurredAt = task.completedAt ?: task.updatedAt,
-                )
-            )
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            log.warn(error) {
-                "Command completion event publication failed; DB reconciliation will recover it: ${task.id.value}"
-            }
-        }
-    }
 
     private suspend fun persistCommandTask(task: CommandTask) {
         runtimeState.upsertCommandTask(task).evictedTasks.forEach { evictedTask ->

@@ -113,30 +113,6 @@ class WorkerCommandRuntimeGatewayHandler(
                 )
             }
 
-            is WorkerCommandRuntimeRequest.PublishCommandTaskLifecycle -> {
-                val task = commandRuntimeStateService.findCommandTask(
-                    runtimeRequest.event.conversationId,
-                    runtimeRequest.event.taskId,
-                )
-                require(task?.workerId == identity.workerId) {
-                    "Worker cannot publish lifecycle for a command task it does not own"
-                }
-                commandRuntimeStateService.publishCommandTaskLifecycle(runtimeRequest.event)
-                WorkerCommandRuntimeResponse.Completed
-            }
-
-            is WorkerCommandRuntimeRequest.PublishCommandMonitorLifecycle -> {
-                val monitor = commandRuntimeStateService.findCommandMonitor(
-                    runtimeRequest.event.conversationId,
-                    runtimeRequest.event.monitorId,
-                )
-                require(monitor?.workerId == identity.workerId) {
-                    "Worker cannot publish lifecycle for a command monitor it does not own"
-                }
-                commandRuntimeStateService.publishCommandMonitorLifecycle(runtimeRequest.event)
-                WorkerCommandRuntimeResponse.Completed
-            }
-
             is WorkerCommandRuntimeRequest.PublishSnapshot -> {
                 requireConversationAccess(identity.workerId, runtimeRequest.conversationId)
                 commandRuntimeStateService.publishSnapshot(runtimeRequest.conversationId)

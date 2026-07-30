@@ -23,11 +23,7 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
-import com.gromozeka.domain.service.ConversationRuntimeWorkDelivery
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkOutboxEntry
-import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
-import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -37,13 +33,14 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.springframework.context.annotation.Primary
+import org.springframework.stereotype.Service
 
 class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private val mutex = Mutex()
@@ -61,12 +58,14 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private val incidentsByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTaskIncident>>()
     private val traceByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTraceEntry>>()
     private val eventLogByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeEventLogEntry>>()
-    private val workOutboxByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeWorkOutboxEntry>>()
+    private val readyWorkByConversation = mutableMapOf<Conversation.Id, ConversationRuntimeWorkItem>()
+    private val schedulingSignalChannel = Channel<Conversation.Id>(Channel.CONFLATED)
     private val completedIdempotencyKeysByConversation = mutableMapOf<Conversation.Id, MutableSet<String>>()
     private val revisionsByConversation = mutableMapOf<Conversation.Id, Long>()
     private val traceSequencesByConversation = mutableMapOf<Conversation.Id, Long>()
     private val eventSequencesByConversation = mutableMapOf<Conversation.Id, Long>()
-    private val workSequencesByConversation = mutableMapOf<Conversation.Id, Long>()
+
+    override val schedulingSignals: Flow<Conversation.Id> = schedulingSignalChannel.receiveAsFlow()
 
     override suspend fun submit(task: ConversationRuntimeTask): Boolean =
         mutex.withLock {
@@ -542,6 +541,11 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         commandTasksByConversation.values.flatten()
     }
 
+    override suspend fun findCommandTasks(conversationId: Conversation.Id): List<CommandTask> =
+        mutex.withLock {
+            commandTasksByConversation[conversationId].orEmpty().toList()
+        }
+
     override suspend fun findCommandTask(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
@@ -654,6 +658,11 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             commandMonitorsByConversation.values.flatten()
         }
 
+    override suspend fun findCommandMonitors(conversationId: Conversation.Id): List<CommandMonitor> =
+        mutex.withLock {
+            commandMonitorsByConversation[conversationId].orEmpty().toList()
+        }
+
     override suspend fun findCommandMonitor(
         conversationId: Conversation.Id,
         monitorId: CommandMonitor.Id,
@@ -738,8 +747,10 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                         controlState = ConversationExecutionState.ControlState.PAUSE_REQUESTED,
                         updatedAt = Clock.System.now(),
                     )
+                    readyWorkByConversation.remove(conversationId)
                     appendControlTrace(conversationId, ConversationExecutionState.ControlState.PAUSE_REQUESTED)
                     bumpRevision(conversationId)
+                    signalSchedulingChanged(conversationId)
                     true
                 }
                 ConversationExecutionState.ControlState.PAUSE_REQUESTED,
@@ -761,6 +772,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             )
             appendControlTrace(conversationId, ConversationExecutionState.ControlState.PAUSED)
             bumpRevision(conversationId)
+            signalSchedulingChanged(conversationId)
             true
         }
 
@@ -899,137 +911,15 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             eventLogEntry
         }
 
-    override suspend fun claimUnpublishedEventLogEntries(
-        leaseOwnerId: String,
-        now: Instant,
-        leaseUntil: Instant,
-        limit: Int,
-    ): List<ConversationRuntimeEventLogEntry> =
+    override suspend fun listReadyWorkItems(limit: Int): List<ConversationRuntimeWorkItem> =
         mutex.withLock {
-            eventLogByConversation.values
-                .asSequence()
-                .flatten()
-                .filter { entry ->
-                    val publishLeaseUntil = entry.publishLeaseUntil
-                    entry.publishedAt == null &&
-                        (publishLeaseUntil == null || publishLeaseUntil < now)
-                }
-                .sortedWith(compareBy<ConversationRuntimeEventLogEntry> { it.createdAt }.thenBy { it.sequence })
+            require(limit > 0) { "Conversation runtime ready-work limit must be positive" }
+            readyWorkByConversation.values
+                .sortedWith(
+                    compareBy<ConversationRuntimeWorkItem> { it.createdAt }
+                        .thenBy { it.conversationId.value }
+                )
                 .take(limit)
-                .map { entry ->
-                    val leased = entry.copy(
-                        publishLeaseOwnerId = leaseOwnerId,
-                        publishLeaseUntil = leaseUntil,
-                    )
-                    replaceEventLogEntry(leased)
-                    leased
-                }
-                .toList()
-        }
-
-    override suspend fun markEventLogEntryPublished(
-        conversationId: Conversation.Id,
-        sequence: Long,
-        leaseOwnerId: String,
-        publishedAt: Instant,
-    ): Boolean =
-        mutex.withLock {
-            val entries = eventLogByConversation[conversationId] ?: return@withLock false
-            val index = entries.indexOfFirst { it.sequence == sequence }
-            if (index < 0) {
-                return@withLock false
-            }
-            val entry = entries[index]
-            if (entry.publishedAt != null) {
-                return@withLock true
-            }
-            if (entry.publishLeaseOwnerId != null && entry.publishLeaseOwnerId != leaseOwnerId) {
-                return@withLock false
-            }
-            entries[index] = entry.copy(
-                publishedAt = publishedAt,
-                publishLeaseOwnerId = null,
-                publishLeaseUntil = null,
-            )
-            true
-        }
-
-    override suspend fun releasePublishedWorkItem(
-        conversationId: Conversation.Id,
-        taskId: ConversationRuntimeTask.Id,
-    ): Boolean =
-        mutex.withLock {
-            val entries = workOutboxByConversation[conversationId] ?: return@withLock false
-            val index = entries.indexOfFirst { it.item.taskId == taskId }
-            if (index < 0) {
-                return@withLock false
-            }
-            val entry = entries[index]
-            if (entry.publishedAt == null && entry.publishLeaseOwnerId == null && entry.publishLeaseUntil == null) {
-                return@withLock true
-            }
-            entries[index] = entry.copy(
-                publishedAt = null,
-                publishLeaseOwnerId = null,
-                publishLeaseUntil = null,
-            )
-            true
-        }
-
-    override suspend fun claimUnpublishedWorkItems(
-        leaseOwnerId: String,
-        now: Instant,
-        leaseUntil: Instant,
-        limit: Int,
-    ): List<ConversationRuntimeWorkOutboxEntry> =
-        mutex.withLock {
-            workOutboxByConversation.values
-                .asSequence()
-                .flatten()
-                .filter { entry ->
-                    val publishLeaseUntil = entry.publishLeaseUntil
-                    entry.publishedAt == null &&
-                        canPublishWorkItem(entry.item) &&
-                        (publishLeaseUntil == null || publishLeaseUntil < now)
-                }
-                .sortedWith(compareBy<ConversationRuntimeWorkOutboxEntry> { it.createdAt }.thenBy { it.sequence })
-                .take(limit)
-                .map { entry ->
-                    val leased = entry.copy(
-                        publishLeaseOwnerId = leaseOwnerId,
-                        publishLeaseUntil = leaseUntil,
-                    )
-                    replaceWorkOutboxEntry(leased)
-                    leased
-                }
-                .toList()
-        }
-
-    override suspend fun markWorkItemPublished(
-        conversationId: Conversation.Id,
-        sequence: Long,
-        leaseOwnerId: String,
-        publishedAt: Instant,
-    ): Boolean =
-        mutex.withLock {
-            val entries = workOutboxByConversation[conversationId] ?: return@withLock false
-            val index = entries.indexOfFirst { it.sequence == sequence }
-            if (index < 0) {
-                return@withLock false
-            }
-            val entry = entries[index]
-            if (entry.publishedAt != null) {
-                return@withLock true
-            }
-            if (entry.publishLeaseOwnerId != null && entry.publishLeaseOwnerId != leaseOwnerId) {
-                return@withLock false
-            }
-            entries[index] = entry.copy(
-                publishedAt = publishedAt,
-                publishLeaseOwnerId = null,
-                publishLeaseUntil = null,
-            )
-            true
         }
 
     override suspend fun listEventLogEntries(
@@ -1045,14 +935,6 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 entries.filter { it.sequence > afterSequence }.take(limit)
             }
         }
-
-    private fun replaceEventLogEntry(entry: ConversationRuntimeEventLogEntry) {
-        val entries = eventLogByConversation[entry.conversationId] ?: return
-        val index = entries.indexOfFirst { it.sequence == entry.sequence }
-        if (index >= 0) {
-            entries[index] = entry
-        }
-    }
 
     private fun requestCommandTaskCancellationLocked(
         conversationId: Conversation.Id,
@@ -1124,31 +1006,18 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         )
     }
 
-    private fun replaceWorkOutboxEntry(entry: ConversationRuntimeWorkOutboxEntry) {
-        val entries = workOutboxByConversation[entry.item.conversationId] ?: return
-        val index = entries.indexOfFirst { it.sequence == entry.sequence }
-        if (index >= 0) {
-            entries[index] = entry
-        }
-    }
-
-    private fun canPublishWorkItem(item: ConversationRuntimeWorkItem): Boolean {
-        val state = statesByConversation[item.conversationId]
-        return state == null ||
-            (state.controlState == ConversationExecutionState.ControlState.RUNNING && state.activeTaskId == null)
-    }
-
     private fun removeScheduledWorkItems(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
     ) {
-        val entries = workOutboxByConversation[conversationId] ?: return
-        entries.removeAll {
-            it.item.reason == ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED &&
-                it.item.taskId == taskId
-        }
-        if (entries.isEmpty()) {
-            workOutboxByConversation.remove(conversationId)
+        val removed = readyWorkByConversation[conversationId]
+            ?.takeIf { it.taskId == taskId }
+            ?.let {
+                readyWorkByConversation.remove(conversationId)
+                true
+            } == true
+        if (removed) {
+            signalSchedulingChanged(conversationId)
         }
     }
 
@@ -1157,7 +1026,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         controlState: ConversationExecutionState.ControlState,
     ): Boolean {
         val removedTasks = tasksByConversation.remove(conversationId)?.size ?: 0
-        workOutboxByConversation.remove(conversationId)
+        readyWorkByConversation.remove(conversationId)
         val state = statesByConversation[conversationId]
         if (state == null && removedTasks == 0) {
             return false
@@ -1173,6 +1042,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             clearConversation(conversationId)
         }
         bumpRevision(conversationId)
+        signalSchedulingChanged(conversationId)
         return true
     }
 
@@ -1187,7 +1057,8 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         activeTasksByConversation.remove(conversationId)
         statesByConversation.remove(conversationId)
         toolExecutionsByConversation.remove(conversationId)
-        workOutboxByConversation.remove(conversationId)
+        readyWorkByConversation.remove(conversationId)
+        signalSchedulingChanged(conversationId)
     }
 
     private fun scheduleNextRunnableTaskIfReady(conversationId: Conversation.Id) {
@@ -1201,29 +1072,24 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         val task = tasksByConversation[conversationId]
             ?.firstOrNull { it.placement == QueuedMessagePlacement.END_OF_TURN }
             ?: return
-        appendWorkItemIfMissing(
-            ConversationRuntimeWorkItem(
-                conversationId = conversationId,
-                reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
-                taskId = task.id,
-                requirements = task.requirements,
-                createdAt = Clock.System.now(),
-            )
+        val item = ConversationRuntimeWorkItem(
+            conversationId = conversationId,
+            reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
+            taskId = task.id,
+            requirements = task.requirements,
+            createdAt = task.createdAt,
         )
-    }
-
-    private fun appendWorkItemIfMissing(item: ConversationRuntimeWorkItem) {
-        val entries = workOutboxByConversation.getOrPut(item.conversationId) { mutableListOf() }
-        if (entries.any { it.item.reason == item.reason && it.item.taskId == item.taskId }) {
+        if (readyWorkByConversation[conversationId] == item) {
             return
         }
-        val sequence = (workSequencesByConversation[item.conversationId] ?: 0L) + 1L
-        workSequencesByConversation[item.conversationId] = sequence
-        entries += ConversationRuntimeWorkOutboxEntry(
-            sequence = sequence,
-            item = item,
-            createdAt = item.createdAt,
-        )
+        readyWorkByConversation[conversationId] = item
+        signalSchedulingChanged(conversationId)
+    }
+
+    private fun signalSchedulingChanged(conversationId: Conversation.Id) {
+        check(schedulingSignalChannel.trySend(conversationId).isSuccess) {
+            "Conversation runtime scheduling signal channel is closed"
+        }
     }
 
     private fun appendControlTrace(
@@ -1307,7 +1173,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         if (tasksByConversation[conversationId].isNullOrEmpty()) {
             tasksByConversation.remove(conversationId)
         }
-        workOutboxByConversation.remove(conversationId)
+        readyWorkByConversation.remove(conversationId)
         toolExecutionsByConversation.remove(conversationId)
         val incident = ConversationRuntimeTaskIncident(
             task = task,
@@ -1414,33 +1280,6 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         const val EVENT_LOG_RETENTION_LIMIT = 10_000
     }
 }
-class InMemoryConversationRuntimeWorkQueue : ConversationRuntimeWorkPublisher, ConversationRuntimeWorkConsumer {
-    private val channel = Channel<ConversationRuntimeWorkDelivery>(Channel.UNLIMITED)
-
-    override val deliveries: Flow<ConversationRuntimeWorkDelivery> = channel.receiveAsFlow()
-
-    override suspend fun submit(item: ConversationRuntimeWorkItem) {
-        channel.send(InMemoryConversationRuntimeWorkDelivery(item, channel))
-    }
-
-    private class InMemoryConversationRuntimeWorkDelivery(
-        override val item: ConversationRuntimeWorkItem,
-        private val channel: Channel<ConversationRuntimeWorkDelivery>,
-        override val redeliveryCount: Int = 0,
-    ) : ConversationRuntimeWorkDelivery {
-        override val isFinalRedelivery: Boolean = false
-
-        override suspend fun acknowledge() = Unit
-
-        override suspend fun redeliver() {
-            delay(ConversationRuntimeTiming.workOutboxScanIntervalMillis)
-            channel.send(InMemoryConversationRuntimeWorkDelivery(item, channel, redeliveryCount + 1))
-        }
-
-        override suspend fun reject() = Unit
-    }
-}
-
 class InMemoryConversationRuntimeWorkerRegistry : ConversationRuntimeWorkerRegistry {
     private val mutex = Mutex()
     private val registrations = mutableMapOf<ConversationRuntimeWorkerId, ConversationRuntimeWorkerRegistration>()
@@ -1519,6 +1358,8 @@ class InMemoryConversationRuntimeWorkerRegistry : ConversationRuntimeWorkerRegis
         }
 }
 
+@Service
+@Primary
 class InMemoryConversationRuntimeEventBus : ConversationRuntimeEventBus {
     private val mutex = Mutex()
     private val subscribersByConversation = mutableMapOf<Conversation.Id, MutableSet<Channel<ConversationRuntimeEvent>>>()

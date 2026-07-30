@@ -3,8 +3,6 @@ spring:
     web-application-type: none
   banner:
     location: classpath:banner.txt
-  rabbitmq:
-    publisher-confirm-type: simple
 
 # Reranker Configuration
 reranker:
@@ -24,11 +22,3 @@ gromozeka:
       enabled: true
     worker:
       enabled: false
-    rabbit:
-      enabled: ${GROMOZEKA_RUNTIME_RABBIT_ENABLED:true}
-      exchange: gromozeka.runtime.work
-      queue: gromozeka.runtime.work
-      dead-letter-exchange: gromozeka.runtime.work.dlx
-      max-redeliveries: ${GROMOZEKA_RUNTIME_RABBIT_MAX_REDELIVERIES:8}
-      events-exchange: gromozeka.runtime.events
-      events-queue-prefix: gromozeka.runtime.events

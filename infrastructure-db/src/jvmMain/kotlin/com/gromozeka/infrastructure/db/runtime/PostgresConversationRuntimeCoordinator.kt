@@ -22,12 +22,14 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkOutboxEntry
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -49,6 +51,9 @@ class PostgresConversationRuntimeCoordinator(
     private val dataSource: DataSource,
     private val json: Json,
 ) : ConversationRuntimeCoordinator {
+    private val schedulingSignalChannel = Channel<Conversation.Id>(Channel.CONFLATED)
+
+    override val schedulingSignals: Flow<Conversation.Id> = schedulingSignalChannel.receiveAsFlow()
 
     override suspend fun submit(task: ConversationRuntimeTask): Boolean =
         mutateRecord(task.conversationId, createIfMissing = true) { record ->
@@ -89,7 +94,6 @@ class PostgresConversationRuntimeCoordinator(
                 status = ConversationRuntimeTraceEntry.Status.STARTED,
                 message = "Runtime task submitted: placement=${task.placement}",
             )
-            record.scheduleNextRunnableTaskIfReady(task.conversationId)
             record.bumpRevision()
             true
         }
@@ -138,7 +142,6 @@ class PostgresConversationRuntimeCoordinator(
             }
 
             record.pendingTasks = record.pendingTasks.toMutableList().apply { removeAt(taskIndex) }
-            record.removeScheduledWorkItems(conversationId, task.id)
             record.activeTask = task
             record.state = (state ?: ConversationExecutionState(
                 conversationId = conversationId,
@@ -216,7 +219,6 @@ class PostgresConversationRuntimeCoordinator(
                         record.bumpRevision()
                     }
                 }
-                record.scheduleNextRunnableTaskIfReady(conversationId)
             }
             true
         }
@@ -316,7 +318,6 @@ class PostgresConversationRuntimeCoordinator(
         mutateRecord(conversationId, createIfMissing = false) { record ->
             val task = record.pendingTasks.firstOrNull { it.id == taskId } ?: return@mutateRecord null
             record.pendingTasks = record.pendingTasks.filterNot { it.id == taskId }
-            record.removeScheduledWorkItems(conversationId, taskId)
             val incident = ConversationRuntimeTaskIncident(
                 task = task,
                 kind = ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
@@ -346,7 +347,6 @@ class PostgresConversationRuntimeCoordinator(
                     updatedAt = Clock.System.now(),
                 )
             }
-            record.scheduleNextRunnableTaskIfReady(conversationId)
             record.bumpRevision()
             incident
         }
@@ -501,6 +501,9 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun findCommandTasks(): List<CommandTask> =
         readAllRecords().flatMap { it.commandTasks }
 
+    override suspend fun findCommandTasks(conversationId: Conversation.Id): List<CommandTask> =
+        readRecord(conversationId)?.commandTasks.orEmpty()
+
     override suspend fun findCommandTask(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
@@ -601,6 +604,9 @@ class PostgresConversationRuntimeCoordinator(
 
     override suspend fun findCommandMonitors(): List<CommandMonitor> =
         readAllRecords().flatMap { it.commandMonitors }
+
+    override suspend fun findCommandMonitors(conversationId: Conversation.Id): List<CommandMonitor> =
+        readRecord(conversationId)?.commandMonitors.orEmpty()
 
     override suspend fun findCommandMonitor(
         conversationId: Conversation.Id,
@@ -721,7 +727,6 @@ class PostgresConversationRuntimeCoordinator(
                 updatedAt = Clock.System.now(),
             )
             record.appendControlTrace(conversationId, ConversationExecutionState.ControlState.RUNNING)
-            record.scheduleNextRunnableTaskIfReady(conversationId)
             record.bumpRevision()
             true
         }
@@ -757,7 +762,6 @@ class PostgresConversationRuntimeCoordinator(
                 return@mutateRecord false
             }
             record.pendingTasks = record.pendingTasks.filterNot { it.userMessageIdOrNull() == messageId }
-            record.removeScheduledWorkItems(conversationId, ConversationRuntimeTask.Id(messageId.value))
             record.appendTrace(
                 conversationId = conversationId,
                 taskId = ConversationRuntimeTask.Id(messageId.value),
@@ -837,170 +841,38 @@ class PostgresConversationRuntimeCoordinator(
         }
     }
 
-    override suspend fun claimUnpublishedEventLogEntries(
-        leaseOwnerId: String,
-        now: Instant,
-        leaseUntil: Instant,
-        limit: Int,
-    ): List<ConversationRuntimeEventLogEntry> {
-        require(limit > 0) { "Conversation runtime event outbox claim limit must be positive" }
-        require(leaseUntil > now) { "Conversation runtime event outbox lease must end in the future" }
-        val candidateConversationIds = readAllRecords()
-            .mapNotNull { record ->
-                record.eventLog
-                    .asSequence()
-                    .filter { it.isAvailableForPublish(now) }
-                    .minWithOrNull(compareBy<ConversationRuntimeEventLogEntry> { it.createdAt }.thenBy { it.sequence })
-                    ?.let { entry -> record.conversationId to entry }
-            }
-            .sortedWith(
-                compareBy<Pair<Conversation.Id, ConversationRuntimeEventLogEntry>> { it.second.createdAt }
-                    .thenBy { it.second.sequence }
-            )
-            .map { it.first }
-        val claimed = mutableListOf<ConversationRuntimeEventLogEntry>()
-
-        for (conversationId in candidateConversationIds) {
-            if (claimed.size >= limit) break
-            val claimedForConversation = tryMutateExistingRecord(conversationId) { record ->
-                val selected = record.eventLog
-                    .filter { it.isAvailableForPublish(now) }
-                    .sortedWith(compareBy<ConversationRuntimeEventLogEntry> { it.createdAt }.thenBy { it.sequence })
-                    .take(limit - claimed.size)
-                    .map {
-                        it.copy(
-                            publishLeaseOwnerId = leaseOwnerId,
-                            publishLeaseUntil = leaseUntil,
-                        )
+    override suspend fun listReadyWorkItems(limit: Int): List<ConversationRuntimeWorkItem> {
+        require(limit > 0) { "Conversation runtime ready-work limit must be positive" }
+        return withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    """
+                    SELECT ready_task_id, record_json
+                    FROM conversation_runtime_records
+                    WHERE ready_task_id IS NOT NULL
+                    ORDER BY ready_at, conversation_id
+                    LIMIT ?
+                    """.trimIndent()
+                ).use { statement ->
+                    statement.setInt(1, limit)
+                    statement.executeQuery().use { result ->
+                        buildList {
+                            while (result.next()) {
+                                val indexedTaskId = ConversationRuntimeTask.Id(result.getString("ready_task_id"))
+                                val item = checkNotNull(result.runtimeRecord().readyWorkItem()) {
+                                    "Conversation runtime ready-work index points to a non-runnable record"
+                                }
+                                check(item.taskId == indexedTaskId) {
+                                    "Conversation runtime ready-work index is inconsistent: task=${indexedTaskId.value}"
+                                }
+                                add(item)
+                            }
+                        }
                     }
-                if (selected.isNotEmpty()) {
-                    val selectedBySequence = selected.associateBy { it.sequence }
-                    record.eventLog = record.eventLog.map { selectedBySequence[it.sequence] ?: it }
                 }
-                selected
-            }.orEmpty()
-            claimed += claimedForConversation
+            }
         }
-        return claimed.sortedWith(
-            compareBy<ConversationRuntimeEventLogEntry> { it.createdAt }.thenBy { it.sequence }
-        )
     }
-
-    override suspend fun markEventLogEntryPublished(
-        conversationId: Conversation.Id,
-        sequence: Long,
-        leaseOwnerId: String,
-        publishedAt: Instant,
-    ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
-            val entry = record.eventLog.firstOrNull { it.sequence == sequence } ?: return@mutateRecord false
-            if (entry.publishedAt != null) {
-                return@mutateRecord true
-            }
-            if (entry.publishLeaseOwnerId != null && entry.publishLeaseOwnerId != leaseOwnerId) {
-                return@mutateRecord false
-            }
-            record.eventLog = record.eventLog.replaceEventLogEntry(
-                entry.copy(
-                    publishedAt = publishedAt,
-                    publishLeaseOwnerId = null,
-                    publishLeaseUntil = null,
-                )
-            )
-            true
-        }
-
-    override suspend fun claimUnpublishedWorkItems(
-        leaseOwnerId: String,
-        now: Instant,
-        leaseUntil: Instant,
-        limit: Int,
-    ): List<ConversationRuntimeWorkOutboxEntry> {
-        require(limit > 0) { "Conversation runtime work outbox claim limit must be positive" }
-        require(leaseUntil > now) { "Conversation runtime work outbox lease must end in the future" }
-        val candidateConversationIds = readAllRecords()
-            .mapNotNull { record ->
-                record.workOutbox
-                    .asSequence()
-                    .filter { record.canClaimForPublish(it, now) }
-                    .minWithOrNull(compareBy<ConversationRuntimeWorkOutboxEntry> { it.createdAt }.thenBy { it.sequence })
-                    ?.let { entry -> record.conversationId to entry }
-            }
-            .sortedWith(
-                compareBy<Pair<Conversation.Id, ConversationRuntimeWorkOutboxEntry>> { it.second.createdAt }
-                    .thenBy { it.second.sequence }
-            )
-            .map { it.first }
-        val claimed = mutableListOf<ConversationRuntimeWorkOutboxEntry>()
-
-        for (conversationId in candidateConversationIds) {
-            if (claimed.size >= limit) break
-            val claimedForConversation = tryMutateExistingRecord(conversationId) { record ->
-                val selected = record.workOutbox
-                    .filter { record.canClaimForPublish(it, now) }
-                    .sortedWith(compareBy<ConversationRuntimeWorkOutboxEntry> { it.createdAt }.thenBy { it.sequence })
-                    .take(limit - claimed.size)
-                    .map {
-                        it.copy(
-                            publishLeaseOwnerId = leaseOwnerId,
-                            publishLeaseUntil = leaseUntil,
-                        )
-                    }
-                if (selected.isNotEmpty()) {
-                    val selectedBySequence = selected.associateBy { it.sequence }
-                    record.workOutbox = record.workOutbox.map { selectedBySequence[it.sequence] ?: it }
-                }
-                selected
-            }.orEmpty()
-            claimed += claimedForConversation
-        }
-        return claimed.sortedWith(
-            compareBy<ConversationRuntimeWorkOutboxEntry> { it.createdAt }.thenBy { it.sequence }
-        )
-    }
-
-    override suspend fun markWorkItemPublished(
-        conversationId: Conversation.Id,
-        sequence: Long,
-        leaseOwnerId: String,
-        publishedAt: Instant,
-    ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
-            val entry = record.workOutbox.firstOrNull { it.sequence == sequence } ?: return@mutateRecord false
-            if (entry.publishedAt != null) {
-                return@mutateRecord true
-            }
-            if (entry.publishLeaseOwnerId != null && entry.publishLeaseOwnerId != leaseOwnerId) {
-                return@mutateRecord false
-            }
-            record.workOutbox = record.workOutbox.replaceWorkOutboxEntry(
-                entry.copy(
-                    publishedAt = publishedAt,
-                    publishLeaseOwnerId = null,
-                    publishLeaseUntil = null,
-                )
-            )
-            true
-        }
-
-    override suspend fun releasePublishedWorkItem(
-        conversationId: Conversation.Id,
-        taskId: ConversationRuntimeTask.Id,
-    ): Boolean =
-        mutateRecord(conversationId, createIfMissing = false) { record ->
-            val entry = record.workOutbox.firstOrNull { it.item.taskId == taskId } ?: return@mutateRecord false
-            if (entry.publishedAt == null && entry.publishLeaseOwnerId == null && entry.publishLeaseUntil == null) {
-                return@mutateRecord true
-            }
-            record.workOutbox = record.workOutbox.replaceWorkOutboxEntry(
-                entry.copy(
-                    publishedAt = null,
-                    publishLeaseOwnerId = null,
-                    publishLeaseUntil = null,
-                )
-            )
-            true
-        }
 
     private suspend fun readRecord(conversationId: Conversation.Id): RuntimeRecord? =
         withContext(Dispatchers.IO) {
@@ -1037,60 +909,34 @@ class PostgresConversationRuntimeCoordinator(
         block: (RuntimeRecord) -> T,
     ): T =
         withContext(Dispatchers.IO) {
-            dataSource.connection.use { connection ->
+            val (result, schedulingStateChanged) = dataSource.connection.use { connection ->
                 connection.autoCommit = false
                 try {
                     val record = connection.lockRecord(conversationId)
                         ?: if (createIfMissing) connection.insertAndLockRecord(conversationId) else RuntimeRecord(conversationId)
+                    val schedulingStateBefore = record.schedulingState()
                     val result = block(record)
                     if (createIfMissing || connection.recordExists(conversationId)) {
                         connection.upsertRecord(record)
                     }
+                    val schedulingStateChanged = schedulingStateBefore != record.schedulingState()
                     connection.commit()
-                    result
+                    result to schedulingStateChanged
                 } catch (error: Throwable) {
                     connection.rollback()
                     throw error
                 }
             }
-        }
-
-    private suspend fun <T : Any> tryMutateExistingRecord(
-        conversationId: Conversation.Id,
-        block: (RuntimeRecord) -> T,
-    ): T? =
-        withContext(Dispatchers.IO) {
-            dataSource.connection.use { connection ->
-                connection.autoCommit = false
-                try {
-                    val record = connection.tryLockRecord(conversationId)
-                    if (record == null) {
-                        connection.rollback()
-                        return@use null
-                    }
-                    val result = block(record)
-                    connection.upsertRecord(record)
-                    connection.commit()
-                    result
-                } catch (error: Throwable) {
-                    connection.rollback()
-                    throw error
+            if (schedulingStateChanged) {
+                check(schedulingSignalChannel.trySend(conversationId).isSuccess) {
+                    "Conversation runtime scheduling signal channel is closed"
                 }
             }
+            result
         }
 
     private fun Connection.lockRecord(conversationId: Conversation.Id): RuntimeRecord? =
         prepareStatement("SELECT record_json FROM conversation_runtime_records WHERE conversation_id = ? FOR UPDATE").use { statement ->
-            statement.setString(1, conversationId.value)
-            statement.executeQuery().use { result ->
-                if (result.next()) result.runtimeRecord() else null
-            }
-        }
-
-    private fun Connection.tryLockRecord(conversationId: Conversation.Id): RuntimeRecord? =
-        prepareStatement(
-            "SELECT record_json FROM conversation_runtime_records WHERE conversation_id = ? FOR UPDATE SKIP LOCKED"
-        ).use { statement ->
             statement.setString(1, conversationId.value)
             statement.executeQuery().use { result ->
                 if (result.next()) result.runtimeRecord() else null
@@ -1121,18 +967,29 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     private fun Connection.upsertRecord(record: RuntimeRecord) {
+        val readyWorkItem = record.readyWorkItem()
         prepareStatement(
             """
-            INSERT INTO conversation_runtime_records(conversation_id, record_json, updated_at)
-            VALUES (?, ?, ?)
+            INSERT INTO conversation_runtime_records(
+                conversation_id,
+                record_json,
+                updated_at,
+                ready_task_id,
+                ready_at
+            )
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (conversation_id) DO UPDATE
             SET record_json = EXCLUDED.record_json,
-                updated_at = EXCLUDED.updated_at
+                updated_at = EXCLUDED.updated_at,
+                ready_task_id = EXCLUDED.ready_task_id,
+                ready_at = EXCLUDED.ready_at
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, record.conversationId.value)
             statement.setObject(2, jsonb(record))
             statement.setTimestamp(3, Clock.System.now().toTimestamp())
+            statement.setString(4, readyWorkItem?.taskId?.value)
+            statement.setTimestamp(5, readyWorkItem?.createdAt?.toTimestamp())
             statement.executeUpdate()
         }
     }
@@ -1145,17 +1002,6 @@ class PostgresConversationRuntimeCoordinator(
             type = "jsonb"
             value = json.encodeToString(record)
         }
-
-    private fun ConversationRuntimeEventLogEntry.isAvailableForPublish(now: Instant): Boolean =
-        publishedAt == null && publishLeaseUntil?.let { it < now } != false
-
-    private fun RuntimeRecord.canClaimForPublish(
-        entry: ConversationRuntimeWorkOutboxEntry,
-        now: Instant,
-    ): Boolean =
-        entry.publishedAt == null &&
-            canPublishWorkItem(entry.item) &&
-            entry.publishLeaseUntil?.let { it < now } != false
 
     @Serializable
     private data class RuntimeRecord(
@@ -1172,11 +1018,9 @@ class PostgresConversationRuntimeCoordinator(
         var incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
         var trace: List<ConversationRuntimeTraceEntry> = emptyList(),
         var eventLog: List<ConversationRuntimeEventLogEntry> = emptyList(),
-        var workOutbox: List<ConversationRuntimeWorkOutboxEntry> = emptyList(),
         var completedIdempotencyKeys: Set<String> = emptySet(),
         var traceSequence: Long = 0,
         var eventSequence: Long = 0,
-        var workSequence: Long = 0,
     ) {
         fun snapshot(): ConversationRuntimeSnapshot =
             ConversationRuntimeSnapshot(
@@ -1198,51 +1042,34 @@ class PostgresConversationRuntimeCoordinator(
             revision += 1
         }
 
-        fun scheduleNextRunnableTaskIfReady(conversationId: Conversation.Id) {
+        fun readyWorkItem(): ConversationRuntimeWorkItem? {
             val currentState = state
             if (currentState?.activeTaskId != null) {
-                return
+                return null
             }
             if (currentState != null && currentState.controlState != ConversationExecutionState.ControlState.RUNNING) {
-                return
+                return null
             }
-            val task = pendingTasks.firstOrNull { it.placement == QueuedMessagePlacement.END_OF_TURN } ?: return
-            appendWorkItemIfMissing(
-                ConversationRuntimeWorkItem(
-                    conversationId = conversationId,
-                    reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
-                    taskId = task.id,
-                    requirements = task.requirements,
-                    createdAt = Clock.System.now(),
-                )
+            val task = pendingTasks.firstOrNull {
+                it.placement == QueuedMessagePlacement.END_OF_TURN
+            } ?: return null
+            return ConversationRuntimeWorkItem(
+                conversationId = conversationId,
+                reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
+                taskId = task.id,
+                requirements = task.requirements,
+                createdAt = task.createdAt,
             )
         }
 
-        fun removeScheduledWorkItems(
-            conversationId: Conversation.Id,
-            taskId: ConversationRuntimeTask.Id,
-        ) {
-            workOutbox = workOutbox.filterNot {
-                it.item.conversationId == conversationId &&
-                    it.item.reason == ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED &&
-                    it.item.taskId == taskId
-            }
-        }
-
-        fun canPublishWorkItem(item: ConversationRuntimeWorkItem): Boolean =
-            state == null || (state?.controlState == ConversationExecutionState.ControlState.RUNNING && state?.activeTaskId == null)
-
-        fun appendWorkItemIfMissing(item: ConversationRuntimeWorkItem) {
-            if (workOutbox.any { it.item.reason == item.reason && it.item.taskId == item.taskId }) {
-                return
-            }
-            workSequence += 1
-            workOutbox = workOutbox + ConversationRuntimeWorkOutboxEntry(
-                sequence = workSequence,
-                item = item,
-                createdAt = item.createdAt,
+        fun schedulingState(): SchedulingState =
+            SchedulingState(
+                readyTaskId = readyWorkItem()?.taskId,
+                controlState = state?.controlState,
+                activeTaskId = state?.activeTaskId,
+                activeExecutor = state?.activeExecutor,
+                activeTaskStartedAt = state?.activeTaskStartedAt,
             )
-        }
 
         fun requestCommandTaskCancellation(
             conversationId: Conversation.Id,
@@ -1310,7 +1137,6 @@ class PostgresConversationRuntimeCoordinator(
         ): Boolean {
             val removedTasks = pendingTasks.size
             pendingTasks = emptyList()
-            workOutbox = emptyList()
             val currentState = state
             if (currentState == null && removedTasks == 0) {
                 return false
@@ -1334,7 +1160,6 @@ class PostgresConversationRuntimeCoordinator(
             activeTask = null
             pendingTasks = emptyList()
             toolExecutions = emptyList()
-            workOutbox = emptyList()
         }
 
         fun appendControlTrace(
@@ -1389,7 +1214,6 @@ class PostgresConversationRuntimeCoordinator(
             activeTask = null
             completedIdempotencyKeys = completedIdempotencyKeys + task.idempotencyKey
             pendingTasks = pendingTasks.filterNot { it.isInternalRuntimeStep() }
-            workOutbox = emptyList()
             toolExecutions = emptyList()
             val incident = ConversationRuntimeTaskIncident(
                 task = task,
@@ -1439,7 +1263,6 @@ class PostgresConversationRuntimeCoordinator(
                     activeTaskStartedAt = null,
                     updatedAt = Clock.System.now(),
                 )
-                scheduleNextRunnableTaskIfReady(conversationId)
             }
             bumpRevision()
             return incident
@@ -1474,15 +1297,13 @@ class PostgresConversationRuntimeCoordinator(
         }
     }
 
-    private fun List<ConversationRuntimeEventLogEntry>.replaceEventLogEntry(
-        replacement: ConversationRuntimeEventLogEntry,
-    ): List<ConversationRuntimeEventLogEntry> =
-        map { entry -> if (entry.sequence == replacement.sequence) replacement else entry }
-
-    private fun List<ConversationRuntimeWorkOutboxEntry>.replaceWorkOutboxEntry(
-        replacement: ConversationRuntimeWorkOutboxEntry,
-    ): List<ConversationRuntimeWorkOutboxEntry> =
-        map { entry -> if (entry.sequence == replacement.sequence) replacement else entry }
+    private data class SchedulingState(
+        val readyTaskId: ConversationRuntimeTask.Id?,
+        val controlState: ConversationExecutionState.ControlState?,
+        val activeTaskId: ConversationRuntimeTask.Id?,
+        val activeExecutor: ConversationRuntimeExecutorIdentity?,
+        val activeTaskStartedAt: Instant?,
+    )
 
     private fun Instant.toTimestamp(): Timestamp =
         Timestamp.from(java.time.Instant.ofEpochMilli(toEpochMilliseconds()))

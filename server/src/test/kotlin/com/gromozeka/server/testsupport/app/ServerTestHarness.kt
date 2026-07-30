@@ -46,7 +46,6 @@ class ServerTestHarness(
             put("GROMOZEKA_MODE", "test")
             put("GROMOZEKA_HOME", homeDirectory.toString())
             put("logging.file.path", homeDirectory.resolve("logs").toString())
-            put("gromozeka.runtime.rabbit.enabled", "false")
             put("gromozeka.runtime.server.enabled", "true")
             put("gromozeka.runtime.worker.enabled", "false")
             putAll(systemProperties)

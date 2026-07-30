@@ -18,8 +18,7 @@ import kotlin.jvm.JvmInline
  * Durable conversation runtime task.
  *
  * A task is the public boundary between UI commands, runtime scheduling, and workers.
- * Storage/queue implementations may keep it in memory, DB, RabbitMQ, or another broker,
- * but downstream code must treat it as an independently claimable unit of work.
+ * Storage implementations keep it durably until one exact executor claims it.
  */
 @Serializable
 data class ConversationRuntimeTask(
@@ -581,37 +580,6 @@ data class ConversationRuntimeWorkItem(
 }
 
 @Serializable
-data class ConversationRuntimeWorkOutboxEntry(
-    val sequence: Long,
-    val item: ConversationRuntimeWorkItem,
-    val createdAt: Instant,
-    val publishedAt: Instant? = null,
-    val publishLeaseOwnerId: String? = null,
-    val publishLeaseUntil: Instant? = null,
-)
-
-interface ConversationRuntimeWorkDelivery {
-    val item: ConversationRuntimeWorkItem
-    val redeliveryCount: Int
-    val isFinalRedelivery: Boolean
-
-    /**
-     * Permanently settles the broker delivery. Returns only after the transport accepted the acknowledgement.
-     */
-    suspend fun acknowledge()
-
-    /**
-     * Redelivers transport work only while its runtime task is still unclaimed.
-     */
-    suspend fun redeliver()
-
-    /**
-     * Permanently rejects an undeliverable transport item.
-     */
-    suspend fun reject()
-}
-
-@Serializable
 sealed interface ConversationRuntimeEvent {
     val conversationId: Conversation.Id
     val cursorSequence: Long?
@@ -658,26 +626,22 @@ interface ConversationRuntimeEventBus {
     suspend fun publish(event: ConversationRuntimeEvent)
 }
 
-interface ConversationRuntimeWorkPublisher {
-    suspend fun submit(item: ConversationRuntimeWorkItem)
-}
-
-interface ConversationRuntimeWorkConsumer {
-    val deliveries: Flow<ConversationRuntimeWorkDelivery>
-}
-
 @Serializable
 data class ConversationRuntimeEventLogEntry(
     val sequence: Long,
     val conversationId: Conversation.Id,
     val event: ConversationRuntimeEvent,
     val createdAt: Instant,
-    val publishedAt: Instant? = null,
-    val publishLeaseOwnerId: String? = null,
-    val publishLeaseUntil: Instant? = null,
 )
 
 interface ConversationRuntimeCoordinator {
+    /**
+     * Local wakeups for scheduling-state changes. PostgreSQL remains the durable source of truth.
+     *
+     * A Server executor must drain [listReadyWorkItems] at startup before relying on these signals.
+     */
+    val schedulingSignals: Flow<Conversation.Id>
+
     suspend fun submit(task: ConversationRuntimeTask): Boolean
 
     /**
@@ -701,7 +665,7 @@ interface ConversationRuntimeCoordinator {
     ): Boolean
 
     /**
-     * Records the exact boundary after broker acknowledgement and immediately before task code may run.
+     * Records the exact boundary immediately before task code may run.
      */
     suspend fun markActiveTaskStarted(
         conversationId: Conversation.Id,
@@ -781,6 +745,8 @@ interface ConversationRuntimeCoordinator {
 
     suspend fun findCommandTasks(): List<CommandTask>
 
+    suspend fun findCommandTasks(conversationId: Conversation.Id): List<CommandTask>
+
     suspend fun findCommandTask(
         conversationId: Conversation.Id,
         taskId: CommandTask.Id,
@@ -803,6 +769,8 @@ interface ConversationRuntimeCoordinator {
     ): CommandMonitorSyncResult
 
     suspend fun findCommandMonitors(): List<CommandMonitor>
+
+    suspend fun findCommandMonitors(conversationId: Conversation.Id): List<CommandMonitor>
 
     suspend fun findCommandMonitor(
         conversationId: Conversation.Id,
@@ -864,36 +832,8 @@ interface ConversationRuntimeCoordinator {
         limit: Int,
     ): List<ConversationRuntimeEventLogEntry>
 
-    suspend fun claimUnpublishedEventLogEntries(
-        leaseOwnerId: String,
-        now: Instant,
-        leaseUntil: Instant,
-        limit: Int,
-    ): List<ConversationRuntimeEventLogEntry>
-
-    suspend fun markEventLogEntryPublished(
-        conversationId: Conversation.Id,
-        sequence: Long,
-        leaseOwnerId: String,
-        publishedAt: Instant,
-    ): Boolean
-
-    suspend fun claimUnpublishedWorkItems(
-        leaseOwnerId: String,
-        now: Instant,
-        leaseUntil: Instant,
-        limit: Int,
-    ): List<ConversationRuntimeWorkOutboxEntry>
-
-    suspend fun markWorkItemPublished(
-        conversationId: Conversation.Id,
-        sequence: Long,
-        leaseOwnerId: String,
-        publishedAt: Instant,
-    ): Boolean
-
-    suspend fun releasePublishedWorkItem(
-        conversationId: Conversation.Id,
-        taskId: ConversationRuntimeTask.Id,
-    ): Boolean
+    /**
+     * Reads only indexed conversations whose next end-of-turn task is runnable.
+     */
+    suspend fun listReadyWorkItems(limit: Int): List<ConversationRuntimeWorkItem>
 }

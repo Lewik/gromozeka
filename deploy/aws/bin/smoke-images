@@ -6,7 +6,6 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 run_id="$$"
 network="gromozeka-cloud-smoke-$run_id"
 postgres="gromozeka-smoke-postgres-$run_id"
-rabbitmq="gromozeka-smoke-rabbitmq-$run_id"
 server="gromozeka-smoke-server-$run_id"
 worker="gromozeka-smoke-worker-$run_id"
 platform="${GROMOZEKA_CLOUD_PLATFORM:-linux/amd64}"
@@ -25,7 +24,7 @@ cleanup() {
   status=$?
   trap - EXIT
   capture_logs
-  docker rm -f "$postgres" "$rabbitmq" "$server" "$worker" >/dev/null 2>&1 || true
+  docker rm -f "$worker" "$server" "$postgres" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
   if [[ "$status" -ne 0 ]]; then
     tail -100 "$log_dir/server.log" >&2 || true
@@ -45,35 +44,23 @@ docker run -d \
   -e POSTGRES_USER=gromozeka \
   -e POSTGRES_PASSWORD=smoke \
   pgvector/pgvector:pg16 >/dev/null
-docker run -d \
-  --name "$rabbitmq" \
-  --network "$network" \
-  --network-alias rabbitmq \
-  -e RABBITMQ_DEFAULT_USER=gromozeka \
-  -e RABBITMQ_DEFAULT_PASS=smoke \
-  rabbitmq:4-management >/dev/null
 
 for attempt in {1..60}; do
-  if docker exec "$postgres" pg_isready -U gromozeka -d gromozeka >/dev/null 2>&1 \
-    && docker exec "$rabbitmq" rabbitmq-diagnostics -q ping >/dev/null 2>&1; then
+  if docker exec "$postgres" pg_isready -U gromozeka -d gromozeka >/dev/null 2>&1; then
     break
   fi
   [[ "$attempt" != 60 ]] || {
-    echo "Disposable PostgreSQL and RabbitMQ did not become ready." >&2
+    echo "Disposable PostgreSQL did not become ready." >&2
     exit 1
   }
   sleep 2
 done
 
-common_environment=(
+server_environment=(
   -e GROMOZEKA_MODE=prod
   -e GROMOZEKA_POSTGRES_JDBC_URL=jdbc:postgresql://postgres:5432/gromozeka
   -e GROMOZEKA_POSTGRES_USERNAME=gromozeka
   -e GROMOZEKA_POSTGRES_PASSWORD=smoke
-  -e SPRING_RABBITMQ_HOST=rabbitmq
-  -e SPRING_RABBITMQ_PORT=5672
-  -e SPRING_RABBITMQ_USERNAME=gromozeka
-  -e SPRING_RABBITMQ_PASSWORD=smoke
 )
 
 docker run -d \
@@ -82,18 +69,8 @@ docker run -d \
   --network "$network" \
   --tmpfs /var/lib/gromozeka:uid=10001,gid=10001 \
   -p 127.0.0.1::8765 \
-  "${common_environment[@]}" \
+  "${server_environment[@]}" \
   "$server_image" >/dev/null
-docker run -d \
-  --platform "$platform" \
-  --name "$worker" \
-  --network "$network" \
-  --tmpfs /var/lib/gromozeka:uid=10001,gid=10001 \
-  "${common_environment[@]}" \
-  -e GROMOZEKA_RUNTIME_WORKER_ID=cloud-primary \
-  -e GROMOZEKA_RUNTIME_WORKER_VERSION=smoke \
-  -e GROMOZEKA_RUNTIME_WORKER_CAPABILITIES=AI_REQUEST_RESPONSE,TOOL_EXECUTION,LOCAL_AGENT_TOOL \
-  "$worker_image" >/dev/null
 
 host_port="$(
   docker inspect "$server" \
@@ -102,9 +79,8 @@ host_port="$(
 
 for attempt in {1..90}; do
   server_state="$(docker inspect "$server" --format '{{.State.Status}}')"
-  worker_state="$(docker inspect "$worker" --format '{{.State.Status}}')"
-  if [[ "$server_state" != "running" || "$worker_state" != "running" ]]; then
-    echo "Container stopped during startup: server=$server_state worker=$worker_state" >&2
+  if [[ "$server_state" != "running" ]]; then
+    echo "Server container stopped during startup: server=$server_state" >&2
     exit 1
   fi
   if curl --fail --silent "http://127.0.0.1:$host_port/" | grep -qi "<html"; then
@@ -117,16 +93,66 @@ for attempt in {1..90}; do
   sleep 2
 done
 
-sleep 5
+worker_gateway_credential="smoke-worker-gateway-credential-0000000000000001"
+worker_gateway_hash="$(
+  printf '%s' "$worker_gateway_credential" \
+    | sha256sum \
+    | awk '{print $1}'
+)"
+docker exec "$postgres" \
+  psql -U gromozeka -d gromozeka -v ON_ERROR_STOP=1 \
+  -c "INSERT INTO users(id, username, display_name, status, created_at, updated_at)
+      VALUES ('smoke-user', 'smoke-user', 'Smoke User', 'ACTIVE', now(), now());
+      INSERT INTO workers(id, display_name, owner_user_id, runtime_wide_access, status, created_at, updated_at)
+      VALUES ('cloud-primary', 'Cloud Primary', 'smoke-user', true, 'ACTIVE', now(), now());
+      INSERT INTO worker_gateway_credentials(worker_id, credential_hash, created_at, rotated_at)
+      VALUES ('cloud-primary', '$worker_gateway_hash', now(), now());" >/dev/null
+
+docker run -d \
+  --platform "$platform" \
+  --name "$worker" \
+  --network "container:$server" \
+  --tmpfs /var/lib/gromozeka:uid=10001,gid=10001 \
+  -e GROMOZEKA_MODE=prod \
+  -e GROMOZEKA_SERVER_URL=http://127.0.0.1:8765 \
+  -e GROMOZEKA_WORKER_GATEWAY_CREDENTIAL="$worker_gateway_credential" \
+  -e GROMOZEKA_RUNTIME_WORKER_ID=cloud-primary \
+  -e GROMOZEKA_RUNTIME_WORKER_VERSION=smoke \
+  -e GROMOZEKA_RUNTIME_WORKER_CAPABILITIES=AI_REQUEST_RESPONSE,TOOL_EXECUTION,LOCAL_AGENT_TOOL \
+  "$worker_image" >/dev/null
+
+worker_registrations=0
+server_health="starting"
+for attempt in {1..90}; do
+  server_state="$(docker inspect "$server" --format '{{.State.Status}}')"
+  worker_state="$(docker inspect "$worker" --format '{{.State.Status}}')"
+  if [[ "$server_state" != "running" ]]; then
+    echo "Server container stopped while waiting for Worker registration: server=$server_state" >&2
+    exit 1
+  fi
+  if [[ "$worker_state" != "running" ]]; then
+    echo "Worker container stopped during startup: worker=$worker_state" >&2
+    exit 1
+  fi
+  server_health="$(docker inspect "$server" --format '{{.State.Health.Status}}')"
+  worker_registrations="$(
+    docker exec "$postgres" \
+      psql -U gromozeka -d gromozeka -Atc \
+      "select count(*) from conversation_runtime_workers where worker_id = 'cloud-primary';"
+  )"
+  if [[ "$worker_registrations" == "1" && "$server_health" == "healthy" ]]; then
+    break
+  fi
+  [[ "$attempt" != 90 ]] || {
+    echo "Server or Worker did not become healthy: server=$server_health registrations=$worker_registrations" >&2
+    exit 1
+  }
+  sleep 2
+done
 
 server_state="$(docker inspect "$server" --format '{{.State.Status}}')"
 server_health="$(docker inspect "$server" --format '{{.State.Health.Status}}')"
 worker_state="$(docker inspect "$worker" --format '{{.State.Status}}')"
-worker_registrations="$(
-  docker exec "$postgres" \
-    psql -U gromozeka -d gromozeka -Atc \
-    "select count(*) from conversation_runtime_workers where worker_id = 'cloud-primary';"
-)"
 
 [[ "$server_state" == "running" && "$server_health" == "healthy" ]]
 [[ "$worker_state" == "running" ]]

@@ -2,8 +2,7 @@
 
 The first production shape is deliberately small:
 
-- one `t3a.medium` On-Demand EC2 instance for Server, Cloud Worker, PostgreSQL
-  and RabbitMQ;
+- one `t3a.medium` On-Demand EC2 instance for Server and PostgreSQL;
 - a separate encrypted EBS data volume;
 - immutable Server and Worker images in ECR;
 - private S3 runtime bundles and nightly PostgreSQL/home backups;

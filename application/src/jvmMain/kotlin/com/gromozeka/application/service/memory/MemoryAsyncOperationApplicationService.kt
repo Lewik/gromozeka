@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service
 class MemoryAsyncOperationApplicationService(
     private val preparer: MemoryOperationPreparer,
     private val memoryStore: MemoryStore,
+    private val operationQueue: MemoryOperationQueue,
     private val lifecycleEventPublisher: MemoryRunLifecycleEventPublisher,
 ) {
     private val log = KLoggers.logger(this)
@@ -252,6 +253,17 @@ class MemoryAsyncOperationApplicationService(
             )
         )
         publishLifecycleEvent(run)
+        check(
+            operationQueue.enqueue(
+                MemoryOperationJob(
+                    runId = run.id,
+                    operation = prepared.request.kind,
+                    namespace = prepared.namespace,
+                )
+            )
+        ) {
+            "New memory operation was already scheduled: ${run.id.value}"
+        }
 
         val queueSize = memoryStore.findRunsByStatuses(
             statuses = setOf(MemoryRun.Status.QUEUED),
@@ -271,7 +283,7 @@ class MemoryAsyncOperationApplicationService(
     }
 
     private suspend fun publishLifecycleEvent(run: MemoryRun) {
-        runCatching {
+        try {
             lifecycleEventPublisher.publish(
                 MemoryRunLifecycleEvent(
                     runId = run.id,
@@ -279,9 +291,11 @@ class MemoryAsyncOperationApplicationService(
                     occurredAt = Clock.System.now(),
                 )
             )
-        }.onFailure { error ->
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             log.warn(error) {
-                "Memory lifecycle event publish failed; server reconciliation will recover it: " +
+                "Memory lifecycle event publish failed; startup reconciliation can recover it: " +
                     "run=${run.id.value} status=${run.status} error=${error.message}"
             }
         }

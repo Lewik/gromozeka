@@ -9,14 +9,14 @@ Gromozeka test suites are classified by the boundary they verify, not by the Gra
 These tests do not require network access, external services, or real model calls.
 
 - **Unit tests** verify one policy, mapper, parser, validator, state transition, or algorithm in isolation.
-- **Component tests** connect several production components in-process, usually with fake LLM runtimes, in-memory stores, and in-memory queues. Examples include memory pipelines and the conversation runtime dispatcher.
+- **Component tests** connect several production components in-process, usually with fake LLM runtimes, in-memory stores, and local event streams. Examples include memory pipelines and the conversation runtime dispatcher.
 - **Adapter fixture tests** verify request serialization and response parsing against fixed payloads. They protect Gromozeka from its own adapter regressions, but do not prove that an external provider still follows the captured contract.
 
 ### Infrastructure integration tests
 
-These tests exercise a real external component such as PostgreSQL or RabbitMQ. They may use the local machine or Docker but should not require a public internet connection.
+These tests exercise a real external component such as PostgreSQL. They may use the local machine or Docker but should not require a public internet connection.
 
-The RabbitMQ runtime queue test is currently opt-in through `GROMOZEKA_RABBIT_RUNTIME_TEST=true`. PostgreSQL is exercised mainly by memory E2E rather than by a comprehensive repository-level integration suite.
+PostgreSQL is exercised by focused repository tests and memory E2E, but repository-level integration coverage is not yet comprehensive.
 
 ### Live provider conformance tests
 
@@ -63,12 +63,11 @@ Cassette modes:
 - `refresh`: calls the provider and overwrites matching recordings.
 - `off`: calls the provider without cassette recording or replay.
 
-Cassettes cache only LLM calls. They do not cache PostgreSQL, RabbitMQ, WebSocket, MCP, or UI behavior.
+Cassettes cache only LLM calls. They do not cache PostgreSQL, WebSocket, MCP, or UI behavior.
 
 ## Current Gaps
 
 - No automated browser/mobile UI E2E suite.
 - No dedicated live provider conformance suite.
 - PostgreSQL repository integration coverage is not yet comprehensive.
-- RabbitMQ integration coverage is opt-in and narrow.
 - No dedicated load, performance, chaos, or distributed-worker E2E suite.

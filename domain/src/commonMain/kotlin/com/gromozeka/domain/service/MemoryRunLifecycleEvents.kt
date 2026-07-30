@@ -16,14 +16,6 @@ fun interface MemoryRunLifecycleEventPublisher {
     suspend fun publish(event: MemoryRunLifecycleEvent)
 }
 
-interface MemoryRunLifecycleEventDelivery {
-    val event: MemoryRunLifecycleEvent
-
-    suspend fun acknowledge()
-    suspend fun redeliver()
-    suspend fun reject()
-}
-
-interface MemoryRunLifecycleEventConsumer {
-    val deliveries: Flow<MemoryRunLifecycleEventDelivery>
+interface MemoryRunLifecycleEventStream {
+    val events: Flow<MemoryRunLifecycleEvent>
 }

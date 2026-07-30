@@ -29,8 +29,24 @@ class ServerCommandRuntimeStateService(
     private val commandTaskLifecycleEventPublisher: CommandTaskLifecycleEventPublisher,
     private val commandMonitorLifecycleEventPublisher: CommandMonitorLifecycleEventPublisher,
 ) : CommandRuntimeStateService {
-    override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult =
-        runtimeCoordinator.upsertCommandTask(task)
+    override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult {
+        val result = runtimeCoordinator.upsertCommandTask(task)
+        if (task.isTerminal &&
+            task.agentDefinitionId != null &&
+            task.completionNotificationRequestedAt != null &&
+            task.completionNotificationDeliveredAt == null
+        ) {
+            commandTaskLifecycleEventPublisher.publish(
+                CommandTaskLifecycleEvent(
+                    conversationId = task.conversationId,
+                    taskId = task.id,
+                    status = task.status,
+                    occurredAt = task.completedAt ?: task.updatedAt,
+                )
+            )
+        }
+        return result
+    }
 
     override suspend fun findCommandTasks(): List<CommandTask> =
         runtimeCoordinator.findCommandTasks()
@@ -44,8 +60,30 @@ class ServerCommandRuntimeStateService(
     override suspend fun synchronizeCommandMonitor(
         monitor: CommandMonitor,
         events: List<CommandMonitorEvent>,
-    ): CommandMonitorSyncResult =
-        runtimeCoordinator.synchronizeCommandMonitor(monitor, events)
+    ): CommandMonitorSyncResult {
+        val result = runtimeCoordinator.synchronizeCommandMonitor(monitor, events)
+        val storedMonitor = result.monitor
+        val hasPendingEvent = events.any { it.deliveryRequested && it.deliveredAt == null }
+        val hasPendingTerminalNotification =
+            storedMonitor.isTerminal &&
+                storedMonitor.terminalNotificationRequestedAt != null &&
+                storedMonitor.terminalNotificationDeliveredAt == null
+        if (storedMonitor.agentDefinitionId != null && (hasPendingEvent || hasPendingTerminalNotification)) {
+            commandMonitorLifecycleEventPublisher.publish(
+                CommandMonitorLifecycleEvent(
+                    conversationId = storedMonitor.conversationId,
+                    monitorId = storedMonitor.id,
+                    kind = if (hasPendingEvent) {
+                        CommandMonitorLifecycleEvent.Kind.EVENTS_AVAILABLE
+                    } else {
+                        CommandMonitorLifecycleEvent.Kind.TERMINAL
+                    },
+                    occurredAt = storedMonitor.completedAt ?: storedMonitor.updatedAt,
+                )
+            )
+        }
+        return result
+    }
 
     override suspend fun findCommandMonitors(): List<CommandMonitor> =
         runtimeCoordinator.findCommandMonitors()
@@ -61,14 +99,6 @@ class ServerCommandRuntimeStateService(
         monitorId: CommandMonitor.Id,
     ): List<CommandMonitorEvent> =
         runtimeCoordinator.findCommandMonitorEvents(conversationId, monitorId)
-
-    override suspend fun publishCommandTaskLifecycle(event: CommandTaskLifecycleEvent) {
-        commandTaskLifecycleEventPublisher.publish(event)
-    }
-
-    override suspend fun publishCommandMonitorLifecycle(event: CommandMonitorLifecycleEvent) {
-        commandMonitorLifecycleEventPublisher.publish(event)
-    }
 
     override suspend fun publishSnapshot(conversationId: Conversation.Id) {
         runtimeEventBus.publish(

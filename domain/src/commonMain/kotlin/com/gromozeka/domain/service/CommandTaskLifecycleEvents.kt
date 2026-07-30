@@ -17,14 +17,6 @@ fun interface CommandTaskLifecycleEventPublisher {
     suspend fun publish(event: CommandTaskLifecycleEvent)
 }
 
-interface CommandTaskLifecycleEventDelivery {
-    val event: CommandTaskLifecycleEvent
-
-    suspend fun acknowledge()
-    suspend fun redeliver()
-    suspend fun reject()
-}
-
-interface CommandTaskLifecycleEventConsumer {
-    val deliveries: Flow<CommandTaskLifecycleEventDelivery>
+interface CommandTaskLifecycleEventStream {
+    val events: Flow<CommandTaskLifecycleEvent>
 }

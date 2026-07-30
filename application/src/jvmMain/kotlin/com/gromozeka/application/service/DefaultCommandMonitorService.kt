@@ -4,7 +4,6 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
-import com.gromozeka.domain.service.CommandMonitorLifecycleEvent
 import com.gromozeka.domain.service.CommandMonitorOutput
 import com.gromozeka.domain.service.CommandMonitorService
 import com.gromozeka.domain.service.CommandMonitorSpec
@@ -356,7 +355,6 @@ class DefaultCommandMonitorService(
                         completedAt = Clock.System.now(),
                     ).withTerminalOutput()
                     synchronizeUntilAvailable(active, failed, emptyList())
-                    publishLifecycleEvent(active.monitor, CommandMonitorLifecycleEvent.Kind.TERMINAL)
                 }
             }
         } finally {
@@ -473,7 +471,6 @@ class DefaultCommandMonitorService(
             active.scanCursor = scan.nextScanCursor
             active.lastControlPlaneWarningAtNanos = null
             publishSnapshot(active.monitor.conversationId)
-            publishLifecycleEvent(active.monitor, CommandMonitorLifecycleEvent.Kind.EVENTS_AVAILABLE)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -510,7 +507,6 @@ class DefaultCommandMonitorService(
             completedAt = now,
         ).withTerminalOutput()
         synchronizeUntilAvailable(active, terminal, emptyList())
-        publishLifecycleEvent(active.monitor, CommandMonitorLifecycleEvent.Kind.TERMINAL)
     }
 
     private suspend fun synchronizeUntilAvailable(
@@ -570,7 +566,6 @@ class DefaultCommandMonitorService(
             events,
         ).monitor
         publishSnapshot(synchronized.conversationId)
-        publishLifecycleEvent(synchronized, CommandMonitorLifecycleEvent.Kind.TERMINAL)
     }
 
     private fun scanAllRemainingEvents(monitor: CommandMonitor): List<CommandMonitorEvent> {
@@ -770,30 +765,6 @@ class DefaultCommandMonitorService(
         }
         return (requestedStart + safeStart) to
             String(bytes, safeStart, bytes.size - safeStart, StandardCharsets.UTF_8)
-    }
-
-    private suspend fun publishLifecycleEvent(
-        monitor: CommandMonitor,
-        kind: CommandMonitorLifecycleEvent.Kind,
-    ) {
-        if (monitor.agentDefinitionId == null) return
-        try {
-            runtimeState.publishCommandMonitorLifecycle(
-                CommandMonitorLifecycleEvent(
-                    conversationId = monitor.conversationId,
-                    monitorId = monitor.id,
-                    kind = kind,
-                    occurredAt = Clock.System.now(),
-                )
-            )
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            log.warn(error) {
-                "Command monitor lifecycle publication failed; DB reconciliation will recover it: " +
-                    monitor.id.value
-            }
-        }
     }
 
     private suspend fun publishSnapshot(conversationId: Conversation.Id) {

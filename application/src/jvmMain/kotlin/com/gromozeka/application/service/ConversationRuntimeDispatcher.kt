@@ -13,23 +13,13 @@ import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
-import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
-import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
 import com.gromozeka.domain.service.ConversationRuntimeCapability
-import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
-import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.QueuedMessagePlacement
-import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
@@ -43,27 +33,8 @@ import java.security.MessageDigest
 class ConversationRuntimeDispatcher(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
-    private val runtimeWorkPublisher: ConversationRuntimeWorkPublisher,
-    private val runtimeWorkerRegistry: ConversationRuntimeWorkerRegistry,
-    @Qualifier("applicationScope") private val coroutineScope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
-    private val outboxLeaseOwnerId = "server:${uuid7()}"
-
-    init {
-        launchRuntimeLoop("work-outbox-publish", ConversationRuntimeTiming.workOutboxScanIntervalMillis) {
-            publishRuntimeWorkOutbox()
-        }
-        launchRuntimeLoop("event-outbox-publish", ConversationRuntimeTiming.eventOutboxScanIntervalMillis) {
-            publishRuntimeEventOutbox()
-        }
-        launchRuntimeLoop(
-            "worker-availability-scan",
-            ConversationRuntimeTiming.workerAvailabilityScanIntervalMillis,
-        ) {
-            recordUnavailableWorkerIncidents()
-        }
-    }
 
     suspend fun enqueueMessage(
         conversationId: Conversation.Id,
@@ -141,7 +112,6 @@ class ConversationRuntimeDispatcher(
         val accepted = runtimeControlAccepted || cancelledCommands > 0
         if (accepted) {
             publishRuntimeSnapshot(conversationId)
-            publishRuntimeWorkOutbox()
             log.info { "Runtime execution control accepted: conversation=${conversationId.value} action=$action" }
         } else {
             log.info { "Runtime execution control ignored without active turn: conversation=${conversationId.value} action=$action" }
@@ -281,99 +251,9 @@ class ConversationRuntimeDispatcher(
         val accepted = runtimeCoordinator.submit(task)
         if (accepted) {
             publishRuntimeSnapshot(task.conversationId)
-            publishRuntimeWorkOutbox()
         }
         return accepted
     }
-
-    private fun launchRuntimeLoop(
-        name: String,
-        intervalMillis: Long,
-        block: suspend () -> Unit,
-    ) {
-        coroutineScope.launch {
-            while (true) {
-                try {
-                    block()
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    log.error(error) { "Conversation runtime background loop failed: name=$name error=${error.message}" }
-                }
-                delay(intervalMillis)
-            }
-        }
-    }
-
-    private suspend fun recordUnavailableWorkerIncidents() {
-        val now = Clock.System.now()
-        val staleBefore = now - ConversationRuntimeTiming.workerRegistrationStaleAfter
-        val registrations = runtimeWorkerRegistry.list().associateBy { it.identity.workerId }
-        val incidents = runtimeCoordinator.listActiveTaskAssignments().mapNotNull { assignment ->
-            val expectedWorker = (assignment.executor as? ConversationRuntimeExecutorIdentity.Worker)
-                ?.identity
-                ?: return@mapNotNull null
-            val registration = registrations[expectedWorker.workerId]
-            val unavailableReason = registration.unavailableReason(expectedWorker, staleBefore)
-                ?: return@mapNotNull null
-            if (assignment.startedAt == null) {
-                runtimeCoordinator.recordClaimedTaskDeliveryFailure(
-                    conversationId = assignment.conversationId,
-                    taskId = assignment.task.id,
-                    executor = assignment.executor,
-                    message = "$unavailableReason before task execution started; the task was not executed",
-                    errorType = "WorkerUnavailable",
-                )
-            } else {
-                runtimeCoordinator.markActiveTaskInDoubt(
-                    conversationId = assignment.conversationId,
-                    taskId = assignment.task.id,
-                    executor = assignment.executor,
-                    message = "$unavailableReason while task execution was active; the task outcome is unknown",
-                    errorType = "WorkerUnavailable",
-                )
-            }
-        }
-        if (incidents.isEmpty()) {
-            return
-        }
-
-        incidents.forEach { incident ->
-            publishRuntimeSnapshot(incident.task.conversationId)
-            publishRuntimeEvent(
-                ConversationRuntimeEvent.ExecutionFailed(
-                    conversationId = incident.task.conversationId,
-                    message = incident.message,
-                    failureType = incident.kind.name,
-                )
-            )
-        }
-        publishRuntimeWorkOutbox()
-        log.warn {
-            "Recorded conversation runtime incidents after worker loss: " +
-                incidents.joinToString {
-                    "${it.task.conversationId.value}/${it.task.id.value}/${it.kind}"
-                }
-        }
-    }
-
-    private fun ConversationRuntimeWorkerRegistration?.unavailableReason(
-        expectedWorker: com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity,
-        staleBefore: kotlinx.datetime.Instant,
-    ): String? =
-        when {
-            this == null ->
-                "Worker ${expectedWorker.workerId.value}/${expectedWorker.sessionId.value} is not registered"
-            identity != expectedWorker ->
-                "Worker ${expectedWorker.workerId.value}/${expectedWorker.sessionId.value} was replaced by " +
-                    "${identity.workerId.value}/${identity.sessionId.value}"
-            stoppedAt != null ->
-                "Worker ${identity.workerId.value}/${identity.sessionId.value} stopped at $stoppedAt"
-            lastHeartbeatAt < staleBefore ->
-                "Worker ${identity.workerId.value}/${identity.sessionId.value} has not reported since " +
-                    "$lastHeartbeatAt"
-            else -> null
-        }
 
     private suspend fun publishRuntimeSnapshot(conversationId: Conversation.Id) {
         publishLiveRuntimeEvent(runtimeSnapshotEvent(conversationId))
@@ -381,63 +261,7 @@ class ConversationRuntimeDispatcher(
 
     private suspend fun publishRuntimeEvent(event: ConversationRuntimeEvent) {
         val logEntry = runtimeCoordinator.recordEvent(event)
-        if (publishLiveRuntimeEvent(event.withCursorSequence(logEntry.sequence))) {
-            runtimeCoordinator.markEventLogEntryPublished(
-                conversationId = logEntry.conversationId,
-                sequence = logEntry.sequence,
-                leaseOwnerId = outboxLeaseOwnerId,
-                publishedAt = Clock.System.now(),
-            )
-        }
-    }
-
-    private suspend fun publishRuntimeEventOutbox() {
-        val now = Clock.System.now()
-        val entries = runtimeCoordinator.claimUnpublishedEventLogEntries(
-            leaseOwnerId = outboxLeaseOwnerId,
-            now = now,
-            leaseUntil = now + ConversationRuntimeTiming.eventPublishLeaseDuration,
-            limit = EVENT_OUTBOX_BATCH_SIZE,
-        )
-        entries.forEach { entry ->
-            if (publishLiveRuntimeEvent(entry.event.withCursorSequence(entry.sequence))) {
-                runtimeCoordinator.markEventLogEntryPublished(
-                    conversationId = entry.conversationId,
-                    sequence = entry.sequence,
-                    leaseOwnerId = outboxLeaseOwnerId,
-                    publishedAt = Clock.System.now(),
-                )
-            }
-        }
-    }
-
-    private suspend fun publishRuntimeWorkOutbox() {
-        val now = Clock.System.now()
-        val entries = runtimeCoordinator.claimUnpublishedWorkItems(
-            leaseOwnerId = outboxLeaseOwnerId,
-            now = now,
-            leaseUntil = now + ConversationRuntimeTiming.workPublishLeaseDuration,
-            limit = WORK_OUTBOX_BATCH_SIZE,
-        )
-        entries.forEach { entry ->
-            try {
-                runtimeWorkPublisher.submit(entry.item)
-                runtimeCoordinator.markWorkItemPublished(
-                    conversationId = entry.item.conversationId,
-                    sequence = entry.sequence,
-                    leaseOwnerId = outboxLeaseOwnerId,
-                    publishedAt = Clock.System.now(),
-                )
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                log.warn(error) {
-                    "Failed to publish runtime work item; durable outbox will retry after lease expires: " +
-                        "conversation=${entry.item.conversationId.value} task=${entry.item.taskId.value} " +
-                        "sequence=${entry.sequence} error=${error.message}"
-                }
-            }
-        }
+        publishLiveRuntimeEvent(event.withCursorSequence(logEntry.sequence))
     }
 
     private suspend fun publishLiveRuntimeEvent(event: ConversationRuntimeEvent): Boolean =
@@ -520,7 +344,5 @@ class ConversationRuntimeDispatcher(
 
     private companion object {
         const val EVENT_REPLAY_BATCH_SIZE = 1_000
-        const val EVENT_OUTBOX_BATCH_SIZE = 1_000
-        const val WORK_OUTBOX_BATCH_SIZE = 1_000
     }
 }

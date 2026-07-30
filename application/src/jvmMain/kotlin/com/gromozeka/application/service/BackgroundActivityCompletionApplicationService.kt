@@ -22,9 +22,8 @@ class BackgroundActivityCompletionApplicationService(
     suspend fun prepareBatch(
         conversationId: Conversation.Id,
     ): Batch {
-        val commandCandidates = runtimeCoordinator.findCommandTasks()
+        val commandCandidates = runtimeCoordinator.findCommandTasks(conversationId)
             .asSequence()
-            .filter { it.conversationId == conversationId }
             .filter { it.requiresCompletionNotification() }
             .map { task ->
                 DeliveryCandidate.Command(
@@ -33,8 +32,8 @@ class BackgroundActivityCompletionApplicationService(
                     payloadBytes = task.terminalOutput.orEmpty().toByteArray().size,
                 )
             }
-        val monitors = runtimeCoordinator.findCommandMonitors()
-            .filter { it.conversationId == conversationId && it.agentDefinitionId != null }
+        val monitors = runtimeCoordinator.findCommandMonitors(conversationId)
+            .filter { it.agentDefinitionId != null }
         val pendingEvents = runtimeCoordinator.findCommandMonitorEvents(conversationId)
             .asSequence()
             .filter { it.deliveryRequested && it.deliveredAt == null }

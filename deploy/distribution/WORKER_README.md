@@ -19,5 +19,5 @@ The bundled Java runtime is private to the Worker and does not modify the
 machine-wide Java installation.
 
 The Worker connects outbound to the Server over WSS. It does not receive
-PostgreSQL or RabbitMQ credentials and does not share the Server data
-directory. Remote plaintext connections are rejected.
+PostgreSQL credentials and does not share the Server data directory. Remote
+plaintext connections are rejected.

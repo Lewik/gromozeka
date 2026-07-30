@@ -3,7 +3,6 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
 import com.gromozeka.application.service.InMemoryConversationRuntimeCoordinator
 import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
-import com.gromozeka.application.service.InMemoryConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
@@ -11,11 +10,8 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.MemoryRunLifecycleEvent
-import com.gromozeka.domain.service.MemoryRunLifecycleEventConsumer
-import com.gromozeka.domain.service.MemoryRunLifecycleEventDelivery
 import com.gromozeka.domain.service.MemoryRunLifecycleEventPublisher
-import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
+import com.gromozeka.domain.service.MemoryRunLifecycleEventStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,12 +42,9 @@ class MemoryRunLifecycleApplicationServiceTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = runtimeCoordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-            runtimeWorkPublisher = NoOpRuntimeWorkPublisher,
-            runtimeWorkerRegistry = InMemoryConversationRuntimeWorkerRegistry(),
-            coroutineScope = scope,
         )
         val service = MemoryRunLifecycleApplicationService(
-            eventConsumer = lifecycleEvents,
+            eventStream = lifecycleEvents,
             memoryStore = memoryStore,
             runtimeCoordinator = runtimeCoordinator,
             runtimeDispatcher = dispatcher,
@@ -125,24 +118,13 @@ class MemoryRunLifecycleApplicationServiceTest {
 
     private class TestMemoryRunLifecycleEventBus :
         MemoryRunLifecycleEventPublisher,
-        MemoryRunLifecycleEventConsumer {
-        private val channel = Channel<MemoryRunLifecycleEventDelivery>(Channel.UNLIMITED)
+        MemoryRunLifecycleEventStream {
+        private val channel = Channel<MemoryRunLifecycleEvent>(Channel.UNLIMITED)
 
-        override val deliveries: Flow<MemoryRunLifecycleEventDelivery> = channel.receiveAsFlow()
+        override val events: Flow<MemoryRunLifecycleEvent> = channel.receiveAsFlow()
 
         override suspend fun publish(event: MemoryRunLifecycleEvent) {
-            channel.send(
-                object : MemoryRunLifecycleEventDelivery {
-                    override val event: MemoryRunLifecycleEvent = event
-                    override suspend fun acknowledge() = Unit
-                    override suspend fun redeliver() = Unit
-                    override suspend fun reject() = Unit
-                }
-            )
+            channel.send(event)
         }
-    }
-
-    private object NoOpRuntimeWorkPublisher : ConversationRuntimeWorkPublisher {
-        override suspend fun submit(item: ConversationRuntimeWorkItem) = Unit
     }
 }

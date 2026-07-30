@@ -43,7 +43,7 @@ class InMemoryConversationRuntimeStoresTest {
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
-    fun `coordinator claims only head delivered task pointer`() = runBlocking {
+    fun `coordinator indexes only the head runnable task`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val first = task("message-1", QueuedMessagePlacement.END_OF_TURN)
         val second = task("message-2", QueuedMessagePlacement.END_OF_TURN)
@@ -51,16 +51,11 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.submit(first))
         assertTrue(coordinator.submit(second))
 
-        val firstWork = coordinator.claimUnpublishedWorkItems(
-            leaseOwnerId = "publisher-1",
-            now = Clock.System.now(),
-            leaseUntil = Instant.fromEpochMilliseconds(10_000),
-            limit = 10,
-        )
-        assertEquals(listOf(first.id), firstWork.map { it.item.taskId })
-        assertTrue(coordinator.markWorkItemPublished(conversationId, firstWork.single().sequence, "publisher-1", Clock.System.now()))
+        assertEquals(conversationId, withTimeout(1_000) { coordinator.schedulingSignals.first() })
+        assertEquals(listOf(first.id), coordinator.listReadyWorkItems(10).map { it.taskId })
         assertNull(coordinator.claimAsEligibleWorker(second, worker("worker-1")))
         assertEquals(first, coordinator.claimAsEligibleWorker(first, worker("worker-2")))
+        assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
         assertTrue(coordinator.confirmActiveTaskOwner(conversationId, first.id, executor(worker("worker-2"))))
         assertFalse(coordinator.confirmActiveTaskOwner(conversationId, first.id, executor(worker("worker-1"))))
 
@@ -73,40 +68,34 @@ class InMemoryConversationRuntimeStoresTest {
             )
         )
         assertTrue(coordinator.completeActiveTask(conversationId, first.id, executor(worker("worker-2"))))
-        val secondWork = coordinator.claimUnpublishedWorkItems(
-            leaseOwnerId = "publisher-1",
-            now = Instant.fromEpochMilliseconds(10_001),
-            leaseUntil = Instant.fromEpochMilliseconds(20_000),
-            limit = 10,
-        )
-        assertEquals(listOf(second.id), secondWork.map { it.item.taskId })
+        assertEquals(listOf(second.id), coordinator.listReadyWorkItems(10).map { it.taskId })
         assertEquals(second, coordinator.claimAsEligibleWorker(second, worker("worker-3")))
     }
 
     @Test
-    fun `coordinator releases published work while paused and republishes it after resume`() = runBlocking {
+    fun `coordinator removes paused work from the ready index and restores it after resume`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val task = task("message-1", QueuedMessagePlacement.END_OF_TURN)
+        val activeTask = task("message-1", QueuedMessagePlacement.END_OF_TURN)
+        val pendingTask = task("message-2", QueuedMessagePlacement.END_OF_TURN)
+        val worker = worker("worker-1")
 
-        assertTrue(coordinator.submit(task))
-        val work = coordinator.claimUnpublishedWorkItems(
-            leaseOwnerId = "publisher-1",
-            now = Instant.fromEpochMilliseconds(1_000),
-            leaseUntil = Instant.fromEpochMilliseconds(2_000),
-            limit = 10,
-        ).single()
-        assertTrue(coordinator.markWorkItemPublished(conversationId, work.sequence, "publisher-1", Clock.System.now()))
-        assertTrue(coordinator.releasePublishedWorkItem(conversationId, task.id))
-
-        assertEquals(
-            listOf(task.id),
-            coordinator.claimUnpublishedWorkItems(
-                leaseOwnerId = "publisher-2",
-                now = Instant.fromEpochMilliseconds(2_001),
-                leaseUntil = Instant.fromEpochMilliseconds(3_000),
-                limit = 10,
-            ).map { it.item.taskId },
+        assertTrue(coordinator.submit(activeTask))
+        assertTrue(coordinator.submit(pendingTask))
+        assertEquals(activeTask, coordinator.claimAsEligibleWorker(activeTask, worker))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                activeTask.id,
+                executor(worker),
+                Clock.System.now(),
+            )
         )
+        assertTrue(coordinator.requestPause(conversationId))
+        assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
+        assertTrue(coordinator.completeActiveTask(conversationId, activeTask.id, executor(worker)))
+        assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
+        assertTrue(coordinator.requestResume(conversationId))
+        assertEquals(listOf(pendingTask.id), coordinator.listReadyWorkItems(10).map { it.taskId })
     }
 
     @Test
@@ -529,63 +518,6 @@ class InMemoryConversationRuntimeStoresTest {
         assertEquals(2, secondEntry.sequence)
         assertEquals(listOf(secondEntry), coordinator.listEventLogEntries(conversationId, afterSequence = 1, limit = 10))
         assertEquals(2, coordinator.snapshot(conversationId).lastEventSequence)
-    }
-
-    @Test
-    fun `coordinator leases unpublished event log entries until they are marked published`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-        val event = ConversationRuntimeEvent.ExecutionCompleted(conversationId)
-        val entry = coordinator.recordEvent(event)
-        val now = Instant.fromEpochMilliseconds(1_000)
-
-        val firstLease = coordinator.claimUnpublishedEventLogEntries(
-            leaseOwnerId = "worker-1",
-            now = now,
-            leaseUntil = Instant.fromEpochMilliseconds(2_000),
-            limit = 10,
-        )
-        assertEquals(listOf(entry.sequence), firstLease.map { it.sequence })
-        assertEquals(
-            emptyList(),
-            coordinator.claimUnpublishedEventLogEntries(
-                leaseOwnerId = "worker-2",
-                now = Instant.fromEpochMilliseconds(1_500),
-                leaseUntil = Instant.fromEpochMilliseconds(2_500),
-                limit = 10,
-            )
-        )
-        assertEquals(
-            listOf(entry.sequence),
-            coordinator.claimUnpublishedEventLogEntries(
-                leaseOwnerId = "worker-2",
-                now = Instant.fromEpochMilliseconds(2_001),
-                leaseUntil = Instant.fromEpochMilliseconds(3_000),
-                limit = 10,
-            ).map { it.sequence },
-        )
-        assertFalse(coordinator.markEventLogEntryPublished(conversationId, entry.sequence, "worker-1", Clock.System.now()))
-        assertTrue(coordinator.markEventLogEntryPublished(conversationId, entry.sequence, "worker-2", Clock.System.now()))
-    }
-
-    @Test
-    fun `work queue delivers runtime work items`() = runBlocking {
-        val queue = InMemoryConversationRuntimeWorkQueue()
-        val item = ConversationRuntimeWorkItem(
-            conversationId = conversationId,
-            reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
-            taskId = ConversationRuntimeTask.Id("task-1"),
-            requirements = ConversationRuntimeTaskRequirements(
-                capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
-                target = ConversationRuntimeTaskTarget.Server,
-            ),
-            createdAt = Clock.System.now(),
-        )
-
-        queue.submit(item)
-
-        val delivery = withTimeout(1_000) { queue.deliveries.first() }
-        assertEquals(item, delivery.item)
-        delivery.acknowledge()
     }
 
     private fun commandTask(

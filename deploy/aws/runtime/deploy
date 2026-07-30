@@ -29,17 +29,15 @@ flock -n 9 || {
 }
 
 install -d -m 0700 "$data_dir/runtime" "$data_dir/backups"
-install -d -m 0755 "$data_dir/home" "$data_dir/postgres" "$data_dir/rabbitmq"
+install -d -m 0755 "$data_dir/home" "$data_dir/postgres"
 chown 10001:10001 "$data_dir/home"
-chown 999:999 "$data_dir/postgres" "$data_dir/rabbitmq"
+chown 999:999 "$data_dir/postgres"
 
 if [[ ! -f "$secrets_file" ]]; then
   umask 077
   postgres_password="$(openssl rand -hex 32)"
-  rabbitmq_password="$(openssl rand -hex 32)"
-  printf 'POSTGRES_PASSWORD=%s\nRABBITMQ_DEFAULT_PASS=%s\n' \
+  printf 'POSTGRES_PASSWORD=%s\n' \
     "$postgres_password" \
-    "$rabbitmq_password" \
     > "$secrets_file"
 fi
 
@@ -85,14 +83,6 @@ compose up --detach --remove-orphans --wait --wait-timeout 300
 compose exec -T postgres \
   psql -U gromozeka -d gromozeka -v ON_ERROR_STOP=1 \
   -c "delete from conversation_runtime_workers where worker_id = 'cloud-primary';"
-
-while IFS= read -r queue_name; do
-  [[ -n "$queue_name" ]] || continue
-  compose exec -T rabbitmq rabbitmqctl delete_queue "$queue_name" </dev/null
-done < <(
-  compose exec -T rabbitmq rabbitmqctl list_queues --silent name \
-    | awk '/^gromozeka\.runtime\.work\.lane-/ || /^gromozeka\.runtime\.work\..*\.[0-9]+(\.dlq)?$/ || /^gromozeka\.runtime\.work\.worker-.*cloud-primary(\.dlq)?$/'
-)
 
 umask 077
 printf 'GROMOZEKA_SERVER_IMAGE=%q\nGROMOZEKA_RELEASE_VERSION=%q\nGROMOZEKA_MCP_ALLOWED_HOSTS=%q\n' \

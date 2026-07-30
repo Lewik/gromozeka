@@ -29,9 +29,5 @@ interface CommandRuntimeStateService {
         monitorId: CommandMonitor.Id,
     ): List<CommandMonitorEvent>
 
-    suspend fun publishCommandTaskLifecycle(event: CommandTaskLifecycleEvent)
-
-    suspend fun publishCommandMonitorLifecycle(event: CommandMonitorLifecycleEvent)
-
     suspend fun publishSnapshot(conversationId: Conversation.Id)
 }

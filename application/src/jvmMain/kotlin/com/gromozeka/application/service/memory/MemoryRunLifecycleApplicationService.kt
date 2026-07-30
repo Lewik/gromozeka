@@ -6,14 +6,11 @@ import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
-import com.gromozeka.domain.service.MemoryRunLifecycleEventConsumer
+import com.gromozeka.domain.service.MemoryRunLifecycleEventStream
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
@@ -35,7 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean
     matchIfMissing = true,
 )
 class MemoryRunLifecycleApplicationService(
-    private val eventConsumer: MemoryRunLifecycleEventConsumer,
+    private val eventStream: MemoryRunLifecycleEventStream,
     private val memoryStore: MemoryStore,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
@@ -49,33 +46,28 @@ class MemoryRunLifecycleApplicationService(
     fun start() {
         if (!started.compareAndSet(false, true)) return
         coroutineScope.launch {
-            eventConsumer.deliveries.collect { delivery ->
+            eventStream.events.collect { event ->
                 try {
-                    memoryStore.findRunById(delivery.event.runId)?.let { run ->
-                        handle(run, delivery.event.occurredAt)
+                    memoryStore.findRunById(event.runId)?.let { run ->
+                        handle(run, event.occurredAt)
                     }
-                    delivery.acknowledge()
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Throwable) {
                     log.warn(error) {
-                        "Memory lifecycle event handling failed; DB reconciliation will retry it: " +
-                            "run=${delivery.event.runId.value} error=${error.message}"
+                        "Memory lifecycle event handling failed; startup reconciliation can recover it: " +
+                            "run=${event.runId.value} error=${error.message}"
                     }
-                    delivery.reject()
                 }
             }
         }
         coroutineScope.launch {
-            while (currentCoroutineContext().isActive) {
-                try {
-                    reconcileConversationDeliveries()
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    log.warn(error) { "Memory lifecycle reconciliation failed: ${error.message}" }
-                }
-                delay(RECONCILIATION_INTERVAL_MILLIS)
+            try {
+                reconcileConversationDeliveries()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                log.warn(error) { "Memory lifecycle startup reconciliation failed: ${error.message}" }
             }
         }
     }
@@ -179,7 +171,4 @@ class MemoryRunLifecycleApplicationService(
             this == MemoryRun.Status.PARTIAL ||
             this == MemoryRun.Status.CANCELLED
 
-    private companion object {
-        const val RECONCILIATION_INTERVAL_MILLIS = 5_000L
-    }
 }

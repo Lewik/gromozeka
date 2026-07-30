@@ -1,11 +1,10 @@
 # Gromozeka Server
 
 This package contains the Gromozeka control plane, production Web client, and a
-private Java 21 runtime. PostgreSQL with pgvector and RabbitMQ remain external
-services.
+private Java 21 runtime. PostgreSQL with pgvector remains an external service.
 
 Copy `config/server.yaml.example` to `~/.gromozeka/server.yaml`, provide the
-database and RabbitMQ environment variables referenced by that file, then run:
+database environment variables referenced by that file, then run:
 
 - macOS/Linux: `bin/gromozeka-server`
 - Windows: `bin\gromozeka-server.cmd`

@@ -264,7 +264,7 @@ class MemoryOperationProcessor(
     }
 
     private suspend fun publishLifecycleEvent(run: MemoryRun) {
-        runCatching {
+        try {
             lifecycleEventPublisher.publish(
                 MemoryRunLifecycleEvent(
                     runId = run.id,
@@ -272,9 +272,11 @@ class MemoryOperationProcessor(
                     occurredAt = Clock.System.now(),
                 )
             )
-        }.onFailure { error ->
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             log.warn(error) {
-                "Memory lifecycle event publish failed; server reconciliation will recover it: " +
+                "Memory lifecycle event publish failed; startup reconciliation can recover it: " +
                     "run=${run.id.value} status=${run.status} error=${error.message}"
             }
         }

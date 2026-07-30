@@ -6,7 +6,6 @@ import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
-import com.gromozeka.application.service.InMemoryConversationRuntimeWorkQueue
 import com.gromozeka.application.service.TargetedAiEmbeddingProvider
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.NoOpGlobalHotkeyController
@@ -83,10 +82,5 @@ class E2eSupportConfig {
     @Bean
     @Primary
     fun conversationRuntimeEventBus(): ConversationRuntimeEventBus = InMemoryConversationRuntimeEventBus()
-
-    @Bean
-    @Primary
-    fun conversationRuntimeWorkQueue(): InMemoryConversationRuntimeWorkQueue =
-        InMemoryConversationRuntimeWorkQueue()
 
 }

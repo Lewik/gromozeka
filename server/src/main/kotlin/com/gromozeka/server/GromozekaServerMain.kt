@@ -254,7 +254,6 @@ private fun determineLogPath(mode: String?): String {
         "com.gromozeka.server",
         "com.gromozeka.application",
         "com.gromozeka.infrastructure.db",
-        "com.gromozeka.infrastructure.runtime",
         "com.gromozeka.infrastructure.ai"
     ],
     excludeFilters = [

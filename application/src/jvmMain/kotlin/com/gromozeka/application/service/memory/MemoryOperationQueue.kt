@@ -12,10 +12,8 @@ import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -276,6 +274,15 @@ class MemoryOperationQueue(
     ) {
         check(started.compareAndSet(false, true)) { "Memory operation queue is already started." }
 
+        try {
+            runBlocking {
+                jobSource().forEach(::enqueueInternal)
+            }
+        } catch (error: Throwable) {
+            started.set(false)
+            throw error
+        }
+
         coroutineScope.launch {
             for (job in jobs) {
                 try {
@@ -292,22 +299,10 @@ class MemoryOperationQueue(
                 }
             }
         }
-
-        coroutineScope.launch {
-            while (currentCoroutineContext().isActive) {
-                try {
-                    jobSource().forEach { job ->
-                        enqueueInternal(job)
-                    }
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    log.error(error) { "Memory operation durable scan failed: ${error.message}" }
-                }
-                delay(DURABLE_SCAN_INTERVAL_MILLIS)
-            }
-        }
     }
+
+    internal fun enqueue(job: MemoryOperationJob): Boolean =
+        enqueueInternal(job)
 
     private fun enqueueInternal(job: MemoryOperationJob): Boolean {
         if (!scheduledRunIds.add(job.runId)) return false
@@ -317,10 +312,6 @@ class MemoryOperationQueue(
             result.getOrThrow()
         }
         return true
-    }
-
-    private companion object {
-        const val DURABLE_SCAN_INTERVAL_MILLIS = 500L
     }
 }
 

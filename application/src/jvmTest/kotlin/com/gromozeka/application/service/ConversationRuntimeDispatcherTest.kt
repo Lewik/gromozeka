@@ -22,10 +22,6 @@ import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
-import com.gromozeka.domain.service.ConversationRuntimeWorkDelivery
-import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
-import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -44,12 +40,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -266,45 +259,18 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `dispatcher records final delivery incident before rejecting dead letter`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-        val workQueue = FinalRedeliveryRuntimeWorkQueue()
-        val harness = dispatcherHarness(
-            coordinator = coordinator,
-            workQueue = workQueue,
-            executorCapabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
-        )
-        try {
-            val message = userMessage("message-1")
-            val llmTask = runtimeLlmTask(message.id, iteration = 1)
-
-            assertTrue(coordinator.submit(llmTask))
-            workQueue.submit(runtimeWorkItem(llmTask))
-            workQueue.awaitFailed()
-
-            val snapshot = coordinator.snapshot(conversationId)
-            assertEquals(1, snapshot.incidents.size)
-            assertEquals(llmTask.id, snapshot.incidents.single().task.id)
-            assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, snapshot.incidents.single().kind)
-        } finally {
-            harness.close()
-        }
-    }
-
-    @Test
-    fun `executor acknowledges Rabbit delivery before running a claimed task`() = runBlocking {
+    fun `executor drains durable ready work at startup`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val eventBus = InMemoryConversationRuntimeEventBus()
-        val workQueue = AcknowledgementTrackingRuntimeWorkQueue()
         val runner = ControllableTaskRunner()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val task = runtimeUserTurnTask(userMessage("startup-message"))
         val executor = runtimeExecutor(
             coordinator = coordinator,
             eventBus = eventBus,
-            workQueue = workQueue,
             runner = runner,
             descriptor = serverExecutorDescriptor(
-                sessionId = "ack-before-execution-server",
+                sessionId = "startup-server",
                 capabilities = setOf(
                     ConversationRuntimeCapability.CONVERSATION_TURN,
                     ConversationRuntimeCapability.MEMORY_PIPELINE,
@@ -312,17 +278,11 @@ class ConversationRuntimeDispatcherTest {
             ),
             scope = scope,
         )
-        val task = runtimeUserTurnTask(userMessage("ack-before-execution-message"))
 
         try {
-            executor.start()
             assertTrue(coordinator.submit(task))
-            workQueue.submit(runtimeWorkItem(task))
-            workQueue.awaitAcknowledged()
-            assertNull(withTimeoutOrNull(250) { runner.awaitStarted() })
-            workQueue.completeAcknowledgement()
+            executor.start()
             assertEquals(task.id, runner.awaitStarted().id)
-            assertTrue(coordinator.confirmActiveTaskOwner(conversationId, task.id, executor.identity))
             runner.releaseCurrentTask()
             waitUntil { coordinator.find(conversationId) == null }
         } finally {
@@ -332,19 +292,32 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `executor records delivery failure without running task when Rabbit acknowledgement fails`() = runBlocking {
+    fun `executor startup records delivery failure for old unstarted Server assignment`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val eventBus = InMemoryConversationRuntimeEventBus()
-        val workQueue = FailingAcknowledgementRuntimeWorkQueue()
         val runner = ControllableTaskRunner()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val oldExecutor = ConversationRuntimeExecutorIdentity.Server(
+            ConversationRuntimeServerSessionId("old-server")
+        )
+        val task = runtimeUserTurnTask(userMessage("unstarted-message"))
+        assertTrue(coordinator.submit(task))
+        assertEquals(
+            task,
+            coordinator.claimDeliveredTask(
+                conversationId = conversationId,
+                taskId = task.id,
+                executor = oldExecutor,
+                executorCapabilities = task.requirements.capabilities,
+                workerWorkspaceMountIds = emptySet(),
+            ),
+        )
         val executor = runtimeExecutor(
             coordinator = coordinator,
             eventBus = eventBus,
-            workQueue = workQueue,
             runner = runner,
             descriptor = serverExecutorDescriptor(
-                sessionId = "failed-ack-server",
+                sessionId = "new-server",
                 capabilities = setOf(
                     ConversationRuntimeCapability.CONVERSATION_TURN,
                     ConversationRuntimeCapability.MEMORY_PIPELINE,
@@ -352,18 +325,69 @@ class ConversationRuntimeDispatcherTest {
             ),
             scope = scope,
         )
-        val task = runtimeUserTurnTask(userMessage("failed-ack-message"))
 
         try {
             executor.start()
-            assertTrue(coordinator.submit(task))
-            workQueue.submit(runtimeWorkItem(task))
+            waitUntil { coordinator.findTaskIncident(conversationId, task.id) != null }
+            assertEquals(
+                ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
+                coordinator.findTaskIncident(conversationId, task.id)?.kind,
+            )
+        } finally {
+            executor.stop()
+            scope.cancel()
+        }
+    }
 
-            waitUntil { coordinator.snapshot(conversationId).incidents.isNotEmpty() }
-            assertNull(withTimeoutOrNull(250) { runner.awaitStarted() })
-            val snapshot = coordinator.snapshot(conversationId)
-            assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, snapshot.incidents.single().kind)
-            assertNull(snapshot.activeTask)
+    @Test
+    fun `executor startup records unknown outcome for old started Server assignment`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val eventBus = InMemoryConversationRuntimeEventBus()
+        val runner = ControllableTaskRunner()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val oldExecutor = ConversationRuntimeExecutorIdentity.Server(
+            ConversationRuntimeServerSessionId("old-server")
+        )
+        val task = runtimeUserTurnTask(userMessage("started-message"))
+        assertTrue(coordinator.submit(task))
+        assertNotNull(
+            coordinator.claimDeliveredTask(
+                conversationId = conversationId,
+                taskId = task.id,
+                executor = oldExecutor,
+                executorCapabilities = task.requirements.capabilities,
+                workerWorkspaceMountIds = emptySet(),
+            ),
+        )
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId = conversationId,
+                taskId = task.id,
+                executor = oldExecutor,
+                startedAt = Clock.System.now(),
+            )
+        )
+        val executor = runtimeExecutor(
+            coordinator = coordinator,
+            eventBus = eventBus,
+            runner = runner,
+            descriptor = serverExecutorDescriptor(
+                sessionId = "new-server",
+                capabilities = setOf(
+                    ConversationRuntimeCapability.CONVERSATION_TURN,
+                    ConversationRuntimeCapability.MEMORY_PIPELINE,
+                ),
+            ),
+            scope = scope,
+        )
+
+        try {
+            executor.start()
+            waitUntil { coordinator.findTaskIncident(conversationId, task.id) != null }
+            assertEquals(
+                ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN,
+                coordinator.findTaskIncident(conversationId, task.id)?.kind,
+            )
         } finally {
             executor.stop()
             scope.cancel()
@@ -374,7 +398,6 @@ class ConversationRuntimeDispatcherTest {
     fun `executor records delivery failure without running task when AI configuration refresh fails`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val eventBus = InMemoryConversationRuntimeEventBus()
-        val workQueue = AcknowledgementTrackingRuntimeWorkQueue()
         val runner = ControllableTaskRunner()
         val aiConfigurationService = TestAiConfigurationService(
             refreshFailure = IllegalStateException("AI catalog unavailable")
@@ -383,7 +406,6 @@ class ConversationRuntimeDispatcherTest {
         val executor = runtimeExecutor(
             coordinator = coordinator,
             eventBus = eventBus,
-            workQueue = workQueue,
             runner = runner,
             descriptor = serverExecutorDescriptor(
                 sessionId = "configuration-refresh-server",
@@ -400,16 +422,16 @@ class ConversationRuntimeDispatcherTest {
         try {
             executor.start()
             assertTrue(coordinator.submit(task))
-            workQueue.submit(runtimeWorkItem(task))
 
             aiConfigurationService.awaitRefresh()
             waitUntil { coordinator.snapshot(conversationId).incidents.isNotEmpty() }
-            workQueue.awaitAcknowledged()
-            workQueue.completeAcknowledgement()
 
             assertNull(withTimeoutOrNull(250) { runner.awaitStarted() })
             val snapshot = coordinator.snapshot(conversationId)
-            assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, snapshot.incidents.single().kind)
+            assertEquals(
+                ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
+                snapshot.incidents.single { it.task.id == task.id }.kind,
+            )
             assertNull(snapshot.activeTask)
         } finally {
             executor.stop()
@@ -418,57 +440,14 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `executor stop during Rabbit acknowledgement records delivery failure without running task`() = runBlocking {
+    fun `executor cancellation records unknown outcome without retrying claimed task`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val eventBus = InMemoryConversationRuntimeEventBus()
-        val workQueue = AcknowledgementTrackingRuntimeWorkQueue()
         val runner = ControllableTaskRunner()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val executor = runtimeExecutor(
             coordinator = coordinator,
             eventBus = eventBus,
-            workQueue = workQueue,
-            runner = runner,
-            descriptor = serverExecutorDescriptor(
-                sessionId = "stopped-during-ack-server",
-                capabilities = setOf(
-                    ConversationRuntimeCapability.CONVERSATION_TURN,
-                    ConversationRuntimeCapability.MEMORY_PIPELINE,
-                ),
-            ),
-            scope = scope,
-        )
-        val task = runtimeUserTurnTask(userMessage("stopped-during-ack-message"))
-
-        try {
-            executor.start()
-            assertTrue(coordinator.submit(task))
-            workQueue.submit(runtimeWorkItem(task))
-            workQueue.awaitAcknowledged()
-
-            executor.stop()
-
-            assertNull(withTimeoutOrNull(250) { runner.awaitStarted() })
-            val snapshot = coordinator.snapshot(conversationId)
-            assertEquals(ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED, snapshot.incidents.single().kind)
-            assertNull(snapshot.incidents.single().executionStartedAt)
-        } finally {
-            executor.stop()
-            scope.cancel()
-        }
-    }
-
-    @Test
-    fun `executor cancellation records unknown outcome without redelivering claimed task`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-        val eventBus = InMemoryConversationRuntimeEventBus()
-        val workQueue = AcknowledgementTrackingRuntimeWorkQueue()
-        val runner = ControllableTaskRunner()
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val executor = runtimeExecutor(
-            coordinator = coordinator,
-            eventBus = eventBus,
-            workQueue = workQueue,
             runner = runner,
             descriptor = serverExecutorDescriptor(
                 sessionId = "cancelled-server",
@@ -484,9 +463,6 @@ class ConversationRuntimeDispatcherTest {
         try {
             executor.start()
             assertTrue(coordinator.submit(task))
-            workQueue.submit(runtimeWorkItem(task))
-            workQueue.awaitAcknowledged()
-            workQueue.completeAcknowledgement()
             assertEquals(task.id, runner.awaitStarted().id)
 
             executor.stop()
@@ -535,8 +511,6 @@ class ConversationRuntimeDispatcherTest {
     fun `runtime stays Server-owned while preserving exact workspace execution target`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val eventBus = InMemoryConversationRuntimeEventBus()
-        val workQueue = BroadcastRuntimeWorkQueue()
-        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val workspaceId = Workspace.Id("workspace-1")
         val workspaceMountId = WorkspaceMount.Id("mount-1")
@@ -562,14 +536,10 @@ class ConversationRuntimeDispatcherTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = eventBus,
-            runtimeWorkPublisher = workQueue,
-            runtimeWorkerRegistry = workerRegistry,
-            coroutineScope = scope,
         )
         val serverExecutor = runtimeExecutor(
             coordinator = coordinator,
             eventBus = eventBus,
-            workQueue = workQueue,
             runner = serverRunner,
             descriptor = serverExecutorDescriptor(
                 sessionId = "server-runtime",
@@ -668,8 +638,6 @@ class ConversationRuntimeDispatcherTest {
     private fun dispatcherHarness(
         coordinator: InMemoryConversationRuntimeCoordinator = InMemoryConversationRuntimeCoordinator(),
         eventBus: InMemoryConversationRuntimeEventBus = InMemoryConversationRuntimeEventBus(),
-        workQueue: TestRuntimeWorkBroker = InMemoryTestRuntimeWorkBroker(),
-        workerRegistry: InMemoryConversationRuntimeWorkerRegistry = InMemoryConversationRuntimeWorkerRegistry(),
         runner: ControllableTaskRunner = ControllableTaskRunner(),
         executorCapabilities: Set<ConversationRuntimeCapability> = setOf(
             ConversationRuntimeCapability.CONVERSATION_TURN,
@@ -681,14 +649,10 @@ class ConversationRuntimeDispatcherTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = eventBus,
-            runtimeWorkPublisher = workQueue,
-            runtimeWorkerRegistry = workerRegistry,
-            coroutineScope = scope,
         )
         val executor = runtimeExecutor(
             coordinator = coordinator,
             eventBus = eventBus,
-            workQueue = workQueue,
             runner = runner,
             aiConfigurationService = aiConfigurationService,
             descriptor = serverExecutorDescriptor(
@@ -817,15 +781,6 @@ class ConversationRuntimeDispatcherTest {
             createdAt = Clock.System.now(),
         )
 
-    private fun runtimeWorkItem(task: ConversationRuntimeTask): ConversationRuntimeWorkItem =
-        ConversationRuntimeWorkItem(
-            conversationId = task.conversationId,
-            reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
-            taskId = task.id,
-            requirements = task.requirements,
-            createdAt = Clock.System.now(),
-        )
-
     private suspend fun waitUntil(predicate: suspend () -> Boolean) {
         withTimeout(TEST_EVENT_TIMEOUT_MS) {
             while (!predicate()) {
@@ -899,7 +854,6 @@ class ConversationRuntimeDispatcherTest {
     private fun runtimeExecutor(
         coordinator: InMemoryConversationRuntimeCoordinator,
         eventBus: InMemoryConversationRuntimeEventBus,
-        workQueue: ConversationRuntimeWorkConsumer,
         runner: ConversationRuntimeTaskRunner,
         descriptor: ConversationRuntimeExecutorDescriptor,
         scope: CoroutineScope,
@@ -914,7 +868,6 @@ class ConversationRuntimeDispatcherTest {
             delegate = ConversationRuntimeExecutor(
                 runtimeCoordinator = coordinator,
                 runtimeEventBus = eventBus,
-                runtimeWorkConsumer = workQueue,
                 workspaceService = StaticWorkspaceDomainService(workspaceWorkerId, workspaceMounts),
                 aiConfigurationService = aiConfigurationService,
                 taskRunnerProvider = objectProvider(runner),
@@ -1068,129 +1021,5 @@ class ConversationRuntimeDispatcherTest {
         object : ObjectProvider<T> {
             override fun getObject(): T = value
         }
-
-    private interface TestRuntimeWorkBroker : ConversationRuntimeWorkPublisher, ConversationRuntimeWorkConsumer
-
-    private class InMemoryTestRuntimeWorkBroker : TestRuntimeWorkBroker {
-        private val delegate = InMemoryConversationRuntimeWorkQueue()
-
-        override val deliveries: Flow<ConversationRuntimeWorkDelivery> = delegate.deliveries
-
-        override suspend fun submit(item: ConversationRuntimeWorkItem) {
-            delegate.submit(item)
-        }
-    }
-
-    private class BroadcastRuntimeWorkQueue : TestRuntimeWorkBroker {
-        private val items = MutableSharedFlow<ConversationRuntimeWorkItem>(replay = 64, extraBufferCapacity = 64)
-
-        override val deliveries: Flow<ConversationRuntimeWorkDelivery> =
-            items.map { item ->
-                object : ConversationRuntimeWorkDelivery {
-                    override val item: ConversationRuntimeWorkItem = item
-                    override val redeliveryCount: Int = 0
-                    override val isFinalRedelivery: Boolean = false
-                    override suspend fun acknowledge() = Unit
-                    override suspend fun redeliver() = Unit
-                    override suspend fun reject() = Unit
-                }
-            }
-
-        override suspend fun submit(item: ConversationRuntimeWorkItem) {
-            items.emit(item)
-        }
-    }
-
-    private class FinalRedeliveryRuntimeWorkQueue : TestRuntimeWorkBroker {
-        private val channel = Channel<ConversationRuntimeWorkDelivery>(Channel.UNLIMITED)
-        private val failed = CompletableDeferred<Unit>()
-
-        override val deliveries: Flow<ConversationRuntimeWorkDelivery> = channel.receiveAsFlow()
-
-        override suspend fun submit(item: ConversationRuntimeWorkItem) {
-            channel.send(
-                object : ConversationRuntimeWorkDelivery {
-                    override val item: ConversationRuntimeWorkItem = item
-                    override val redeliveryCount: Int = 8
-                    override val isFinalRedelivery: Boolean = true
-
-                    override suspend fun acknowledge() = Unit
-
-                    override suspend fun redeliver() =
-                        error("Final redelivery must not be redelivered")
-
-                    override suspend fun reject() {
-                        failed.complete(Unit)
-                    }
-                }
-            )
-        }
-
-        suspend fun awaitFailed() {
-            withTimeout(TEST_EVENT_TIMEOUT_MS) {
-                failed.await()
-            }
-        }
-    }
-
-    private class AcknowledgementTrackingRuntimeWorkQueue : TestRuntimeWorkBroker {
-        private val channel = Channel<ConversationRuntimeWorkDelivery>(Channel.UNLIMITED)
-        private val acknowledged = CompletableDeferred<Unit>()
-        private val acknowledgementCompleted = CompletableDeferred<Unit>()
-
-        override val deliveries: Flow<ConversationRuntimeWorkDelivery> = channel.receiveAsFlow()
-
-        override suspend fun submit(item: ConversationRuntimeWorkItem) {
-            channel.send(
-                object : ConversationRuntimeWorkDelivery {
-                    override val item: ConversationRuntimeWorkItem = item
-                    override val redeliveryCount: Int = 0
-                    override val isFinalRedelivery: Boolean = false
-
-                    override suspend fun acknowledge() {
-                        acknowledged.complete(Unit)
-                        acknowledgementCompleted.await()
-                    }
-
-                    override suspend fun redeliver() = error("Claimed task must not be redelivered")
-
-                    override suspend fun reject() = error("Claimed task must not be rejected")
-                }
-            )
-        }
-
-        suspend fun awaitAcknowledged() {
-            withTimeout(TEST_EVENT_TIMEOUT_MS) {
-                acknowledged.await()
-            }
-        }
-
-        fun completeAcknowledgement() {
-            acknowledgementCompleted.complete(Unit)
-        }
-    }
-
-    private class FailingAcknowledgementRuntimeWorkQueue : TestRuntimeWorkBroker {
-        private val channel = Channel<ConversationRuntimeWorkDelivery>(Channel.UNLIMITED)
-
-        override val deliveries: Flow<ConversationRuntimeWorkDelivery> = channel.receiveAsFlow()
-
-        override suspend fun submit(item: ConversationRuntimeWorkItem) {
-            channel.send(
-                object : ConversationRuntimeWorkDelivery {
-                    override val item: ConversationRuntimeWorkItem = item
-                    override val redeliveryCount: Int = 0
-                    override val isFinalRedelivery: Boolean = false
-
-                    override suspend fun acknowledge(): Nothing =
-                        error("Rabbit acknowledgement failed")
-
-                    override suspend fun redeliver() = error("Claimed task must not be redelivered")
-
-                    override suspend fun reject() = error("Claimed task must not be rejected")
-                }
-            )
-        }
-    }
 
 }

@@ -3,9 +3,7 @@ package com.gromozeka.remote.protocol
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
-import com.gromozeka.domain.service.CommandMonitorLifecycleEvent
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -55,18 +53,6 @@ sealed interface WorkerCommandRuntimeRequest {
     data class FindCommandMonitorEvents(
         val conversationId: Conversation.Id,
         val monitorId: CommandMonitor.Id,
-    ) : WorkerCommandRuntimeRequest
-
-    @Serializable
-    @SerialName("publish_command_task_lifecycle")
-    data class PublishCommandTaskLifecycle(
-        val event: CommandTaskLifecycleEvent,
-    ) : WorkerCommandRuntimeRequest
-
-    @Serializable
-    @SerialName("publish_command_monitor_lifecycle")
-    data class PublishCommandMonitorLifecycle(
-        val event: CommandMonitorLifecycleEvent,
     ) : WorkerCommandRuntimeRequest
 
     @Serializable

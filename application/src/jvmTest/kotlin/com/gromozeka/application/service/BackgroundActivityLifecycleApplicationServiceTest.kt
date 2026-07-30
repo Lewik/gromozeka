@@ -6,17 +6,13 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandMonitorLifecycleEvent
-import com.gromozeka.domain.service.CommandMonitorLifecycleEventConsumer
-import com.gromozeka.domain.service.CommandMonitorLifecycleEventDelivery
 import com.gromozeka.domain.service.CommandMonitorLifecycleEventPublisher
+import com.gromozeka.domain.service.CommandMonitorLifecycleEventStream
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEvent
-import com.gromozeka.domain.service.CommandTaskLifecycleEventConsumer
-import com.gromozeka.domain.service.CommandTaskLifecycleEventDelivery
 import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
+import com.gromozeka.domain.service.CommandTaskLifecycleEventStream
 import com.gromozeka.domain.service.ConversationRuntimeTask
-import com.gromozeka.domain.service.ConversationRuntimeWorkItem
-import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,7 +70,7 @@ class BackgroundActivityLifecycleApplicationServiceTest {
     }
 
     @Test
-    fun `periodic reconciliation recovers monitor delivery without lifecycle event`() = runBlocking {
+    fun `startup reconciliation recovers monitor delivery without lifecycle event`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val service = service(
@@ -133,13 +129,10 @@ class BackgroundActivityLifecycleApplicationServiceTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
-            runtimeWorkPublisher = NoOpRuntimeWorkPublisher,
-            runtimeWorkerRegistry = InMemoryConversationRuntimeWorkerRegistry(),
-            coroutineScope = scope,
         )
         return BackgroundActivityLifecycleApplicationService(
-            commandEventConsumer = commandEvents,
-            monitorEventConsumer = monitorEvents,
+            commandEventStream = commandEvents,
+            monitorEventStream = monitorEvents,
             runtimeCoordinator = coordinator,
             runtimeDispatcher = dispatcher,
             coroutineScope = scope,
@@ -245,45 +238,25 @@ class BackgroundActivityLifecycleApplicationServiceTest {
 
     private class TestCommandTaskLifecycleEventBus :
         CommandTaskLifecycleEventPublisher,
-        CommandTaskLifecycleEventConsumer {
-        private val channel = Channel<CommandTaskLifecycleEventDelivery>(Channel.UNLIMITED)
+        CommandTaskLifecycleEventStream {
+        private val channel = Channel<CommandTaskLifecycleEvent>(Channel.UNLIMITED)
 
-        override val deliveries: Flow<CommandTaskLifecycleEventDelivery> = channel.receiveAsFlow()
+        override val events: Flow<CommandTaskLifecycleEvent> = channel.receiveAsFlow()
 
         override suspend fun publish(event: CommandTaskLifecycleEvent) {
-            channel.send(
-                object : CommandTaskLifecycleEventDelivery {
-                    override val event = event
-
-                    override suspend fun acknowledge() = Unit
-                    override suspend fun redeliver() = Unit
-                    override suspend fun reject() = Unit
-                }
-            )
+            channel.send(event)
         }
     }
 
     private class TestCommandMonitorLifecycleEventBus :
         CommandMonitorLifecycleEventPublisher,
-        CommandMonitorLifecycleEventConsumer {
-        private val channel = Channel<CommandMonitorLifecycleEventDelivery>(Channel.UNLIMITED)
+        CommandMonitorLifecycleEventStream {
+        private val channel = Channel<CommandMonitorLifecycleEvent>(Channel.UNLIMITED)
 
-        override val deliveries: Flow<CommandMonitorLifecycleEventDelivery> = channel.receiveAsFlow()
+        override val events: Flow<CommandMonitorLifecycleEvent> = channel.receiveAsFlow()
 
         override suspend fun publish(event: CommandMonitorLifecycleEvent) {
-            channel.send(
-                object : CommandMonitorLifecycleEventDelivery {
-                    override val event = event
-
-                    override suspend fun acknowledge() = Unit
-                    override suspend fun redeliver() = Unit
-                    override suspend fun reject() = Unit
-                }
-            )
+            channel.send(event)
         }
-    }
-
-    private object NoOpRuntimeWorkPublisher : ConversationRuntimeWorkPublisher {
-        override suspend fun submit(item: ConversationRuntimeWorkItem) = Unit
     }
 }

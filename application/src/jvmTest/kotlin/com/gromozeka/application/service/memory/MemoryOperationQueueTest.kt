@@ -24,18 +24,16 @@ class MemoryOperationQueueTest {
             val startedJobs = Channel<MemoryOperationJob>(Channel.UNLIMITED)
             val completedJobs = Channel<MemoryOperationJob>(Channel.UNLIMITED)
             val releases = Channel<Unit>(Channel.UNLIMITED)
-            val scans = Channel<List<MemoryOperationJob>>(Channel.UNLIMITED)
             val recoveredJob = job("recovered")
             val nextJob = job("next")
-            queue.start(jobSource = { scans.receive() }) { job ->
+            queue.start(jobSource = { listOf(recoveredJob) }) { job ->
                 startedJobs.send(job)
                 releases.receive()
                 completedJobs.send(job)
             }
-            scans.send(listOf(recoveredJob))
 
             assertEquals(recoveredJob, withTimeout(5_000) { startedJobs.receive() })
-            scans.send(listOf(nextJob))
+            queue.enqueue(nextJob)
 
             releases.send(Unit)
             assertEquals(nextJob, withTimeout(5_000) { startedJobs.receive() })
@@ -55,13 +53,10 @@ class MemoryOperationQueueTest {
             val successfulJob = CompletableDeferred<MemoryOperationJob>()
             val failedJob = job("failed")
             val nextJob = job("next")
-            val scans = Channel<List<MemoryOperationJob>>(Channel.UNLIMITED)
-            queue.start(jobSource = { scans.receive() }) { job ->
+            queue.start(jobSource = { listOf(failedJob, nextJob) }) { job ->
                 if (job == failedJob) error("expected test failure")
                 successfulJob.complete(job)
             }
-
-            scans.send(listOf(failedJob, nextJob))
 
             assertEquals(nextJob, withTimeout(5_000) { successfulJob.await() })
         } finally {
@@ -76,8 +71,8 @@ class MemoryOperationQueueTest {
         val queue = MemoryOperationQueue(scope)
         val startedJob = CompletableDeferred<MemoryOperationJob>()
         val processorStopped = CompletableDeferred<Unit>()
-        val scans = Channel<List<MemoryOperationJob>>(Channel.UNLIMITED)
-        queue.start(jobSource = { scans.receive() }) { job ->
+        val cancelledJob = job("cancelled")
+        queue.start(jobSource = { listOf(cancelledJob) }) { job ->
             try {
                 startedJob.complete(job)
                 awaitCancellation()
@@ -86,8 +81,6 @@ class MemoryOperationQueueTest {
             }
         }
 
-        val cancelledJob = job("cancelled")
-        scans.send(listOf(cancelledJob))
         assertEquals(cancelledJob, withTimeout(5_000) { startedJob.await() })
 
         supervisorJob.cancelAndJoin()

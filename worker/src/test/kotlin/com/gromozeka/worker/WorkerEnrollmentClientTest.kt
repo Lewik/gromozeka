@@ -60,7 +60,6 @@ class WorkerEnrollmentClientTest {
         assertContains(config, "http://127.0.0.1:${server.address.port}")
         assertContains(config, "enabled: true")
         assertFalse(config.contains("postgres", ignoreCase = true))
-        assertFalse(config.contains("rabbit", ignoreCase = true))
     }
 
     @Test

@@ -23,14 +23,6 @@ fun interface CommandMonitorLifecycleEventPublisher {
     suspend fun publish(event: CommandMonitorLifecycleEvent)
 }
 
-interface CommandMonitorLifecycleEventDelivery {
-    val event: CommandMonitorLifecycleEvent
-
-    suspend fun acknowledge()
-    suspend fun redeliver()
-    suspend fun reject()
-}
-
-interface CommandMonitorLifecycleEventConsumer {
-    val deliveries: Flow<CommandMonitorLifecycleEventDelivery>
+interface CommandMonitorLifecycleEventStream {
+    val events: Flow<CommandMonitorLifecycleEvent>
 }

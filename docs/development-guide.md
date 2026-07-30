@@ -18,7 +18,6 @@ Server, and standalone Workers.
 - `:infrastructure-db` implements PostgreSQL persistence.
 - `:infrastructure-ai` contains provider integrations, MCP, memory, embeddings,
   and tool implementations.
-- `:infrastructure-runtime` contains RabbitMQ runtime transport.
 - `:remote-protocol` and `:remote-client` define the client-to-Server boundary.
 - `:server` is the control plane and web endpoint.
 - `:worker` is a trusted standalone executor.
@@ -137,8 +136,8 @@ Layer ownership for focused work:
 | PostgreSQL persistence | `:infrastructure-db` |
 | AI providers, live external MCP clients, memory, tools | `:infrastructure-ai` |
 | External MCP definitions and accepted tool snapshots | Server database through `:infrastructure-db` |
-| Session-addressed Worker control | `:infrastructure-runtime` |
-| Runtime transport | `:infrastructure-runtime` |
+| Durable runtime scheduling | `:application` and `:infrastructure-db` |
+| Session-addressed Worker control | `:server`, `:remote-protocol`, and `:worker` |
 | Compose UI and presentation state | `:presentation` |
 | Server endpoints and composition | `:server` |
 | Worker process and local execution | `:worker` |

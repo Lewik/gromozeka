@@ -41,7 +41,7 @@ kotlin {
             dependsOn(iosMain)
         }
         
-        val jvmTest by getting {
+        val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
             }

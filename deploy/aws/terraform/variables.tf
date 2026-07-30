@@ -35,7 +35,7 @@ variable "github_deploy_environment" {
 }
 
 variable "instance_type" {
-  description = "EC2 instance type for Server, Cloud Worker, PostgreSQL and RabbitMQ."
+  description = "EC2 instance type for Server and PostgreSQL."
   type        = string
   default     = "t3a.medium"
 }

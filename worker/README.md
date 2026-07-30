@@ -79,7 +79,7 @@ Workspace only when they see the same underlying tree. Later tool calls carry
 an exact Worker or Workspace Mount target and are never reassigned or retried
 automatically.
 
-Workers never receive PostgreSQL or RabbitMQ credentials. Those services are
-private Server implementation details. A Worker stores only its stable identity
-and revocable Gateway credential; AI and MCP configuration is synchronized
-into process memory after authentication.
+Workers never receive PostgreSQL credentials. Database access is a private
+Server implementation detail. A Worker stores only its stable identity and
+revocable Gateway credential; AI and MCP configuration is synchronized into
+process memory after authentication.

@@ -3,11 +3,9 @@ package com.gromozeka.worker
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
-import com.gromozeka.domain.service.CommandMonitorLifecycleEvent
 import com.gromozeka.domain.service.CommandMonitorSyncResult
 import com.gromozeka.domain.service.CommandRuntimeStateService
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.remote.protocol.WorkerCommandRuntimeGatewayCodec
 import com.gromozeka.remote.protocol.WorkerCommandRuntimeRequest
@@ -93,18 +91,6 @@ class WorkerGatewayCommandRuntimeStateService(
             "Unexpected command monitor events response: ${response::class.simpleName}"
         }
         return response.events
-    }
-
-    override suspend fun publishCommandTaskLifecycle(event: CommandTaskLifecycleEvent) {
-        requireCompleted(
-            execute(WorkerCommandRuntimeRequest.PublishCommandTaskLifecycle(event))
-        )
-    }
-
-    override suspend fun publishCommandMonitorLifecycle(event: CommandMonitorLifecycleEvent) {
-        requireCompleted(
-            execute(WorkerCommandRuntimeRequest.PublishCommandMonitorLifecycle(event))
-        )
     }
 
     override suspend fun publishSnapshot(conversationId: Conversation.Id) {

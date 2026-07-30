@@ -21,8 +21,8 @@ The project is currently a local research/development application, not a polishe
 
 The current development shape is split:
 
-- `:server` accepts client commands, persists runtime state, publishes durable work, streams events, and exposes the Ktor remote endpoint.
-- `:worker` claims exact Worker-targeted durable tasks and executes configured tools and finite AI request-response operations.
+- `:server` accepts client commands, persists and schedules durable runtime work, streams events, and exposes the Ktor remote endpoint.
+- `:worker` receives exact Worker-targeted operations through the Server Gateway and executes configured tools and finite AI request-response operations.
 - `:presentation` owns UI code and can run either as a JVM desktop client or as a Wasm web client.
 - The server listens on `/ws` for remote UI traffic and serves already-built Wasm static files from `presentation/build/dist/wasmJs/developmentExecutable` by default.
 
@@ -38,7 +38,7 @@ Legacy and auxiliary integrations still exist in the codebase, but the current d
 
 Gromozeka intentionally does not implement per-command approvals, command denylists, filesystem sandboxes, or a second application-level permission system. Isolation, when required, must be provided by the operating system, a dedicated account, container, virtual machine, credential scope, network policy, and backups.
 
-A Gromozeka Worker is a trusted, unsandboxed executor. Enrolling a Worker authorizes the Gromozeka control plane and its selected models to invoke configured tools with the effective permissions of the Worker process. The Worker is not an autonomous agent and does not choose goals or policy. It executes exact Worker-targeted durable tasks, which can include configured tools and finite AI request-response operations. Conversation turns and memory pipelines remain on the Server.
+A Gromozeka Worker is a trusted, unsandboxed executor. Enrolling a Worker authorizes the Gromozeka control plane and its selected models to invoke configured tools with the effective permissions of the Worker process. The Worker is not an autonomous agent and does not choose goals or policy. It executes exact Worker-targeted operations, which can include configured tools and finite AI request-response operations. Conversation turns and memory pipelines remain on the Server.
 
 `Readonly` and `Writable` are behavioral instructions for supported models, not security boundaries. A model that cannot reliably follow these instructions is unsupported.
 
@@ -113,13 +113,13 @@ Useful memory docs:
 
 - macOS development machine.
 - JDK 21.
-- Docker, for local PostgreSQL with pgvector and RabbitMQ runtime work queues.
+- Docker, for local PostgreSQL with pgvector.
 - OpenAI subscription auth file in Gromozeka home for the current dogfooding runtime.
 - Microphone permissions if you want to use voice input.
 
 ## Running Locally
 
-PostgreSQL and RabbitMQ are intentionally explicit. The app should fail fast if either runtime dependency is not available.
+PostgreSQL is an explicit runtime dependency. The Server fails fast when it is unavailable or another Server already owns the same runtime database.
 
 The server, Worker, and UI clients are separate processes. Start local infrastructure first, then the server, a Worker, and one of the UI clients.
 
@@ -127,7 +127,7 @@ Start local infrastructure:
 
 ```bash
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d postgres rabbitmq
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d postgres
 ```
 
 Run the server:
@@ -291,7 +291,7 @@ GROMOZEKA_WEB_STATIC_DIR="/absolute/path/to/web/dist"
 Stop local infrastructure:
 
 ```bash
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres rabbitmq
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres
 ```
 
 ## Verification
