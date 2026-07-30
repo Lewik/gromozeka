@@ -15,7 +15,6 @@ import com.gromozeka.application.service.memory.MemoryQuestionAnswerResult
 import com.gromozeka.application.service.memory.MemoryThreadContextCompactor
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipeline
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipelineResult
-import com.gromozeka.application.service.memory.MemoryNamespaceRecallAccessGuard
 import com.gromozeka.application.service.memory.MemoryRunLlmCallObserver
 import com.gromozeka.application.service.memory.MemoryRepairPipeline
 import com.gromozeka.application.service.memory.MemoryRepairPipelineResult
@@ -68,7 +67,6 @@ class MemoryApplicationService(
     private val embeddingIndexer: MemoryEmbeddingIndexer,
 ) {
     private val log = KLoggers.logger(this)
-    private val recallAccessGuard = MemoryNamespaceRecallAccessGuard(store)
 
     suspend fun buildRuntimeMemoryReadResult(
         conversationId: Conversation.Id,
@@ -76,7 +74,7 @@ class MemoryApplicationService(
         targetMessage: Conversation.Message,
         threadMessages: List<Conversation.Message>,
         runtimeContext: RuntimeEnvironmentContext,
-        namespaceOverride: MemoryNamespace? = null,
+        namespace: MemoryNamespace,
     ): MemoryReadResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val startedAt = Clock.System.now()
         val memoryContextMessages = threadMessages.filterNot { it.isSyntheticMemoryRuntimeMessage() }
@@ -90,8 +88,6 @@ class MemoryApplicationService(
             }
             memoryContextMessages + targetMessage
         }
-        val namespace = namespaceOverride ?: MemoryNamespace.Global
-        recallAccessGuard.ensureRecallSupported(namespace)
         val runtimes = MemoryServiceStageRuntimes(runtimeContext)
         val threadContext = MemoryThreadContext(
             conversationId = conversationId,
@@ -167,7 +163,7 @@ class MemoryApplicationService(
         threadMessages: List<Conversation.Message>,
         runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
-        namespaceOverride: MemoryNamespace? = null,
+        namespace: MemoryNamespace,
     ): MemoryQuestionAnswerResult {
         val readResult = buildRuntimeMemoryReadResult(
             conversationId = conversationId,
@@ -175,7 +171,7 @@ class MemoryApplicationService(
             targetMessage = targetMessage,
             threadMessages = threadMessages,
             runtimeContext = runtimeContext,
-            namespaceOverride = namespaceOverride,
+            namespace = namespace,
         )
         val runtime = aiRuntimeProvider.getRuntime(
             selection = aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
@@ -235,7 +231,7 @@ class MemoryApplicationService(
         runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-        namespace: MemoryNamespace = MemoryNamespace.Global,
+        namespace: MemoryNamespace,
     ): MemoryNoteConsolidationPipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(runtimeContext)
         val pipeline = MemoryNoteConsolidationPipeline(
@@ -281,7 +277,7 @@ class MemoryApplicationService(
         runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-        namespace: MemoryNamespace = MemoryNamespace.Global,
+        namespace: MemoryNamespace,
     ): MemoryRepairPipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(runtimeContext)
         val pipeline = MemoryRepairPipeline(
@@ -326,7 +322,7 @@ class MemoryApplicationService(
         runtimeContext: RuntimeEnvironmentContext,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-        namespace: MemoryNamespace = MemoryNamespace.Global,
+        namespace: MemoryNamespace,
     ): MemoryEntityMaintenancePipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(runtimeContext)
         val pipeline = MemoryEntityMaintenancePipeline(
@@ -368,7 +364,7 @@ class MemoryApplicationService(
 
     suspend fun runRetention(
         conversationId: Conversation.Id,
-        namespace: MemoryNamespace = MemoryNamespace.Global,
+        namespace: MemoryNamespace,
     ): MemoryRetentionPipelineResult {
         val pipeline = MemoryRetentionPipeline(
             store = store,

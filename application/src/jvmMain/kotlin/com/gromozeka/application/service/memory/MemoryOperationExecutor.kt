@@ -359,7 +359,7 @@ class MemoryOperationExecutor internal constructor(
             runtimeTools = context.memoryTools,
             threadContextMessages = context.threadMessages.withTargetMessage(targetMessage),
             forceMemoryWrite = effectiveForceWrite,
-            namespaceOverride = request.namespace,
+            namespace = request.namespace,
             parentRunId = rootRun?.id,
         )
         return rememberExecution(result).copy(
@@ -847,7 +847,7 @@ class MemoryOperationExecutor internal constructor(
             targetMessage = targetMessage,
             threadMessages = context.threadMessages.withTargetMessage(targetMessage),
             runtimeContext = context.runtimeContext,
-            namespaceOverride = request.namespace,
+            namespace = request.namespace,
         )
         return completedExecution(
             summary = "Memory context enrichment completed",
@@ -876,7 +876,7 @@ class MemoryOperationExecutor internal constructor(
             targetMessage = targetMessage,
             threadMessages = context.threadMessages + targetMessage,
             runtimeContext = context.runtimeContext,
-            namespaceOverride = request.namespace,
+            namespace = request.namespace,
         )
         return completedExecution(
             summary = "Memory context enrichment completed",
@@ -897,7 +897,7 @@ class MemoryOperationExecutor internal constructor(
             threadMessages = context.threadMessages.withTargetMessage(targetMessage),
             runtimeContext = context.runtimeContext,
             runtimeSystemPrompts = context.systemPrompts,
-            namespaceOverride = request.namespace,
+            namespace = request.namespace,
         )
         return completedExecution(
             summary = "Memory question answering completed",
@@ -927,7 +927,7 @@ class MemoryOperationExecutor internal constructor(
             threadMessages = context.threadMessages + targetMessage,
             runtimeContext = context.runtimeContext,
             runtimeSystemPrompts = context.systemPrompts,
-            namespaceOverride = request.namespace,
+            namespace = request.namespace,
         )
         return completedExecution(
             summary = "Memory question answering completed",

@@ -11,10 +11,10 @@ import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
-import com.gromozeka.application.service.memory.MemoryNamespaceRecallAccessException
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
 import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.repository.AiModelSpecRepository
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -472,12 +472,10 @@ class ConversationEngineService(
                 targetMessage = targetMessage,
                 threadMessages = currentMessages,
                 runtimeContext = context.runtimeContext,
+                namespace = MemoryNamespace.forProject(conversation.projectId),
             )
         }.onFailure { error ->
             if (error is CancellationException) {
-                throw error
-            }
-            if (error is MemoryNamespaceRecallAccessException) {
                 throw error
             }
             log.warn(error) {
@@ -623,7 +621,12 @@ class ConversationEngineService(
         if (!awaitExecutionCanContinue(conversationId)) return@flow
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
 
-        val statusResult = memoryToolApplicationService.memoryRunStatus(payload.runId.value)
+        val conversation = conversationService.findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+        val statusResult = memoryToolApplicationService.memoryRunStatus(
+            namespace = MemoryNamespace.forProject(conversation.projectId),
+            runIdValue = payload.runId.value,
+        )
         val syntheticMessages = buildSyntheticMemoryToolPair(
             conversationId = conversationId,
             syntheticTargetId = payload.runId.value,
@@ -1135,6 +1138,8 @@ class ConversationEngineService(
         tools: List<AiToolCallback>,
     ): DirectStructuredMemoryWriteResult? {
         return runCatching {
+            val conversation = conversationService.findById(conversationId)
+                ?: error("Conversation not found: ${conversationId.value}")
             memoryMessageRoutingApplicationService.routeMessage(
                 conversationId = conversationId,
                 threadId = threadId,
@@ -1143,6 +1148,7 @@ class ConversationEngineService(
                 runtimeContext = runtimeContext,
                 runtimeSystemPrompts = systemPrompts,
                 runtimeTools = tools,
+                namespace = MemoryNamespace.forProject(conversation.projectId),
             )
         }.onFailure { error ->
             if (error is CancellationException) {

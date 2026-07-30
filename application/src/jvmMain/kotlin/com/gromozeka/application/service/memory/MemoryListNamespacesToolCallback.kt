@@ -13,7 +13,7 @@ class MemoryListNamespacesToolCallback(
 ) : AiToolCallback {
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_LIST_NAMESPACES_TOOL_NAME,
-        description = "Inspect the global memory namespace, item counts, and any unexpected stored namespaces. Memory operations cannot select a namespace in the current runtime.",
+        description = "Inspect the current authorized memory bank and its item counts. The runtime selects this namespace from authenticated user or project context; tool arguments cannot override it.",
         inputSchema = """
             {
               "type": "object",
@@ -24,6 +24,6 @@ class MemoryListNamespacesToolCallback(
     )
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
-        memoryToolApplicationService.listNamespaces()
+        memoryToolApplicationService.listNamespaces(context.requiredMemoryNamespace())
     }
 }

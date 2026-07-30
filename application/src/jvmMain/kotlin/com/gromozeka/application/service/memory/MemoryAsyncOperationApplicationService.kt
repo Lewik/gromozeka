@@ -1,5 +1,6 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
@@ -30,10 +31,10 @@ class MemoryAsyncOperationApplicationService(
 
     suspend fun rememberMessage(
         conversationIdValue: String,
+        namespace: MemoryNamespace,
         targetMessageId: String? = null,
         forceWrite: Boolean? = null,
         confirmedPreflightRunId: String? = null,
-        namespaceValue: String? = null,
         resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
         schedule(MemoryOperationKind.REMEMBER, resultDelivery) {
@@ -42,23 +43,24 @@ class MemoryAsyncOperationApplicationService(
                 targetMessageId = targetMessageId,
                 forceWrite = forceWrite,
                 confirmedPreflightRunId = confirmedPreflightRunId,
-                namespaceValue = namespaceValue,
+                namespace = namespace,
             )
         }
 
     suspend fun rememberThread(
         conversationIdValue: String,
-        namespaceValue: String? = null,
+        namespace: MemoryNamespace,
     ): List<MemoryOperationQueuedResult> =
         preparer.prepareRememberThread(
             conversationIdValue = conversationIdValue,
-            namespaceValue = namespaceValue,
+            namespace = namespace,
         ).map { prepared ->
             enqueue(prepared)
         }
 
     suspend fun rememberProvidedContent(
         conversationIdValue: String?,
+        namespace: MemoryNamespace,
         text: String? = null,
         filePath: String? = null,
         rawUrl: String? = null,
@@ -68,7 +70,6 @@ class MemoryAsyncOperationApplicationService(
         forceWrite: Boolean? = null,
         confirmedPreflightRunId: String? = null,
         mode: String? = null,
-        namespaceValue: String? = null,
         writeSurface: MemoryWriteSurface = MemoryWriteSurface.CHAT_TOOL,
         resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
@@ -84,82 +85,82 @@ class MemoryAsyncOperationApplicationService(
                 forceWrite = forceWrite,
                 confirmedPreflightRunId = confirmedPreflightRunId,
                 mode = mode,
-                namespaceValue = namespaceValue,
+                namespace = namespace,
                 writeSurface = writeSurface,
             )
         }
 
     suspend fun forgetSource(
         conversationIdValue: String?,
+        namespace: MemoryNamespace,
         sourceIdValue: String,
-        namespaceValue: String? = null,
         resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
         schedule(MemoryOperationKind.FORGET_SOURCE, resultDelivery) {
             preparer.prepareForgetSource(
                 conversationIdValue = conversationIdValue,
+                namespace = namespace,
                 sourceIdValue = sourceIdValue,
-                namespaceValue = namespaceValue,
             )
         }
 
     suspend fun enrichMessage(
         conversationIdValue: String,
+        namespace: MemoryNamespace,
         targetMessageId: String? = null,
-        namespaceValue: String? = null,
         resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
         schedule(MemoryOperationKind.ENRICH_CONTEXT, resultDelivery) {
             preparer.prepareEnrichMessage(
                 conversationIdValue = conversationIdValue,
+                namespace = namespace,
                 targetMessageId = targetMessageId,
-                namespaceValue = namespaceValue,
             )
         }
 
     suspend fun enrichProvidedContext(
         conversationIdValue: String?,
+        namespace: MemoryNamespace,
         contextText: String,
         mode: String? = null,
-        namespaceValue: String? = null,
         resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
         schedule(MemoryOperationKind.ENRICH_CONTEXT, resultDelivery) {
             preparer.prepareEnrichProvidedContext(
                 conversationIdValue = conversationIdValue,
+                namespace = namespace,
                 contextText = contextText,
                 mode = mode,
-                namespaceValue = namespaceValue,
             )
         }
 
     suspend fun answerMessage(
         conversationIdValue: String,
+        namespace: MemoryNamespace,
         targetMessageId: String? = null,
-        namespaceValue: String? = null,
         resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
         schedule(MemoryOperationKind.ANSWER_QUESTION, resultDelivery) {
             preparer.prepareAnswerMessage(
                 conversationIdValue = conversationIdValue,
+                namespace = namespace,
                 targetMessageId = targetMessageId,
-                namespaceValue = namespaceValue,
             )
         }
 
     suspend fun answerProvidedQuestion(
         conversationIdValue: String?,
+        namespace: MemoryNamespace,
         questionText: String,
         mode: String? = null,
-        namespaceValue: String? = null,
         resultDelivery: MemoryOperationResultDelivery? = null,
     ): String =
         schedule(MemoryOperationKind.ANSWER_QUESTION, resultDelivery) {
             preparer.prepareAnswerProvidedQuestion(
                 conversationIdValue = conversationIdValue,
+                namespace = namespace,
                 questionText = questionText,
                 mode = mode,
-                namespaceValue = namespaceValue,
             )
         }
 
@@ -168,7 +169,7 @@ class MemoryAsyncOperationApplicationService(
         targetKind: MemoryMaintenanceTargetKind,
         targetValue: String,
         executionConversationId: com.gromozeka.domain.model.Conversation.Id,
-        namespace: com.gromozeka.domain.model.memory.MemoryNamespace,
+        namespace: MemoryNamespace,
         embeddingRebuildMode: MemoryEmbeddingRebuildMode = MemoryEmbeddingRebuildMode.FULL,
     ): MemoryMaintenanceQueuedResult {
         val queued = enqueue(

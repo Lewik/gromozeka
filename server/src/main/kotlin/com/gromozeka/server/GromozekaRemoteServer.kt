@@ -755,7 +755,9 @@ class GromozekaRemoteServer(
     }
 
     private suspend fun loadMemoryActionItems(request: GetMemoryActionItemsRequest): MemoryActionItemsResponse {
-        val namespace = MemoryNamespace.Global
+        val conversation = conversationDomainService.findById(request.conversationId)
+            ?: error("Conversation not found: ${request.conversationId.value}")
+        val namespace = MemoryNamespace.forProject(conversation.projectId)
         val snapshot = memoryStore.loadNamespaceSnapshot(namespace)
         val nonArchivedActionItems = snapshot.actionItems.filter { it.archivedAt == null }
         val visibleActionItems = nonArchivedActionItems

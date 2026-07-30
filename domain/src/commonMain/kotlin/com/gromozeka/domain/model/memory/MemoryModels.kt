@@ -2,6 +2,7 @@ package com.gromozeka.domain.model.memory
 
 import com.gromozeka.domain.model.Conversation as DomainConversation
 import com.gromozeka.domain.model.Project as DomainProject
+import com.gromozeka.domain.model.User as DomainUser
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
@@ -37,14 +38,24 @@ import kotlin.jvm.JvmInline
  * Boundary for one independent memory space.
  *
  * A namespace is the first guardrail against accidental memory mixing between
- * projects, users, experiments, or future tenants. Production currently uses
- * only [Global]; explicit values remain available for isolated tests.
+ * projects, users, experiments, or future tenants. Production namespaces are
+ * derived from an authenticated user or an authorized project.
  */
 @Serializable
 @JvmInline
 value class MemoryNamespace(val value: String) {
     companion object {
         val Global = MemoryNamespace("global")
+
+        fun forUser(userId: DomainUser.Id): MemoryNamespace {
+            require(userId.value.isNotBlank()) { "Memory namespace user id must not be blank" }
+            return MemoryNamespace("user:${userId.value}")
+        }
+
+        fun forProject(projectId: DomainProject.Id): MemoryNamespace {
+            require(projectId.value.isNotBlank()) { "Memory namespace project id must not be blank" }
+            return MemoryNamespace("project:${projectId.value}")
+        }
     }
 }
 

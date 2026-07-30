@@ -20,7 +20,6 @@ import io.ktor.server.routing.route
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
 import io.ktor.util.AttributeKey
-import io.modelcontextprotocol.kotlin.sdk.server.mcpStreamableHttp
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.runBlocking
@@ -98,12 +97,12 @@ fun main() {
             }
         }
         val workerWebsocketAuthentication = workerGatewayAuthentication(workerGatewayAuthenticationService)
-        mcpStreamableHttp(
+        statelessMcpStreamableHttp(
             path = "/mcp",
             allowedHosts = mcpHttpSecurity.allowedHosts,
             allowedOrigins = mcpHttpSecurity.allowedOrigins,
-        ) {
-            mcpServerFactory.create()
+        ) { call ->
+            mcpServerFactory.create(call.attributes[authenticatedMcpCallerKey])
         }
         statelessMcpStreamableHttp(
             path = "/mcp/control",

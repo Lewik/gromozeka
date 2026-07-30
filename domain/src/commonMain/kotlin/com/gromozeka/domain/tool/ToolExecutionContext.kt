@@ -16,6 +16,7 @@ const val TOOL_CONTEXT_WORKER_ID = "workerId"
 const val TOOL_CONTEXT_AGENT_DEFINITION_ID = "agentDefinitionId"
 const val TOOL_CONTEXT_TOOL_NAME = "toolName"
 const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY = "memoryResultDelivery"
+const val TOOL_CONTEXT_MEMORY_NAMESPACE = "memoryNamespace"
 
 const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC = "conversation_runtime"
 

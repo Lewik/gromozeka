@@ -84,6 +84,24 @@ Browser clients use an HttpOnly, SameSite session cookie. Secure cookies are
 enabled by default when the Server listens on a non-loopback address and can be
 overridden explicitly with `GROMOZEKA_AUTH_SECURE_COOKIE=true|false`.
 
+## Memory Banks
+
+A `MemoryNamespace` is an internal memory-bank boundary selected by trusted
+runtime context, not by model or client input.
+
+- Conversation memory uses the Conversation Project bank:
+  `project:<project-id>`. Existing Project permissions govern access.
+- External memory MCP uses the authenticated User's personal bank:
+  `user:<user-id>`.
+- Tool arguments and hidden MCP context cannot select or override a bank.
+- Run status, queue status, maintenance, embeddings, reads, and writes remain
+  inside the same selected bank.
+- `global` is reserved for explicit tests and benchmarks. Production code must
+  never fall back to it implicitly.
+
+Adding shared or cross-project memory later requires an explicit grant model.
+Do not infer access from a supplied namespace string.
+
 ## Development Model
 
 Typed domain contracts and KDoc are the primary coordination mechanism. Read

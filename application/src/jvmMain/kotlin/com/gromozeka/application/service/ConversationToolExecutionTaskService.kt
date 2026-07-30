@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -22,6 +23,7 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC
+import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_NAMESPACE
 import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
@@ -93,6 +95,7 @@ class ConversationToolExecutionTaskService(
                     put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
                     put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
                     put(TOOL_CONTEXT_PROJECT_ID, project.id.value)
+                    put(TOOL_CONTEXT_MEMORY_NAMESPACE, MemoryNamespace.forProject(project.id).value)
                     workerTarget?.let { put(TOOL_CONTEXT_WORKER_ID, it.workerId.value) }
                     put(TOOL_CONTEXT_AGENT_DEFINITION_ID, payload.agentDefinitionId.value)
                     put(

@@ -500,11 +500,11 @@ class LongMemEvalMemorySmokeTest {
                 memoryExecutor.executeSynchronously(
                     memoryPreparer.prepareRememberProvidedContent(
                         conversationIdValue = null,
+                        namespace = namespace,
                         text = sessionText,
                         title = "LongMemEval ${entry.questionId} session $sessionNumber",
                         sourceRef = sourceRef,
                         forceWrite = true,
-                        namespaceValue = namespace.value,
                     )
                 )
             )
@@ -539,9 +539,9 @@ class LongMemEvalMemorySmokeTest {
             memoryExecutor.executeSynchronously(
                 memoryPreparer.prepareAnswerProvidedQuestion(
                     conversationIdValue = null,
+                    namespace = namespace,
                     questionText = renderQuestion(entry),
                     mode = "longmemeval",
-                    namespaceValue = namespace.value,
                 )
             )
         )

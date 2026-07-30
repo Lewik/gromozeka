@@ -10,6 +10,7 @@ import com.gromozeka.application.service.memory.MEMORY_QUEUE_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -27,7 +28,8 @@ import kotlinx.serialization.json.buildJsonObject
 class GromozekaMcpServerFactoryMemoryHelpTest {
     @Test
     fun `memory help is exposed by default and returns domain guide`() = withClearedMcpTools {
-        val server = GromozekaMcpServerFactory(DefaultMemoryToolProvider.getTools()).create()
+        val server = GromozekaMcpServerFactory(DefaultMemoryToolProvider.getTools())
+            .create(MemoryNamespace.Global)
 
         assertTrue(server.tools.containsKey(MCP_MEMORY_HELP_TOOL_NAME))
 
@@ -61,7 +63,8 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
 
     @Test
     fun `memory help is available in explicit MCP tool allowlist`() = withMcpTools(MCP_MEMORY_HELP_TOOL_NAME) {
-        val server = GromozekaMcpServerFactory(EmptyToolProvider.getTools()).create()
+        val server = GromozekaMcpServerFactory(EmptyToolProvider.getTools())
+            .create(MemoryNamespace.Global)
 
         assertTrue(server.tools.containsKey(MCP_MEMORY_HELP_TOOL_NAME))
         assertFalse(server.tools.containsKey("memory_remember"))

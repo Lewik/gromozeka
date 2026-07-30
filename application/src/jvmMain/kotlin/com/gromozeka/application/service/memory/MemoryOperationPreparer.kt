@@ -18,11 +18,10 @@ class MemoryOperationPreparer(
 
     suspend fun prepareRememberThread(
         conversationIdValue: String,
-        namespaceValue: String? = null,
+        namespace: MemoryNamespace,
     ): List<PreparedMemoryOperation> {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
-        val namespace = resolveNamespace(namespaceValue)
         return conversationService.loadCurrentMessages(conversationId).mapNotNull { message ->
             if (message.isSyntheticMemoryMessage()) {
                 return@mapNotNull null
@@ -50,10 +49,10 @@ class MemoryOperationPreparer(
 
     suspend fun prepareRememberMessage(
         conversationIdValue: String,
+        namespace: MemoryNamespace,
         targetMessageId: String? = null,
         forceWrite: Boolean? = null,
         confirmedPreflightRunId: String? = null,
-        namespaceValue: String? = null,
     ): PreparedMemoryOperation {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
@@ -63,7 +62,7 @@ class MemoryOperationPreparer(
         )
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.RememberMessage(
-                namespace = resolveNamespace(namespaceValue),
+                namespace = namespace,
                 conversationId = conversationId,
                 threadId = conversation.currentThread,
                 targetMessageId = targetMessage.id,
@@ -77,6 +76,7 @@ class MemoryOperationPreparer(
 
     suspend fun prepareRememberProvidedContent(
         conversationIdValue: String?,
+        namespace: MemoryNamespace,
         text: String? = null,
         filePath: String? = null,
         rawUrl: String? = null,
@@ -86,7 +86,6 @@ class MemoryOperationPreparer(
         forceWrite: Boolean? = null,
         confirmedPreflightRunId: String? = null,
         mode: String? = null,
-        namespaceValue: String? = null,
         writeSurface: MemoryWriteSurface = MemoryWriteSurface.CHAT_TOOL,
     ): PreparedMemoryOperation {
         val content = MemoryRememberContentRequest.fromExternal(
@@ -100,7 +99,7 @@ class MemoryOperationPreparer(
         val conversation = conversationIdValue.toConversationIdOrNull()?.let { requireConversation(it) }
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.RememberProvidedContent(
-                namespace = resolveNamespace(namespaceValue),
+                namespace = namespace,
                 conversationId = conversation?.id,
                 threadId = conversation?.currentThread,
                 content = content,
@@ -116,15 +115,15 @@ class MemoryOperationPreparer(
 
     suspend fun prepareForgetSource(
         conversationIdValue: String?,
+        namespace: MemoryNamespace,
         sourceIdValue: String,
-        namespaceValue: String? = null,
     ): PreparedMemoryOperation {
         val sourceId = sourceIdValue.trim()
         require(sourceId.isNotBlank()) { "Memory source id is blank." }
         val conversation = conversationIdValue.toConversationIdOrNull()?.let { requireConversation(it) }
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.ForgetSource(
-                namespace = resolveNamespace(namespaceValue),
+                namespace = namespace,
                 conversationId = conversation?.id,
                 threadId = conversation?.currentThread,
                 sourceId = MemorySource.Id(sourceId),
@@ -137,8 +136,8 @@ class MemoryOperationPreparer(
 
     suspend fun prepareEnrichMessage(
         conversationIdValue: String,
+        namespace: MemoryNamespace,
         targetMessageId: String? = null,
-        namespaceValue: String? = null,
     ): PreparedMemoryOperation {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
@@ -148,7 +147,7 @@ class MemoryOperationPreparer(
         )
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.EnrichMessage(
-                namespace = resolveNamespace(namespaceValue),
+                namespace = namespace,
                 conversationId = conversationId,
                 threadId = conversation.currentThread,
                 targetMessageId = targetMessage.id,
@@ -160,16 +159,16 @@ class MemoryOperationPreparer(
 
     suspend fun prepareEnrichProvidedContext(
         conversationIdValue: String?,
+        namespace: MemoryNamespace,
         contextText: String,
         mode: String? = null,
-        namespaceValue: String? = null,
     ): PreparedMemoryOperation {
         val normalizedContext = contextText.trim()
         require(normalizedContext.isNotBlank()) { "Provided context is blank." }
         val conversation = conversationIdValue.toConversationIdOrNull()?.let { requireConversation(it) }
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.EnrichProvidedContext(
-                namespace = resolveNamespace(namespaceValue),
+                namespace = namespace,
                 conversationId = conversation?.id,
                 threadId = conversation?.currentThread,
                 context = normalizedContext,
@@ -182,8 +181,8 @@ class MemoryOperationPreparer(
 
     suspend fun prepareAnswerMessage(
         conversationIdValue: String,
+        namespace: MemoryNamespace,
         targetMessageId: String? = null,
-        namespaceValue: String? = null,
     ): PreparedMemoryOperation {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
@@ -193,7 +192,7 @@ class MemoryOperationPreparer(
         )
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.AnswerMessage(
-                namespace = resolveNamespace(namespaceValue),
+                namespace = namespace,
                 conversationId = conversationId,
                 threadId = conversation.currentThread,
                 targetMessageId = targetMessage.id,
@@ -205,16 +204,16 @@ class MemoryOperationPreparer(
 
     suspend fun prepareAnswerProvidedQuestion(
         conversationIdValue: String?,
+        namespace: MemoryNamespace,
         questionText: String,
         mode: String? = null,
-        namespaceValue: String? = null,
     ): PreparedMemoryOperation {
         val normalizedQuestion = questionText.trim()
         require(normalizedQuestion.isNotBlank()) { "Provided memory question is blank." }
         val conversation = conversationIdValue.toConversationIdOrNull()?.let { requireConversation(it) }
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.AnswerProvidedQuestion(
-                namespace = resolveNamespace(namespaceValue),
+                namespace = namespace,
                 conversationId = conversation?.id,
                 threadId = conversation?.currentThread,
                 question = normalizedQuestion,
@@ -247,9 +246,6 @@ class MemoryOperationPreparer(
             }
             ?: throw IllegalArgumentException("No previous user-authored message found in the current thread.")
     }
-
-    private fun resolveNamespace(explicitNamespaceValue: String?): MemoryNamespace =
-        explicitNamespaceValue.toMemoryNamespaceOverride() ?: MemoryNamespace.Global
 
     private fun String?.toConversationIdOrNull(): Conversation.Id? =
         this?.trim()?.takeIf { it.isNotBlank() }?.let(Conversation::Id)

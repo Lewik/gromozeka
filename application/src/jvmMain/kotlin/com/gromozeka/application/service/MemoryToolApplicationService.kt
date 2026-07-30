@@ -52,6 +52,7 @@ class MemoryToolApplicationService(
         ?: error("Memory tools must run on Server")
 
     suspend fun memoryRunStatus(
+        namespace: MemoryNamespace,
         runIdValue: String,
         includeChildren: Boolean = true,
         maxDepth: Int = 4,
@@ -61,9 +62,13 @@ class MemoryToolApplicationService(
             require(runId.value.isNotBlank()) { "memory_run_status requires non-blank run_id." }
             val rootRun = memoryStore.findRunById(runId)
                 ?: return MemoryToolResultRenderer.failureJsonString("Memory run not found: ${runId.value}")
+            require(rootRun.namespace == namespace) {
+                "Memory run not found: ${runId.value}"
+            }
             val boundedDepth = maxDepth.coerceIn(0, 8)
             val descendants = if (includeChildren) {
                 loadRunDescendants(rootRun, boundedDepth)
+                    .filter { it.namespace == namespace }
             } else {
                 emptyList()
             }
@@ -76,13 +81,13 @@ class MemoryToolApplicationService(
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory run status failed.")
         }
 
-    suspend fun memoryQueueStatus(): String =
+    suspend fun memoryQueueStatus(namespace: MemoryNamespace): String =
         runCatching {
             val now = Clock.System.now()
             val unfinishedRuns = memoryStore.findRunsByStatuses(
                 statuses = setOf(MemoryRun.Status.QUEUED, MemoryRun.Status.RUNNING),
                 runTypes = MEMORY_OPERATION_RUN_TYPES,
-            )
+            ).filter { it.namespace == namespace }
             val activeJobs = unfinishedRuns
                 .filter { it.status == MemoryRun.Status.RUNNING }
                 .sortedBy { it.startedAt }
@@ -114,11 +119,12 @@ class MemoryToolApplicationService(
         }
 
     suspend fun memoryEmbeddingStatus(
+        namespace: MemoryNamespace,
         conversationIdValue: String? = null,
     ): String =
         runCatching {
             val target = resolveMaintenanceTarget(conversationIdValue)
-            val context = resolveMaintenanceContext(target)
+            val context = resolveMaintenanceContext(target, namespace)
             val coverage = memoryEmbeddingIndexer.coverage(context.namespace)
             MemoryToolResultRenderer.embeddingCoverageResultJsonString(coverage)
         }.onFailure { error ->
@@ -130,16 +136,16 @@ class MemoryToolApplicationService(
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory embedding status failed.")
         }
 
-    suspend fun listNamespaces(): String =
+    suspend fun listNamespaces(namespace: MemoryNamespace): String =
         runCatching {
             val storedSummaries = memoryStore.listNamespaceSummaries()
-            val summaries = (storedSummaries + MemoryNamespace.Global.emptyNamespaceSummaryIfMissing(storedSummaries))
-                .distinctBy { it.namespace.value }
-                .sortedWith(compareByDescending<MemoryNamespaceSummary> { it.namespace == MemoryNamespace.Global }.thenBy { it.namespace.value })
+            val summaries = storedSummaries
+                .filter { it.namespace == namespace }
+                .ifEmpty { listOf(MemoryNamespaceSummary(namespace = namespace)) }
 
             MemoryToolResultRenderer.namespaceListResultJsonString(
                 summaries = summaries,
-                defaultNamespace = MemoryNamespace.Global,
+                defaultNamespace = namespace,
             )
         }.onFailure { error ->
             log.warn(error) { "Memory tool failed: tool=$MEMORY_LIST_NAMESPACES_TOOL_NAME error=${error.message}" }
@@ -148,6 +154,7 @@ class MemoryToolApplicationService(
         }
 
     suspend fun runMaintenance(
+        namespace: MemoryNamespace,
         actionValue: String,
         conversationIdValue: String? = null,
         embeddingRebuildModeValue: String? = null,
@@ -156,7 +163,7 @@ class MemoryToolApplicationService(
             val action = MemoryMaintenanceAction.from(actionValue)
             val embeddingRebuildMode = MemoryEmbeddingRebuildMode.from(embeddingRebuildModeValue)
             val target = resolveMaintenanceTarget(conversationIdValue)
-            val context = resolveMaintenanceContext(target)
+            val context = resolveMaintenanceContext(target, namespace)
             val result = memoryOperations.scheduleMaintenance(
                 action = action,
                 targetKind = target.kind,
@@ -217,7 +224,10 @@ class MemoryToolApplicationService(
             ?.let { MemoryMaintenanceTarget(MemoryMaintenanceTargetKind.CONVERSATION_ID, it) }
             ?: MemoryMaintenanceTarget(MemoryMaintenanceTargetKind.STANDALONE, "standalone")
 
-    private suspend fun resolveMaintenanceContext(target: MemoryMaintenanceTarget): MemoryMaintenanceContext =
+    private suspend fun resolveMaintenanceContext(
+        target: MemoryMaintenanceTarget,
+        namespace: MemoryNamespace,
+    ): MemoryMaintenanceContext =
         when (target.kind) {
             MemoryMaintenanceTargetKind.CONVERSATION_ID -> {
                 val conversationId = Conversation.Id(target.value)
@@ -226,7 +236,7 @@ class MemoryToolApplicationService(
                 }
                 MemoryMaintenanceContext(
                     conversationId = conversationId,
-                    namespace = MemoryNamespace.Global,
+                    namespace = namespace,
                 )
             }
 
@@ -237,22 +247,17 @@ class MemoryToolApplicationService(
                 }
                 MemoryMaintenanceContext(
                     conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
-                    namespace = MemoryNamespace.Global,
+                    namespace = namespace,
                 )
             }
 
             MemoryMaintenanceTargetKind.STANDALONE -> {
                 MemoryMaintenanceContext(
                     conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
-                    namespace = MemoryNamespace.Global,
+                    namespace = namespace,
                 )
             }
         }
-
-    private fun MemoryNamespace.emptyNamespaceSummaryIfMissing(existing: List<MemoryNamespaceSummary>): List<MemoryNamespaceSummary> {
-        if (existing.any { it.namespace == this }) return emptyList()
-        return listOf(MemoryNamespaceSummary(namespace = this))
-    }
 
     private data class MemoryMaintenanceContext(
         val conversationId: Conversation.Id,

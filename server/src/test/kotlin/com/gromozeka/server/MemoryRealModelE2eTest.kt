@@ -392,6 +392,7 @@ class MemoryRealModelE2eTest {
             name = "Memory E2E ${case.id}",
             description = case.description,
         )
+        val namespace = MemoryNamespace.forProject(project.id)
         val workspaceContext = workspaceDomainService.createAndMountFilesystemWorkspace(
             projectId = project.id,
             name = "${case.id} workspace",
@@ -425,16 +426,15 @@ class MemoryRealModelE2eTest {
 
         if (case.preloadedMemory.isNotEmpty()) {
             val fixtureConversation = conversation("preloaded-memory")
-            val fixtureNamespace = resolveNamespace()
             val fixtureBatch = case.preloadedMemory.toMemoryUpdateBatch(
                 caseId = case.id,
-                namespace = fixtureNamespace,
+                namespace = namespace,
                 conversationId = fixtureConversation.id,
             )
             store.apply(fixtureBatch)
             appendProgress(
                 progressPath,
-                "preloaded_memory case=${case.id} fixtures=${case.preloadedMemory.size} namespace=${fixtureNamespace.value} " +
+                "preloaded_memory case=${case.id} fixtures=${case.preloadedMemory.size} namespace=${namespace.value} " +
                     "sources=${fixtureBatch.sources.size} entities=${fixtureBatch.entities.size} predicates=${fixtureBatch.predicateDefinitions.size} claims=${fixtureBatch.claims.size}"
             )
         }
@@ -451,14 +451,15 @@ class MemoryRealModelE2eTest {
                 )
                 runCatching {
                     if (turn.isProvidedContent()) {
-                        val namespaceValue = turn.namespace
-                            ?: resolveNamespace().value
+                        val turnNamespace = turn.namespace
+                            ?.let(::MemoryNamespace)
+                            ?: namespace
                         rememberProvidedSeedTurn(
                             memoryOperationExecutor = memoryOperationExecutor,
                             memoryOperationPreparer = memoryOperationPreparer,
                             store = store,
                             turn = turn,
-                            namespaceValue = namespaceValue,
+                            namespace = turnNamespace,
                             progressPath = progressPath,
                             caseId = case.id,
                             sessionId = session.id,
@@ -517,6 +518,7 @@ class MemoryRealModelE2eTest {
                         maintenanceConversation,
                         agent,
                         MemoryE2eMaintenanceAction.CONSOLIDATE,
+                        namespace,
                     )
                 "repair_memory", "memory_repair" ->
                     runMaintenanceDirectly(
@@ -527,6 +529,7 @@ class MemoryRealModelE2eTest {
                         maintenanceConversation,
                         agent,
                         MemoryE2eMaintenanceAction.REPAIR,
+                        namespace,
                     )
                 "maintain_entities", "entity_maintenance", "maintain_memory_entities" ->
                     runMaintenanceDirectly(
@@ -537,6 +540,7 @@ class MemoryRealModelE2eTest {
                         maintenanceConversation,
                         agent,
                         MemoryE2eMaintenanceAction.MAINTAIN_ENTITIES,
+                        namespace,
                     )
                 "apply_retention", "retention_apply", "memory_retention" ->
                     runMaintenanceDirectly(
@@ -547,6 +551,7 @@ class MemoryRealModelE2eTest {
                         maintenanceConversation,
                         agent,
                         MemoryE2eMaintenanceAction.APPLY_RETENTION,
+                        namespace,
                     )
                 else -> error("Unknown memory maintenance action '$action' in case ${case.id}")
             }
@@ -562,7 +567,6 @@ class MemoryRealModelE2eTest {
             )
         }
 
-        val namespace = resolveNamespace()
         val afterSeedsSnapshot = store.loadNamespaceSnapshot(namespace)
         appendProgress(
             progressPath,
@@ -624,8 +628,6 @@ class MemoryRealModelE2eTest {
             recallResults = recallResults,
         )
     }
-
-    private fun resolveNamespace(): MemoryNamespace = MemoryNamespace(MEMORY_E2E_NAMESPACE)
 
     private fun List<MemoryE2ePreloadedMemory>.toMemoryUpdateBatch(
         caseId: String,
@@ -1222,6 +1224,7 @@ class MemoryRealModelE2eTest {
         conversation: Conversation,
         agent: AgentDefinition,
         action: MemoryE2eMaintenanceAction,
+        namespace: MemoryNamespace,
     ) {
         val systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, workspaceContext)
         val tools = aiToolProvider.getTools().withoutMemoryManagementTools()
@@ -1233,6 +1236,7 @@ class MemoryRealModelE2eTest {
                     workspaceContext,
                     systemPrompts,
                     tools,
+                    namespace,
                 )
             MemoryE2eMaintenanceAction.REPAIR ->
                 memoryApplicationService.runMemoryRepair(
@@ -1241,6 +1245,7 @@ class MemoryRealModelE2eTest {
                     workspaceContext,
                     systemPrompts,
                     tools,
+                    namespace,
                 )
             MemoryE2eMaintenanceAction.MAINTAIN_ENTITIES ->
                 memoryApplicationService.runEntityMaintenance(
@@ -1249,9 +1254,10 @@ class MemoryRealModelE2eTest {
                     workspaceContext,
                     systemPrompts,
                     tools,
+                    namespace,
                 )
             MemoryE2eMaintenanceAction.APPLY_RETENTION ->
-                memoryApplicationService.runRetention(conversation.id)
+                memoryApplicationService.runRetention(conversation.id, namespace)
         }
     }
 
@@ -1288,7 +1294,7 @@ class MemoryRealModelE2eTest {
         memoryOperationPreparer: MemoryOperationPreparer,
         store: MemoryStore,
         turn: MemoryE2eSeedTurnDefinition,
-        namespaceValue: String,
+        namespace: MemoryNamespace,
         progressPath: Path,
         caseId: String,
         sessionId: String,
@@ -1298,6 +1304,7 @@ class MemoryRealModelE2eTest {
         val toolResult = memoryOperationExecutor.executeSynchronously(
             memoryOperationPreparer.prepareRememberProvidedContent(
                 conversationIdValue = null,
+                namespace = namespace,
                 text = turn.text?.trim()?.takeIf { it.isNotBlank() && turn.documentType != null },
                 filePath = turn.resolvedFilePath(resolveProjectRoot()),
                 rawUrl = turn.rawUrl?.trim()?.takeIf { it.isNotBlank() },
@@ -1306,7 +1313,6 @@ class MemoryRealModelE2eTest {
                 sourceRef = turn.sourceRef,
                 forceWrite = turn.forceWrite,
                 mode = turn.mode,
-                namespaceValue = namespaceValue,
             )
         )
         val runId = extractQueuedRunId(toolResult)
@@ -3217,7 +3223,6 @@ class MemoryRealModelE2eTest {
         const val MEMORY_PARALLELISM_PROPERTY = "gromozeka.memory.e2e.memoryParallelism"
         const val MEMORY_ROUTING_FAIL_FAST_PROPERTY = "gromozeka.memory.routing.failFast"
         const val DEFAULT_MODEL_NAME = "gpt-5.5"
-        const val MEMORY_E2E_NAMESPACE = "benchmark:memory-real-model-e2e"
         const val E2E_WORKER_ID = "e2e-worker"
 
         val json = Json {

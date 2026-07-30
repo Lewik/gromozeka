@@ -58,7 +58,7 @@ class MemoryMessageRoutingApplicationService(
         runtimeTools: List<AiToolCallback>,
         threadContextMessages: List<Conversation.Message>? = null,
         forceMemoryWrite: Boolean = false,
-        namespaceOverride: MemoryNamespace? = null,
+        namespace: MemoryNamespace,
         parentRunId: MemoryRun.Id? = null,
     ): DirectStructuredMemoryWriteResult? {
         if (!message.isMemoryRouteableTarget()) {
@@ -69,7 +69,6 @@ class MemoryMessageRoutingApplicationService(
             return null
         }
 
-        val namespace = namespaceOverride ?: MemoryNamespace.Global
         val baseSource = sourceMapper.toChatTurn(
             namespace = namespace,
             conversationId = conversationId,

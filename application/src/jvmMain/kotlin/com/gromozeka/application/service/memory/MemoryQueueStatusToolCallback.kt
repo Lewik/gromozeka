@@ -24,6 +24,6 @@ class MemoryQueueStatusToolCallback(
     )
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
-        memoryToolApplicationService.memoryQueueStatus()
+        memoryToolApplicationService.memoryQueueStatus(context.requiredMemoryNamespace())
     }
 }

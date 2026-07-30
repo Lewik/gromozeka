@@ -53,6 +53,7 @@ class MemoryRunStatusToolCallback(
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = parseInput(toolInput)
         memoryToolApplicationService.memoryRunStatus(
+            namespace = context.requiredMemoryNamespace(),
             runIdValue = input.run_id,
             includeChildren = input.include_children,
             maxDepth = input.max_depth,

@@ -11,8 +11,10 @@ import com.gromozeka.application.service.memory.MEMORY_REBUILD_EMBEDDINGS_TOOL_N
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_WRITE_SURFACE_CONTEXT_KEY
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_NAMESPACE
 import com.gromozeka.domain.tool.ToolCancellationSignal
 import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.server.Server
@@ -25,14 +27,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.Tool
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import klog.KLoggers
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Service
 
 internal const val MCP_MEMORY_HELP_TOOL_NAME = "memory_help"
@@ -48,7 +43,10 @@ class GromozekaMcpServerFactory(
         encodeDefaults = true
     }
 
-    fun create(): Server {
+    internal fun create(caller: AuthenticatedMcpCaller): Server =
+        create(MemoryNamespace.forUser(caller.user.id))
+
+    internal fun create(namespace: MemoryNamespace): Server {
         val toolExposure = GromozekaMcpToolExposure.fromEnvironment()
         val availableToolNames = providedTools
             .map { it.definition.name }
@@ -70,7 +68,7 @@ class GromozekaMcpServerFactory(
         val exposedProvidedTools = providedTools
             .filter { toolExposure.exposes(it.definition.name) }
             .sortedBy { it.definition.name }
-        exposedProvidedTools.forEach { callback -> server.addAiToolCallback(callback) }
+        exposedProvidedTools.forEach { callback -> server.addAiToolCallback(callback, namespace) }
         if (toolExposure.exposes(MCP_MEMORY_HELP_TOOL_NAME)) {
             server.addMemoryHelpTool()
         }
@@ -83,7 +81,10 @@ class GromozekaMcpServerFactory(
         return server
     }
 
-    private fun Server.addAiToolCallback(callback: AiToolCallback) {
+    private fun Server.addAiToolCallback(
+        callback: AiToolCallback,
+        namespace: MemoryNamespace,
+    ) {
         val definition = callback.definition.toMcpDefinition()
         addTool(
             name = definition.name,
@@ -95,10 +96,9 @@ class GromozekaMcpServerFactory(
                 val arguments = rawArguments
                     .withoutMcpContext()
                     .toMcpToolArguments(definition.name)
-                val context = rawArguments["_context"]
-                    ?.jsonObject
-                    ?.let { ToolExecutionContext(it.toContextMap()) }
-                    .toMcpToolContext(definition.name)
+                val context = ToolExecutionContext(
+                    mapOf(TOOL_CONTEXT_MEMORY_NAMESPACE to namespace.value)
+                ).toMcpToolContext(definition.name)
                 val result = callback.call(
                     toolInput = json.encodeToString(JsonObject.serializer(), arguments),
                     context = context,
@@ -120,7 +120,7 @@ class GromozekaMcpServerFactory(
     private fun Server.addMemoryHelpTool() {
         addTool(
             name = MCP_MEMORY_HELP_TOOL_NAME,
-            description = "Read the Gromozeka typed-memory MCP guide: memory concepts, the global namespace, write/read workflows, and when to use each memory tool.",
+            description = "Read the Gromozeka typed-memory MCP guide: memory concepts, the authenticated caller's personal memory bank, write/read workflows, and when to use each memory tool.",
             inputSchema = ToolSchema(),
         ) {
             CallToolResult(
@@ -181,22 +181,6 @@ class GromozekaMcpServerFactory(
     private fun ToolExecutionContext?.asMapOrEmpty(): Map<String, Any?> =
         this?.asMap().orEmpty()
 
-    private fun JsonObject.toContextMap(): Map<String, Any> =
-        mapValues { (_, value) -> value.toPlainValue() }
-
-    private fun JsonElement.toPlainValue(): Any =
-        when (this) {
-            is JsonObject -> toContextMap()
-            is JsonArray -> map { it.toPlainValue() }
-            is JsonPrimitive -> when {
-                isString -> content
-                booleanOrNull != null -> booleanOrNull!!
-                intOrNull != null -> intOrNull!!
-                else -> content
-            }
-            else -> toString()
-        }
-
     private fun String.looksLikeToolError(): Boolean =
         startsWith("Error:", ignoreCase = true) ||
             contains("\"success\":false", ignoreCase = true) ||
@@ -223,7 +207,7 @@ class GromozekaMcpServerFactory(
 
             ## Namespaces
 
-            A namespace is a strict memory boundary. The current Gromozeka runtime uses the single `global` namespace for every production memory operation. MCP callers cannot select or override it. `memory_list_namespaces` is diagnostic and reports `global` plus any unexpected stored namespaces.
+            A namespace is a strict memory-bank boundary. This MCP endpoint uses the personal bank of its authenticated user. MCP callers cannot select or override it, including through hidden `_context` fields. Gromozeka conversations use their authorized Project bank instead. `memory_list_namespaces` reports only the current caller's bank.
 
             ## Writing memory
 
@@ -269,9 +253,9 @@ class GromozekaMcpServerFactory(
 
             - `memory_run_status`: inspect one memory run by id.
             - `memory_queue_status`: inspect queued/running memory operations and maintenance work.
-            - `memory_embedding_status`: inspect vector embedding coverage for the global namespace.
+            - `memory_embedding_status`: inspect vector embedding coverage for the current personal bank.
             - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, targeted repairs, or embedding rebuild.
-            - `memory_rebuild_embeddings`: rebuild vector embeddings for the global namespace (`full` reset/replace or `missing` fill-only).
+            - `memory_rebuild_embeddings`: rebuild vector embeddings for the current personal bank (`full` reset/replace or `missing` fill-only).
 
             Memory remember/read operations and maintenance tools return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Stop polling a run when `poll_again=false`. Prefer status tools before starting broad maintenance if a run is already active.
 
@@ -287,10 +271,10 @@ class GromozekaMcpServerFactory(
         """.trimIndent()
 
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
-            "Queue persistence of explicit user-approved text or a raw markdown/text document in the global namespace and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. Follow the returned result_delivery contract: poll memory_run_status only when poll_required=true. Use memory_help for typed-memory concepts and workflow."
+            "Queue persistence of explicit user-approved text or a raw markdown/text document in the authenticated user's personal memory bank and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. The bank cannot be overridden by arguments or hidden context. Follow the returned result_delivery contract: poll memory_run_status only when poll_required=true. Use memory_help for typed-memory concepts and workflow."
 
         const val MCP_MEMORY_FORGET_SOURCE_DESCRIPTION =
-            "Queue exact forgetting of one persisted source_id in the global namespace and return a run_id. Requires an explicit user request and user_consent_confirmed=true. The operation forgets the logical source closure and updates directly dependent typed memory and profiles. Poll memory_run_status only when poll_required=true."
+            "Queue exact forgetting of one source_id in the authenticated user's personal memory bank and return a run_id. Requires an explicit user request and user_consent_confirmed=true. The operation forgets the logical source closure and updates directly dependent typed memory and profiles. Poll memory_run_status only when poll_required=true."
 
         const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
             "Queue retrieval of persisted memory relevant to a supplied context and return a run_id. This enriches a topic/action item/current turn; it is not a question-answering tool. Follow the returned result_delivery contract and poll memory_run_status only when poll_required=true."
@@ -299,16 +283,16 @@ class GromozekaMcpServerFactory(
             "Queue a direct question answered from persisted memory only and return a run_id. Follow the returned result_delivery contract and poll memory_run_status only when poll_required=true. The final result contains the compact answer, sufficiency, reasoning, evidence refs, and selected refs."
 
         const val MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION =
-            "Inspect the global memory namespace, item counts, and any unexpected stored namespaces. This runtime does not support selecting a namespace per operation."
+            "Inspect the authenticated user's personal memory bank and item counts. The caller cannot select another namespace."
 
         const val MCP_MEMORY_MAINTENANCE_DESCRIPTION =
             "Schedule one explicit maintenance action over existing memory and return a run_id: consolidate, repair, maintain_entities, apply_retention, or rebuild_embeddings. The rebuild_embeddings action supports embedding_mode=full for reset/replace and embedding_mode=missing for fill-only."
 
         const val MCP_MEMORY_REBUILD_EMBEDDINGS_DESCRIPTION =
-            "Rebuild memory vector embeddings for the global namespace. mode=full generates a fresh complete set and then replaces existing rows; mode=missing inserts only absent rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe completion."
+            "Rebuild vector embeddings for the authenticated user's personal memory bank. mode=full generates a fresh complete set and then replaces existing rows; mode=missing inserts only absent rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe completion."
 
         const val MCP_MEMORY_EMBEDDING_STATUS_DESCRIPTION =
-            "Inspect vector embedding coverage for the global memory namespace under the currently configured embedding model: embeddable items, expected rows, existing rows, and missing rows. Read-only."
+            "Inspect vector embedding coverage for the authenticated user's personal memory bank under the currently configured embedding model: embeddable items, expected rows, existing rows, and missing rows. Read-only."
 
         const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
             "Read durable queued/running memory operations and the live Workers capable of processing them."

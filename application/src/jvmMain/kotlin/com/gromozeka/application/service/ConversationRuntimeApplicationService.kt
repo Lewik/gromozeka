@@ -71,7 +71,12 @@ class ConversationRuntimeApplicationService(
         runtimeDispatcher.observeConversation(conversationId, afterEventSequence)
 
     override suspend fun rememberCurrentThread(conversationId: Conversation.Id) {
-        val queued = memoryOperations.rememberThread(conversationId.value)
+        val conversation = conversationService.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        val queued = memoryOperations.rememberThread(
+            conversationIdValue = conversationId.value,
+            namespace = MemoryNamespace.forProject(conversation.projectId),
+        )
         log.info {
             "Queued current thread for typed memory: conversation=$conversationId operations=${queued.size}"
         }
@@ -104,7 +109,7 @@ class ConversationRuntimeApplicationService(
             targetKind = MemoryMaintenanceTargetKind.CONVERSATION_ID,
             targetValue = conversationId.value,
             executionConversationId = conversationId,
-            namespace = MemoryNamespace.Global,
+            namespace = MemoryNamespace.forProject(conversation.projectId),
         )
         log.info {
             "Queued memory maintenance for conversation $conversationId: action=${action.toolName} run=${result.runId.value}"

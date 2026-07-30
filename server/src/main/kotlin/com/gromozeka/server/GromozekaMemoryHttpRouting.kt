@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.MemoryToolApplicationService
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.AuthenticationService
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -23,7 +24,8 @@ fun Routing.gromozekaMemoryHttp(
     authenticationService: AuthenticationService,
 ) {
     get("/memory/status") {
-        if (call.authenticateOrNull(authenticationService) == null) {
+        val principal = call.authenticateOrNull(authenticationService)
+        if (principal == null) {
             call.respondText(
                 """{"success":false,"error":"Authentication required"}""",
                 ContentType.Application.Json,
@@ -36,14 +38,22 @@ fun Routing.gromozekaMemoryHttp(
         val maxDepth = call.request.queryParameters["max_depth"]?.toIntOrNull() ?: 4
 
         val response = runCatching {
+            val namespace = MemoryNamespace.forUser(principal.user.id)
             buildJsonObject {
                 put("success", true)
-                put("queue", memoryToolApplicationService.memoryQueueStatus().parseMemoryToolJson())
-                put("namespaces", memoryToolApplicationService.listNamespaces().parseMemoryToolJson())
+                put(
+                    "queue",
+                    memoryToolApplicationService.memoryQueueStatus(namespace).parseMemoryToolJson(),
+                )
+                put(
+                    "namespaces",
+                    memoryToolApplicationService.listNamespaces(namespace).parseMemoryToolJson(),
+                )
                 if (runId != null) {
                     put(
                         "run",
                         memoryToolApplicationService.memoryRunStatus(
+                            namespace = namespace,
                             runIdValue = runId,
                             includeChildren = includeChildren,
                             maxDepth = maxDepth,

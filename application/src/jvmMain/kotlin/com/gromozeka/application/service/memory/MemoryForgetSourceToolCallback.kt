@@ -51,6 +51,7 @@ class MemoryForgetSourceToolCallback(
         }
         memoryOperations.forgetSource(
             conversationIdValue = context?.getString("conversationId"),
+            namespace = context.requiredMemoryNamespace(),
             sourceIdValue = input.source_id,
             resultDelivery = context.memoryOperationResultDeliveryOrNull(),
         )

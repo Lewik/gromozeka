@@ -23,7 +23,7 @@ class MemoryMaintenanceToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_MAINTENANCE_TOOL_NAME,
-        description = "Schedule one explicit maintenance pass over typed memory in the global namespace and return immediately with a run_id. Actions: consolidate promotes mature notes into durable claims/actionItems/episodes; repair fixes suspicious duplicate or conflicting memory; maintain_entities normalizes entity aliases/merges/summaries; apply_retention cools, archives, or hides stale memory; rebuild_embeddings rebuilds vector indexes. Use memory_run_status with the returned run_id or memory_queue_status to observe progress.",
+        description = "Schedule one explicit maintenance pass over the current authorized typed-memory bank and return immediately with a run_id. Actions: consolidate promotes mature notes into durable claims/actionItems/episodes; repair fixes suspicious duplicate or conflicting memory; maintain_entities normalizes entity aliases/merges/summaries; apply_retention cools, archives, or hides stale memory; rebuild_embeddings rebuilds vector indexes. Use memory_run_status with the returned run_id or memory_queue_status to observe progress.",
         inputSchema = """
             {
               "type": "object",
@@ -47,6 +47,7 @@ class MemoryMaintenanceToolCallback(
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = parseInput(toolInput)
         memoryToolApplicationService.runMaintenance(
+            namespace = context.requiredMemoryNamespace(),
             actionValue = input.action,
             conversationIdValue = context?.getString("conversationId"),
             embeddingRebuildModeValue = input.embedding_mode,
