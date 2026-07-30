@@ -62,11 +62,15 @@ class PostgresWorkerEnrollmentRepository(
 
     override suspend fun consume(
         tokenHash: String,
+        gatewayCredentialHash: String,
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: Instant,
     ): WorkerResource? =
         withContext(Dispatchers.IO) {
+            require(gatewayCredentialHash.length == 64) {
+                "Worker gateway credential hash must contain 64 characters"
+            }
             dataSource.connection.use { connection ->
                 connection.autoCommit = false
                 try {
@@ -93,12 +97,50 @@ class PostgresWorkerEnrollmentRepository(
                             createdAt = consumedAt,
                             updatedAt = consumedAt,
                         ).also { connection.insertWorker(it) }
+                    connection.rotateGatewayCredential(
+                        workerId = worker.id,
+                        gatewayCredentialHash = gatewayCredentialHash,
+                        rotatedAt = consumedAt,
+                    )
                     connection.markEnrollmentConsumed(tokenHash, consumedAt)
                     connection.commit()
                     worker
                 } catch (error: Throwable) {
                     connection.rollback()
                     throw error
+                }
+            }
+        }
+
+    override suspend fun authenticateGatewayCredential(
+        gatewayCredentialHash: String,
+    ): WorkerResource? =
+        withContext(Dispatchers.IO) {
+            if (gatewayCredentialHash.length != 64) {
+                return@withContext null
+            }
+            dataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    """
+                    SELECT w.id,
+                           w.display_name,
+                           w.owner_user_id,
+                           w.organization_access,
+                           w.status,
+                           w.created_at,
+                           w.updated_at
+                    FROM worker_gateway_credentials c
+                    JOIN workers w ON w.id = c.worker_id
+                    WHERE c.credential_hash = ?
+                      AND c.revoked_at IS NULL
+                      AND w.status = ?
+                    """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, gatewayCredentialHash)
+                    statement.setString(2, WorkerResource.Status.ACTIVE.name)
+                    statement.executeQuery().use { result ->
+                        if (result.next()) result.toWorker() else null
+                    }
                 }
             }
         }
@@ -169,6 +211,37 @@ class PostgresWorkerEnrollmentRepository(
             statement.setTimestamp(7, worker.updatedAt.toTimestamp())
             check(statement.executeUpdate() == 1) {
                 "Worker was not stored: ${worker.id.value}"
+            }
+        }
+    }
+
+    private fun Connection.rotateGatewayCredential(
+        workerId: ConversationRuntimeWorkerId,
+        gatewayCredentialHash: String,
+        rotatedAt: Instant,
+    ) {
+        prepareStatement(
+            """
+            INSERT INTO worker_gateway_credentials(
+                worker_id,
+                credential_hash,
+                created_at,
+                rotated_at,
+                revoked_at
+            )
+            VALUES (?, ?, ?, ?, NULL)
+            ON CONFLICT (worker_id) DO UPDATE
+            SET credential_hash = EXCLUDED.credential_hash,
+                rotated_at = EXCLUDED.rotated_at,
+                revoked_at = NULL
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, workerId.value)
+            statement.setString(2, gatewayCredentialHash)
+            statement.setTimestamp(3, rotatedAt.toTimestamp())
+            statement.setTimestamp(4, rotatedAt.toTimestamp())
+            check(statement.executeUpdate() == 1) {
+                "Worker gateway credential was not stored: ${workerId.value}"
             }
         }
     }

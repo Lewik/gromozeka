@@ -15,8 +15,13 @@ interface WorkerEnrollmentRepository {
 
     suspend fun consume(
         tokenHash: String,
+        gatewayCredentialHash: String,
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: Instant,
+    ): WorkerResource?
+
+    suspend fun authenticateGatewayCredential(
+        gatewayCredentialHash: String,
     ): WorkerResource?
 }

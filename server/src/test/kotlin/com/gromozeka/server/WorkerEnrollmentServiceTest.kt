@@ -27,6 +27,7 @@ class WorkerEnrollmentServiceTest {
         val bootstrap = service.consume(token.token, "macbook-primary")
 
         assertEquals("macbook-primary", bootstrap.workerId)
+        assertTrue(bootstrap.gatewayCredential.length >= 40)
         assertEquals("jdbc:postgresql://db.example/gromozeka", bootstrap.postgresJdbcUrl)
         assertEquals(setOf(ConversationRuntimeCapability.TOOL_EXECUTION), bootstrap.capabilities)
         assertEquals(USER_ID, repository.worker?.ownerUserId)
@@ -84,6 +85,7 @@ class WorkerEnrollmentServiceTest {
 
 private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
     private var enrollment: Enrollment? = null
+    private var gatewayCredentialHash: String? = null
     var worker: WorkerResource? = null
         private set
 
@@ -98,6 +100,7 @@ private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
 
     override suspend fun consume(
         tokenHash: String,
+        gatewayCredentialHash: String,
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: KotlinInstant,
@@ -106,6 +109,7 @@ private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
             ?.takeIf { it.tokenHash == tokenHash && it.expiresAt > consumedAt }
             ?: return null
         enrollment = null
+        this.gatewayCredentialHash = gatewayCredentialHash
         return WorkerResource(
             id = workerId,
             displayName = displayName,
@@ -116,6 +120,11 @@ private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
             updatedAt = consumedAt,
         ).also { worker = it }
     }
+
+    override suspend fun authenticateGatewayCredential(
+        gatewayCredentialHash: String,
+    ): WorkerResource? =
+        worker?.takeIf { this.gatewayCredentialHash == gatewayCredentialHash }
 
     private data class Enrollment(
         val tokenHash: String,

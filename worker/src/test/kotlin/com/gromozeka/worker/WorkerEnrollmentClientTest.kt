@@ -19,6 +19,7 @@ class WorkerEnrollmentClientTest {
     fun `enrollment stores server bootstrap without exposing token`() {
         val bootstrap = WorkerEnrollmentBootstrap(
             workerId = "test-worker",
+            gatewayCredential = "gateway-secret",
             postgresJdbcUrl = "jdbc:postgresql://db.example/gromozeka?sslmode=verify-full",
             postgresUsername = "worker",
             postgresPassword = "postgres-secret",
@@ -61,6 +62,8 @@ class WorkerEnrollmentClientTest {
         assertContains(requestBody, "test-enrollment-token")
         assertContains(requestBody, "test-worker")
         assertFalse(config.contains("test-enrollment-token"))
+        assertContains(config, "gateway-secret")
+        assertContains(config, "http://127.0.0.1:${server.address.port}")
         assertContains(config, "postgres-secret")
         assertContains(config, "rabbit-secret")
         assertContains(config, "verify-hostname: true")

@@ -38,19 +38,30 @@ class PostgresWorkerEnrollmentRepositoryTest {
             val consumedAt = Instant.parse("2026-07-29T20:01:00Z")
             val firstTokenHash = "a".repeat(64)
             val secondTokenHash = "b".repeat(64)
+            val rotationTokenHash = "f".repeat(64)
+            val firstCredentialHash = "c".repeat(64)
+            val secondCredentialHash = "d".repeat(64)
+            val thirdCredentialHash = "e".repeat(64)
+            val rotatedCredentialHash = "1".repeat(64)
 
             repository.issue(firstTokenHash, owner, createdAt, expiresAt)
             val worker = repository.consume(
                 firstTokenHash,
+                firstCredentialHash,
                 ConversationRuntimeWorkerId("worker-1"),
                 "Worker 1",
                 consumedAt,
             )
 
             assertEquals(owner, worker?.ownerUserId)
+            assertEquals(
+                ConversationRuntimeWorkerId("worker-1"),
+                repository.authenticateGatewayCredential(firstCredentialHash)?.id,
+            )
             assertNull(
                 repository.consume(
                     firstTokenHash,
+                    secondCredentialHash,
                     ConversationRuntimeWorkerId("worker-2"),
                     "Worker 2",
                     consumedAt,
@@ -61,6 +72,7 @@ class PostgresWorkerEnrollmentRepositoryTest {
             assertFailsWith<IllegalArgumentException> {
                 repository.consume(
                     secondTokenHash,
+                    secondCredentialHash,
                     ConversationRuntimeWorkerId("worker-1"),
                     "Worker 1",
                     consumedAt,
@@ -70,10 +82,25 @@ class PostgresWorkerEnrollmentRepositoryTest {
                 otherOwner,
                 repository.consume(
                     secondTokenHash,
+                    thirdCredentialHash,
                     ConversationRuntimeWorkerId("worker-2"),
                     "Worker 2",
                     consumedAt,
                 )?.ownerUserId,
+            )
+
+            repository.issue(rotationTokenHash, owner, createdAt, expiresAt)
+            repository.consume(
+                rotationTokenHash,
+                rotatedCredentialHash,
+                ConversationRuntimeWorkerId("worker-1"),
+                "Worker 1",
+                consumedAt,
+            )
+            assertNull(repository.authenticateGatewayCredential(firstCredentialHash))
+            assertEquals(
+                ConversationRuntimeWorkerId("worker-1"),
+                repository.authenticateGatewayCredential(rotatedCredentialHash)?.id,
             )
         } finally {
             adminDataSource.connection.use { connection ->
@@ -101,11 +128,16 @@ class PostgresWorkerEnrollmentRepositoryTest {
                 val migration = checkNotNull(
                     javaClass.classLoader.getResource("db/migration/postgres/V27__worker_access.sql")
                 ).readText()
-                migration
-                    .split(';')
-                    .map(String::trim)
-                    .filter(String::isNotEmpty)
-                    .forEach(statement::execute)
+                val gatewayMigration = checkNotNull(
+                    javaClass.classLoader.getResource("db/migration/postgres/V28__worker_gateway_credentials.sql")
+                ).readText()
+                listOf(migration, gatewayMigration).forEach { script ->
+                    script
+                        .split(';')
+                        .map(String::trim)
+                        .filter(String::isNotEmpty)
+                        .forEach(statement::execute)
+                }
             }
         }
     }

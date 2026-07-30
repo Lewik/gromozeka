@@ -35,6 +35,10 @@ dependencies {
     implementation(libs.spring.boot.starter)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.serialization.cbor)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.websockets)
     implementation(libs.klog)
 
     testImplementation(libs.spring.boot.starter.test)

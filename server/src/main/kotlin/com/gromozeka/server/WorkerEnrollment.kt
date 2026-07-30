@@ -50,9 +50,13 @@ data class WorkerEnrollmentProperties(
             ?.joinToString(prefix = "Worker enrollment is missing: ")
     }
 
-    fun bootstrap(workerId: String): WorkerEnrollmentBootstrap =
+    fun bootstrap(
+        workerId: String,
+        gatewayCredential: String,
+    ): WorkerEnrollmentBootstrap =
         WorkerEnrollmentBootstrap(
             workerId = workerId,
+            gatewayCredential = gatewayCredential,
             postgresJdbcUrl = postgresJdbcUrl,
             postgresUsername = postgresUsername,
             postgresPassword = postgresPassword,
@@ -106,15 +110,22 @@ class WorkerEnrollmentService(
         }
         require(token.length in 40..128) { "Worker enrollment token is invalid or expired" }
 
+        val gatewayCredential = randomToken()
         val worker = repository.consume(
             tokenHash = tokenHash(token),
+            gatewayCredentialHash = tokenHash(gatewayCredential),
             workerId = ConversationRuntimeWorkerId(workerId),
             displayName = workerId,
             consumedAt = clock.instant().toKotlinx(),
         )
         require(worker != null) { "Worker enrollment token is invalid or expired" }
-        return properties.bootstrap(worker.id.value)
+        return properties.bootstrap(worker.id.value, gatewayCredential)
     }
+
+    private fun randomToken(): String =
+        ByteArray(32)
+            .also(secureRandom::nextBytes)
+            .let { Base64.getUrlEncoder().withoutPadding().encodeToString(it) }
 
     private fun tokenHash(token: String): String =
         MessageDigest.getInstance("SHA-256")

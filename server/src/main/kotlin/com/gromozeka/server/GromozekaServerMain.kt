@@ -65,6 +65,8 @@ fun main() {
     val controlMcpServerFactory = context.getBean(GromozekaControlMcpServerFactory::class.java)
     val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
     val workerEnrollmentService = context.getBean(WorkerEnrollmentService::class.java)
+    val workerGatewayAuthenticationService = context.getBean(WorkerGatewayAuthenticationService::class.java)
+    val workerGatewayService = context.getBean(WorkerGatewayService::class.java)
     val authenticationService = context.getBean(AuthenticationService::class.java)
     val bootstrapToken = context.getBean(FirstUserBootstrapToken::class.java)
     val authenticationAttemptLimiter = context.getBean(AuthenticationAttemptLimiter::class.java)
@@ -95,6 +97,7 @@ fun main() {
                 call.attributes.put(authenticatedRemoteSessionKey, authenticatedSession)
             }
         }
+        val workerWebsocketAuthentication = workerGatewayAuthentication(workerGatewayAuthenticationService)
         mcpStreamableHttp(
             path = "/mcp",
             allowedHosts = mcpHttpSecurity.allowedHosts,
@@ -127,6 +130,15 @@ fun main() {
                     remoteServer.handle(
                         this,
                         call.attributes[authenticatedRemoteSessionKey],
+                    )
+                }
+            }
+            route("/worker/ws") {
+                install(workerWebsocketAuthentication)
+                webSocket {
+                    workerGatewayService.handle(
+                        socket = this,
+                        authenticatedWorker = call.attributes[authenticatedWorkerGatewayKey],
                     )
                 }
             }

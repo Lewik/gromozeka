@@ -9,6 +9,8 @@ logging:
     name: ${logging.file.path}/${gromozeka.runtime.worker.id}.log
 
 gromozeka:
+  worker-gateway:
+    enabled: false
   runtime:
     server:
       enabled: false

@@ -52,12 +52,18 @@ internal class WorkerEnrollmentClient(
         }
 
         val bootstrap = json.decodeFromString<WorkerEnrollmentBootstrap>(response.body())
-        writeConfiguration(options.configPath, bootstrap, options.replaceExisting)
+        writeConfiguration(
+            path = options.configPath,
+            server = serverBaseUri(options.server),
+            bootstrap = bootstrap,
+            replaceExisting = options.replaceExisting,
+        )
         return options.configPath
     }
 
     private fun writeConfiguration(
         path: Path,
+        server: URI,
         bootstrap: WorkerEnrollmentBootstrap,
         replaceExisting: Boolean,
     ) {
@@ -65,7 +71,7 @@ internal class WorkerEnrollmentClient(
             "Worker configuration already exists at $path; pass --force to replace it"
         }
         path.parent?.let(Files::createDirectories)
-        Files.writeString(path, bootstrap.toYaml())
+        Files.writeString(path, bootstrap.toYaml(server))
         runCatching {
             Files.setPosixFilePermissions(
                 path,
@@ -78,6 +84,19 @@ internal class WorkerEnrollmentClient(
     }
 
     private fun enrollmentEndpoint(server: String): URI {
+        val base = serverBaseUri(server)
+        return URI(
+            base.scheme,
+            null,
+            base.host,
+            base.port,
+            "/api/worker-enrollments/consume",
+            null,
+            null,
+        )
+    }
+
+    private fun serverBaseUri(server: String): URI {
         val raw = URI(server.trim().let { if ("://" in it) it else "https://$it" })
         val scheme = when (raw.scheme?.lowercase()) {
             "https", "wss" -> "https"
@@ -99,14 +118,17 @@ internal class WorkerEnrollmentClient(
             null,
             host,
             raw.port,
-            "/api/worker-enrollments/consume",
+            null,
             null,
             null,
         )
     }
 
-    private fun WorkerEnrollmentBootstrap.toYaml(): String = buildString {
+    private fun WorkerEnrollmentBootstrap.toYaml(server: URI): String = buildString {
         appendLine("gromozeka:")
+        appendLine("  worker-gateway:")
+        appendLine("    server-url: ${yaml(server.toString())}")
+        appendLine("    credential: ${yaml(gatewayCredential)}")
         appendLine("  postgres:")
         appendLine("    jdbc-url: ${yaml(postgresJdbcUrl)}")
         appendLine("    username: ${yaml(postgresUsername)}")

@@ -24,6 +24,7 @@ data class WorkerEnrollmentConsumeRequest(
 @Serializable
 data class WorkerEnrollmentBootstrap(
     val workerId: String,
+    val gatewayCredential: String,
     val postgresJdbcUrl: String,
     val postgresUsername: String,
     val postgresPassword: String,
