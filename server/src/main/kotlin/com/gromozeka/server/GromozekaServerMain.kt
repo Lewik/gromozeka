@@ -78,6 +78,7 @@ fun main() {
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
     val ktorServer = embeddedServer(CIO, port = port, host = host) {
+        install(gromozekaBrowserSecurityHeaders)
         installHttpAuthenticationErrors()
         installMcpAuthentication(authenticationService, personalAccessTokenService)
         val websocketAuthentication = createRouteScopedPlugin("GromozekaWebSocketAuthentication") {
@@ -121,6 +122,7 @@ fun main() {
                 secureCookie = secureCookie,
             )
             route("/ws") {
+                install(gromozekaBrowserOriginProtection)
                 install(websocketAuthentication)
                 webSocket {
                     remoteServer.handle(

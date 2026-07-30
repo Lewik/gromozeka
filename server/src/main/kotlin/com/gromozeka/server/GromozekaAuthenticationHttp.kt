@@ -53,6 +53,7 @@ internal fun Route.gromozekaAuthentication(
     }
 
     post("/auth/bootstrap") {
+        if (!call.requireAllowedAuthenticationOrigin()) return@post
         if (!call.requireSecureAuthenticationTransport()) return@post
         val request = call.receiveAuthenticationRequest<BootstrapUserRequest>() ?: return@post
         val password = request.password.toCharArray()
@@ -88,6 +89,7 @@ internal fun Route.gromozekaAuthentication(
     }
 
     post("/auth/login") {
+        if (!call.requireAllowedAuthenticationOrigin()) return@post
         if (!call.requireSecureAuthenticationTransport()) return@post
         val request = call.receiveAuthenticationRequest<LoginRequest>() ?: return@post
         val remoteAddress = call.request.local.remoteAddress
@@ -133,6 +135,8 @@ internal fun Route.gromozekaAuthentication(
     }
 
     post("/auth/logout") {
+        if (!call.requireAllowedAuthenticationOrigin()) return@post
+        if (!call.requireSecureAuthenticationTransport()) return@post
         call.request.cookies[SESSION_COOKIE_NAME]?.let { authenticationService.logout(it) }
         call.response.cookies.append(
             Cookie(
@@ -209,6 +213,15 @@ private suspend fun ApplicationCall.requireSecureAuthenticationTransport(): Bool
     respondAuthenticationJson(
         AuthenticationErrorResponse("Authentication requires HTTPS"),
         HttpStatusCode.UpgradeRequired,
+    )
+    return false
+}
+
+private suspend fun ApplicationCall.requireAllowedAuthenticationOrigin(): Boolean {
+    if (hasAllowedBrowserOrigin()) return true
+    respondAuthenticationJson(
+        AuthenticationErrorResponse("Cross-origin browser request rejected"),
+        HttpStatusCode.Forbidden,
     )
     return false
 }
