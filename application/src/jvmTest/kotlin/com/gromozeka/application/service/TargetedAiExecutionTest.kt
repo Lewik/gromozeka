@@ -2,13 +2,19 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
+import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
@@ -64,10 +70,8 @@ class TargetedAiExecutionTest {
         val response = provider.getRuntime(selection, "/workspace").call(request)
 
         assertSame(directProvider.response, response)
-        assertEquals(
-            listOf<Pair<AiRuntimeSelection, String?>>(selection to "/workspace"),
-            directProvider.runtimeRequests,
-        )
+        assertEquals(selection.modelConfigurationId, directProvider.runtimeRequests.single().first.modelConfiguration.id)
+        assertEquals("/workspace", directProvider.runtimeRequests.single().second)
         assertNull(remoteClient.callTarget)
     }
 
@@ -126,7 +130,7 @@ class TargetedAiExecutionTest {
             provider.getRuntime(selection, null).call(request)
         }
 
-        assertTrue(error.message.orEmpty().contains("Rabbit runtime transport"))
+        assertTrue(error.message.orEmpty().contains("Worker Gateway transport"))
         assertTrue(directProvider.runtimeRequests.isEmpty())
     }
 
@@ -224,10 +228,13 @@ class TargetedAiExecutionTest {
             speed = 1.0f,
         )
 
-        assertSame(runtimeProvider.response, handler.call(selection, null, request))
-        assertSame(embeddingProvider.response, handler.embed(embeddingRequest))
-        assertEquals("transcript", handler.transcribe(transcriptionRequest))
-        assertSame(textToSpeechProvider.response, handler.synthesize(synthesisRequest))
+        val runtime = testRuntime(AiExecutionTarget.Server)
+        val modelSpec = testModelSpec()
+
+        assertSame(runtimeProvider.response, handler.call(runtime, null, request))
+        assertSame(embeddingProvider.response, handler.embed(runtime, modelSpec, embeddingRequest))
+        assertEquals("transcript", handler.transcribe(runtime, null, transcriptionRequest))
+        assertSame(textToSpeechProvider.response, handler.synthesize(runtime, synthesisRequest))
         assertEquals(listOf(transcriptionRequest), speechToTextProvider.requests)
         assertEquals(listOf(synthesisRequest), textToSpeechProvider.requests)
     }
@@ -247,41 +254,39 @@ class TargetedAiExecutionTest {
     private inner class FixedAiConfigurationProvider(
         target: AiExecutionTarget,
     ) : AiConfigurationProvider {
-        private val connection = AiConnection.OpenAiApi(
-            id = AiConnection.Id("connection"),
-            displayName = "Connection",
-            enabled = true,
-            executionTarget = target,
-        )
-        private val configuration = AiModelConfiguration(
-            id = selection.modelConfigurationId,
-            connectionId = connection.id,
-            providerModelId = "test-model",
-            displayName = "Test model",
+        private val runtime = testRuntime(target)
+        private val modelSpec = testModelSpec()
+        private val catalogValue = AiCatalog(
+            connections = listOf(runtime.connection),
+            modelSpecs = listOf(modelSpec),
+            modelConfigurations = listOf(runtime.modelConfiguration),
+            runtimeAssignments = AiRuntimeAssignment.Purpose.entries
+                .filter(AiRuntimeAssignment.Purpose::requiresExplicitAssignment)
+                .map { AiRuntimeAssignment(it, selection) },
+            defaultAgentId = AgentDefinition.Id("test-agent"),
         )
 
-        override val snapshotFlow = MutableStateFlow<AiCatalogSnapshot?>(null)
-        override val snapshot: AiCatalogSnapshot
-            get() = error("Catalog snapshot is outside this test")
+        override val snapshotFlow = MutableStateFlow<AiCatalogSnapshot?>(AiCatalogSnapshot(catalogValue, revision = 1))
+        override val snapshot: AiCatalogSnapshot = snapshotFlow.value!!
 
         override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
-            assertEquals(configuration.id, selection.modelConfigurationId)
-            return ResolvedAiRuntime(connection, configuration)
+            assertEquals(runtime.modelConfiguration.id, selection.modelConfigurationId)
+            return runtime
         }
     }
 
     private class RecordingDirectRuntimeProvider : DirectAiRuntimeProvider {
         val response = AiRuntimeResponse(messages = emptyList(), finishReason = "local")
-        val runtimeRequests = mutableListOf<Pair<AiRuntimeSelection, String?>>()
+        val runtimeRequests = mutableListOf<Pair<ResolvedAiRuntime, String?>>()
         private val runtimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true)
 
-        override fun capabilities(selection: AiRuntimeSelection): AiRuntimeCapabilities = runtimeCapabilities
+        override fun capabilities(runtime: ResolvedAiRuntime): AiRuntimeCapabilities = runtimeCapabilities
 
         override fun getRuntime(
-            selection: AiRuntimeSelection,
+            runtime: ResolvedAiRuntime,
             workspaceRootPath: String?,
         ): AiRuntime {
-            runtimeRequests += selection to workspaceRootPath
+            runtimeRequests += runtime to workspaceRootPath
             return object : AiRuntime {
                 override val capabilities = runtimeCapabilities
 
@@ -300,7 +305,11 @@ class TargetedAiExecutionTest {
         )
         val requests = mutableListOf<AiEmbeddingRequest>()
 
-        override suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse {
+        override suspend fun embed(
+            runtime: ResolvedAiRuntime,
+            modelSpec: AiModelSpec,
+            request: AiEmbeddingRequest,
+        ): AiEmbeddingResponse {
             requests += request
             return response
         }
@@ -309,7 +318,11 @@ class TargetedAiExecutionTest {
     private class RecordingDirectSpeechToTextProvider : DirectAiSpeechToTextProvider {
         val requests = mutableListOf<AiSpeechTranscriptionRequest>()
 
-        override suspend fun transcribe(request: AiSpeechTranscriptionRequest): String {
+        override suspend fun transcribe(
+            runtime: ResolvedAiRuntime?,
+            localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
+            request: AiSpeechTranscriptionRequest,
+        ): String {
             requests += request
             return "transcript"
         }
@@ -319,7 +332,10 @@ class TargetedAiExecutionTest {
         val response = AiSpeechSynthesisResponse(byteArrayOf(1), "audio/wav", "wav")
         val requests = mutableListOf<AiSpeechSynthesisRequest>()
 
-        override suspend fun synthesize(request: AiSpeechSynthesisRequest): AiSpeechSynthesisResponse {
+        override suspend fun synthesize(
+            runtime: ResolvedAiRuntime,
+            request: AiSpeechSynthesisRequest,
+        ): AiSpeechSynthesisResponse {
             requests += request
             return response
         }
@@ -352,7 +368,7 @@ class TargetedAiExecutionTest {
 
         override suspend fun call(
             target: ConversationRuntimeWorkerIdentity,
-            selection: AiRuntimeSelection,
+            runtime: ResolvedAiRuntime,
             workspaceRootPath: String?,
             request: AiRuntimeRequest,
         ): AiRuntimeResponse {
@@ -362,6 +378,8 @@ class TargetedAiExecutionTest {
 
         override suspend fun embed(
             target: ConversationRuntimeWorkerIdentity,
+            runtime: ResolvedAiRuntime,
+            modelSpec: AiModelSpec,
             request: AiEmbeddingRequest,
         ): AiEmbeddingResponse {
             embeddingTarget = target
@@ -370,12 +388,44 @@ class TargetedAiExecutionTest {
 
         override suspend fun transcribe(
             target: ConversationRuntimeWorkerIdentity,
+            runtime: ResolvedAiRuntime?,
+            localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
             request: AiSpeechTranscriptionRequest,
         ): String = "transcript"
 
         override suspend fun synthesize(
             target: ConversationRuntimeWorkerIdentity,
+            runtime: ResolvedAiRuntime,
             request: AiSpeechSynthesisRequest,
         ): AiSpeechSynthesisResponse = AiSpeechSynthesisResponse(byteArrayOf(1), "audio/wav", "wav")
     }
+
+    private fun testRuntime(target: AiExecutionTarget): ResolvedAiRuntime {
+        val connection = AiConnection.OpenAiApi(
+            id = AiConnection.Id("connection"),
+            displayName = "Connection",
+            enabled = true,
+            executionTarget = target,
+        )
+        return ResolvedAiRuntime(
+            connection = connection,
+            modelConfiguration = AiModelConfiguration(
+                id = selection.modelConfigurationId,
+                connectionId = connection.id,
+                providerModelId = "test-model",
+                displayName = "Test model",
+            ),
+        )
+    }
+
+    private fun testModelSpec(): AiModelSpec =
+        AiModelSpec(
+            id = "test-model",
+            provider = AiProvider.OPENAI,
+            capabilities = AiModelCapability.entries.toSet(),
+            limits = AiModelSpec.Limits(
+                textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 128_000),
+                embeddings = AiModelSpec.Limits.Embeddings(dimensions = 2),
+            ),
+        )
 }

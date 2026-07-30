@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.Serializable
 
 interface AiConfigurationProvider {
     val snapshotFlow: StateFlow<AiCatalogSnapshot?>
@@ -91,6 +92,7 @@ interface AiCatalogManagementService {
     ): AiCatalogSnapshot
 }
 
+@Serializable
 data class ResolvedAiRuntime(
     val connection: AiConnection,
     val modelConfiguration: AiModelConfiguration,

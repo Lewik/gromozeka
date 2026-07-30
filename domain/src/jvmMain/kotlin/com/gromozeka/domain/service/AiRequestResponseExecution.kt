@@ -5,8 +5,15 @@ import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiModelSpec
 
-interface DirectAiEmbeddingProvider : AiEmbeddingProvider
+interface DirectAiEmbeddingProvider {
+    suspend fun embed(
+        runtime: ResolvedAiRuntime,
+        modelSpec: AiModelSpec,
+        request: AiEmbeddingRequest,
+    ): AiEmbeddingResponse
+}
 
 data class AiSpeechTranscriptionRequest(
     val audioData: ByteArray,
@@ -53,47 +60,70 @@ data class AiSpeechSynthesisResponse(
 }
 
 interface DirectAiSpeechToTextProvider {
-    suspend fun transcribe(request: AiSpeechTranscriptionRequest): String
+    suspend fun transcribe(
+        runtime: ResolvedAiRuntime?,
+        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
+        request: AiSpeechTranscriptionRequest,
+    ): String
 }
 
 interface DirectAiTextToSpeechProvider {
-    suspend fun synthesize(request: AiSpeechSynthesisRequest): AiSpeechSynthesisResponse
+    suspend fun synthesize(
+        runtime: ResolvedAiRuntime,
+        request: AiSpeechSynthesisRequest,
+    ): AiSpeechSynthesisResponse
 }
 
 interface AiRequestResponseExecutionClient {
     suspend fun call(
         target: ConversationRuntimeWorkerIdentity,
-        selection: AiRuntimeSelection,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,
         request: AiRuntimeRequest,
     ): AiRuntimeResponse
 
     suspend fun embed(
         target: ConversationRuntimeWorkerIdentity,
+        runtime: ResolvedAiRuntime,
+        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse
 
     suspend fun transcribe(
         target: ConversationRuntimeWorkerIdentity,
+        runtime: ResolvedAiRuntime?,
+        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
         request: AiSpeechTranscriptionRequest,
     ): String
 
     suspend fun synthesize(
         target: ConversationRuntimeWorkerIdentity,
+        runtime: ResolvedAiRuntime,
         request: AiSpeechSynthesisRequest,
     ): AiSpeechSynthesisResponse
 }
 
 interface AiRequestResponseExecutionHandler {
     suspend fun call(
-        selection: AiRuntimeSelection,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,
         request: AiRuntimeRequest,
     ): AiRuntimeResponse
 
-    suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse
+    suspend fun embed(
+        runtime: ResolvedAiRuntime,
+        modelSpec: AiModelSpec,
+        request: AiEmbeddingRequest,
+    ): AiEmbeddingResponse
 
-    suspend fun transcribe(request: AiSpeechTranscriptionRequest): String
+    suspend fun transcribe(
+        runtime: ResolvedAiRuntime?,
+        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
+        request: AiSpeechTranscriptionRequest,
+    ): String
 
-    suspend fun synthesize(request: AiSpeechSynthesisRequest): AiSpeechSynthesisResponse
+    suspend fun synthesize(
+        runtime: ResolvedAiRuntime,
+        request: AiSpeechSynthesisRequest,
+    ): AiSpeechSynthesisResponse
 }

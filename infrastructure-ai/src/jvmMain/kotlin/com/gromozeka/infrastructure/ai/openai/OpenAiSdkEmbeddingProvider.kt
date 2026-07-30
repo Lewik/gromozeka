@@ -2,14 +2,15 @@ package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelCapability
+import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.resolveEmbeddingDimensions
 import com.gromozeka.domain.service.AiEmbeddingProvider
+import com.gromozeka.domain.service.AiEmbeddingCache
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiEmbeddingVector
-import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.DirectAiEmbeddingProvider
-import com.gromozeka.infrastructure.db.persistence.EmbeddingCacheService
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.openai.models.embeddings.EmbeddingCreateParams
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
@@ -19,29 +20,32 @@ import org.springframework.stereotype.Service
 @Service
 class OpenAiSdkEmbeddingProvider(
     private val clientFactory: OpenAiSdkClientFactory,
-    private val aiConfigurationProvider: AiConfigurationProvider,
-    private val embeddingCacheService: EmbeddingCacheService,
+    private val embeddingCache: AiEmbeddingCache,
 ) : DirectAiEmbeddingProvider {
     private val log = KLoggers.logger(this)
 
-    override suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse {
-        val runtime = aiConfigurationProvider.resolveAiRuntime(request.selection)
+    override suspend fun embed(
+        runtime: ResolvedAiRuntime,
+        modelSpec: AiModelSpec,
+        request: AiEmbeddingRequest,
+    ): AiEmbeddingResponse {
         require(runtime.connection.kind == AiConnection.Kind.OPENAI_API || runtime.connection.kind == AiConnection.Kind.OPENAI_COMPATIBLE) {
             "OpenAI embedding provider supports only OpenAI-compatible connections, got ${runtime.connection.kind}"
         }
-        val spec = aiConfigurationProvider.catalog.modelSpecFor(runtime.modelConfiguration)
-            ?: error("AI embedding model spec not found: ${runtime.modelConfiguration.providerModelId}")
-        require(AiModelCapability.EMBEDDINGS in spec.capabilities) {
+        require(AiModelCapability.EMBEDDINGS in modelSpec.capabilities) {
             "AI model ${runtime.modelConfiguration.providerModelId} does not support embeddings"
         }
-        val dimensions = runtime.modelConfiguration.resolveEmbeddingDimensions(spec)
+        require(modelSpec.id == runtime.modelConfiguration.providerModelId) {
+            "AI embedding model spec ${modelSpec.id} does not match ${runtime.modelConfiguration.providerModelId}"
+        }
+        val dimensions = runtime.modelConfiguration.resolveEmbeddingDimensions(modelSpec)
         val requestedDimensions = runtime.modelConfiguration.requestedEmbeddingDimensions
 
         val cachedVectors = mutableMapOf<Int, List<Float>>()
         val missingInputs = mutableListOf<String>()
         val missingIndices = mutableListOf<Int>()
         request.inputs.forEachIndexed { index, text ->
-            val cached = embeddingCacheService.getCachedEmbedding(text, runtime.modelConfiguration.providerModelId, dimensions)
+            val cached = embeddingCache.find(text, runtime.modelConfiguration.providerModelId, dimensions)
                 ?.toList()
                 ?.takeIf { it.size == dimensions }
             if (cached != null) {
@@ -78,9 +82,9 @@ class OpenAiSdkEmbeddingProvider(
                     "AI embedding model ${runtime.modelConfiguration.providerModelId} returned ${vector.size} dimensions, expected $dimensions"
                 }
                 cachedVectors[originalIndex] = vector
-                embeddingCacheService.cacheEmbedding(
+                embeddingCache.store(
                     text = request.inputs[originalIndex],
-                    model = runtime.modelConfiguration.providerModelId,
+                    modelId = runtime.modelConfiguration.providerModelId,
                     dimensions = dimensions,
                     embedding = vector.toFloatArray(),
                 )

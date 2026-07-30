@@ -1,9 +1,11 @@
-package com.gromozeka.infrastructure.runtime
+package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -12,28 +14,20 @@ import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
-import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiEmbeddingVector
-import com.gromozeka.domain.service.AiRequestResponseExecutionClient
 import com.gromozeka.domain.service.AiRequestResponseExecutionHandler
 import com.gromozeka.domain.service.AiSpeechSynthesisRequest
 import com.gromozeka.domain.service.AiSpeechSynthesisResponse
 import com.gromozeka.domain.service.AiSpeechTranscriptionRequest
-import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
-import com.gromozeka.shared.utils.sha256
-import com.gromozeka.shared.uuid.uuid7
 import java.util.Base64
-import klog.KLoggers
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -48,315 +42,21 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
-import org.springframework.amqp.core.AcknowledgeMode
-import org.springframework.amqp.core.BindingBuilder
-import org.springframework.amqp.core.DirectExchange
-import org.springframework.amqp.core.Message
-import org.springframework.amqp.core.MessageBuilder
-import org.springframework.amqp.core.MessageProperties
-import org.springframework.amqp.core.QueueBuilder
-import org.springframework.amqp.rabbit.connection.ConnectionFactory
-import org.springframework.amqp.rabbit.core.RabbitAdmin
-import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer
-import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.context.SmartLifecycle
-import org.springframework.stereotype.Service
-import java.util.concurrent.atomic.AtomicBoolean
-
-@Service
-@ConditionalOnProperty(name = ["gromozeka.runtime.rabbit.enabled"], havingValue = "true")
-class RabbitAiRequestResponseExecutionClient(
-    connectionFactory: ConnectionFactory,
-    private val topology: RabbitAiRequestResponseTopology,
-    @Value("\${gromozeka.runtime.ai-request-response.timeout-millis:1800000}")
-    private val timeoutMillis: Long,
-    @Value("\${gromozeka.runtime.ai-request-response.max-message-bytes:67108864}")
-    private val maxMessageBytes: Int,
-) : AiRequestResponseExecutionClient {
-    private val json = aiRequestResponseJson()
-    private val rabbitTemplate = RabbitTemplate(connectionFactory).apply {
-        setReplyTimeout(timeoutMillis)
-        setMandatory(true)
-    }
-
-    init {
-        require(timeoutMillis > 0) { "AI request-response timeout must be positive" }
-        require(maxMessageBytes > 0) { "AI request-response message limit must be positive" }
-    }
-
-    override suspend fun call(
-        target: ConversationRuntimeWorkerIdentity,
-        selection: AiRuntimeSelection,
-        workspaceRootPath: String?,
-        request: AiRuntimeRequest,
-    ): AiRuntimeResponse =
-        execute(
-            target,
-            AiRequestResponseOperation.Call(
-                selection = selection,
-                workspaceRootPath = workspaceRootPath,
-                request = request.toWire(),
-            ),
-        ).requirePayload<AiRequestResponsePayload.Call>().response.toRuntime()
-
-    override suspend fun embed(
-        target: ConversationRuntimeWorkerIdentity,
-        request: AiEmbeddingRequest,
-    ): AiEmbeddingResponse =
-        execute(target, AiRequestResponseOperation.Embed(request.toWire()))
-            .requirePayload<AiRequestResponsePayload.Embed>()
-            .response
-            .toRuntime()
-
-    override suspend fun transcribe(
-        target: ConversationRuntimeWorkerIdentity,
-        request: AiSpeechTranscriptionRequest,
-    ): String =
-        execute(target, AiRequestResponseOperation.Transcribe(request.toWire()))
-            .requirePayload<AiRequestResponsePayload.Transcribe>()
-            .text
-
-    override suspend fun synthesize(
-        target: ConversationRuntimeWorkerIdentity,
-        request: AiSpeechSynthesisRequest,
-    ): AiSpeechSynthesisResponse =
-        execute(target, AiRequestResponseOperation.Synthesize(request.toWire()))
-            .requirePayload<AiRequestResponsePayload.Synthesize>()
-            .response
-            .toRuntime()
-
-    private suspend fun execute(
-        target: ConversationRuntimeWorkerIdentity,
-        operation: AiRequestResponseOperation,
-    ): AiRequestResponseResult = withContext(Dispatchers.IO) {
-        topology.declareExchange()
-        val request = AiRequestResponseRequest(
-            id = uuid7(),
-            target = target,
-            operation = operation,
-        )
-        val body = json.encodeToString(request)
-        body.requireWithinLimit(maxMessageBytes, "AI request-response request")
-        val responseBody = rabbitTemplate.convertSendAndReceive(
-            topology.exchangeName,
-            topology.routingKey(target),
-            body,
-        ) as? String
-            ?: error(
-                "AI request ${request.id} timed out after ${timeoutMillis}ms on Worker " +
-                    "${target.workerId.value}; the outcome is unknown and Gromozeka will not retry it automatically"
-            )
-        responseBody.requireWithinLimit(maxMessageBytes, "AI request-response response")
-        val result = json.decodeFromString<AiRequestResponseResult>(responseBody)
-        check(result.requestId == request.id) { "AI request-response correlation mismatch" }
-        if (result.status == AiRequestResponseResult.Status.FAILED) {
-            error("Worker AI request failed [${result.errorCode}]: ${result.errorMessage}")
-        }
-        result
-    }
-}
-
-@Service
-@ConditionalOnProperty(
-    name = ["gromozeka.runtime.rabbit.enabled", "gromozeka.runtime.worker.enabled"],
-    havingValue = "true",
-)
-class RabbitAiRequestResponseExecutionConsumer(
-    private val connectionFactory: ConnectionFactory,
-    private val rabbitTemplate: RabbitTemplate,
-    private val topology: RabbitAiRequestResponseTopology,
-    private val workerIdentity: ConversationRuntimeWorkerIdentity,
-    private val handler: AiRequestResponseExecutionHandler,
-    @Value("\${gromozeka.runtime.ai-request-response.max-message-bytes:67108864}")
-    private val maxMessageBytes: Int,
-) : SmartLifecycle {
-    private val log = KLoggers.logger(this)
-    private val json = aiRequestResponseJson()
-    private var listenerContainer: SimpleMessageListenerContainer? = null
-
-    @Volatile
-    private var running = false
-
-    init {
-        require(maxMessageBytes > 0) { "AI request-response message limit must be positive" }
-    }
-
-    override fun start() {
-        if (running) return
-        val queueName = topology.declareWorkerQueue(workerIdentity)
-        listenerContainer = SimpleMessageListenerContainer(connectionFactory).apply {
-            setQueueNames(queueName)
-            setPrefetchCount(1)
-            acknowledgeMode = AcknowledgeMode.MANUAL
-            setMessageListener(ChannelAwareMessageListener { message, channel ->
-                val deliveryTag = message.messageProperties.deliveryTag
-                val request = runCatching {
-                    message.body.size.requireWithinLimit(maxMessageBytes, "AI request-response request")
-                    json.decodeFromString<AiRequestResponseRequest>(
-                        String(message.body, Charsets.UTF_8)
-                    )
-                }.getOrElse { error ->
-                    log.error(error) { "Rejected invalid AI request-response request: ${error.message}" }
-                    channel.basicNack(deliveryTag, false, false)
-                    return@ChannelAwareMessageListener
-                }
-                if (request.target != workerIdentity) {
-                    log.error {
-                        "Rejected AI request for another Worker session: " +
-                            "expected=$workerIdentity actual=${request.target}"
-                    }
-                    channel.basicNack(deliveryTag, false, false)
-                    return@ChannelAwareMessageListener
-                }
-
-                channel.basicAck(deliveryTag, false)
-                val result = runBlocking {
-                    runCatching { execute(request) }
-                        .getOrElse { error ->
-                            AiRequestResponseResult(
-                                requestId = request.id,
-                                status = AiRequestResponseResult.Status.FAILED,
-                                errorCode = error::class.simpleName ?: "AiRequestFailure",
-                                errorMessage = error.message ?: "AI request failed",
-                            )
-                        }
-                }
-                sendReply(message, result)
-            })
-            start()
-        }
-        running = true
-        log.info { "Rabbit AI request-response consumer started: identity=$workerIdentity queue=$queueName" }
-    }
-
-    override fun stop() {
-        listenerContainer?.stop()
-        listenerContainer = null
-        topology.deleteWorkerQueue(workerIdentity)
-        running = false
-    }
-
-    override fun isRunning(): Boolean = running
-
-    override fun isAutoStartup(): Boolean = true
-
-    override fun getPhase(): Int = 250
-
-    private suspend fun execute(request: AiRequestResponseRequest): AiRequestResponseResult {
-        val payload = when (val operation = request.operation) {
-            is AiRequestResponseOperation.Call -> AiRequestResponsePayload.Call(
-                handler.call(
-                    selection = operation.selection,
-                    workspaceRootPath = operation.workspaceRootPath,
-                    request = operation.request.toRuntime(),
-                ).toWire()
-            )
-            is AiRequestResponseOperation.Embed -> AiRequestResponsePayload.Embed(
-                handler.embed(operation.request.toRuntime()).toWire()
-            )
-            is AiRequestResponseOperation.Transcribe -> AiRequestResponsePayload.Transcribe(
-                handler.transcribe(operation.request.toRuntime())
-            )
-            is AiRequestResponseOperation.Synthesize -> AiRequestResponsePayload.Synthesize(
-                handler.synthesize(operation.request.toRuntime()).toWire()
-            )
-        }
-        return AiRequestResponseResult(
-            requestId = request.id,
-            status = AiRequestResponseResult.Status.SUCCEEDED,
-            payload = payload,
-        )
-    }
-
-    private fun sendReply(
-        requestMessage: Message,
-        result: AiRequestResponseResult,
-    ) {
-        val replyTo = requestMessage.messageProperties.replyTo
-        if (replyTo.isNullOrBlank()) {
-            log.warn { "AI request completed without a reply queue: ${result.requestId}" }
-            return
-        }
-        val body = json.encodeToString(result)
-        if (runCatching { body.requireWithinLimit(maxMessageBytes, "AI request-response response") }.isFailure) {
-            log.error {
-                "AI request completed but its response exceeds the configured message limit: ${result.requestId}"
-            }
-            return
-        }
-        val response = MessageBuilder.withBody(body.toByteArray(Charsets.UTF_8))
-            .setContentType(MessageProperties.CONTENT_TYPE_TEXT_PLAIN)
-            .setCorrelationId(requestMessage.messageProperties.correlationId)
-            .build()
-        runCatching { rabbitTemplate.send("", replyTo, response) }
-            .onFailure { error ->
-                log.error(error) {
-                    "AI request completed but its response could not be delivered: " +
-                        "request=${result.requestId} status=${result.status}"
-                }
-            }
-    }
-}
-
-@Service
-@ConditionalOnProperty(name = ["gromozeka.runtime.rabbit.enabled"], havingValue = "true")
-class RabbitAiRequestResponseTopology(
-    private val connectionFactory: ConnectionFactory,
-    @Value("\${gromozeka.runtime.ai-request-response.exchange:gromozeka.ai.request-response}")
-    val exchangeName: String,
-    @Value("\${gromozeka.runtime.ai-request-response.queue-prefix:gromozeka.ai.request-response}")
-    private val queuePrefix: String,
-) {
-    private val exchangeDeclared = AtomicBoolean(false)
-
-    fun routingKey(identity: ConversationRuntimeWorkerIdentity): String =
-        "worker.${identity.workerId.value.sha256().take(32)}.session.${identity.sessionId.value.sha256().take(32)}"
-
-    fun declareWorkerQueue(identity: ConversationRuntimeWorkerIdentity): String {
-        declareExchange()
-        val queueName = "$queuePrefix.${routingKey(identity)}"
-        val admin = RabbitAdmin(connectionFactory)
-        val queue = QueueBuilder.nonDurable(queueName).exclusive().autoDelete().build()
-        admin.declareQueue(queue)
-        admin.declareBinding(
-            BindingBuilder.bind(queue)
-                .to(DirectExchange(exchangeName, true, false))
-                .with(routingKey(identity))
-        )
-        return queueName
-    }
-
-    fun deleteWorkerQueue(identity: ConversationRuntimeWorkerIdentity) {
-        RabbitAdmin(connectionFactory).deleteQueue("$queuePrefix.${routingKey(identity)}")
-    }
-
-    @Synchronized
-    fun declareExchange() {
-        if (exchangeDeclared.compareAndSet(false, true)) {
-            runCatching {
-                RabbitAdmin(connectionFactory).declareExchange(DirectExchange(exchangeName, true, false))
-            }.onFailure {
-                exchangeDeclared.set(false)
-                throw it
-            }
-        }
-    }
-}
 
 object AiRequestResponseGatewayCodec {
-    private val json = aiRequestResponseJson()
+    private val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = false
+    }
 
     fun encodeCallRequest(
-        selection: AiRuntimeSelection,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,
         request: AiRuntimeRequest,
     ): ByteArray =
         encodeOperation(
             AiRequestResponseOperation.Call(
-                selection = selection,
+                runtime = runtime,
                 workspaceRootPath = workspaceRootPath,
                 request = request.toWire(),
             )
@@ -365,20 +65,48 @@ object AiRequestResponseGatewayCodec {
     fun decodeCallResponse(payload: ByteArray): AiRuntimeResponse =
         decodePayload<AiRequestResponsePayload.Call>(payload).response.toRuntime()
 
-    fun encodeEmbeddingRequest(request: AiEmbeddingRequest): ByteArray =
-        encodeOperation(AiRequestResponseOperation.Embed(request.toWire()))
+    fun encodeEmbeddingRequest(
+        runtime: ResolvedAiRuntime,
+        modelSpec: AiModelSpec,
+        request: AiEmbeddingRequest,
+    ): ByteArray =
+        encodeOperation(
+            AiRequestResponseOperation.Embed(
+                runtime = runtime,
+                modelSpec = modelSpec,
+                request = request.toWire(),
+            )
+        )
 
     fun decodeEmbeddingResponse(payload: ByteArray): AiEmbeddingResponse =
         decodePayload<AiRequestResponsePayload.Embed>(payload).response.toRuntime()
 
-    fun encodeTranscriptionRequest(request: AiSpeechTranscriptionRequest): ByteArray =
-        encodeOperation(AiRequestResponseOperation.Transcribe(request.toWire()))
+    fun encodeTranscriptionRequest(
+        runtime: ResolvedAiRuntime?,
+        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
+        request: AiSpeechTranscriptionRequest,
+    ): ByteArray =
+        encodeOperation(
+            AiRequestResponseOperation.Transcribe(
+                runtime = runtime,
+                localWhisperSettings = localWhisperSettings,
+                request = request.toWire(),
+            )
+        )
 
     fun decodeTranscriptionResponse(payload: ByteArray): String =
         decodePayload<AiRequestResponsePayload.Transcribe>(payload).text
 
-    fun encodeSynthesisRequest(request: AiSpeechSynthesisRequest): ByteArray =
-        encodeOperation(AiRequestResponseOperation.Synthesize(request.toWire()))
+    fun encodeSynthesisRequest(
+        runtime: ResolvedAiRuntime,
+        request: AiSpeechSynthesisRequest,
+    ): ByteArray =
+        encodeOperation(
+            AiRequestResponseOperation.Synthesize(
+                runtime = runtime,
+                request = request.toWire(),
+            )
+        )
 
     fun decodeSynthesisResponse(payload: ByteArray): AiSpeechSynthesisResponse =
         decodePayload<AiRequestResponsePayload.Synthesize>(payload).response.toRuntime()
@@ -390,22 +118,33 @@ object AiRequestResponseGatewayCodec {
         val result = when (val operation = decodeOperation(payload)) {
             is AiRequestResponseOperation.Call -> AiRequestResponsePayload.Call(
                 handler.call(
-                    selection = operation.selection,
+                    runtime = operation.runtime,
                     workspaceRootPath = operation.workspaceRootPath,
                     request = operation.request.toRuntime(),
                 ).toWire()
             )
 
             is AiRequestResponseOperation.Embed -> AiRequestResponsePayload.Embed(
-                handler.embed(operation.request.toRuntime()).toWire()
+                handler.embed(
+                    runtime = operation.runtime,
+                    modelSpec = operation.modelSpec,
+                    request = operation.request.toRuntime(),
+                ).toWire()
             )
 
             is AiRequestResponseOperation.Transcribe -> AiRequestResponsePayload.Transcribe(
-                handler.transcribe(operation.request.toRuntime())
+                handler.transcribe(
+                    runtime = operation.runtime,
+                    localWhisperSettings = operation.localWhisperSettings,
+                    request = operation.request.toRuntime(),
+                )
             )
 
             is AiRequestResponseOperation.Synthesize -> AiRequestResponsePayload.Synthesize(
-                handler.synthesize(operation.request.toRuntime()).toWire()
+                handler.synthesize(
+                    runtime = operation.runtime,
+                    request = operation.request.toRuntime(),
+                ).toWire()
             )
         }
         return json.encodeToString(AiRequestResponsePayload.serializer(), result).encodeToByteArray()
@@ -423,19 +162,12 @@ object AiRequestResponseGatewayCodec {
 }
 
 @Serializable
-private data class AiRequestResponseRequest(
-    val id: String,
-    val target: ConversationRuntimeWorkerIdentity,
-    val operation: AiRequestResponseOperation,
-)
-
-@Serializable
 @JsonClassDiscriminator("operationKind")
 private sealed interface AiRequestResponseOperation {
     @Serializable
     @SerialName("call")
     data class Call(
-        val selection: AiRuntimeSelection,
+        val runtime: ResolvedAiRuntime,
         val workspaceRootPath: String?,
         val request: AiRuntimeRequestWire,
     ) : AiRequestResponseOperation
@@ -443,44 +175,25 @@ private sealed interface AiRequestResponseOperation {
     @Serializable
     @SerialName("embed")
     data class Embed(
+        val runtime: ResolvedAiRuntime,
+        val modelSpec: AiModelSpec,
         val request: AiEmbeddingRequestWire,
     ) : AiRequestResponseOperation
 
     @Serializable
     @SerialName("transcribe")
     data class Transcribe(
+        val runtime: ResolvedAiRuntime?,
+        val localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
         val request: AiSpeechTranscriptionRequestWire,
     ) : AiRequestResponseOperation
 
     @Serializable
     @SerialName("synthesize")
     data class Synthesize(
+        val runtime: ResolvedAiRuntime,
         val request: AiSpeechSynthesisRequestWire,
     ) : AiRequestResponseOperation
-}
-
-@Serializable
-private data class AiRequestResponseResult(
-    val requestId: String,
-    val status: Status,
-    val payload: AiRequestResponsePayload? = null,
-    val errorCode: String? = null,
-    val errorMessage: String? = null,
-) {
-    init {
-        require(
-            (status == Status.SUCCEEDED && payload != null && errorCode == null && errorMessage == null) ||
-                (status == Status.FAILED && payload == null && !errorCode.isNullOrBlank() && !errorMessage.isNullOrBlank())
-        ) {
-            "AI request-response result payload does not match status $status"
-        }
-    }
-
-    @Serializable
-    enum class Status {
-        SUCCEEDED,
-        FAILED,
-    }
 }
 
 @Serializable
@@ -773,14 +486,6 @@ private fun AiSpeechSynthesisResponseWire.toRuntime(): AiSpeechSynthesisResponse
         fileExtension = fileExtension,
     )
 
-private inline fun <reified T : AiRequestResponsePayload> AiRequestResponseResult.requirePayload(): T {
-    check(status == AiRequestResponseResult.Status.SUCCEEDED) {
-        "AI request-response failed [$errorCode]: $errorMessage"
-    }
-    return payload as? T
-        ?: error("AI request-response payload type mismatch: expected ${T::class.simpleName}")
-}
-
 private data class DescriptorOnlyAiToolCallback(
     private val descriptor: AiToolDescriptor,
 ) : AiToolCallback {
@@ -831,19 +536,3 @@ private fun JsonElement.toRuntimeValue(): Any? =
             else -> content
         }
     }
-
-private fun aiRequestResponseJson(): Json =
-    Json {
-        encodeDefaults = true
-        ignoreUnknownKeys = false
-    }
-
-private fun String.requireWithinLimit(maxBytes: Int, label: String) {
-    toByteArray(Charsets.UTF_8).size.requireWithinLimit(maxBytes, label)
-}
-
-private fun Int.requireWithinLimit(maxBytes: Int, label: String) {
-    require(this <= maxBytes) {
-        "$label exceeds the configured limit: $this > $maxBytes bytes"
-    }
-}

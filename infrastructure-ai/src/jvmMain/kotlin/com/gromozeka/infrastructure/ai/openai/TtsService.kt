@@ -12,6 +12,7 @@ import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.service.DirectAiTextToSpeechProvider
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.SettingsProvider
 import com.openai.models.audio.speech.SpeechCreateParams
 import com.openai.models.audio.speech.SpeechModel
@@ -60,7 +61,7 @@ class TtsService(
         require(configured.target == AiExecutionTarget.Server) {
             "Streaming speech synthesis requires a Server-targeted runtime"
         }
-        val runtime = aiConfigurationProvider.resolveAiRuntime(configured.request.selection)
+        val runtime = configured.runtime
         val response = withContext(Dispatchers.IO) {
             clientFactory.createClient(runtime.connection).audio().speech().create(
                 speechParamsBuilder(
@@ -85,9 +86,11 @@ class TtsService(
         }
     }
 
-    override suspend fun synthesize(request: AiSpeechSynthesisRequest): AiSpeechSynthesisResponse =
+    override suspend fun synthesize(
+        runtime: ResolvedAiRuntime,
+        request: AiSpeechSynthesisRequest,
+    ): AiSpeechSynthesisResponse =
         withContext(Dispatchers.IO) {
-            val runtime = aiConfigurationProvider.resolveAiRuntime(request.selection)
             val response = clientFactory.createClient(runtime.connection).audio().speech().create(
                 speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
                     .responseFormat(SpeechCreateParams.ResponseFormat.WAV)
@@ -136,6 +139,7 @@ class TtsService(
         val settings = settingsProvider.userProfile.speechSettings.textToSpeech
         return ConfiguredSpeechSynthesis(
             target = runtime.connection.executionTarget,
+            runtime = runtime,
             request = AiSpeechSynthesisRequest(
                 selection = selection,
                 text = text,
@@ -150,12 +154,13 @@ class TtsService(
         configured: ConfiguredSpeechSynthesis,
     ): AiSpeechSynthesisResponse =
         when (val target = configured.target) {
-            AiExecutionTarget.Server -> synthesize(configured.request)
+            AiExecutionTarget.Server -> synthesize(configured.runtime, configured.request)
             is AiExecutionTarget.Worker -> remoteClient().synthesize(
                 target = workerTargetResolver.requireOnline(
                     ConversationRuntimeWorkerId(target.workerId),
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ),
+                runtime = configured.runtime,
                 request = configured.request,
             )
         }
@@ -185,7 +190,7 @@ class TtsService(
         remoteClients.singleOrNull()
             ?: error(
                 if (remoteClients.isEmpty()) {
-                    "Worker-targeted speech synthesis requires Rabbit runtime transport"
+                    "Worker-targeted speech synthesis requires Worker Gateway transport"
                 } else {
                     "Multiple AI request-response transports are configured"
                 }
@@ -193,6 +198,7 @@ class TtsService(
 
     private data class ConfiguredSpeechSynthesis(
         val target: AiExecutionTarget,
+        val runtime: ResolvedAiRuntime,
         val request: AiSpeechSynthesisRequest,
     )
 }

@@ -13,7 +13,7 @@ import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
-import com.gromozeka.infrastructure.runtime.AiRequestResponseGatewayCodec
+import com.gromozeka.remote.protocol.AiRequestResponseGatewayCodec
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.remote.protocol.WorkerToolExecutionRequest

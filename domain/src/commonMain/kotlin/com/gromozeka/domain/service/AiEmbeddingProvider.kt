@@ -6,6 +6,21 @@ interface AiEmbeddingProvider {
     suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse
 }
 
+interface AiEmbeddingCache {
+    suspend fun find(
+        text: String,
+        modelId: String,
+        dimensions: Int,
+    ): FloatArray?
+
+    suspend fun store(
+        text: String,
+        modelId: String,
+        dimensions: Int,
+        embedding: FloatArray,
+    )
+}
+
 data class AiEmbeddingRequest(
     val selection: AiRuntimeSelection,
     val inputs: List<String>,

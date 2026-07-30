@@ -32,4 +32,12 @@ interface AiRuntime {
     fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse>
 }
 
-interface DirectAiRuntimeProvider : AiRuntimeProvider
+interface DirectAiRuntimeProvider {
+    fun capabilities(runtime: ResolvedAiRuntime): AiRuntimeCapabilities =
+        getRuntime(runtime, workspaceRootPath = null).capabilities
+
+    fun getRuntime(
+        runtime: ResolvedAiRuntime,
+        workspaceRootPath: String?,
+    ): AiRuntime
+}

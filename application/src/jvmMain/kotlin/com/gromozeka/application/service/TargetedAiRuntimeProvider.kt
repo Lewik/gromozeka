@@ -32,30 +32,30 @@ class TargetedAiRuntimeProvider(
     private val remoteClients: List<AiRequestResponseExecutionClient>,
 ) : AiRuntimeProvider {
     override fun capabilities(selection: AiRuntimeSelection): AiRuntimeCapabilities =
-        directProvider.capabilities(selection)
+        directProvider.capabilities(configurationProvider.resolveAiRuntime(selection))
 
     override fun getRuntime(
         selection: AiRuntimeSelection,
         workspaceRootPath: String?,
     ): AiRuntime {
-        val connection = configurationProvider.resolveAiRuntime(selection).connection
-        return when (val target = connection.executionTarget) {
-            AiExecutionTarget.Server -> directProvider.getRuntime(selection, workspaceRootPath)
+        val runtime = configurationProvider.resolveAiRuntime(selection)
+        return when (val target = runtime.connection.executionTarget) {
+            AiExecutionTarget.Server -> directProvider.getRuntime(runtime, workspaceRootPath)
             is AiExecutionTarget.Worker -> {
                 require(workspaceRootPath == null) {
                     "Worker-targeted AI runtime cannot receive a Server-local workspace path"
                 }
                 WorkerAiRuntime(
-                    selection = selection,
+                    runtime = runtime,
                     workerId = ConversationRuntimeWorkerId(target.workerId),
-                    capabilities = directProvider.capabilities(selection),
+                    capabilities = directProvider.capabilities(runtime),
                 )
             }
         }
     }
 
     private inner class WorkerAiRuntime(
-        private val selection: AiRuntimeSelection,
+        private val runtime: com.gromozeka.domain.service.ResolvedAiRuntime,
         private val workerId: ConversationRuntimeWorkerId,
         override val capabilities: AiRuntimeCapabilities,
     ) : AiRuntime {
@@ -65,7 +65,7 @@ class TargetedAiRuntimeProvider(
                     workerId,
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ),
-                selection = selection,
+                runtime = runtime,
                 workspaceRootPath = null,
                 request = request,
             )
@@ -81,7 +81,7 @@ class TargetedAiRuntimeProvider(
         remoteClients.singleOrNull()
             ?: error(
                 if (remoteClients.isEmpty()) {
-                    "Worker-targeted AI execution requires Rabbit runtime transport"
+                    "Worker-targeted AI execution requires Worker Gateway transport"
                 } else {
                     "Multiple AI request-response transports are configured"
                 }

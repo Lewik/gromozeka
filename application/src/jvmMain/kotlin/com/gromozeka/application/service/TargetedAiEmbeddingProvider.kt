@@ -28,14 +28,18 @@ class TargetedAiEmbeddingProvider(
     private val remoteClients: List<AiRequestResponseExecutionClient>,
 ) : AiEmbeddingProvider {
     override suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse {
-        val connection = configurationProvider.resolveAiRuntime(request.selection).connection
-        return when (val target = connection.executionTarget) {
-            AiExecutionTarget.Server -> directProvider.embed(request)
+        val runtime = configurationProvider.resolveAiRuntime(request.selection)
+        val modelSpec = configurationProvider.catalog.modelSpecFor(runtime.modelConfiguration)
+            ?: error("AI embedding model spec not found: ${runtime.modelConfiguration.providerModelId}")
+        return when (val target = runtime.connection.executionTarget) {
+            AiExecutionTarget.Server -> directProvider.embed(runtime, modelSpec, request)
             is AiExecutionTarget.Worker -> remoteClient().embed(
                 target = workerTargetResolver.requireOnline(
                     ConversationRuntimeWorkerId(target.workerId),
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ),
+                runtime = runtime,
+                modelSpec = modelSpec,
                 request = request,
             )
         }
@@ -45,7 +49,7 @@ class TargetedAiEmbeddingProvider(
         remoteClients.singleOrNull()
             ?: error(
                 if (remoteClients.isEmpty()) {
-                    "Worker-targeted embeddings require Rabbit runtime transport"
+                    "Worker-targeted embeddings require Worker Gateway transport"
                 } else {
                     "Multiple AI request-response transports are configured"
                 }

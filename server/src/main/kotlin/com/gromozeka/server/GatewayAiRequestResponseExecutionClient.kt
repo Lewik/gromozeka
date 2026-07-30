@@ -2,7 +2,8 @@ package com.gromozeka.server
 
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiRequestResponseExecutionClient
@@ -10,7 +11,8 @@ import com.gromozeka.domain.service.AiSpeechSynthesisRequest
 import com.gromozeka.domain.service.AiSpeechSynthesisResponse
 import com.gromozeka.domain.service.AiSpeechTranscriptionRequest
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
-import com.gromozeka.infrastructure.runtime.AiRequestResponseGatewayCodec
+import com.gromozeka.domain.service.ResolvedAiRuntime
+import com.gromozeka.remote.protocol.AiRequestResponseGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Primary
@@ -32,34 +34,46 @@ class GatewayAiRequestResponseExecutionClient(
 
     override suspend fun call(
         target: ConversationRuntimeWorkerIdentity,
-        selection: AiRuntimeSelection,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,
         request: AiRuntimeRequest,
     ): AiRuntimeResponse =
         execute(
             target,
-            AiRequestResponseGatewayCodec.encodeCallRequest(selection, workspaceRootPath, request),
+            AiRequestResponseGatewayCodec.encodeCallRequest(runtime, workspaceRootPath, request),
         ).let(AiRequestResponseGatewayCodec::decodeCallResponse)
 
     override suspend fun embed(
         target: ConversationRuntimeWorkerIdentity,
+        runtime: ResolvedAiRuntime,
+        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse =
-        execute(target, AiRequestResponseGatewayCodec.encodeEmbeddingRequest(request))
+        execute(target, AiRequestResponseGatewayCodec.encodeEmbeddingRequest(runtime, modelSpec, request))
             .let(AiRequestResponseGatewayCodec::decodeEmbeddingResponse)
 
     override suspend fun transcribe(
         target: ConversationRuntimeWorkerIdentity,
+        runtime: ResolvedAiRuntime?,
+        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
         request: AiSpeechTranscriptionRequest,
     ): String =
-        execute(target, AiRequestResponseGatewayCodec.encodeTranscriptionRequest(request))
+        execute(
+            target,
+            AiRequestResponseGatewayCodec.encodeTranscriptionRequest(
+                runtime,
+                localWhisperSettings,
+                request,
+            ),
+        )
             .let(AiRequestResponseGatewayCodec::decodeTranscriptionResponse)
 
     override suspend fun synthesize(
         target: ConversationRuntimeWorkerIdentity,
+        runtime: ResolvedAiRuntime,
         request: AiSpeechSynthesisRequest,
     ): AiSpeechSynthesisResponse =
-        execute(target, AiRequestResponseGatewayCodec.encodeSynthesisRequest(request))
+        execute(target, AiRequestResponseGatewayCodec.encodeSynthesisRequest(runtime, request))
             .let(AiRequestResponseGatewayCodec::decodeSynthesisResponse)
 
     private suspend fun execute(

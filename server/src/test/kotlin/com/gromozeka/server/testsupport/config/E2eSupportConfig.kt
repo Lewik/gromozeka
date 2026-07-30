@@ -7,7 +7,7 @@ import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
 import com.gromozeka.application.service.InMemoryConversationRuntimeWorkQueue
-import com.gromozeka.infrastructure.ai.openai.OpenAiSdkEmbeddingProvider
+import com.gromozeka.application.service.TargetedAiEmbeddingProvider
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.NoOpGlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
@@ -41,7 +41,7 @@ class E2eSupportConfig {
     @Bean
     @Primary
     fun aiEmbeddingProvider(
-        delegate: OpenAiSdkEmbeddingProvider,
+        delegate: TargetedAiEmbeddingProvider,
         aiConfigurationProvider: AiConfigurationProvider,
     ): AiEmbeddingProvider {
         return CassetteAiEmbeddingProvider(

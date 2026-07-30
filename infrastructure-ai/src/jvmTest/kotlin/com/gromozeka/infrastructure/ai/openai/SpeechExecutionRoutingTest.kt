@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
+import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -215,13 +216,15 @@ class SpeechExecutionRoutingTest {
 
         override suspend fun call(
             target: ConversationRuntimeWorkerIdentity,
-            selection: AiRuntimeSelection,
+            runtime: ResolvedAiRuntime,
             workspaceRootPath: String?,
             request: AiRuntimeRequest,
         ): AiRuntimeResponse = AiRuntimeResponse(emptyList())
 
         override suspend fun embed(
             target: ConversationRuntimeWorkerIdentity,
+            runtime: ResolvedAiRuntime,
+            modelSpec: AiModelSpec,
             request: AiEmbeddingRequest,
         ): AiEmbeddingResponse =
             AiEmbeddingResponse(
@@ -232,6 +235,8 @@ class SpeechExecutionRoutingTest {
 
         override suspend fun transcribe(
             target: ConversationRuntimeWorkerIdentity,
+            runtime: ResolvedAiRuntime?,
+            localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
             request: AiSpeechTranscriptionRequest,
         ): String {
             transcriptionCalls += 1
@@ -241,6 +246,7 @@ class SpeechExecutionRoutingTest {
 
         override suspend fun synthesize(
             target: ConversationRuntimeWorkerIdentity,
+            runtime: ResolvedAiRuntime,
             request: AiSpeechSynthesisRequest,
         ): AiSpeechSynthesisResponse {
             synthesisCalls += 1

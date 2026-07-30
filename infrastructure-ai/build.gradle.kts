@@ -15,7 +15,6 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(project(":domain"))  // Transitively provides :shared
-                implementation(project(":infrastructure-db"))  // For embedding cache
 
                 implementation(libs.openai.java)
                 implementation(libs.anthropic.java)

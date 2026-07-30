@@ -5,9 +5,10 @@ import com.gromozeka.application.service.AI_TOOL_EXECUTION_WORKER_ID_FIELD
 import com.gromozeka.application.service.AutoApproveToolApprovalService
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiRequestResponseExecutionHandler
@@ -19,6 +20,7 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -189,17 +191,28 @@ class WorkerGatewayClientTest {
 
 private object UnusedAiRequestResponseHandler : AiRequestResponseExecutionHandler {
     override suspend fun call(
-        selection: AiRuntimeSelection,
+        runtime: ResolvedAiRuntime,
         workspaceRootPath: String?,
         request: AiRuntimeRequest,
     ): AiRuntimeResponse = error("Unused AI call")
 
-    override suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse =
+    override suspend fun embed(
+        runtime: ResolvedAiRuntime,
+        modelSpec: AiModelSpec,
+        request: AiEmbeddingRequest,
+    ): AiEmbeddingResponse =
         error("Unused embedding call")
 
-    override suspend fun transcribe(request: AiSpeechTranscriptionRequest): String =
+    override suspend fun transcribe(
+        runtime: ResolvedAiRuntime?,
+        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
+        request: AiSpeechTranscriptionRequest,
+    ): String =
         error("Unused speech transcription")
 
-    override suspend fun synthesize(request: AiSpeechSynthesisRequest): AiSpeechSynthesisResponse =
+    override suspend fun synthesize(
+        runtime: ResolvedAiRuntime,
+        request: AiSpeechSynthesisRequest,
+    ): AiSpeechSynthesisResponse =
         error("Unused speech synthesis")
 }

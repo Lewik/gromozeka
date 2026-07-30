@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.service.AiEmbeddingCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
@@ -9,10 +10,14 @@ import javax.sql.DataSource
 @Service
 class EmbeddingCacheService(
     private val dataSource: DataSource,
-) {
-    suspend fun getCachedEmbedding(text: String, model: String, dimensions: Int): FloatArray? = withContext(Dispatchers.IO) {
+) : AiEmbeddingCache {
+    override suspend fun find(
+        text: String,
+        modelId: String,
+        dimensions: Int,
+    ): FloatArray? = withContext(Dispatchers.IO) {
         val hash = computeHash(text)
-        val cacheModel = cacheModel(model, dimensions)
+        val cacheModel = cacheModel(modelId, dimensions)
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT embedding_vector FROM embedding_cache WHERE text_hash = ? AND model = ?").use { statement ->
                 statement.setString(1, hash)
@@ -29,9 +34,14 @@ class EmbeddingCacheService(
         }
     }
 
-    suspend fun cacheEmbedding(text: String, model: String, dimensions: Int, embedding: FloatArray) = withContext(Dispatchers.IO) {
+    override suspend fun store(
+        text: String,
+        modelId: String,
+        dimensions: Int,
+        embedding: FloatArray,
+    ) = withContext(Dispatchers.IO) {
         val hash = computeHash(text)
-        val cacheModel = cacheModel(model, dimensions)
+        val cacheModel = cacheModel(modelId, dimensions)
         dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
@@ -46,6 +56,7 @@ class EmbeddingCacheService(
                 statement.executeUpdate()
             }
         }
+        Unit
     }
 
     private fun cacheModel(model: String, dimensions: Int): String =

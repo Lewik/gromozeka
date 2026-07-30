@@ -11,6 +11,7 @@ import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.service.DirectAiSpeechToTextProvider
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.speech.LocalWhisperTranscriptionService
 import com.gromozeka.shared.audio.AudioConfig
@@ -44,12 +45,18 @@ class SttService(
     ): String {
         val configured = configuredRequest(audioData, format, language, prompt)
         return when (val target = configured.target) {
-            AiExecutionTarget.Server -> transcribe(configured.request)
+            AiExecutionTarget.Server -> transcribe(
+                configured.runtime,
+                configured.localWhisperSettings,
+                configured.request,
+            )
             is AiExecutionTarget.Worker -> remoteClient().transcribe(
                 target = workerTargetResolver.requireOnline(
                     ConversationRuntimeWorkerId(target.workerId),
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ),
+                runtime = configured.runtime,
+                localWhisperSettings = configured.localWhisperSettings,
                 request = configured.request,
             )
         }
@@ -65,10 +72,18 @@ class SttService(
         require(configured.target == AiExecutionTarget.Server) {
             "Live speech transcription requires a Server-targeted runtime"
         }
-        return transcribe(configured.request)
+        return transcribe(
+            configured.runtime,
+            configured.localWhisperSettings,
+            configured.request,
+        )
     }
 
-    override suspend fun transcribe(request: AiSpeechTranscriptionRequest): String =
+    override suspend fun transcribe(
+        runtime: ResolvedAiRuntime?,
+        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
+        request: AiSpeechTranscriptionRequest,
+    ): String =
         withContext(Dispatchers.IO) {
             log.debug {
                 "Transcribing audio data (${request.audioData.size} bytes, format=${request.format}, engine=${request.engine})"
@@ -85,11 +100,18 @@ class SttService(
                             "Local Whisper language is missing"
                         },
                         prompt = request.prompt,
-                        settings = settingsProvider.userProfile.speechSettings.speechToText.localWhisper,
+                        settings = requireNotNull(localWhisperSettings) {
+                            "Local Whisper execution settings are missing"
+                        },
                     )
 
                 UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API ->
-                    transcribeWithOpenAi(request)
+                    transcribeWithOpenAi(
+                        requireNotNull(runtime) {
+                            "OpenAI speech transcription runtime is missing"
+                        },
+                        request,
+                    )
             }
         }
 
@@ -106,6 +128,8 @@ class SttService(
             UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER ->
                 ConfiguredSpeechTranscription(
                     target = settings.localWhisper.executionTarget,
+                    runtime = null,
+                    localWhisperSettings = settings.localWhisper,
                     request = AiSpeechTranscriptionRequest(
                         audioData = audioData,
                         format = format,
@@ -123,6 +147,8 @@ class SttService(
                 val resolved = aiConfigurationProvider.resolveAiRuntime(selection)
                 ConfiguredSpeechTranscription(
                     target = resolved.connection.executionTarget,
+                    runtime = resolved,
+                    localWhisperSettings = null,
                     request = AiSpeechTranscriptionRequest(
                         audioData = audioData,
                         format = format,
@@ -159,11 +185,10 @@ class SttService(
         return true
     }
 
-    private fun transcribeWithOpenAi(request: AiSpeechTranscriptionRequest): String {
-        val selection = requireNotNull(request.selection) {
-            "OpenAI speech transcription selection is missing"
-        }
-        val runtime = aiConfigurationProvider.resolveAiRuntime(selection)
+    private fun transcribeWithOpenAi(
+        runtime: ResolvedAiRuntime,
+        request: AiSpeechTranscriptionRequest,
+    ): String {
         val client = clientFactory.createClient(runtime.connection)
         val tempFile = File.createTempFile("gromozeka-stt", ".${request.format.fileExtension}")
 
@@ -201,6 +226,8 @@ class SttService(
 
     private data class ConfiguredSpeechTranscription(
         val target: AiExecutionTarget,
+        val runtime: ResolvedAiRuntime?,
+        val localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
         val request: AiSpeechTranscriptionRequest,
     )
 }
