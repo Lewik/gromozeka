@@ -61,27 +61,16 @@ services:
     init: true
     environment:
       GROMOZEKA_MODE: prod
-      GROMOZEKA_POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/gromozeka
-      GROMOZEKA_POSTGRES_USERNAME: gromozeka
-      GROMOZEKA_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: "5672"
-      SPRING_RABBITMQ_USERNAME: gromozeka
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
-      GROMOZEKA_RUNTIME_WORKER_ID: compose-primary
+      GROMOZEKA_SERVER_URL: ${GROMOZEKA_WORKER_GATEWAY_SERVER_URL:?GROMOZEKA_WORKER_GATEWAY_SERVER_URL is required}
+      GROMOZEKA_WORKER_GATEWAY_CREDENTIAL: ${GROMOZEKA_WORKER_GATEWAY_CREDENTIAL:?GROMOZEKA_WORKER_GATEWAY_CREDENTIAL is required}
+      GROMOZEKA_RUNTIME_WORKER_ID: ${GROMOZEKA_RUNTIME_WORKER_ID:?GROMOZEKA_RUNTIME_WORKER_ID is required}
       GROMOZEKA_RUNTIME_WORKER_VERSION: ${GROMOZEKA_VERSION:-latest}
       GROMOZEKA_RUNTIME_WORKER_CAPABILITIES: AI_REQUEST_RESPONSE,TOOL_EXECUTION,LOCAL_AGENT_TOOL
     volumes:
-      - gromozeka-home:/var/lib/gromozeka
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_healthy
+      - gromozeka-worker-home:/var/lib/gromozeka
 
 volumes:
   postgres-data:
   rabbitmq-data:
   gromozeka-home:
+  gromozeka-worker-home:

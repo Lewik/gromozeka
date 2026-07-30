@@ -1,10 +1,9 @@
 package com.gromozeka.infrastructure.ai.tool.workspace
 
 import com.gromozeka.domain.model.Workspace
-import com.gromozeka.domain.service.WorkspaceDomainService
+import com.gromozeka.domain.service.WorkerWorkspaceStateService
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.requiredProjectId
-import com.gromozeka.domain.tool.requiredWorkerId
 import com.gromozeka.domain.tool.workspace.AttachFilesystemWorkspaceRequest
 import com.gromozeka.domain.tool.workspace.CreateFilesystemWorkspaceRequest
 import com.gromozeka.domain.tool.workspace.GrzAttachFilesystemWorkspaceTool
@@ -18,20 +17,18 @@ import java.nio.file.Path
 @Service
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzCreateFilesystemWorkspaceToolImpl(
-    private val workspaceService: WorkspaceDomainService,
+    private val workspaceStateService: WorkerWorkspaceStateService,
 ) : GrzCreateFilesystemWorkspaceTool {
     override fun execute(
         request: CreateFilesystemWorkspaceRequest,
         context: ToolExecutionContext?,
     ): Map<String, Any> {
         val projectId = context.requiredProjectId()
-        val workerId = context.requiredWorkerId()
         val rootPath = normalizeExistingDirectory(request.root_path)
         val workspaceContext = runBlocking {
-            workspaceService.createAndMountFilesystemWorkspace(
+            workspaceStateService.createAndMountFilesystemWorkspace(
                 projectId = projectId,
                 name = request.name,
-                workerId = workerId.value,
                 rootPath = rootPath,
             )
         }
@@ -42,26 +39,19 @@ class GrzCreateFilesystemWorkspaceToolImpl(
 @Service
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzAttachFilesystemWorkspaceToolImpl(
-    private val workspaceService: WorkspaceDomainService,
+    private val workspaceStateService: WorkerWorkspaceStateService,
 ) : GrzAttachFilesystemWorkspaceTool {
     override fun execute(
         request: AttachFilesystemWorkspaceRequest,
         context: ToolExecutionContext?,
     ): Map<String, Any> {
         val projectId = context.requiredProjectId()
-        val workerId = context.requiredWorkerId()
         val rootPath = normalizeExistingDirectory(request.root_path)
         val workspaceId = Workspace.Id(request.workspace_id)
-        val workspace = runBlocking {
-            workspaceService.findById(workspaceId)
-        } ?: error("Workspace not found: ${workspaceId.value}")
-        require(workspace.projectId == projectId) {
-            "Workspace ${workspace.id.value} belongs to project ${workspace.projectId.value}, not ${projectId.value}"
-        }
         val workspaceContext = runBlocking {
-            workspaceService.attachFilesystem(
+            workspaceStateService.attachFilesystemWorkspace(
+                projectId = projectId,
                 workspaceId = workspaceId,
-                workerId = workerId.value,
                 rootPath = rootPath,
             )
         }

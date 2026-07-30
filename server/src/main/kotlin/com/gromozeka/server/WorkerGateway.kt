@@ -6,6 +6,7 @@ import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.McpServerRevision
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
@@ -31,6 +32,9 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeout
@@ -168,9 +172,16 @@ class WorkerGatewayService(
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
     private val sessionRegistry: WorkerGatewaySessionRegistry,
     private val mcpServerRepository: McpServerRepository,
-    private val serverRequestHandler: WorkerGatewayServerRequestHandler,
+    serverRequestHandlers: List<WorkerGatewayServerRequestHandler>,
+    private val aiConfigurationProvider: AiConfigurationProvider,
 ) {
     private val log = KLoggers.logger(this)
+    private val serverRequestHandlersByOperation =
+        serverRequestHandlers.associateBy(WorkerGatewayServerRequestHandler::operation).also {
+            require(it.size == serverRequestHandlers.size) {
+                "Worker Gateway Server operations must have exactly one handler"
+            }
+        }
 
     suspend fun handle(
         socket: DefaultWebSocketServerSession,
@@ -200,9 +211,11 @@ class WorkerGatewayService(
             return socket.fail("WORKER_ID_MISMATCH", "Worker credential does not match the declared Worker")
         }
 
+        val initialAiCatalog = aiConfigurationProvider.snapshot
         socket.sendMessage(
             WorkerGatewayMessage.Welcome(
                 heartbeatIntervalSeconds = HEARTBEAT_INTERVAL.seconds,
+                aiCatalogSnapshot = initialAiCatalog,
                 mcpServers = mcpServerRepository.listByWorker(authenticatedWorker.id),
             )
         )
@@ -246,6 +259,14 @@ class WorkerGatewayService(
                     for (message in gatewaySession.outgoingMessages()) {
                         socket.sendMessage(message)
                     }
+                }
+                val aiCatalogUpdates = launch {
+                    aiConfigurationProvider.snapshotFlow
+                        .filterNotNull()
+                        .filter { it.revision > initialAiCatalog.revision }
+                        .collect {
+                            gatewaySession.send(WorkerGatewayMessage.AiCatalogUpdated(it))
+                        }
                 }
                 try {
                     for (frame in socket.incoming) {
@@ -316,6 +337,7 @@ class WorkerGatewayService(
                                 )
 
                             is WorkerGatewayMessage.Welcome,
+                            is WorkerGatewayMessage.AiCatalogUpdated,
                             is WorkerGatewayMessage.Ready,
                             is WorkerGatewayMessage.Failure ->
                                 return@coroutineScope socket.fail(
@@ -330,6 +352,7 @@ class WorkerGatewayService(
                             "Worker Gateway disconnected: worker=${registration.identity.workerId.value}"
                         )
                     )
+                    aiCatalogUpdates.cancelAndJoin()
                     writer.cancelAndJoin()
                 }
             }
@@ -350,10 +373,12 @@ class WorkerGatewayService(
         request: WorkerGatewayMessage.Request,
     ): WorkerGatewayMessage.Response =
         runCatching {
+            val handler = serverRequestHandlersByOperation[request.operation]
+                ?: error("Worker cannot invoke unsupported Server operation ${request.operation}")
             WorkerGatewayMessage.Response(
                 requestId = request.id,
                 status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
-                payload = serverRequestHandler.execute(identity, request),
+                payload = handler.execute(identity, request),
             )
         }.getOrElse { error ->
             WorkerGatewayMessage.Response(

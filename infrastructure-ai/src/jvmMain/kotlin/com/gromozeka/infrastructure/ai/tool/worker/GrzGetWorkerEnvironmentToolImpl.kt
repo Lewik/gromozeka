@@ -3,7 +3,7 @@ package com.gromozeka.infrastructure.ai.tool.worker
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.WorkerEnvironmentProbe
 import com.gromozeka.domain.service.WorkerEnvironmentSnapshot
-import com.gromozeka.domain.service.WorkspaceCatalogService
+import com.gromozeka.domain.service.WorkerWorkspaceStateService
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.requiredProjectId
 import com.gromozeka.domain.tool.requiredWorkerId
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzGetWorkerEnvironmentToolImpl(
     private val environmentProbe: WorkerEnvironmentProbe,
-    private val workspaceCatalogService: WorkspaceCatalogService,
+    private val workspaceStateService: WorkerWorkspaceStateService,
     @Value("\${gromozeka.runtime.worker.id}") configuredWorkerId: String,
 ) : GrzGetWorkerEnvironmentTool {
     private val localWorkerId = ConversationRuntimeWorkerId(configuredWorkerId.trim())
@@ -33,9 +33,7 @@ class GrzGetWorkerEnvironmentToolImpl(
             "Worker environment request for ${workerId.value} reached ${localWorkerId.value}"
         }
         val mounts = runBlocking {
-            workspaceCatalogService.findByProject(projectId)
-                .flatMap { workspaceCatalogService.findMounts(it.id) }
-                .filter { it.workerId == workerId.value }
+            workspaceStateService.findProjectMounts(projectId)
         }
         return environmentProbe.collectSnapshot(
             workspaceMounts = mounts,

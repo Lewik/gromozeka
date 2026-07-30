@@ -1,5 +1,6 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.Project
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -29,6 +30,25 @@ class WorkerGatewayProtocolTest {
             response,
             WorkerCommandRuntimeGatewayCodec.decodeResponse(
                 WorkerCommandRuntimeGatewayCodec.encodeResponse(response)
+            ),
+        )
+    }
+
+    @Test
+    fun `worker workspace messages round trip through binary codec`() {
+        val request = WorkerWorkspaceRequest.FindProjectMounts(Project.Id("project-1"))
+        val response = WorkerWorkspaceResponse.MountsResult(emptyList())
+
+        assertEquals(
+            request,
+            WorkerWorkspaceGatewayCodec.decodeRequest(
+                WorkerWorkspaceGatewayCodec.encodeRequest(request)
+            ),
+        )
+        assertEquals(
+            response,
+            WorkerWorkspaceGatewayCodec.decodeResponse(
+                WorkerWorkspaceGatewayCodec.encodeResponse(response)
             ),
         )
     }

@@ -1,13 +1,25 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.InMemoryConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiCatalogSnapshot
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelCapability
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.mcp.McpServer
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
@@ -33,6 +45,8 @@ import io.ktor.websocket.readBytes
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Instant
 import java.security.MessageDigest
@@ -87,7 +101,8 @@ class WorkerGatewayTest {
             runtimeRegistry,
             sessionRegistry,
             EmptyMcpServerRepository,
-            WorkerGatewayServerRequestHandler { _, _ -> error("Unexpected Worker request") },
+            emptyList(),
+            TestAiConfigurationProvider,
         )
         val authenticationService = WorkerGatewayAuthenticationService(repository)
 
@@ -131,6 +146,7 @@ class WorkerGatewayTest {
             val welcome = WorkerGatewayCodec.decode((incoming.receive() as Frame.Binary).readBytes())
             assertTrue(welcome is WorkerGatewayMessage.Welcome)
             assertTrue(welcome.mcpServers.isEmpty())
+            assertEquals(TestAiConfigurationProvider.snapshot, welcome.aiCatalogSnapshot)
             send(
                 Frame.Binary(
                     true,
@@ -219,6 +235,54 @@ class WorkerGatewayTest {
         MessageDigest.getInstance("SHA-256")
             .digest(value.encodeToByteArray())
             .joinToString("") { "%02x".format(it) }
+}
+
+private object TestAiConfigurationProvider : AiConfigurationProvider {
+    private val connection = AiConnection.OpenAiApi(
+        id = AiConnection.Id("test-connection"),
+        displayName = "Test connection",
+        enabled = true,
+    )
+    private val configuration = AiModelConfiguration(
+        id = AiModelConfiguration.Id("test-model"),
+        connectionId = connection.id,
+        providerModelId = "test-model",
+        displayName = "Test model",
+    )
+    override val snapshot = AiCatalogSnapshot(
+        catalog = AiCatalog(
+            connections = listOf(connection),
+            modelSpecs = listOf(
+                AiModelSpec(
+                    id = configuration.providerModelId,
+                    provider = AiProvider.OPENAI,
+                    capabilities = AiModelCapability.entries.toSet(),
+                    limits = AiModelSpec.Limits(
+                        textGeneration = AiModelSpec.Limits.TextGeneration(
+                            contextWindowTokens = 1_024,
+                        ),
+                        embeddings = AiModelSpec.Limits.Embeddings(dimensions = 8),
+                    ),
+                )
+            ),
+            modelConfigurations = listOf(configuration),
+            runtimeAssignments = AiRuntimeAssignment.Purpose.entries
+                .filter(AiRuntimeAssignment.Purpose::requiresExplicitAssignment)
+                .map {
+                    AiRuntimeAssignment(
+                        purpose = it,
+                        selection = AiRuntimeSelection(configuration.id),
+                    )
+                },
+            defaultAgentId = AgentDefinition.Id("test-agent"),
+        ),
+        revision = 1,
+    )
+    override val snapshotFlow: StateFlow<AiCatalogSnapshot?> =
+        MutableStateFlow<AiCatalogSnapshot?>(snapshot)
+
+    override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime =
+        ResolvedAiRuntime(connection, configuration)
 }
 
 private data object EmptyMcpServerRepository : McpServerRepository {

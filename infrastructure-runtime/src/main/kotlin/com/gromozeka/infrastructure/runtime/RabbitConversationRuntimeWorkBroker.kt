@@ -8,7 +8,6 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkConsumer
 import com.gromozeka.domain.service.ConversationRuntimeWorkDelivery
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.ConversationRuntimeWorkPublisher
-import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import klog.KLoggers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
@@ -346,44 +345,23 @@ internal class RabbitConversationRuntimeWorkTopology(
     }
 }
 
-internal sealed interface RabbitRuntimeWorkRoute {
-    val id: String
+internal data object RabbitRuntimeWorkRoute {
+    const val id: String = "server"
 
-    data object Server : RabbitRuntimeWorkRoute {
-        override val id: String = "server"
+    fun from(requirements: ConversationRuntimeTaskRequirements): RabbitRuntimeWorkRoute {
+        require(requirements.target == ConversationRuntimeTaskTarget.Server) {
+            "Rabbit runtime work is Server-only; Worker side effects use the authenticated Worker Gateway"
+        }
+        return this
     }
 
-    data class Worker(
-        val workerId: ConversationRuntimeWorkerId,
-    ) : RabbitRuntimeWorkRoute {
-        override val id: String = "worker-${workerRouteId(workerId)}"
-    }
-
-    companion object {
-        fun from(requirements: ConversationRuntimeTaskRequirements): RabbitRuntimeWorkRoute =
-            when (val target = requirements.target) {
-                ConversationRuntimeTaskTarget.Server -> Server
-                is ConversationRuntimeTaskTarget.Worker -> Worker(target.workerId)
-            }
-
-        fun from(executor: ConversationRuntimeExecutorIdentity): RabbitRuntimeWorkRoute =
-            when (executor) {
-                is ConversationRuntimeExecutorIdentity.Server -> Server
-                is ConversationRuntimeExecutorIdentity.Worker -> Worker(executor.identity.workerId)
-            }
+    fun from(executor: ConversationRuntimeExecutorIdentity): RabbitRuntimeWorkRoute {
+        require(executor is ConversationRuntimeExecutorIdentity.Server) {
+            "Rabbit runtime work consumers must be Server executors"
+        }
+        return this
     }
 }
-
-private fun workerRouteId(workerId: ConversationRuntimeWorkerId): String =
-    "${Integer.toUnsignedString(workerId.value.hashCode(), 36)}-${workerId.value.routeToken()}"
-
-private fun String.routeToken(): String =
-    lowercase()
-        .map { char -> if (char.isLetterOrDigit()) char else '-' }
-        .joinToString("")
-        .trim('-')
-        .take(48)
-        .ifBlank { "value" }
 
 private fun RabbitTemplate.requirePublisherConfirms() {
     val factory = connectionFactory

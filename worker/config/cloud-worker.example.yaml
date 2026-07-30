@@ -1,8 +1,8 @@
 gromozeka:
-  postgres:
-    jdbc-url: jdbc:postgresql://postgres.internal:5432/gromozeka?sslmode=verify-full
-    username: ${GROMOZEKA_POSTGRES_USERNAME}
-    password: ${GROMOZEKA_POSTGRES_PASSWORD}
+  worker-gateway:
+    enabled: true
+    server-url: https://gromozeka.example
+    credential: ${GROMOZEKA_WORKER_GATEWAY_CREDENTIAL}
   runtime:
     worker:
       id: cloud-primary
@@ -10,13 +10,3 @@ gromozeka:
       capabilities:
         - AI_REQUEST_RESPONSE
         - TOOL_EXECUTION
-
-spring:
-  rabbitmq:
-    addresses: amqps://rabbitmq.internal:5671
-    username: ${GROMOZEKA_RABBIT_USERNAME}
-    password: ${GROMOZEKA_RABBIT_PASSWORD}
-    ssl:
-      enabled: true
-      validate-server-certificate: true
-      verify-hostname: true

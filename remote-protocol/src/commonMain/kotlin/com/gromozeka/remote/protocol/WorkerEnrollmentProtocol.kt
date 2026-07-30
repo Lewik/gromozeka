@@ -25,11 +25,5 @@ data class WorkerEnrollmentConsumeRequest(
 data class WorkerEnrollmentBootstrap(
     val workerId: String,
     val gatewayCredential: String,
-    val postgresJdbcUrl: String,
-    val postgresUsername: String,
-    val postgresPassword: String,
-    val rabbitmqAddresses: String,
-    val rabbitmqUsername: String,
-    val rabbitmqPassword: String,
     val capabilities: Set<ConversationRuntimeCapability>,
 )

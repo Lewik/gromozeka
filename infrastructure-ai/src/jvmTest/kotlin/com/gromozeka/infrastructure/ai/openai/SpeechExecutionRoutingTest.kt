@@ -56,21 +56,24 @@ class SpeechExecutionRoutingTest {
         )
         val remoteClient = RecordingRemoteClient()
         val resolver = RecordingWorkerTargetResolver(workerIdentity)
+        val clientFactory = OpenAiSdkClientFactory(settings)
         val stt = SttService(
-            clientFactory = OpenAiSdkClientFactory(settings),
             settingsProvider = settings,
             aiConfigurationProvider = configuration,
-            localWhisperTranscriptionService = LocalWhisperTranscriptionService(settings),
+            directProvider = OpenAiSpeechTranscriptionExecutor(
+                clientFactory,
+                LocalWhisperTranscriptionService(settings),
+            ),
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
         )
         val tts = TtsService(
-            clientFactory = OpenAiSdkClientFactory(settings),
             settingsProvider = settings,
             aiConfigurationProvider = configuration,
             audioController = NoOpAudioController,
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
+            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory),
         )
 
         assertEquals(
@@ -107,21 +110,24 @@ class SpeechExecutionRoutingTest {
         )
         val remoteClient = RecordingRemoteClient()
         val resolver = RecordingWorkerTargetResolver(workerIdentity)
+        val clientFactory = OpenAiSdkClientFactory(settings)
         val stt = SttService(
-            clientFactory = OpenAiSdkClientFactory(settings),
             settingsProvider = settings,
             aiConfigurationProvider = configuration,
-            localWhisperTranscriptionService = LocalWhisperTranscriptionService(settings),
+            directProvider = OpenAiSpeechTranscriptionExecutor(
+                clientFactory,
+                LocalWhisperTranscriptionService(settings),
+            ),
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
         )
         val tts = TtsService(
-            clientFactory = OpenAiSdkClientFactory(settings),
             settingsProvider = settings,
             aiConfigurationProvider = configuration,
             audioController = NoOpAudioController,
             workerTargetResolver = resolver,
             remoteClients = listOf(remoteClient),
+            directProvider = OpenAiSpeechSynthesisExecutor(clientFactory),
         )
 
         val sttError = assertFailsWith<IllegalArgumentException> {

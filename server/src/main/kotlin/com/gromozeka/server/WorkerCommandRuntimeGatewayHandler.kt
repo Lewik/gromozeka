@@ -17,7 +17,9 @@ import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import org.springframework.stereotype.Service
 
-fun interface WorkerGatewayServerRequestHandler {
+interface WorkerGatewayServerRequestHandler {
+    val operation: WorkerGatewayOperation
+
     suspend fun execute(
         identity: ConversationRuntimeWorkerIdentity,
         request: WorkerGatewayMessage.Request,
@@ -31,11 +33,13 @@ class WorkerCommandRuntimeGatewayHandler(
     private val workspaceDomainService: WorkspaceDomainService,
     private val workerAccessService: WorkerAccessService,
 ) : WorkerGatewayServerRequestHandler {
+    override val operation = WorkerGatewayOperation.COMMAND_RUNTIME_STATE
+
     override suspend fun execute(
         identity: ConversationRuntimeWorkerIdentity,
         request: WorkerGatewayMessage.Request,
     ): ByteArray {
-        require(request.operation == WorkerGatewayOperation.COMMAND_RUNTIME_STATE) {
+        require(request.operation == operation) {
             "Worker cannot invoke Server operation ${request.operation}"
         }
         val response = when (

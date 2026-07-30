@@ -1,15 +1,20 @@
 package com.gromozeka.worker
 
+import com.gromozeka.application.config.ApplicationCoroutineConfiguration
+import com.gromozeka.application.service.AutoApproveToolApprovalService
+import com.gromozeka.application.service.DefaultCommandMonitorService
+import com.gromozeka.application.service.DefaultCommandTaskService
+import com.gromozeka.application.service.DirectAiRequestResponseExecutionHandler
+import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import kotlinx.coroutines.runBlocking
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
-import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
+import org.springframework.context.annotation.Import
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -89,18 +94,10 @@ private fun determineLogPath(mode: String?): String {
     }
 }
 
-@SpringBootApplication(
-    exclude = [
-        JdbcTemplateAutoConfiguration::class,
-        DataSourceTransactionManagerAutoConfiguration::class,
-    ]
-)
+@SpringBootApplication
 @ComponentScan(
     basePackages = [
         "com.gromozeka.worker",
-        "com.gromozeka.application",
-        "com.gromozeka.infrastructure.db",
-        "com.gromozeka.infrastructure.runtime",
         "com.gromozeka.infrastructure.ai",
     ],
     excludeFilters = [
@@ -109,14 +106,19 @@ private fun determineLogPath(mode: String?): String {
             pattern = ["com\\.gromozeka\\.infrastructure\\.ai\\.mcp\\.tools\\..*"]
         ),
         ComponentScan.Filter(
-            type = FilterType.REGEX,
-            pattern = ["com\\.gromozeka\\.application\\.service\\.memory\\..*"]
-        ),
-        ComponentScan.Filter(
             type = FilterType.ASSIGNABLE_TYPE,
             classes = [InternalMcpToolsRegistrar::class]
         ),
     ],
+)
+@Import(
+    ApplicationCoroutineConfiguration::class,
+    AutoApproveToolApprovalService::class,
+    DefaultCommandMonitorService::class,
+    DefaultCommandTaskService::class,
+    DirectAiRequestResponseExecutionHandler::class,
+    ParallelToolExecutor::class,
+    SettingsService::class,
 )
 class GromozekaWorkerApplication(
     settingsService: SettingsService,

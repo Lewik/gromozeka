@@ -127,30 +127,15 @@ internal class WorkerEnrollmentClient(
     private fun WorkerEnrollmentBootstrap.toYaml(server: URI): String = buildString {
         appendLine("gromozeka:")
         appendLine("  worker-gateway:")
+        appendLine("    enabled: true")
         appendLine("    server-url: ${yaml(server.toString())}")
         appendLine("    credential: ${yaml(gatewayCredential)}")
-        appendLine("  postgres:")
-        appendLine("    jdbc-url: ${yaml(postgresJdbcUrl)}")
-        appendLine("    username: ${yaml(postgresUsername)}")
-        appendLine("    password: ${yaml(postgresPassword)}")
         appendLine("  runtime:")
         appendLine("    worker:")
         appendLine("      id: ${yaml(workerId)}")
         appendLine("      version: ${yaml(currentWorkerVersion())}")
         appendLine("      capabilities:")
         capabilities.sortedBy { it.name }.forEach { appendLine("        - ${yaml(it.name)}") }
-        appendLine()
-        appendLine("spring:")
-        appendLine("  rabbitmq:")
-        appendLine("    addresses: ${yaml(rabbitmqAddresses)}")
-        appendLine("    username: ${yaml(rabbitmqUsername)}")
-        appendLine("    password: ${yaml(rabbitmqPassword)}")
-        if (rabbitmqAddresses.startsWith("amqps://", ignoreCase = true)) {
-            appendLine("    ssl:")
-            appendLine("      enabled: true")
-            appendLine("      validate-server-certificate: true")
-            appendLine("      verify-hostname: true")
-        }
     }
 
     private fun yaml(value: String): String = json.encodeToString(value)

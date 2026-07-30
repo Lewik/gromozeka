@@ -75,8 +75,11 @@ class ConversationRuntimeWorkerConfigurationTest {
                 "gromozeka.runtime.worker.capabilities[0]=AI_REQUEST_RESPONSE",
             )
             .run { context ->
-                val descriptor = context.getBean(ConversationRuntimeWorkerDescriptor::class.java)
-                assertTrue(descriptor.tools.isEmpty())
+                val catalog = WorkerToolCatalog(
+                    aiToolProvider = context.getBean(AiToolProvider::class.java),
+                    properties = context.getBean(ConversationRuntimeWorkerProperties::class.java),
+                )
+                assertTrue(catalog.snapshot().isEmpty())
             }
     }
 
@@ -113,8 +116,11 @@ class ConversationRuntimeWorkerConfigurationTest {
                 "gromozeka.runtime.worker.capabilities[0]=TOOL_EXECUTION",
             )
             .run { context ->
-                val descriptor = context.getBean(ConversationRuntimeWorkerDescriptor::class.java)
-                assertEquals(listOf("generic"), descriptor.tools.map { it.definition.name })
+                val catalog = WorkerToolCatalog(
+                    aiToolProvider = context.getBean(AiToolProvider::class.java),
+                    properties = context.getBean(ConversationRuntimeWorkerProperties::class.java),
+                )
+                assertEquals(listOf("generic"), catalog.snapshot().map { it.definition.name })
             }
     }
 

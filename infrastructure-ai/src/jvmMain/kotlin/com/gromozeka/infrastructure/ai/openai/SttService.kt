@@ -24,18 +24,22 @@ import java.io.File
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "false",
+    matchIfMissing = true,
+)
 class SttService(
-    private val clientFactory: OpenAiSdkClientFactory,
     private val settingsProvider: SettingsProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
-    private val localWhisperTranscriptionService: LocalWhisperTranscriptionService,
+    private val directProvider: DirectAiSpeechToTextProvider,
     private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
     private val remoteClients: List<AiRequestResponseExecutionClient>,
-) : DirectAiSpeechToTextProvider {
-    private val log = KLoggers.logger(this)
+) {
 
     suspend fun transcribe(
         audioData: ByteArray,
@@ -45,7 +49,7 @@ class SttService(
     ): String {
         val configured = configuredRequest(audioData, format, language, prompt)
         return when (val target = configured.target) {
-            AiExecutionTarget.Server -> transcribe(
+            AiExecutionTarget.Server -> directProvider.transcribe(
                 configured.runtime,
                 configured.localWhisperSettings,
                 configured.request,
@@ -72,48 +76,12 @@ class SttService(
         require(configured.target == AiExecutionTarget.Server) {
             "Live speech transcription requires a Server-targeted runtime"
         }
-        return transcribe(
+        return directProvider.transcribe(
             configured.runtime,
             configured.localWhisperSettings,
             configured.request,
         )
     }
-
-    override suspend fun transcribe(
-        runtime: ResolvedAiRuntime?,
-        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
-        request: AiSpeechTranscriptionRequest,
-    ): String =
-        withContext(Dispatchers.IO) {
-            log.debug {
-                "Transcribing audio data (${request.audioData.size} bytes, format=${request.format}, engine=${request.engine})"
-            }
-            if (!validateAudio(request.audioData, request.format)) {
-                return@withContext ""
-            }
-
-            when (request.engine) {
-                UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER ->
-                    localWhisperTranscriptionService.transcribe(
-                        audioData = request.audioData,
-                        language = requireNotNull(request.language) {
-                            "Local Whisper language is missing"
-                        },
-                        prompt = request.prompt,
-                        settings = requireNotNull(localWhisperSettings) {
-                            "Local Whisper execution settings are missing"
-                        },
-                    )
-
-                UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API ->
-                    transcribeWithOpenAi(
-                        requireNotNull(runtime) {
-                            "OpenAI speech transcription runtime is missing"
-                        },
-                        request,
-                    )
-            }
-        }
 
     private fun configuredRequest(
         audioData: ByteArray,
@@ -161,6 +129,67 @@ class SttService(
             }
         }
     }
+
+    private fun remoteClient(): AiRequestResponseExecutionClient =
+        remoteClients.singleOrNull()
+            ?: error(
+                if (remoteClients.isEmpty()) {
+                    "Worker-targeted speech transcription requires Worker Gateway transport"
+                } else {
+                    "Multiple AI request-response transports are configured"
+                }
+            )
+
+    private data class ConfiguredSpeechTranscription(
+        val target: AiExecutionTarget,
+        val runtime: ResolvedAiRuntime?,
+        val localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
+        val request: AiSpeechTranscriptionRequest,
+    )
+}
+
+@Service
+class OpenAiSpeechTranscriptionExecutor(
+    private val clientFactory: OpenAiSdkClientFactory,
+    private val localWhisperTranscriptionService: LocalWhisperTranscriptionService,
+) : DirectAiSpeechToTextProvider {
+    private val log = KLoggers.logger(this)
+
+    override suspend fun transcribe(
+        runtime: ResolvedAiRuntime?,
+        localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
+        request: AiSpeechTranscriptionRequest,
+    ): String =
+        withContext(Dispatchers.IO) {
+            log.debug {
+                "Transcribing audio data (${request.audioData.size} bytes, format=${request.format}, engine=${request.engine})"
+            }
+            if (!validateAudio(request.audioData, request.format)) {
+                return@withContext ""
+            }
+
+            when (request.engine) {
+                UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER ->
+                    localWhisperTranscriptionService.transcribe(
+                        audioData = request.audioData,
+                        language = requireNotNull(request.language) {
+                            "Local Whisper language is missing"
+                        },
+                        prompt = request.prompt,
+                        settings = requireNotNull(localWhisperSettings) {
+                            "Local Whisper execution settings are missing"
+                        },
+                    )
+
+                UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API ->
+                    transcribeWithOpenAi(
+                        requireNotNull(runtime) {
+                            "OpenAI speech transcription runtime is missing"
+                        },
+                        request,
+                    )
+            }
+        }
 
     private fun validateAudio(
         audioData: ByteArray,
@@ -214,20 +243,4 @@ class SttService(
         }
     }
 
-    private fun remoteClient(): AiRequestResponseExecutionClient =
-        remoteClients.singleOrNull()
-            ?: error(
-                if (remoteClients.isEmpty()) {
-                    "Worker-targeted speech transcription requires Rabbit runtime transport"
-                } else {
-                    "Multiple AI request-response transports are configured"
-                }
-            )
-
-    private data class ConfiguredSpeechTranscription(
-        val target: AiExecutionTarget,
-        val runtime: ResolvedAiRuntime?,
-        val localWhisperSettings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper?,
-        val request: AiSpeechTranscriptionRequest,
-    )
 }

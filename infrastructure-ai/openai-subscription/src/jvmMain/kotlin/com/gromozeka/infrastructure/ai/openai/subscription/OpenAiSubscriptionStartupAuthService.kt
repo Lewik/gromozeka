@@ -4,10 +4,16 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.service.AiConfigurationProvider
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import java.time.Instant
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "false",
+    matchIfMissing = true,
+)
 class OpenAiSubscriptionStartupAuthService(
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val configService: OpenAiSubscriptionConfigService,

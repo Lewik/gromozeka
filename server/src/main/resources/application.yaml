@@ -18,12 +18,6 @@ gromozeka:
   worker-enrollment:
     enabled: ${GROMOZEKA_WORKER_ENROLLMENT_ENABLED:false}
     token-ttl-minutes: ${GROMOZEKA_WORKER_ENROLLMENT_TOKEN_TTL_MINUTES:15}
-    postgres-jdbc-url: ${GROMOZEKA_WORKER_POSTGRES_JDBC_URL:}
-    postgres-username: ${GROMOZEKA_WORKER_POSTGRES_USERNAME:}
-    postgres-password: ${GROMOZEKA_WORKER_POSTGRES_PASSWORD:}
-    rabbitmq-addresses: ${GROMOZEKA_WORKER_RABBITMQ_ADDRESSES:}
-    rabbitmq-username: ${GROMOZEKA_WORKER_RABBITMQ_USERNAME:}
-    rabbitmq-password: ${GROMOZEKA_WORKER_RABBITMQ_PASSWORD:}
     capabilities: ${GROMOZEKA_WORKER_ENROLLMENT_CAPABILITIES:AI_REQUEST_RESPONSE,TOOL_EXECUTION,LOCAL_AGENT_TOOL}
   runtime:
     server:

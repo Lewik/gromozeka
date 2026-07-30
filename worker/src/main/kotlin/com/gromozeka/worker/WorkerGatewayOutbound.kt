@@ -1,7 +1,6 @@
 package com.gromozeka.worker
 
 import com.gromozeka.domain.model.mcp.McpServerId
-import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.McpServerRefreshPublisher
 import com.gromozeka.domain.service.WorkerToolCatalogPublisher
 import com.gromozeka.domain.tool.AiToolDescriptor
@@ -22,13 +21,13 @@ import kotlin.time.Duration.Companion.seconds
 @Service
 @Primary
 class WorkerGatewayOutbound(
-    descriptor: ConversationRuntimeWorkerDescriptor,
+    properties: ConversationRuntimeWorkerProperties,
 ) : WorkerToolCatalogPublisher, McpServerRefreshPublisher {
     private val log = KLoggers.logger(this)
-    override val capabilities = descriptor.capabilities
+    override val capabilities = properties.capabilities
 
     @Volatile
-    private var currentTools = descriptor.tools
+    private var currentTools: List<AiToolDescriptor> = emptyList()
 
     @Volatile
     private var activeOutgoing: SendChannel<WorkerGatewayMessage>? = null

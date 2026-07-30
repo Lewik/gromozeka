@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.tool.worker
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Workspace
+import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.WorkerEnvironmentProbe
 import com.gromozeka.domain.service.WorkerEnvironmentProfile
@@ -9,8 +10,8 @@ import com.gromozeka.domain.service.WorkerEnvironmentSnapshot
 import com.gromozeka.domain.service.WorkerExecutableAvailability
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
+import com.gromozeka.domain.service.WorkerWorkspaceStateService
 import com.gromozeka.domain.service.WorkerWorkspaceStorage
-import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -27,7 +28,6 @@ class GrzGetWorkerEnvironmentToolImplTest {
     private val workspace = workspace("workspace-a", project)
     private val foreignWorkspace = workspace("workspace-b", foreignProject)
     private val matchingMount = mount("mount-a", workspace.id, "worker-a", "/workspace/a")
-    private val otherWorkerMount = mount("mount-other", workspace.id, "worker-b", "/workspace/other")
     private val foreignMount = mount("mount-foreign", foreignWorkspace.id, "worker-a", "/workspace/foreign")
 
     @Test
@@ -35,9 +35,11 @@ class GrzGetWorkerEnvironmentToolImplTest {
         val probe = RecordingProbe()
         val tool = GrzGetWorkerEnvironmentToolImpl(
             environmentProbe = probe,
-            workspaceCatalogService = FakeWorkspaceCatalogService(
-                workspaces = listOf(workspace, foreignWorkspace),
-                mounts = listOf(matchingMount, otherWorkerMount, foreignMount),
+            workspaceStateService = FakeWorkerWorkspaceStateService(
+                mountsByProject = mapOf(
+                    project to listOf(matchingMount),
+                    foreignProject to listOf(foreignMount),
+                ),
             ),
             configuredWorkerId = "worker-a",
         )
@@ -92,7 +94,7 @@ class GrzGetWorkerEnvironmentToolImplTest {
     fun `rejects request delivered to a different worker`() {
         val tool = GrzGetWorkerEnvironmentToolImpl(
             environmentProbe = RecordingProbe(),
-            workspaceCatalogService = FakeWorkspaceCatalogService(emptyList(), emptyList()),
+            workspaceStateService = FakeWorkerWorkspaceStateService(emptyMap()),
             configuredWorkerId = "worker-a",
         )
 
@@ -203,17 +205,22 @@ class GrzGetWorkerEnvironmentToolImplTest {
         }
     }
 
-    private class FakeWorkspaceCatalogService(
-        private val workspaces: List<Workspace>,
-        private val mounts: List<WorkspaceMount>,
-    ) : WorkspaceCatalogService {
-        override suspend fun findById(id: Workspace.Id): Workspace? =
-            workspaces.firstOrNull { it.id == id }
+    private class FakeWorkerWorkspaceStateService(
+        private val mountsByProject: Map<Project.Id, List<WorkspaceMount>>,
+    ) : WorkerWorkspaceStateService {
+        override suspend fun createAndMountFilesystemWorkspace(
+            projectId: Project.Id,
+            name: String,
+            rootPath: String,
+        ): WorkspaceExecutionContext = error("Not used")
 
-        override suspend fun findByProject(projectId: Project.Id): List<Workspace> =
-            workspaces.filter { it.projectId == projectId }
+        override suspend fun attachFilesystemWorkspace(
+            projectId: Project.Id,
+            workspaceId: Workspace.Id,
+            rootPath: String,
+        ): WorkspaceExecutionContext = error("Not used")
 
-        override suspend fun findMounts(workspaceId: Workspace.Id): List<WorkspaceMount> =
-            mounts.filter { it.workspaceId == workspaceId }
+        override suspend fun findProjectMounts(projectId: Project.Id): List<WorkspaceMount> =
+            mountsByProject[projectId].orEmpty()
     }
 }

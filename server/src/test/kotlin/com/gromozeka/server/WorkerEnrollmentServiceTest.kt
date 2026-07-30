@@ -28,7 +28,6 @@ class WorkerEnrollmentServiceTest {
 
         assertEquals("macbook-primary", bootstrap.workerId)
         assertTrue(bootstrap.gatewayCredential.length >= 40)
-        assertEquals("jdbc:postgresql://db.example/gromozeka", bootstrap.postgresJdbcUrl)
         assertEquals(setOf(ConversationRuntimeCapability.TOOL_EXECUTION), bootstrap.capabilities)
         assertEquals(USER_ID, repository.worker?.ownerUserId)
         assertFailsWith<IllegalArgumentException> {
@@ -44,7 +43,7 @@ class WorkerEnrollmentServiceTest {
         assertFailsWith<IllegalStateException> { disabled.create(USER_ID) }
 
         val incomplete = WorkerEnrollmentService(
-            WorkerEnrollmentProperties(enabled = true),
+            WorkerEnrollmentProperties(enabled = true, capabilities = emptySet()),
             repository,
             clock,
         )
@@ -69,12 +68,6 @@ class WorkerEnrollmentServiceTest {
     private fun configuredProperties(): WorkerEnrollmentProperties =
         WorkerEnrollmentProperties(
             enabled = true,
-            postgresJdbcUrl = "jdbc:postgresql://db.example/gromozeka",
-            postgresUsername = "worker",
-            postgresPassword = "postgres-secret",
-            rabbitmqAddresses = "amqps://rabbit.example:5671",
-            rabbitmqUsername = "worker",
-            rabbitmqPassword = "rabbit-secret",
             capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
         )
 

@@ -27,8 +27,6 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":remote-protocol"))
     implementation(project(":application"))
-    implementation(project(":infrastructure-db"))
-    implementation(project(":infrastructure-runtime"))
     implementation(project(":infrastructure-ai"))
     implementation(project(":infrastructure-ai:openai-subscription"))
 

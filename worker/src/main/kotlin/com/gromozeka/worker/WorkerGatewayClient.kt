@@ -84,6 +84,7 @@ class WorkerGatewayClient(
     private val identity: ConversationRuntimeWorkerIdentity,
     descriptor: ConversationRuntimeWorkerDescriptor,
     private val operationHandler: WorkerGatewayOperationHandler,
+    private val aiConfigurationProvider: WorkerAiConfigurationProvider,
     private val mcpConfigurationService: McpConfigurationService,
     private val workerToolCatalog: WorkerToolCatalog,
     private val outbound: WorkerGatewayOutbound,
@@ -200,6 +201,7 @@ class WorkerGatewayClient(
                     require(welcome.protocolVersion == WORKER_GATEWAY_PROTOCOL_VERSION) {
                         "Server selected unsupported Worker Gateway protocol ${welcome.protocolVersion}"
                     }
+                    aiConfigurationProvider.synchronize(welcome.aiCatalogSnapshot)
                     val refreshAvailable = mcpConfigurationService.synchronize(welcome.mcpServers)
                     val runtimeTools = workerToolCatalog.snapshot()
                     outbound.replaceBeforeReady(runtimeTools)
@@ -248,6 +250,11 @@ class WorkerGatewayClient(
                                 if (!outbound.accept(message)) {
                                     error("Worker Gateway Server returned a response for an unknown request")
                                 }
+                            }
+
+                            is WorkerGatewayMessage.AiCatalogUpdated -> {
+                                aiConfigurationProvider.synchronize(message.snapshot)
+                                outbound.updateAdvertisedTools(workerToolCatalog.snapshot())
                             }
 
                             is WorkerGatewayMessage.Failure ->
@@ -351,8 +358,9 @@ class WorkerGatewayOperationHandler(
                     ).encodeToByteArray()
                 }
 
-                WorkerGatewayOperation.COMMAND_RUNTIME_STATE ->
-                    error("Server cannot invoke the Worker command runtime state operation")
+                WorkerGatewayOperation.COMMAND_RUNTIME_STATE,
+                WorkerGatewayOperation.WORKSPACE_STATE ->
+                    error("Server cannot invoke the Worker-owned Server state operation")
             }
             WorkerGatewayMessage.Response(
                 requestId = request.id,

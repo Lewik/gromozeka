@@ -22,12 +22,6 @@ import java.util.Base64
 data class WorkerEnrollmentProperties(
     val enabled: Boolean = false,
     val tokenTtlMinutes: Long = 15,
-    val postgresJdbcUrl: String = "",
-    val postgresUsername: String = "",
-    val postgresPassword: String = "",
-    val rabbitmqAddresses: String = "",
-    val rabbitmqUsername: String = "",
-    val rabbitmqPassword: String = "",
     val capabilities: Set<ConversationRuntimeCapability> = setOf(
         ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
         ConversationRuntimeCapability.TOOL_EXECUTION,
@@ -37,17 +31,8 @@ data class WorkerEnrollmentProperties(
     fun unavailableReason(): String? {
         if (!enabled) return "Worker enrollment is disabled"
         if (tokenTtlMinutes !in 1..60) return "Worker enrollment token TTL must be between 1 and 60 minutes"
-        val missing = buildList {
-            if (postgresJdbcUrl.isBlank()) add("PostgreSQL JDBC URL")
-            if (postgresUsername.isBlank()) add("PostgreSQL username")
-            if (postgresPassword.isBlank()) add("PostgreSQL password")
-            if (rabbitmqAddresses.isBlank()) add("RabbitMQ addresses")
-            if (rabbitmqUsername.isBlank()) add("RabbitMQ username")
-            if (rabbitmqPassword.isBlank()) add("RabbitMQ password")
-            if (capabilities.isEmpty()) add("Worker capabilities")
-        }
-        return missing.takeIf(List<String>::isNotEmpty)
-            ?.joinToString(prefix = "Worker enrollment is missing: ")
+        if (capabilities.isEmpty()) return "Worker enrollment capabilities must not be empty"
+        return null
     }
 
     fun bootstrap(
@@ -57,12 +42,6 @@ data class WorkerEnrollmentProperties(
         WorkerEnrollmentBootstrap(
             workerId = workerId,
             gatewayCredential = gatewayCredential,
-            postgresJdbcUrl = postgresJdbcUrl,
-            postgresUsername = postgresUsername,
-            postgresPassword = postgresPassword,
-            rabbitmqAddresses = rabbitmqAddresses,
-            rabbitmqUsername = rabbitmqUsername,
-            rabbitmqPassword = rabbitmqPassword,
             capabilities = capabilities,
         )
 }

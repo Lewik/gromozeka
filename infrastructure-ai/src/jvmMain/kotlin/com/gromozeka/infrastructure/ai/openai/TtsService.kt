@@ -23,17 +23,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "false",
+    matchIfMissing = true,
+)
 class TtsService(
-    private val clientFactory: OpenAiSdkClientFactory,
     private val settingsProvider: SettingsProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val audioController: AudioController,
     private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
     private val remoteClients: List<AiRequestResponseExecutionClient>,
-) : DirectAiTextToSpeechProvider {
+    private val directProvider: OpenAiSpeechSynthesisExecutor,
+) {
     private val log = KLoggers.logger(this)
 
     suspend fun generateSpeech(
@@ -61,56 +67,10 @@ class TtsService(
         require(configured.target == AiExecutionTarget.Server) {
             "Streaming speech synthesis requires a Server-targeted runtime"
         }
-        val runtime = configured.runtime
-        val response = withContext(Dispatchers.IO) {
-            clientFactory.createClient(runtime.connection).audio().speech().create(
-                speechParamsBuilder(
-                    request = configured.request,
-                    modelName = runtime.modelConfiguration.providerModelId,
-                )
-                    .responseFormat(SpeechCreateParams.ResponseFormat.PCM)
-                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
-                    .build()
-            )
-        }
-
-        response.use { httpResponse ->
-            httpResponse.body().use { input ->
-                val buffer = ByteArray(16 * 1024)
-                while (true) {
-                    val read = withContext(Dispatchers.IO) { input.read(buffer) }
-                    if (read < 0) break
-                    if (read > 0) emit(TtsAudioChunk(buffer.copyOf(read)))
-                }
-            }
+        directProvider.streamPcm(configured.runtime, configured.request).collect {
+            emit(it)
         }
     }
-
-    override suspend fun synthesize(
-        runtime: ResolvedAiRuntime,
-        request: AiSpeechSynthesisRequest,
-    ): AiSpeechSynthesisResponse =
-        withContext(Dispatchers.IO) {
-            val response = clientFactory.createClient(runtime.connection).audio().speech().create(
-                speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
-                    .responseFormat(SpeechCreateParams.ResponseFormat.WAV)
-                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
-                    .build()
-            )
-            val audioData = response.use { httpResponse ->
-                httpResponse.body().use { input ->
-                    ByteArrayOutputStream().use { output ->
-                        input.copyTo(output)
-                        output.toByteArray()
-                    }
-                }
-            }
-            AiSpeechSynthesisResponse(
-                audioData = audioData,
-                mediaType = "audio/wav",
-                fileExtension = "wav",
-            )
-        }
 
     suspend fun playAudio(audioFile: File) {
         audioController.playAudioFile(audioFile.absolutePath)
@@ -154,7 +114,7 @@ class TtsService(
         configured: ConfiguredSpeechSynthesis,
     ): AiSpeechSynthesisResponse =
         when (val target = configured.target) {
-            AiExecutionTarget.Server -> synthesize(configured.runtime, configured.request)
+            AiExecutionTarget.Server -> directProvider.synthesize(configured.runtime, configured.request)
             is AiExecutionTarget.Worker -> remoteClient().synthesize(
                 target = workerTargetResolver.requireOnline(
                     ConversationRuntimeWorkerId(target.workerId),
@@ -164,6 +124,77 @@ class TtsService(
                 request = configured.request,
             )
         }
+
+    private fun remoteClient(): AiRequestResponseExecutionClient =
+        remoteClients.singleOrNull()
+            ?: error(
+                if (remoteClients.isEmpty()) {
+                    "Worker-targeted speech synthesis requires Worker Gateway transport"
+                } else {
+                    "Multiple AI request-response transports are configured"
+                }
+            )
+
+    private data class ConfiguredSpeechSynthesis(
+        val target: AiExecutionTarget,
+        val runtime: ResolvedAiRuntime,
+        val request: AiSpeechSynthesisRequest,
+    )
+}
+
+@Service
+class OpenAiSpeechSynthesisExecutor(
+    private val clientFactory: OpenAiSdkClientFactory,
+) : DirectAiTextToSpeechProvider {
+    override suspend fun synthesize(
+        runtime: ResolvedAiRuntime,
+        request: AiSpeechSynthesisRequest,
+    ): AiSpeechSynthesisResponse =
+        withContext(Dispatchers.IO) {
+            val response = clientFactory.createClient(runtime.connection).audio().speech().create(
+                speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
+                    .responseFormat(SpeechCreateParams.ResponseFormat.WAV)
+                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
+                    .build()
+            )
+            val audioData = response.use { httpResponse ->
+                httpResponse.body().use { input ->
+                    ByteArrayOutputStream().use { output ->
+                        input.copyTo(output)
+                        output.toByteArray()
+                    }
+                }
+            }
+            AiSpeechSynthesisResponse(
+                audioData = audioData,
+                mediaType = "audio/wav",
+                fileExtension = "wav",
+            )
+        }
+
+    fun streamPcm(
+        runtime: ResolvedAiRuntime,
+        request: AiSpeechSynthesisRequest,
+    ): Flow<TtsAudioChunk> = flow {
+        val response = withContext(Dispatchers.IO) {
+            clientFactory.createClient(runtime.connection).audio().speech().create(
+                speechParamsBuilder(request, runtime.modelConfiguration.providerModelId)
+                    .responseFormat(SpeechCreateParams.ResponseFormat.PCM)
+                    .streamFormat(SpeechCreateParams.StreamFormat.AUDIO)
+                    .build()
+            )
+        }
+        response.use { httpResponse ->
+            httpResponse.body().use { input ->
+                val buffer = ByteArray(16 * 1024)
+                while (true) {
+                    val read = withContext(Dispatchers.IO) { input.read(buffer) }
+                    if (read < 0) break
+                    if (read > 0) emit(TtsAudioChunk(buffer.copyOf(read)))
+                }
+            }
+        }
+    }
 
     private fun speechParamsBuilder(
         request: AiSpeechSynthesisRequest,
@@ -185,22 +216,6 @@ class TtsService(
                 append('.')
             }
         }
-
-    private fun remoteClient(): AiRequestResponseExecutionClient =
-        remoteClients.singleOrNull()
-            ?: error(
-                if (remoteClients.isEmpty()) {
-                    "Worker-targeted speech synthesis requires Worker Gateway transport"
-                } else {
-                    "Multiple AI request-response transports are configured"
-                }
-            )
-
-    private data class ConfiguredSpeechSynthesis(
-        val target: AiExecutionTarget,
-        val runtime: ResolvedAiRuntime,
-        val request: AiSpeechSynthesisRequest,
-    )
 }
 
 data class TtsAudioChunk(

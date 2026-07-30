@@ -60,11 +60,12 @@ Managed commands use the native host shell: `/bin/sh` on macOS/Linux and
 instead of being embedded in the `cmd.exe` argument list, and process-tree
 cancellation uses `taskkill /T /F`.
 
-A Worker durably claims a runtime task before acknowledging its RabbitMQ
-delivery. The claim never expires or moves to another Worker session. After the
-RabbitMQ acknowledgement, the Server records the execution-start boundary. If
-the session disappears before that boundary, the task is recorded as not
-started; after it, the outcome is unknown. Neither case is rerun automatically.
+The Worker opens one authenticated outbound WSS session to the Server. The
+Server sends exact-target tool and finite AI operations through that session.
+The Worker returns results and synchronizes command, monitor, Workspace Mount,
+MCP, and environment state through the same narrow gateway. If the session
+disappears after an operation starts, its outcome is unknown. Gromozeka never
+reassigns or automatically retries the operation.
 
 Worker YAML declares only stable identity, version, capabilities, and transport
 credentials. Projects, Workspaces, and Workspace Mounts are central
@@ -78,7 +79,7 @@ Workspace only when they see the same underlying tree. Later tool calls carry
 an exact Worker or Workspace Mount target and are never reassigned or retried
 automatically.
 
-The current deployment contract gives Workers direct access to PostgreSQL and
-RabbitMQ. These endpoints must stay on a private network and use TLS. A future
-control plane can replace direct credentials without changing runtime task,
-claim, capability, or exact-target semantics.
+Workers never receive PostgreSQL or RabbitMQ credentials. Those services are
+private Server implementation details. A Worker stores only its stable identity
+and revocable Gateway credential; AI and MCP configuration is synchronized
+into process memory after authentication.

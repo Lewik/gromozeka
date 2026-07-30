@@ -1,17 +1,13 @@
 gromozeka:
-  postgres:
-    jdbc-url: ${GROMOZEKA_POSTGRES_JDBC_URL}
-    username: ${GROMOZEKA_POSTGRES_USERNAME}
-    password: ${GROMOZEKA_POSTGRES_PASSWORD}
+  worker-gateway:
+    enabled: true
+    server-url: ${GROMOZEKA_SERVER_URL}
+    credential: ${GROMOZEKA_WORKER_GATEWAY_CREDENTIAL}
   runtime:
     worker:
       id: workstation
+      version: manual
       capabilities:
+        - AI_REQUEST_RESPONSE
         - TOOL_EXECUTION
         - LOCAL_AGENT_TOOL
-
-spring:
-  rabbitmq:
-    addresses: ${GROMOZEKA_RABBITMQ_ADDRESSES}
-    username: ${GROMOZEKA_RABBITMQ_USERNAME}
-    password: ${GROMOZEKA_RABBITMQ_PASSWORD}

@@ -1,5 +1,6 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.mcp.McpServer
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.service.McpServerRevision
@@ -26,6 +27,7 @@ sealed interface WorkerGatewayMessage {
     @SerialName("welcome")
     data class Welcome(
         val heartbeatIntervalSeconds: Long,
+        val aiCatalogSnapshot: AiCatalogSnapshot,
         val mcpServers: List<McpServer>,
         val protocolVersion: Int = WORKER_GATEWAY_PROTOCOL_VERSION,
     ) : WorkerGatewayMessage
@@ -59,6 +61,12 @@ sealed interface WorkerGatewayMessage {
             require(expectedRevision > 0) { "MCP server expected revision must be positive" }
         }
     }
+
+    @Serializable
+    @SerialName("ai_catalog_updated")
+    data class AiCatalogUpdated(
+        val snapshot: AiCatalogSnapshot,
+    ) : WorkerGatewayMessage
 
     @Serializable
     @SerialName("request")
@@ -143,9 +151,10 @@ enum class WorkerGatewayOperation {
     AI_REQUEST_RESPONSE,
     TOOL_EXECUTION,
     COMMAND_RUNTIME_STATE,
+    WORKSPACE_STATE,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 3
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 5
 
 @OptIn(ExperimentalSerializationApi::class)
 object WorkerGatewayCodec {
