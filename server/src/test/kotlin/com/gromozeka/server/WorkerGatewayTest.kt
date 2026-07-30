@@ -31,10 +31,15 @@ import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import io.ktor.client.plugins.websocket.WebSockets as ClientWebSockets
+import io.ktor.client.request.get
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.call
 import io.ktor.server.application.install
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
@@ -68,9 +73,27 @@ class WorkerGatewayTest {
         )
         val service = WorkerGatewayAuthenticationService(repository)
 
-        assertEquals(worker, service.authenticate("Bearer $credential"))
+        assertEquals(worker, service.authenticate("Bearer $credential")?.worker)
         assertNull(service.authenticate("Bearer invalid-credential"))
         assertNull(service.authenticate(null))
+    }
+
+    @Test
+    fun `rotated gateway credential invalidates its authenticated principal`() = runBlocking {
+        val worker = worker("worker-1")
+        val credential = "gateway-credential-that-is-long-enough-for-validation"
+        val repository = GatewayAuthenticationRepository(
+            credentialHash = sha256(credential),
+            worker = worker,
+        )
+        val service = WorkerGatewayAuthenticationService(repository)
+        val principal = requireNotNull(service.authenticate("Bearer $credential"))
+
+        assertTrue(service.isActive(principal))
+
+        repository.rotateTo(sha256("replacement-gateway-credential-that-is-long-enough"))
+
+        assertFalse(service.isActive(principal))
     }
 
     @Test
@@ -97,16 +120,18 @@ class WorkerGatewayTest {
         )
         val runtimeRegistry = InMemoryConversationRuntimeWorkerRegistry()
         val sessionRegistry = WorkerGatewaySessionRegistry()
+        val authenticationService = WorkerGatewayAuthenticationService(repository)
         val gatewayService = WorkerGatewayService(
             runtimeRegistry,
             sessionRegistry,
             EmptyMcpServerRepository,
             emptyList(),
             TestAiConfigurationProvider,
+            authenticationService,
         )
-        val authenticationService = WorkerGatewayAuthenticationService(repository)
 
         application {
+            installHttpAuthenticationErrors()
             install(ServerWebSockets)
             routing {
                 route("/worker/ws") {
@@ -190,6 +215,47 @@ class WorkerGatewayTest {
                 )
             )
         }
+    }
+
+    @Test
+    fun `worker gateway authentication fails closed`() = testApplication {
+        val authenticationService = WorkerGatewayAuthenticationService(
+            GatewayAuthenticationRepository(
+                credentialHash = sha256("gateway-credential-that-is-long-enough-for-validation"),
+                worker = worker("worker-1"),
+            )
+        )
+        application {
+            installHttpAuthenticationErrors()
+            routing {
+                route("/worker") {
+                    install(workerGatewayAuthentication(authenticationService))
+                    get {
+                        call.attributes[authenticatedWorkerGatewayKey]
+                        call.respondText("authenticated")
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/worker")
+
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals("""Bearer realm="gromozeka-worker"""", response.headers[HttpHeaders.WWWAuthenticate])
+    }
+
+    @Test
+    fun `revoked worker session receives a disconnect request`() = runBlocking {
+        val registry = WorkerGatewaySessionRegistry()
+        val session = session("worker-1", "session-1")
+        registry.attach(session)
+
+        registry.disconnectRevokedWorker(session.identity.workerId)
+
+        assertEquals(
+            "Worker access was revoked",
+            withTimeout(1_000) { session.awaitRequestedDisconnect() },
+        )
     }
 
     private fun session(workerId: String, sessionId: String): WorkerGatewaySession =
@@ -303,9 +369,15 @@ private data object EmptyMcpServerRepository : McpServerRepository {
 }
 
 private class GatewayAuthenticationRepository(
-    private val credentialHash: String,
+    credentialHash: String,
     private val worker: WorkerResource,
 ) : WorkerEnrollmentRepository {
+    private var credentialHash = credentialHash
+
+    fun rotateTo(credentialHash: String) {
+        this.credentialHash = credentialHash
+    }
+
     override suspend fun issue(
         tokenHash: String,
         ownerUserId: User.Id,

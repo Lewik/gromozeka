@@ -5,17 +5,13 @@ import com.gromozeka.domain.model.AuthenticatedUser
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.PersonalAccessTokenService
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.install
-import io.ktor.server.plugins.statuspages.StatusPages
-import io.ktor.server.plugins.statuspages.exception
 import io.ktor.server.request.path
-import io.ktor.server.response.respondText
 import io.ktor.util.AttributeKey
 
 internal sealed interface AuthenticatedMcpCaller {
@@ -38,28 +34,12 @@ internal fun Application.installMcpAuthentication(
     authenticationService: AuthenticationService,
     personalAccessTokenService: PersonalAccessTokenService,
 ) {
-    install(StatusPages) {
-        exception<McpAuthenticationException> { call, error ->
-            if (error.status == HttpStatusCode.Unauthorized) {
-                call.response.headers.append(
-                    HttpHeaders.WWWAuthenticate,
-                    """Bearer realm="gromozeka-mcp"""",
-                )
-            }
-            call.respondText(
-                """{"error":"${error.publicMessage}"}""",
-                ContentType.Application.Json,
-                error.status,
-            )
-        }
-    }
-
     install(
         createApplicationPlugin("GromozekaMcpAuthentication") {
             onCall { call ->
                 val requiredScope = call.request.path().requiredMcpScope() ?: return@onCall
                 if (!call.isSecureTransport()) {
-                    throw McpAuthenticationException(
+                    throw HttpAuthenticationException(
                         HttpStatusCode.UpgradeRequired,
                         "MCP authentication requires HTTPS",
                     )
@@ -68,9 +48,10 @@ internal fun Application.installMcpAuthentication(
                     authenticationService = authenticationService,
                     personalAccessTokenService = personalAccessTokenService,
                     requiredScope = requiredScope,
-                ) ?: throw McpAuthenticationException(
+                ) ?: throw HttpAuthenticationException(
                     HttpStatusCode.Unauthorized,
                     "Invalid or missing MCP access token",
+                    """Bearer realm="gromozeka-mcp"""",
                 )
                 call.attributes.put(authenticatedMcpCallerKey, caller)
             }
@@ -105,11 +86,6 @@ private fun String.requiredMcpScope(): PersonalAccessToken.Scope? =
             PersonalAccessToken.Scope.MCP_MEMORY
         else -> null
     }
-
-private class McpAuthenticationException(
-    val status: HttpStatusCode,
-    val publicMessage: String,
-) : RuntimeException(publicMessage)
 
 internal val authenticatedMcpCallerKey =
     AttributeKey<AuthenticatedMcpCaller>("gromozeka-authenticated-mcp-caller")

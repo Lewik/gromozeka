@@ -93,6 +93,7 @@ class GromozekaMcpAuthenticationTest {
 }
 
 private fun io.ktor.server.application.Application.installTestMcpRoutes() {
+    installHttpAuthenticationErrors()
     installMcpAuthentication(
         authenticationService = TestAuthenticationService,
         personalAccessTokenService = TestPersonalAccessTokenService,

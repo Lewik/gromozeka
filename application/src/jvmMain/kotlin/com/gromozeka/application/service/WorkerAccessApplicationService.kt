@@ -14,6 +14,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.WorkerAccessDeniedException
 import com.gromozeka.domain.service.WorkerAccessService
+import com.gromozeka.domain.service.WorkerConnectionRevocationService
 import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,6 +25,7 @@ class WorkerAccessApplicationService(
     private val identityRepository: IdentityRepository,
     private val membershipRepository: ProjectMembershipRepository,
     private val projectAccessService: ProjectAccessService,
+    private val workerConnectionRevocationService: WorkerConnectionRevocationService,
 ) : WorkerAccessService {
     override suspend fun findAccessible(
         actor: User,
@@ -185,12 +187,14 @@ class WorkerAccessApplicationService(
         workerId: ConversationRuntimeWorkerId,
     ): WorkerResource {
         val worker = requirePermission(actor, workerId, WorkerPermission.MANAGE)
-        return repository.saveWorker(
+        val revoked = repository.saveWorker(
             worker.copy(
                 status = WorkerResource.Status.REVOKED,
                 updatedAt = Clock.System.now(),
             )
         )
+        workerConnectionRevocationService.disconnectRevokedWorker(workerId)
+        return revoked
     }
 
     private suspend fun canUse(

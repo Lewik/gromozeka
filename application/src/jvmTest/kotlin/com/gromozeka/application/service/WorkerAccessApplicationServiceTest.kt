@@ -11,6 +11,7 @@ import com.gromozeka.domain.repository.WorkerAccessRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.WorkerAccessDeniedException
+import com.gromozeka.domain.service.WorkerConnectionRevocationService
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlin.test.Test
@@ -37,6 +38,7 @@ class WorkerAccessApplicationServiceTest {
         }
     }
     private val repository = FakeWorkerAccessRepository()
+    private val connectionRevocationService = FakeWorkerConnectionRevocationService()
     private val projectAccessService = ProjectAccessApplicationService(
         projectService = WorkerTestProjectService(project),
         membershipRepository = membershipRepository,
@@ -47,6 +49,7 @@ class WorkerAccessApplicationServiceTest {
         identityRepository = identityRepository,
         membershipRepository = membershipRepository,
         projectAccessService = projectAccessService,
+        workerConnectionRevocationService = connectionRevocationService,
     )
     private val worker = workerResource(owner)
 
@@ -89,6 +92,7 @@ class WorkerAccessApplicationServiceTest {
 
         service.revokeWorker(serverOwner, worker.id)
 
+        assertEquals(listOf(worker.id), connectionRevocationService.revokedWorkerIds)
         assertFailsWith<WorkerAccessDeniedException> {
             service.requirePermission(owner, worker.id, WorkerPermission.USE)
         }
@@ -106,6 +110,14 @@ class WorkerAccessApplicationServiceTest {
             createdAt = Clock.System.now(),
             createdByUserId = owner.id,
         )
+}
+
+private class FakeWorkerConnectionRevocationService : WorkerConnectionRevocationService {
+    val revokedWorkerIds = mutableListOf<ConversationRuntimeWorkerId>()
+
+    override fun disconnectRevokedWorker(workerId: ConversationRuntimeWorkerId) {
+        revokedWorkerIds += workerId
+    }
 }
 
 private class FakeWorkerAccessRepository : WorkerAccessRepository {

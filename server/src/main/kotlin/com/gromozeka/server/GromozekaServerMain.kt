@@ -7,14 +7,12 @@ import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.FirstUserBootstrapToken
 import com.gromozeka.domain.service.PersonalAccessTokenService
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.install
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.conditionalheaders.ConditionalHeaders
-import io.ktor.server.response.respondText
 import io.ktor.server.routing.routing
 import io.ktor.server.routing.route
 import io.ktor.server.websocket.WebSockets
@@ -80,18 +78,17 @@ fun main() {
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
     val ktorServer = embeddedServer(CIO, port = port, host = host) {
+        installHttpAuthenticationErrors()
         installMcpAuthentication(authenticationService, personalAccessTokenService)
         val websocketAuthentication = createRouteScopedPlugin("GromozekaWebSocketAuthentication") {
             onCall { call ->
                 val authenticatedSession = try {
                     call.requireAuthenticated(authenticationService)
                 } catch (_: MissingAuthenticationException) {
-                    call.respondText(
-                        """{"message":"Authentication required"}""",
-                        ContentType.Application.Json,
-                        HttpStatusCode.Unauthorized,
+                    throw HttpAuthenticationException(
+                        status = HttpStatusCode.Unauthorized,
+                        publicMessage = "Authentication required",
                     )
-                    return@onCall
                 }
                 call.attributes.put(authenticatedRemoteSessionKey, authenticatedSession)
             }

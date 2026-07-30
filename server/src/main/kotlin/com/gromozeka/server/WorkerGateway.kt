@@ -6,6 +6,7 @@ import com.gromozeka.domain.repository.WorkerEnrollmentRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.WorkerConnectionRevocationService
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.McpServerRevision
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
@@ -18,7 +19,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.request.header
-import io.ktor.server.response.respondText
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.util.AttributeKey
 import io.ktor.websocket.CloseReason
@@ -31,10 +31,12 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeout
@@ -49,15 +51,20 @@ import java.util.concurrent.ConcurrentHashMap
 class WorkerGatewayAuthenticationService(
     private val enrollmentRepository: WorkerEnrollmentRepository,
 ) {
-    suspend fun authenticate(authorization: String?): WorkerResource? {
+    internal suspend fun authenticate(authorization: String?): AuthenticatedWorkerGateway? {
         val credential = authorization
             ?.takeIf { it.startsWith(BEARER_PREFIX, ignoreCase = true) }
             ?.substring(BEARER_PREFIX.length)
             ?.trim()
             ?.takeIf { it.length in 40..128 }
             ?: return null
-        return enrollmentRepository.authenticateGatewayCredential(sha256(credential))
+        val credentialHash = sha256(credential)
+        return enrollmentRepository.authenticateGatewayCredential(credentialHash)
+            ?.let { AuthenticatedWorkerGateway(it, credentialHash) }
     }
+
+    internal suspend fun isActive(principal: AuthenticatedWorkerGateway): Boolean =
+        enrollmentRepository.authenticateGatewayCredential(principal.credentialHash)?.id == principal.worker.id
 
     private fun sha256(value: String): String =
         MessageDigest.getInstance("SHA-256")
@@ -69,8 +76,13 @@ class WorkerGatewayAuthenticationService(
     }
 }
 
+internal class AuthenticatedWorkerGateway(
+    val worker: WorkerResource,
+    internal val credentialHash: String,
+)
+
 @Service
-class WorkerGatewaySessionRegistry {
+class WorkerGatewaySessionRegistry : WorkerConnectionRevocationService {
     private val sessions = ConcurrentHashMap<ConversationRuntimeWorkerId, WorkerGatewaySession>()
 
     fun attach(session: WorkerGatewaySession): Boolean =
@@ -81,6 +93,10 @@ class WorkerGatewaySessionRegistry {
 
     fun find(workerId: ConversationRuntimeWorkerId): WorkerGatewaySession? =
         sessions[workerId]
+
+    override fun disconnectRevokedWorker(workerId: ConversationRuntimeWorkerId) {
+        sessions[workerId]?.requestDisconnect("Worker access was revoked")
+    }
 
     suspend fun execute(
         target: ConversationRuntimeWorkerIdentity,
@@ -103,6 +119,7 @@ class WorkerGatewaySession(
     private val outgoing = Channel<WorkerGatewayMessage>(OUTGOING_BUFFER_SIZE)
     private val pending = ConcurrentHashMap<String, CompletableDeferred<WorkerGatewayMessage.Response>>()
     private val inFlight = Semaphore(MAX_IN_FLIGHT_REQUESTS)
+    private val requestedDisconnect = CompletableDeferred<String>()
 
     suspend fun execute(
         operation: WorkerGatewayOperation,
@@ -154,6 +171,12 @@ class WorkerGatewaySession(
     fun accept(response: WorkerGatewayMessage.Response): Boolean =
         pending[response.requestId]?.complete(response) == true
 
+    fun requestDisconnect(reason: String) {
+        requestedDisconnect.complete(reason)
+    }
+
+    suspend fun awaitRequestedDisconnect(): String = requestedDisconnect.await()
+
     fun close(cause: Throwable) {
         outgoing.close(cause)
         pending.values.forEach { it.completeExceptionally(cause) }
@@ -174,6 +197,7 @@ class WorkerGatewayService(
     private val mcpServerRepository: McpServerRepository,
     serverRequestHandlers: List<WorkerGatewayServerRequestHandler>,
     private val aiConfigurationProvider: AiConfigurationProvider,
+    private val authenticationService: WorkerGatewayAuthenticationService,
 ) {
     private val log = KLoggers.logger(this)
     private val serverRequestHandlersByOperation =
@@ -183,10 +207,11 @@ class WorkerGatewayService(
             }
         }
 
-    suspend fun handle(
+    internal suspend fun handle(
         socket: DefaultWebSocketServerSession,
-        authenticatedWorker: WorkerResource,
+        authenticatedWorker: AuthenticatedWorkerGateway,
     ) {
+        val worker = authenticatedWorker.worker
         val hello = try {
             withTimeout(HELLO_TIMEOUT.toMillis()) {
                 socket.receiveMessage()
@@ -207,8 +232,11 @@ class WorkerGatewayService(
             lastHeartbeatAt = Clock.System.now(),
             stoppedAt = null,
         )
-        if (initialRegistration.identity.workerId != authenticatedWorker.id) {
+        if (initialRegistration.identity.workerId != worker.id) {
             return socket.fail("WORKER_ID_MISMATCH", "Worker credential does not match the declared Worker")
+        }
+        if (!authenticationService.isActive(authenticatedWorker)) {
+            return socket.fail("WORKER_AUTHENTICATION_REVOKED", "Worker credential is no longer active")
         }
 
         val initialAiCatalog = aiConfigurationProvider.snapshot
@@ -216,7 +244,7 @@ class WorkerGatewayService(
             WorkerGatewayMessage.Welcome(
                 heartbeatIntervalSeconds = HEARTBEAT_INTERVAL.seconds,
                 aiCatalogSnapshot = initialAiCatalog,
-                mcpServers = mcpServerRepository.listByWorker(authenticatedWorker.id),
+                mcpServers = mcpServerRepository.listByWorker(worker.id),
             )
         )
         val ready = try {
@@ -229,7 +257,7 @@ class WorkerGatewayService(
             return socket.fail("INVALID_READY", "Worker Gateway readiness was not received")
         }
         ready.refreshAvailableMcpServers.forEach { reference ->
-            markMcpRefreshAvailable(authenticatedWorker.id, reference)
+            markMcpRefreshAvailable(worker.id, reference)
         }
         val registration = initialRegistration.copy(tools = ready.tools)
         val gatewaySession = WorkerGatewaySession(registration.identity)
@@ -260,6 +288,24 @@ class WorkerGatewayService(
                         socket.sendMessage(message)
                     }
                 }
+                val authenticationMonitor = launch {
+                    while (isActive) {
+                        delay(AUTHENTICATION_RECHECK_INTERVAL.toMillis())
+                        if (!authenticationService.isActive(authenticatedWorker)) {
+                            socket.close(
+                                CloseReason(
+                                    CloseReason.Codes.VIOLATED_POLICY,
+                                    "Worker credential is no longer active",
+                                )
+                            )
+                            break
+                        }
+                    }
+                }
+                val requestedDisconnectMonitor = launch {
+                    val reason = gatewaySession.awaitRequestedDisconnect()
+                    socket.close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, reason))
+                }
                 val aiCatalogUpdates = launch {
                     aiConfigurationProvider.snapshotFlow
                         .filterNotNull()
@@ -270,6 +316,12 @@ class WorkerGatewayService(
                 }
                 try {
                     for (frame in socket.incoming) {
+                        if (!authenticationService.isActive(authenticatedWorker)) {
+                            return@coroutineScope socket.fail(
+                                "WORKER_AUTHENTICATION_REVOKED",
+                                "Worker credential is no longer active",
+                            )
+                        }
                         val message = frame.decodeMessage()
                             ?: return@coroutineScope socket.fail(
                                 "INVALID_FRAME",
@@ -352,6 +404,8 @@ class WorkerGatewayService(
                             "Worker Gateway disconnected: worker=${registration.identity.workerId.value}"
                         )
                     )
+                    authenticationMonitor.cancelAndJoin()
+                    requestedDisconnectMonitor.cancelAndJoin()
                     aiCatalogUpdates.cancelAndJoin()
                     writer.cancelAndJoin()
                 }
@@ -433,13 +487,15 @@ class WorkerGatewayService(
     private companion object {
         val HELLO_TIMEOUT: Duration = Duration.ofSeconds(15)
         val READY_TIMEOUT: Duration = Duration.ofMinutes(5)
+        val AUTHENTICATION_RECHECK_INTERVAL: Duration = Duration.ofSeconds(10)
         val HEARTBEAT_INTERVAL: Duration = Duration.ofSeconds(10)
         val HEARTBEAT_STALE_AFTER: Duration = Duration.ofSeconds(30)
         val workerRequestConcurrency = Semaphore(64)
     }
 }
 
-internal val authenticatedWorkerGatewayKey = AttributeKey<WorkerResource>("AuthenticatedWorkerGateway")
+internal val authenticatedWorkerGatewayKey =
+    AttributeKey<AuthenticatedWorkerGateway>("AuthenticatedWorkerGateway")
 
 internal fun workerGatewayAuthentication(
     authenticationService: WorkerGatewayAuthenticationService,
@@ -447,12 +503,11 @@ internal fun workerGatewayAuthentication(
     onCall { call ->
         val worker = authenticationService.authenticate(call.request.header(HttpHeaders.Authorization))
         if (worker == null) {
-            call.respondText(
-                """{"message":"Worker authentication required"}""",
-                contentType = io.ktor.http.ContentType.Application.Json,
+            throw HttpAuthenticationException(
                 status = HttpStatusCode.Unauthorized,
+                publicMessage = "Worker authentication required",
+                challenge = """Bearer realm="gromozeka-worker"""",
             )
-            return@onCall
         }
         call.attributes.put(authenticatedWorkerGatewayKey, worker)
     }

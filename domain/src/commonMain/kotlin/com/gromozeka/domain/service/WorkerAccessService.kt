@@ -76,5 +76,9 @@ interface WorkerAccessService {
     ): WorkerResource
 }
 
+interface WorkerConnectionRevocationService {
+    fun disconnectRevokedWorker(workerId: ConversationRuntimeWorkerId)
+}
+
 class WorkerAccessDeniedException :
     IllegalStateException("Worker is unavailable or access is denied")
