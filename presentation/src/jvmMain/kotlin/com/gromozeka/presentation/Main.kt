@@ -31,6 +31,7 @@ fun main() {
     log.info("Starting Compose Desktop UI...")
     application {
         val settingsStore = remember { createDesktopRemoteClientSettingsStore() }
+        val sessionCredentialStore = remember { createDesktopRemoteSessionCredentialStore() }
         val explicitRemoteUrl = remember {
             System.getProperty("gromozeka.remote.url")
                 ?: System.getenv("GROMOZEKA_REMOTE_URL")
@@ -62,7 +63,11 @@ fun main() {
             remoteApp = null
             authenticationConnection?.close()
             try {
-                val connection = RemoteAuthenticationConnection(targetUrl, "Desktop client")
+                val connection = RemoteAuthenticationConnection(
+                    remoteUrl = targetUrl,
+                    clientLabel = "Desktop client",
+                    sessionCredentialStore = sessionCredentialStore,
+                )
                 authenticationConnection = connection
                 val status = connection.status()
                 authenticationStatus = status

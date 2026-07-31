@@ -25,6 +25,7 @@ import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.IosClientAudioPlayer
 import com.gromozeka.presentation.services.IosClientAudioRecorder
 import com.gromozeka.presentation.services.IosRemoteClientSettingsStore
+import com.gromozeka.presentation.services.IosRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.PTTEvent
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
@@ -52,6 +53,7 @@ fun GromozekaMainViewController(): UIViewController =
 private fun GromozekaIosApp() {
     val scope = rememberCoroutineScope()
     val settingsStore = remember { IosRemoteClientSettingsStore() }
+    val sessionCredentialStore = remember { IosRemoteSessionCredentialStore() }
     val initialResolution = remember {
         runCatching {
             settingsStore.resolveRemoteUrl(fallbackUrl = resolveBundledRemoteUrl())
@@ -79,7 +81,11 @@ private fun GromozekaIosApp() {
         remoteApp = null
         authenticationConnection?.close()
         try {
-            val connection = RemoteAuthenticationConnection(targetUrl, "iOS client")
+            val connection = RemoteAuthenticationConnection(
+                remoteUrl = targetUrl,
+                clientLabel = "iOS client",
+                sessionCredentialStore = sessionCredentialStore,
+            )
             authenticationConnection = connection
             val status = connection.status()
             authenticationStatus = status

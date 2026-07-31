@@ -20,10 +20,22 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
-fun createGromozekaHttpClient(): HttpClient =
+fun createGromozekaHttpClient(
+    remoteUrl: String? = null,
+    sessionCredentialStore: RemoteSessionCredentialStore? = null,
+): HttpClient =
     HttpClient {
         install(WebSockets)
-        install(HttpCookies)
+        install(HttpCookies) {
+            if (sessionCredentialStore != null) {
+                storage = PersistentSessionCookiesStorage(
+                    remoteUrl = requireNotNull(remoteUrl) {
+                        "Remote URL is required with persistent session credentials"
+                    },
+                    credentialStore = sessionCredentialStore,
+                )
+            }
+        }
         install(ContentNegotiation) {
             json(
                 Json {
@@ -100,7 +112,7 @@ class RemoteAuthenticationClient(
     }
 }
 
-private fun websocketUrlToHttpBase(url: String): String =
+internal fun websocketUrlToHttpBase(url: String): String =
     url
         .replaceFirst("wss://", "https://")
         .replaceFirst("ws://", "http://")

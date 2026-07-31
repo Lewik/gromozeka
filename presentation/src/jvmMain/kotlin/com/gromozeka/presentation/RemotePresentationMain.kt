@@ -5,6 +5,7 @@ import com.gromozeka.presentation.services.DesktopClientAudioPlayer
 import com.gromozeka.presentation.services.DesktopSystemAudioMuteService
 import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextService
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
+import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.WindowStateService
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.AuthenticatedUserView
@@ -24,8 +25,7 @@ internal suspend fun startRemotePresentation(
     httpClient: HttpClient? = null,
 ): RemoteStartedApp {
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    val clientHomeDirectory = System.getProperty("GROMOZEKA_CLIENT_HOME")
-        ?: File(System.getProperty("user.home"), ".gromozeka-remote-client").absolutePath
+    val clientHomeDirectory = desktopRemoteClientHomeDirectory().absolutePath
     val remoteApp = try {
         createRemoteAppComponents(
             remoteUrl = remoteUrl,
@@ -52,12 +52,20 @@ internal suspend fun startRemotePresentation(
 }
 
 internal fun createDesktopRemoteClientSettingsStore(): DesktopRemoteClientSettingsStore {
-    val clientHomeDirectory = System.getProperty("GROMOZEKA_CLIENT_HOME")
-        ?: File(System.getProperty("user.home"), ".gromozeka-remote-client").absolutePath
     return DesktopRemoteClientSettingsStore(
-        File(clientHomeDirectory, "remote-client-settings.json")
+        File(desktopRemoteClientHomeDirectory(), "remote-client-settings.json")
     )
 }
+
+internal fun createDesktopRemoteSessionCredentialStore(): DesktopRemoteSessionCredentialStore =
+    DesktopRemoteSessionCredentialStore(
+        File(desktopRemoteClientHomeDirectory(), "remote-sessions.json")
+    )
+
+private fun desktopRemoteClientHomeDirectory(): File =
+    System.getProperty("GROMOZEKA_CLIENT_HOME")
+        ?.let(::File)
+        ?: File(System.getProperty("user.home"), ".gromozeka-remote-client")
 
 internal class RemoteStartedApp(
     private val remoteApp: RemoteAppComponents,

@@ -27,6 +27,7 @@ import com.gromozeka.device.telemetry.AndroidDeviceLocationService
 import com.gromozeka.device.telemetry.AndroidLocationPermissionRequester
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.AndroidRemoteClientSettingsStore
+import com.gromozeka.presentation.services.AndroidRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.ui.GromozekaTheme
@@ -82,6 +83,7 @@ private fun GromozekaAndroidApp(
     val currentRemoteApp by rememberUpdatedState(remoteApp)
     val context = LocalContext.current.applicationContext
     val settingsStore = remember { AndroidRemoteClientSettingsStore(context) }
+    val sessionCredentialStore = remember { AndroidRemoteSessionCredentialStore(context) }
     val initialResolution = remember {
         runCatching {
             settingsStore.resolveRemoteUrl(
@@ -124,7 +126,11 @@ private fun GromozekaAndroidApp(
         remoteApp = null
         authenticationConnection?.close()
         try {
-            val connection = RemoteAuthenticationConnection(targetUrl, "Android client")
+            val connection = RemoteAuthenticationConnection(
+                remoteUrl = targetUrl,
+                clientLabel = "Android client",
+                sessionCredentialStore = sessionCredentialStore,
+            )
             authenticationConnection = connection
             val status = connection.status()
             authenticationStatus = status
