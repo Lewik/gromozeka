@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -24,7 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteUserAdministrationService
 import com.gromozeka.domain.model.User
@@ -234,7 +234,8 @@ private fun CreateRuntimeUserDialog(
 ) {
     var username by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val passwordState = remember { TextFieldState() }
+    val password = passwordState.text.toString()
     var role by remember { mutableStateOf(User.Role.MEMBER) }
 
     AlertDialog(
@@ -256,13 +257,10 @@ private fun CreateRuntimeUserDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
+                OutlinedSecretTextField(
+                    state = passwordState,
                     label = { Text("Initial password") },
                     supportingText = { Text("At least 12 characters") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 RoleSelector(role, onRoleChange = { role = it })
@@ -353,19 +351,17 @@ private fun ResetRuntimeUserPasswordDialog(
     onDismiss: () -> Unit,
     onReset: (String) -> Unit,
 ) {
-    var password by remember(user.id) { mutableStateOf("") }
+    val passwordState = remember(user.id) { TextFieldState() }
+    val password = passwordState.text.toString()
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Reset @${user.username} password") },
         text = {
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+            OutlinedSecretTextField(
+                state = passwordState,
                 label = { Text("New password") },
                 supportingText = { Text("Existing sessions and personal access tokens will be revoked.") },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
         },

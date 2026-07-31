@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -46,10 +49,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SecretRef
@@ -823,8 +826,8 @@ private fun ConnectionDialog(
             }
         )
     }
-    var secretValue by remember {
-        mutableStateOf(
+    val secretValueState = remember {
+        TextFieldState(
             when (existingSecret) {
                 is SecretRef.EnvironmentVariable -> existingSecret.name
                 is SecretRef.Inline -> existingSecret.value
@@ -832,8 +835,17 @@ private fun ConnectionDialog(
             }
         )
     }
+    val secretValue = secretValueState.text.toString()
     var removeConfiguredSecret by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(secretValueState) {
+        snapshotFlow { secretValueState.text.toString() }.collect { value ->
+            if (value.isNotEmpty()) {
+                removeConfiguredSecret = false
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -910,23 +922,20 @@ private fun ConnectionDialog(
                             removeConfiguredSecret = false
                         },
                     )
-                    OutlinedTextField(
-                        value = secretValue,
-                        onValueChange = {
-                            secretValue = it
-                            removeConfiguredSecret = false
-                        },
-                        label = {
-                            Text(if (secretMode == "Environment") "Environment variable" else "API key")
-                        },
-                        visualTransformation = if (secretMode == "Inline") {
-                            PasswordVisualTransformation()
-                        } else {
-                            androidx.compose.ui.text.input.VisualTransformation.None
-                        },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    if (secretMode == "Inline") {
+                        OutlinedSecretTextField(
+                            state = secretValueState,
+                            label = { Text("API key") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        OutlinedTextField(
+                            state = secretValueState,
+                            label = { Text("Environment variable") },
+                            lineLimits = TextFieldLineLimits.SingleLine,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                     if (existingSecretState?.source == AiCatalogSecretState.Source.INLINE) {
                         Text(
                             text = if (removeConfiguredSecret) {
@@ -947,7 +956,7 @@ private fun ConnectionDialog(
                             onClick = {
                                 removeConfiguredSecret = !removeConfiguredSecret
                                 if (removeConfiguredSecret) {
-                                    secretValue = ""
+                                    secretValueState.clearText()
                                 }
                             },
                         ) {

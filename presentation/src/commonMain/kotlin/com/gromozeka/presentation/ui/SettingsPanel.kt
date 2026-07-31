@@ -7,6 +7,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -1390,6 +1393,12 @@ private fun WebToolSettingsEditor(
     var secretMutations by remember(currentSnapshot.revision) {
         mutableStateOf(emptyList<AiCatalogSecretMutation>())
     }
+    val braveApiKeyInputState = remember(currentSnapshot.revision) {
+        TextFieldState(currentSnapshot.catalog.webTools.braveSearch.apiKey.secretText())
+    }
+    val jinaApiKeyInputState = remember(currentSnapshot.revision) {
+        TextFieldState(currentSnapshot.catalog.webTools.jinaReader.apiKey.secretText())
+    }
     var isSaving by remember { mutableStateOf(false) }
     var error by remember(currentSnapshot.revision) { mutableStateOf<String?>(null) }
     val braveSecretState = currentSnapshot.secretStates.firstOrNull {
@@ -1411,6 +1420,43 @@ private fun WebToolSettingsEditor(
     val canEnableClaudeTools = selectedClaudeModel in claudeModelById
     val isDirty = draft != currentSnapshot.catalog.webTools || secretMutations.isNotEmpty()
 
+    LaunchedEffect(braveApiKeyInputState, currentSnapshot.revision) {
+        snapshotFlow { braveApiKeyInputState.text.toString() }.collect { value ->
+            if (value == draft.braveSearch.apiKey.secretText()) return@collect
+            val secret = value.inlineSecretOrNull()
+            draft = draft.copy(
+                braveSearch = draft.braveSearch.copy(apiKey = secret),
+            )
+            secretMutations = secretMutations.withSecretMutation(
+                secret?.let {
+                    AiCatalogSecretMutation.Set(
+                        slot = AiCatalogSecretSlot.BraveSearchApiKey,
+                        value = it,
+                    )
+                },
+                AiCatalogSecretSlot.BraveSearchApiKey,
+            )
+        }
+    }
+    LaunchedEffect(jinaApiKeyInputState, currentSnapshot.revision) {
+        snapshotFlow { jinaApiKeyInputState.text.toString() }.collect { value ->
+            if (value == draft.jinaReader.apiKey.secretText()) return@collect
+            val secret = value.inlineSecretOrNull()
+            draft = draft.copy(
+                jinaReader = draft.jinaReader.copy(apiKey = secret),
+            )
+            secretMutations = secretMutations.withSecretMutation(
+                secret?.let {
+                    AiCatalogSecretMutation.Set(
+                        slot = AiCatalogSecretSlot.JinaReaderApiKey,
+                        value = it,
+                    )
+                },
+                AiCatalogSecretSlot.JinaReaderApiKey,
+            )
+        }
+    }
+
     SettingsGroup(title = "Web tools") {
         SwitchSettingItem(
             label = translation.settings.enableBraveSearchLabel,
@@ -1426,27 +1472,13 @@ private fun WebToolSettingsEditor(
             PasswordSettingItem(
                 label = translation.settings.braveApiKeyLabel,
                 description = translation.settings.braveApiKeyDescription,
-                value = draft.braveSearch.apiKey.secretText(),
-                onValueChange = { value ->
-                    val secret = value.inlineSecretOrNull()
-                    draft = draft.copy(
-                        braveSearch = draft.braveSearch.copy(apiKey = secret),
-                    )
-                    secretMutations = secretMutations.withSecretMutation(
-                        secret?.let {
-                            AiCatalogSecretMutation.Set(
-                                slot = AiCatalogSecretSlot.BraveSearchApiKey,
-                                value = it,
-                            )
-                        },
-                        AiCatalogSecretSlot.BraveSearchApiKey,
-                    )
-                },
+                state = braveApiKeyInputState,
             )
             ConfiguredSecretControls(
                 state = braveSecretState,
                 pendingMutation = secretMutations.forSlot(AiCatalogSecretSlot.BraveSearchApiKey),
                 onRemove = {
+                    braveApiKeyInputState.clearText()
                     draft = draft.copy(
                         braveSearch = draft.braveSearch.copy(apiKey = null)
                     )
@@ -1456,6 +1488,9 @@ private fun WebToolSettingsEditor(
                     )
                 },
                 onKeep = {
+                    braveApiKeyInputState.setTextAndPlaceCursorAtEnd(
+                        currentSnapshot.catalog.webTools.braveSearch.apiKey.secretText()
+                    )
                     draft = draft.copy(
                         braveSearch = draft.braveSearch.copy(
                             apiKey = currentSnapshot.catalog.webTools.braveSearch.apiKey
@@ -1483,27 +1518,13 @@ private fun WebToolSettingsEditor(
             PasswordSettingItem(
                 label = translation.settings.jinaApiKeyLabel,
                 description = translation.settings.jinaApiKeyDescription,
-                value = draft.jinaReader.apiKey.secretText(),
-                onValueChange = { value ->
-                    val secret = value.inlineSecretOrNull()
-                    draft = draft.copy(
-                        jinaReader = draft.jinaReader.copy(apiKey = secret),
-                    )
-                    secretMutations = secretMutations.withSecretMutation(
-                        secret?.let {
-                            AiCatalogSecretMutation.Set(
-                                slot = AiCatalogSecretSlot.JinaReaderApiKey,
-                                value = it,
-                            )
-                        },
-                        AiCatalogSecretSlot.JinaReaderApiKey,
-                    )
-                },
+                state = jinaApiKeyInputState,
             )
             ConfiguredSecretControls(
                 state = jinaSecretState,
                 pendingMutation = secretMutations.forSlot(AiCatalogSecretSlot.JinaReaderApiKey),
                 onRemove = {
+                    jinaApiKeyInputState.clearText()
                     draft = draft.copy(
                         jinaReader = draft.jinaReader.copy(apiKey = null)
                     )
@@ -1513,6 +1534,9 @@ private fun WebToolSettingsEditor(
                     )
                 },
                 onKeep = {
+                    jinaApiKeyInputState.setTextAndPlaceCursorAtEnd(
+                        currentSnapshot.catalog.webTools.jinaReader.apiKey.secretText()
+                    )
                     draft = draft.copy(
                         jinaReader = draft.jinaReader.copy(
                             apiKey = currentSnapshot.catalog.webTools.jinaReader.apiKey
@@ -1938,8 +1962,7 @@ private fun DropdownSettingItem(
 private fun PasswordSettingItem(
     label: String,
     description: String,
-    value: String,
-    onValueChange: (String) -> Unit,
+    state: TextFieldState,
 ) {
     Column {
         Text(
@@ -1956,12 +1979,9 @@ private fun PasswordSettingItem(
             )
         }
 
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
+        OutlinedSecretTextField(
+            state = state,
             modifier = Modifier.fillMaxWidth(),
-            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-            singleLine = true
         )
     }
 }

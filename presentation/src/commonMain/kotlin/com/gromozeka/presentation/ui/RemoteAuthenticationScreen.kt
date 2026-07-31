@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +25,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 data class RemoteAuthenticationInput(
@@ -42,9 +45,12 @@ fun RemoteAuthenticationScreen(
 ) {
     var username by remember(initialized) { mutableStateOf("") }
     var displayName by remember(initialized) { mutableStateOf("") }
-    var bootstrapToken by remember(initialized) { mutableStateOf("") }
-    var password by remember(initialized) { mutableStateOf("") }
-    var passwordConfirmation by remember(initialized) { mutableStateOf("") }
+    val bootstrapTokenState = remember(initialized) { TextFieldState() }
+    val passwordState = remember(initialized) { TextFieldState() }
+    val passwordConfirmationState = remember(initialized) { TextFieldState() }
+    val bootstrapToken = bootstrapTokenState.text.toString()
+    val password = passwordState.text.toString()
+    val passwordConfirmation = passwordConfirmationState.text.toString()
     val passwordMismatch = !initialized &&
         passwordConfirmation.isNotEmpty() &&
         password != passwordConfirmation
@@ -82,12 +88,10 @@ fun RemoteAuthenticationScreen(
                 )
                 Spacer(Modifier.height(24.dp))
                 if (!initialized) {
-                    OutlinedTextField(
-                        value = bootstrapToken,
-                        onValueChange = { bootstrapToken = it },
+                    OutlinedSecretTextField(
+                        state = bootstrapTokenState,
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Bootstrap token") },
-                        singleLine = true,
                         enabled = !submitting,
                     )
                     Spacer(Modifier.height(12.dp))
@@ -99,6 +103,11 @@ fun RemoteAuthenticationScreen(
                     label = { Text("Username") },
                     singleLine = true,
                     enabled = !submitting,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Ascii,
+                    ),
                 )
                 if (!initialized) {
                     Spacer(Modifier.height(12.dp))
@@ -112,23 +121,18 @@ fun RemoteAuthenticationScreen(
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
+                OutlinedSecretTextField(
+                    state = passwordState,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Password") },
-                    singleLine = true,
                     enabled = !submitting,
-                    visualTransformation = PasswordVisualTransformation(),
                 )
                 if (!initialized) {
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = passwordConfirmation,
-                        onValueChange = { passwordConfirmation = it },
+                    OutlinedSecretTextField(
+                        state = passwordConfirmationState,
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Confirm password") },
-                        singleLine = true,
                         enabled = !submitting,
                         isError = passwordMismatch,
                         supportingText = if (passwordMismatch) {
@@ -136,7 +140,6 @@ fun RemoteAuthenticationScreen(
                         } else {
                             null
                         },
-                        visualTransformation = PasswordVisualTransformation(),
                     )
                 }
                 if (error != null) {
