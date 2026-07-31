@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
@@ -41,6 +42,7 @@ class ConversationRuntimeDispatcher(
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
+        actorUserId: User.Id? = null,
     ): Boolean {
         val state = runtimeCoordinator.find(conversationId)
         val pendingTasks = runtimeCoordinator.listPending(conversationId)
@@ -71,7 +73,13 @@ class ConversationRuntimeDispatcher(
             return false
         }
 
-        val task = queuedRuntimeTask(conversationId, userMessage, agentDefinitionId, effectivePlacement)
+        val task = queuedRuntimeTask(
+            conversationId = conversationId,
+            userMessage = userMessage,
+            agentDefinitionId = agentDefinitionId,
+            placement = effectivePlacement,
+            actorUserId = actorUserId,
+        )
         val accepted = submitRuntimeTask(task)
         if (accepted) {
             log.info {
@@ -153,8 +161,15 @@ class ConversationRuntimeDispatcher(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
+        actorUserId: User.Id? = null,
     ): Boolean {
-        val task = queuedRuntimeTask(conversationId, userMessage, agentDefinitionId, QueuedMessagePlacement.END_OF_TURN)
+        val task = queuedRuntimeTask(
+            conversationId = conversationId,
+            userMessage = userMessage,
+            agentDefinitionId = agentDefinitionId,
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            actorUserId = actorUserId,
+        )
         return submitRuntimeTask(task)
     }
 
@@ -163,11 +178,13 @@ class ConversationRuntimeDispatcher(
         runId: MemoryRun.Id,
         agentDefinitionId: AgentDefinition.Id,
         statusToolName: String,
+        actorUserId: User.Id? = null,
     ): Boolean =
         submitRuntimeTask(
             ConversationRuntimeTask(
                 id = ConversationRuntimeTask.Id("${runId.value}:conversation-delivery"),
                 conversationId = conversationId,
+                actorUserId = actorUserId,
                 payload = ConversationRuntimeTask.Payload.MemoryRunCompletion(
                     runId = runId,
                     agentDefinitionId = agentDefinitionId,
@@ -322,10 +339,12 @@ class ConversationRuntimeDispatcher(
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
+        actorUserId: User.Id?,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(userMessage.id.value),
             conversationId = conversationId,
+            actorUserId = actorUserId,
             payload = ConversationRuntimeTask.Payload.UserTurn(
                 userMessage = userMessage,
                 agentDefinitionId = agentDefinitionId,

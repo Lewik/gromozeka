@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.tool
 
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -66,7 +67,7 @@ class DefaultAiToolProviderTest {
 
         return DefaultAiToolProvider(
             applicationContext = context,
-            localToolCallbacks = context.getBeanProvider(ToolCallbacksRegistrar::class.java),
+            callbackContributors = context.getBeanProvider(AiToolCallbackContributor::class.java),
             mcpConfigurationService = context.getBeanProvider(McpConfigurationService::class.java),
         )
     }

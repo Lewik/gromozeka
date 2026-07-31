@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationExecutionState
@@ -27,6 +28,7 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_NAMESPACE
 import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import klog.KLoggers
@@ -98,6 +100,7 @@ class ConversationToolExecutionTaskService(
                     put(TOOL_CONTEXT_MEMORY_NAMESPACE, MemoryNamespace.forProject(project.id).value)
                     workerTarget?.let { put(TOOL_CONTEXT_WORKER_ID, it.workerId.value) }
                     put(TOOL_CONTEXT_AGENT_DEFINITION_ID, payload.agentDefinitionId.value)
+                    task.actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
                     put(
                         TOOL_CONTEXT_MEMORY_RESULT_DELIVERY,
                         TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC,
@@ -195,6 +198,7 @@ class ConversationToolExecutionTaskService(
                 agentDefinitionId = payload.agentDefinitionId,
                 iteration = payload.iteration,
                 returnDirect = payload.returnDirect,
+                actorUserId = task.actorUserId,
             )
         )
     }
@@ -214,10 +218,12 @@ class ConversationToolExecutionTaskService(
         agentDefinitionId: AgentDefinition.Id,
         iteration: Int,
         returnDirect: Boolean,
+        actorUserId: User.Id?,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:tool-result-processing:$iteration"),
             conversationId = conversationId,
+            actorUserId = actorUserId,
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
                 rootUserMessageId = rootUserMessageId,
                 toolResultMessageId = toolResultMessageId,

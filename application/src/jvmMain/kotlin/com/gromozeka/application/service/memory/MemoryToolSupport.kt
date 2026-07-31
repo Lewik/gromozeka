@@ -28,8 +28,11 @@ const val MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME = "memory_rebuild_embeddings"
 const val MEMORY_EMBEDDING_STATUS_TOOL_NAME = "memory_embedding_status"
 const val MEMORY_LIST_NAMESPACES_TOOL_NAME = "memory_list_namespaces"
 
-fun List<AiToolCallback>.withoutMemoryManagementTools(): List<AiToolCallback> =
-    filterNot { tool -> tool.definition.name in memoryManagementToolNames }
+fun List<AiToolCallback>.forMemoryPipeline(): List<AiToolCallback> =
+    filter { tool ->
+        tool.metadata.visibleToMemoryPipeline &&
+            tool.definition.name !in memoryManagementToolNames
+    }
 
 private val memoryManagementToolNames = setOf(
     MEMORY_REMEMBER_TOOL_NAME,

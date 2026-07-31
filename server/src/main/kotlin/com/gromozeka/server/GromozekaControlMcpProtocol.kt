@@ -38,11 +38,8 @@ internal enum class ControlMcpAccessPolicy {
 }
 
 internal data class ControlMcpCallContext(
-    val caller: AuthenticatedMcpCaller,
+    val user: User,
 ) {
-    val user: User
-        get() = caller.user
-
     fun requireServerOwner() {
         if (user.role != User.Role.OWNER) {
             throw ControlMcpToolException("forbidden", "Server owner permission is required")
@@ -154,7 +151,20 @@ internal suspend fun ControlMcpTool.invoke(
     context: ControlMcpCallContext,
     arguments: JsonObject,
 ): CallToolResult {
-    val structured = try {
+    val structured = invokeStructured(context, arguments)
+    val isError = structured["success"] != JsonPrimitive(true)
+    return CallToolResult(
+        content = listOf(TextContent(controlMcpJson.encodeToString(JsonObject.serializer(), structured))),
+        structuredContent = structured,
+        isError = isError,
+    )
+}
+
+internal suspend fun ControlMcpTool.invokeStructured(
+    context: ControlMcpCallContext,
+    arguments: JsonObject,
+): JsonObject =
+    try {
         if (accessPolicy == ControlMcpAccessPolicy.SERVER_OWNER) {
             context.requireServerOwner()
         }
@@ -176,13 +186,6 @@ internal suspend fun ControlMcpTool.invoke(
         }
         error.toControlMcpFailure()
     }
-    val isError = structured["success"] != JsonPrimitive(true)
-    return CallToolResult(
-        content = listOf(TextContent(controlMcpJson.encodeToString(JsonObject.serializer(), structured))),
-        structuredContent = structured,
-        isError = isError,
-    )
-}
 
 private fun Throwable.toControlMcpFailure(): JsonObject {
     val (code, safeMessage) = when (this) {

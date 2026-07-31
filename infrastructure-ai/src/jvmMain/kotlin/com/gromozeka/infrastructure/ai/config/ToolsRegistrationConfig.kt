@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.config
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -73,7 +74,9 @@ class ToolsRegistrationConfig {
     }
 }
 
-class ToolCallbacksRegistrar(val callbacks: List<AiToolCallback>)
+class ToolCallbacksRegistrar(
+    override val callbacks: List<AiToolCallback>,
+) : AiToolCallbackContributor
 
 internal class JsonSchemaGenerator(
     private val objectMapper: ObjectMapper,

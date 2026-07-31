@@ -62,6 +62,7 @@ interface UserAdministrationService {
 }
 
 interface UserDirectoryService {
+    suspend fun findActiveById(id: User.Id): User?
     suspend fun listActive(): List<User>
 }
 

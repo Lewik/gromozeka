@@ -2,7 +2,7 @@ package com.gromozeka.infrastructure.ai.tool
 
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
-import com.gromozeka.infrastructure.ai.config.ToolCallbacksRegistrar
+import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.ApplicationContext
@@ -17,15 +17,17 @@ import org.springframework.stereotype.Service
 @Service
 class DefaultAiToolProvider(
     private val applicationContext: ApplicationContext,
-    private val localToolCallbacks: ObjectProvider<ToolCallbacksRegistrar>,
+    private val callbackContributors: ObjectProvider<AiToolCallbackContributor>,
     private val mcpConfigurationService: ObjectProvider<McpConfigurationService>,
 ) : AiToolProvider {
 
     override fun getTools(): List<AiToolCallback> {
         val declaredCallbacks = applicationContext.getBeansOfType(AiToolCallback::class.java).values
-        val localTools = localToolCallbacks.getIfAvailable()?.callbacks.orEmpty()
+        val contributedCallbacks = callbackContributors.orderedStream()
+            .toList()
+            .flatMap(AiToolCallbackContributor::callbacks)
         val externalTools = mcpConfigurationService.getIfAvailable()?.getTools().orEmpty()
-        val tools = (declaredCallbacks + localTools + externalTools).filter(AiToolCallback::available)
+        val tools = (declaredCallbacks + contributedCallbacks + externalTools).filter(AiToolCallback::available)
         val duplicateNames = tools
             .groupingBy { it.definition.name }
             .eachCount()

@@ -2,6 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
@@ -49,6 +50,23 @@ interface ConversationRuntimeService {
     suspend fun repairCurrentMemory(conversationId: Conversation.Id)
     suspend fun maintainMemoryEntities(conversationId: Conversation.Id)
     suspend fun applyCurrentMemoryRetention(conversationId: Conversation.Id)
+}
+
+interface ConversationRuntimeIngressService {
+    suspend fun submitMessage(
+        actorUserId: User.Id,
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id,
+    ): Boolean
+
+    suspend fun enqueueMessage(
+        actorUserId: User.Id,
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id,
+        placement: QueuedMessagePlacement,
+    ): Boolean
 }
 
 @Serializable

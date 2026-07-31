@@ -13,6 +13,7 @@ import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeIngressService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
@@ -76,6 +77,7 @@ class GromozekaRemoteServer(
     private val workerCatalogService: WorkerCatalogService,
     private val workerAccessService: WorkerAccessService,
     private val conversationRuntimeService: ConversationRuntimeService,
+    private val conversationRuntimeIngressService: ConversationRuntimeIngressService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
     private val conversationNameSearchService: ConversationNameSearchService,
@@ -575,14 +577,16 @@ class GromozekaRemoteServer(
                     MemoryActionAcceptedResponse()
                 }
                 is SubmitMessageRequest -> OperationResultResponse(
-                    conversationRuntimeService.submitMessage(
+                    conversationRuntimeIngressService.submitMessage(
+                        user.id,
                         request.conversationId,
                         request.userMessage,
                         request.agentDefinitionId,
                     )
                 )
                 is EnqueueMessageRequest -> OperationResultResponse(
-                    conversationRuntimeService.enqueueMessage(
+                    conversationRuntimeIngressService.enqueueMessage(
+                        user.id,
                         request.conversationId,
                         request.userMessage,
                         request.agentDefinitionId,

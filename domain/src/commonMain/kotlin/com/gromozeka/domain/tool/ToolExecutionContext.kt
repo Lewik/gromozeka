@@ -1,6 +1,7 @@
 package com.gromozeka.domain.tool
 
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -14,6 +15,7 @@ const val TOOL_CONTEXT_WORKSPACE_MOUNT_ID = "workspaceMountId"
 const val TOOL_CONTEXT_WORKSPACE_ROOT_PATH = "workspaceRootPath"
 const val TOOL_CONTEXT_WORKER_ID = "workerId"
 const val TOOL_CONTEXT_AGENT_DEFINITION_ID = "agentDefinitionId"
+const val TOOL_CONTEXT_USER_ID = "userId"
 const val TOOL_CONTEXT_TOOL_NAME = "toolName"
 const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY = "memoryResultDelivery"
 const val TOOL_CONTEXT_MEMORY_NAMESPACE = "memoryNamespace"
@@ -56,6 +58,9 @@ fun ToolExecutionContext?.requiredWorkspaceRootPath(): String =
 
 fun ToolExecutionContext?.requiredWorkerId(): ConversationRuntimeWorkerId =
     requiredString(TOOL_CONTEXT_WORKER_ID, "Worker id").let(::ConversationRuntimeWorkerId)
+
+fun ToolExecutionContext?.requiredUserId(): User.Id =
+    requiredString(TOOL_CONTEXT_USER_ID, "User id").let(User::Id)
 
 private fun ToolExecutionContext?.requiredString(key: String, label: String): String =
     this?.getString(key)?.takeIf { it.isNotBlank() }

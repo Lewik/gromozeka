@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
@@ -69,6 +70,7 @@ class ConversationRuntimeDispatcherTest {
         val harness = dispatcherHarness()
         try {
             val message = userMessage("message-1")
+            val actorUserId = User.Id("user-1")
 
             assertTrue(
                 harness.dispatcher.enqueueMessage(
@@ -76,12 +78,14 @@ class ConversationRuntimeDispatcherTest {
                     userMessage = message,
                     agentDefinitionId = agentDefinitionId,
                     placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+                    actorUserId = actorUserId,
                 )
             )
 
             val startedTask = harness.runner.awaitStarted()
             assertEquals(message.id.value, startedTask.id.value)
             assertEquals(QueuedMessagePlacement.END_OF_TURN, startedTask.placement)
+            assertEquals(actorUserId, startedTask.actorUserId)
 
             harness.runner.releaseCurrentTask()
             waitUntil { harness.coordinator.find(conversationId) == null }

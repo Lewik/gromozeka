@@ -12,11 +12,10 @@ internal interface ControlMcpToolProvider {
 }
 
 @Service
-internal class GromozekaControlMcpServerFactory(
+internal class ControlMcpToolCatalog(
     providers: List<ControlMcpToolProvider>,
 ) {
-    private val log = KLoggers.logger(this)
-    private val tools = providers
+    val tools = providers
         .flatMap(ControlMcpToolProvider::tools)
         .sortedBy { it.definition.name }
         .also { registered ->
@@ -29,16 +28,23 @@ internal class GromozekaControlMcpServerFactory(
                 "Duplicate Gromozeka Control MCP tools: ${duplicateNames.sorted()}"
             }
         }
+}
+
+@Service
+internal class GromozekaControlMcpServerFactory(
+    private val catalog: ControlMcpToolCatalog,
+) {
+    private val log = KLoggers.logger(this)
 
     init {
         log.info {
-            "Registered ${tools.size} Gromozeka Control MCP tools: " +
-                tools.joinToString { it.definition.name }
+            "Registered ${catalog.tools.size} Gromozeka Control MCP tools: " +
+                catalog.tools.joinToString { it.definition.name }
         }
     }
 
     fun create(caller: AuthenticatedMcpCaller): Server {
-        val context = ControlMcpCallContext(caller)
+        val context = ControlMcpCallContext(caller.user)
         val server = Server(
             serverInfo = Implementation(
                 name = "gromozeka-control",
@@ -50,7 +56,7 @@ internal class GromozekaControlMcpServerFactory(
                 )
             ),
         )
-        tools.forEach { tool ->
+        catalog.tools.forEach { tool ->
             server.addTool(tool.definition) { request ->
                 tool.invoke(
                     context,

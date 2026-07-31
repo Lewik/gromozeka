@@ -9,6 +9,10 @@ import org.springframework.stereotype.Service
 class UserDirectoryApplicationService(
     private val identityRepository: IdentityRepository,
 ) : UserDirectoryService {
+    override suspend fun findActiveById(id: User.Id): User? =
+        identityRepository.findUserById(id)
+            ?.takeIf { it.status == User.Status.ACTIVE }
+
     override suspend fun listActive(): List<User> =
         identityRepository.listUsers()
             .filter { it.status == User.Status.ACTIVE }

@@ -28,7 +28,7 @@ class GromozekaControlMcpProtocolTest {
             buildJsonObject { put("value", "ok") }
         }
         val server = GromozekaControlMcpServerFactory(
-            listOf(provider(tool))
+            ControlMcpToolCatalog(listOf(provider(tool)))
         ).create(testControlMcpCaller())
 
         val result = server.tools.getValue("grz_test_read").callForTest(
@@ -169,7 +169,7 @@ class GromozekaControlMcpProtocolTest {
         }
 
         assertFailsWith<IllegalArgumentException> {
-            GromozekaControlMcpServerFactory(listOf(provider(first), provider(second)))
+            ControlMcpToolCatalog(listOf(provider(first), provider(second)))
         }
     }
 

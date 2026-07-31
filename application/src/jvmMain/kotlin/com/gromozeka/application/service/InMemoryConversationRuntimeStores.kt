@@ -1237,6 +1237,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         val task = ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("${incident.task.id.value}:incident"),
             conversationId = incident.task.conversationId,
+            actorUserId = incident.task.actorUserId,
             payload = ConversationRuntimeTask.Payload.ExecutionIncident(incident.task.id),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "${incident.task.idempotencyKey}:incident",

@@ -26,4 +26,4 @@ internal fun testControlMcpCaller(
 internal fun testControlMcpContext(
     role: User.Role = User.Role.OWNER,
 ): ControlMcpCallContext =
-    ControlMcpCallContext(testControlMcpCaller(role))
+    ControlMcpCallContext(testControlMcpCaller(role).user)

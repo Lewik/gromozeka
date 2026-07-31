@@ -3,6 +3,7 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.tool.AiToolDescriptor
@@ -24,6 +25,7 @@ import kotlin.jvm.JvmInline
 data class ConversationRuntimeTask(
     val id: Id,
     val conversationId: Conversation.Id,
+    val actorUserId: User.Id? = null,
     val payload: Payload,
     val placement: QueuedMessagePlacement,
     val idempotencyKey: String,

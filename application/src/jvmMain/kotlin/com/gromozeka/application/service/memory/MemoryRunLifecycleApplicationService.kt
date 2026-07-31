@@ -129,6 +129,7 @@ class MemoryRunLifecycleApplicationService(
             runId = run.id,
             agentDefinitionId = delivery.agentDefinitionId,
             statusToolName = delivery.statusToolName,
+            actorUserId = delivery.actorUserId,
         )
         val stateAfterSubmit = runtimeCoordinator.find(delivery.conversationId)
         val deliveryState = if (!submitted &&

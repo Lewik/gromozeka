@@ -137,7 +137,7 @@ class MemoryOperationContextResolver(
 
     private fun memoryTools(): List<AiToolCallback> =
         aiToolProvider.getTools()
-            .withoutMemoryManagementTools()
+            .forMemoryPipeline()
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"

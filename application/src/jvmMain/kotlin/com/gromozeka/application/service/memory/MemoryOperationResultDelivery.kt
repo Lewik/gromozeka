@@ -2,11 +2,13 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
+import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 
 internal fun ToolExecutionContext?.memoryOperationResultDeliveryOrNull(): MemoryOperationResultDelivery? {
@@ -30,5 +32,8 @@ internal fun ToolExecutionContext?.memoryOperationResultDeliveryOrNull(): Memory
         conversationId = conversationId,
         agentDefinitionId = agentDefinitionId,
         statusToolName = statusToolName,
+        actorUserId = getString(TOOL_CONTEXT_USER_ID)
+            ?.takeIf(String::isNotBlank)
+            ?.let(User::Id),
     )
 }

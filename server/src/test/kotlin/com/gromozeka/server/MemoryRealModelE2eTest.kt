@@ -14,7 +14,7 @@ import com.gromozeka.application.service.memory.MemoryRunLlmCallObserver
 import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.application.service.memory.MemoryWriteTraceSink
 import com.gromozeka.application.service.memory.NoOpMemoryEmbeddingIndexer
-import com.gromozeka.application.service.memory.withoutMemoryManagementTools
+import com.gromozeka.application.service.memory.forMemoryPipeline
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserProfile
@@ -1227,7 +1227,7 @@ class MemoryRealModelE2eTest {
         namespace: MemoryNamespace,
     ) {
         val systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, workspaceContext)
-        val tools = aiToolProvider.getTools().withoutMemoryManagementTools()
+        val tools = aiToolProvider.getTools().forMemoryPipeline()
         when (action) {
             MemoryE2eMaintenanceAction.CONSOLIDATE ->
                 memoryApplicationService.runNoteConsolidation(

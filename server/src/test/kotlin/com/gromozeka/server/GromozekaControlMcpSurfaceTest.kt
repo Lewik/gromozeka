@@ -14,34 +14,36 @@ class GromozekaControlMcpSurfaceTest {
     @Test
     fun `control MCP exposes the complete server-managed configuration surface`() {
         val server = GromozekaControlMcpServerFactory(
-            listOf(
-                ControlMcpProjectWorkspaceTools(
-                    projectAccessService = mock(),
-                    workspaceService = mock(),
-                    workspaceManagementService = mock(),
-                    workerRegistry = mock(),
-                    workerAccessService = mock(),
-                ),
-                ControlMcpAgentCatalogTools(
-                    agentService = mock(),
-                    promptService = mock(),
-                    skillService = mock(),
-                    templateService = mock(),
-                    projectAccessService = mock(),
-                ),
-                ControlMcpAiSettingsTools(
-                    aiConfigurationService = mock(),
-                    aiCatalogManagementService = mock(),
-                    settingsService = mock(),
-                ),
-                ControlMcpServerCatalogTools(
-                    managementService = mock(),
-                ),
-                ControlMcpIdentityTools(
-                    userAdministrationService = mock(),
-                    userDirectoryService = mock(),
-                    securityAuditService = mock(),
-                ),
+            ControlMcpToolCatalog(
+                listOf(
+                    ControlMcpProjectWorkspaceTools(
+                        projectAccessService = mock(),
+                        workspaceService = mock(),
+                        workspaceManagementService = mock(),
+                        workerRegistry = mock(),
+                        workerAccessService = mock(),
+                    ),
+                    ControlMcpAgentCatalogTools(
+                        agentService = mock(),
+                        promptService = mock(),
+                        skillService = mock(),
+                        templateService = mock(),
+                        projectAccessService = mock(),
+                    ),
+                    ControlMcpAiSettingsTools(
+                        aiConfigurationService = mock(),
+                        aiCatalogManagementService = mock(),
+                        settingsService = mock(),
+                    ),
+                    ControlMcpServerCatalogTools(
+                        managementService = mock(),
+                    ),
+                    ControlMcpIdentityTools(
+                        userAdministrationService = mock(),
+                        userDirectoryService = mock(),
+                        securityAuditService = mock(),
+                    ),
+                )
             )
         ).create(testControlMcpCaller())
 

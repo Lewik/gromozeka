@@ -5,12 +5,14 @@ import com.gromozeka.application.service.memory.MemoryAsyncOperationApplicationS
 import com.gromozeka.application.service.memory.MemoryMaintenanceTargetKind
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeIngressService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import klog.KLoggers
@@ -28,7 +30,7 @@ class ConversationRuntimeApplicationService(
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
     private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val conversationService: ConversationDomainService,
-) : ConversationRuntimeService {
+) : ConversationRuntimeService, ConversationRuntimeIngressService {
     private val log = KLoggers.logger(this)
 
     override suspend fun enqueueMessage(
@@ -37,6 +39,20 @@ class ConversationRuntimeApplicationService(
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
     ): Boolean = runtimeDispatcher.enqueueMessage(conversationId, userMessage, agentDefinitionId, placement)
+
+    override suspend fun enqueueMessage(
+        actorUserId: User.Id,
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id,
+        placement: QueuedMessagePlacement,
+    ): Boolean = runtimeDispatcher.enqueueMessage(
+        conversationId = conversationId,
+        userMessage = userMessage,
+        agentDefinitionId = agentDefinitionId,
+        placement = placement,
+        actorUserId = actorUserId,
+    )
 
     override suspend fun cancelQueuedMessage(
         conversationId: Conversation.Id,
@@ -63,6 +79,18 @@ class ConversationRuntimeApplicationService(
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
     ): Boolean = runtimeDispatcher.submitMessage(conversationId, userMessage, agentDefinitionId)
+
+    override suspend fun submitMessage(
+        actorUserId: User.Id,
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id,
+    ): Boolean = runtimeDispatcher.submitMessage(
+        conversationId = conversationId,
+        userMessage = userMessage,
+        agentDefinitionId = agentDefinitionId,
+        actorUserId = actorUserId,
+    )
 
     override fun observeConversation(
         conversationId: Conversation.Id,

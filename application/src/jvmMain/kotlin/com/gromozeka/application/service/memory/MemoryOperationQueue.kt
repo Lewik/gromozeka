@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
@@ -232,6 +233,7 @@ data class MemoryOperationResultDelivery(
     val conversationId: Conversation.Id,
     val agentDefinitionId: AgentDefinition.Id,
     val statusToolName: String,
+    val actorUserId: User.Id? = null,
 ) {
     init {
         require(statusToolName.isNotBlank()) { "Memory result status tool name must not be blank" }

@@ -23,6 +23,10 @@ interface AiToolCallback {
     fun call(toolInput: String, context: ToolExecutionContext? = null): String
 }
 
+interface AiToolCallbackContributor {
+    val callbacks: List<AiToolCallback>
+}
+
 fun List<AiToolCallback>.supportedBy(
     capabilities: Set<ConversationRuntimeCapability>,
 ): List<AiToolCallback> =
@@ -41,6 +45,7 @@ data class AiToolMetadata(
     val returnDirect: Boolean = false,
     val requiredRuntimeCapabilities: Set<ConversationRuntimeCapability> = emptySet(),
     val executionScope: AiToolExecutionScope = AiToolExecutionScope.WORKER,
+    val visibleToMemoryPipeline: Boolean = true,
 )
 
 @Serializable
