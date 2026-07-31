@@ -212,7 +212,6 @@ interface Tool<TRequest, TResponse> {
     val description: String
 
     val metadata: AiToolMetadata
-        get() = AiToolMetadata()
 
     val available: Boolean
         get() = true

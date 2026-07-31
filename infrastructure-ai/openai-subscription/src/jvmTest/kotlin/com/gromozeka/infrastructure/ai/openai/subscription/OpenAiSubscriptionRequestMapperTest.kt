@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -25,6 +26,7 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -213,6 +215,66 @@ class OpenAiSubscriptionRequestMapperTest {
         )
 
         assertEquals(1, request.tools.orEmpty().size)
+    }
+
+    @Test
+    fun includesHostedWebSearchWhenSubscriptionConnectionEnablesIt() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+                tools = listOf(testTool("memory_remember")),
+            ),
+            modelProfile = modelProfile(slug = "gpt-5.5"),
+            conversationKey = "test-conversation",
+            webSearchEnabled = true,
+        )
+
+        assertEquals(listOf("function", "web_search"), request.tools.orEmpty().map { it.string("type") })
+        assertTrue("web_search_call.action.sources" in request.include)
+    }
+
+    @Test
+    fun framesHostedWebSearchInsideResponsesLiteAdditionalTools() {
+        val profile = modelProfile(slug = "gpt-5.6-sol", useResponsesLite = true)
+        val logicalRequest = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+                tools = listOf(testTool("memory_remember")),
+            ),
+            modelProfile = profile,
+            conversationKey = "test-conversation",
+            webSearchEnabled = true,
+        )
+
+        val transportRequest = mapper.toTransportRequest(logicalRequest, profile)
+        val additionalTools = transportRequest.input.first().jsonArray("tools")
+        assertEquals(listOf("function", "web_search"), additionalTools.map { it.jsonObject.string("type") })
+        assertNull(transportRequest.tools)
+        assertTrue("web_search_call.action.sources" in transportRequest.include)
+    }
+
+    @Test
+    fun rejectsRequiredToolChoiceForResponsesLiteBeforeSendingInvalidRequest() {
+        val profile = modelProfile(slug = "gpt-5.6-sol", useResponsesLite = true)
+        val logicalRequest = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+                tools = listOf(testTool("memory_remember")),
+                options = AiRuntimeOptions(toolChoice = AiToolChoice.RequiredAny),
+            ),
+            modelProfile = profile,
+            conversationKey = "test-conversation",
+            webSearchEnabled = true,
+        )
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            mapper.toTransportRequest(logicalRequest, profile)
+        }
+
+        assertEquals("OpenAI Responses Lite supports only automatic tool choice", error.message)
     }
 
     @Test
@@ -530,6 +592,7 @@ class OpenAiSubscriptionRequestMapperTest {
 
     private fun testTool(name: String): AiToolCallback =
         object : AiToolCallback {
+            override val metadata = ServerToolMetadata
             override val definition = AiToolDefinition(
                 name = name,
                 description = "Test tool",
@@ -558,6 +621,7 @@ private fun OpenAiSubscriptionRequestMapper.toRequest(
     request = request,
     modelProfile = modelProfile(slug = modelName),
     conversationKey = conversationKey,
+    webSearchEnabled = false,
 )
 
 private fun modelProfile(

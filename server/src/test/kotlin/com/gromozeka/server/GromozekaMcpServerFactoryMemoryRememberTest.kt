@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_NAMESPACE
 import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
@@ -226,6 +227,7 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
     }
 
     private class CapturingToolCallback : AiToolCallback {
+        override val metadata = ServerToolMetadata
         var lastToolInput: String? = null
         var lastContext: ToolExecutionContext? = null
 

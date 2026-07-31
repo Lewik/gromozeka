@@ -5,6 +5,7 @@ import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.web.JinaReadUrlRequest
 import org.slf4j.LoggerFactory
 import com.gromozeka.domain.tool.ToolExecutionContext
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import java.net.URI
 import java.net.http.HttpClient
@@ -21,6 +22,11 @@ import java.time.Duration
  * @see com.gromozeka.domain.service.WebSearchService.readUrl (when created)
  */
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "false",
+    matchIfMissing = true,
+)
 class JinaReadUrlTool(
     private val settingsProvider: SettingsProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,

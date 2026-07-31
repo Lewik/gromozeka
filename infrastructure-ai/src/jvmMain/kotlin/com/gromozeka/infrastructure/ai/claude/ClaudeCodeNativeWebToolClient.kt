@@ -1,8 +1,11 @@
 package com.gromozeka.infrastructure.ai.claude
 
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
+import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -15,6 +18,7 @@ import kotlin.time.Duration.Companion.seconds
 internal class ClaudeCodeNativeWebToolClient(
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val executor: ClaudeCodeNativeToolExecutor,
+    private val executorDescriptor: ConversationRuntimeExecutorDescriptor,
 ) {
     fun isAvailable(tool: ClaudeCodeNativeTool): Boolean =
         runCatching {
@@ -77,8 +81,19 @@ internal class ClaudeCodeNativeWebToolClient(
         require(connection.enabled) {
             "Claude Code web tool connection is disabled: ${connection.id.value}"
         }
+        require(connection.executionTarget.matches(executorDescriptor.identity)) {
+            "Claude Code web tool connection ${connection.id.value} targets ${connection.executionTarget}, " +
+                "but this executor is ${executorDescriptor.identity}"
+        }
         return ResolvedRuntime(connection, configuration)
     }
+
+    private fun AiExecutionTarget.matches(identity: ConversationRuntimeExecutorIdentity): Boolean =
+        when (this) {
+            AiExecutionTarget.Server -> identity is ConversationRuntimeExecutorIdentity.Server
+            is AiExecutionTarget.Worker ->
+                identity is ConversationRuntimeExecutorIdentity.Worker && identity.identity.workerId.value == workerId
+        }
 
     private fun systemPrompt(tool: ClaudeCodeNativeTool): String =
         """

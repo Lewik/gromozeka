@@ -17,8 +17,8 @@ val CommandMonitorOwnerToolMetadata = AiToolMetadata(
     executionScope = AiToolExecutionScope.COMMAND_MONITOR_OWNER,
 )
 
-val ConversationRuntimeToolMetadata = AiToolMetadata(
-    executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME,
+val ServerToolMetadata = AiToolMetadata(
+    executionScope = AiToolExecutionScope.SERVER,
 )
 
 val WorkerManagementToolMetadata = AiToolMetadata(

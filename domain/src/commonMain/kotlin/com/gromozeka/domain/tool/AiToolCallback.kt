@@ -13,9 +13,7 @@ import kotlinx.serialization.Serializable
  */
 interface AiToolCallback {
     val definition: AiToolDefinition
-
     val metadata: AiToolMetadata
-        get() = AiToolMetadata()
 
     val available: Boolean
         get() = true
@@ -44,13 +42,13 @@ data class AiToolDefinition(
 data class AiToolMetadata(
     val returnDirect: Boolean = false,
     val requiredRuntimeCapabilities: Set<ConversationRuntimeCapability> = emptySet(),
-    val executionScope: AiToolExecutionScope = AiToolExecutionScope.WORKER,
+    val executionScope: AiToolExecutionScope,
     val visibleToMemoryPipeline: Boolean = true,
 )
 
 @Serializable
 enum class AiToolExecutionScope {
-    CONVERSATION_RUNTIME,
+    SERVER,
     WORKER,
     WORKSPACE,
     COMMAND_TASK_OWNER,

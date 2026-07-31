@@ -70,7 +70,7 @@ class ConversationRuntimeToolRoutingService(
             }
 
             val target = when (entry.descriptor.metadata.executionScope) {
-                AiToolExecutionScope.CONVERSATION_RUNTIME -> resolveServerTarget(
+                AiToolExecutionScope.SERVER -> resolveServerTarget(
                     toolCall = toolCall,
                     errors = errors,
                 )

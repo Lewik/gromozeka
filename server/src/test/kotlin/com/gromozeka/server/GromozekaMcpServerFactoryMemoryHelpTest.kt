@@ -14,6 +14,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
@@ -122,6 +123,7 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
     private class SimpleToolCallback(
         name: String,
     ) : AiToolCallback {
+        override val metadata = ServerToolMetadata
         override val definition: AiToolDefinition = AiToolDefinition(
             name = name,
             description = "$name test description",

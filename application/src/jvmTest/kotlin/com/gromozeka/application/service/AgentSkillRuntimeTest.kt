@@ -206,7 +206,7 @@ class AgentSkillRuntimeTest {
                 inputSchema = """{"type":"object","properties":{}}""",
             )
             override val metadata = AiToolMetadata(
-                executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME,
+                executionScope = AiToolExecutionScope.SERVER,
             )
 
             override fun call(toolInput: String, context: ToolExecutionContext?): String =

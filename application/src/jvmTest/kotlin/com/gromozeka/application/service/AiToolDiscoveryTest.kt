@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
@@ -317,6 +318,7 @@ private fun tool(
     parameterDescription: String = "",
 ): AiToolCallback =
     object : AiToolCallback {
+        override val metadata = ServerToolMetadata
         override val definition = AiToolDefinition(
             name = name,
             description = description,

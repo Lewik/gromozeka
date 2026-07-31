@@ -64,7 +64,7 @@ class ParallelToolExecutor(
             val callback = callbackMap[toolCall.call.name]
                 ?: error("Runtime executor does not provide requested tool: ${toolCall.call.name}")
             when (callback.metadata.executionScope) {
-                AiToolExecutionScope.CONVERSATION_RUNTIME -> {
+                AiToolExecutionScope.SERVER -> {
                     require(expectedTarget == ConversationRuntimeTaskTarget.Server) {
                         "Conversation runtime tool ${toolCall.call.name} cannot execute on Worker"
                     }

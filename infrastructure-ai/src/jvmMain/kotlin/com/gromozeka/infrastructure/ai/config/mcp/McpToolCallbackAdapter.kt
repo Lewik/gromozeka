@@ -4,6 +4,8 @@ import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
@@ -27,6 +29,7 @@ class McpToolCallbackAdapter(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     override val definition: AiToolDefinition = tool.toAiToolDefinition(serverId)
+    override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         try {

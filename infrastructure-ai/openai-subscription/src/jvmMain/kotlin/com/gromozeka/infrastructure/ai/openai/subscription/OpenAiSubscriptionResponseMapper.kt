@@ -43,9 +43,12 @@ class OpenAiSubscriptionResponseMapper {
                 modelName = modelName,
             )
         }
+        val webSearchSourceUrls = outputItems
+            .filter { it["type"]?.jsonPrimitive?.contentOrNull == "web_search_call" }
+            .flatMap { it.webSearchSourceUrls() }
 
         return AiRuntimeResponse(
-            messages = messages,
+            messages = appendWebSearchSources(messages, webSearchSourceUrls),
             usage = completed?.usage?.toAiUsage(),
             finishReason = completed?.status,
             providerMetadata = buildMap {
@@ -114,7 +117,13 @@ class OpenAiSubscriptionResponseMapper {
                             "output_text", "text" -> {
                                 val text = partObject["text"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
                                 if (text.isNotBlank()) {
-                                    add(assistantBlock(text, assistantResponseFormat))
+                                    add(
+                                        assistantBlock(
+                                            text = text,
+                                            assistantResponseFormat = assistantResponseFormat,
+                                            webCitations = partObject.webCitations(),
+                                        )
+                                    )
                                 }
                             }
 
@@ -248,12 +257,98 @@ class OpenAiSubscriptionResponseMapper {
     private fun assistantBlock(
         text: String,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+        webCitations: List<WebCitation> = emptyList(),
     ): Conversation.Message.ContentItem.AssistantMessage {
+        val structured = AssistantResponseParser.parse(text, assistantResponseFormat)
         return Conversation.Message.ContentItem.AssistantMessage(
-            structured = AssistantResponseParser.parse(text, assistantResponseFormat),
+            structured = structured.copy(
+                fullText = structured.fullText.withWebCitations(webCitations),
+            ),
             state = Conversation.Message.BlockState.COMPLETE,
         )
     }
+
+    private fun JsonObject.webCitations(): List<WebCitation> =
+        (this["annotations"] as? JsonArray)
+            .orEmpty()
+            .mapNotNull { annotation ->
+                val value = annotation as? JsonObject ?: return@mapNotNull null
+                if (value["type"]?.jsonPrimitive?.contentOrNull != "url_citation") return@mapNotNull null
+                val url = value["url"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+                if (url.isBlank()) return@mapNotNull null
+                WebCitation(
+                    title = value["title"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty().ifBlank { url },
+                    url = url,
+                )
+            }
+            .distinctBy(WebCitation::url)
+
+    private fun JsonObject.webSearchSourceUrls(): List<String> {
+        val action = this["action"] as? JsonObject ?: return emptyList()
+        val sourceUrls = (action["sources"] as? JsonArray)
+            .orEmpty()
+            .mapNotNull { source ->
+                (source as? JsonObject)
+                    ?.get("url")
+                    ?.jsonPrimitive
+                    ?.contentOrNull
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+            }
+        val actionUrl = action["url"]
+            ?.jsonPrimitive
+            ?.contentOrNull
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+        return sourceUrls + listOfNotNull(actionUrl)
+    }
+
+    private fun appendWebSearchSources(
+        messages: List<AiAssistantMessage>,
+        sourceUrls: List<String>,
+    ): List<AiAssistantMessage> {
+        val existingText = messages
+            .flatMap(AiAssistantMessage::content)
+            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
+            .joinToString("\n") { it.structured.fullText }
+        val missingSources = sourceUrls
+            .filter(String::isNotBlank)
+            .distinct()
+            .filterNot(existingText::contains)
+        if (missingSources.isEmpty()) return messages
+
+        val messageIndex = messages.indexOfLast { message ->
+            message.content.any { it is Conversation.Message.ContentItem.AssistantMessage }
+        }
+        if (messageIndex < 0) return messages
+        val message = messages[messageIndex]
+        val contentIndex = message.content.indexOfLast {
+            it is Conversation.Message.ContentItem.AssistantMessage
+        }
+        val content = message.content[contentIndex] as Conversation.Message.ContentItem.AssistantMessage
+        val sources = missingSources.joinToString("\n") { "- <$it>" }
+        val updatedContent = content.copy(
+            structured = content.structured.copy(
+                fullText = "${content.structured.fullText}\n\nSources:\n$sources"
+            )
+        )
+
+        return messages.toMutableList().apply {
+            this[messageIndex] = message.copy(
+                content = message.content.toMutableList().apply { this[contentIndex] = updatedContent }
+            )
+        }
+    }
+
+    private fun String.withWebCitations(citations: List<WebCitation>): String {
+        if (citations.isEmpty()) return this
+        val sources = citations.joinToString("\n") { citation ->
+            "- [${citation.title.escapeMarkdownLinkText()}](${citation.url})"
+        }
+        return "$this\n\nSources:\n$sources"
+    }
+
+    private fun String.escapeMarkdownLinkText(): String = replace("[", "\\[").replace("]", "\\]")
 
     private fun plainAssistantBlock(text: String): Conversation.Message.ContentItem.AssistantMessage {
         return Conversation.Message.ContentItem.AssistantMessage(
@@ -278,6 +373,11 @@ class OpenAiSubscriptionResponseMapper {
 
     private fun JsonElement.textOrNull(): String? =
         (this as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
+
+    private data class WebCitation(
+        val title: String,
+        val url: String,
+    )
 }
 
 internal fun Json.parseOpenAiSubscriptionToolArguments(arguments: String): JsonElement =

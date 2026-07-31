@@ -76,6 +76,7 @@ sealed interface AiConnection {
         override val id: Id,
         override val displayName: String,
         override val enabled: Boolean = false,
+        val webSearchEnabled: Boolean = true,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection {
         override val kind = Kind.OPENAI_SUBSCRIPTION
@@ -93,6 +94,7 @@ sealed interface AiConnection {
         override val enabled: Boolean = false,
         override val baseUrl: String? = null,
         override val apiKey: SecretRef? = null,
+        val webSearchEnabled: Boolean = true,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection, HttpAiConnection, ApiKeyAiConnection {
         override val kind = Kind.OPENAI_API

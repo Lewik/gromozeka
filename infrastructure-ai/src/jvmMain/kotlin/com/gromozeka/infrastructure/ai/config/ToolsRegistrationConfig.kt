@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.stereotype.Component
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.findAnnotation
@@ -24,8 +26,9 @@ import kotlin.reflect.jvm.jvmErasure
     name = ["gromozeka.runtime.worker.enabled"],
     havingValue = "true",
 )
-class ToolsRegistrationConfig {
-    private val objectMapper: ObjectMapper = jacksonObjectMapper().findAndRegisterModules()
+class ToolsRegistrationConfig(
+    private val adapter: TypedToolCallbackAdapter,
+) {
     private val logger = LoggerFactory.getLogger(ToolsRegistrationConfig::class.java)
 
     @Bean
@@ -38,18 +41,24 @@ class ToolsRegistrationConfig {
             logger.info("  - Tool bean: ${tool::class.qualifiedName}, name='${tool.name}', description='${tool.description.take(50)}...'")
         }
 
-        val callbacks = buildList {
-            tools.forEach { tool ->
-                add(adaptToolToCallback(tool))
-            }
-        }
+        val callbacks = tools
+            .filter { it.metadata.executionScope != AiToolExecutionScope.SERVER }
+            .map(adapter::adapt)
         logger.info("Prepared ${callbacks.size} local AI tool callbacks: ${callbacks.map { it.definition.name }}")
         return ToolCallbacksRegistrar(callbacks)
     }
 
-    private fun <TRequest, TResponse> adaptToolToCallback(
-        tool: Tool<TRequest, TResponse>,
-    ): AiToolCallback {
+}
+
+@Component
+class TypedToolCallbackAdapter {
+    private val objectMapper: ObjectMapper = jacksonObjectMapper().findAndRegisterModules()
+
+    @Suppress("UNCHECKED_CAST")
+    fun adapt(tool: Tool<*, *>): AiToolCallback =
+        adaptTyped(tool as Tool<Any, Any?>)
+
+    private fun <TRequest, TResponse> adaptTyped(tool: Tool<TRequest, TResponse>): AiToolCallback {
         val schema = JsonSchemaGenerator(objectMapper).schemaFor((tool.requestType as Class<*>).kotlin)
 
         return object : AiToolCallback {

@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import com.gromozeka.domain.tool.ToolExecutionContext
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import java.net.URI
 import java.net.URLEncoder
@@ -24,6 +25,11 @@ import java.time.Duration
  * @see com.gromozeka.domain.service.WebSearchService.searchWeb (when created)
  */
 @Service
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "false",
+    matchIfMissing = true,
+)
 class BraveWebSearchTool(
     private val settingsProvider: SettingsProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,

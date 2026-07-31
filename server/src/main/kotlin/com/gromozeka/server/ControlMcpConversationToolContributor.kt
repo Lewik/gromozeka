@@ -34,7 +34,7 @@ internal class ControlMcpConversationToolContributor(
             )
 
             override val metadata = AiToolMetadata(
-                executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME,
+                executionScope = AiToolExecutionScope.SERVER,
                 visibleToMemoryPipeline = false,
             )
 

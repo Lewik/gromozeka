@@ -5,6 +5,7 @@ import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import kotlin.test.Test
@@ -137,7 +138,10 @@ private class TestTool(
         description = name,
         inputSchema = """{"type":"object"}""",
     )
-    override val metadata = AiToolMetadata(requiredRuntimeCapabilities = requiredCapabilities)
+    override val metadata = AiToolMetadata(
+        requiredRuntimeCapabilities = requiredCapabilities,
+        executionScope = AiToolExecutionScope.WORKER,
+    )
 
     override fun call(toolInput: String, context: com.gromozeka.domain.tool.ToolExecutionContext?): String =
         error("Not used")

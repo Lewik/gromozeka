@@ -272,7 +272,7 @@ class SearchToolsToolCallback(
     )
 
     override val metadata: AiToolMetadata = AiToolMetadata(
-        executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME,
+        executionScope = AiToolExecutionScope.SERVER,
     )
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {

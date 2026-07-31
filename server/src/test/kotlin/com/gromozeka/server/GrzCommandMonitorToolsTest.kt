@@ -26,6 +26,7 @@ import com.gromozeka.infrastructure.ai.tool.GrzGetCommandMonitorToolImpl
 import com.gromozeka.infrastructure.ai.tool.GrzListCommandsAndMonitorsToolImpl
 import com.gromozeka.infrastructure.ai.tool.GrzMonitorCommandToolImpl
 import com.gromozeka.infrastructure.ai.config.ToolsRegistrationConfig
+import com.gromozeka.infrastructure.ai.config.TypedToolCallbackAdapter
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
@@ -91,7 +92,7 @@ class GrzCommandMonitorToolsTest {
         val get = GrzGetCommandMonitorToolImpl(service, runtimeState)
         val cancel = GrzCancelCommandMonitorToolImpl(service)
         val list = GrzListCommandsAndMonitorsToolImpl(runtimeState)
-        val callbacks = ToolsRegistrationConfig()
+        val callbacks = ToolsRegistrationConfig(TypedToolCallbackAdapter())
             .toolCallbacksRegistrar(listOf(monitor, get, cancel, list))
             .callbacks
             .associateBy { it.definition.name }
@@ -99,7 +100,7 @@ class GrzCommandMonitorToolsTest {
         assertEquals(AiToolExecutionScope.COMMAND_TASK_OWNER, monitor.metadata.executionScope)
         assertEquals(AiToolExecutionScope.COMMAND_MONITOR_OWNER, get.metadata.executionScope)
         assertEquals(AiToolExecutionScope.COMMAND_MONITOR_OWNER, cancel.metadata.executionScope)
-        assertEquals(AiToolExecutionScope.CONVERSATION_RUNTIME, list.metadata.executionScope)
+        assertEquals(AiToolExecutionScope.SERVER, list.metadata.executionScope)
 
         val monitorProperties = Json.parseToJsonElement(
             callbacks.getValue(monitor.name).definition.inputSchema

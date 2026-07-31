@@ -44,12 +44,20 @@ class OpenAiSubscriptionRequestMapper {
         request: AiRuntimeRequest,
         modelProfile: OpenAiSubscriptionModelProfile,
         conversationKey: String,
+        webSearchEnabled: Boolean = false,
     ): OpenAiSubscriptionResponsesRequest {
         val replayWindow = request.messages.toReplayWindow()
-        val effectiveTools = if (request.options.toolChoice is AiToolChoice.None) {
+        val effectiveFunctionTools = if (request.options.toolChoice is AiToolChoice.None) {
             emptyList()
         } else {
             request.tools.sortedBy { it.definition.name }
+        }
+        val hostedWebSearchEnabled = webSearchEnabled && request.options.toolChoice !is AiToolChoice.None
+        val effectiveTools = buildList {
+            addAll(effectiveFunctionTools.map { tool -> tool.toToolJson() })
+            if (hostedWebSearchEnabled) {
+                add(buildJsonObject { put("type", "web_search") })
+            }
         }
         val inputItems = replayWindow.messages.flatMapIndexed { index, message ->
             toInputItems(
@@ -65,9 +73,12 @@ class OpenAiSubscriptionRequestMapper {
             instructions = instructions,
             contextManagement = buildContextManagement(request.options.autoCompactionThresholdTokens),
             parallelToolCalls = modelProfile.supportsParallelToolCalls && !modelProfile.useResponsesLite,
-            tools = effectiveTools.map { tool -> tool.toToolJson() },
+            tools = effectiveTools,
             toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { effectiveTools.isNotEmpty() },
-            include = if (reasoning == null) emptyList() else listOf("reasoning.encrypted_content"),
+            include = buildList {
+                if (reasoning != null) add("reasoning.encrypted_content")
+                if (hostedWebSearchEnabled) add("web_search_call.action.sources")
+            },
             text = buildTextConfig(request.options.responseFormat, modelProfile),
             reasoning = reasoning,
             serviceTier = buildServiceTier(request),
@@ -78,7 +89,8 @@ class OpenAiSubscriptionRequestMapper {
             request = request,
             requestPayload = requestPayload,
             replayWindow = replayWindow,
-            effectiveTools = effectiveTools,
+            effectiveToolNames = effectiveFunctionTools.map { it.definition.name } +
+                listOfNotNull("web_search".takeIf { hostedWebSearchEnabled }),
             conversationKey = conversationKey,
         )
 
@@ -90,6 +102,9 @@ class OpenAiSubscriptionRequestMapper {
         modelProfile: OpenAiSubscriptionModelProfile,
     ): OpenAiSubscriptionResponsesRequest {
         if (!modelProfile.useResponsesLite) return request
+        require(request.toolChoice == null || request.toolChoice == JsonPrimitive("auto")) {
+            "OpenAI Responses Lite supports only automatic tool choice"
+        }
 
         val prefix = buildList {
             add(
@@ -725,7 +740,7 @@ class OpenAiSubscriptionRequestMapper {
         request: AiRuntimeRequest,
         requestPayload: OpenAiSubscriptionResponsesRequest,
         replayWindow: ReplayWindow,
-        effectiveTools: List<AiToolCallback>,
+        effectiveToolNames: List<String>,
         conversationKey: String,
     ) {
         val itemTypeCounts = requestPayload.input
@@ -744,7 +759,7 @@ class OpenAiSubscriptionRequestMapper {
         val payloadChars = runCatching {
             json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), requestPayload).length
         }.getOrNull()
-        val toolSignature = effectiveTools.joinToString(",") { it.definition.name }.hashCode()
+        val toolSignature = effectiveToolNames.joinToString(",").hashCode()
 
         log.info(
             "OpenAI subscription request layout: " +
@@ -760,7 +775,7 @@ class OpenAiSubscriptionRequestMapper {
                 "itemTypes=$itemTypeCounts, " +
                 "messageRoles=$messageRoleCounts, " +
                 "messageContentShapes=$messageContentShapeCounts, " +
-                "tools=${effectiveTools.size}, " +
+                "tools=${effectiveToolNames.size}, " +
                 "toolChoice=${requestPayload.toolChoice?.toString()?.take(80) ?: "omitted"}, " +
                 "toolSignature=${toolSignature.toUInt().toString(16)}, " +
                 "autoCompactionThreshold=${request.options.autoCompactionThresholdTokens ?: "omitted"}, " +

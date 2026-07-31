@@ -39,7 +39,7 @@ class ControlMcpConversationToolContributorTest {
 
         assertEquals("grz_test_control", callback.definition.name)
         assertEquals("gromozeka:control", callback.definition.source)
-        assertEquals(AiToolExecutionScope.CONVERSATION_RUNTIME, callback.metadata.executionScope)
+        assertEquals(AiToolExecutionScope.SERVER, callback.metadata.executionScope)
         assertEquals(false, callback.metadata.visibleToMemoryPipeline)
 
         val result = controlMcpJson.parseToJsonElement(

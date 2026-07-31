@@ -76,7 +76,7 @@ class DistributedAiToolRoutingTest {
             description = "Activate a test skill.",
             inputSchema = """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}""",
         ),
-        metadata = AiToolMetadata(executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME),
+        metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER),
     )
     private val monitorCommandTool = AiToolDescriptor(
         definition = AiToolDefinition(

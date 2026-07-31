@@ -112,6 +112,26 @@ class AiConnectionTest {
     }
 
     @Test
+    fun openAiHostedWebSearchSettingSurvivesSerialization() {
+        val apiConnection: AiConnection = AiConnection.OpenAiApi(
+            id = AiConnection.Id("openai-api"),
+            displayName = "OpenAI API",
+            webSearchEnabled = false,
+        )
+        val subscriptionConnection: AiConnection = AiConnection.OpenAiSubscription(
+            id = AiConnection.Id("openai-subscription"),
+            displayName = "OpenAI Subscription",
+            webSearchEnabled = false,
+        )
+
+        val restoredApi = Json.decodeFromString<AiConnection>(Json.encodeToString(apiConnection))
+        val restoredSubscription = Json.decodeFromString<AiConnection>(Json.encodeToString(subscriptionConnection))
+
+        assertEquals(false, (restoredApi as AiConnection.OpenAiApi).webSearchEnabled)
+        assertEquals(false, (restoredSubscription as AiConnection.OpenAiSubscription).webSearchEnabled)
+    }
+
+    @Test
     fun workerExecutionTargetRequiresWorkerId() {
         assertFailsWith<IllegalArgumentException> {
             AiExecutionTarget.Worker(" ")

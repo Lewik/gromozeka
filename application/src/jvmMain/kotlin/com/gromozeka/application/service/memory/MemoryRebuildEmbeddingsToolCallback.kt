@@ -3,6 +3,7 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component
 class MemoryRebuildEmbeddingsToolCallback(
     private val memoryToolApplicationService: MemoryToolApplicationService,
 ) : AiToolCallback {
+    override val metadata = ServerToolMetadata
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @Serializable

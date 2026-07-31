@@ -18,7 +18,7 @@ class WorkerToolCatalog(
         if (ConversationRuntimeCapability.TOOL_EXECUTION in capabilities) {
             aiToolProvider.getTools()
                 .supportedBy(capabilities)
-                .filter { it.metadata.executionScope != AiToolExecutionScope.CONVERSATION_RUNTIME }
+                .filter { it.metadata.executionScope != AiToolExecutionScope.SERVER }
                 .map { AiToolDescriptor(it.definition, it.metadata) }
                 .sortedBy { it.definition.name }
         } else {

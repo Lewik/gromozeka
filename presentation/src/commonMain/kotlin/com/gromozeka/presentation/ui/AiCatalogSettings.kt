@@ -545,7 +545,7 @@ private fun ConnectionsEditor(
                     if (connection.enabled) "enabled" else "disabled",
                     "$modelCount models",
                     connection.executionTarget.displayLabel(workers),
-                ),
+                ) + connection.openAiWebSearchBadge(),
                 onEdit = { editing = connection },
                 onDelete = {
                     if (modelCount > 0) {
@@ -786,6 +786,9 @@ private fun ConnectionDialog(
     var id by remember { mutableStateOf(existing?.id?.value.orEmpty()) }
     var name by remember { mutableStateOf(existing?.displayName.orEmpty()) }
     var enabled by remember { mutableStateOf(existing?.enabled ?: true) }
+    var webSearchEnabled by remember {
+        mutableStateOf(existing.openAiWebSearchEnabledOrDefault())
+    }
     var executionTarget by remember {
         mutableStateOf(existing?.executionTarget ?: AiExecutionTarget.Server)
     }
@@ -883,6 +886,20 @@ private fun ConnectionDialog(
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
                     Spacer(Modifier.width(8.dp))
                     Text("Enabled")
+                }
+                if (kind == AiConnection.Kind.OPENAI_API || kind == AiConnection.Kind.OPENAI_SUBSCRIPTION) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = webSearchEnabled, onCheckedChange = { webSearchEnabled = it })
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("OpenAI hosted web search")
+                            Text(
+                                "Let this connection use OpenAI's native web_search tool.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
                 val targetOptions = buildList {
                     add(AiExecutionTarget.Server)
@@ -1023,6 +1040,7 @@ private fun ConnectionDialog(
                             id = id,
                             name = name,
                             enabled = enabled,
+                            webSearchEnabled = webSearchEnabled,
                             baseUrl = baseUrl,
                             secretMode = secretMode,
                             secretValue = secretValue,
@@ -1060,6 +1078,7 @@ private fun createConnection(
     id: String,
     name: String,
     enabled: Boolean,
+    webSearchEnabled: Boolean,
     baseUrl: String,
     secretMode: String,
     secretValue: String,
@@ -1082,12 +1101,14 @@ private fun createConnection(
             enabled = enabled,
             baseUrl = baseUrl.trim().ifBlank { null },
             apiKey = secret,
+            webSearchEnabled = webSearchEnabled,
             executionTarget = executionTarget,
         )
         AiConnection.Kind.OPENAI_SUBSCRIPTION -> AiConnection.OpenAiSubscription(
             id = connectionId,
             displayName = displayName,
             enabled = enabled,
+            webSearchEnabled = webSearchEnabled,
             executionTarget = executionTarget,
         )
         AiConnection.Kind.OPENAI_COMPATIBLE -> AiConnection.OpenAiCompatible(
@@ -1686,6 +1707,20 @@ private fun String.optionalInt(label: String): Int? =
 
 private fun String.optionalDouble(label: String): Double? =
     trim().ifBlank { null }?.toDoubleOrNull() ?: if (isBlank()) null else error("$label must be a number")
+
+private fun AiConnection?.openAiWebSearchEnabledOrDefault(): Boolean =
+    when (this) {
+        is AiConnection.OpenAiApi -> webSearchEnabled
+        is AiConnection.OpenAiSubscription -> webSearchEnabled
+        else -> true
+    }
+
+private fun AiConnection.openAiWebSearchBadge(): List<String> =
+    when (this) {
+        is AiConnection.OpenAiApi -> listOf(if (webSearchEnabled) "web search" else "web search off")
+        is AiConnection.OpenAiSubscription -> listOf(if (webSearchEnabled) "web search" else "web search off")
+        else -> emptyList()
+    }
 
 private val httpConnectionKinds = setOf(
     AiConnection.Kind.OPENAI_API,

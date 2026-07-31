@@ -4,7 +4,7 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.MAX_COMMAND_MONITOR_WAIT_MILLIS
 import com.gromozeka.domain.tool.CommandMonitorOwnerToolMetadata
 import com.gromozeka.domain.tool.CommandTaskOwnerToolMetadata
-import com.gromozeka.domain.tool.ConversationRuntimeToolMetadata
+import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
@@ -109,7 +109,7 @@ interface GrzListCommandsAndMonitorsTool : Tool<ListCommandsAndMonitorsRequest, 
         get() = "grz_list_commands_and_monitors"
 
     override val metadata
-        get() = ConversationRuntimeToolMetadata
+        get() = ServerToolMetadata
 
     override val description: String
         get() = """

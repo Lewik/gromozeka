@@ -4,8 +4,11 @@ import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.infrastructure.ai.config.TypedToolCallbackAdapter
 import com.gromozeka.infrastructure.ai.config.ToolsRegistrationConfig
 import com.gromozeka.infrastructure.ai.config.ToolCallbacksRegistrar
 import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
@@ -62,7 +65,7 @@ class DefaultAiToolProviderTest {
         declaredCallbacks.forEachIndexed { index, callback ->
             context.beanFactory.registerSingleton("declaredCallback$index", callback)
         }
-        val registrar = ToolsRegistrationConfig().toolCallbacksRegistrar(localTools)
+        val registrar = ToolsRegistrationConfig(TypedToolCallbackAdapter()).toolCallbacksRegistrar(localTools)
         context.beanFactory.registerSingleton("toolCallbacksRegistrar", registrar)
 
         return DefaultAiToolProvider(
@@ -78,6 +81,7 @@ class DefaultAiToolProviderTest {
     ): AiToolCallback =
         object : AiToolCallback {
             override val available = available
+            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
             override val definition = AiToolDefinition(
                 name = name,
                 description = "Test callback",
@@ -93,6 +97,7 @@ class DefaultAiToolProviderTest {
         override val name = "test_tool"
         override val description = "Test tool"
         override val requestType = TestRequest::class.java
+        override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
 
         override fun execute(request: TestRequest, context: ToolExecutionContext?): String = request.value
     }

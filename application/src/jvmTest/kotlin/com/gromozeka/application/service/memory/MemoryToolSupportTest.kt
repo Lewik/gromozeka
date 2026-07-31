@@ -3,6 +3,7 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,6 +34,7 @@ class MemoryToolSupportTest {
                 inputSchema = """{"type":"object"}""",
             )
             override val metadata = AiToolMetadata(
+                executionScope = AiToolExecutionScope.SERVER,
                 visibleToMemoryPipeline = visibleToMemoryPipeline,
             )
 

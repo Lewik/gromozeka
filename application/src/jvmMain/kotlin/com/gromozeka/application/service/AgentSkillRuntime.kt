@@ -118,7 +118,7 @@ class ActivateAgentSkillToolCallback(
     override val definition: AiToolDefinition = activateAgentSkillDefinition(emptyList())
 
     override val metadata: AiToolMetadata = AiToolMetadata(
-        executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME,
+        executionScope = AiToolExecutionScope.SERVER,
     )
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
@@ -173,7 +173,7 @@ class ReadAgentSkillResourceToolCallback(
     override val definition: AiToolDefinition = readAgentSkillResourceDefinition(emptyList())
 
     override val metadata: AiToolMetadata = AiToolMetadata(
-        executionScope = AiToolExecutionScope.CONVERSATION_RUNTIME,
+        executionScope = AiToolExecutionScope.SERVER,
     )
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {

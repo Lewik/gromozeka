@@ -33,7 +33,7 @@ class ParallelToolExecutorTest {
 
     @Test
     fun `conversation runtime tool cannot execute on Worker`() = runBlocking {
-        val executor = executor(TestTool("runtime_tool", AiToolExecutionScope.CONVERSATION_RUNTIME))
+        val executor = executor(TestTool("runtime_tool", AiToolExecutionScope.SERVER))
 
         val error = assertFailsWith<IllegalArgumentException> {
             executor.executeParallel(
@@ -67,7 +67,7 @@ class ParallelToolExecutorTest {
 
     @Test
     fun `conversation runtime tool executes on Server`() = runBlocking {
-        val executor = executor(TestTool("runtime_tool", AiToolExecutionScope.CONVERSATION_RUNTIME))
+        val executor = executor(TestTool("runtime_tool", AiToolExecutionScope.SERVER))
 
         val result = executor.executeParallel(
             toolCalls = listOf(toolCall("runtime_tool")),

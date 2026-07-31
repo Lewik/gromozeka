@@ -1390,6 +1390,13 @@ private fun WebToolSettingsEditor(
     var draft by remember(currentSnapshot.revision) {
         mutableStateOf(currentSnapshot.catalog.webTools)
     }
+    var openAiConnections by remember(currentSnapshot.revision) {
+        mutableStateOf(
+            currentSnapshot.catalog.connections.filter {
+                it is AiConnection.OpenAiApi || it is AiConnection.OpenAiSubscription
+            }
+        )
+    }
     var secretMutations by remember(currentSnapshot.revision) {
         mutableStateOf(emptyList<AiCatalogSecretMutation>())
     }
@@ -1418,7 +1425,11 @@ private fun WebToolSettingsEditor(
     val claudeModelById = claudeModels.associateBy(AiModelConfiguration::id)
     val selectedClaudeModel = draft.claudeCode.modelConfigurationId
     val canEnableClaudeTools = selectedClaudeModel in claudeModelById
-    val isDirty = draft != currentSnapshot.catalog.webTools || secretMutations.isNotEmpty()
+    val isDirty = draft != currentSnapshot.catalog.webTools ||
+        openAiConnections != currentSnapshot.catalog.connections.filter {
+            it is AiConnection.OpenAiApi || it is AiConnection.OpenAiSubscription
+        } ||
+        secretMutations.isNotEmpty()
 
     LaunchedEffect(braveApiKeyInputState, currentSnapshot.revision) {
         snapshotFlow { braveApiKeyInputState.text.toString() }.collect { value ->
@@ -1458,6 +1469,39 @@ private fun WebToolSettingsEditor(
     }
 
     SettingsGroup(title = "Web tools") {
+        if (openAiConnections.isEmpty()) {
+            InfoSettingItem(
+                label = "OpenAI hosted web search",
+                message = "Create an OpenAI API or OpenAI subscription connection to use its native web search.",
+            )
+        } else {
+            openAiConnections.forEach { connection ->
+                SwitchSettingItem(
+                    label = "${connection.displayName} hosted search",
+                    description = when (connection) {
+                        is AiConnection.OpenAiApi ->
+                            "Use OpenAI web_search through this API connection when its model needs current information."
+                        is AiConnection.OpenAiSubscription ->
+                            "Use OpenAI web_search through this subscription connection when its model needs current information."
+                        else -> error("Unexpected OpenAI web search connection ${connection.kind}")
+                    },
+                    value = connection.openAiWebSearchEnabled(),
+                    enabled = connection.enabled,
+                    onValueChange = { enabled ->
+                        openAiConnections = openAiConnections.map { candidate ->
+                            if (candidate.id == connection.id) {
+                                candidate.withOpenAiWebSearchEnabled(enabled)
+                            } else {
+                                candidate
+                            }
+                        }
+                    },
+                )
+            }
+        }
+
+        HorizontalDivider()
+
         SwitchSettingItem(
             label = translation.settings.enableBraveSearchLabel,
             description = translation.settings.braveSearchDescription,
@@ -1630,8 +1674,14 @@ private fun WebToolSettingsEditor(
                         error = null
                         runCatching {
                             val latest = aiConfigurationService.snapshot
+                            val openAiConnectionsById = openAiConnections.associateBy(AiConnection::id)
                             aiConfigurationService.replaceCatalog(
-                                catalog = latest.catalog.copy(webTools = draft),
+                                catalog = latest.catalog.copy(
+                                    connections = latest.catalog.connections.map { connection ->
+                                        openAiConnectionsById[connection.id] ?: connection
+                                    },
+                                    webTools = draft,
+                                ),
                                 expectedRevision = latest.revision,
                                 secretMutations = secretMutations,
                             )
@@ -1653,6 +1703,18 @@ private fun WebToolSettingsEditor(
             }
         }
     }
+}
+
+private fun AiConnection.openAiWebSearchEnabled(): Boolean = when (this) {
+    is AiConnection.OpenAiApi -> webSearchEnabled
+    is AiConnection.OpenAiSubscription -> webSearchEnabled
+    else -> error("Connection $id does not support OpenAI hosted web search")
+}
+
+private fun AiConnection.withOpenAiWebSearchEnabled(enabled: Boolean): AiConnection = when (this) {
+    is AiConnection.OpenAiApi -> copy(webSearchEnabled = enabled)
+    is AiConnection.OpenAiSubscription -> copy(webSearchEnabled = enabled)
+    else -> error("Connection $id does not support OpenAI hosted web search")
 }
 
 @Composable

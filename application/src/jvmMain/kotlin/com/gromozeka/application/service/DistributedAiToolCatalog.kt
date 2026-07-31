@@ -85,7 +85,7 @@ class DistributedAiToolCatalog(
         val workerEntries = onlineRegistrations
             .flatMap { registration ->
                 registration.tools
-                    .filter { it.metadata.executionScope != AiToolExecutionScope.CONVERSATION_RUNTIME }
+                    .filter { it.metadata.executionScope != AiToolExecutionScope.SERVER }
                     .map { descriptor -> descriptor.definition.name to (registration to descriptor) }
             }
             .groupBy(keySelector = { it.first }, valueTransform = { it.second })
@@ -104,8 +104,7 @@ class DistributedAiToolCatalog(
                         )
                     }
                     .filter {
-                        descriptor.metadata.executionScope == AiToolExecutionScope.CONVERSATION_RUNTIME ||
-                            descriptor.metadata.executionScope == AiToolExecutionScope.WORKER ||
+                        descriptor.metadata.executionScope == AiToolExecutionScope.WORKER ||
                             descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
                             descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_MONITOR_OWNER ||
                             it.workspaceMounts.isNotEmpty()
@@ -118,7 +117,7 @@ class DistributedAiToolCatalog(
         val serverEntries = aiToolProvider.getTools()
             .asSequence()
             .filter(AiToolCallback::available)
-            .filter { it.metadata.executionScope == AiToolExecutionScope.CONVERSATION_RUNTIME }
+            .filter { it.metadata.executionScope == AiToolExecutionScope.SERVER }
             .map { callback ->
                 callback.definition.name to DistributedAiTool(
                     descriptor = AiToolDescriptor(callback.definition, callback.metadata),
@@ -169,7 +168,7 @@ class DistributedAiToolCatalog(
 
     private fun String.withExecutionTargetDescription(scope: AiToolExecutionScope): String {
         val targetDescription = when (scope) {
-            AiToolExecutionScope.CONVERSATION_RUNTIME -> return this
+            AiToolExecutionScope.SERVER -> return this
             AiToolExecutionScope.WORKER ->
                 "Select the exact online worker in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.WORKSPACE ->
@@ -190,7 +189,7 @@ class DistributedAiToolCatalog(
                 "'$AI_TOOL_EXECUTION_TARGET_FIELD'"
         }
         if (
-            tool.descriptor.metadata.executionScope == AiToolExecutionScope.CONVERSATION_RUNTIME ||
+            tool.descriptor.metadata.executionScope == AiToolExecutionScope.SERVER ||
             tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
             tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_MONITOR_OWNER
         ) {

@@ -65,13 +65,24 @@ internal class OpenAiSdkRuntimeBackend(
         modelConfiguration: AiModelConfiguration,
         workspaceRootPath: String?
     ): AiRuntime {
-        val connectionKind = connection.kind
-        return OpenAiSdkRuntime(
-            connectionKind = connectionKind,
-            modelName = modelConfiguration.providerModelId,
-            client = clientFactory.createClient(connection),
-            messageMapper = OpenAiSdkMessageMapper(connectionKind),
-        )
+        return when (connection) {
+            is AiConnection.OpenAiApi -> OpenAiResponsesSdkRuntime(
+                connectionId = connection.id.value,
+                modelConfigurationId = modelConfiguration.id.value,
+                modelName = modelConfiguration.providerModelId,
+                webSearchEnabled = connection.webSearchEnabled,
+                client = clientFactory.createClient(connection),
+            )
+
+            is AiConnection.OpenAiCompatible -> OpenAiSdkRuntime(
+                connectionKind = connection.kind,
+                modelName = modelConfiguration.providerModelId,
+                client = clientFactory.createClient(connection),
+                messageMapper = OpenAiSdkMessageMapper(connection.kind),
+            )
+
+            else -> error("OpenAI SDK runtime does not support connection ${connection.kind}")
+        }
     }
 }
 

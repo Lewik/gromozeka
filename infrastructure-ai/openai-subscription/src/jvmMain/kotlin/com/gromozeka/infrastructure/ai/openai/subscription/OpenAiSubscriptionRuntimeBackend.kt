@@ -36,8 +36,11 @@ class OpenAiSubscriptionRuntimeBackend(
         modelConfiguration: AiModelConfiguration,
         workspaceRootPath: String?,
     ): AiRuntime {
+        val subscription = connection as? AiConnection.OpenAiSubscription
+            ?: error("OpenAI subscription runtime requires an OpenAI subscription connection")
         return Runtime(
             connectionId = connection.id.value,
+            webSearchEnabled = subscription.webSearchEnabled,
             modelConfigurationId = modelConfiguration.id.value,
             modelName = modelConfiguration.providerModelId,
             authService = authService,
@@ -51,6 +54,7 @@ class OpenAiSubscriptionRuntimeBackend(
 
 private class Runtime(
     private val connectionId: String,
+    private val webSearchEnabled: Boolean,
     private val modelConfigurationId: String,
     private val modelName: String,
     private val authService: OpenAiSubscriptionAuthService,
@@ -87,6 +91,7 @@ private class Runtime(
                 request = request,
                 modelProfile = modelProfile,
                 conversationKey = promptCacheKey,
+                webSearchEnabled = webSearchEnabled,
             )
             val parsed = responsesClient.create(
                 session = session,

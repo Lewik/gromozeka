@@ -2,6 +2,8 @@ package com.gromozeka.infrastructure.ai.config
 
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.infrastructure.ai.mcp.tools.GromozekaMcpTool
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
@@ -49,6 +51,7 @@ class InternalMcpToolsRegistrar(
                 description = mcpTool.definition.description ?: "",
                 inputSchema = Json.encodeToString(ToolSchema.serializer(), mcpTool.definition.inputSchema)
             )
+            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
 
             override fun call(toolInput: String, context: com.gromozeka.domain.tool.ToolExecutionContext?): String {
                 return runBlocking {

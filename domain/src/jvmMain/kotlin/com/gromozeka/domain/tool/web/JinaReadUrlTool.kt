@@ -2,6 +2,7 @@ package com.gromozeka.domain.tool.web
 
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.ServerToolMetadata
 
 /**
  * Request parameters for jina_read_url tool.
@@ -400,6 +401,7 @@ data class JinaReadUrlRequest(
  * @see com.gromozeka.domain.service.WebSearchService.readUrl (when created)
  */
 interface JinaReadUrlTool : Tool<JinaReadUrlRequest, Map<String, Any>> {
+    override val metadata get() = ServerToolMetadata
     
     override val name: String
         get() = "jina_read_url"
