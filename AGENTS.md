@@ -22,15 +22,11 @@ cat docs/development-guide.md
 
 **3. Fix the issue.**
 
-## Critical Build Command
+## Verification
 
-After any fix, verify:
-```bash
-./gradlew :presentation:build :server:test -q || \
-  ./gradlew :presentation:build :server:test
-```
-
-Pattern: `-q` first (saves tokens), full output only on error.
+Default to `:<module>:assemble -q` or the smallest affected target compile.
+Run focused tests for changed behavior. Use a full build only for cross-cutting,
+build-system, packaging, or release changes. Retry without `-q` only on error.
 
 ## Current Product Priorities
 

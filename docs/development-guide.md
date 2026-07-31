@@ -180,18 +180,15 @@ of copying files manually.
 
 ## Verification
 
-Use the smallest relevant build first:
+Default to the cheapest check that covers the changed boundary:
 
 ```bash
-./gradlew :domain:compileKotlinMetadata -q
-./gradlew :application:build -q
-./gradlew :infrastructure-db:build -q
-./gradlew :infrastructure-ai:build -q
-./gradlew :presentation:build -q
-./gradlew :server:test -q
+./gradlew :<module>:assemble -q
+./gradlew :<module>:compileKotlin<Target> -q
+./gradlew :<module>:test --tests '<focused test>' -q
 ```
 
-After a cross-cutting change, run:
+Use a full build for cross-cutting, build-system, packaging, or release changes:
 
 ```bash
 ./gradlew :presentation:build :server:test -q
