@@ -26,6 +26,7 @@ services:
       GROMOZEKA_POSTGRES_USERNAME: gromozeka
       GROMOZEKA_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       GROMOZEKA_MCP_ALLOWED_HOSTS: ${GROMOZEKA_MCP_ALLOWED_HOSTS:-localhost,127.0.0.1,[::1]}
+      GROMOZEKA_WORKER_ENROLLMENT_ENABLED: ${GROMOZEKA_WORKER_ENROLLMENT_ENABLED:-true}
     volumes:
       - gromozeka-home:/var/lib/gromozeka
     ports:
