@@ -8,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.LocationOn
@@ -36,7 +35,6 @@ import androidx.compose.ui.zIndex
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
 import com.gromozeka.domain.model.MessageInstructionGroup
-import com.gromozeka.domain.model.WorkspaceContextReference
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
@@ -61,9 +59,6 @@ fun MessageInput(
     instructionGroups: List<MessageInstructionGroup>,
     activeInstructionIds: Set<String>,
     onSelectInstruction: (MessageInstructionGroup, Int) -> Unit,
-    workspaceContextReferences: List<WorkspaceContextReference>,
-    onAddWorkspaceContext: () -> Unit,
-    onRemoveWorkspaceContext: (WorkspaceContextReference) -> Unit,
     onCaptureScreenshot: suspend () -> Unit,
     onInsertCurrentLocation: (() -> Unit)? = null,
 ) {
@@ -117,33 +112,6 @@ fun MessageInput(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (workspaceContextReferences.isNotEmpty()) {
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag(UiTestTag.ContextReferenceChips.value),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                workspaceContextReferences.forEach { reference ->
-                    InputChip(
-                        selected = true,
-                        onClick = {},
-                        label = { Text("@${reference.name}") },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Remove ${reference.name} from context",
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .clickable { onRemoveWorkspaceContext(reference) },
-                            )
-                        },
-                    )
-                }
-            }
-        }
-
         if (showPttButton) {
             VoiceCaptureStatus(
                 state = pttState,
@@ -202,16 +170,6 @@ fun MessageInput(
                         ) {
                             Icon(Icons.Default.KeyboardHide, contentDescription = "Hide keyboard")
                         }
-                    }
-
-                    CompactButton(
-                        onClick = onAddWorkspaceContext,
-                        modifier = Modifier
-                            .size(actionButtonSize)
-                            .testTag(UiTestTag.ContextPickerButton.value),
-                        tooltip = "Add file or folder context",
-                    ) {
-                        Text("@", style = MaterialTheme.typography.titleMedium)
                     }
 
                     BadgedBox(

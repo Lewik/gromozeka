@@ -30,7 +30,6 @@ import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
 import com.gromozeka.presentation.ui.UiTestTag
-import com.gromozeka.presentation.ui.WorkspaceContextDialog
 import com.gromozeka.presentation.ui.format
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -100,7 +99,6 @@ fun SessionScreen(
     val topToolbarScrollState = rememberScrollState()
     val editToolbarScrollState = rememberScrollState()
     var showMemoryMenu by remember { mutableStateOf(false) }
-    var showWorkspaceContextPicker by remember { mutableStateOf(false) }
 
     // LazyColumn sticky to bottom logic
     val isAtBottom by remember {
@@ -583,9 +581,6 @@ fun SessionScreen(
                         instructionGroups = viewModel.messageInstructionGroups,
                         activeInstructionIds = uiState.activeMessageInstructionIds,
                         onSelectInstruction = viewModel::selectMessageInstruction,
-                        workspaceContextReferences = uiState.workspaceContextReferences,
-                        onAddWorkspaceContext = { showWorkspaceContextPicker = true },
-                        onRemoveWorkspaceContext = viewModel::removeWorkspaceContextReference,
                         onCaptureScreenshot = viewModel::captureAndAddToInput,
                         onInsertCurrentLocation = onInsertCurrentLocation,
                     )
@@ -626,14 +621,5 @@ fun SessionScreen(
             )
         }
 
-        if (showWorkspaceContextPicker) {
-            WorkspaceContextDialog(
-                onSelect = { reference ->
-                    viewModel.addWorkspaceContextReference(reference)
-                    showWorkspaceContextPicker = false
-                },
-                onDismiss = { showWorkspaceContextPicker = false },
-            )
-        }
     }
 }

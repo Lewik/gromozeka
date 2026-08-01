@@ -141,11 +141,19 @@ class RemotePttController(
         }
 
         _statusMessage.value = null
-        log.info {
-            "PTT transcription sending message: " +
-                "session=${capture.session.sessionId} textChars=${text.length}"
+        if (settingsService.userDeviceSettings.voiceInputSettings.autoSend) {
+            log.info {
+                "PTT transcription sending message: " +
+                    "session=${capture.session.sessionId} textChars=${text.length}"
+            }
+            currentTab.sendMessageToSession(text)
+        } else {
+            log.info {
+                "PTT transcription adding composer draft: " +
+                    "session=${capture.session.sessionId} textChars=${text.length}"
+            }
+            currentTab.appendUserInput(text)
         }
-        currentTab.sendMessageToSession(text)
     }
 
     override suspend fun handlePTTCancel() {

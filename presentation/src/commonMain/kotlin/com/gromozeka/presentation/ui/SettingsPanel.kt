@@ -129,6 +129,7 @@ fun SettingsPanel(
     val uiSettings = deviceSettings.uiSettings
     val themeSettings = uiSettings.theme
     val soundSettings = deviceSettings.soundSettings
+    val voiceInputSettings = deviceSettings.voiceInputSettings
     val desktopInputSettings = settings.desktopInputSettings
     val desktopWindowSettings = settings.desktopWindowSettings
     val aiCatalogSnapshot by aiConfigurationService.snapshotFlow.collectAsState()
@@ -671,10 +672,10 @@ fun SettingsPanel(
                             SwitchSettingItem(
                                 label = translation.settings.autoSendMessagesLabel,
                                 description = translation.settings.autoSendDescription,
-                                value = desktopInputSettings.autoSend,
+                                value = voiceInputSettings.autoSend,
                                 onValueChange = {
                                     onSettingsChange(
-                                        settings.updateDesktopInputSettings { copy(autoSend = it) }
+                                        settings.updateVoiceInputSettings { copy(autoSend = it) }
                                     )
                                 }
                             )
@@ -2074,6 +2075,11 @@ private fun Settings.updateSoundSettings(
 ): Settings =
     updateDeviceSettings { withSoundSettings(soundSettings.update()) }
 
+private fun Settings.updateVoiceInputSettings(
+    update: UserDeviceSettings.VoiceInputSettings.() -> UserDeviceSettings.VoiceInputSettings,
+): Settings =
+    updateDeviceSettings { withVoiceInputSettings(voiceInputSettings.update()) }
+
 private fun Settings.updateDesktopInputSettings(
     update: UserDeviceSettings.DesktopInputSettings.() -> UserDeviceSettings.DesktopInputSettings,
 ): Settings =
@@ -2116,6 +2122,16 @@ private fun UserDeviceSettings.withSoundSettings(soundSettings: UserDeviceSettin
         is UserDeviceSettings.Android -> copy(soundSettings = soundSettings)
         is UserDeviceSettings.Ios -> copy(soundSettings = soundSettings)
         is UserDeviceSettings.Web -> copy(soundSettings = soundSettings)
+    }
+
+private fun UserDeviceSettings.withVoiceInputSettings(
+    voiceInputSettings: UserDeviceSettings.VoiceInputSettings,
+): UserDeviceSettings =
+    when (this) {
+        is UserDeviceSettings.Desktop -> copy(voiceInputSettings = voiceInputSettings)
+        is UserDeviceSettings.Android -> copy(voiceInputSettings = voiceInputSettings)
+        is UserDeviceSettings.Ios -> copy(voiceInputSettings = voiceInputSettings)
+        is UserDeviceSettings.Web -> copy(voiceInputSettings = voiceInputSettings)
     }
 
 private fun UserDeviceSettings.withShowSystemMessages(showSystemMessages: Boolean): UserDeviceSettings =

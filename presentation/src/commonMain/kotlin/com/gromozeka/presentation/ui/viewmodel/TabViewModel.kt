@@ -377,28 +377,15 @@ class TabViewModel(
         }
     }
 
-    fun addWorkspaceContextReference(reference: WorkspaceContextReference) {
-        _uiState.update { currentState ->
-            if (currentState.workspaceContextReferences.any {
-                    it.relativePath == reference.relativePath && it.kind == reference.kind
-                }
-            ) {
-                currentState
-            } else {
-                currentState.copy(
-                    workspaceContextReferences = currentState.workspaceContextReferences + reference
-                )
-            }
-        }
-    }
+    fun appendUserInput(input: String) {
+        val appendedText = input.trim()
+        if (appendedText.isEmpty()) return
 
-    fun removeWorkspaceContextReference(reference: WorkspaceContextReference) {
+        claimedUserInput = null
         _uiState.update { currentState ->
-            currentState.copy(
-                workspaceContextReferences = currentState.workspaceContextReferences.filterNot {
-                    it.relativePath == reference.relativePath && it.kind == reference.kind
-                }
-            )
+            val currentInput = currentState.userInput
+            val separator = if (currentInput.isBlank() || currentInput.last().isWhitespace()) "" else " "
+            currentState.copy(userInput = "$currentInput$separator$appendedText")
         }
     }
 

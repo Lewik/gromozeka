@@ -149,7 +149,7 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
             ),
             userDeviceSettings = UserDeviceSettings.Desktop(
                 uiSettings = UserDeviceSettings.UiSettings(),
-                inputSettings = UserDeviceSettings.DesktopInputSettings(autoSend = true),
+                voiceInputSettings = UserDeviceSettings.VoiceInputSettings(autoSend = true),
             ),
         )
 

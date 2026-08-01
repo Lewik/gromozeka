@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 sealed interface UserDeviceSettings {
     val uiSettings: UiSettings
     val soundSettings: SoundSettings
+    val voiceInputSettings: VoiceInputSettings
     val showSystemMessages: Boolean
     val showOriginalJson: Boolean
 
@@ -15,6 +16,7 @@ sealed interface UserDeviceSettings {
     data class Desktop(
         override val uiSettings: UiSettings = UiSettings(),
         override val soundSettings: SoundSettings = SoundSettings(),
+        override val voiceInputSettings: VoiceInputSettings = VoiceInputSettings(),
         override val showSystemMessages: Boolean = true,
         override val showOriginalJson: Boolean = false,
         val inputSettings: DesktopInputSettings = DesktopInputSettings(),
@@ -26,6 +28,7 @@ sealed interface UserDeviceSettings {
     data class Android(
         override val uiSettings: UiSettings = UiSettings(),
         override val soundSettings: SoundSettings = SoundSettings(),
+        override val voiceInputSettings: VoiceInputSettings = VoiceInputSettings(),
         override val showSystemMessages: Boolean = true,
         override val showOriginalJson: Boolean = false,
         val keepScreenAwakeDuringVoice: Boolean = true,
@@ -36,6 +39,7 @@ sealed interface UserDeviceSettings {
     data class Ios(
         override val uiSettings: UiSettings = UiSettings(),
         override val soundSettings: SoundSettings = SoundSettings(),
+        override val voiceInputSettings: VoiceInputSettings = VoiceInputSettings(),
         override val showSystemMessages: Boolean = true,
         override val showOriginalJson: Boolean = false,
         val keepScreenAwakeDuringVoice: Boolean = true,
@@ -46,6 +50,7 @@ sealed interface UserDeviceSettings {
     data class Web(
         override val uiSettings: UiSettings = UiSettings(),
         override val soundSettings: SoundSettings = SoundSettings(),
+        override val voiceInputSettings: VoiceInputSettings = VoiceInputSettings(),
         override val showSystemMessages: Boolean = true,
         override val showOriginalJson: Boolean = false,
     ) : UserDeviceSettings
@@ -88,8 +93,12 @@ sealed interface UserDeviceSettings {
     }
 
     @Serializable
-    data class DesktopInputSettings(
+    data class VoiceInputSettings(
         val autoSend: Boolean = false,
+    )
+
+    @Serializable
+    data class DesktopInputSettings(
         val globalPttHotkeyEnabled: Boolean = false,
         val muteSystemAudioDuringPtt: Boolean = true,
     )
