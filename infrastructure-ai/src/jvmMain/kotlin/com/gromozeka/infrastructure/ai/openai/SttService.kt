@@ -272,7 +272,7 @@ class OpenAiSpeechTranscriptionExecutor(
                 .apply {
                     request.language
                         ?.takeUnless { it.equals("auto", ignoreCase = true) }
-                        ?.let(::language)
+                        ?.let { languages(listOf(it)) }
                     request.prompt?.trim()?.takeIf { it.isNotBlank() }?.let(::prompt)
                 }
                 .build()

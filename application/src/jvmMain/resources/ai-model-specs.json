@@ -340,7 +340,7 @@
     }
   },
   {
-    "id": "gpt-4o-transcribe",
+    "id": "gpt-transcribe",
     "provider": "OPENAI",
     "capabilities": ["SPEECH_TO_TEXT"]
   },

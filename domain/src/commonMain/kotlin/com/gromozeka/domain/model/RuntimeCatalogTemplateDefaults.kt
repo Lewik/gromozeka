@@ -31,7 +31,7 @@ object RuntimeCatalogTemplateDefaults {
         assignment(AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS, "openai-api-text-embedding-3-large"),
         assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPT_STABILIZER, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION, "openai-subscription-gpt-5.5"),
-        assignment(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT, "openai-api-gpt-4o-transcribe"),
+        assignment(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT, "openai-api-gpt-transcribe"),
         assignment(AiRuntimeAssignment.Purpose.TEXT_TO_SPEECH, "openai-api-gpt-4o-mini-tts"),
     )
 
@@ -148,10 +148,10 @@ object RuntimeCatalogTemplateDefaults {
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         ),
         AiModelConfiguration(
-            id = AiModelConfiguration.Id("openai-api-gpt-4o-transcribe"),
+            id = AiModelConfiguration.Id("openai-api-gpt-transcribe"),
             connectionId = AiConnection.Id("openai-api"),
-            providerModelId = "gpt-4o-transcribe",
-            displayName = "OpenAI GPT-4o transcribe",
+            providerModelId = "gpt-transcribe",
+            displayName = "OpenAI GPT Transcribe",
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         ),
         AiModelConfiguration(
