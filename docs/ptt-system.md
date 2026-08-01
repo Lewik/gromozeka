@@ -15,21 +15,23 @@ The microphone button is disabled with an explanation when the configured route
 cannot run. Its visible state is one of `IDLE`, `PREPARING`, `RECORDING`, or
 `TRANSCRIBING`.
 
-## Gesture Behavior
+## Interaction Behavior
 
-The on-screen button recognizes these gestures:
+The on-screen microphone is a bounded tap-to-record control:
 
-- single click: stop current speech playback;
-- double click: interrupt the current conversation turn;
-- hold: record and transcribe speech;
-- click followed by hold: interrupt, then record speech.
+- the first tap starts preparing and then recording;
+- a tap while preparing cancels the request;
+- a tap while recording stops capture and starts transcription;
+- the control is disabled while transcription is running.
 
-Current-client recording starts optimistically on button down so the first
-syllable is retained. Worker recording starts only after the hold threshold is
-crossed, preventing a normal click from starting a remote process. Releasing
-while a source is still preparing marks that preparation for cancellation
-without blocking the UI.
+A status surface above the composer mirrors `PREPARING`, `RECORDING`,
+`TRANSCRIBING`, and capture errors. The surface is itself tappable while
+preparing or recording. Supported clients provide distinct haptic feedback
+when recording starts, recording stops, or capture fails.
 
+External PTT controls retain the richer gesture contract: a single click stops
+speech playback, a double click interrupts the current conversation turn, a
+hold records speech, and a click followed by a hold interrupts before recording.
 The iOS Action Button reports an explicit hold immediately because its system
 event already distinguishes press from release.
 
