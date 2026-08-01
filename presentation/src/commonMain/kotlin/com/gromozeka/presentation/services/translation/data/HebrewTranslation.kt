@@ -232,6 +232,8 @@ data class HebrewTranslation(
         editButton = "עריכה",
         nearestToolResultPlacement = "לאחר תוצאת הכלי הקרובה",
         currentResponsePlacement = "לאחר התשובה הנוכחית",
+        voiceInputReadyStatus = "קלט קולי",
+        startVoiceCaptureHint = "הקש כדי להתחיל להקליט",
         preparingVoiceStatus = "מכין את המיקרופון",
         transcribingVoiceStatus = "מתמלל קול...",
         recordingVoiceStatus = "מקליט קול",

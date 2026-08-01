@@ -94,7 +94,7 @@ sealed interface UserDeviceSettings {
 
     @Serializable
     data class VoiceInputSettings(
-        val autoSend: Boolean = false,
+        val autoSend: Boolean = true,
     )
 
     @Serializable

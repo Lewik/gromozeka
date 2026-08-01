@@ -225,6 +225,8 @@ data class JapaneseTranslation(
         editButton = "編集",
         nearestToolResultPlacement = "次のツール結果の後",
         currentResponsePlacement = "現在の応答の後",
+        voiceInputReadyStatus = "音声入力",
+        startVoiceCaptureHint = "タップして録音を開始",
         preparingVoiceStatus = "マイクを準備中",
         transcribingVoiceStatus = "音声を文字起こし中...",
         recordingVoiceStatus = "音声を録音中",

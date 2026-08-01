@@ -225,6 +225,8 @@ data class ChineseTranslation(
         editButton = "编辑",
         nearestToolResultPlacement = "在最近的工具结果之后",
         currentResponsePlacement = "在当前回复之后",
+        voiceInputReadyStatus = "语音输入",
+        startVoiceCaptureHint = "点击开始录音",
         preparingVoiceStatus = "正在准备麦克风",
         transcribingVoiceStatus = "正在转录语音...",
         recordingVoiceStatus = "正在录音",

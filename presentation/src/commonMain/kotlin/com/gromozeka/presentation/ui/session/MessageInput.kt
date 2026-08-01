@@ -12,11 +12,13 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,6 +42,7 @@ import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -55,6 +58,7 @@ fun MessageInput(
     pttStatusMessage: String?,
     pttUnavailableReason: String?,
     showPttButton: Boolean,
+    compactVoiceMode: Boolean,
     clientPlatform: ClientPlatform,
     instructionGroups: List<MessageInstructionGroup>,
     activeInstructionIds: Set<String>,
@@ -116,6 +120,8 @@ fun MessageInput(
             VoiceCaptureStatus(
                 state = pttState,
                 statusMessage = pttStatusMessage,
+                unavailableReason = pttUnavailableReason,
+                expandedIdle = compactVoiceMode,
                 onToggle = ::toggleVoiceCapture,
             )
         }
@@ -203,7 +209,7 @@ fun MessageInput(
                         }
                     }
 
-                    if (showPttButton) {
+                    if (showPttButton && !compactVoiceMode) {
                         val isRecording = pttState == PttState.RECORDING
                         CompactButton(
                             onClick = ::toggleVoiceCapture,
@@ -299,32 +305,59 @@ fun MessageInput(
 private fun VoiceCaptureStatus(
     state: PttState,
     statusMessage: String?,
+    unavailableReason: String?,
+    expandedIdle: Boolean,
     onToggle: () -> Unit,
 ) {
-    if (state == PttState.IDLE && statusMessage.isNullOrBlank()) return
+    if (state == PttState.IDLE && statusMessage.isNullOrBlank() && !expandedIdle) return
 
     val translation = LocalTranslation.current.runtime
     val isError = state == PttState.IDLE && !statusMessage.isNullOrBlank()
-    val isInteractive = state == PttState.PREPARING || state == PttState.RECORDING
+    val isUnavailable = state == PttState.IDLE && statusMessage.isNullOrBlank() && unavailableReason != null
+    val isInteractive = when (state) {
+        PttState.IDLE -> unavailableReason == null
+        PttState.PREPARING,
+        PttState.RECORDING -> true
+        PttState.TRANSCRIBING -> false
+    }
+    var recordingSeconds by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(state) {
+        recordingSeconds = 0
+        if (state == PttState.RECORDING) {
+            while (true) {
+                delay(1_000)
+                recordingSeconds += 1
+            }
+        }
+    }
+
     val title = when (state) {
-        PttState.IDLE -> statusMessage.orEmpty()
+        PttState.IDLE -> statusMessage
+            ?.takeIf(String::isNotBlank)
+            ?: unavailableReason
+            ?: translation.voiceInputReadyStatus
         PttState.PREPARING -> translation.preparingVoiceStatus
         PttState.RECORDING -> translation.recordingVoiceStatus
         PttState.TRANSCRIBING -> translation.transcribingVoiceStatus
     }
     val hint = when (state) {
+        PttState.IDLE -> if (isError || isUnavailable) null else translation.startVoiceCaptureHint
         PttState.PREPARING -> translation.cancelVoiceCaptureHint
         PttState.RECORDING -> translation.stopVoiceCaptureHint
-        PttState.IDLE,
         PttState.TRANSCRIBING -> null
     }
     val containerColor = when {
         isError -> MaterialTheme.colorScheme.errorContainer
-        state == PttState.RECORDING -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.72f)
+        state == PttState.RECORDING -> MaterialTheme.colorScheme.errorContainer
+        isUnavailable -> MaterialTheme.colorScheme.surfaceVariant
+        state == PttState.IDLE -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
     }
     val contentColor = when {
         isError || state == PttState.RECORDING -> MaterialTheme.colorScheme.onErrorContainer
+        isUnavailable -> MaterialTheme.colorScheme.onSurfaceVariant
+        state == PttState.IDLE -> MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onSecondaryContainer
     }
     val interactionModifier = if (isInteractive) {
@@ -336,7 +369,7 @@ private fun VoiceCaptureStatus(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp)
+            .heightIn(min = if (expandedIdle) 72.dp else 60.dp)
             .testTag(UiTestTag.VoiceCaptureStatus.value)
             .then(interactionModifier),
         color = containerColor,
@@ -362,9 +395,13 @@ private fun VoiceCaptureStatus(
                 )
 
                 PttState.IDLE -> Icon(
-                    Icons.Default.ErrorOutline,
+                    when {
+                        isError -> Icons.Default.ErrorOutline
+                        isUnavailable -> Icons.Default.MicOff
+                        else -> Icons.Default.Mic
+                    },
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(if (expandedIdle) 28.dp else 24.dp),
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -378,6 +415,15 @@ private fun VoiceCaptureStatus(
                     )
                 }
             }
+            if (state == PttState.RECORDING) {
+                Text(
+                    text = recordingSeconds.asRecordingDuration(),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+            }
         }
     }
 }
+
+private fun Int.asRecordingDuration(): String =
+    "${this / 60}:${(this % 60).toString().padStart(2, '0')}"

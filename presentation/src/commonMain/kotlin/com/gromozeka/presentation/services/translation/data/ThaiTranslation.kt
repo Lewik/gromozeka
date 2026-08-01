@@ -225,6 +225,8 @@ data class ThaiTranslation(
         editButton = "แก้ไข",
         nearestToolResultPlacement = "หลังผลลัพธ์เครื่องมือถัดไป",
         currentResponsePlacement = "หลังคำตอบปัจจุบัน",
+        voiceInputReadyStatus = "ป้อนข้อมูลด้วยเสียง",
+        startVoiceCaptureHint = "แตะเพื่อเริ่มบันทึก",
         preparingVoiceStatus = "กำลังเตรียมไมโครโฟน",
         transcribingVoiceStatus = "กำลังถอดเสียง...",
         recordingVoiceStatus = "กำลังบันทึกเสียง",

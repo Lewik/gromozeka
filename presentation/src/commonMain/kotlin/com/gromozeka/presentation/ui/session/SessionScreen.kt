@@ -577,6 +577,7 @@ fun SessionScreen(
                         pttStatusMessage = pttStatusMessage,
                         pttUnavailableReason = pttUnavailableReason,
                         showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
+                        compactVoiceMode = isCompactLayout,
                         clientPlatform = clientPlatform,
                         instructionGroups = viewModel.messageInstructionGroups,
                         activeInstructionIds = uiState.activeMessageInstructionIds,

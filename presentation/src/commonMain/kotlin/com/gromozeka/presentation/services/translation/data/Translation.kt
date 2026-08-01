@@ -171,6 +171,8 @@ sealed class Translation {
         val editButton: String = "Edit",
         val nearestToolResultPlacement: String = "After the nearest tool result",
         val currentResponsePlacement: String = "After the current response",
+        val voiceInputReadyStatus: String = "Voice input",
+        val startVoiceCaptureHint: String = "Tap to start recording",
         val preparingVoiceStatus: String = "Preparing microphone",
         val transcribingVoiceStatus: String = "Transcribing voice...",
         val recordingVoiceStatus: String = "Recording voice",

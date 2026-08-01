@@ -239,6 +239,8 @@ data class RussianTranslation(
         editButton = "Изменить",
         nearestToolResultPlacement = "После ближайшего результата инструмента",
         currentResponsePlacement = "После текущего ответа",
+        voiceInputReadyStatus = "Голосовой ввод",
+        startVoiceCaptureHint = "Нажмите, чтобы начать запись",
         preparingVoiceStatus = "Готовлю микрофон",
         transcribingVoiceStatus = "Расшифровываю голос...",
         recordingVoiceStatus = "Идёт запись голоса",
