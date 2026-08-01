@@ -39,8 +39,8 @@ data class ThaiTranslation(
     override val screenshotTooltip: String = "จับภาพหน้าจอ",
     override val sendingMessageTooltip: String = "กำลังส่งข้อความ...",
     override val sendMessageTooltip: String = "ส่งข้อความ (Shift+Enter)",
-    override val recordingTooltip: String = "กำลังบันทึก... (ปล่อยเพื่อหยุด)",
-    override val pttButtonTooltip: String = "กดค้างเพื่อบันทึก (PTT)",
+    override val recordingTooltip: String = "กำลังบันทึก... (แตะเพื่อหยุด)",
+    override val pttButtonTooltip: String = "แตะเพื่อบันทึกเสียง",
     override val builtinStringsTooltip: String = "ใช้ข้อความภายใน",
     override val externalStringsTooltip: String = "ใช้ไฟล์ JSON ภายนอก",
 
@@ -77,7 +77,7 @@ data class ThaiTranslation(
     override val parseErrorText: String = "ไม่สามารถแปลงโครงสร้างได้",
     override val clearSearchText: String = "ล้างการค้นหา",
     override val recordingText: String = "บันทึก",
-    override val pushToTalkText: String = "กดเพื่อพูด",
+    override val pushToTalkText: String = "ป้อนข้อมูลด้วยเสียง",
 ) : Translation() {
 
     @Serializable
@@ -225,8 +225,11 @@ data class ThaiTranslation(
         editButton = "แก้ไข",
         nearestToolResultPlacement = "หลังผลลัพธ์เครื่องมือถัดไป",
         currentResponsePlacement = "หลังคำตอบปัจจุบัน",
+        preparingVoiceStatus = "กำลังเตรียมไมโครโฟน",
         transcribingVoiceStatus = "กำลังถอดเสียง...",
         recordingVoiceStatus = "กำลังบันทึกเสียง",
+        cancelVoiceCaptureHint = "แตะเพื่อยกเลิก",
+        stopVoiceCaptureHint = "แตะเพื่อหยุดและถอดเสียง",
         pauseRequestedStatus = "ขอหยุดชั่วคราวแล้ว",
         pausedStatus = "หยุดชั่วคราว",
         stoppingStatus = "กำลังหยุด",

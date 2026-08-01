@@ -39,8 +39,8 @@ data class JapaneseTranslation(
     override val screenshotTooltip: String = "ウィンドウのスクリーンショット",
     override val sendingMessageTooltip: String = "メッセージ送信中...",
     override val sendMessageTooltip: String = "メッセージ送信 (Shift+Enter)",
-    override val recordingTooltip: String = "録音中... (離すと停止)",
-    override val pttButtonTooltip: String = "押しながら録音 (PTT)",
+    override val recordingTooltip: String = "録音中...（タップして停止）",
+    override val pttButtonTooltip: String = "タップして音声を録音",
     override val builtinStringsTooltip: String = "内蔵文字列を使用",
     override val externalStringsTooltip: String = "外部JSON文字列を使用",
 
@@ -77,7 +77,7 @@ data class JapaneseTranslation(
     override val parseErrorText: String = "構造解析に失敗",
     override val clearSearchText: String = "検索をクリア",
     override val recordingText: String = "録音中",
-    override val pushToTalkText: String = "プッシュ・トゥ・トーク",
+    override val pushToTalkText: String = "音声入力",
 ) : Translation() {
 
     @Serializable
@@ -225,8 +225,11 @@ data class JapaneseTranslation(
         editButton = "編集",
         nearestToolResultPlacement = "次のツール結果の後",
         currentResponsePlacement = "現在の応答の後",
+        preparingVoiceStatus = "マイクを準備中",
         transcribingVoiceStatus = "音声を文字起こし中...",
         recordingVoiceStatus = "音声を録音中",
+        cancelVoiceCaptureHint = "タップしてキャンセル",
+        stopVoiceCaptureHint = "タップして停止し、文字起こし",
         pauseRequestedStatus = "一時停止を要求済み",
         pausedStatus = "一時停止中",
         stoppingStatus = "停止中",

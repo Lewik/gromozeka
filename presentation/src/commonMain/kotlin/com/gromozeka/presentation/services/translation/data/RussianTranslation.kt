@@ -39,8 +39,8 @@ data class RussianTranslation(
     override val screenshotTooltip: String = "Скриншот окна",
     override val sendingMessageTooltip: String = "Отправка сообщения...",
     override val sendMessageTooltip: String = "Отправить сообщение (Shift+Enter)",
-    override val recordingTooltip: String = "Запись... (отпустите для остановки)",
-    override val pttButtonTooltip: String = "Зажмите для записи (PTT)",
+    override val recordingTooltip: String = "Идёт запись — нажмите, чтобы остановить",
+    override val pttButtonTooltip: String = "Нажмите для записи голоса",
     override val builtinStringsTooltip: String = "Использовать встроенные строки",
     override val externalStringsTooltip: String = "Использовать внешний JSON файл",
 
@@ -78,7 +78,7 @@ data class RussianTranslation(
     override val parseErrorText: String = "Не удалось распарсить структуру",
     override val clearSearchText: String = "Очистить поиск",
     override val recordingText: String = "Запись",
-    override val pushToTalkText: String = "Нажать и говорить",
+    override val pushToTalkText: String = "Голосовой ввод",
 ) : Translation() {
 
     @Serializable
@@ -239,8 +239,11 @@ data class RussianTranslation(
         editButton = "Изменить",
         nearestToolResultPlacement = "После ближайшего результата инструмента",
         currentResponsePlacement = "После текущего ответа",
+        preparingVoiceStatus = "Готовлю микрофон",
         transcribingVoiceStatus = "Расшифровываю голос...",
         recordingVoiceStatus = "Идёт запись голоса",
+        cancelVoiceCaptureHint = "Нажмите, чтобы отменить",
+        stopVoiceCaptureHint = "Нажмите, чтобы закончить и распознать",
         pauseRequestedStatus = "Пауза запрошена",
         pausedStatus = "На паузе",
         stoppingStatus = "Останавливается",

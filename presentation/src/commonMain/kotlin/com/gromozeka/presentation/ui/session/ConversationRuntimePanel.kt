@@ -657,7 +657,7 @@ private fun RuntimeStatusFooter(
         pttState == PttState.IDLE && voiceError == null
     val statusText = when {
         voiceError != null -> voiceError
-        pttState == PttState.PREPARING -> "Preparing microphone"
+        pttState == PttState.PREPARING -> translation.preparingVoiceStatus
         pttState == PttState.TRANSCRIBING -> translation.transcribingVoiceStatus
         pttState == PttState.RECORDING -> translation.recordingVoiceStatus
         controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED ->

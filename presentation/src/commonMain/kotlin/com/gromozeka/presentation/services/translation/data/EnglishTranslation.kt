@@ -39,8 +39,8 @@ data class EnglishTranslation(
     override val screenshotTooltip: String = "Window screenshot",
     override val sendingMessageTooltip: String = "Sending message...",
     override val sendMessageTooltip: String = "Send message (Shift+Enter)",
-    override val recordingTooltip: String = "Recording... (release to stop)",
-    override val pttButtonTooltip: String = "Hold to record (PTT)",
+    override val recordingTooltip: String = "Recording... (tap to stop)",
+    override val pttButtonTooltip: String = "Tap to record voice",
     override val builtinStringsTooltip: String = "Use builtin strings",
     override val externalStringsTooltip: String = "Use external JSON strings",
 
@@ -78,7 +78,7 @@ data class EnglishTranslation(
     override val parseErrorText: String = "Failed to parse structure",
     override val clearSearchText: String = "Clear search",
     override val recordingText: String = "Recording",
-    override val pushToTalkText: String = "Push to Talk",
+    override val pushToTalkText: String = "Voice input",
 ) : Translation() {
 
     @Serializable

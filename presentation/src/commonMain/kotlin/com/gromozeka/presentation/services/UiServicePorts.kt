@@ -104,6 +104,7 @@ enum class PTTEvent {
 
 interface PttEventHandler {
     fun initialize()
+    suspend fun toggleVoiceCapture()
     suspend fun handlePTTEvent(event: PTTEvent)
     suspend fun handlePTTRelease()
     suspend fun handlePTTCancel() = Unit
@@ -111,6 +112,7 @@ interface PttEventHandler {
 
 object NoOpPttEventHandler : PttEventHandler {
     override fun initialize() = Unit
+    override suspend fun toggleVoiceCapture() = Unit
     override suspend fun handlePTTEvent(event: PTTEvent) = Unit
     override suspend fun handlePTTRelease() = Unit
 }

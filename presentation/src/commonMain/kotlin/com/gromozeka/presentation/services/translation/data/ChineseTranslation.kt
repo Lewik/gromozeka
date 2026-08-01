@@ -39,8 +39,8 @@ data class ChineseTranslation(
     override val screenshotTooltip: String = "窗口截图",
     override val sendingMessageTooltip: String = "发送消息中...",
     override val sendMessageTooltip: String = "发送消息 (Shift+Enter)",
-    override val recordingTooltip: String = "录音中... (松开停止)",
-    override val pttButtonTooltip: String = "按住录音 (PTT)",
+    override val recordingTooltip: String = "录音中...（点击停止）",
+    override val pttButtonTooltip: String = "点击录制语音",
     override val builtinStringsTooltip: String = "使用内置字符串",
     override val externalStringsTooltip: String = "使用外部JSON字符串",
 
@@ -77,7 +77,7 @@ data class ChineseTranslation(
     override val parseErrorText: String = "解析结构失败",
     override val clearSearchText: String = "清除搜索",
     override val recordingText: String = "录音中",
-    override val pushToTalkText: String = "按下通话",
+    override val pushToTalkText: String = "语音输入",
 ) : Translation() {
 
     @Serializable
@@ -225,8 +225,11 @@ data class ChineseTranslation(
         editButton = "编辑",
         nearestToolResultPlacement = "在最近的工具结果之后",
         currentResponsePlacement = "在当前回复之后",
+        preparingVoiceStatus = "正在准备麦克风",
         transcribingVoiceStatus = "正在转录语音...",
         recordingVoiceStatus = "正在录音",
+        cancelVoiceCaptureHint = "点击取消",
+        stopVoiceCaptureHint = "点击停止并转录",
         pauseRequestedStatus = "已请求暂停",
         pausedStatus = "已暂停",
         stoppingStatus = "正在停止",

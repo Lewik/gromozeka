@@ -39,8 +39,8 @@ data class HebrewTranslation(
     override val screenshotTooltip: String = "צילום מסך של החלון",
     override val sendingMessageTooltip: String = "שולח הודעה...",
     override val sendMessageTooltip: String = "שלח הודעה (Shift+Enter)",
-    override val recordingTooltip: String = "מקליט... (שחרר כדי לעצור)",
-    override val pttButtonTooltip: String = "לחץ והחזק להקלטה (PTT)",
+    override val recordingTooltip: String = "מקליט... (הקש כדי לעצור)",
+    override val pttButtonTooltip: String = "הקש כדי להקליט קול",
     override val builtinStringsTooltip: String = "השתמש במחרוזות מובנות",
     override val externalStringsTooltip: String = "השתמש בקובץ JSON חיצוני",
 
@@ -78,7 +78,7 @@ data class HebrewTranslation(
     override val parseErrorText: String = "נכשל בפענוח המבנה",
     override val clearSearchText: String = "נקה חיפוש",
     override val recordingText: String = "מקליט",
-    override val pushToTalkText: String = "לחץ ודבר",
+    override val pushToTalkText: String = "קלט קולי",
 ) : Translation() {
 
     @Serializable
@@ -232,8 +232,11 @@ data class HebrewTranslation(
         editButton = "עריכה",
         nearestToolResultPlacement = "לאחר תוצאת הכלי הקרובה",
         currentResponsePlacement = "לאחר התשובה הנוכחית",
+        preparingVoiceStatus = "מכין את המיקרופון",
         transcribingVoiceStatus = "מתמלל קול...",
         recordingVoiceStatus = "מקליט קול",
+        cancelVoiceCaptureHint = "הקש כדי לבטל",
+        stopVoiceCaptureHint = "הקש כדי לעצור ולתמלל",
         pauseRequestedStatus = "התבקשה השהיה",
         pausedStatus = "מושהה",
         stoppingStatus = "נעצר",

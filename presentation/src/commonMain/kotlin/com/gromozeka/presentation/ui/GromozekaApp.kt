@@ -413,6 +413,7 @@ fun GromozekaAppContent(
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,
                                                         pttState = pttState,
+                                                        pttStatusMessage = pttStatusMessage,
                                                         pttUnavailableReason = pttUnavailableReason,
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,

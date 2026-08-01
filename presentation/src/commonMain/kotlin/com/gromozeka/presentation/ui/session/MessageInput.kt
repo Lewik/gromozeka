@@ -9,21 +9,26 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -36,7 +41,6 @@ import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
-import com.gromozeka.presentation.ui.advancedPttGestures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -50,6 +54,7 @@ fun MessageInput(
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState,
+    pttStatusMessage: String?,
     pttUnavailableReason: String?,
     showPttButton: Boolean,
     clientPlatform: ClientPlatform,
@@ -64,7 +69,27 @@ fun MessageInput(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val hapticFeedback = LocalHapticFeedback.current
     var inputFocused by remember { mutableStateOf(false) }
+    var previousPttState by remember { mutableStateOf(pttState) }
+    var previousPttStatusMessage by remember { mutableStateOf(pttStatusMessage) }
+
+    LaunchedEffect(pttState, pttStatusMessage) {
+        when {
+            pttState == PttState.IDLE &&
+                pttStatusMessage != null &&
+                (previousPttState != PttState.IDLE || previousPttStatusMessage != pttStatusMessage) ->
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.Reject)
+
+            pttState == PttState.RECORDING && previousPttState != PttState.RECORDING ->
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOn)
+
+            pttState == PttState.TRANSCRIBING && previousPttState == PttState.RECORDING ->
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOff)
+        }
+        previousPttState = pttState
+        previousPttStatusMessage = pttStatusMessage
+    }
 
     val textFieldPadding = OutlinedTextFieldDefaults.contentPadding()
     val textFieldLineHeight = with(LocalDensity.current) {
@@ -79,6 +104,12 @@ fun MessageInput(
         if (userInput.isBlank()) return
         coroutineScope.launch {
             onSendMessage()
+        }
+    }
+
+    fun toggleVoiceCapture() {
+        coroutineScope.launch {
+            pttEventHandler.toggleVoiceCapture()
         }
     }
 
@@ -111,6 +142,14 @@ fun MessageInput(
                     )
                 }
             }
+        }
+
+        if (showPttButton) {
+            VoiceCaptureStatus(
+                state = pttState,
+                statusMessage = pttStatusMessage,
+                onToggle = ::toggleVoiceCapture,
+            )
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -207,29 +246,29 @@ fun MessageInput(
                     }
 
                     if (showPttButton) {
+                        val isRecording = pttState == PttState.RECORDING
                         CompactButton(
-                            onClick = {},
-                            enabled = pttUnavailableReason == null,
+                            onClick = ::toggleVoiceCapture,
+                            enabled = pttState != PttState.TRANSCRIBING &&
+                                (pttState != PttState.IDLE || pttUnavailableReason == null),
                             modifier = Modifier
                                 .zIndex(2f)
                                 .size(actionButtonSize)
-                                .then(
-                                    if (
-                                        pttState == PttState.TRANSCRIBING ||
-                                        pttUnavailableReason != null
-                                    ) {
-                                        Modifier
-                                    } else {
-                                        Modifier.advancedPttGestures(pttEventHandler, coroutineScope)
-                                    }
-                                )
                                 .testTag(UiTestTag.PttButton.value),
+                            colors = if (isRecording) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                )
+                            } else {
+                                ButtonDefaults.buttonColors()
+                            },
                             tooltip = when (pttState) {
                                 PttState.IDLE -> pttUnavailableReason
                                     ?: LocalTranslation.current.pttButtonTooltip
-                                PttState.PREPARING -> "Подготовка микрофона"
+                                PttState.PREPARING -> LocalTranslation.current.runtime.preparingVoiceStatus
                                 PttState.RECORDING -> LocalTranslation.current.recordingTooltip
-                                PttState.TRANSCRIBING -> "Распознавание голоса"
+                                PttState.TRANSCRIBING -> LocalTranslation.current.runtime.transcribingVoiceStatus
                             },
                         ) {
                             if (pttState == PttState.PREPARING || pttState == PttState.TRANSCRIBING) {
@@ -238,10 +277,9 @@ fun MessageInput(
                                     strokeWidth = 2.dp,
                                 )
                             } else {
-                                val isRecording = pttState == PttState.RECORDING
                                 Icon(
                                     imageVector = if (isRecording) {
-                                        Icons.Default.FiberManualRecord
+                                        Icons.Default.Stop
                                     } else {
                                         Icons.Default.Mic
                                     },
@@ -249,11 +287,6 @@ fun MessageInput(
                                         LocalTranslation.current.recordingText
                                     } else {
                                         LocalTranslation.current.pushToTalkText
-                                    },
-                                    tint = if (isRecording) {
-                                        MaterialTheme.colorScheme.error
-                                    } else {
-                                        LocalContentColor.current
                                     },
                                 )
                             }
@@ -298,6 +331,93 @@ fun MessageInput(
                                 modifier = Modifier.size(actionButtonSize),
                             )
                         }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoiceCaptureStatus(
+    state: PttState,
+    statusMessage: String?,
+    onToggle: () -> Unit,
+) {
+    if (state == PttState.IDLE && statusMessage.isNullOrBlank()) return
+
+    val translation = LocalTranslation.current.runtime
+    val isError = state == PttState.IDLE && !statusMessage.isNullOrBlank()
+    val isInteractive = state == PttState.PREPARING || state == PttState.RECORDING
+    val title = when (state) {
+        PttState.IDLE -> statusMessage.orEmpty()
+        PttState.PREPARING -> translation.preparingVoiceStatus
+        PttState.RECORDING -> translation.recordingVoiceStatus
+        PttState.TRANSCRIBING -> translation.transcribingVoiceStatus
+    }
+    val hint = when (state) {
+        PttState.PREPARING -> translation.cancelVoiceCaptureHint
+        PttState.RECORDING -> translation.stopVoiceCaptureHint
+        PttState.IDLE,
+        PttState.TRANSCRIBING -> null
+    }
+    val containerColor = when {
+        isError -> MaterialTheme.colorScheme.errorContainer
+        state == PttState.RECORDING -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.72f)
+        else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
+    }
+    val contentColor = when {
+        isError || state == PttState.RECORDING -> MaterialTheme.colorScheme.onErrorContainer
+        else -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    val interactionModifier = if (isInteractive) {
+        Modifier.clickable(onClick = onToggle)
+    } else {
+        Modifier
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .testTag(UiTestTag.VoiceCaptureStatus.value)
+            .then(interactionModifier),
+        color = containerColor,
+        contentColor = contentColor,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when (state) {
+                PttState.PREPARING,
+                PttState.TRANSCRIBING -> CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = contentColor,
+                    strokeWidth = 2.dp,
+                )
+
+                PttState.RECORDING -> Icon(
+                    Icons.Default.FiberManualRecord,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+
+                PttState.IDLE -> Icon(
+                    Icons.Default.ErrorOutline,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.bodyMedium)
+                hint?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor.copy(alpha = 0.78f),
+                    )
                 }
             }
         }

@@ -51,6 +51,7 @@ fun SessionScreen(
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState = PttState.IDLE,
+    pttStatusMessage: String? = null,
     pttUnavailableReason: String? = null,
 
     // Settings - moved to ChatApplication level, but we still need settings for UI
@@ -575,6 +576,7 @@ fun SessionScreen(
                         coroutineScope = coroutineScope,
                         pttEventHandler = pttEventHandler,
                         pttState = pttState,
+                        pttStatusMessage = pttStatusMessage,
                         pttUnavailableReason = pttUnavailableReason,
                         showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
                         clientPlatform = clientPlatform,

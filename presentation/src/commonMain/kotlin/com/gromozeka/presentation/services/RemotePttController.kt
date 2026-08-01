@@ -54,6 +54,17 @@ class RemotePttController(
 
     override fun initialize() = Unit
 
+    override suspend fun toggleVoiceCapture() {
+        when (_state.value) {
+            PttState.IDLE -> beginRecording(
+                settingsService.userProfile.speechSettings.speechToText.audioSource
+            )
+            PttState.PREPARING,
+            PttState.RECORDING -> handlePTTRelease()
+            PttState.TRANSCRIBING -> Unit
+        }
+    }
+
     override suspend fun handlePTTEvent(event: PTTEvent) {
         log.info { "PTT event received: event=$event state=${_state.value}" }
         when (event) {
