@@ -113,6 +113,7 @@ fun GromozekaAppContent(
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
     val pttState by appComponents.pttService.state.collectAsState()
     val pttStatusMessage by appComponents.pttService.statusMessage.collectAsState()
+    val pttUnavailableReason by appComponents.pttService.unavailableReason.collectAsState()
     val keyboardPttGestureDetector = remember {
         UnifiedGestureDetector(appComponents.pttEventRouter, coroutineScope)
     }
@@ -412,6 +413,7 @@ fun GromozekaAppContent(
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,
                                                         pttState = pttState,
+                                                        pttUnavailableReason = pttUnavailableReason,
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,

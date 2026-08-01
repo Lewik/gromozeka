@@ -3,6 +3,7 @@ package com.gromozeka.remote.protocol
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
@@ -304,6 +305,7 @@ private data class AiSpeechTranscriptionRequestWire(
     val format: SpeechAudioFormat,
     val engine: UserProfile.SpeechSettings.SpeechToText.Engine,
     val selection: AiRuntimeSelection?,
+    val claudeCodeConnection: AiConnection.ClaudeCode?,
     val language: String?,
     val prompt: String?,
 )
@@ -452,6 +454,7 @@ private fun AiSpeechTranscriptionRequest.toWire(): AiSpeechTranscriptionRequestW
         format = format,
         engine = engine,
         selection = selection,
+        claudeCodeConnection = claudeCodeConnection,
         language = language,
         prompt = prompt,
     )
@@ -462,6 +465,7 @@ private fun AiSpeechTranscriptionRequestWire.toRuntime(): AiSpeechTranscriptionR
         format = format,
         engine = engine,
         selection = selection,
+        claudeCodeConnection = claudeCodeConnection,
         language = language,
         prompt = prompt,
     )

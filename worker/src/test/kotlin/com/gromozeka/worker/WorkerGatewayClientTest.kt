@@ -22,6 +22,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.WorkerControlHandler
+import com.gromozeka.domain.service.WorkerAudioCaptureHandler
+import com.gromozeka.domain.service.WorkerAudioCaptureRequest
+import com.gromozeka.domain.service.WorkerAudioCaptureResult
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -141,6 +144,10 @@ class WorkerGatewayClientTest {
         WorkerGatewayOperationHandler(
             workerControlHandler = WorkerControlHandler { error("Unused worker control request") },
             aiRequestResponseHandler = UnusedAiRequestResponseHandler,
+            workerAudioCaptureHandler = object : WorkerAudioCaptureHandler {
+                override suspend fun handle(request: WorkerAudioCaptureRequest): WorkerAudioCaptureResult =
+                    error("Unused Worker audio capture request")
+            },
             parallelToolExecutor = ParallelToolExecutor(
                 aiToolProvider = object : AiToolProvider {
                     override fun getTools(): List<AiToolCallback> = listOf(tool)

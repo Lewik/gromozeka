@@ -8,10 +8,12 @@ import com.gromozeka.domain.service.AiRequestResponseExecutionHandler
 import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
+import com.gromozeka.domain.service.WorkerAudioCaptureHandler
 import com.gromozeka.remote.protocol.WORKER_GATEWAY_PROTOCOL_VERSION
 import com.gromozeka.remote.protocol.WorkerGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
+import com.gromozeka.remote.protocol.WorkerAudioCaptureGatewayCodec
 import com.gromozeka.remote.protocol.AiRequestResponseGatewayCodec
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -347,6 +349,7 @@ class WorkerGatewayClient(
 class WorkerGatewayOperationHandler(
     private val workerControlHandler: WorkerControlHandler,
     private val aiRequestResponseHandler: AiRequestResponseExecutionHandler,
+    private val workerAudioCaptureHandler: WorkerAudioCaptureHandler,
     private val parallelToolExecutor: ParallelToolExecutor,
 ) {
     private val json = Json {
@@ -374,6 +377,9 @@ class WorkerGatewayOperationHandler(
 
                 WorkerGatewayOperation.AI_REQUEST_RESPONSE ->
                     AiRequestResponseGatewayCodec.execute(request.payload, aiRequestResponseHandler)
+
+                WorkerGatewayOperation.AUDIO_CAPTURE ->
+                    WorkerAudioCaptureGatewayCodec.execute(request.payload, identity, workerAudioCaptureHandler)
 
                 WorkerGatewayOperation.TOOL_EXECUTION -> {
                     val toolRequest = json.decodeFromString<WorkerToolExecutionRequest>(

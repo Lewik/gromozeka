@@ -171,6 +171,7 @@ sealed interface AiConnection {
         val executablePath: String = "claude",
         val maxCachedProcesses: Int = DEFAULT_MAX_CACHED_PROCESSES,
         val processIdleTtlMinutes: Int = DEFAULT_PROCESS_IDLE_TTL_MINUTES,
+        val voiceTranscriptionEnabled: Boolean = false,
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
     ) : AiConnection {
         override val kind = Kind.CLAUDE_CODE

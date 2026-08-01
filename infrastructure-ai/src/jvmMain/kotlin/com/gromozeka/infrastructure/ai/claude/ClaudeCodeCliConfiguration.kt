@@ -8,4 +8,8 @@ internal class ClaudeCodeCliConfiguration {
     @Bean(destroyMethod = "close")
     fun claudeCodeCliExecutor(): ProcessClaudeCodeCliExecutor =
         ProcessClaudeCodeCliExecutor()
+
+    @Bean
+    fun claudeCodeVoiceTranscriptionService(): ClaudeCodeVoiceTranscriptionService =
+        ClaudeCodeVoiceTranscriptionService()
 }

@@ -34,6 +34,31 @@ import kotlin.test.assertTrue
 
 class RemoteProtocolCodecTest {
     @Test
+    fun roundTripSupportsRemoteSpeechCaptureLifecycle() {
+        val start = GromozekaClientEnvelope(
+            id = "speech-start-1",
+            payload = StartSpeechCaptureRequest("capture-1"),
+        )
+        val decodedStart = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(start)
+        ).payload as StartSpeechCaptureRequest
+        assertEquals("capture-1", decodedStart.sessionId)
+
+        val availability = GromozekaServerEnvelope(
+            id = "speech-availability-1",
+            payload = SpeechCaptureAvailabilityResponse(
+                available = false,
+                unavailableReason = "Worker is offline",
+            ),
+        )
+        val decodedAvailability = RemoteProtocolCodec.decodeServerText(
+            RemoteProtocolCodec.encodeServerText(availability)
+        ).payload as SpeechCaptureAvailabilityResponse
+        assertFalse(decodedAvailability.available)
+        assertEquals("Worker is offline", decodedAvailability.unavailableReason)
+    }
+
+    @Test
     fun roundTripSupportsClientActivityAndPresentationDirectives() {
         val registration = GromozekaClientEnvelope(
             id = "register-client-1",

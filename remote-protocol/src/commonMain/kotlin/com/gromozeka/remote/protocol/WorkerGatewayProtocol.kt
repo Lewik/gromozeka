@@ -149,12 +149,13 @@ sealed interface WorkerGatewayMessage {
 enum class WorkerGatewayOperation {
     WORKER_CONTROL,
     AI_REQUEST_RESPONSE,
+    AUDIO_CAPTURE,
     TOOL_EXECUTION,
     COMMAND_RUNTIME_STATE,
     WORKSPACE_STATE,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 5
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 7
 
 @OptIn(ExperimentalSerializationApi::class)
 object WorkerGatewayCodec {

@@ -1,5 +1,6 @@
 package com.gromozeka.domain.model
 
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
@@ -49,6 +50,8 @@ data class UserProfile(
             val enabled: Boolean = false,
             val engine: Engine = Engine.OPENAI_API,
             val mainLanguageCode: String = "en",
+            val claudeCodeConnectionId: AiConnection.Id? = null,
+            val audioSource: SpeechAudioSource = SpeechAudioSource.CurrentClient,
             val localWhisper: LocalWhisper = LocalWhisper(),
         ) {
             init {
@@ -59,6 +62,7 @@ data class UserProfile(
             enum class Engine {
                 OPENAI_API,
                 LOCAL_WHISPER,
+                CLAUDE_CODE,
             }
 
             @Serializable

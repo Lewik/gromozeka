@@ -38,6 +38,7 @@ class JvmWorkerEnvironmentProbe internal constructor(
             totalMemoryBytes = host.totalMemoryBytes?.takeIf { it >= 0 },
             availableExecutables = profileExecutableNames
                 .filter(host::isExecutableAvailable),
+            audioInputs = host.audioInputs(),
         )
 
     override fun collectSnapshot(
@@ -78,6 +79,8 @@ internal interface WorkerHost {
     val workerProcessUptimeMillis: Long
 
     fun isExecutableAvailable(name: String): Boolean
+
+    fun audioInputs() = emptyList<com.gromozeka.domain.model.WorkerAudioInput>()
 
     fun workspaceStorage(mount: WorkspaceMount): WorkerWorkspaceStorage
 }
@@ -145,6 +148,8 @@ internal class JvmWorkerHost : WorkerHost {
             .flatMap { directory -> candidates.asSequence().map { candidate -> File(directory, candidate) } }
             .any { file -> file.isFile && (windows || file.canExecute()) }
     }
+
+    override fun audioInputs() = JvmWorkerAudioHardware.inputs()
 
     override fun workspaceStorage(mount: WorkspaceMount): WorkerWorkspaceStorage {
         val root = File(mount.rootPath)

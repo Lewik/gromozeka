@@ -16,18 +16,28 @@ GROMOZEKA_MODE=prod \
 ./gradlew :worker:run -q
 ```
 
-For the local dev stack started from this repository:
+For the local dev stack, start the Server with
+`GROMOZEKA_WORKER_ENROLLMENT_ENABLED=true`, generate a token in **Settings ->
+Downloads**, and enroll once from the repository root:
 
 ```bash
-SPRING_CONFIG_ADDITIONAL_LOCATION="file:$PWD/worker/config/dev-worker.yaml" \
+./gradlew :worker:run \
+  --args="enroll --server http://127.0.0.1:8765 --token <token> --worker-id local-dev --config $PWD/dev-data/client/.gromozeka/worker-dev.yaml --force" \
+  -q
+```
+
+Start subsequent local dev Worker processes from the generated private config:
+
+```bash
+SPRING_CONFIG_ADDITIONAL_LOCATION="file:$PWD/dev-data/client/.gromozeka/worker-dev.yaml" \
 GROMOZEKA_MODE=dev \
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
 ./gradlew :worker:run -q
 ```
 
-Copy either `cloud-worker.example.yaml` or `local-worker.example.yaml` to an
-untracked deployment config and provide credentials through environment
-variables.
+For manual configuration, copy `cloud-worker.example.yaml`,
+`local-worker.example.yaml`, or `dev-worker.yaml` to an untracked deployment
+config and provide credentials through environment variables.
 
 `id` is the stable Worker identity. Every process start creates a new session
 identity, so two live processes cannot own the same Worker id.

@@ -657,6 +657,7 @@ private fun RuntimeStatusFooter(
         pttState == PttState.IDLE && voiceError == null
     val statusText = when {
         voiceError != null -> voiceError
+        pttState == PttState.PREPARING -> "Preparing microphone"
         pttState == PttState.TRANSCRIBING -> translation.transcribingVoiceStatus
         pttState == PttState.RECORDING -> translation.recordingVoiceStatus
         controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED ->
@@ -710,7 +711,7 @@ private fun RuntimeStatusFooter(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (pttState == PttState.TRANSCRIBING) {
+                if (pttState == PttState.PREPARING || pttState == PttState.TRANSCRIBING) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 } else {
                     Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))

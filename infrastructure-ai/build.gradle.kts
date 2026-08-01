@@ -45,6 +45,7 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.xmlutil.serialization)
                 implementation(libs.jackson.module.kotlin)
+                implementation(libs.pty4j)
 
                 // MCP SDK for Gromozeka MCP tools
                 implementation(libs.mcp.kotlin.sdk)
@@ -63,5 +64,11 @@ kotlin {
                 implementation(kotlin("test"))
             }
         }
+    }
+}
+
+tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("jvmProcessResources") {
+    from(rootProject.layout.projectDirectory.file("THIRD_PARTY_NOTICES.md")) {
+        into("META-INF")
     }
 }

@@ -241,6 +241,7 @@ sealed interface ConversationRuntimeTaskTarget {
 enum class ConversationRuntimeCapability {
     CONVERSATION_TURN,
     AI_REQUEST_RESPONSE,
+    AUDIO_CAPTURE,
     TOOL_EXECUTION,
     LOCAL_AGENT_TOOL,
     MEMORY_PIPELINE,

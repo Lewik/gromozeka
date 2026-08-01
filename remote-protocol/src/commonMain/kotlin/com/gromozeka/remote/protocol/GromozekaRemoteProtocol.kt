@@ -580,6 +580,49 @@ data class TranscribeAudioRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("get_speech_capture_availability")
+data object GetSpeechCaptureAvailabilityRequest : ClientRequest
+
+@Serializable
+@SerialName("start_speech_capture")
+data class StartSpeechCaptureRequest(
+    val sessionId: String,
+) : ClientRequest {
+    init {
+        require(sessionId.isNotBlank()) { "Speech capture session id must not be blank" }
+        require(sessionId.length <= MAX_SPEECH_CAPTURE_SESSION_ID_LENGTH) {
+            "Speech capture session id is too long"
+        }
+    }
+}
+
+@Serializable
+@SerialName("stop_speech_capture")
+data class StopSpeechCaptureRequest(
+    val sessionId: String,
+) : ClientRequest {
+    init {
+        require(sessionId.isNotBlank()) { "Speech capture session id must not be blank" }
+        require(sessionId.length <= MAX_SPEECH_CAPTURE_SESSION_ID_LENGTH) {
+            "Speech capture session id is too long"
+        }
+    }
+}
+
+@Serializable
+@SerialName("cancel_speech_capture")
+data class CancelSpeechCaptureRequest(
+    val sessionId: String,
+) : ClientRequest {
+    init {
+        require(sessionId.isNotBlank()) { "Speech capture session id must not be blank" }
+        require(sessionId.length <= MAX_SPEECH_CAPTURE_SESSION_ID_LENGTH) {
+            "Speech capture session id is too long"
+        }
+    }
+}
+
+@Serializable
 @SerialName("synthesize_speech")
 data class SynthesizeSpeechRequest(
     val text: String,
@@ -1055,6 +1098,25 @@ data class AudioTranscriptionResponse(
 ) : ServerResponse
 
 @Serializable
+@SerialName("speech_capture_started")
+data class SpeechCaptureStartedResponse(
+    val sessionId: String,
+) : ServerResponse
+
+@Serializable
+@SerialName("speech_capture_availability")
+data class SpeechCaptureAvailabilityResponse(
+    val available: Boolean,
+    val unavailableReason: String? = null,
+) : ServerResponse {
+    init {
+        require(available == (unavailableReason == null)) {
+            "Speech capture availability and unavailable reason must agree"
+        }
+    }
+}
+
+@Serializable
 @SerialName("speech_synthesis")
 data class SpeechSynthesisResponse(
     val audioData: ByteArray,
@@ -1210,3 +1272,5 @@ data class LiveInterpreterFailedEvent(
     val sessionId: String,
     val message: String,
 ) : ServerPayload
+
+private const val MAX_SPEECH_CAPTURE_SESSION_ID_LENGTH = 128

@@ -9,4 +9,5 @@ gromozeka:
       version: dev
       capabilities:
         - AI_REQUEST_RESPONSE
+        - AUDIO_CAPTURE
         - TOOL_EXECUTION

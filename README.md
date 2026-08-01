@@ -135,6 +135,7 @@ Run the server:
 ```bash
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
 GROMOZEKA_MODE=dev \
+GROMOZEKA_WORKER_ENROLLMENT_ENABLED=true \
 ./gradlew :server:run
 ```
 
@@ -145,13 +146,22 @@ The server defaults to `127.0.0.1:8765`. It prints a line like:
 ```
 
 The Server only accepts commands, persists runtime state, publishes work, and
-streams events. Start the local all-capabilities Worker:
+streams events. Before the first local Worker start, open **Settings ->
+Downloads**, generate an enrollment token, and save its private configuration:
 
 ```bash
-SPRING_CONFIG_ADDITIONAL_LOCATION="file:$PWD/worker/config/dev-worker.yaml" \
+./gradlew :worker:run \
+  --args="enroll --server http://127.0.0.1:8765 --token <token> --worker-id local-dev --config $PWD/dev-data/client/.gromozeka/worker-dev.yaml --force" \
+  -q
+```
+
+Then start the local all-capabilities Worker:
+
+```bash
+SPRING_CONFIG_ADDITIONAL_LOCATION="file:$PWD/dev-data/client/.gromozeka/worker-dev.yaml" \
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
 GROMOZEKA_MODE=dev \
-./gradlew :worker:run
+./gradlew :worker:run -q
 ```
 
 See `worker/README.md` for cloud/local Worker configuration and the trusted executor contract.

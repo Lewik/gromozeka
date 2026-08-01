@@ -27,6 +27,7 @@ data class WorkerEnrollmentProperties(
     val tokenTtlMinutes: Long = 15,
     val capabilities: Set<ConversationRuntimeCapability> = setOf(
         ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+        ConversationRuntimeCapability.AUDIO_CAPTURE,
         ConversationRuntimeCapability.TOOL_EXECUTION,
         ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
     ),

@@ -1,9 +1,14 @@
 gromozeka:
+  worker-gateway:
+    enabled: true
+    server-url: ${GROMOZEKA_SERVER_URL:http://127.0.0.1:8765}
+    credential: ${GROMOZEKA_WORKER_GATEWAY_CREDENTIAL}
   runtime:
     worker:
       id: local-dev
       version: dev
       capabilities:
         - AI_REQUEST_RESPONSE
+        - AUDIO_CAPTURE
         - TOOL_EXECUTION
         - LOCAL_AGENT_TOOL

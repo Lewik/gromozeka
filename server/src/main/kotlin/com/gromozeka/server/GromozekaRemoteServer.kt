@@ -49,6 +49,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -85,6 +86,7 @@ class GromozekaRemoteServer(
     private val ttsService: TtsService,
     private val memoryStore: MemoryStore,
     private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
+    private val speechCaptureApplicationService: SpeechCaptureApplicationService,
     private val clientPresentationRegistry: ClientPresentationRegistry,
     private val authenticationService: AuthenticationService,
     private val personalAccessTokenService: PersonalAccessTokenService,
@@ -112,7 +114,12 @@ class GromozekaRemoteServer(
             userId = authenticatedSession.principal.user.id,
             connectionId = connectionId,
         )
+        val speechCaptureOwner = SpeechCaptureSessionOwner(
+            userId = authenticatedSession.principal.user.id,
+            connectionId = connectionId,
+        )
         coroutineScope {
+            val concurrentSpeechRequests = mutableListOf<Job>()
             val authenticationMonitor = launch {
                 while (isActive) {
                     delay(AUTHENTICATION_RECHECK_INTERVAL_MILLIS)
@@ -160,14 +167,23 @@ class GromozekaRemoteServer(
                                         ClientActivityKind.USER_INTERACTION,
                                     )
                                 }
-                                handleRequest(
-                                    sender = sender,
-                                    requestId = envelope.id,
-                                    request = payload,
-                                    encoding = encoding,
-                                    user = currentUser,
-                                    liveInterpreterOwner = liveInterpreterOwner,
-                                )
+                                val handle = suspend {
+                                    handleRequest(
+                                        sender = sender,
+                                        requestId = envelope.id,
+                                        request = payload,
+                                        encoding = encoding,
+                                        user = currentUser,
+                                        liveInterpreterOwner = liveInterpreterOwner,
+                                        speechCaptureOwner = speechCaptureOwner,
+                                    )
+                                }
+                                if (payload.isConcurrentSpeechRequest()) {
+                                    concurrentSpeechRequests.removeAll(Job::isCompleted)
+                                    concurrentSpeechRequests += launch { handle() }
+                                } else {
+                                    handle()
+                                }
                             }
                             is ObserveConversationCommand -> {
                                 conversationSubscriptions[payload.subscriptionId]?.cancel()
@@ -213,15 +229,24 @@ class GromozekaRemoteServer(
                 throw error
             } finally {
                 authenticationMonitor.cancel()
+                concurrentSpeechRequests.forEach(Job::cancel)
+                concurrentSpeechRequests.joinAll()
                 conversationSubscriptions.values.forEach { it.cancel() }
                 conversationSubscriptions.clear()
                 conversationTabLayoutSubscriptions.values.forEach { it.cancel() }
                 conversationTabLayoutSubscriptions.clear()
                 liveInterpreterApplicationService.stopOwnedBy(liveInterpreterOwner)
+                speechCaptureApplicationService.stopOwnedBy(speechCaptureOwner)
                 clientPresentationRegistry.disconnect(connectionId)
             }
         }
     }
+
+    private fun ClientRequest.isConcurrentSpeechRequest(): Boolean =
+        this is GetSpeechCaptureAvailabilityRequest ||
+            this is StartSpeechCaptureRequest ||
+            this is StopSpeechCaptureRequest ||
+            this is CancelSpeechCaptureRequest
 
     private suspend fun handleRequest(
         sender: RemoteSessionSender,
@@ -230,6 +255,7 @@ class GromozekaRemoteServer(
         encoding: RemoteProtocolEncoding,
         user: User,
         liveInterpreterOwner: LiveInterpreterSessionOwner,
+        speechCaptureOwner: SpeechCaptureSessionOwner,
     ) {
         val response = try {
             remoteAuthorization.authorize(user, request)
@@ -608,7 +634,16 @@ class GromozekaRemoteServer(
 
                 is GetMemoryActionItemsRequest -> loadMemoryActionItems(request)
 
-                is TranscribeAudioRequest -> transcribeAudio(request.recording)
+                is TranscribeAudioRequest -> transcribeAudio(user, request.recording)
+                GetSpeechCaptureAvailabilityRequest ->
+                    speechCaptureApplicationService.availability(user)
+                is StartSpeechCaptureRequest ->
+                    speechCaptureApplicationService.start(speechCaptureOwner, user, request)
+                is StopSpeechCaptureRequest ->
+                    speechCaptureApplicationService.stop(speechCaptureOwner, request.sessionId)
+                is CancelSpeechCaptureRequest -> OperationResultResponse(
+                    speechCaptureApplicationService.cancel(speechCaptureOwner, request.sessionId)
+                )
                 is SynthesizeSpeechRequest -> synthesizeSpeech(request)
                 is StartLiveInterpreterRequest ->
                     liveInterpreterApplicationService.start(liveInterpreterOwner, request) { payload ->
@@ -783,7 +818,11 @@ class GromozekaRemoteServer(
         }
     }
 
-    private suspend fun transcribeAudio(recording: RemoteAudioRecording): AudioTranscriptionResponse {
+    private suspend fun transcribeAudio(
+        user: User,
+        recording: RemoteAudioRecording,
+    ): AudioTranscriptionResponse {
+        speechCaptureApplicationService.requireClientAudioRoute(user)
         require(recording.chunks.isNotEmpty()) { "Audio recording has no chunks" }
 
         val audioBytes = ByteArrayOutputStream().use { output ->

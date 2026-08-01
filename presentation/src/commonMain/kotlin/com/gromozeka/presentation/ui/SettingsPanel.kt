@@ -34,8 +34,10 @@ import com.gromozeka.client.RemoteUserDirectoryService
 import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.WorkerAudioInput
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
@@ -45,6 +47,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkerCatalogService
 import com.gromozeka.domain.service.WorkerCatalogEntry
@@ -128,9 +131,41 @@ fun SettingsPanel(
     val soundSettings = deviceSettings.soundSettings
     val desktopInputSettings = settings.desktopInputSettings
     val desktopWindowSettings = settings.desktopWindowSettings
+    val aiCatalogSnapshot by aiConfigurationService.snapshotFlow.collectAsState()
+    val claudeCodeConnections = aiCatalogSnapshot?.catalog?.connections
+        ?.filterIsInstance<AiConnection.ClaudeCode>()
+        .orEmpty()
+    val eligibleClaudeCodeConnectionIds = claudeCodeConnections
+        .filter { it.enabled && it.voiceTranscriptionEnabled }
+        .map { it.id }
     var workers by remember { mutableStateOf(emptyList<WorkerCatalogEntry>()) }
     var selectedSection by remember(contentMode) {
         mutableStateOf(SettingsSection.AiRuntime)
+    }
+
+    LaunchedEffect(
+        speechToText.engine,
+        speechToText.claudeCodeConnectionId,
+        eligibleClaudeCodeConnectionIds,
+    ) {
+        val soleConnectionId = eligibleClaudeCodeConnectionIds.singleOrNull()
+        if (
+            speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE &&
+            speechToText.claudeCodeConnectionId == null &&
+            soleConnectionId != null
+        ) {
+            onSettingsChange(
+                settings.updateUserProfile {
+                    copy(
+                        speechSettings = speechSettings.copy(
+                            speechToText = speechSettings.speechToText.copy(
+                                claudeCodeConnectionId = soleConnectionId
+                            )
+                        )
+                    )
+                }
+            )
+        }
     }
 
     // Refresh themes when panel opens
@@ -320,27 +355,173 @@ fun SettingsPanel(
                         if (speechToText.enabled) {
                             DropdownSettingItem(
                                 label = "Speech-to-text backend",
-                                description = "OpenAI uses the regular transcription API. Local Whisper runs whisper.cpp on the server.",
+                                description = "Choose the transcription engine independently from the device that records audio.",
                                 value = speechToText.engine,
                                 options = UserProfile.SpeechSettings.SpeechToText.Engine.entries.toList(),
                                 optionLabel = {
                                     when (it) {
                                         UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API -> "OpenAI API"
                                         UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER -> "Local Whisper"
+                                        UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE -> "Claude Code voice"
                                     }
                                 },
-                                onValueChange = {
+                                onValueChange = { engine ->
+                                    val claudeConnectionId = if (
+                                        engine == UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE
+                                    ) {
+                                        speechToText.claudeCodeConnectionId
+                                            ?: eligibleClaudeCodeConnectionIds.singleOrNull()
+                                    } else {
+                                        speechToText.claudeCodeConnectionId
+                                    }
                                     onSettingsChange(
                                         settings.updateUserProfile {
                                             copy(
                                                 speechSettings = speechSettings.copy(
-                                                    speechToText = speechSettings.speechToText.copy(engine = it)
+                                                    speechToText = speechSettings.speechToText.copy(
+                                                        engine = engine,
+                                                        claudeCodeConnectionId = claudeConnectionId,
+                                                    )
                                                 )
                                             )
                                         }
                                     )
                                 }
                             )
+
+                            if (speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE) {
+                                val connectionIds = buildList {
+                                    addAll(claudeCodeConnections.map { it.id })
+                                    speechToText.claudeCodeConnectionId?.takeIf { it !in this }?.let(::add)
+                                }
+                                if (connectionIds.isEmpty()) {
+                                    Text(
+                                        "Create a Claude Code connection and enable voice transcription on it first.",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                } else {
+                                    DropdownSettingItem(
+                                        label = "Claude Code connection",
+                                        description = "Requires an organization-approved Claude.ai login on the execution target; API keys, Bedrock, Vertex, and Foundry cannot use Claude voice.",
+                                        value = speechToText.claudeCodeConnectionId,
+                                        options = listOf(null) + connectionIds,
+                                        optionLabel = { id ->
+                                            if (id == null) return@DropdownSettingItem "Select a Claude Code connection"
+                                            val connection = claudeCodeConnections.firstOrNull { it.id == id }
+                                            buildString {
+                                                append(connection?.displayName ?: id.value)
+                                                when {
+                                                    connection == null -> append(" · unavailable")
+                                                    !connection.enabled -> append(" · disabled")
+                                                    !connection.voiceTranscriptionEnabled -> append(" · voice disabled")
+                                                }
+                                            }
+                                        },
+                                        optionEnabled = { it != null },
+                                        onValueChange = { connectionId ->
+                                            if (connectionId == null) return@DropdownSettingItem
+                                            onSettingsChange(
+                                                settings.updateUserProfile {
+                                                    copy(
+                                                        speechSettings = speechSettings.copy(
+                                                            speechToText = speechSettings.speechToText.copy(
+                                                                claudeCodeConnectionId = connectionId
+                                                            )
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+
+                            val selectedWorkerSource = speechToText.audioSource as? SpeechAudioSource.WorkerInput
+                            val sourceOptions = buildList {
+                                add("" to "This client")
+                                workers.forEach { worker ->
+                                    add(
+                                        worker.workerId.value to
+                                            "Worker ${worker.workerId.value} · ${worker.status.name.lowercase()}"
+                                    )
+                                }
+                                selectedWorkerSource?.workerId?.value
+                                    ?.takeIf { id -> none { it.first == id } }
+                                    ?.let { add(it to "Worker $it · unavailable") }
+                            }
+                            DropdownSettingItem(
+                                label = "Audio source",
+                                description = "Record on this client or on one exact Worker. The transcription backend may run elsewhere.",
+                                value = selectedWorkerSource?.workerId?.value.orEmpty(),
+                                options = sourceOptions.map { it.first },
+                                optionLabel = { id -> sourceOptions.first { it.first == id }.second },
+                                onValueChange = { workerId ->
+                                    val source = if (workerId.isBlank()) {
+                                        SpeechAudioSource.CurrentClient
+                                    } else {
+                                        val worker = workers.firstOrNull { it.workerId.value == workerId }
+                                        val input = worker?.environmentProfile?.audioInputs
+                                            ?.firstOrNull { it.isDefault }
+                                            ?: worker?.environmentProfile?.audioInputs?.firstOrNull()
+                                            ?: WorkerAudioInput.SystemDefault
+                                        SpeechAudioSource.WorkerInput(
+                                            ConversationRuntimeWorkerId(workerId),
+                                            input.id,
+                                        )
+                                    }
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                speechSettings = speechSettings.copy(
+                                                    speechToText = speechSettings.speechToText.copy(audioSource = source)
+                                                )
+                                            )
+                                        }
+                                    )
+                                },
+                            )
+
+                            if (selectedWorkerSource != null) {
+                                val selectedWorker = workers.firstOrNull {
+                                    it.workerId == selectedWorkerSource.workerId
+                                }
+                                val audioInputs = buildList {
+                                    addAll(selectedWorker?.environmentProfile?.audioInputs.orEmpty())
+                                    if (none { it.id == selectedWorkerSource.inputId }) {
+                                        add(
+                                            WorkerAudioInput(
+                                                id = selectedWorkerSource.inputId,
+                                                displayName = "Unavailable input ${selectedWorkerSource.inputId.value}",
+                                            )
+                                        )
+                                    }
+                                }
+                                DropdownSettingItem(
+                                    label = "Worker audio input",
+                                    description = "An offline Worker remains selectable; recording becomes available when it reconnects with this input.",
+                                    value = selectedWorkerSource.inputId,
+                                    options = audioInputs.map { it.id },
+                                    optionLabel = { id ->
+                                        audioInputs.first { it.id == id }.let { input ->
+                                            if (input.isDefault) "${input.displayName} · default" else input.displayName
+                                        }
+                                    },
+                                    onValueChange = { inputId ->
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    speechSettings = speechSettings.copy(
+                                                        speechToText = speechSettings.speechToText.copy(
+                                                            audioSource = selectedWorkerSource.copy(inputId = inputId)
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    },
+                                )
+                            }
 
                             if (speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER) {
                                 val localWhisper = speechToText.localWhisper

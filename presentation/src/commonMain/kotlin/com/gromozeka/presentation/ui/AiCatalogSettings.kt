@@ -810,6 +810,9 @@ private fun ConnectionDialog(
                 ?: AiConnection.ClaudeCode.DEFAULT_PROCESS_IDLE_TTL_MINUTES.toString()
         )
     }
+    var voiceTranscriptionEnabled by remember {
+        mutableStateOf((existing as? AiConnection.ClaudeCode)?.voiceTranscriptionEnabled ?: false)
+    }
     var awsRegion by remember {
         mutableStateOf((existing as? AiConnection.AwsAiConnection)?.awsRegion.orEmpty())
     }
@@ -1004,6 +1007,21 @@ private fun ConnectionDialog(
                     )
                 }
                 if (kind == AiConnection.Kind.CLAUDE_CODE) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = voiceTranscriptionEnabled,
+                            onCheckedChange = { voiceTranscriptionEnabled = it },
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Experimental Claude Code voice adapter")
+                            Text(
+                                "Controls a separately installed Claude Code UI. Enable only when your organization and account terms permit automation; consumer Pro/Max is not supported by default.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     OutlinedTextField(
                         value = executablePath,
                         onValueChange = { executablePath = it },
@@ -1047,6 +1065,7 @@ private fun ConnectionDialog(
                             executablePath = executablePath,
                             maxCachedProcesses = maxCachedProcesses,
                             processIdleTtlMinutes = processIdleTtlMinutes,
+                            voiceTranscriptionEnabled = voiceTranscriptionEnabled,
                             awsRegion = awsRegion,
                             awsProfile = awsProfile,
                             executionTarget = executionTarget,
@@ -1085,6 +1104,7 @@ private fun createConnection(
     executablePath: String,
     maxCachedProcesses: String,
     processIdleTtlMinutes: String,
+    voiceTranscriptionEnabled: Boolean,
     awsRegion: String,
     awsProfile: String,
     executionTarget: AiExecutionTarget,
@@ -1145,6 +1165,7 @@ private fun createConnection(
                 ?: error("Cached process limit must be a positive integer"),
             processIdleTtlMinutes = processIdleTtlMinutes.toIntOrNull()
                 ?: error("Idle TTL must be a positive integer"),
+            voiceTranscriptionEnabled = voiceTranscriptionEnabled,
             executionTarget = executionTarget,
         )
         AiConnection.Kind.GEMINI_API -> AiConnection.GeminiApi(

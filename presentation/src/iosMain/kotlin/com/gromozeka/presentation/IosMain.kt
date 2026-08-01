@@ -198,6 +198,7 @@ private suspend fun handleActionButtonEvents(app: RemoteAppComponents) {
 
     if (lastActive) {
         app.components.pttEventRouter.handlePTTEvent(PTTEvent.BUTTON_DOWN)
+        app.components.pttEventRouter.handlePTTEvent(PTTEvent.SINGLE_PUSH)
     }
 
     while (true) {
@@ -216,6 +217,7 @@ private suspend fun handleActionButtonEvents(app: RemoteAppComponents) {
         lastActive = active
         if (active) {
             app.components.pttEventRouter.handlePTTEvent(PTTEvent.BUTTON_DOWN)
+            app.components.pttEventRouter.handlePTTEvent(PTTEvent.SINGLE_PUSH)
         } else {
             app.components.pttEventRouter.handlePTTRelease()
         }

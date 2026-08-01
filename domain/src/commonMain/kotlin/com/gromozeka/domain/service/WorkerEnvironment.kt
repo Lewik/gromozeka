@@ -1,6 +1,7 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.WorkerAudioInput
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
@@ -15,6 +16,7 @@ data class WorkerEnvironmentProfile(
     val logicalProcessorCount: Int,
     val totalMemoryBytes: Long?,
     val availableExecutables: List<String>,
+    val audioInputs: List<WorkerAudioInput> = emptyList(),
 ) {
     init {
         require(architecture.isNotBlank()) { "Worker architecture must not be blank" }
@@ -29,6 +31,12 @@ data class WorkerEnvironmentProfile(
         }
         require(availableExecutables.all(String::isNotBlank)) {
             "Worker executable names must not be blank"
+        }
+        require(audioInputs.map { it.id }.distinct().size == audioInputs.size) {
+            "Worker audio input ids must be unique"
+        }
+        require(audioInputs.count { it.isDefault } <= 1) {
+            "Worker environment must not advertise several default audio inputs"
         }
     }
 }

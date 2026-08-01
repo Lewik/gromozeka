@@ -639,6 +639,9 @@ class ClaudeCodeCliRuntimeTest {
                 description = "Read a project file by relative path.",
                 inputSchema = """{"type":"object","additionalProperties":false,"properties":{"path":{"type":"string"}},"required":["path"]}""",
             )
+            override val metadata = com.gromozeka.domain.tool.AiToolMetadata(
+                executionScope = com.gromozeka.domain.tool.AiToolExecutionScope.WORKSPACE
+            )
 
             override fun call(toolInput: String, context: com.gromozeka.domain.tool.ToolExecutionContext?): String =
                 error("Unit tests must not execute tools")

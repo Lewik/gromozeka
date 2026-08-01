@@ -258,6 +258,33 @@ class WorkerGatewayTest {
         )
     }
 
+    @Test
+    fun `late response after cancelled request is ignored without accepting unknown responses`() = runBlocking {
+        val session = session("worker-1", "session-1")
+        val request = async {
+            session.execute(
+                operation = WorkerGatewayOperation.WORKER_CONTROL,
+                payload = "request".encodeToByteArray(),
+                timeout = Duration.ofSeconds(5),
+            )
+        }
+        val dispatched = session.outgoingMessages().receive() as WorkerGatewayMessage.Request
+
+        request.cancel()
+        request.join()
+
+        val response = WorkerGatewayMessage.Response(
+            requestId = dispatched.id,
+            status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
+            payload = "response".encodeToByteArray(),
+        )
+        assertEquals(WorkerGatewayResponseAcceptance.LATE, session.accept(response))
+        assertEquals(
+            WorkerGatewayResponseAcceptance.UNKNOWN,
+            session.accept(response.copy(requestId = "never-dispatched")),
+        )
+    }
+
     private fun session(workerId: String, sessionId: String): WorkerGatewaySession =
         WorkerGatewaySession(
             ConversationRuntimeWorkerIdentity(

@@ -45,6 +45,7 @@ import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 import java.time.Duration
+import java.util.LinkedHashSet
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
@@ -118,6 +119,8 @@ class WorkerGatewaySession(
 ) {
     private val outgoing = Channel<WorkerGatewayMessage>(OUTGOING_BUFFER_SIZE)
     private val pending = ConcurrentHashMap<String, CompletableDeferred<WorkerGatewayMessage.Response>>()
+    private val recentlyClosedRequestIds = LinkedHashSet<String>()
+    private val recentlyClosedRequestIdsLock = Any()
     private val inFlight = Semaphore(MAX_IN_FLIGHT_REQUESTS)
     private val requestedDisconnect = CompletableDeferred<String>()
 
@@ -158,6 +161,7 @@ class WorkerGatewaySession(
                 }
                 requireNotNull(result.payload)
             } finally {
+                rememberClosed(request.id)
                 pending.remove(request.id, response)
             }
         }
@@ -168,8 +172,22 @@ class WorkerGatewaySession(
 
     fun outgoingMessages(): Channel<WorkerGatewayMessage> = outgoing
 
-    fun accept(response: WorkerGatewayMessage.Response): Boolean =
-        pending[response.requestId]?.complete(response) == true
+    internal fun accept(response: WorkerGatewayMessage.Response): WorkerGatewayResponseAcceptance {
+        pending[response.requestId]?.let { pendingResponse ->
+            return if (pendingResponse.complete(response)) {
+                WorkerGatewayResponseAcceptance.ACCEPTED
+            } else {
+                WorkerGatewayResponseAcceptance.LATE
+            }
+        }
+        return synchronized(recentlyClosedRequestIdsLock) {
+            if (response.requestId in recentlyClosedRequestIds) {
+                WorkerGatewayResponseAcceptance.LATE
+            } else {
+                WorkerGatewayResponseAcceptance.UNKNOWN
+            }
+        }
+    }
 
     fun requestDisconnect(reason: String) {
         requestedDisconnect.complete(reason)
@@ -183,11 +201,28 @@ class WorkerGatewaySession(
         pending.clear()
     }
 
+    private fun rememberClosed(requestId: String) = synchronized(recentlyClosedRequestIdsLock) {
+        recentlyClosedRequestIds += requestId
+        while (recentlyClosedRequestIds.size > MAX_RECENTLY_CLOSED_REQUESTS) {
+            recentlyClosedRequestIds.iterator().also { iterator ->
+                iterator.next()
+                iterator.remove()
+            }
+        }
+    }
+
     private companion object {
         const val OUTGOING_BUFFER_SIZE = 256
         const val MAX_IN_FLIGHT_REQUESTS = 64
+        const val MAX_RECENTLY_CLOSED_REQUESTS = 1_024
         const val MAX_GATEWAY_PAYLOAD_BYTES = 64 * 1024 * 1024
     }
+}
+
+internal enum class WorkerGatewayResponseAcceptance {
+    ACCEPTED,
+    LATE,
+    UNKNOWN,
 }
 
 @Service
@@ -342,11 +377,18 @@ class WorkerGatewayService(
                             }
 
                             is WorkerGatewayMessage.Response -> {
-                                if (!gatewaySession.accept(message)) {
-                                    return@coroutineScope socket.fail(
-                                        "UNKNOWN_RESPONSE",
-                                        "Worker returned a response for an unknown or expired request",
-                                    )
+                                when (gatewaySession.accept(message)) {
+                                    WorkerGatewayResponseAcceptance.ACCEPTED -> Unit
+                                    WorkerGatewayResponseAcceptance.LATE -> log.info {
+                                        "Ignoring late Worker response: worker=${registration.identity.workerId.value} " +
+                                            "request=${message.requestId}"
+                                    }
+                                    WorkerGatewayResponseAcceptance.UNKNOWN -> {
+                                        return@coroutineScope socket.fail(
+                                            "UNKNOWN_RESPONSE",
+                                            "Worker returned a response for an unknown request",
+                                        )
+                                    }
                                 }
                             }
 

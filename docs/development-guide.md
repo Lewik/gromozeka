@@ -33,6 +33,29 @@ The main dogfood chat path is `OPEN_AI_SUBSCRIPTION`, implemented by
 for other providers, embeddings, and auxiliary integrations. Provider quirks
 belong behind those infrastructure boundaries rather than in domain workflows.
 
+## Corporate Compatibility
+
+External integrations must respect the operator's selected provider policy. A
+disabled or unconfigured provider must receive no requests, including discovery
+calls, health probes, fallback traffic, embeddings, speech, or auxiliary tool
+calls. Provider-specific integrations and optimizations are welcome, but they
+must stay explicit, isolated, and operator-controlled rather than silently
+bypassing deployment policy.
+
+Before adding a runtime or distributable dependency, verify that its license
+permits the intended closed-source commercial use and distribution without
+reciprocal source-disclosure obligations. Proprietary CLIs and services should
+be installed, licensed, and authenticated separately unless their terms clearly
+permit redistribution. Experimental adapters around separately installed tools
+must be opt-in and identified as unsupported integration paths.
+
+Network destinations, credential ownership, and relevant provider data
+retention behavior should be visible to the operator. Do not claim privacy,
+zero-data-retention, or compliance properties that are not guaranteed by the
+selected provider and account contract. These dependency rules do not change
+Gromozeka's own license: commercial use still requires the permission described
+in `LICENSE`.
+
 ## Runtime Language
 
 - A **Project** is a logical working context.

@@ -50,6 +50,7 @@ fun MessageInput(
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState,
+    pttUnavailableReason: String?,
     showPttButton: Boolean,
     clientPlatform: ClientPlatform,
     instructionGroups: List<MessageInstructionGroup>,
@@ -208,11 +209,15 @@ fun MessageInput(
                     if (showPttButton) {
                         CompactButton(
                             onClick = {},
+                            enabled = pttUnavailableReason == null,
                             modifier = Modifier
                                 .zIndex(2f)
                                 .size(actionButtonSize)
                                 .then(
-                                    if (pttState == PttState.TRANSCRIBING) {
+                                    if (
+                                        pttState == PttState.TRANSCRIBING ||
+                                        pttUnavailableReason != null
+                                    ) {
                                         Modifier
                                     } else {
                                         Modifier.advancedPttGestures(pttEventHandler, coroutineScope)
@@ -220,12 +225,14 @@ fun MessageInput(
                                 )
                                 .testTag(UiTestTag.PttButton.value),
                             tooltip = when (pttState) {
-                                PttState.IDLE -> LocalTranslation.current.pttButtonTooltip
+                                PttState.IDLE -> pttUnavailableReason
+                                    ?: LocalTranslation.current.pttButtonTooltip
+                                PttState.PREPARING -> "Подготовка микрофона"
                                 PttState.RECORDING -> LocalTranslation.current.recordingTooltip
                                 PttState.TRANSCRIBING -> "Распознавание голоса"
                             },
                         ) {
-                            if (pttState == PttState.TRANSCRIBING) {
+                            if (pttState == PttState.PREPARING || pttState == PttState.TRANSCRIBING) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(22.dp),
                                     strokeWidth = 2.dp,

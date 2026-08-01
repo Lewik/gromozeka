@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
 interface ClientAudioRecorder {
+    val unavailableReason: String?
+        get() = null
+
     val supportsStreamingAudioChunks: Boolean
         get() = false
 
@@ -47,6 +50,8 @@ data class ClientRecordedAudio(
 }
 
 object NoOpClientAudioRecorder : ClientAudioRecorder {
+    override val unavailableReason: String = "Запись звука недоступна на этом клиенте"
+
     override suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession =
         error("Client audio recording is not available on this platform")
 }
