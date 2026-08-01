@@ -2,10 +2,13 @@ package com.gromozeka.server
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
+import com.gromozeka.remote.protocol.AssistantMessageSignal
+import com.gromozeka.remote.protocol.ClientFeedbackEffect
 import com.gromozeka.remote.protocol.ClientActivityKind
 import com.gromozeka.remote.protocol.ClientInstanceId
 import com.gromozeka.remote.protocol.ClientSessionId
-import com.gromozeka.remote.protocol.PlayMessageTtsDirective
+import com.gromozeka.remote.protocol.PlayClientFeedbackDirective
+import com.gromozeka.remote.protocol.PresentAssistantMessageDirective
 import com.gromozeka.remote.protocol.RegisterClientSessionCommand
 import com.gromozeka.remote.protocol.RemoteClientPlatform
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
@@ -34,13 +37,18 @@ class ClientPresentationRegistryTest {
 
         registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
         assertTrue(registry.present(USER_1, assistantMessage("message-1", "First response")))
-        assertEquals("First response", assertIs<PlayMessageTtsDirective>(firstClientEvents.single()).text)
+        val firstPresentation = assertIs<PresentAssistantMessageDirective>(firstClientEvents.single())
+        assertEquals("First response", firstPresentation.speech?.text)
+        assertEquals(AssistantMessageSignal.ACTIVITY, firstPresentation.signal)
         assertTrue(secondClientEvents.isEmpty())
 
         registry.activate("connection-2", ClientActivityKind.WINDOW_FOCUSED)
         assertSame(StopTtsDirective, firstClientEvents.last())
         assertTrue(registry.present(USER_1, assistantMessage("message-2", "Second response")))
-        assertEquals("Second response", assertIs<PlayMessageTtsDirective>(secondClientEvents.single()).text)
+        assertEquals(
+            "Second response",
+            secondClientEvents.filterIsInstance<PresentAssistantMessageDirective>().single().speech?.text,
+        )
     }
 
     @Test
@@ -54,7 +62,48 @@ class ClientPresentationRegistryTest {
         assertTrue(registry.present(USER_1, message))
         assertFalse(registry.present(USER_1, message))
 
-        assertEquals(1, events.filterIsInstance<PlayMessageTtsDirective>().size)
+        assertEquals(1, events.filterIsInstance<PresentAssistantMessageDirective>().size)
+    }
+
+    @Test
+    fun routesAttentionWithoutRequiringTts() = runBlocking {
+        val registry = ClientPresentationRegistry()
+        val events = mutableListOf<ServerPayload>()
+        registry.registerClient("connection-1", "client-1", "session-1", events)
+        registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
+
+        assertTrue(registry.present(USER_1, assistantMessage("message-1", ttsText = null, attentionRequested = true)))
+
+        val directive = assertIs<PresentAssistantMessageDirective>(events.single())
+        assertEquals(AssistantMessageSignal.ATTENTION, directive.signal)
+        assertEquals(null, directive.speech)
+    }
+
+    @Test
+    fun routesAttentionSoundWhenTheSameMessageHasTts() = runBlocking {
+        val registry = ClientPresentationRegistry()
+        val events = mutableListOf<ServerPayload>()
+        registry.registerClient("connection-1", "client-1", "session-1", events)
+        registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
+
+        assertTrue(registry.present(USER_1, assistantMessage("message-1", "Speak", attentionRequested = true)))
+
+        val directive = assertIs<PresentAssistantMessageDirective>(events.single())
+        assertEquals(AssistantMessageSignal.ATTENTION, directive.signal)
+        assertEquals("Speak", directive.speech?.text)
+    }
+
+    @Test
+    fun routesEachErrorOnlyOnceToTheActiveClient() = runBlocking {
+        val registry = ClientPresentationRegistry()
+        val events = mutableListOf<ServerPayload>()
+        registry.registerClient("connection-1", "client-1", "session-1", events)
+        registry.activate("connection-1", ClientActivityKind.USER_INTERACTION)
+
+        assertTrue(registry.presentError(USER_1, Conversation.Id("conversation-1"), "failure-1"))
+        assertFalse(registry.presentError(USER_1, Conversation.Id("conversation-1"), "failure-1"))
+
+        assertEquals(ClientFeedbackEffect.ERROR, assertIs<PlayClientFeedbackDirective>(events.single()).effect)
     }
 
     @Test
@@ -71,7 +120,10 @@ class ClientPresentationRegistryTest {
         registry.registerClient("connection-2", "client-1", "session-1", reconnectedEvents)
         assertTrue(registry.present(USER_1, assistantMessage("message-2", "After reconnect")))
 
-        assertEquals("After reconnect", assertIs<PlayMessageTtsDirective>(reconnectedEvents.single()).text)
+        assertEquals(
+            "After reconnect",
+            reconnectedEvents.filterIsInstance<PresentAssistantMessageDirective>().single().speech?.text,
+        )
     }
 
     @Test
@@ -87,7 +139,7 @@ class ClientPresentationRegistryTest {
             command = registration("client-1", "session-1"),
             encoding = RemoteProtocolEncoding.CBOR,
             send = { payload, _ ->
-                if (payload is PlayMessageTtsDirective) {
+                if (payload is PresentAssistantMessageDirective) {
                     playStarted.complete(Unit)
                     releasePlay.await()
                 }
@@ -114,8 +166,8 @@ class ClientPresentationRegistryTest {
         assertTrue(presentation.await())
         activation.await()
 
-        assertIs<PlayMessageTtsDirective>(firstClientEvents[0])
-        assertSame(StopTtsDirective, firstClientEvents[1])
+        assertIs<PresentAssistantMessageDirective>(firstClientEvents[0])
+        assertSame(StopTtsDirective, firstClientEvents.last())
     }
 
     @Test
@@ -135,11 +187,11 @@ class ClientPresentationRegistryTest {
         assertTrue(registry.present(USER_2, assistantMessage("shared-message", "Second user response")))
         assertEquals(
             "First user response",
-            assertIs<PlayMessageTtsDirective>(firstUserEvents.single()).text,
+            firstUserEvents.filterIsInstance<PresentAssistantMessageDirective>().single().speech?.text,
         )
         assertEquals(
             "Second user response",
-            assertIs<PlayMessageTtsDirective>(secondUserEvents.single()).text,
+            secondUserEvents.filterIsInstance<PresentAssistantMessageDirective>().single().speech?.text,
         )
     }
 
@@ -170,7 +222,8 @@ class ClientPresentationRegistryTest {
 
     private fun assistantMessage(
         id: String,
-        ttsText: String,
+        ttsText: String?,
+        attentionRequested: Boolean = false,
     ): Conversation.Message =
         Conversation.Message(
             id = Conversation.Message.Id(id),
@@ -179,9 +232,10 @@ class ClientPresentationRegistryTest {
             content = listOf(
                 Conversation.Message.ContentItem.AssistantMessage(
                     structured = Conversation.Message.StructuredText(
-                        fullText = ttsText,
+                        fullText = ttsText ?: "Visible response",
                         ttsText = ttsText,
                         voiceTone = "warm",
+                        attentionRequested = attentionRequested,
                     ),
                 )
             ),

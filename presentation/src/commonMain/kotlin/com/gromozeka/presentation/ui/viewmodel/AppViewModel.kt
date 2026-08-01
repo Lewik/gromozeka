@@ -12,7 +12,6 @@ import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.ScreenCaptureController
-import com.gromozeka.presentation.services.SoundNotificationPlayer
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -25,7 +24,6 @@ open class AppViewModel(
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
-    private val soundNotificationService: SoundNotificationPlayer,
     private val settingsService: SettingsService,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val scope: CoroutineScope,
@@ -304,7 +302,6 @@ open class AppViewModel(
         conversationRuntimeService = conversationRuntimeService,
         conversationService = conversationService,
         messageSquashGenerationService = messageSquashGenerationService,
-        soundNotificationService = soundNotificationService,
         settingsService = settingsService,
         aiConfigurationProvider = aiConfigurationProvider,
         scope = scope,

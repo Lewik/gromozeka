@@ -87,20 +87,40 @@ class RemoteProtocolCodecTest {
         assertEquals(ClientActivityKind.USER_INTERACTION, decodedActivity.kind)
 
         val directive = GromozekaServerEnvelope(
-            id = "play-tts-1",
-            payload = PlayMessageTtsDirective(
+            id = "present-message-1",
+            payload = PresentAssistantMessageDirective(
                 messageId = Conversation.Message.Id("message-1"),
-                text = "Hello",
-                tone = "warm",
+                conversationId = Conversation.Id("conversation-1"),
+                signal = AssistantMessageSignal.ATTENTION,
+                speech = AssistantMessageSpeech(
+                    text = "Hello",
+                    tone = "warm",
+                ),
             ),
         )
         val decodedDirective = RemoteProtocolCodec.decodeServerBinary(
             RemoteProtocolCodec.encodeServerBinary(directive)
-        ).payload as PlayMessageTtsDirective
+        ).payload as PresentAssistantMessageDirective
 
         assertEquals("message-1", decodedDirective.messageId.value)
-        assertEquals("Hello", decodedDirective.text)
-        assertEquals("warm", decodedDirective.tone)
+        assertEquals("conversation-1", decodedDirective.conversationId.value)
+        assertEquals(AssistantMessageSignal.ATTENTION, decodedDirective.signal)
+        assertEquals("Hello", decodedDirective.speech?.text)
+        assertEquals("warm", decodedDirective.speech?.tone)
+
+        val soundDirective = GromozekaServerEnvelope(
+            id = "play-sound-1",
+            payload = PlayClientFeedbackDirective(
+                conversationId = Conversation.Id("conversation-1"),
+                effect = ClientFeedbackEffect.ATTENTION,
+            ),
+        )
+        val decodedSoundDirective = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(soundDirective)
+        ).payload as PlayClientFeedbackDirective
+
+        assertEquals("conversation-1", decodedSoundDirective.conversationId.value)
+        assertEquals(ClientFeedbackEffect.ATTENTION, decodedSoundDirective.effect)
     }
 
     @Test

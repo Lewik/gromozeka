@@ -28,15 +28,15 @@ object NoOpGlobalHotkeyController : GlobalHotkeyController {
 }
 
 interface SoundNotificationPlayer {
+    suspend fun playAttentionSound()
+    suspend fun playActivitySound()
     suspend fun playErrorSound()
-    suspend fun playMessageSound()
-    suspend fun playReadySound()
 }
 
 object NoOpSoundNotificationPlayer : SoundNotificationPlayer {
+    override suspend fun playAttentionSound() = Unit
+    override suspend fun playActivitySound() = Unit
     override suspend fun playErrorSound() = Unit
-    override suspend fun playMessageSound() = Unit
-    override suspend fun playReadySound() = Unit
 }
 
 enum class UiFeedbackEvent {
@@ -53,20 +53,6 @@ class UiFeedbackController {
     fun notifyError() {
         _events.tryEmit(UiFeedbackEvent.ERROR)
     }
-}
-
-class FeedbackSoundNotificationPlayer(
-    private val delegate: SoundNotificationPlayer,
-    private val feedbackController: UiFeedbackController,
-) : SoundNotificationPlayer {
-    override suspend fun playErrorSound() {
-        feedbackController.notifyError()
-        delegate.playErrorSound()
-    }
-
-    override suspend fun playMessageSound() = delegate.playMessageSound()
-
-    override suspend fun playReadySound() = delegate.playReadySound()
 }
 
 interface TtsQueue {
@@ -86,13 +72,13 @@ class NoOpTtsQueue : TtsQueue {
 }
 
 interface ClientAudioPlayer {
-    suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String)
+    suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String, volume: Float = 1.0f)
     suspend fun playPcmStream(chunks: Flow<ByteArray>, sampleRate: Int, channels: Int, bitsPerSample: Int)
     fun stop()
 }
 
 object NoOpClientAudioPlayer : ClientAudioPlayer {
-    override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String) = Unit
+    override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String, volume: Float) = Unit
     override suspend fun playPcmStream(chunks: Flow<ByteArray>, sampleRate: Int, channels: Int, bitsPerSample: Int) {
         chunks.collect {}
     }

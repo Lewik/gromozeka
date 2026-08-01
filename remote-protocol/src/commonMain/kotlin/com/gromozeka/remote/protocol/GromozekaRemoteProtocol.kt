@@ -1157,11 +1157,38 @@ data class MessageUpsertedEvent(
 ) : ServerPayload
 
 @Serializable
-@SerialName("play_message_tts")
-data class PlayMessageTtsDirective(
-    val messageId: Conversation.Message.Id,
+enum class AssistantMessageSignal {
+    ATTENTION,
+    ACTIVITY,
+}
+
+@Serializable
+data class AssistantMessageSpeech(
     val text: String,
     val tone: String,
+)
+
+@Serializable
+@SerialName("present_assistant_message")
+data class PresentAssistantMessageDirective(
+    val messageId: Conversation.Message.Id,
+    val conversationId: Conversation.Id,
+    val signal: AssistantMessageSignal,
+    val speech: AssistantMessageSpeech?,
+) : ClientPresentationDirective
+
+@Serializable
+enum class ClientFeedbackEffect {
+    ATTENTION,
+    ACTIVITY,
+    ERROR,
+}
+
+@Serializable
+@SerialName("play_client_feedback")
+data class PlayClientFeedbackDirective(
+    val conversationId: Conversation.Id,
+    val effect: ClientFeedbackEffect,
 ) : ClientPresentationDirective
 
 @Serializable

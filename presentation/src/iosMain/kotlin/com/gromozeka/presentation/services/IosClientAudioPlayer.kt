@@ -25,9 +25,15 @@ import kotlin.math.max
 class IosClientAudioPlayer : ClientAudioPlayer {
     private var activePlayer: AVAudioPlayer? = null
 
-    override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String) = withContext(Dispatchers.Default) {
+    override suspend fun playAudio(
+        data: ByteArray,
+        mediaType: String,
+        fileExtension: String,
+        volume: Float,
+    ) = withContext(Dispatchers.Default) {
+        require(volume in 0.0f..1.0f) { "Audio volume must be between 0.0 and 1.0" }
         val normalizedExtension = fileExtension.trim().trimStart('.').ifBlank { "wav" }
-        playAudioFile(data, normalizedExtension)
+        playAudioFile(data, normalizedExtension, volume)
     }
 
     override suspend fun playPcmStream(
@@ -53,33 +59,39 @@ class IosClientAudioPlayer : ClientAudioPlayer {
         }
 
         playAudioFile(
-            data = pcmData.toWav(sampleRate = sampleRate, channels = channels, bitsPerSample = bitsPerSample),
+            data = pcmData.toPcmWav(sampleRate = sampleRate, channels = channels, bitsPerSample = bitsPerSample),
             fileExtension = "wav",
+            volume = 1.0f,
         )
     }
 
-    private suspend fun playAudioFile(data: ByteArray, fileExtension: String) {
+    private suspend fun playAudioFile(data: ByteArray, fileExtension: String, volume: Float) {
         val fileUrl = NSURL.fileURLWithPath("${NSTemporaryDirectory()}gromozeka-tts-${kotlin.random.Random.nextLong()}.$fileExtension")
         writeFileBytes(fileUrl.path ?: error("iOS audio temp file path is missing"), data)
+        var player: AVAudioPlayer? = null
         try {
             configureAudioSession()
-            val player = AVAudioPlayer(fileUrl, null) ?: error("Failed to create iOS audio player")
-            activePlayer = player
-            player.prepareToPlay()
-            check(player.play()) { "Failed to start iOS audio playback" }
-            while (player.playing) {
+            val createdPlayer = AVAudioPlayer(fileUrl, null)
+            player = createdPlayer
+            activePlayer?.stop()
+            activePlayer = createdPlayer
+            createdPlayer.volume = volume
+            createdPlayer.prepareToPlay()
+            check(createdPlayer.play()) { "Failed to start iOS audio playback" }
+            while (createdPlayer.playing) {
                 delay(50)
             }
         } finally {
-            activePlayer = null
-            deactivateAudioSession()
+            if (activePlayer === player) {
+                activePlayer = null
+                deactivateAudioSession()
+            }
             runCatching { NSFileManager.defaultManager.removeItemAtURL(fileUrl, null) }
         }
     }
 
     override fun stop() {
         activePlayer?.stop()
-        activePlayer = null
     }
 
     private fun configureAudioSession() {
@@ -95,46 +107,6 @@ class IosClientAudioPlayer : ClientAudioPlayer {
             error = null,
         )
     }
-}
-
-private fun ByteArray.toWav(sampleRate: Int, channels: Int, bitsPerSample: Int): ByteArray {
-    require(sampleRate > 0) { "WAV sample rate must be positive" }
-    require(channels > 0) { "WAV channel count must be positive" }
-    require(bitsPerSample > 0) { "WAV bits per sample must be positive" }
-
-    val byteRate = sampleRate * channels * bitsPerSample / 8
-    val blockAlign = channels * bitsPerSample / 8
-    val header = ByteArray(44)
-    header.writeAscii(0, "RIFF")
-    header.writeIntLe(4, 36 + size)
-    header.writeAscii(8, "WAVE")
-    header.writeAscii(12, "fmt ")
-    header.writeIntLe(16, 16)
-    header.writeShortLe(20, 1)
-    header.writeShortLe(22, channels)
-    header.writeIntLe(24, sampleRate)
-    header.writeIntLe(28, byteRate)
-    header.writeShortLe(32, blockAlign)
-    header.writeShortLe(34, bitsPerSample)
-    header.writeAscii(36, "data")
-    header.writeIntLe(40, size)
-    return header + this
-}
-
-private fun ByteArray.writeAscii(offset: Int, value: String) {
-    value.encodeToByteArray().forEachIndexed { index, byte -> this[offset + index] = byte }
-}
-
-private fun ByteArray.writeIntLe(offset: Int, value: Int) {
-    this[offset] = value.toByte()
-    this[offset + 1] = (value shr 8).toByte()
-    this[offset + 2] = (value shr 16).toByte()
-    this[offset + 3] = (value shr 24).toByte()
-}
-
-private fun ByteArray.writeShortLe(offset: Int, value: Int) {
-    this[offset] = value.toByte()
-    this[offset + 1] = (value shr 8).toByte()
 }
 
 @OptIn(ExperimentalForeignApi::class)

@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AgentDomainService
@@ -13,6 +14,10 @@ import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeIngressService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
@@ -669,6 +674,7 @@ class GromozekaRemoteServer(
         try {
             sessionAccessGuard.requireConversationRead(authenticatedSession, command.conversationId)
             var liveEventsStarted = false
+            var lastActivitySignature: RuntimeActivitySignature? = null
             conversationRuntimeService.observeConversation(command.conversationId, command.afterEventSequence)
                 .collect { event ->
                     val currentUser = sessionAccessGuard.requireConversationRead(
@@ -677,6 +683,9 @@ class GromozekaRemoteServer(
                     )
                     when (event) {
                         is ConversationRuntimeEvent.SnapshotUpdated -> {
+                            val activitySignature = event.snapshot.presentationActivitySignature()
+                            val activityChanged = liveEventsStarted && activitySignature != lastActivitySignature
+                            lastActivitySignature = activitySignature
                             sender.send(
                                 command.subscriptionId,
                                 ConversationRuntimeSnapshotEvent(
@@ -687,6 +696,13 @@ class GromozekaRemoteServer(
                                 ),
                                 encoding,
                             )
+                            if (activityChanged && event.snapshot.hasPresentableActivity()) {
+                                clientPresentationRegistry.presentActivity(
+                                    userId = currentUser.id,
+                                    conversationId = event.conversationId,
+                                    eventKey = "${event.conversationId.value}:${event.snapshot.revision}",
+                                )
+                            }
                             liveEventsStarted = true
                         }
                         is ConversationRuntimeEvent.MessageEmitted -> {
@@ -702,7 +718,15 @@ class GromozekaRemoteServer(
                                 encoding,
                             )
                             if (liveEventsStarted) {
-                                clientPresentationRegistry.present(currentUser.id, event.message)
+                                if (event.message.containsUserVisibleError()) {
+                                    clientPresentationRegistry.presentError(
+                                        userId = currentUser.id,
+                                        conversationId = event.conversationId,
+                                        eventKey = "message:${event.message.id.value}",
+                                    )
+                                } else {
+                                    clientPresentationRegistry.present(currentUser.id, event.message)
+                                }
                             }
                         }
                         is ConversationRuntimeEvent.ExecutionCompleted -> sender.send(
@@ -710,17 +734,32 @@ class GromozekaRemoteServer(
                             ConversationExecutionCompletedEvent(command.subscriptionId, event.conversationId, event.cursorSequence),
                             encoding,
                         )
-                        is ConversationRuntimeEvent.ExecutionFailed -> sender.send(
-                            command.subscriptionId,
-                            ConversationExecutionFailedEvent(
-                                subscriptionId = command.subscriptionId,
-                                conversationId = event.conversationId,
-                                message = event.message,
-                                type = event.failureType,
-                                cursorSequence = event.cursorSequence,
-                            ),
-                            encoding,
-                        )
+                        is ConversationRuntimeEvent.ExecutionFailed -> {
+                            sender.send(
+                                command.subscriptionId,
+                                ConversationExecutionFailedEvent(
+                                    subscriptionId = command.subscriptionId,
+                                    conversationId = event.conversationId,
+                                    message = event.message,
+                                    type = event.failureType,
+                                    cursorSequence = event.cursorSequence,
+                                ),
+                                encoding,
+                            )
+                            if (liveEventsStarted) {
+                                clientPresentationRegistry.presentError(
+                                    userId = currentUser.id,
+                                    conversationId = event.conversationId,
+                                    eventKey = event.cursorSequence
+                                        ?.let { "execution:$it" }
+                                        ?: timeBucketedPresentationKey(
+                                            "execution",
+                                            event.failureType.toString(),
+                                            event.message,
+                                        ),
+                                )
+                            }
+                        }
                     }
                 }
         } catch (error: CancellationException) {
@@ -737,6 +776,15 @@ class GromozekaRemoteServer(
                     cursorSequence = null,
                 ),
                 encoding,
+            )
+            clientPresentationRegistry.presentError(
+                userId = authenticatedSession.principal.user.id,
+                conversationId = command.conversationId,
+                eventKey = timeBucketedPresentationKey(
+                    "observation",
+                    error::class.simpleName.orEmpty(),
+                    error.message.orEmpty(),
+                ),
             )
         }
     }
@@ -929,6 +977,57 @@ class GromozekaRemoteServer(
         const val OPENAI_TTS_PCM_BITS_PER_SAMPLE = 16
     }
 }
+
+private data class RuntimeActivitySignature(
+    val activeTaskId: String?,
+    val toolExecutions: List<String>,
+    val memoryOperations: List<String>,
+    val commandTasks: List<String>,
+    val commandMonitors: List<String>,
+    val lastTraceSequence: Long?,
+)
+
+private fun ConversationRuntimeSnapshot.presentationActivitySignature(): RuntimeActivitySignature =
+    RuntimeActivitySignature(
+        activeTaskId = activeTask?.id?.value,
+        toolExecutions = toolExecutions.map {
+            "${it.toolCallId.value}:${it.status}:${it.isError}"
+        },
+        memoryOperations = memoryOperations.map {
+            val progress = it.progress
+            "${it.runId.value}:${it.status}:${progress?.completedUnits}:${progress?.failedUnits}:${progress?.currentUnitLabel}"
+        },
+        commandTasks = commandTasks.map {
+            "${it.id.value}:${it.status}:${it.outputBytes}:${it.exitCode}"
+        },
+        commandMonitors = commandMonitors.map {
+            "${it.id.value}:${it.status}:${it.outputBytes}:${it.eventCount}:${it.exitCode}"
+        },
+        lastTraceSequence = trace.lastOrNull()?.sequence,
+    )
+
+private fun ConversationRuntimeSnapshot.hasPresentableActivity(): Boolean =
+    state != null ||
+        activeTask != null ||
+        toolExecutions.any { it.status == ConversationRuntimeToolExecution.Status.RUNNING } ||
+        memoryOperations.any { it.status == MemoryRun.Status.QUEUED || it.status == MemoryRun.Status.RUNNING } ||
+        commandTasks.any { it.status == CommandTask.Status.WORKING } ||
+        commandMonitors.any { it.status == CommandMonitor.Status.WORKING }
+
+private fun Conversation.Message.containsUserVisibleError(): Boolean =
+    error != null || content.any { item ->
+        when (item) {
+            is Conversation.Message.ContentItem.System ->
+                item.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
+            is Conversation.Message.ContentItem.ToolResult -> item.isError
+            else -> false
+        }
+    }
+
+private fun timeBucketedPresentationKey(vararg parts: String): String =
+    parts.joinToString(":") + ":${Clock.System.now().toEpochMilliseconds() / PRESENTATION_ERROR_BUCKET_MILLIS}"
+
+private const val PRESENTATION_ERROR_BUCKET_MILLIS = 5_000L
 
 private fun com.gromozeka.domain.model.PersonalAccessToken.toPersonalAccessTokenView() =
     PersonalAccessTokenView(

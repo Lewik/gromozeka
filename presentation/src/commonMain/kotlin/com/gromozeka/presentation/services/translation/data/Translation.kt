@@ -43,8 +43,8 @@ sealed class Translation {
         abstract val alwaysOnTopLabel: String
         abstract val showTabsAtBottomLabel: String
         abstract val errorSoundsLabel: String
-        abstract val messageSoundsLabel: String
-        abstract val readySoundsLabel: String
+        abstract val activitySoundsLabel: String
+        abstract val attentionSoundsLabel: String
         abstract val soundVolumeLabel: String
         abstract val showOriginalJsonLabel: String
         abstract val localizationModeLabel: String
@@ -74,8 +74,8 @@ sealed class Translation {
         abstract val alwaysOnTopDescription: String
         abstract val showTabsAtBottomDescription: String
         abstract val errorSoundsDescription: String
-        abstract val messageSoundsDescription: String
-        abstract val readySoundsDescription: String
+        abstract val activitySoundsDescription: String
+        abstract val attentionSoundsDescription: String
         abstract val soundVolumeDescription: String
         abstract val showJsonDescription: String
 

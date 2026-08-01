@@ -82,9 +82,9 @@ sealed interface UserDeviceSettings {
 
     @Serializable
     data class SoundSettings(
-        val errorSoundsEnabled: Boolean = false,
-        val messageSoundsEnabled: Boolean = false,
-        val readySoundsEnabled: Boolean = false,
+        val attentionSoundsEnabled: Boolean = true,
+        val activitySoundsEnabled: Boolean = true,
+        val errorSoundsEnabled: Boolean = true,
         val volume: Float = 1.0f,
     ) {
         init {

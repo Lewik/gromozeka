@@ -59,6 +59,7 @@ kotlin {
                 implementation(compose.foundation)
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
+                implementation(compose.components.resources)
 
                 implementation(libs.multiplatform.markdown.renderer.m3)
                 implementation(libs.multiplatform.markdown.renderer.code)
@@ -103,6 +104,10 @@ kotlin {
             }
         }
     }
+}
+
+compose.resources {
+    packageOfResClass = "com.gromozeka.presentation.resources"
 }
 
 android {

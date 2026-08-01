@@ -5,24 +5,24 @@ import com.gromozeka.client.InMemoryRemoteClientSettingsStore
 import com.gromozeka.client.RemoteClientSettingsStore
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
+import com.gromozeka.presentation.services.AssistantAudioPresentationService
 import com.gromozeka.presentation.services.ClientAudioPlayer
 import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
-import com.gromozeka.presentation.services.FeedbackSoundNotificationPlayer
+import com.gromozeka.presentation.services.ClientFeedbackService
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
 import com.gromozeka.presentation.services.NoOpClientAudioPlayer
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.services.NoOpClientSideSpeechToTextService
-import com.gromozeka.presentation.services.NoOpSoundNotificationPlayer
 import com.gromozeka.presentation.services.NoOpSystemAudioMuteService
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.RemotePttController
+import com.gromozeka.presentation.services.ResourceSoundNotificationPlayer
 import com.gromozeka.presentation.services.RemoteTtsQueue
 import com.gromozeka.presentation.services.RollingClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ScreenCaptureController
 import com.gromozeka.presentation.services.TabPromptService
-import com.gromozeka.presentation.services.TTSAutoplayService
 import com.gromozeka.presentation.services.UIStateService
 import com.gromozeka.presentation.services.UIStateStore
 import com.gromozeka.presentation.services.UiFeedbackController
@@ -81,16 +81,17 @@ suspend fun createRemoteAppComponents(
     }
 
     val uiFeedbackController = UiFeedbackController()
-    val soundNotificationPlayer = FeedbackSoundNotificationPlayer(
-        delegate = NoOpSoundNotificationPlayer,
-        feedbackController = uiFeedbackController,
+    val ttsQueue = RemoteTtsQueue(remoteServices.speechSynthesisService, audioPlayer)
+    val soundNotificationPlayer = ResourceSoundNotificationPlayer(
+        audioPlayer = audioPlayer,
+        settingsService = remoteServices.settingsService,
+        isTtsPlaying = { ttsQueue.isPlaying.value },
     )
 
     val appViewModel = AppViewModel(
         conversationRuntimeService = remoteServices.conversationRuntimeService,
         conversationService = remoteServices.conversationService,
         messageSquashGenerationService = remoteServices.messageSquashGenerationService,
-        soundNotificationService = soundNotificationPlayer,
         settingsService = remoteServices.settingsService,
         aiConfigurationProvider = remoteServices.aiConfigurationService,
         scope = scope,
@@ -107,7 +108,6 @@ suspend fun createRemoteAppComponents(
     val translationService = TranslationService().also { it.init(remoteServices.settingsService) }
     val themeService = ThemeService().also { it.init(remoteServices.settingsService) }
     val clientSideSpeechToTextService = clientSideSpeechToTextServiceFactory(remoteServices.settingsService)
-    val ttsQueue = RemoteTtsQueue(remoteServices.speechSynthesisService, audioPlayer)
     val pttController = RemotePttController(
         appViewModel = appViewModel,
         audioRecorder = audioRecorder,
@@ -119,13 +119,22 @@ suspend fun createRemoteAppComponents(
         uiFeedbackController = uiFeedbackController,
         scope = scope
     )
-    val ttsAutoplayService = TTSAutoplayService(
+    val assistantAudioPresentationService = AssistantAudioPresentationService(
         clientPresentationService = remoteServices.clientPresentationService,
         ttsQueueService = ttsQueue,
         settingsService = remoteServices.settingsService,
+        soundNotificationPlayer = soundNotificationPlayer,
         scope = scope,
     )
-    ttsAutoplayService.start()
+    assistantAudioPresentationService.start()
+    val clientFeedbackService = ClientFeedbackService(
+        clientPresentationService = remoteServices.clientPresentationService,
+        soundNotificationPlayer = soundNotificationPlayer,
+        uiFeedbackController = uiFeedbackController,
+        activeConversationId = { appViewModel.currentTab.value?.conversationId },
+        scope = scope,
+    )
+    clientFeedbackService.start()
 
     return RemoteAppComponents(
         components = AppComponents(
@@ -174,7 +183,8 @@ suspend fun createRemoteAppComponents(
             deviceLocationService = deviceLocationService,
         ),
         remoteServices = remoteServices,
-        ttsAutoplayService = ttsAutoplayService,
+        assistantAudioPresentationService = assistantAudioPresentationService,
+        clientFeedbackService = clientFeedbackService,
     )
 }
 
@@ -190,13 +200,15 @@ private fun ClientPlatform.toRemoteClientPlatform(): RemoteClientPlatform =
 class RemoteAppComponents(
     val components: AppComponents,
     private val remoteServices: GromozekaRemoteServices,
-    private val ttsAutoplayService: TTSAutoplayService,
+    private val assistantAudioPresentationService: AssistantAudioPresentationService,
+    private val clientFeedbackService: ClientFeedbackService,
 ) : AutoCloseable {
     override fun close() {
         runCatching { components.uiStateService.forceSave() }
         runCatching { components.uiStateService.disableAutoSave() }
         runCatching { components.globalHotkeyController.cleanup() }
-        runCatching { ttsAutoplayService.shutdown() }
+        runCatching { assistantAudioPresentationService.shutdown() }
+        runCatching { clientFeedbackService.shutdown() }
         runCatching { components.ttsQueueService.shutdown() }
         runCatching { remoteServices.close() }
     }

@@ -1167,6 +1167,24 @@ fun SettingsPanel(
                     // Notifications Settings
                     SettingsGroup(title = translation.settings.notificationsTitle) {
                         SwitchSettingItem(
+                            label = translation.settings.attentionSoundsLabel,
+                            description = translation.settings.attentionSoundsDescription,
+                            value = soundSettings.attentionSoundsEnabled,
+                            onValueChange = {
+                                onSettingsChange(settings.updateSoundSettings { copy(attentionSoundsEnabled = it) })
+                            }
+                        )
+
+                        SwitchSettingItem(
+                            label = translation.settings.activitySoundsLabel,
+                            description = translation.settings.activitySoundsDescription,
+                            value = soundSettings.activitySoundsEnabled,
+                            onValueChange = {
+                                onSettingsChange(settings.updateSoundSettings { copy(activitySoundsEnabled = it) })
+                            }
+                        )
+
+                        SwitchSettingItem(
                             label = translation.settings.errorSoundsLabel,
                             description = translation.settings.errorSoundsDescription,
                             value = soundSettings.errorSoundsEnabled,
@@ -1175,26 +1193,12 @@ fun SettingsPanel(
                             }
                         )
 
-                        SwitchSettingItem(
-                            label = translation.settings.messageSoundsLabel,
-                            description = translation.settings.messageSoundsDescription,
-                            value = soundSettings.messageSoundsEnabled,
-                            onValueChange = {
-                                onSettingsChange(settings.updateSoundSettings { copy(messageSoundsEnabled = it) })
-                            }
-                        )
-
-                        SwitchSettingItem(
-                            label = translation.settings.readySoundsLabel,
-                            description = translation.settings.readySoundsDescription,
-                            value = soundSettings.readySoundsEnabled,
-                            onValueChange = {
-                                onSettingsChange(settings.updateSoundSettings { copy(readySoundsEnabled = it) })
-                            }
-                        )
-
                         // Volume control (show only if any sound is enabled)
-                        if (soundSettings.errorSoundsEnabled || soundSettings.messageSoundsEnabled || soundSettings.readySoundsEnabled) {
+                        if (
+                            soundSettings.attentionSoundsEnabled ||
+                            soundSettings.activitySoundsEnabled ||
+                            soundSettings.errorSoundsEnabled
+                        ) {
                             SliderSettingItem(
                                 label = translation.settings.soundVolumeLabel,
                                 description = translation.settings.soundVolumeDescription,

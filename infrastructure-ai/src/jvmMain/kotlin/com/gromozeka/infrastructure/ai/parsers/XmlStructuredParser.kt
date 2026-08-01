@@ -46,10 +46,19 @@ class XmlStructuredParser : ResponseParser {
             voiceTone = voiceNode.attributes?.getNamedItem("tone")?.nodeValue
         }
 
+        val attentionNodes = root.getElementsByTagName("attention")
+        val attentionRequested = if (attentionNodes.length > 0) {
+            attentionNodes.item(0).textContent?.trim()?.toBooleanStrictOrNull()
+                ?: throw IllegalArgumentException("<attention> must contain true or false")
+        } else {
+            false
+        }
+
         return Conversation.Message.StructuredText(
             fullText = fullText,
             ttsText = ttsText,
-            voiceTone = voiceTone
+            voiceTone = voiceTone,
+            attentionRequested = attentionRequested,
         )
     }
 }

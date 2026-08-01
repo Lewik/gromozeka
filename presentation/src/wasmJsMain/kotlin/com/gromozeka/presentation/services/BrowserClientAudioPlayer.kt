@@ -19,10 +19,11 @@ class BrowserClientAudioPlayer : ClientAudioPlayer {
     private val manager = createBrowserAudioPlayerManager()
     private var activePlayback: JsAny? = null
 
-    override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String) {
+    override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String, volume: Float) {
         if (data.isEmpty()) return
+        require(volume in 0.0f..1.0f) { "Audio volume must be between 0.0 and 1.0" }
 
-        val playback = beginBrowserAudioPlayback(manager).await()
+        val playback = beginBrowserAudioPlayback(manager, volume.toDouble()).await()
         activePlayback = playback
         log.info {
             "Browser encoded audio playback started: bytes=${data.size} mediaType=$mediaType " +
@@ -59,7 +60,7 @@ class BrowserClientAudioPlayer : ClientAudioPlayer {
                 prebufferMs = PCM_START_PREBUFFER_MS,
             ),
         )
-        val playback = beginBrowserAudioPlayback(manager).await()
+        val playback = beginBrowserAudioPlayback(manager, 1.0).await()
         activePlayback = playback
         log.info {
             "Browser PCM playback started: sampleRate=$sampleRate channels=$channels " +
@@ -141,8 +142,11 @@ class BrowserClientAudioPlayer : ClientAudioPlayer {
         globalThis.addEventListener("touchend", unlock, { capture: true, passive: true });
         globalThis.addEventListener("keydown", unlock, { capture: true });
 
-        const createPlayback = audioContext => {
+        const createPlayback = (audioContext, volume) => {
             let sources = new Set();
+            const output = audioContext.createGain();
+            output.gain.value = Math.max(0, Math.min(1, volume));
+            output.connect(audioContext.destination);
             let nextStartTime = 0;
             let finishing = false;
             let settled = false;
@@ -156,6 +160,10 @@ class BrowserClientAudioPlayer : ClientAudioPlayer {
             const settle = error => {
                 if (settled) return;
                 settled = true;
+                try {
+                    output.disconnect();
+                } catch (_) {
+                }
                 if (activePlayback === playback) {
                     activePlayback = null;
                 }
@@ -170,7 +178,7 @@ class BrowserClientAudioPlayer : ClientAudioPlayer {
                 if (settled || buffer.length === 0) return;
                 const source = audioContext.createBufferSource();
                 source.buffer = buffer;
-                source.connect(audioContext.destination);
+                source.connect(output);
                 sources.add(source);
                 source.onended = () => {
                     sources.delete(source);
@@ -235,10 +243,10 @@ class BrowserClientAudioPlayer : ClientAudioPlayer {
             get contextState() {
                 return context?.state || "not-created";
             },
-            async begin() {
+            async begin(volume = 1) {
                 activePlayback?.stop();
                 const audioContext = await ensureContext();
-                const playback = createPlayback(audioContext);
+                const playback = createPlayback(audioContext, volume);
                 activePlayback = playback;
                 return playback;
             },
@@ -252,8 +260,8 @@ class BrowserClientAudioPlayer : ClientAudioPlayer {
 )
 private external fun createBrowserAudioPlayerManager(): JsAny
 
-@JsFun("(manager) => manager.begin()")
-private external fun beginBrowserAudioPlayback(manager: JsAny): Promise<JsAny>
+@JsFun("(manager, volume) => manager.begin(volume)")
+private external fun beginBrowserAudioPlayback(manager: JsAny, volume: Double): Promise<JsAny>
 
 @JsFun(
     """

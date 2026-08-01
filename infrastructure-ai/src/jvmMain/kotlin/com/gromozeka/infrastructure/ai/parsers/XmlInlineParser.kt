@@ -10,11 +10,14 @@ import com.gromozeka.domain.model.Conversation
 class XmlInlineParser : ResponseParser {
 
     private val ttsPattern = Regex("""<tts(?:\s+tone="([^"]*)")?\s*>(.*?)</tts>""", RegexOption.DOT_MATCHES_ALL)
+    private val attentionPattern = Regex("""<attention\s*/>""", RegexOption.IGNORE_CASE)
 
     override fun parse(text: String): Conversation.Message.StructuredText {
         val trimmedText = text.trim()
+        val attentionRequested = attentionPattern.containsMatchIn(trimmedText)
+        val textWithoutAttention = trimmedText.replace(attentionPattern, "")
 
-        val matches = ttsPattern.findAll(trimmedText).toList()
+        val matches = ttsPattern.findAll(textWithoutAttention).toList()
 
         val ttsTexts = mutableListOf<String>()
         var lastTone: String? = null
@@ -33,15 +36,16 @@ class XmlInlineParser : ResponseParser {
 
         // Remove TTS tags from full text for visual display, or use original text if no tags
         val fullText = if (matches.isNotEmpty()) {
-            trimmedText.replace(ttsPattern, "$2")
+            textWithoutAttention.replace(ttsPattern, "$2")
         } else {
-            trimmedText
-        }
+            textWithoutAttention
+        }.trim()
 
         return Conversation.Message.StructuredText(
             fullText = fullText,
             ttsText = ttsTexts.joinToString(" ").takeIf { it.isNotEmpty() },
-            voiceTone = lastTone
+            voiceTone = lastTone,
+            attentionRequested = attentionRequested,
         )
     }
 }

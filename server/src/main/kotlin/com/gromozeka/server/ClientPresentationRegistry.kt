@@ -2,9 +2,13 @@ package com.gromozeka.server
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
+import com.gromozeka.remote.protocol.AssistantMessageSignal
+import com.gromozeka.remote.protocol.AssistantMessageSpeech
+import com.gromozeka.remote.protocol.ClientFeedbackEffect
 import com.gromozeka.remote.protocol.ClientActivityKind
 import com.gromozeka.remote.protocol.ClientSessionId
-import com.gromozeka.remote.protocol.PlayMessageTtsDirective
+import com.gromozeka.remote.protocol.PlayClientFeedbackDirective
+import com.gromozeka.remote.protocol.PresentAssistantMessageDirective
 import com.gromozeka.remote.protocol.RegisterClientSessionCommand
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import com.gromozeka.remote.protocol.ServerPayload
@@ -12,6 +16,7 @@ import com.gromozeka.remote.protocol.StopTtsDirective
 import klog.KLoggers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
 
 internal typealias ClientPresentationSend = suspend (ServerPayload, RemoteProtocolEncoding) -> Unit
@@ -23,8 +28,9 @@ class ClientPresentationRegistry {
     private val deliveryMutex = Mutex()
     private val sessionsByKey = mutableMapOf<ClientSessionKey, RegisteredClientSession>()
     private val sessionKeysByConnection = mutableMapOf<String, ClientSessionKey>()
-    private val presentedMessageKeys = LinkedHashSet<PresentedMessageKey>()
+    private val presentedEventKeys = LinkedHashSet<PresentedEventKey>()
     private val activeSessionKeysByUser = mutableMapOf<User.Id, ClientSessionKey>()
+    private val lastActivityPresentationAt = LinkedHashMap<ActivityRateKey, Long>()
 
     suspend fun register(
         userId: User.Id,
@@ -134,14 +140,99 @@ class ClientPresentationRegistry {
 
     suspend fun present(userId: User.Id, message: Conversation.Message): Boolean =
         deliveryMutex.withLock {
-            presentToActiveClient(userId, message)
+            presentAssistantMessageToActiveClient(userId, message)
         }
 
-    private suspend fun presentToActiveClient(userId: User.Id, message: Conversation.Message): Boolean {
-        val speech = message.assistantSpeech() ?: return false
+    suspend fun presentError(
+        userId: User.Id,
+        conversationId: Conversation.Id,
+        eventKey: String,
+    ): Boolean = deliveryMutex.withLock {
+        presentSoundToActiveClient(
+            userId = userId,
+            eventKey = "error:$eventKey",
+            conversationId = conversationId,
+            effect = ClientFeedbackEffect.ERROR,
+        )
+    }
+
+    suspend fun presentActivity(
+        userId: User.Id,
+        conversationId: Conversation.Id,
+        eventKey: String,
+    ): Boolean = deliveryMutex.withLock {
+        reserveActivityPresentation(userId, conversationId) && presentSoundToActiveClient(
+            userId = userId,
+            eventKey = "activity:$eventKey",
+            conversationId = conversationId,
+            effect = ClientFeedbackEffect.ACTIVITY,
+        )
+    }
+
+    private suspend fun presentAssistantMessageToActiveClient(
+        userId: User.Id,
+        message: Conversation.Message,
+    ): Boolean {
+        val presentation = message.assistantPresentation() ?: return false
+        val target = claimTarget(userId, "message:${message.id.value}") ?: return false
+        return try {
+            target.send(
+                PresentAssistantMessageDirective(
+                    messageId = message.id,
+                    conversationId = message.conversationId,
+                    signal = if (presentation.attentionRequested) {
+                        AssistantMessageSignal.ATTENTION
+                    } else {
+                        AssistantMessageSignal.ACTIVITY
+                    },
+                    speech = presentation.speech?.let { AssistantMessageSpeech(it.text, it.tone) },
+                ),
+                target.encoding,
+            )
+            log.info {
+                "Assistant presentation routed: user=${userId.value} message=${message.id.value} " +
+                    "speech=${presentation.speech != null} attention=${presentation.attentionRequested} " +
+                    "instance=${target.identity.clientInstanceId.value} session=${target.identity.clientSessionId.value}"
+            }
+            true
+        } catch (error: Throwable) {
+            log.warn(error) {
+                "Failed to route assistant presentation: message=${message.id.value} " +
+                    "session=${target.identity.clientSessionId.value} error=${error.message}"
+            }
+            false
+        }
+    }
+
+    private suspend fun presentSoundToActiveClient(
+        userId: User.Id,
+        eventKey: String,
+        conversationId: Conversation.Id,
+        effect: ClientFeedbackEffect,
+    ): Boolean {
+        val target = claimTarget(userId, eventKey) ?: return false
+        return try {
+            target.send(
+                PlayClientFeedbackDirective(
+                    conversationId = conversationId,
+                    effect = effect,
+                ),
+                target.encoding,
+            )
+            true
+        } catch (error: Throwable) {
+            log.warn(error) {
+                "Failed to route UI sound: event=$eventKey effect=$effect " +
+                    "session=${target.identity.clientSessionId.value} error=${error.message}"
+            }
+            false
+        }
+    }
+
+    private suspend fun claimTarget(userId: User.Id, eventKey: String): RegisteredClientSession? {
         val claim = mutex.withLock {
-            val firstPresentation = presentedMessageKeys.add(PresentedMessageKey(userId, message.id))
-            trimPresentedMessageKeys()
+            val firstPresentation = presentedEventKeys.add(PresentedEventKey(userId, eventKey))
+            trimPresentedEventKeys()
             if (!firstPresentation) {
                 PresentationClaim.Duplicate
             } else {
@@ -152,46 +243,23 @@ class ClientPresentationRegistry {
             }
         }
 
-        val target = when (claim) {
-            PresentationClaim.Duplicate -> return false
+        return when (claim) {
+            PresentationClaim.Duplicate -> null
             PresentationClaim.NoActiveClient -> {
-                log.info { "Auto TTS has no active client: user=${userId.value} message=${message.id.value}" }
-                return false
+                log.info { "Presentation has no active client: user=${userId.value} event=$eventKey" }
+                null
             }
             is PresentationClaim.Target -> claim.session
         }
+    }
 
-        return try {
-            target.send(
-                PlayMessageTtsDirective(
-                    messageId = message.id,
-                    text = speech.text,
-                    tone = speech.tone,
-                ),
-                target.encoding,
-            )
-            log.info {
-                "Auto TTS routed: user=${userId.value} message=${message.id.value} " +
-                    "instance=${target.identity.clientInstanceId.value} " +
-                    "session=${target.identity.clientSessionId.value}"
-            }
-            true
-        } catch (error: Throwable) {
-            log.warn(error) {
-                "Failed to route auto TTS: message=${message.id.value} " +
-                    "session=${target.identity.clientSessionId.value} error=${error.message}"
-            }
-            false
+    private fun trimPresentedEventKeys() {
+        while (presentedEventKeys.size > MAX_PRESENTED_EVENT_KEYS) {
+            presentedEventKeys.remove(presentedEventKeys.first())
         }
     }
 
-    private fun trimPresentedMessageKeys() {
-        while (presentedMessageKeys.size > MAX_PRESENTED_MESSAGE_KEYS) {
-            presentedMessageKeys.remove(presentedMessageKeys.first())
-        }
-    }
-
-    private fun Conversation.Message.assistantSpeech(): AssistantSpeech? {
+    private fun Conversation.Message.assistantPresentation(): AssistantPresentation? {
         if (role != Conversation.Message.Role.ASSISTANT) {
             return null
         }
@@ -200,8 +268,31 @@ class ClientPresentationRegistry {
             .firstOrNull()
             ?.structured
             ?: return null
-        val text = structured.ttsText?.trim()?.takeIf(String::isNotBlank) ?: return null
-        return AssistantSpeech(text, structured.voiceTone.orEmpty())
+        val speech = structured.ttsText
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+            ?.let { AssistantSpeech(it, structured.voiceTone.orEmpty()) }
+        return AssistantPresentation(speech, structured.attentionRequested)
+    }
+
+    private suspend fun reserveActivityPresentation(
+        userId: User.Id,
+        conversationId: Conversation.Id,
+    ): Boolean {
+        val now = Clock.System.now().toEpochMilliseconds()
+        return mutex.withLock {
+            val rateKey = ActivityRateKey(userId, conversationId)
+            val previous = lastActivityPresentationAt[rateKey]
+            if (previous != null && now - previous < ACTIVITY_SOUND_INTERVAL_MILLIS) {
+                false
+            } else {
+                lastActivityPresentationAt[rateKey] = now
+                while (lastActivityPresentationAt.size > MAX_ACTIVITY_RATE_KEYS) {
+                    lastActivityPresentationAt.remove(lastActivityPresentationAt.keys.first())
+                }
+                true
+            }
+        }
     }
 
     private data class RegisteredClientSession(
@@ -217,9 +308,14 @@ class ClientPresentationRegistry {
         val sessionId: ClientSessionId,
     )
 
-    private data class PresentedMessageKey(
+    private data class PresentedEventKey(
         val userId: User.Id,
-        val messageId: Conversation.Message.Id,
+        val eventKey: String,
+    )
+
+    private data class ActivityRateKey(
+        val userId: User.Id,
+        val conversationId: Conversation.Id,
     )
 
     private data class Activation(
@@ -232,6 +328,11 @@ class ClientPresentationRegistry {
         val tone: String,
     )
 
+    private data class AssistantPresentation(
+        val speech: AssistantSpeech?,
+        val attentionRequested: Boolean,
+    )
+
     private sealed interface PresentationClaim {
         data object Duplicate : PresentationClaim
         data object NoActiveClient : PresentationClaim
@@ -239,6 +340,8 @@ class ClientPresentationRegistry {
     }
 
     private companion object {
-        const val MAX_PRESENTED_MESSAGE_KEYS = 10_000
+        const val MAX_PRESENTED_EVENT_KEYS = 10_000
+        const val MAX_ACTIVITY_RATE_KEYS = 10_000
+        const val ACTIVITY_SOUND_INTERVAL_MILLIS = 1_750L
     }
 }

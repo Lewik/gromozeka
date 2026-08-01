@@ -420,6 +420,7 @@ data class Conversation(
          * @property fullText complete message text
          * @property ttsText optional text optimized for text-to-speech (stripped markdown, etc.)
          * @property voiceTone optional voice tone hint for TTS
+         * @property attentionRequested true when the user should look at this response now
          * @property failedToParse true if structured parsing failed, fullText contains raw response
          */
         @Serializable
@@ -427,6 +428,7 @@ data class Conversation(
             val fullText: String,
             val ttsText: String? = null,
             val voiceTone: String? = null,
+            val attentionRequested: Boolean = false,
             val failedToParse: Boolean = false,
         )
 

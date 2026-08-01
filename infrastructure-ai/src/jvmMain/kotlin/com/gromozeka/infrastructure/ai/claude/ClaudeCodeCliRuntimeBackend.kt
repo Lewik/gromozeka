@@ -548,7 +548,8 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.UserMessage -> "user:${item.text}"
             is Conversation.Message.ContentItem.AssistantMessage -> {
                 val structured = item.structured
-                "assistant:${structured.fullText}:${structured.ttsText}:${structured.voiceTone}:${structured.failedToParse}"
+                "assistant:${structured.fullText}:${structured.ttsText}:${structured.voiceTone}:" +
+                    "${structured.attentionRequested}:${structured.failedToParse}"
             }
             is Conversation.Message.ContentItem.ToolCall -> "tool_call:${item.id.value}:${item.call.name}:${item.call.input}"
             is Conversation.Message.ContentItem.ToolResult -> "tool_result:${item.toolUseId.value}:${item.toolName}:${item.isError}:${toolResultText(item)}"
