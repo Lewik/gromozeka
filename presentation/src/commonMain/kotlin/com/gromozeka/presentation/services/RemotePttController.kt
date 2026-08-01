@@ -27,6 +27,7 @@ class RemotePttController(
     private val ttsQueue: TtsQueue,
     private val systemAudioMuteService: SystemAudioMuteService,
     private val settingsService: SettingsService,
+    private val uiFeedbackController: UiFeedbackController,
     private val scope: CoroutineScope,
 ) : PttEventHandler, PttRecordingService {
     private val log = KLoggers.logger(this)
@@ -113,7 +114,7 @@ class RemotePttController(
                         audioTranscriptionService.stopCapture(session.sessionId).trim()
                 }
             }.getOrElse { error ->
-                _statusMessage.value = "Не удалось распознать голос: ${error.message}"
+                reportError("Не удалось распознать голос: ${error.message}")
                 log.warn(error) {
                     "PTT recording or transcription failed: " +
                         "session=${capture.session.sessionId} error=${error.message}"
@@ -126,13 +127,14 @@ class RemotePttController(
         }
 
         if (text.isBlank()) {
-            _statusMessage.value = "Голос распознан как пустой текст"
+            reportError("Голос распознан как пустой текст")
             log.info { "PTT transcription returned blank text: session=${capture.session.sessionId}" }
             return
         }
 
         val currentTab = appViewModel.currentTab.value
         if (currentTab == null) {
+            reportError("Нет активного обсуждения для распознанного текста")
             log.warn {
                 "PTT transcription has no current tab: " +
                     "session=${capture.session.sessionId} textChars=${text.length}"
@@ -321,7 +323,7 @@ class RemotePttController(
         restoreSystemAudioAfterPtt(preparation.systemAudioMuted)
         if (reportFailure) {
             val failure = requireNotNull(error)
-            _statusMessage.value = "Не удалось открыть микрофон: ${failure.message}"
+            reportError("Не удалось открыть микрофон: ${failure.message}")
             log.warn(failure) { "PTT recording start failed: ${failure.message}" }
         } else {
             _statusMessage.value = null
@@ -369,6 +371,11 @@ class RemotePttController(
             ?.inputSettings
             ?.muteSystemAudioDuringPtt
             ?: false
+
+    private fun reportError(message: String) {
+        _statusMessage.value = message
+        uiFeedbackController.notifyError()
+    }
 
     private suspend fun refreshAvailability(source: SpeechAudioSource): String? {
         val localReason = when (source) {

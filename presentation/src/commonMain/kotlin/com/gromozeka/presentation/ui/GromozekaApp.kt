@@ -32,7 +32,9 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
@@ -50,12 +52,14 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
 import com.gromozeka.presentation.AppComponents
 import com.gromozeka.presentation.services.UnifiedGestureDetector
+import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
 import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -92,6 +96,7 @@ fun GromozekaAppContent(
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
+    val hapticFeedback = LocalHapticFeedback.current
 
     var initialized by remember { mutableStateOf(false) }
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
@@ -124,6 +129,18 @@ fun GromozekaAppContent(
 
     LaunchedEffect(Unit) {
         initialized = true
+    }
+
+    LaunchedEffect(appComponents.uiFeedbackController) {
+        appComponents.uiFeedbackController.events.collect { event ->
+            when (event) {
+                UiFeedbackEvent.ERROR -> {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.Reject)
+                    delay(ERROR_HAPTIC_GAP_MILLIS)
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.Reject)
+                }
+            }
+        }
     }
 
     LaunchedEffect(isWindowFocused, reportsComposeWindowFocus) {
@@ -807,6 +824,8 @@ fun GromozekaAppContent(
         }
     }
 }
+
+private const val ERROR_HAPTIC_GAP_MILLIS = 120L
 
 private enum class ProjectArea {
     CONVERSATIONS,

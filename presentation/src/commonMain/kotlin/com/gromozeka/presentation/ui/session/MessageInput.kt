@@ -71,15 +71,9 @@ fun MessageInput(
     val hapticFeedback = LocalHapticFeedback.current
     var inputFocused by remember { mutableStateOf(false) }
     var previousPttState by remember { mutableStateOf(pttState) }
-    var previousPttStatusMessage by remember { mutableStateOf(pttStatusMessage) }
 
-    LaunchedEffect(pttState, pttStatusMessage) {
+    LaunchedEffect(pttState) {
         when {
-            pttState == PttState.IDLE &&
-                pttStatusMessage != null &&
-                (previousPttState != PttState.IDLE || previousPttStatusMessage != pttStatusMessage) ->
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.Reject)
-
             pttState == PttState.RECORDING && previousPttState != PttState.RECORDING ->
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOn)
 
@@ -87,7 +81,6 @@ fun MessageInput(
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOff)
         }
         previousPttState = pttState
-        previousPttStatusMessage = pttStatusMessage
     }
 
     val textFieldPadding = OutlinedTextFieldDefaults.contentPadding()

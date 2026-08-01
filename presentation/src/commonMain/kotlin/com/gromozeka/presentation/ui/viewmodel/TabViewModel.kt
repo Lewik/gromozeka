@@ -65,6 +65,7 @@ class TabViewModel(
 
     private var currentRequestJob: kotlinx.coroutines.Job? = null
     private var lastRuntimeMessage: Conversation.Message? = null
+    private var lastErrorNotificationMessageId: Conversation.Message.Id? = null
     private var lastRuntimeSnapshotRevision = -1L
     private var claimedUserInput: String? = null
 
@@ -180,7 +181,9 @@ class TabViewModel(
             is ConversationRuntimeEvent.ExecutionCompleted -> finishRuntimeExecution()
             is ConversationRuntimeEvent.ExecutionFailed -> {
                 log.error { "Conversation runtime failed: ${event.failureType ?: "unknown"} ${event.message}" }
-                soundNotificationService.playErrorSound()
+                if (lastRuntimeMessage?.id != lastErrorNotificationMessageId) {
+                    soundNotificationService.playErrorSound()
+                }
                 finishRuntimeExecution(playCompletionSound = false)
             }
         }
@@ -232,7 +235,7 @@ class TabViewModel(
         if (message.error != null) {
             log.error { "Stream error: ${message.error}" }
             log.error { "Message with error: id=${message.id}, role=${message.role}, content.size=${message.content.size}" }
-            soundNotificationService.playErrorSound()
+            playErrorNotificationOnce(message)
         }
     }
 
@@ -268,7 +271,7 @@ class TabViewModel(
         val lastMessage = lastRuntimeMessage
         if (playCompletionSound && lastMessage != null) {
             if (ChatMessageSoundDetector.shouldPlayErrorSound(lastMessage)) {
-                soundNotificationService.playErrorSound()
+                playErrorNotificationOnce(lastMessage)
             } else if (ChatMessageSoundDetector.shouldPlayMessageSound(lastMessage)) {
                 soundNotificationService.playMessageSound()
             }
@@ -280,6 +283,7 @@ class TabViewModel(
         log.debug { "Conversation runtime completed" }
         currentRequestJob = null
         lastRuntimeMessage = null
+        lastErrorNotificationMessageId = null
         _isWaitingForResponse.value = false
         _executionPauseRequested.value = false
         _activeToolExecutions.value = emptyList()
@@ -289,6 +293,13 @@ class TabViewModel(
             }
         }
         _uiState.update { it.copy(isWaitingForResponse = false) }
+    }
+
+    private suspend fun playErrorNotificationOnce(message: Conversation.Message) {
+        if (lastErrorNotificationMessageId == message.id) return
+
+        lastErrorNotificationMessageId = message.id
+        soundNotificationService.playErrorSound()
     }
 
     private suspend fun loadTokenStats() {

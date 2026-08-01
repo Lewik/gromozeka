@@ -1,9 +1,13 @@
 package com.gromozeka.presentation.services
 
 import com.gromozeka.domain.model.TtsTask
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 interface ScreenCaptureController {
     suspend fun captureWindow(): String?
@@ -33,6 +37,36 @@ object NoOpSoundNotificationPlayer : SoundNotificationPlayer {
     override suspend fun playErrorSound() = Unit
     override suspend fun playMessageSound() = Unit
     override suspend fun playReadySound() = Unit
+}
+
+enum class UiFeedbackEvent {
+    ERROR,
+}
+
+class UiFeedbackController {
+    private val _events = MutableSharedFlow<UiFeedbackEvent>(
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val events: SharedFlow<UiFeedbackEvent> = _events.asSharedFlow()
+
+    fun notifyError() {
+        _events.tryEmit(UiFeedbackEvent.ERROR)
+    }
+}
+
+class FeedbackSoundNotificationPlayer(
+    private val delegate: SoundNotificationPlayer,
+    private val feedbackController: UiFeedbackController,
+) : SoundNotificationPlayer {
+    override suspend fun playErrorSound() {
+        feedbackController.notifyError()
+        delegate.playErrorSound()
+    }
+
+    override suspend fun playMessageSound() = delegate.playMessageSound()
+
+    override suspend fun playReadySound() = delegate.playReadySound()
 }
 
 interface TtsQueue {

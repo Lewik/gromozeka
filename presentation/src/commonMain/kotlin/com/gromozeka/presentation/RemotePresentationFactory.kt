@@ -8,6 +8,7 @@ import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.ClientAudioPlayer
 import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
+import com.gromozeka.presentation.services.FeedbackSoundNotificationPlayer
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
 import com.gromozeka.presentation.services.NoOpClientAudioPlayer
@@ -24,6 +25,7 @@ import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.TTSAutoplayService
 import com.gromozeka.presentation.services.UIStateService
 import com.gromozeka.presentation.services.UIStateStore
+import com.gromozeka.presentation.services.UiFeedbackController
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.SystemAudioMuteService
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
@@ -78,11 +80,17 @@ suspend fun createRemoteAppComponents(
         override suspend fun captureArea(): String? = null
     }
 
+    val uiFeedbackController = UiFeedbackController()
+    val soundNotificationPlayer = FeedbackSoundNotificationPlayer(
+        delegate = NoOpSoundNotificationPlayer,
+        feedbackController = uiFeedbackController,
+    )
+
     val appViewModel = AppViewModel(
         conversationRuntimeService = remoteServices.conversationRuntimeService,
         conversationService = remoteServices.conversationService,
         messageSquashGenerationService = remoteServices.messageSquashGenerationService,
-        soundNotificationService = NoOpSoundNotificationPlayer,
+        soundNotificationService = soundNotificationPlayer,
         settingsService = remoteServices.settingsService,
         aiConfigurationProvider = remoteServices.aiConfigurationService,
         scope = scope,
@@ -108,6 +116,7 @@ suspend fun createRemoteAppComponents(
         ttsQueue = ttsQueue,
         systemAudioMuteService = systemAudioMuteService,
         settingsService = remoteServices.settingsService,
+        uiFeedbackController = uiFeedbackController,
         scope = scope
     )
     val ttsAutoplayService = TTSAutoplayService(
@@ -144,6 +153,7 @@ suspend fun createRemoteAppComponents(
             globalHotkeyController = NoOpGlobalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,
+            uiFeedbackController = uiFeedbackController,
             uiStateService = uiStateService,
             translationService = translationService,
             themeService = themeService,

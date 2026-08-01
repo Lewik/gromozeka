@@ -32,6 +32,7 @@ import com.gromozeka.presentation.services.PttRecordingService
 import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.services.UIStateService
+import com.gromozeka.presentation.services.UiFeedbackController
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.translation.TranslationService
@@ -64,6 +65,7 @@ data class AppComponents(
     val globalHotkeyController: GlobalHotkeyController,
     val pttEventRouter: PttEventHandler,
     val pttService: PttRecordingService,
+    val uiFeedbackController: UiFeedbackController,
     val uiStateService: UIStateService,
     val translationService: TranslationService,
     val themeService: ThemeService,
