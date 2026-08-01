@@ -34,8 +34,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
-import java.io.File
-import java.util.Locale
 import kotlin.time.Duration.Companion.minutes
 
 internal data class SpeechCaptureSessionOwner(
@@ -332,27 +330,16 @@ class SpeechCaptureApplicationService(
         workers: List<WorkerCatalogEntry>,
         connection: AiConnection.ClaudeCode,
     ) {
-        when (target) {
-            AiExecutionTarget.Server -> {
-                require(System.getProperty("os.name").orEmpty().lowercase(Locale.ROOT).contains("linux")) {
-                    "Forwarded audio for Claude Code voice transcription requires a Linux execution target"
-                }
-                requireLocalExecutable(connection.executablePath, "Claude Code")
-                CLAUDE_FORWARDING_EXECUTABLES.forEach { executable ->
-                    requireLocalExecutable(executable, executable)
-                }
-            }
-            is AiExecutionTarget.Worker -> {
-                val worker = workers.singleOrNull { it.workerId.value == target.workerId }
-                    ?: error("Claude Code speech transcription Worker not found: ${target.workerId}")
-                require(worker.environmentProfile.operatingSystem.family == WorkerOperatingSystem.Family.LINUX) {
-                    "Forwarded audio for Claude Code voice transcription requires a Linux execution target"
-                }
-                requireWorkerExecutable(worker, connection.executablePath, "Claude Code")
-                CLAUDE_FORWARDING_EXECUTABLES.forEach { executable ->
-                    requireWorkerExecutable(worker, executable, executable)
-                }
-            }
+        val workerTarget = target as? AiExecutionTarget.Worker
+            ?: error("Claude Code speech transcription requires a Worker execution target")
+        val worker = workers.singleOrNull { it.workerId.value == workerTarget.workerId }
+            ?: error("Claude Code speech transcription Worker not found: ${workerTarget.workerId}")
+        require(worker.environmentProfile.operatingSystem.family == WorkerOperatingSystem.Family.LINUX) {
+            "Forwarded audio for Claude Code voice transcription requires a Linux execution target"
+        }
+        requireWorkerExecutable(worker, connection.executablePath, "Claude Code")
+        CLAUDE_FORWARDING_EXECUTABLES.forEach { executable ->
+            requireWorkerExecutable(worker, executable, executable)
         }
     }
 
@@ -365,27 +352,6 @@ class SpeechCaptureApplicationService(
         require(executablePath in worker.environmentProfile.availableExecutables) {
             "$displayName executable is unavailable on Worker ${worker.workerId.value}: $executablePath"
         }
-    }
-
-    private fun requireLocalExecutable(executablePath: String, displayName: String) {
-        require(isLocalExecutableAvailable(executablePath)) {
-            "$displayName executable is unavailable on Server: $executablePath"
-        }
-    }
-
-    private fun isLocalExecutableAvailable(executablePath: String): Boolean {
-        val direct = File(executablePath)
-        if (direct.isAbsolute || executablePath.hasPathSeparator()) {
-            return direct.isFile && direct.canExecute()
-        }
-        return System.getenv("PATH")
-            .orEmpty()
-            .split(File.pathSeparatorChar)
-            .asSequence()
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .map { directory -> File(directory, executablePath) }
-            .any { it.isFile && it.canExecute() }
     }
 
     private fun String.hasPathSeparator(): Boolean = '/' in this || '\\' in this

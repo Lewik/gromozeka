@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
@@ -84,6 +85,7 @@ class AiRequestResponseGatewayCodecTest {
             displayName = "Claude voice",
             executablePath = "/opt/claude/bin/claude",
             voiceTranscriptionEnabled = true,
+            executionTarget = AiExecutionTarget.Worker("worker-1"),
         )
         val request = AiSpeechTranscriptionRequest(
             audioData = byteArrayOf(7, 8, 9),

@@ -172,7 +172,7 @@ sealed interface AiConnection {
         val maxCachedProcesses: Int = DEFAULT_MAX_CACHED_PROCESSES,
         val processIdleTtlMinutes: Int = DEFAULT_PROCESS_IDLE_TTL_MINUTES,
         val voiceTranscriptionEnabled: Boolean = false,
-        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+        override val executionTarget: AiExecutionTarget,
     ) : AiConnection {
         override val kind = Kind.CLAUDE_CODE
 
@@ -181,6 +181,9 @@ sealed interface AiConnection {
             require(executablePath.isNotBlank()) { "Claude Code executable path must not be blank" }
             require(maxCachedProcesses > 0) { "Claude Code cached process limit must be positive" }
             require(processIdleTtlMinutes > 0) { "Claude Code process idle TTL must be positive" }
+            require(executionTarget is AiExecutionTarget.Worker) {
+                "Claude Code execution target must be a Worker"
+            }
         }
 
         companion object {

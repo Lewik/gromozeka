@@ -35,7 +35,7 @@ class RuntimeCatalogTemplateApplicationServiceTest {
     }
 
     @Test
-    fun exposesClaudeOpus5ForDirectApiAndClaudeCode() {
+    fun exposesClaudeOpus5ForConfiguredAnthropicConnections() {
         val catalog = RuntimeCatalogTemplateApplicationService().getTemplates().aiCatalog
         val spec = catalog.modelSpecs.single {
             it.provider == AiProvider.ANTHROPIC && it.id == "claude-opus-5"
@@ -58,7 +58,7 @@ class RuntimeCatalogTemplateApplicationServiceTest {
 
         val configurations = catalog.modelConfigurations.filter { it.providerModelId == "claude-opus-5" }
         assertEquals(
-            setOf(AiModelConfiguration.Id("anthropic-opus-5"), AiModelConfiguration.Id("claude-code-opus-5")),
+            setOf(AiModelConfiguration.Id("anthropic-opus-5")),
             configurations.map { it.id }.toSet(),
         )
         assertTrue(configurations.all {

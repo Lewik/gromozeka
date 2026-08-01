@@ -845,6 +845,14 @@ private fun ConnectionDialog(
     var removeConfiguredSecret by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(kind, workers) {
+        if (kind == AiConnection.Kind.CLAUDE_CODE && executionTarget !is AiExecutionTarget.Worker) {
+            workers.firstOrNull()?.let { worker ->
+                executionTarget = AiExecutionTarget.Worker(worker.workerId.value)
+            }
+        }
+    }
+
     LaunchedEffect(secretValueState) {
         snapshotFlow { secretValueState.text.toString() }.collect { value ->
             if (value.isNotEmpty()) {
@@ -904,10 +912,14 @@ private fun ConnectionDialog(
                         }
                     }
                 }
-                val targetOptions = buildList {
-                    add(AiExecutionTarget.Server)
+                val targetOptions = buildList<AiExecutionTarget> {
+                    if (kind != AiConnection.Kind.CLAUDE_CODE) {
+                        add(AiExecutionTarget.Server)
+                    }
                     workers.forEach { add(AiExecutionTarget.Worker(it.workerId.value)) }
-                    if (executionTarget !in this) add(executionTarget)
+                    if (kind != AiConnection.Kind.CLAUDE_CODE && executionTarget !in this) {
+                        add(executionTarget)
+                    }
                 }
                 LabeledDropdown(
                     label = "Execution target",
@@ -917,11 +929,22 @@ private fun ConnectionDialog(
                     onSelect = { executionTarget = it },
                 )
                 Text(
-                    "Finite LLM, embedding, speech-to-text, and text-to-speech requests use this exact target. " +
-                        "Streaming and live voice require Server.",
+                    if (kind == AiConnection.Kind.CLAUDE_CODE) {
+                        "Claude Code runs only on the selected Worker, using that machine's installation and credentials."
+                    } else {
+                        "Finite LLM, embedding, speech-to-text, and text-to-speech requests use this exact target. " +
+                            "Streaming and live voice require Server."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (kind == AiConnection.Kind.CLAUDE_CODE && workers.isEmpty()) {
+                    Text(
+                        "Enroll a Worker before creating a Claude Code connection.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 if (kind in httpConnectionKinds) {
                     OutlinedTextField(
                         value = baseUrl,
@@ -1166,7 +1189,8 @@ private fun createConnection(
             processIdleTtlMinutes = processIdleTtlMinutes.toIntOrNull()
                 ?: error("Idle TTL must be a positive integer"),
             voiceTranscriptionEnabled = voiceTranscriptionEnabled,
-            executionTarget = executionTarget,
+            executionTarget = executionTarget as? AiExecutionTarget.Worker
+                ?: error("Claude Code requires a Worker execution target"),
         )
         AiConnection.Kind.GEMINI_API -> AiConnection.GeminiApi(
             id = connectionId,

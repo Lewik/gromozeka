@@ -30,11 +30,19 @@ class AiConnectionTest {
         )
         assertEquals(
             AiProvider.ANTHROPIC,
-            AiConnection.ClaudeCode(AiConnection.Id("claude-code"), "Claude Code").kind.provider,
+            AiConnection.ClaudeCode(
+                AiConnection.Id("claude-code"),
+                "Claude Code",
+                executionTarget = AiExecutionTarget.Worker("worker-1"),
+            ).kind.provider,
         )
         assertEquals(
             AiConnection.Kind.CLAUDE_CODE,
-            AiConnection.ClaudeCode(AiConnection.Id("claude-code"), "Claude Code").kind,
+            AiConnection.ClaudeCode(
+                AiConnection.Id("claude-code"),
+                "Claude Code",
+                executionTarget = AiExecutionTarget.Worker("worker-1"),
+            ).kind,
         )
     }
 
@@ -57,6 +65,7 @@ class AiConnectionTest {
                 id = AiConnection.Id("claude-code"),
                 displayName = "Claude Code",
                 executablePath = "",
+                executionTarget = AiExecutionTarget.Worker("worker-1"),
             )
         }
     }
@@ -68,6 +77,7 @@ class AiConnectionTest {
                 id = AiConnection.Id("claude-code"),
                 displayName = "Claude Code",
                 maxCachedProcesses = 0,
+                executionTarget = AiExecutionTarget.Worker("worker-1"),
             )
         }
         assertFailsWith<IllegalArgumentException> {
@@ -75,6 +85,18 @@ class AiConnectionTest {
                 id = AiConnection.Id("claude-code"),
                 displayName = "Claude Code",
                 processIdleTtlMinutes = 0,
+                executionTarget = AiExecutionTarget.Worker("worker-1"),
+            )
+        }
+    }
+
+    @Test
+    fun claudeCodeConnectionRequiresWorkerExecutionTarget() {
+        assertFailsWith<IllegalArgumentException> {
+            AiConnection.ClaudeCode(
+                id = AiConnection.Id("claude-code"),
+                displayName = "Claude Code",
+                executionTarget = AiExecutionTarget.Server,
             )
         }
     }
@@ -86,6 +108,7 @@ class AiConnectionTest {
             displayName = "Claude Code",
             maxCachedProcesses = 17,
             processIdleTtlMinutes = 95,
+            executionTarget = AiExecutionTarget.Worker("worker-1"),
         )
 
         val restored = Json.decodeFromString<AiConnection>(

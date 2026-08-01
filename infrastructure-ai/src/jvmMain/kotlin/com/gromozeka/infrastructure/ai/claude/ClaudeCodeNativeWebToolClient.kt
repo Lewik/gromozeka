@@ -89,11 +89,9 @@ internal class ClaudeCodeNativeWebToolClient(
     }
 
     private fun AiExecutionTarget.matches(identity: ConversationRuntimeExecutorIdentity): Boolean =
-        when (this) {
-            AiExecutionTarget.Server -> identity is ConversationRuntimeExecutorIdentity.Server
-            is AiExecutionTarget.Worker ->
-                identity is ConversationRuntimeExecutorIdentity.Worker && identity.identity.workerId.value == workerId
-        }
+        this is AiExecutionTarget.Worker &&
+            identity is ConversationRuntimeExecutorIdentity.Worker &&
+            identity.identity.workerId.value == workerId
 
     private fun systemPrompt(tool: ClaudeCodeNativeTool): String =
         """

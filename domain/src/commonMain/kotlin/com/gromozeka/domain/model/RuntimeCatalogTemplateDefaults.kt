@@ -51,10 +51,6 @@ object RuntimeCatalogTemplateDefaults {
             id = AiConnection.Id("anthropic-bedrock"),
             displayName = "Anthropic via Bedrock",
         ),
-        AiConnection.ClaudeCode(
-            id = AiConnection.Id("claude-code"),
-            displayName = "Claude Code CLI",
-        ),
         AiConnection.OpenAiApi(
             id = AiConnection.Id("openai-api"),
             displayName = "OpenAI API",
@@ -107,25 +103,6 @@ object RuntimeCatalogTemplateDefaults {
             providerModelId = "anthropic.claude-sonnet-4-20250514-v1:0",
             displayName = "Claude Sonnet 4 via Bedrock",
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.XML_INLINE,
-        ),
-        AiModelConfiguration(
-            id = AiModelConfiguration.Id("claude-code-sonnet"),
-            connectionId = AiConnection.Id("claude-code"),
-            providerModelId = "sonnet",
-            displayName = "Claude Code Sonnet",
-        ),
-        AiModelConfiguration(
-            id = AiModelConfiguration.Id("claude-code-opus-5"),
-            connectionId = AiConnection.Id("claude-code"),
-            providerModelId = "claude-opus-5",
-            displayName = "Claude Code Opus 5",
-            defaultParameters = opus5DefaultParameters(),
-        ),
-        AiModelConfiguration(
-            id = AiModelConfiguration.Id("claude-code-haiku"),
-            connectionId = AiConnection.Id("claude-code"),
-            providerModelId = "haiku",
-            displayName = "Claude Code Haiku",
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("openai-api-gpt-4o-mini"),

@@ -80,6 +80,8 @@ not own conversation or memory orchestration.
 Every AI connection has an exact execution target: the Server or one named
 Worker. Finite LLM calls, embeddings, speech transcription, and speech synthesis
 use that target. Realtime and long-lived streaming AI sessions are Server-only.
+Claude Code is the exception to general target selection: its connection always
+targets a Worker where Claude Code is separately installed and authenticated.
 An unavailable or incompatible target fails explicitly; Gromozeka does not fall
 back to another Worker or to the Server and does not automatically retry an
 operation whose outcome may be unknown.
