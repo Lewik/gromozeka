@@ -64,6 +64,7 @@ data class WorkerGatewayProperties(
     val enabled: Boolean = false,
     val serverUrl: String = "",
     val credential: String = "",
+    val caCertificatePath: String? = null,
     val reconnectDelaySeconds: Long = 5,
 ) {
     fun validate() {
@@ -99,6 +100,16 @@ class WorkerGatewayClient(
     private val capabilities = descriptor.capabilities
     private val environmentProfile = descriptor.environmentProfile
     private val client = HttpClient(CIO) {
+        properties.caCertificatePath
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?.let { path ->
+                engine {
+                    https {
+                        trustManager = workerTrustManager(path)
+                    }
+                }
+            }
         install(WebSockets)
     }
     private val lifecycleLock = Any()

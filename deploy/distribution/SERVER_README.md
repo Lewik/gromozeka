@@ -1,18 +1,32 @@
 # Gromozeka Server
 
-This package contains the Gromozeka control plane, production Web client, and a
-private Java 21 runtime. PostgreSQL with pgvector remains an external service.
+The Gromozeka Server is distributed as a Docker Compose stack containing the
+Server, PostgreSQL with pgvector, and a Caddy HTTPS/WSS gateway. The Server port
+is available only inside the Compose network; clients and Workers connect
+through Caddy on port 443.
 
-Copy `config/server.yaml.example` to `~/.gromozeka/server.yaml`, provide the
-database environment variables referenced by that file, then run:
+Copy `gromozeka.env.example` to `gromozeka.env`, replace every example value,
+and start the stack:
 
-- macOS/Linux: `bin/gromozeka-server`
-- Windows: `bin\gromozeka-server.cmd`
+```text
+docker compose --env-file gromozeka.env up -d
+```
 
-The Server listens on `127.0.0.1:8765` by default. Set
-`GROMOZEKA_REMOTE_HOST=0.0.0.0` only when the surrounding operating-system,
-VPN, firewall, or reverse-proxy configuration provides the intended network
-boundary.
+Three TLS modes are available:
 
-The bundled Java runtime is private to the Server and does not modify the
-machine-wide Java installation.
+- `Caddyfile`: automatic public certificates. Point public DNS at the host and
+  allow inbound TCP ports 80 and 443.
+- `Caddyfile.internal`: Caddy's private CA. Set
+  `GROMOZEKA_CADDY_CONFIG=Caddyfile.internal`, start the stack, and export its
+  root with `docker compose --env-file gromozeka.env cp
+  caddy:/data/caddy/pki/authorities/local/root.crt ./certs/gromozeka-root.crt`.
+  Install that root on every client and pass it to Worker enrollment with
+  `--ca-certificate ./certs/gromozeka-root.crt`.
+- `Caddyfile.provided`: an organization-issued certificate. Put the certificate
+  chain and private key in `certs/`, set their file names in `gromozeka.env`,
+  and set `GROMOZEKA_CADDY_CONFIG=Caddyfile.provided`. Client and Worker
+  operating systems must trust the issuing CA; Workers can additionally use
+  `--ca-certificate` when their bundled Java runtime does not.
+
+The optional containerized Worker does not include Claude Code. Claude Code is
+installed, licensed, and authenticated separately on a standalone Worker host.

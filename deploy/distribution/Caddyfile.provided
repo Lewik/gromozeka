@@ -1,0 +1,4 @@
+{$GROMOZEKA_PUBLIC_HOST} {
+	tls /certs/{$GROMOZEKA_TLS_CERTIFICATE_FILE} /certs/{$GROMOZEKA_TLS_PRIVATE_KEY_FILE}
+	reverse_proxy server:8765
+}

@@ -178,16 +178,16 @@ address on first launch and persist the selection locally.
 
 ## Releases and Downloads
 
-Open a running Server's Downloads settings to download a Client, standalone
-Server, or Worker from the matching Gromozeka release. Published releases
+Open a running Server's Downloads settings to download a Client, Docker Server
+stack, or Worker from the matching Gromozeka release. Published releases
 currently provide:
 
 - an unsigned macOS ARM64 Client DMG;
 - a portable Windows x64 Client ZIP;
-- macOS ARM64, Linux x64, and Windows x64 Server archives with private Java 21 runtimes and the Web client;
+- a Docker Compose Server stack with PostgreSQL and a Caddy HTTPS/WSS gateway;
 - macOS ARM64, Linux x64, and Windows x64 Worker archives with private Java 21 runtimes;
 - `ghcr.io/lewik/gromozeka-server` and `ghcr.io/lewik/gromozeka-worker` images;
-- a self-hosted Compose file, environment template, and SHA-256 checksums.
+- SHA-256 checksums for every downloadable package.
 
 Pushing a `v<major>.<minor>.<patch>` tag runs the release workflow, publishes
 those assets and immutable images, then installs that exact release on the

@@ -1,0 +1,3 @@
+{$GROMOZEKA_PUBLIC_HOST} {
+	reverse_proxy server:8765
+}

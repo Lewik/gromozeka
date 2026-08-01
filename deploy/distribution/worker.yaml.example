@@ -3,6 +3,7 @@ gromozeka:
     enabled: true
     server-url: ${GROMOZEKA_SERVER_URL}
     credential: ${GROMOZEKA_WORKER_GATEWAY_CREDENTIAL}
+    ca-certificate-path: ${GROMOZEKA_SERVER_CA_CERTIFICATE_PATH:}
   runtime:
     worker:
       id: workstation

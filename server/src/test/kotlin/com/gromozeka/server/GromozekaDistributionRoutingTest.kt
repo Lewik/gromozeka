@@ -54,16 +54,12 @@ class GromozekaDistributionRoutingTest {
     }
 
     @Test
-    fun `distribution catalog exposes each supported standalone server`() {
+    fun `distribution catalog exposes the Docker Server stack`() {
         val serverArtifacts = distributionArtifacts("https://downloads.example/gromozeka")
             .filter { it.component == DistributionComponent.SERVER }
 
         assertEquals(
-            listOf(
-                "gromozeka-server-macos-arm64.tar.gz",
-                "gromozeka-server-windows-x64.zip",
-                "gromozeka-server-linux-x64.tar.gz",
-            ),
+            listOf("gromozeka-server-stack.zip"),
             serverArtifacts.map { it.fileName },
         )
         assertEquals(

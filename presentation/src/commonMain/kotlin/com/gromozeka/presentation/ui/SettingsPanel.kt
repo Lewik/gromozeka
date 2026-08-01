@@ -1365,7 +1365,7 @@ private fun DistributionCatalog(manifest: DistributionManifest) {
 
     SettingsGroup(title = "Downloads") {
         Text(
-            text = "Native clients, standalone Servers, and trusted Workers for version ${manifest.serverVersion}.",
+            text = "Native clients, the Docker Server stack, and trusted Workers for version ${manifest.serverVersion}.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
@@ -1413,7 +1413,7 @@ private fun DistributionArtifactItem(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "${artifact.operatingSystem.displayName()} ${artifact.architecture.displayName()}",
+                text = artifact.platformDisplayName(),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
             )
@@ -1433,6 +1433,16 @@ private fun DistributionArtifactItem(
         }
     }
 }
+
+private fun DistributionArtifact.platformDisplayName(): String =
+    if (
+        operatingSystem == DistributionOperatingSystem.ANY &&
+        architecture == DistributionArchitecture.ANY
+    ) {
+        "Any Docker host"
+    } else {
+        "${operatingSystem.displayName()} ${architecture.displayName()}"
+    }
 
 @Composable
 private fun WorkerEnrollmentSettings(
@@ -1457,6 +1467,11 @@ private fun WorkerEnrollmentSettings(
         Text(
             text = "Generate a one-time token, extract the Worker archive, then run the command for its operating system.",
             style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            text = "For a private Server CA, append --ca-certificate /path/to/root-or-chain.pem.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Button(
@@ -1537,6 +1552,7 @@ private fun DistributionComponent.displayName(): String =
 
 private fun DistributionOperatingSystem.displayName(): String =
     when (this) {
+        DistributionOperatingSystem.ANY -> "Any Docker host"
         DistributionOperatingSystem.MACOS -> "macOS"
         DistributionOperatingSystem.WINDOWS -> "Windows"
         DistributionOperatingSystem.LINUX -> "Linux"
@@ -1544,12 +1560,14 @@ private fun DistributionOperatingSystem.displayName(): String =
 
 private fun DistributionArchitecture.displayName(): String =
     when (this) {
+        DistributionArchitecture.ANY -> "any architecture"
         DistributionArchitecture.ARM64 -> "ARM64"
         DistributionArchitecture.X64 -> "x64"
     }
 
 private fun DistributionFormat.displayName(): String =
     when (this) {
+        DistributionFormat.DOCKER_COMPOSE_ZIP -> "Docker Compose ZIP"
         DistributionFormat.DMG -> "DMG"
         DistributionFormat.PORTABLE_ZIP -> "portable ZIP"
         DistributionFormat.TAR_GZ -> "tar.gz"

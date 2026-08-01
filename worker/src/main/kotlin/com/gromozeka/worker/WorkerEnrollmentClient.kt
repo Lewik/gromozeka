@@ -12,14 +12,11 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermission
 import java.time.Duration
 
 internal class WorkerEnrollmentClient(
-    private val httpClient: HttpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(20))
-        .followRedirects(HttpClient.Redirect.NORMAL)
-        .build(),
     private val json: Json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -27,6 +24,9 @@ internal class WorkerEnrollmentClient(
 ) {
     fun enroll(arguments: List<String>): Path {
         val options = WorkerEnrollmentOptions.parse(arguments)
+        require(options.replaceExisting || !Files.exists(options.configPath)) {
+            "Worker configuration already exists at ${options.configPath}; pass --force to replace it"
+        }
         val endpoint = enrollmentEndpoint(options.server)
         val body = json.encodeToString(
             WorkerEnrollmentConsumeRequest(
@@ -40,7 +40,10 @@ internal class WorkerEnrollmentClient(
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build()
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+        val response = httpClient(options.caCertificatePath).send(
+            request,
+            HttpResponse.BodyHandlers.ofString(),
+        )
         if (response.statusCode() !in 200..299) {
             val message = runCatching {
                 json.parseToJsonElement(response.body())
@@ -52,11 +55,14 @@ internal class WorkerEnrollmentClient(
         }
 
         val bootstrap = json.decodeFromString<WorkerEnrollmentBootstrap>(response.body())
+        val persistedCaCertificate = options.caCertificatePath?.let { source ->
+            persistCaCertificate(source, options.configPath)
+        }
         writeConfiguration(
             path = options.configPath,
             server = serverBaseUri(options.server),
             bootstrap = bootstrap,
-            replaceExisting = options.replaceExisting,
+            caCertificatePath = persistedCaCertificate,
         )
         return options.configPath
     }
@@ -65,13 +71,10 @@ internal class WorkerEnrollmentClient(
         path: Path,
         server: URI,
         bootstrap: WorkerEnrollmentBootstrap,
-        replaceExisting: Boolean,
+        caCertificatePath: Path?,
     ) {
-        require(replaceExisting || !Files.exists(path)) {
-            "Worker configuration already exists at $path; pass --force to replace it"
-        }
         path.parent?.let(Files::createDirectories)
-        Files.writeString(path, bootstrap.toYaml(server))
+        Files.writeString(path, bootstrap.toYaml(server, caCertificatePath))
         runCatching {
             Files.setPosixFilePermissions(
                 path,
@@ -81,6 +84,27 @@ internal class WorkerEnrollmentClient(
                 ),
             )
         }
+    }
+
+    private fun httpClient(caCertificatePath: Path?): HttpClient =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(20))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .apply {
+                workerSslContext(caCertificatePath?.toString())?.let(::sslContext)
+            }
+            .build()
+
+    private fun persistCaCertificate(source: Path, configPath: Path): Path {
+        val normalizedSource = source.toAbsolutePath().normalize()
+        workerTrustManager(normalizedSource.toString())
+        val trustDirectory = configPath.toAbsolutePath().normalize().parent.resolve("trust")
+        Files.createDirectories(trustDirectory)
+        val destination = trustDirectory.resolve("server-ca.pem")
+        if (normalizedSource != destination) {
+            Files.copy(normalizedSource, destination, StandardCopyOption.REPLACE_EXISTING)
+        }
+        return destination
     }
 
     private fun enrollmentEndpoint(server: String): URI {
@@ -124,12 +148,18 @@ internal class WorkerEnrollmentClient(
         )
     }
 
-    private fun WorkerEnrollmentBootstrap.toYaml(server: URI): String = buildString {
+    private fun WorkerEnrollmentBootstrap.toYaml(
+        server: URI,
+        caCertificatePath: Path?,
+    ): String = buildString {
         appendLine("gromozeka:")
         appendLine("  worker-gateway:")
         appendLine("    enabled: true")
         appendLine("    server-url: ${yaml(server.toString())}")
         appendLine("    credential: ${yaml(gatewayCredential)}")
+        caCertificatePath?.let { path ->
+            appendLine("    ca-certificate-path: ${yaml(path.toString())}")
+        }
         appendLine("  runtime:")
         appendLine("    worker:")
         appendLine("      id: ${yaml(workerId)}")
@@ -147,6 +177,7 @@ internal data class WorkerEnrollmentOptions(
     val token: String,
     val workerId: String,
     val configPath: Path,
+    val caCertificatePath: Path?,
     val replaceExisting: Boolean,
 ) {
     companion object {
@@ -185,6 +216,7 @@ internal data class WorkerEnrollmentOptions(
                 token = values.required("--token"),
                 workerId = values.required("--worker-id"),
                 configPath = values["--config"]?.let(Path::of) ?: defaultConfig,
+                caCertificatePath = values["--ca-certificate"]?.let(Path::of),
                 replaceExisting = replaceExisting,
             )
         }
@@ -195,5 +227,11 @@ private fun Map<String, String>.required(name: String): String =
     get(name)?.takeIf(String::isNotBlank)
         ?: error("$name is required")
 
-private val valueOptions = setOf("--server", "--token", "--worker-id", "--config")
+private val valueOptions = setOf(
+    "--server",
+    "--token",
+    "--worker-id",
+    "--config",
+    "--ca-certificate",
+)
 private val localHosts = setOf("localhost", "127.0.0.1", "::1", "0:0:0:0:0:0:0:1")

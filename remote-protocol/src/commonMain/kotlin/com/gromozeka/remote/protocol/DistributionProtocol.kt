@@ -30,6 +30,7 @@ enum class DistributionComponent {
 
 @Serializable
 enum class DistributionOperatingSystem {
+    ANY,
     MACOS,
     WINDOWS,
     LINUX,
@@ -37,12 +38,14 @@ enum class DistributionOperatingSystem {
 
 @Serializable
 enum class DistributionArchitecture {
+    ANY,
     ARM64,
     X64,
 }
 
 @Serializable
 enum class DistributionFormat {
+    DOCKER_COMPOSE_ZIP,
     DMG,
     PORTABLE_ZIP,
     TAR_GZ,

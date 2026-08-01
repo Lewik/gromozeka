@@ -1,5 +1,0 @@
-gromozeka:
-  postgres:
-    jdbc-url: ${GROMOZEKA_POSTGRES_JDBC_URL}
-    username: ${GROMOZEKA_POSTGRES_USERNAME}
-    password: ${GROMOZEKA_POSTGRES_PASSWORD}

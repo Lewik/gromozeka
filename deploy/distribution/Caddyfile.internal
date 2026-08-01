@@ -1,0 +1,4 @@
+{$GROMOZEKA_PUBLIC_HOST} {
+	tls internal
+	reverse_proxy server:8765
+}
