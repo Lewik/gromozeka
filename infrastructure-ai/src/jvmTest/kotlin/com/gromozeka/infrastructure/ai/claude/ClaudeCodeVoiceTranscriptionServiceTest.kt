@@ -2,14 +2,17 @@ package com.gromozeka.infrastructure.ai.claude
 
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
+import com.pty4j.PtyProcessBuilder
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.nanoseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -54,6 +57,16 @@ class ClaudeCodeVoiceTranscriptionServiceTest {
     }
 
     @Test
+    fun `detects the first rendered audio callback`() {
+        val output = ClaudeVoiceTerminalOutput()
+
+        val beforeRecording = output.audioActivityCount()
+        output.append("\u001B[2K\rREC · tap to send ▁")
+
+        assertTrue(output.audioActivityCount() > beforeRecording)
+    }
+
+    @Test
     fun `recognizes known voice failures without treating processing as failure`() {
         val output = ClaudeVoiceTerminalOutput()
         output.append("Voice:\u001B[18Gprocessing…")
@@ -92,21 +105,39 @@ class ClaudeCodeVoiceTranscriptionServiceTest {
     }
 
     @Test
-    fun `short transcript fallback submits once after processing output becomes stable`() {
+    fun `delays short transcript fallback until the normal auto-submit window closes`() {
         val fallback = ClaudeVoiceShortTranscriptSubmission(
             initialOutputRevision = 5,
-            graceNanos = 100,
+            startedAtNanos = 0,
+            minimumDelay = 100.nanoseconds,
+            outputStability = 20.nanoseconds,
         )
 
-        assertFalse(fallback.shouldSubmit(outputRevision = 5, processingObserved = false, nowNanos = 0))
-        assertFalse(fallback.shouldSubmit(outputRevision = 6, processingObserved = false, nowNanos = 5))
-        assertFalse(fallback.shouldSubmit(outputRevision = 6, processingObserved = true, nowNanos = 10))
-        assertFalse(fallback.shouldSubmit(outputRevision = 7, processingObserved = true, nowNanos = 50))
-        assertFalse(fallback.shouldSubmit(outputRevision = 7, processingObserved = true, nowNanos = 149))
-        assertTrue(fallback.shouldSubmit(outputRevision = 7, processingObserved = true, nowNanos = 150))
+        assertFalse(fallback.shouldSubmit(outputRevision = 5, processingObserved = true, nowNanos = 200))
+        assertFalse(fallback.shouldSubmit(outputRevision = 6, processingObserved = false, nowNanos = 10))
+        assertFalse(fallback.shouldSubmit(outputRevision = 6, processingObserved = true, nowNanos = 30))
+        assertFalse(fallback.shouldSubmit(outputRevision = 7, processingObserved = true, nowNanos = 100))
+        assertFalse(fallback.shouldSubmit(outputRevision = 7, processingObserved = true, nowNanos = 119))
+        assertTrue(fallback.shouldSubmit(outputRevision = 7, processingObserved = true, nowNanos = 120))
         assertFalse(fallback.shouldSubmit(outputRevision = 8, processingObserved = true, nowNanos = 1_000))
     }
 
+    @Test
+    fun `terminates a pty process without relying on Process toHandle`() {
+        val command = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
+            arrayOf("cmd.exe", "/D", "/S", "/C", "ping -n 60 127.0.0.1 >NUL")
+        } else {
+            arrayOf("/bin/sh", "-c", "sleep 60")
+        }
+        val process = PtyProcessBuilder(command).start()
+
+        try {
+            terminateClaudeVoiceProcessTree(process)
+            assertFalse(process.isAlive)
+        } finally {
+            if (process.isAlive) process.destroyForcibly()
+        }
+    }
 
     @Test
     fun `prewarm is consumed and replaced before the next recording`() = runBlocking {
@@ -137,6 +168,43 @@ class ClaudeCodeVoiceTranscriptionServiceTest {
         }
     }
 
+    @Test
+    fun `expired prewarm is refreshed and consumed before recording`() = runBlocking {
+        val factory = RecordingVoiceSessionFactory()
+        var nowNanos = 0L
+        val service = ClaudeCodeVoiceTranscriptionService(
+            sessionFactory = factory,
+            warmSessionMaxAge = 10.nanoseconds,
+            nanoTime = { nowNanos },
+        )
+        val connection = AiConnection.ClaudeCode(
+            id = AiConnection.Id("claude-voice"),
+            displayName = "Claude voice",
+            voiceTranscriptionEnabled = true,
+            executionTarget = AiExecutionTarget.Worker("worker-1"),
+        )
+
+        try {
+            service.prepareLocalMicrophone(connection, "en")
+            val expired = factory.sessions.single()
+            nowNanos = 11
+
+            service.prepareLocalMicrophone(connection, "en")
+            val refreshed = factory.sessions.last()
+            val capture = service.startLocalMicrophone(connection, "en")
+            withTimeout(2_000) {
+                while (factory.prepareCount.get() < 3) delay(10)
+            }
+
+            assertNotSame(expired.capture, capture)
+            assertSame(refreshed.capture, capture)
+            assertEquals(1, expired.disposeCount.get())
+            capture.cancel()
+        } finally {
+            service.shutdown()
+        }
+    }
+
     private class RecordingVoiceSessionFactory : ClaudeCodeVoiceSessionFactory {
         val prepareCount = AtomicInteger()
         val sessions = java.util.Collections.synchronizedList(mutableListOf<RecordingPreparedSession>())
@@ -153,6 +221,7 @@ class ClaudeCodeVoiceTranscriptionServiceTest {
 
     private class RecordingPreparedSession : ClaudeCodeVoicePreparedSession {
         val beginCount = AtomicInteger()
+        val disposeCount = AtomicInteger()
         val capture = RecordingCaptureSession()
         override val isAlive = true
 
@@ -161,7 +230,9 @@ class ClaudeCodeVoiceTranscriptionServiceTest {
             return capture
         }
 
-        override suspend fun dispose() = Unit
+        override suspend fun dispose() {
+            disposeCount.incrementAndGet()
+        }
     }
 
     private class RecordingCaptureSession : ClaudeCodeVoiceCaptureSession {

@@ -13,6 +13,11 @@ import java.nio.file.StandardOpenOption
 import java.util.Comparator
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import klog.KLoggers
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -30,7 +35,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -44,12 +48,19 @@ import kotlinx.serialization.json.putJsonObject
 class ClaudeCodeVoiceTranscriptionService internal constructor(
     private val sessionFactory: ClaudeCodeVoiceSessionFactory = PtyClaudeCodeVoiceSessionFactory(),
     private val virtualAudioFactory: ClaudeCodeVirtualAudioFactory = PulseAudioVirtualAudioFactory(),
+    private val warmSessionMaxAge: Duration = DEFAULT_WARM_SESSION_MAX_AGE,
+    private val nanoTime: () -> Long = { System.nanoTime() },
 ) {
+    private val log = KLoggers.logger(this)
     private val warmScope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineName("claude-code-voice-warmup")
     )
     private val warmMutex = Mutex()
-    private val warmSessions = mutableMapOf<ClaudeCodeVoiceSessionKey, Deferred<ClaudeCodeVoicePreparedSession>>()
+    private val warmSessions = mutableMapOf<ClaudeCodeVoiceSessionKey, WarmClaudeCodeVoiceSession>()
+
+    init {
+        require(warmSessionMaxAge.isPositive()) { "Claude Code voice warm session max age must be positive" }
+    }
 
     suspend fun prepareLocalMicrophone(
         connection: AiConnection.ClaudeCode,
@@ -57,18 +68,27 @@ class ClaudeCodeVoiceTranscriptionService internal constructor(
     ) {
         requireLocalMicrophone(connection)
         val key = ClaudeCodeVoiceSessionKey(connection, language.normalizedLanguage())
-        val stale = mutableListOf<Deferred<ClaudeCodeVoicePreparedSession>>()
+        val now = nanoTime()
+        val stale = mutableListOf<WarmClaudeCodeVoiceSession>()
         val prepared = warmMutex.withLock {
             warmSessions.entries.removeAll { (candidateKey, candidate) ->
                 (candidateKey.connection.id == connection.id && candidateKey != key).also { remove ->
                     if (remove) stale += candidate
                 }
             }
+            warmSessions[key]?.takeIf { it.isExpired(now, warmSessionMaxAge) }?.let { expired ->
+                check(warmSessions.remove(key, expired)) { "Claude Code voice warm session changed concurrently" }
+                stale += expired
+                log.info {
+                    "Refreshing expired Claude Code voice session: " +
+                        "connection=${connection.id.value} ageMs=${expired.ageMillis(now)}"
+                }
+            }
             warmSessions.getOrPut(key) { prepareAsync(key) }
         }
         stale.forEach { disposePrepared(it) }
         try {
-            prepared.await().requireAlive()
+            prepared.deferred.await().requireAlive()
         } catch (error: Throwable) {
             warmMutex.withLock { warmSessions.remove(key, prepared) }
             withContext(NonCancellable) { disposePrepared(prepared) }
@@ -82,19 +102,34 @@ class ClaudeCodeVoiceTranscriptionService internal constructor(
     ): ClaudeCodeVoiceCaptureSession {
         requireLocalMicrophone(connection)
         val key = ClaudeCodeVoiceSessionKey(connection, language.normalizedLanguage())
-        val stale = mutableListOf<Deferred<ClaudeCodeVoicePreparedSession>>()
-        val prepared = warmMutex.withLock {
+        val now = nanoTime()
+        val stale = mutableListOf<WarmClaudeCodeVoiceSession>()
+        val acquired = warmMutex.withLock {
             warmSessions.entries.removeAll { (candidateKey, candidate) ->
                 (candidateKey.connection.id == connection.id && candidateKey != key).also { remove ->
                     if (remove) stale += candidate
                 }
             }
-            val current = warmSessions.remove(key) ?: prepareAsync(key)
+            val cached = warmSessions.remove(key)
+            val current = if (cached == null || cached.isExpired(now, warmSessionMaxAge)) {
+                cached?.let(stale::add)
+                prepareAsync(key)
+            } else {
+                cached
+            }
             warmSessions[key] = prepareAsync(key)
-            current
+            AcquiredClaudeCodeVoiceSession(
+                session = current,
+                source = if (cached === current) "warm" else "fresh",
+                ageMillis = current.ageMillis(now),
+            )
         }
         stale.forEach { disposePrepared(it) }
-        val session = prepared.await()
+        log.info {
+            "Acquiring Claude Code voice session: connection=${connection.id.value} " +
+                "source=${acquired.source} ageMs=${acquired.ageMillis}"
+        }
+        val session = acquired.session.deferred.await()
         return try {
             session.beginRecording()
         } catch (error: Throwable) {
@@ -163,13 +198,16 @@ class ClaudeCodeVoiceTranscriptionService internal constructor(
 
     private fun prepareAsync(
         key: ClaudeCodeVoiceSessionKey,
-    ): Deferred<ClaudeCodeVoicePreparedSession> = warmScope.async {
-        sessionFactory.prepare(key.connection, key.language, emptyMap())
-    }
+    ): WarmClaudeCodeVoiceSession = WarmClaudeCodeVoiceSession(
+        deferred = warmScope.async {
+            sessionFactory.prepare(key.connection, key.language, emptyMap())
+        },
+        createdAtNanos = nanoTime(),
+    )
 
-    private suspend fun disposePrepared(prepared: Deferred<ClaudeCodeVoicePreparedSession>) {
-        if (!prepared.isCompleted) prepared.cancel()
-        runCatching { prepared.await() }.getOrNull()?.dispose()
+    private suspend fun disposePrepared(prepared: WarmClaudeCodeVoiceSession) {
+        if (!prepared.deferred.isCompleted) prepared.deferred.cancel()
+        runCatching { prepared.deferred.await() }.getOrNull()?.dispose()
     }
 
     private fun requireEnabled(connection: AiConnection.ClaudeCode) {
@@ -191,6 +229,23 @@ class ClaudeCodeVoiceTranscriptionService internal constructor(
 private data class ClaudeCodeVoiceSessionKey(
     val connection: AiConnection.ClaudeCode,
     val language: String?,
+)
+
+private data class WarmClaudeCodeVoiceSession(
+    val deferred: Deferred<ClaudeCodeVoicePreparedSession>,
+    val createdAtNanos: Long,
+) {
+    fun isExpired(nowNanos: Long, maxAge: Duration): Boolean =
+        nowNanos - createdAtNanos >= maxAge.inWholeNanoseconds
+
+    fun ageMillis(nowNanos: Long): Long =
+        TimeUnit.NANOSECONDS.toMillis((nowNanos - createdAtNanos).coerceAtLeast(0L))
+}
+
+private data class AcquiredClaudeCodeVoiceSession(
+    val session: WarmClaudeCodeVoiceSession,
+    val source: String,
+    val ageMillis: Long,
 )
 
 private fun String?.normalizedLanguage(): String? = this?.trim()?.takeIf(String::isNotEmpty)
@@ -251,7 +306,11 @@ private class PtyClaudeCodeVoiceSessionFactory : ClaudeCodeVoiceSessionFactory {
             throw IllegalStateException("Failed to start Claude Code voice process: ${error.message}", error)
         }
 
-        PtyClaudeCodeVoiceCaptureSession(process, files).also { session ->
+        PtyClaudeCodeVoiceCaptureSession(
+            process = process,
+            files = files,
+            stopTailDuration = if (environment.isEmpty()) DEFAULT_MICROPHONE_STOP_TAIL else Duration.ZERO,
+        ).also { session ->
             try {
                 session.awaitInteractiveReady()
             } catch (error: Throwable) {
@@ -265,7 +324,9 @@ private class PtyClaudeCodeVoiceSessionFactory : ClaudeCodeVoiceSessionFactory {
 private class PtyClaudeCodeVoiceCaptureSession(
     private val process: PtyProcess,
     private val files: ClaudeVoiceSessionFiles,
+    private val stopTailDuration: Duration,
 ) : ClaudeCodeVoicePreparedSession, ClaudeCodeVoiceCaptureSession {
+    private val log = KLoggers.logger(this)
     private val scope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineName("claude-code-voice-output")
     )
@@ -282,11 +343,13 @@ private class PtyClaudeCodeVoiceCaptureSession(
     }
     private var closed = false
     private var recording = false
+    private var audioActivityCountBeforeRecording = 0L
 
     override val isAlive: Boolean
         get() = !closed && process.isAlive
 
     suspend fun awaitInteractiveReady() {
+        val startedAtNanos = System.nanoTime()
         var workspaceTrustConfirmed = false
         awaitTerminalState(
             timeoutMillis = START_TIMEOUT_MILLIS,
@@ -299,40 +362,69 @@ private class PtyClaudeCodeVoiceCaptureSession(
                 }
             },
         )
+        log.info {
+            "Claude Code voice process ready: pid=${process.pid()} " +
+                "elapsedMs=${elapsedMillis(startedAtNanos)}"
+        }
     }
 
     override suspend fun beginRecording(): ClaudeCodeVoiceCaptureSession {
         check(!closed) { "Claude Code voice session is already closed" }
         check(!recording) { "Claude Code voice session is already recording" }
+        val startedAtNanos = System.nanoTime()
+        audioActivityCountBeforeRecording = output.audioActivityCount()
         write(" ")
         awaitTerminalState(
             timeoutMillis = START_TIMEOUT_MILLIS,
             timeoutMessage = "Claude Code voice recorder did not become ready",
-            ready = output::isRecordingReady,
+            ready = {
+                output.isRecordingReady() &&
+                    output.audioActivityCount() > audioActivityCountBeforeRecording
+            },
         )
         recording = true
+        log.info {
+            "Claude Code voice recording ready: pid=${process.pid()} " +
+                "elapsedMs=${elapsedMillis(startedAtNanos)}"
+        }
         return this
     }
 
     override suspend fun stop(): String {
         check(!closed) { "Claude Code voice session is already closed" }
         check(recording) { "Claude Code voice session is not recording" }
-        val outputRevisionBeforeStop = output.revision()
+        val startedAtNanos = System.nanoTime()
+        var processingLogged = false
+        val shortTranscriptSubmission = ClaudeVoiceShortTranscriptSubmission(
+            initialOutputRevision = output.revision(),
+            startedAtNanos = startedAtNanos,
+        )
+        delay(stopTailDuration)
         write(" ")
-        val shortTranscriptSubmission = ClaudeVoiceShortTranscriptSubmission(outputRevisionBeforeStop)
         return try {
-            withTimeout(TRANSCRIPTION_TIMEOUT_MILLIS) {
+            val transcript = withTimeoutOrNull(TRANSCRIPTION_TIMEOUT_MILLIS) {
                 while (true) {
                     files.readPrompt()?.let { prompt ->
-                        return@withTimeout prompt.trim()
+                        return@withTimeoutOrNull prompt.trim()
                     }
                     output.failureMessage()?.let { error(it) }
-                    val shouldSubmitShortTranscript = shortTranscriptSubmission.shouldSubmit(
-                        outputRevision = output.revision(),
-                        processingObserved = output.isTranscriptionProcessing(),
-                        nowNanos = System.nanoTime(),
-                    )
-                    if (shouldSubmitShortTranscript) {
+                    if (!processingLogged && output.isTranscriptionProcessing()) {
+                        processingLogged = true
+                        log.info {
+                            "Claude Code voice transcription processing: pid=${process.pid()} " +
+                            "elapsedMs=${elapsedMillis(startedAtNanos)}"
+                        }
+                    }
+                    if (shortTranscriptSubmission.shouldSubmit(
+                            outputRevision = output.revision(),
+                            processingObserved = output.isTranscriptionProcessing(),
+                            nowNanos = System.nanoTime(),
+                        )
+                    ) {
+                        log.info {
+                            "Submitting a short Claude Code voice transcript: pid=${process.pid()} " +
+                                "elapsedMs=${elapsedMillis(startedAtNanos)}"
+                        }
                         write("\r")
                     }
                     requireAlive()
@@ -341,6 +433,23 @@ private class PtyClaudeCodeVoiceCaptureSession(
                 @Suppress("UNREACHABLE_CODE")
                 error("Claude Code voice transcription did not complete")
             }
+            checkNotNull(transcript) {
+                "Claude Code voice transcription timed out: pid=${process.pid()} " +
+                    "elapsedMs=${elapsedMillis(startedAtNanos)} ${output.diagnosticState()}"
+            }.also {
+                log.info {
+                    "Claude Code voice transcription completed: pid=${process.pid()} " +
+                        "elapsedMs=${elapsedMillis(startedAtNanos)}"
+                }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            log.warn(error) {
+                "Claude Code voice transcription failed: pid=${process.pid()} " +
+                    "elapsedMs=${elapsedMillis(startedAtNanos)} ${output.diagnosticState()}"
+            }
+            throw error
         } finally {
             closeProcess()
         }
@@ -388,13 +497,9 @@ private class PtyClaudeCodeVoiceCaptureSession(
     private suspend fun closeProcess() {
         if (closed) return
         closed = true
-        withContext(Dispatchers.IO) {
+        withContext(NonCancellable + Dispatchers.IO) {
             runCatching { process.outputStream.close() }
-            if (process.isAlive) process.destroy()
-            if (process.isAlive && !process.waitFor(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                process.destroyForcibly()
-                process.waitFor(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            }
+            terminateClaudeVoiceProcessTree(process)
         }
         readerJob.cancel()
         scope.cancel()
@@ -406,10 +511,12 @@ internal class ClaudeVoiceTerminalOutput {
     private val lock = Any()
     private val tail = StringBuilder()
     private var revision = 0L
+    private var audioActivityCount = 0L
 
     fun append(text: String) = synchronized(lock) {
         tail.append(text)
         revision += 1
+        audioActivityCount += text.count { it in VOICE_AUDIO_LEVEL_CHARACTERS }
         if (tail.length > MAX_TERMINAL_TAIL_CHARS) {
             tail.delete(0, tail.length - MAX_TERMINAL_TAIL_CHARS)
         }
@@ -428,6 +535,8 @@ internal class ClaudeVoiceTerminalOutput {
     fun isTranscriptionProcessing(): Boolean = VOICE_PROCESSING_MARKER.containsMatchIn(normalizedTail())
 
     fun revision(): Long = synchronized(lock) { revision }
+
+    fun audioActivityCount(): Long = synchronized(lock) { audioActivityCount }
 
     fun failureMessage(): String? {
         val normalized = normalizedTail()
@@ -455,6 +564,7 @@ internal class ClaudeVoiceTerminalOutput {
         val WORKSPACE_TRUST_MARKER = Regex("Quick\\s*safety\\s*check", RegexOption.IGNORE_CASE)
         val VOICE_SEND_MARKER = Regex("tap\\s*to\\s*send")
         val VOICE_PROCESSING_MARKER = Regex("Voice:\\s*processing")
+        const val VOICE_AUDIO_LEVEL_CHARACTERS = "▁▂▃▄▅▆▇█"
         val FAILURE_MARKERS = listOf(
             "Voice mode requires a Claude.ai account",
             "Voice mode is disabled by your organization's policy",
@@ -504,6 +614,7 @@ private class ClaudeVoiceSessionFiles private constructor(
             val settingsFile = directory.resolve("settings.json")
             val settings = buildJsonObject {
                 language?.trim()?.takeIf(String::isNotEmpty)?.let { put("language", it) }
+                put("prefersReducedMotion", false)
                 putJsonObject("voice") {
                     put("enabled", true)
                     put("mode", "tap")
@@ -708,16 +819,21 @@ private fun currentOperatingSystem(): OperatingSystem {
 }
 
 private const val START_TIMEOUT_MILLIS = 30_000L
-private const val TRANSCRIPTION_TIMEOUT_MILLIS = 180_000L
+private const val TRANSCRIPTION_TIMEOUT_MILLIS = 30_000L
 private const val POLL_INTERVAL_MILLIS = 25L
 private const val PROCESS_STOP_TIMEOUT_SECONDS = 3L
 private const val AUDIO_COMMAND_TIMEOUT_SECONDS = 15L
 private const val VIRTUAL_AUDIO_PLAYBACK_TIMEOUT_SECONDS = 240L
-private const val SHORT_TRANSCRIPT_SUBMIT_GRACE_NANOS = 1_500_000_000L
+private val DEFAULT_WARM_SESSION_MAX_AGE = 10.minutes
+private val DEFAULT_MICROPHONE_STOP_TAIL = 750.milliseconds
+private val SHORT_TRANSCRIPT_SUBMIT_MINIMUM_DELAY = 5.seconds
+private val SHORT_TRANSCRIPT_OUTPUT_STABILITY = 750.milliseconds
 
 internal class ClaudeVoiceShortTranscriptSubmission(
     private val initialOutputRevision: Long,
-    private val graceNanos: Long = SHORT_TRANSCRIPT_SUBMIT_GRACE_NANOS,
+    private val startedAtNanos: Long,
+    private val minimumDelay: Duration = SHORT_TRANSCRIPT_SUBMIT_MINIMUM_DELAY,
+    private val outputStability: Duration = SHORT_TRANSCRIPT_OUTPUT_STABILITY,
 ) {
     private var processingObserved = false
     private var lastOutputRevision = initialOutputRevision
@@ -740,8 +856,31 @@ internal class ClaudeVoiceShortTranscriptSubmission(
         val stableSince = outputStableSinceNanos ?: nowNanos.also {
             outputStableSinceNanos = it
         }
-        if (nowNanos - stableSince < graceNanos) return false
+        if (nowNanos - startedAtNanos < minimumDelay.inWholeNanoseconds) return false
+        if (nowNanos - stableSince < outputStability.inWholeNanoseconds) return false
         submitted = true
         return true
+    }
+}
+
+private fun elapsedMillis(startedAtNanos: Long): Long =
+    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos)
+
+internal fun terminateClaudeVoiceProcessTree(process: Process) {
+    val root = ProcessHandle.of(process.pid()).orElse(null)
+    if (root == null) {
+        process.destroyForcibly()
+        process.waitFor(PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        return
+    }
+    repeat(3) {
+        root.descendants()
+            .sorted(Comparator.comparingLong(ProcessHandle::pid).reversed())
+            .forEach(ProcessHandle::destroyForcibly)
+        root.destroyForcibly()
+        root.onExit()
+            .completeOnTimeout(root, PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .get()
+        if (!root.isAlive) return
     }
 }
