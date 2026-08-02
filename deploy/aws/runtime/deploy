@@ -78,7 +78,12 @@ compose() {
 
 compose config --quiet
 compose pull
-compose up --detach --remove-orphans --wait --wait-timeout 300
+if ! compose up --detach --remove-orphans --wait --wait-timeout 300; then
+  echo "Gromozeka services did not become healthy" >&2
+  compose ps --all >&2 || true
+  compose logs --no-color --timestamps --tail 200 server postgres >&2 || true
+  exit 1
+fi
 
 compose exec -T postgres \
   psql -U gromozeka -d gromozeka -v ON_ERROR_STOP=1 \
