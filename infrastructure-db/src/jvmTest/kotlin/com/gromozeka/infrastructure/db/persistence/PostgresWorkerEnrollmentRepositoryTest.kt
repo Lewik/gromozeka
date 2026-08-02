@@ -125,13 +125,13 @@ class PostgresWorkerEnrollmentRepositoryTest {
                 statement.execute("CREATE TABLE users (id VARCHAR(255) PRIMARY KEY)")
                 statement.execute("CREATE TABLE projects (id VARCHAR(255) PRIMARY KEY)")
                 statement.execute("INSERT INTO users(id) VALUES ('owner'), ('other-owner')")
-                val migration = checkNotNull(
-                    javaClass.classLoader.getResource("db/migration/postgres/V27__worker_access.sql")
-                ).readText()
-                val gatewayMigration = checkNotNull(
-                    javaClass.classLoader.getResource("db/migration/postgres/V28__worker_gateway_credentials.sql")
-                ).readText()
-                listOf(migration, gatewayMigration).forEach { script ->
+                listOf(
+                    "db/migration/postgres/V27__worker_access.sql",
+                    "db/migration/postgres/V28__worker_gateway_credentials.sql",
+                    "db/migration/postgres/V29__rename_worker_runtime_wide_access.sql",
+                ).map { resource ->
+                    checkNotNull(javaClass.classLoader.getResource(resource)).readText()
+                }.forEach { script ->
                     script
                         .split(';')
                         .map(String::trim)

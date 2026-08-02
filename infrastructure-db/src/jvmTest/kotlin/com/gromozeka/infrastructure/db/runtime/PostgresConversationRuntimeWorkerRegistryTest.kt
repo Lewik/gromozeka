@@ -115,7 +115,7 @@ class PostgresConversationRuntimeWorkerRegistryTest {
     ): ConversationRuntimeWorkerRegistration =
         ConversationRuntimeWorkerRegistration(
             identity = identity,
-            capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+            capabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
             tools = emptyList(),
             environmentProfile = workerEnvironmentProfile(at),
             version = "test",
