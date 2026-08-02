@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
@@ -54,6 +55,25 @@ fun RemoteAuthenticationScreen(
     val passwordMismatch = !initialized &&
         passwordConfirmation.isNotEmpty() &&
         password != passwordConfirmation
+    val canSubmit = !submitting &&
+        username.isNotBlank() &&
+        password.length >= 12 &&
+        (initialized || (
+            bootstrapToken.isNotBlank() &&
+                password == passwordConfirmation
+            ))
+    val submit = {
+        if (canSubmit) {
+            onSubmit(
+                RemoteAuthenticationInput(
+                    username = username,
+                    password = password,
+                    displayName = displayName,
+                    bootstrapToken = bootstrapToken,
+                )
+            )
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -126,6 +146,8 @@ fun RemoteAuthenticationScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Password") },
                     enabled = !submitting,
+                    imeAction = if (initialized) ImeAction.Done else ImeAction.Next,
+                    onKeyboardAction = if (initialized) submit else null,
                 )
                 if (!initialized) {
                     Spacer(Modifier.height(12.dp))
@@ -140,6 +162,8 @@ fun RemoteAuthenticationScreen(
                         } else {
                             null
                         },
+                        imeAction = ImeAction.Done,
+                        onKeyboardAction = submit,
                     )
                 }
                 if (error != null) {
@@ -152,23 +176,8 @@ fun RemoteAuthenticationScreen(
                 }
                 Spacer(Modifier.height(20.dp))
                 Button(
-                    enabled = !submitting &&
-                        username.isNotBlank() &&
-                        password.length >= 12 &&
-                        (initialized || (
-                            bootstrapToken.isNotBlank() &&
-                                password == passwordConfirmation
-                            )),
-                    onClick = {
-                        onSubmit(
-                            RemoteAuthenticationInput(
-                                username = username,
-                                password = password,
-                                displayName = displayName,
-                                bootstrapToken = bootstrapToken,
-                            )
-                        )
-                    },
+                    enabled = canSubmit,
+                    onClick = submit,
                 ) {
                     if (submitting) {
                         CircularProgressIndicator(
