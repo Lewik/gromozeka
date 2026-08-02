@@ -249,4 +249,26 @@ class OpenAiSubscriptionResponsesClientTest {
         assertEquals(OpenAiSubscriptionRequestMode.FULL, clearedPlan.mode)
         assertEquals("missing_previous_response", clearedPlan.reason)
     }
+
+    @Test
+    fun rejectsIncrementalRequestWithoutNewInput() {
+        val input = buildJsonObject {
+            put("type", JsonPrimitive("message"))
+            put("content", JsonPrimitive("first"))
+        }
+        val request = OpenAiSubscriptionResponsesRequest(
+            model = "gpt-5.6-luna",
+            input = listOf(input),
+        )
+        val state = OpenAiSubscriptionIncrementalState()
+        state.record(
+            transportSignature = "shape",
+            responseId = "resp-1",
+            expectedNextInputPrefix = request.input,
+        )
+
+        assertFailsWith<IllegalStateException> {
+            state.plan(request, transportSignature = "shape")
+        }
+    }
 }

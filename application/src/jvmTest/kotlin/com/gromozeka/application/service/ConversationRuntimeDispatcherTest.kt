@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
@@ -21,6 +22,7 @@ import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
+import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -40,10 +42,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -524,17 +524,19 @@ class ConversationRuntimeDispatcherTest {
             workspaceMountId = workspaceMountId,
         )
         val firstMessage = userMessage("message-1")
-        val llmTask1 = runtimeLlmTask(firstMessage.id, iteration = 1)
-        val toolTask = runtimeToolTask(firstMessage.id, iteration = 1, target = toolTarget)
-        val toolResultProcessingTask = runtimeToolResultProcessingTask(firstMessage.id, iteration = 1)
-        val llmTask2 = runtimeLlmTask(firstMessage.id, iteration = 2)
+        val rootTask = runtimeUserTurnTask(firstMessage)
+        val llmTask1 = runtimeLlmTask(rootTask, firstMessage.id, iteration = 1)
+        val toolTask = runtimeToolTask(llmTask1, firstMessage.id, iteration = 1, target = toolTarget)
+        val toolResultProcessingTask = runtimeToolResultProcessingTask(toolTask, firstMessage.id, iteration = 1)
+        val llmTask2 = runtimeLlmTask(toolResultProcessingTask, firstMessage.id, iteration = 2)
         val executionOrder = Channel<Pair<ConversationRuntimeTask, ConversationRuntimeExecutorIdentity>>(Channel.UNLIMITED)
         val serverRunner = ChainedTaskRunner(executionOrder) { task ->
             when (task.id) {
-                ConversationRuntimeTask.Id(firstMessage.id.value) -> assertTrue(coordinator.submit(llmTask1))
-                llmTask1.id -> assertTrue(coordinator.submit(toolTask))
-                toolTask.id -> assertTrue(coordinator.submit(toolResultProcessingTask))
-                toolResultProcessingTask.id -> assertTrue(coordinator.submit(llmTask2))
+                ConversationRuntimeTask.Id(firstMessage.id.value) -> ConversationRuntimeTaskOutcome.Continue(llmTask1)
+                llmTask1.id -> ConversationRuntimeTaskOutcome.Continue(toolTask)
+                toolTask.id -> ConversationRuntimeTaskOutcome.Continue(toolResultProcessingTask)
+                toolResultProcessingTask.id -> ConversationRuntimeTaskOutcome.Continue(llmTask2)
+                else -> ConversationRuntimeTaskOutcome.CompleteTurn
             }
         }
         val dispatcher = ConversationRuntimeDispatcher(
@@ -598,11 +600,14 @@ class ConversationRuntimeDispatcherTest {
     fun `dispatcher runs internal continuation before queued user turn`() = runBlocking {
         val firstMessage = userMessage("message-1")
         val secondMessage = userMessage("message-2")
-        val llmTask = runtimeLlmTask(firstMessage.id, iteration = 1)
+        val rootTask = runtimeUserTurnTask(firstMessage)
+        val llmTask = runtimeLlmTask(rootTask, firstMessage.id, iteration = 1)
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val runner = ControllableTaskRunner { startedTask ->
             if (startedTask.id == ConversationRuntimeTask.Id(firstMessage.id.value)) {
-                assertTrue(coordinator.submit(llmTask))
+                ConversationRuntimeTaskOutcome.Continue(llmTask)
+            } else {
+                ConversationRuntimeTaskOutcome.CompleteTurn
             }
         }
         val harness = dispatcherHarness(
@@ -632,6 +637,54 @@ class ConversationRuntimeDispatcherTest {
             harness.runner.releaseCurrentTask()
 
             assertEquals(secondMessage.id.value, harness.runner.awaitStarted().id.value)
+            harness.runner.releaseCurrentTask()
+            waitUntil { harness.coordinator.find(conversationId) == null }
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun `dispatcher cannot let asynchronous memory completion overtake active turn continuation`() = runBlocking {
+        val userMessage = userMessage("message-with-asynchronous-memory")
+        val rootTask = runtimeUserTurnTask(userMessage)
+        val llmTask = runtimeLlmTask(rootTask, userMessage.id, iteration = 1)
+        val runner = ControllableTaskRunner { startedTask ->
+            if (startedTask.id == rootTask.id) {
+                ConversationRuntimeTaskOutcome.Continue(llmTask)
+            } else {
+                ConversationRuntimeTaskOutcome.CompleteTurn
+            }
+        }
+        val harness = dispatcherHarness(
+            runner = runner,
+            executorCapabilities = setOf(
+                ConversationRuntimeCapability.CONVERSATION_TURN,
+                ConversationRuntimeCapability.MEMORY_PIPELINE,
+                ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+            ),
+        )
+        try {
+            assertTrue(harness.dispatcher.submitMessage(conversationId, userMessage, agentDefinitionId))
+            assertEquals(rootTask.id, harness.runner.awaitStarted().id)
+            assertTrue(
+                harness.dispatcher.submitMemoryRunCompletion(
+                    conversationId = conversationId,
+                    runId = MemoryRun.Id("memory-run-1"),
+                    agentDefinitionId = agentDefinitionId,
+                    statusToolName = "memory_run_status",
+                )
+            )
+
+            harness.runner.releaseCurrentTask()
+
+            assertEquals(llmTask.id, harness.runner.awaitStarted().id)
+            harness.runner.releaseCurrentTask()
+
+            assertEquals(
+                ConversationRuntimeTask.Id("memory-run-1:conversation-delivery"),
+                harness.runner.awaitStarted().id,
+            )
             harness.runner.releaseCurrentTask()
             waitUntil { harness.coordinator.find(conversationId) == null }
         } finally {
@@ -702,12 +755,15 @@ class ConversationRuntimeDispatcherTest {
         )
 
     private fun runtimeLlmTask(
+        parentTask: ConversationRuntimeTask,
         rootUserMessageId: Conversation.Message.Id,
         iteration: Int,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:llm:$iteration"),
             conversationId = conversationId,
+            turnId = parentTask.turnId,
+            parentTaskId = parentTask.id,
             payload = ConversationRuntimeTask.Payload.LlmCall(
                 rootUserMessageId = rootUserMessageId,
                 agentDefinitionId = agentDefinitionId,
@@ -726,6 +782,7 @@ class ConversationRuntimeDispatcherTest {
         )
 
     private fun runtimeToolTask(
+        parentTask: ConversationRuntimeTask,
         rootUserMessageId: Conversation.Message.Id,
         iteration: Int,
         target: ConversationRuntimeTaskTarget,
@@ -733,6 +790,8 @@ class ConversationRuntimeDispatcherTest {
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:tools:$iteration"),
             conversationId = conversationId,
+            turnId = parentTask.turnId,
+            parentTaskId = parentTask.id,
             payload = ConversationRuntimeTask.Payload.ToolExecution(
                 rootUserMessageId = rootUserMessageId,
                 agentDefinitionId = agentDefinitionId,
@@ -759,12 +818,15 @@ class ConversationRuntimeDispatcherTest {
         )
 
     private fun runtimeToolResultProcessingTask(
+        parentTask: ConversationRuntimeTask,
         rootUserMessageId: Conversation.Message.Id,
         iteration: Int,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:tool-result-processing:$iteration"),
             conversationId = conversationId,
+            turnId = parentTask.turnId,
+            parentTaskId = parentTask.id,
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
                 rootUserMessageId = rootUserMessageId,
                 toolResultMessageId = Conversation.Message.Id("tool-result-$iteration"),
@@ -807,19 +869,21 @@ class ConversationRuntimeDispatcherTest {
     }
 
     private class ControllableTaskRunner(
-        private val onStarted: suspend (ConversationRuntimeTask) -> Unit = {},
+        private val outcomeFor: suspend (ConversationRuntimeTask) -> ConversationRuntimeTaskOutcome = {
+            ConversationRuntimeTaskOutcome.CompleteTurn
+        },
     ) : ConversationRuntimeTaskRunner {
         private val startedTasks = Channel<ConversationRuntimeTask>(Channel.UNLIMITED)
         private val releases = Channel<Unit>(Channel.UNLIMITED)
 
-        override fun runRuntimeTask(
+        override suspend fun runRuntimeTask(
             task: ConversationRuntimeTask,
             executor: ConversationRuntimeExecutorIdentity,
-        ): Flow<Conversation.Message> = flow {
+            emitMessage: suspend (Conversation.Message) -> Unit,
+        ): ConversationRuntimeTaskOutcome {
             startedTasks.send(task)
-            onStarted(task)
             releases.receive()
-            emit(
+            emitMessage(
                 Conversation.Message(
                     id = Conversation.Message.Id("${task.id.value}:result"),
                     conversationId = task.conversationId,
@@ -832,6 +896,7 @@ class ConversationRuntimeDispatcherTest {
                     createdAt = Clock.System.now(),
                 )
             )
+            return outcomeFor(task)
         }
 
         suspend fun awaitStarted(): ConversationRuntimeTask =
@@ -844,14 +909,15 @@ class ConversationRuntimeDispatcherTest {
 
     private class ChainedTaskRunner(
         private val executionOrder: Channel<Pair<ConversationRuntimeTask, ConversationRuntimeExecutorIdentity>>,
-        private val onStarted: suspend (ConversationRuntimeTask) -> Unit,
+        private val outcomeFor: suspend (ConversationRuntimeTask) -> ConversationRuntimeTaskOutcome,
     ) : ConversationRuntimeTaskRunner {
-        override fun runRuntimeTask(
+        override suspend fun runRuntimeTask(
             task: ConversationRuntimeTask,
             executor: ConversationRuntimeExecutorIdentity,
-        ): Flow<Conversation.Message> = flow {
+            emitMessage: suspend (Conversation.Message) -> Unit,
+        ): ConversationRuntimeTaskOutcome {
             executionOrder.send(task to executor)
-            onStarted(task)
+            return outcomeFor(task)
         }
     }
 

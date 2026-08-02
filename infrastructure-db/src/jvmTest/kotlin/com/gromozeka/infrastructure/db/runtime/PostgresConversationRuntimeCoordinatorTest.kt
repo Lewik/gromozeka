@@ -8,15 +8,23 @@ import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
+import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
+import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import org.postgresql.ds.PGSimpleDataSource
@@ -80,6 +88,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                 )
             )
             assertEquals(startedAt, coordinator.listActiveTaskAssignments().single().startedAt)
+            assertNull(coordinator.claim(claimedTask, firstWorker))
 
             val incident = coordinator.markActiveTaskInDoubt(
                 conversationId = conversationId,
@@ -91,7 +100,14 @@ class PostgresConversationRuntimeCoordinatorTest {
 
             assertEquals(ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN, incident?.kind)
             assertEquals(startedAt, incident?.executionStartedAt)
-            assertFalse(coordinator.completeActiveTask(conversationId, claimedTask.id, executor(firstWorker)))
+            assertFalse(
+                coordinator.completeActiveTask(
+                    conversationId,
+                    claimedTask.id,
+                    executor(firstWorker),
+                    ConversationRuntimeTaskOutcome.CompleteTurn,
+                )
+            )
             val snapshot = coordinator.snapshot(conversationId)
             assertNull(snapshot.activeTask)
             assertEquals(claimedTask.id, snapshot.incidents.single().task.id)
@@ -102,6 +118,214 @@ class PostgresConversationRuntimeCoordinatorTest {
                 ),
                 snapshot.pendingTasks.map { it.payload },
             )
+        } finally {
+            adminDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("DROP SCHEMA $schema CASCADE")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `postgres notification wakes the scheduler after durable commit`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
+            return@runBlocking
+        }
+
+        val schema = "runtime_coordinator_test_${UUID.randomUUID().toString().replace("-", "")}"
+        val adminDataSource = dataSource()
+        adminDataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE SCHEMA $schema")
+            }
+        }
+
+        var runtimeDataSource: HikariDataSource? = null
+        try {
+            runtimeDataSource = pooledDataSource(schema).also(::createRuntimeSchema)
+            val coordinator = PostgresConversationRuntimeCoordinator(
+                dataSource = runtimeDataSource,
+                json = Json {
+                    encodeDefaults = true
+                    ignoreUnknownKeys = false
+                },
+            )
+            val signals = Channel<ConversationRuntimeSchedulingSignal>(Channel.UNLIMITED)
+            val collector = launch {
+                coordinator.schedulingSignals.collect(signals::send)
+            }
+            try {
+                assertEquals(
+                    ConversationRuntimeSchedulingSignal.ListenerReady,
+                    withTimeout(5_000) { signals.receive() },
+                )
+                val task = userTurnTask(
+                    conversationId = Conversation.Id("notified-conversation"),
+                    messageId = "notified-message",
+                    createdAt = Instant.fromEpochMilliseconds(1_000),
+                )
+
+                assertTrue(coordinator.submit(task))
+                val changed = withTimeout(5_000) {
+                    while (true) {
+                        val signal = signals.receive()
+                        if (signal == ConversationRuntimeSchedulingSignal.Changed(task.conversationId)) {
+                            return@withTimeout signal
+                        }
+                    }
+                    error("Unreachable")
+                }
+                assertEquals(ConversationRuntimeSchedulingSignal.Changed(task.conversationId), changed)
+                assertEquals(task.id, coordinator.listReadyWorkItems(1).single().taskId)
+            } finally {
+                collector.cancelAndJoin()
+                signals.close()
+            }
+        } finally {
+            runtimeDataSource?.close()
+            adminDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("DROP SCHEMA $schema CASCADE")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `postgres keeps a continuation ahead of later root input`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
+            return@runBlocking
+        }
+
+        val schema = "runtime_coordinator_test_${UUID.randomUUID().toString().replace("-", "")}"
+        val adminDataSource = dataSource()
+        adminDataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE SCHEMA $schema")
+            }
+        }
+
+        try {
+            val coordinator = PostgresConversationRuntimeCoordinator(
+                dataSource = dataSource(schema).also(::createRuntimeSchema),
+                json = Json {
+                    encodeDefaults = true
+                    ignoreUnknownKeys = false
+                },
+            )
+            val conversationId = Conversation.Id("continued-conversation")
+            val root = userTurnTask(
+                conversationId = conversationId,
+                messageId = "root-message",
+                createdAt = Instant.fromEpochMilliseconds(1_000),
+            )
+            val continuation = llmTask(root, Instant.fromEpochMilliseconds(2_000))
+            val laterRoot = userTurnTask(
+                conversationId = conversationId,
+                messageId = "later-message",
+                createdAt = Instant.fromEpochMilliseconds(3_000),
+            )
+            val worker = worker("worker-1", "session-1")
+
+            assertTrue(coordinator.submit(root))
+            assertEquals(root, coordinator.claim(root, worker))
+            assertTrue(
+                coordinator.markActiveTaskStarted(
+                    conversationId,
+                    root.id,
+                    executor(worker),
+                    Instant.fromEpochMilliseconds(4_000),
+                )
+            )
+            assertTrue(coordinator.submit(laterRoot))
+            assertTrue(
+                coordinator.completeActiveTask(
+                    conversationId,
+                    root.id,
+                    executor(worker),
+                    ConversationRuntimeTaskOutcome.Continue(continuation),
+                )
+            )
+
+            assertEquals(continuation.id, coordinator.listReadyWorkItems(1).single().taskId)
+            assertEquals(continuation, coordinator.claim(continuation, worker("worker-1", "session-2")))
+        } finally {
+            adminDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("DROP SCHEMA $schema CASCADE")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `runtime lineage migration resets legacy scheduling state`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
+            return@runBlocking
+        }
+
+        val schema = "runtime_coordinator_test_${UUID.randomUUID().toString().replace("-", "")}"
+        val adminDataSource = dataSource()
+        adminDataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE SCHEMA $schema")
+            }
+        }
+
+        try {
+            val runtimeDataSource = dataSource(schema).also(::createRuntimeSchema)
+            runtimeDataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    """
+                    INSERT INTO conversation_runtime_records(
+                        conversation_id,
+                        record_json,
+                        updated_at,
+                        ready_task_id,
+                        ready_at
+                    )
+                    VALUES (?, CAST(? AS jsonb), CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
+                    """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, "legacy-conversation")
+                    statement.setString(
+                        2,
+                        """{
+                            "conversationId":"legacy-conversation",
+                            "revision":4,
+                            "state":null,
+                            "activeTask":null,
+                            "activeInsertions":[],
+                            "continuationTask":null,
+                            "pendingTasks":[],
+                            "toolExecutions":[],
+                            "incidents":[],
+                            "eventLog":[],
+                            "completedIdempotencyKeys":[]
+                        }""".trimIndent(),
+                    )
+                    statement.setString(3, "legacy-task")
+                    statement.executeUpdate()
+                }
+                connection.createStatement().use { statement ->
+                    executeSqlResource(statement, "db/migration/postgres/V32__reset_conversation_runtime_lineage.sql")
+                }
+            }
+
+            val coordinator = PostgresConversationRuntimeCoordinator(
+                runtimeDataSource,
+                Json {
+                    encodeDefaults = true
+                    ignoreUnknownKeys = false
+                },
+            )
+            val snapshot = coordinator.snapshot(Conversation.Id("legacy-conversation"))
+
+            assertEquals(5, snapshot.revision)
+            assertNull(snapshot.state)
+            assertTrue(snapshot.pendingTasks.isEmpty())
+            assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
         } finally {
             adminDataSource.connection.use { connection ->
                 connection.createStatement().use { statement ->
@@ -321,6 +545,34 @@ class PostgresConversationRuntimeCoordinatorTest {
         )
     }
 
+    private fun llmTask(
+        parent: ConversationRuntimeTask,
+        createdAt: Instant,
+    ): ConversationRuntimeTask =
+        ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("${parent.id.value}:llm"),
+            conversationId = parent.conversationId,
+            turnId = parent.turnId,
+            parentTaskId = parent.id,
+            payload = ConversationRuntimeTask.Payload.LlmCall(
+                rootUserMessageId = parent.requireUserTurn().userMessage.id,
+                agentDefinitionId = AGENT_DEFINITION_ID,
+                iteration = 1,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "${parent.idempotencyKey}:llm",
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(
+                    ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                    ConversationRuntimeCapability.MEMORY_PIPELINE,
+                ),
+                target = ConversationRuntimeTaskTarget.Worker(
+                    ConversationRuntimeWorkerId("worker-1")
+                ),
+            ),
+            createdAt = createdAt,
+        )
+
     private suspend fun PostgresConversationRuntimeCoordinator.claim(
         task: ConversationRuntimeTask,
         worker: ConversationRuntimeWorkerIdentity,
@@ -353,22 +605,39 @@ class PostgresConversationRuntimeCoordinatorTest {
             currentSchema = schema
         }
 
+    private fun pooledDataSource(schema: String): HikariDataSource =
+        HikariDataSource(
+            HikariConfig().apply {
+                jdbcUrl = System.getenv("GROMOZEKA_POSTGRES_URL")
+                    ?: "jdbc:postgresql://localhost:5432/gromozeka"
+                username = System.getenv("GROMOZEKA_POSTGRES_USER") ?: "gromozeka"
+                password = System.getenv("GROMOZEKA_POSTGRES_PASSWORD") ?: "gromozeka"
+                maximumPoolSize = 2
+                connectionInitSql = "SET search_path TO \"$schema\", public"
+            }
+        )
+
     private fun createRuntimeSchema(dataSource: DataSource) {
         dataSource.connection.use { connection ->
             connection.createStatement().use { statement ->
                 listOf(
                     "db/migration/postgres/V4__conversation_runtime_records.sql",
                     "db/migration/postgres/V31__conversation_runtime_ready_work.sql",
-                ).forEach { resource ->
-                    checkNotNull(javaClass.classLoader.getResource(resource))
-                        .readText()
-                        .split(';')
-                        .map(String::trim)
-                        .filter(String::isNotEmpty)
-                        .forEach(statement::execute)
-                }
+                ).forEach { resource -> executeSqlResource(statement, resource) }
             }
         }
+    }
+
+    private fun executeSqlResource(
+        statement: java.sql.Statement,
+        resource: String,
+    ) {
+        checkNotNull(javaClass.classLoader.getResource(resource))
+            .readText()
+            .split(';')
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .forEach(statement::execute)
     }
 
     private companion object {

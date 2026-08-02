@@ -677,6 +677,9 @@ internal class OpenAiSubscriptionIncrementalState {
                 ),
             )
         }
+        check(transportRequest.input.size > expectedNextInputPrefix.size) {
+            "Incremental OpenAI response request must add at least one input item"
+        }
 
         return OpenAiSubscriptionRequestPlan(
             request = transportRequest.copy(

@@ -25,6 +25,8 @@ import kotlin.jvm.JvmInline
 data class ConversationRuntimeTask(
     val id: Id,
     val conversationId: Conversation.Id,
+    val turnId: ConversationRuntimeTurnId = ConversationRuntimeTurnId(id.value),
+    val parentTaskId: Id? = null,
     val actorUserId: User.Id? = null,
     val payload: Payload,
     val placement: QueuedMessagePlacement,
@@ -35,6 +37,9 @@ data class ConversationRuntimeTask(
     init {
         require(id.value.isNotBlank()) { "Conversation runtime task id must not be blank" }
         require(idempotencyKey.isNotBlank()) { "Conversation runtime task idempotency key must not be blank" }
+        require((parentTaskId == null) == payload.isRootInput()) {
+            "Conversation runtime task ${id.value} must have root/continuation lineage matching ${payload::class.simpleName}"
+        }
         require(requirements.capabilities.containsAll(payload.requiredCapabilities())) {
             "Conversation runtime task ${id.value} requirements do not satisfy ${payload::class.simpleName}"
         }
@@ -155,7 +160,22 @@ data class ConversationRuntimeTask(
 
     fun userMessageIdOrNull(): Conversation.Message.Id? = userTurnOrNull()?.userMessage?.id
 
-    fun isInternalRuntimeStep(): Boolean = payload !is Payload.UserTurn
+    fun isRootInput(): Boolean = payload.isRootInput()
+
+    fun isContinuation(): Boolean = !isRootInput()
+
+    private fun Payload.isRootInput(): Boolean =
+        when (this) {
+            is Payload.UserTurn,
+            is Payload.MemoryRunCompletion,
+            is Payload.BackgroundActivityCompletion,
+            is Payload.ExecutionIncident -> true
+
+            is Payload.LlmCall,
+            is Payload.ToolExecution,
+            is Payload.ToolResultProcessing,
+            is Payload.MemoryRecall -> false
+        }
 
     private fun Payload.requiredCapabilities(): Set<ConversationRuntimeCapability> =
         when (this) {
@@ -180,6 +200,28 @@ data class ConversationRuntimeTask(
             is Payload.BackgroundActivityCompletion -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
             is Payload.ExecutionIncident -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
         }
+}
+
+@Serializable
+@JvmInline
+value class ConversationRuntimeTurnId(val value: String) {
+    init {
+        require(value.isNotBlank()) { "Conversation runtime turn id must not be blank" }
+    }
+}
+
+sealed interface ConversationRuntimeTaskOutcome {
+    data object CompleteTurn : ConversationRuntimeTaskOutcome
+
+    data class Continue(
+        val nextTask: ConversationRuntimeTask,
+    ) : ConversationRuntimeTaskOutcome {
+        init {
+            require(nextTask.isContinuation()) {
+                "Conversation runtime continuation outcome must contain a continuation task"
+            }
+        }
+    }
 }
 
 /**
@@ -558,6 +600,8 @@ data class ConversationRuntimeSnapshot(
     val conversationId: Conversation.Id,
     val state: ConversationExecutionState?,
     val activeTask: ConversationRuntimeTask? = null,
+    val activeInsertions: List<ConversationRuntimeTask> = emptyList(),
+    val continuationTask: ConversationRuntimeTask? = null,
     val pendingTasks: List<ConversationRuntimeTask>,
     val toolExecutions: List<ConversationRuntimeToolExecution> = emptyList(),
     val memoryOperations: List<ConversationRuntimeMemoryOperation> = emptyList(),
@@ -580,6 +624,14 @@ data class ConversationRuntimeWorkItem(
     enum class Reason {
         TASK_SUBMITTED,
     }
+}
+
+sealed interface ConversationRuntimeSchedulingSignal {
+    data object ListenerReady : ConversationRuntimeSchedulingSignal
+
+    data class Changed(
+        val conversationId: Conversation.Id,
+    ) : ConversationRuntimeSchedulingSignal
 }
 
 @Serializable
@@ -643,9 +695,11 @@ interface ConversationRuntimeCoordinator {
      *
      * A Server executor must drain [listReadyWorkItems] at startup before relying on these signals.
      */
-    val schedulingSignals: Flow<Conversation.Id>
+    val schedulingSignals: Flow<ConversationRuntimeSchedulingSignal>
 
     suspend fun submit(task: ConversationRuntimeTask): Boolean
+
+    suspend fun updatePendingUserTurn(task: ConversationRuntimeTask): Boolean
 
     /**
      * Atomically assigns a pending task to one executor session.
@@ -665,6 +719,7 @@ interface ConversationRuntimeCoordinator {
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
         executor: ConversationRuntimeExecutorIdentity,
+        outcome: ConversationRuntimeTaskOutcome,
     ): Boolean
 
     /**
@@ -816,7 +871,7 @@ interface ConversationRuntimeCoordinator {
         messageId: Conversation.Message.Id,
     ): Boolean
 
-    suspend fun takeActiveInsertions(
+    suspend fun claimActiveInsertions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
         executor: ConversationRuntimeExecutorIdentity,

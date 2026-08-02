@@ -80,7 +80,12 @@ class ConversationRuntimeDispatcher(
             placement = effectivePlacement,
             actorUserId = actorUserId,
         )
-        val accepted = submitRuntimeTask(task)
+        val updatesExistingTask = pendingTasks.any { it.userMessageIdOrNull() == userMessage.id }
+        val accepted = if (updatesExistingTask) {
+            updatePendingRuntimeTask(task)
+        } else {
+            submitRuntimeTask(task)
+        }
         if (accepted) {
             log.info {
                 "Queued runtime message: conversation=${conversationId.value} message=${userMessage.id.value} " +
@@ -266,6 +271,14 @@ class ConversationRuntimeDispatcher(
 
     private suspend fun submitRuntimeTask(task: ConversationRuntimeTask): Boolean {
         val accepted = runtimeCoordinator.submit(task)
+        if (accepted) {
+            publishRuntimeSnapshot(task.conversationId)
+        }
+        return accepted
+    }
+
+    private suspend fun updatePendingRuntimeTask(task: ConversationRuntimeTask): Boolean {
+        val accepted = runtimeCoordinator.updatePendingUserTurn(task)
         if (accepted) {
             publishRuntimeSnapshot(task.conversationId)
         }

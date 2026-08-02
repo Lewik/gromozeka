@@ -8,6 +8,7 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
+import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.WorkspaceDomainService
@@ -21,6 +22,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -46,7 +48,6 @@ class ConversationRuntimeExecutor(
     private val log = KLoggers.logger(this)
     private val executor = descriptor.identity
     private val capabilities = descriptor.capabilities
-    private val deliveryMutexes = Array(DELIVERY_MUTEX_STRIPES) { Mutex() }
     private val schedulingMutex = Mutex()
     private val scheduledItems = ConcurrentHashMap.newKeySet<ScheduledWork>()
     private val activeExecutions = ConcurrentHashMap<Conversation.Id, ActiveExecution>()
@@ -68,12 +69,20 @@ class ConversationRuntimeExecutor(
             try {
                 runBlocking {
                     recoverAbandonedServerAssignments()
-                    scheduleReadyWork(executorScope)
                 }
                 schedulingCollectionJob = executorScope.launch {
-                    runtimeCoordinator.schedulingSignals.collect { conversationId ->
-                        cancelInterruptedExecution(conversationId)
-                        scheduleReadyWork(executorScope)
+                    runtimeCoordinator.schedulingSignals.conflate().collect { signal ->
+                        when (signal) {
+                            ConversationRuntimeSchedulingSignal.ListenerReady -> {
+                                cancelInterruptedExecutions()
+                                scheduleReadyWork(executorScope)
+                            }
+
+                            is ConversationRuntimeSchedulingSignal.Changed -> {
+                                cancelInterruptedExecutions()
+                                scheduleReadyWork(executorScope)
+                            }
+                        }
                     }
                 }
             } catch (error: Throwable) {
@@ -146,52 +155,50 @@ class ConversationRuntimeExecutor(
             "Conversation runtime work item ready: conversation=${item.conversationId.value} " +
                 "reason=${item.reason} task=${item.taskId.value} executor=$executor"
         }
-        deliveryMutex(item.conversationId).withLock {
-            val task = try {
-                when (item.reason) {
-                    ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED -> prepareSubmittedTask(item)
-                }
-            } catch (error: CancellationException) {
-                withContext(NonCancellable) {
-                    settlePreparationFailure(item, error)
-                }
-                throw error
-            } catch (error: Throwable) {
-                log.error(error) {
-                    "Conversation runtime work preparation failed: conversation=${item.conversationId.value} " +
-                        "reason=${item.reason} task=${item.taskId.value} executor=$executor error=${error.message}"
-                }
+        val task = try {
+            when (item.reason) {
+                ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED -> prepareSubmittedTask(item)
+            }
+        } catch (error: CancellationException) {
+            withContext(NonCancellable) {
                 settlePreparationFailure(item, error)
-                return
-            } ?: return
+            }
+            throw error
+        } catch (error: Throwable) {
+            log.error(error) {
+                "Conversation runtime work preparation failed: conversation=${item.conversationId.value} " +
+                    "reason=${item.reason} task=${item.taskId.value} executor=$executor error=${error.message}"
+            }
+            settlePreparationFailure(item, error)
+            return
+        } ?: return
 
-            val executionStarted = try {
-                runtimeCoordinator.markActiveTaskStarted(
-                    conversationId = task.conversationId,
-                    taskId = task.id,
-                    executor = executor,
-                    startedAt = Clock.System.now(),
+        val executionStarted = try {
+            runtimeCoordinator.markActiveTaskStarted(
+                conversationId = task.conversationId,
+                taskId = task.id,
+                executor = executor,
+                startedAt = Clock.System.now(),
+            )
+        } catch (error: Throwable) {
+            withContext(NonCancellable) {
+                recordClaimedTaskDeliveryFailure(
+                    task = task,
+                    message = "Failed to record runtime task execution start",
+                    errorType = error::class.simpleName,
                 )
-            } catch (error: Throwable) {
-                withContext(NonCancellable) {
-                    recordClaimedTaskDeliveryFailure(
-                        task = task,
-                        message = "Failed to record runtime task execution start",
-                        errorType = error::class.simpleName,
-                    )
-                }
-                throw error
             }
-            if (!executionStarted) {
-                log.warn {
-                    "Conversation runtime task ownership was lost before execution start: " +
-                        "conversation=${task.conversationId.value} task=${task.id.value} executor=$executor"
-                }
-                return
-            }
-            publishRuntimeSnapshot(item.conversationId)
-            runClaimedTask(task)
+            throw error
         }
+        if (!executionStarted) {
+            log.warn {
+                "Conversation runtime task ownership was lost before execution start: " +
+                    "conversation=${task.conversationId.value} task=${task.id.value} executor=$executor"
+            }
+            return
+        }
+        publishRuntimeSnapshot(item.conversationId)
+        runClaimedTask(task)
     }
 
     private suspend fun settlePreparationFailure(
@@ -286,7 +293,7 @@ class ConversationRuntimeExecutor(
         try {
             cancelInterruptedExecution(task.conversationId)
             currentCoroutineContext().ensureActive()
-            taskRunnerProvider.getObject().runRuntimeTask(task, executor).collect { message ->
+            val outcome = taskRunnerProvider.getObject().runRuntimeTask(task, executor) { message ->
                 publishRuntimeEvent(
                     ConversationRuntimeEvent.MessageEmitted(
                         conversationId = task.conversationId,
@@ -296,7 +303,7 @@ class ConversationRuntimeExecutor(
                 )
             }
             activeExecutions.remove(task.conversationId, activeExecution)
-            if (!runtimeCoordinator.completeActiveTask(task.conversationId, task.id, executor)) {
+            if (!runtimeCoordinator.completeActiveTask(task.conversationId, task.id, executor, outcome)) {
                 throw IllegalStateException(
                     "Conversation runtime task ownership was lost before completion: " +
                         "conversation=${task.conversationId.value} task=${task.id.value} executor=$executor"
@@ -349,6 +356,12 @@ class ConversationRuntimeExecutor(
             activeExecution.job.cancel(
                 CancellationException("Conversation runtime interrupted: ${conversationId.value}")
             )
+        }
+    }
+
+    private suspend fun cancelInterruptedExecutions() {
+        activeExecutions.keys.toList().forEach { conversationId ->
+            cancelInterruptedExecution(conversationId)
         }
     }
 
@@ -463,12 +476,6 @@ class ConversationRuntimeExecutor(
         )
     }
 
-    private fun deliveryMutex(conversationId: Conversation.Id): Mutex {
-        val index = (conversationId.value.hashCode().toLong() and Int.MAX_VALUE.toLong()).toInt() %
-            deliveryMutexes.size
-        return deliveryMutexes[index]
-    }
-
     private suspend fun finishRuntimeIfIdle(conversationId: Conversation.Id): Boolean {
         val finished = runtimeCoordinator.finishIfIdle(conversationId)
         if (finished) publishRuntimeSnapshot(conversationId)
@@ -550,7 +557,6 @@ class ConversationRuntimeExecutor(
     )
 
     private companion object {
-        const val DELIVERY_MUTEX_STRIPES = 256
         const val READY_WORK_BATCH_SIZE = 1_000
     }
 }

@@ -5,13 +5,13 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
@@ -33,9 +33,6 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Clock
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
@@ -53,16 +50,13 @@ class ConversationToolExecutionTaskService(
 ) {
     private val log = KLoggers.logger(this)
 
-    fun run(
+    suspend fun run(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
         payload: ConversationRuntimeTask.Payload.ToolExecution,
-    ): Flow<Conversation.Message> = flow {
+        emitMessage: suspend (Conversation.Message) -> Unit,
+    ): ConversationRuntimeTaskOutcome {
         val conversationId = task.conversationId
-        if (!awaitExecutionCanContinue(conversationId)) {
-            return@flow
-        }
-
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val project = conversationService.getProject(conversationId)
@@ -176,7 +170,7 @@ class ConversationToolExecutionTaskService(
                 createdAt = Clock.System.now(),
             )
             if (addRuntimeMessageIfMissing(conversationId, toolResultMessage)) {
-                emit(toolResultMessage)
+                emitMessage(toolResultMessage)
             }
         } else {
             log.info {
@@ -186,12 +180,9 @@ class ConversationToolExecutionTaskService(
         }
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
         clearRuntimeToolExecutions(conversationId, task.id, executor)
-        if (!awaitExecutionCanContinue(conversationId)) {
-            return@flow
-        }
-
-        submitContinuationTask(
+        return ConversationRuntimeTaskOutcome.Continue(
             toolResultProcessingTask(
+                parentTask = task,
                 conversationId = conversationId,
                 rootUserMessageId = payload.rootUserMessageId,
                 toolResultMessageId = toolResultMessageId,
@@ -199,19 +190,12 @@ class ConversationToolExecutionTaskService(
                 iteration = payload.iteration,
                 returnDirect = payload.returnDirect,
                 actorUserId = task.actorUserId,
-            )
+            ),
         )
     }
 
-    private suspend fun submitContinuationTask(task: ConversationRuntimeTask) {
-        val accepted = runtimeCoordinator.submit(task)
-        if (!accepted) {
-            throw IllegalStateException("Conversation runtime rejected continuation task: ${task.id.value}")
-        }
-        publishRuntimeSnapshot(task.conversationId)
-    }
-
     private fun toolResultProcessingTask(
+        parentTask: ConversationRuntimeTask,
         conversationId: Conversation.Id,
         rootUserMessageId: Conversation.Message.Id,
         toolResultMessageId: Conversation.Message.Id,
@@ -223,6 +207,8 @@ class ConversationToolExecutionTaskService(
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:tool-result-processing:$iteration"),
             conversationId = conversationId,
+            turnId = parentTask.turnId,
+            parentTaskId = parentTask.id,
             actorUserId = actorUserId,
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
                 rootUserMessageId = rootUserMessageId,
@@ -378,27 +364,6 @@ class ConversationToolExecutionTaskService(
         }
     }
 
-    private suspend fun awaitExecutionCanContinue(conversationId: Conversation.Id): Boolean {
-        while (true) {
-            val state = runtimeCoordinator.find(conversationId) ?: return true
-            when {
-                state.controlState == ConversationExecutionState.ControlState.STOPPING ||
-                    state.controlState == ConversationExecutionState.ControlState.INTERRUPTING -> return false
-
-                state.controlState == ConversationExecutionState.ControlState.PAUSED -> delay(250)
-
-                state.controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED -> {
-                    if (runtimeCoordinator.markPaused(conversationId)) {
-                        publishRuntimeSnapshot(conversationId)
-                    }
-                    delay(250)
-                }
-
-                else -> return true
-            }
-        }
-    }
-
     private suspend fun addRuntimeMessageIfMissing(
         conversationId: Conversation.Id,
         message: Conversation.Message,
@@ -438,18 +403,17 @@ class ConversationToolExecutionTaskService(
 class WorkerConversationRuntimeTaskRunner(
     private val toolExecutionTaskService: ConversationToolExecutionTaskService,
 ) : ConversationRuntimeTaskRunner {
-    override fun runRuntimeTask(
+    override suspend fun runRuntimeTask(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
-    ): Flow<Conversation.Message> =
+        emitMessage: suspend (Conversation.Message) -> Unit,
+    ): ConversationRuntimeTaskOutcome =
         when (val payload = task.payload) {
             is ConversationRuntimeTask.Payload.ToolExecution ->
-                toolExecutionTaskService.run(task, executor, payload)
+                toolExecutionTaskService.run(task, executor, payload, emitMessage)
 
-            else -> flow {
-                error(
-                    "Worker cannot execute Server-owned runtime task ${payload::class.simpleName}: ${task.id.value}"
-                )
-            }
+            else -> error(
+                "Worker cannot execute Server-owned runtime task ${payload::class.simpleName}: ${task.id.value}"
+            )
         }
 }

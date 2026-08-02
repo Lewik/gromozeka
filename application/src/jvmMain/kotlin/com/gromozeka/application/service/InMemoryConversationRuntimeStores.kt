@@ -16,11 +16,12 @@ import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeEventLogEntry
 import com.gromozeka.domain.service.ConversationRuntimeEventSubscription
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
+import com.gromozeka.domain.service.ConversationRuntimeSchedulingState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
-import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
-import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
+import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
@@ -34,6 +35,8 @@ import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -44,9 +47,7 @@ import org.springframework.stereotype.Service
 
 class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private val mutex = Mutex()
-    private val tasksByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTask>>()
-    private val activeTasksByConversation = mutableMapOf<Conversation.Id, ConversationRuntimeTask>()
-    private val statesByConversation = mutableMapOf<Conversation.Id, ConversationExecutionState>()
+    private val schedulingByConversation = mutableMapOf<Conversation.Id, ConversationRuntimeSchedulingState>()
     private val toolExecutionsByConversation =
         mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeToolExecution>>()
     private val memoryOperationsByConversation =
@@ -55,55 +56,50 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     private val commandMonitorsByConversation = mutableMapOf<Conversation.Id, MutableList<CommandMonitor>>()
     private val commandMonitorEventsByConversation =
         mutableMapOf<Conversation.Id, MutableList<CommandMonitorEvent>>()
-    private val incidentsByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTaskIncident>>()
     private val traceByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeTraceEntry>>()
     private val eventLogByConversation = mutableMapOf<Conversation.Id, MutableList<ConversationRuntimeEventLogEntry>>()
     private val readyWorkByConversation = mutableMapOf<Conversation.Id, ConversationRuntimeWorkItem>()
-    private val schedulingSignalChannel = Channel<Conversation.Id>(Channel.CONFLATED)
-    private val completedIdempotencyKeysByConversation = mutableMapOf<Conversation.Id, MutableSet<String>>()
+    private val schedulingSignalChannel = Channel<ConversationRuntimeSchedulingSignal.Changed>(Channel.CONFLATED)
     private val revisionsByConversation = mutableMapOf<Conversation.Id, Long>()
     private val traceSequencesByConversation = mutableMapOf<Conversation.Id, Long>()
     private val eventSequencesByConversation = mutableMapOf<Conversation.Id, Long>()
 
-    override val schedulingSignals: Flow<Conversation.Id> = schedulingSignalChannel.receiveAsFlow()
+    override val schedulingSignals: Flow<ConversationRuntimeSchedulingSignal> = flow {
+        emit(ConversationRuntimeSchedulingSignal.ListenerReady)
+        emitAll(schedulingSignalChannel.receiveAsFlow())
+    }
 
     override suspend fun submit(task: ConversationRuntimeTask): Boolean =
         mutex.withLock {
-            val state = statesByConversation[task.conversationId]
-            if (state?.controlState == ConversationExecutionState.ControlState.STOPPING ||
-                state?.controlState == ConversationExecutionState.ControlState.INTERRUPTING
-            ) {
-                return@withLock false
-            }
-            if (task.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && state?.activeTaskId == null) {
-                return@withLock false
-            }
-            if (completedIdempotencyKeysByConversation[task.conversationId]?.contains(task.idempotencyKey) == true) {
-                return@withLock false
-            }
-            if (activeTasksByConversation[task.conversationId]?.idempotencyKey == task.idempotencyKey) {
-                return@withLock false
-            }
-
-            val tasks = tasksByConversation.getOrPut(task.conversationId) { mutableListOf() }
-            val userMessageId = task.userMessageIdOrNull()
-            tasks.removeAll { existingTask ->
-                existingTask.idempotencyKey == task.idempotencyKey ||
-                    (userMessageId != null && existingTask.userMessageIdOrNull() == userMessageId)
-            }
-            val taskToStore = task
-            val insertIndex = if (taskToStore.isInternalRuntimeStep()) {
-                tasks.indexOfFirst { !it.isInternalRuntimeStep() }.takeIf { it >= 0 } ?: tasks.size
-            } else {
-                tasks.size
-            }
-            tasks.add(insertIndex, taskToStore)
+            val current = schedulingByConversation[task.conversationId]
+                ?: ConversationRuntimeSchedulingState(task.conversationId)
+            val transition = current.submit(task, Clock.System.now())
+            if (!transition.result) return@withLock false
+            schedulingByConversation[task.conversationId] = transition.state
             appendTrace(
                 conversationId = task.conversationId,
                 taskId = task.id,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
                 status = ConversationRuntimeTraceEntry.Status.STARTED,
                 message = "Runtime task submitted: placement=${task.placement}",
+            )
+            scheduleNextRunnableTaskIfReady(task.conversationId)
+            bumpRevision(task.conversationId)
+            true
+        }
+
+    override suspend fun updatePendingUserTurn(task: ConversationRuntimeTask): Boolean =
+        mutex.withLock {
+            val current = schedulingByConversation[task.conversationId] ?: return@withLock false
+            val transition = current.updatePendingUserTurn(task)
+            if (!transition.result) return@withLock false
+            schedulingByConversation[task.conversationId] = transition.state
+            appendTrace(
+                conversationId = task.conversationId,
+                taskId = task.id,
+                kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
+                status = ConversationRuntimeTraceEntry.Status.UPDATED,
+                message = "Queued user turn updated: placement=${task.placement}",
             )
             scheduleNextRunnableTaskIfReady(task.conversationId)
             bumpRevision(task.conversationId)
@@ -118,60 +114,18 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         workerWorkspaceMountIds: Set<WorkspaceMount.Id>,
     ): ConversationRuntimeTask? =
         mutex.withLock {
-            val now = Clock.System.now()
-            val state = statesByConversation[conversationId]
-            if (state != null && state.activeTaskId == taskId) {
-                if (state.controlState == ConversationExecutionState.ControlState.STOPPING ||
-                    state.controlState == ConversationExecutionState.ControlState.INTERRUPTING
-                ) {
-                    return@withLock null
-                }
-                val activeTask = activeTasksByConversation[conversationId] ?: return@withLock null
-                if (state.activeExecutor != executor) {
-                    return@withLock null
-                }
-                if (!activeTask.requirements.isSatisfiedBy(
-                        executor,
-                        executorCapabilities,
-                        workerWorkspaceMountIds,
-                    )
-                ) {
-                    return@withLock null
-                }
-                return@withLock activeTask
-            }
-            if (state != null && (state.controlState != ConversationExecutionState.ControlState.RUNNING || state.activeTaskId != null)) {
-                return@withLock null
-            }
-
-            val tasks = tasksByConversation[conversationId] ?: return@withLock null
-            val taskIndex = tasks.indexOfFirst { it.placement == QueuedMessagePlacement.END_OF_TURN }
-            if (taskIndex < 0 || tasks[taskIndex].id != taskId) {
-                return@withLock null
-            }
-            val task = tasks[taskIndex]
-            if (!task.requirements.isSatisfiedBy(executor, executorCapabilities, workerWorkspaceMountIds)) {
-                return@withLock null
-            }
-            tasks.removeAt(taskIndex)
-            removeScheduledWorkItems(conversationId, task.id)
-            activeTasksByConversation[conversationId] = task
-            if (tasks.isEmpty()) {
-                tasksByConversation.remove(conversationId)
-            }
-
-            statesByConversation[conversationId] = (state ?: ConversationExecutionState(
-                conversationId = conversationId,
-                controlState = ConversationExecutionState.ControlState.RUNNING,
-                activeTaskId = null,
-                updatedAt = now,
-            )).copy(
-                controlState = ConversationExecutionState.ControlState.RUNNING,
-                activeTaskId = task.id,
-                activeExecutor = executor,
-                activeTaskStartedAt = null,
-                updatedAt = now,
+            val current = schedulingByConversation[conversationId] ?: return@withLock null
+            val transition = current.claim(
+                taskId = taskId,
+                executor = executor,
+                executorCapabilities = executorCapabilities,
+                workerWorkspaceMountIds = workerWorkspaceMountIds,
+                now = Clock.System.now(),
             )
+            val task = transition.result ?: return@withLock null
+            if (!transition.changed) return@withLock task
+            schedulingByConversation[conversationId] = transition.state
+            removeScheduledWorkItems(conversationId, task.id)
             appendTrace(
                 conversationId = conversationId,
                 taskId = task.id,
@@ -188,32 +142,18 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
         executor: ConversationRuntimeExecutorIdentity,
+        outcome: ConversationRuntimeTaskOutcome,
     ): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.activeTaskId != taskId ||
-                state.activeExecutor != executor ||
-                state.activeTaskStartedAt == null
-            ) {
-                return@withLock false
-            }
-            val completedControlState = when (state.controlState) {
-                ConversationExecutionState.ControlState.PAUSE_REQUESTED -> ConversationExecutionState.ControlState.PAUSED
-                else -> state.controlState
-            }
-            val completedState = state.copy(
-                controlState = completedControlState,
-                activeTaskId = null,
-                activeExecutor = null,
-                activeTaskStartedAt = null,
-                updatedAt = Clock.System.now(),
+            val current = schedulingByConversation[conversationId] ?: return@withLock false
+            val transition = current.completeActiveTask(
+                taskId = taskId,
+                executor = executor,
+                outcome = outcome,
+                now = Clock.System.now(),
             )
-            statesByConversation[conversationId] = completedState
-            activeTasksByConversation.remove(conversationId)?.let { completedTask ->
-                completedIdempotencyKeysByConversation
-                    .getOrPut(conversationId) { mutableSetOf() }
-                    .add(completedTask.idempotencyKey)
-            }
+            if (!transition.result) return@withLock false
+            schedulingByConversation[conversationId] = transition.state
             appendTrace(
                 conversationId = conversationId,
                 taskId = taskId,
@@ -223,25 +163,10 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 message = "Runtime task completed",
             )
             bumpRevision(conversationId)
-
-            if (completedState.controlState != ConversationExecutionState.ControlState.STOPPING &&
-                completedState.controlState != ConversationExecutionState.ControlState.INTERRUPTING
+            val completedState = transition.state.executionState
+            if (completedState?.controlState != ConversationExecutionState.ControlState.STOPPING &&
+                completedState?.controlState != ConversationExecutionState.ControlState.INTERRUPTING
             ) {
-                tasksByConversation[conversationId]?.let { tasks ->
-                    val hasInternalContinuation = tasks.any { it.isInternalRuntimeStep() }
-                    if (!hasInternalContinuation) {
-                        val promotedActiveInsertions = tasks
-                            .filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
-                            .map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) }
-                        if (promotedActiveInsertions.isNotEmpty()) {
-                            val existingEndOfTurn = tasks
-                                .filterNot { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
-                            tasks.clear()
-                            tasks.addAll(promotedActiveInsertions + existingEndOfTurn)
-                            bumpRevision(conversationId)
-                        }
-                    }
-                }
                 scheduleNextRunnableTaskIfReady(conversationId)
             }
             true
@@ -254,17 +179,11 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         startedAt: Instant,
     ): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
-                return@withLock false
-            }
-            if (state.activeTaskStartedAt != null) {
-                return@withLock true
-            }
-            statesByConversation[conversationId] = state.copy(
-                activeTaskStartedAt = startedAt,
-                updatedAt = startedAt,
-            )
+            val current = schedulingByConversation[conversationId] ?: return@withLock false
+            val transition = current.markActiveTaskStarted(taskId, executor, startedAt)
+            if (!transition.result) return@withLock false
+            if (!transition.changed) return@withLock true
+            schedulingByConversation[conversationId] = transition.state
             appendTrace(
                 conversationId = conversationId,
                 taskId = taskId,
@@ -283,8 +202,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
-            state.activeTaskId == taskId && state.activeExecutor == executor
+            schedulingByConversation[conversationId]?.confirmActiveTaskOwner(taskId, executor) == true
         }
 
     override suspend fun markActiveTaskInDoubt(
@@ -295,19 +213,22 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         errorType: String?,
     ): ConversationRuntimeTaskIncident? =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock null
-            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
-                return@withLock null
-            }
-            check(state.activeTaskStartedAt != null) {
-                "Cannot mark a runtime task outcome unknown before execution started: ${taskId.value}"
-            }
-            recordActiveTaskIncidentLocked(
-                conversationId = conversationId,
+            val current = schedulingByConversation[conversationId] ?: return@withLock null
+            val transition = current.recordActiveTaskIncident(
+                taskId = taskId,
+                executor = executor,
                 kind = ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN,
                 message = message,
                 errorType = errorType,
+                occurredAt = Clock.System.now(),
             )
+            val incident = transition.result ?: return@withLock null
+            schedulingByConversation[conversationId] = transition.state
+            recordIncidentTrace(incident)
+            toolExecutionsByConversation.remove(conversationId)
+            scheduleNextRunnableTaskIfReady(conversationId)
+            bumpRevision(conversationId)
+            incident
         }
 
     override suspend fun recordClaimedTaskDeliveryFailure(
@@ -318,19 +239,22 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         errorType: String?,
     ): ConversationRuntimeTaskIncident? =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock null
-            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
-                return@withLock null
-            }
-            check(state.activeTaskStartedAt == null) {
-                "Cannot record a delivery failure after runtime task execution started: ${taskId.value}"
-            }
-            recordActiveTaskIncidentLocked(
-                conversationId = conversationId,
+            val current = schedulingByConversation[conversationId] ?: return@withLock null
+            val transition = current.recordActiveTaskIncident(
+                taskId = taskId,
+                executor = executor,
                 kind = ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
                 message = message,
                 errorType = errorType,
+                occurredAt = Clock.System.now(),
             )
+            val incident = transition.result ?: return@withLock null
+            schedulingByConversation[conversationId] = transition.state
+            recordIncidentTrace(incident)
+            toolExecutionsByConversation.remove(conversationId)
+            scheduleNextRunnableTaskIfReady(conversationId)
+            bumpRevision(conversationId)
+            incident
         }
 
     override suspend fun recordPendingTaskDeliveryFailure(
@@ -341,44 +265,18 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         errorType: String?,
     ): ConversationRuntimeTaskIncident? =
         mutex.withLock {
-            val tasks = tasksByConversation[conversationId] ?: return@withLock null
-            val task = tasks.firstOrNull { it.id == taskId } ?: return@withLock null
-            tasks.removeAll { it.id == taskId }
-            if (tasks.isEmpty()) {
-                tasksByConversation.remove(conversationId)
-            }
-            removeScheduledWorkItems(conversationId, taskId)
-            val incident = ConversationRuntimeTaskIncident(
-                task = task,
-                kind = ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
+            val current = schedulingByConversation[conversationId] ?: return@withLock null
+            val transition = current.recordPendingTaskDeliveryFailure(
+                taskId = taskId,
+                executor = executor,
                 message = message,
                 errorType = errorType,
-                executor = executor,
-                executionStartedAt = null,
                 occurredAt = Clock.System.now(),
             )
-            incidentsByConversation.getOrPut(conversationId) { mutableListOf() }.add(incident)
-            completedIdempotencyKeysByConversation
-                .getOrPut(conversationId) { mutableSetOf() }
-                .add(task.idempotencyKey)
-            appendTrace(
-                conversationId = conversationId,
-                taskId = task.id,
-                executor = executor,
-                kind = ConversationRuntimeTraceEntry.Kind.TASK_FAILED,
-                status = ConversationRuntimeTraceEntry.Status.FAILED,
-                message = "${ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED}: " +
-                    formatIncidentMessage(errorType, message),
-            )
-            enqueueIncidentTaskIfNeeded(incident)
-            if (statesByConversation[conversationId] == null) {
-                statesByConversation[conversationId] = ConversationExecutionState(
-                    conversationId = conversationId,
-                    controlState = ConversationExecutionState.ControlState.RUNNING,
-                    activeTaskId = null,
-                    updatedAt = Clock.System.now(),
-                )
-            }
+            val incident = transition.result ?: return@withLock null
+            schedulingByConversation[conversationId] = transition.state
+            removeScheduledWorkItems(conversationId, taskId)
+            recordIncidentTrace(incident)
             scheduleNextRunnableTaskIfReady(conversationId)
             bumpRevision(conversationId)
             incident
@@ -386,8 +284,9 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
 
     override suspend fun listActiveTaskAssignments(): List<ConversationRuntimeActiveTaskAssignment> =
         mutex.withLock {
-            activeTasksByConversation.mapNotNull { (conversationId, task) ->
-                val state = statesByConversation[conversationId] ?: return@mapNotNull null
+            schedulingByConversation.mapNotNull { (conversationId, scheduling) ->
+                val task = scheduling.activeTask ?: return@mapNotNull null
+                val state = scheduling.executionState ?: return@mapNotNull null
                 val executor = state.activeExecutor ?: return@mapNotNull null
                 ConversationRuntimeActiveTaskAssignment(
                     conversationId = conversationId,
@@ -403,30 +302,18 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         taskId: ConversationRuntimeTask.Id,
     ): ConversationRuntimeTaskIncident? =
         mutex.withLock {
-            incidentsByConversation[conversationId]?.lastOrNull { it.task.id == taskId }
+            schedulingByConversation[conversationId]?.findIncident(taskId)
         }
 
     override suspend fun finishIfIdle(conversationId: Conversation.Id): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.activeTaskId != null) {
-                return@withLock false
-            }
-            if (state.controlState == ConversationExecutionState.ControlState.STOPPING ||
-                state.controlState == ConversationExecutionState.ControlState.INTERRUPTING
-            ) {
-                clearConversation(conversationId)
-                bumpRevision(conversationId)
-                return@withLock true
-            }
-            val hasPendingEndOfTurn = tasksByConversation[conversationId]
-                ?.any { it.placement == QueuedMessagePlacement.END_OF_TURN }
-                ?: false
-            if (hasPendingEndOfTurn) {
-                return@withLock false
-            }
-            statesByConversation.remove(conversationId)
+            val current = schedulingByConversation[conversationId] ?: return@withLock false
+            val transition = current.finishIfIdle()
+            if (!transition.result) return@withLock false
+            schedulingByConversation[conversationId] = transition.state
+            readyWorkByConversation.remove(conversationId)
             bumpRevision(conversationId)
+            signalSchedulingChanged(conversationId)
             true
         }
 
@@ -435,7 +322,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         execution: ConversationRuntimeToolExecution,
     ): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
+            val state = schedulingByConversation[conversationId]?.executionState ?: return@withLock false
             if (state.activeTaskId != execution.runtimeTaskId || state.activeExecutor != execution.executor) {
                 return@withLock false
             }
@@ -468,7 +355,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         executor: ConversationRuntimeExecutorIdentity,
     ): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
+            val state = schedulingByConversation[conversationId]?.executionState ?: return@withLock false
             if (state.activeTaskId != taskId || state.activeExecutor != executor) {
                 return@withLock false
             }
@@ -740,36 +627,27 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
 
     override suspend fun requestPause(conversationId: Conversation.Id): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
-            when (state.controlState) {
-                ConversationExecutionState.ControlState.RUNNING -> {
-                    statesByConversation[conversationId] = state.copy(
-                        controlState = ConversationExecutionState.ControlState.PAUSE_REQUESTED,
-                        updatedAt = Clock.System.now(),
-                    )
-                    readyWorkByConversation.remove(conversationId)
-                    appendControlTrace(conversationId, ConversationExecutionState.ControlState.PAUSE_REQUESTED)
-                    bumpRevision(conversationId)
-                    signalSchedulingChanged(conversationId)
-                    true
-                }
-                ConversationExecutionState.ControlState.PAUSE_REQUESTED,
-                ConversationExecutionState.ControlState.PAUSED -> true
-                ConversationExecutionState.ControlState.STOPPING,
-                ConversationExecutionState.ControlState.INTERRUPTING -> false
-            }
+            val current = schedulingByConversation[conversationId] ?: return@withLock false
+            val transition = current.requestPause(Clock.System.now())
+            if (!transition.result) return@withLock false
+            if (!transition.changed) return@withLock true
+            schedulingByConversation[conversationId] = transition.state
+            readyWorkByConversation.remove(conversationId)
+            appendControlTrace(
+                conversationId,
+                checkNotNull(transition.state.executionState).controlState,
+            )
+            bumpRevision(conversationId)
+            signalSchedulingChanged(conversationId)
+            true
         }
 
     override suspend fun markPaused(conversationId: Conversation.Id): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.controlState != ConversationExecutionState.ControlState.PAUSE_REQUESTED) {
-                return@withLock false
-            }
-            statesByConversation[conversationId] = state.copy(
-                controlState = ConversationExecutionState.ControlState.PAUSED,
-                updatedAt = Clock.System.now(),
-            )
+            val current = schedulingByConversation[conversationId] ?: return@withLock false
+            val transition = current.markPaused(Clock.System.now())
+            if (!transition.result) return@withLock false
+            schedulingByConversation[conversationId] = transition.state
             appendControlTrace(conversationId, ConversationExecutionState.ControlState.PAUSED)
             bumpRevision(conversationId)
             signalSchedulingChanged(conversationId)
@@ -778,16 +656,10 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
 
     override suspend fun requestResume(conversationId: Conversation.Id): Boolean =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock false
-            if (state.controlState != ConversationExecutionState.ControlState.PAUSED &&
-                state.controlState != ConversationExecutionState.ControlState.PAUSE_REQUESTED
-            ) {
-                return@withLock false
-            }
-            statesByConversation[conversationId] = state.copy(
-                controlState = ConversationExecutionState.ControlState.RUNNING,
-                updatedAt = Clock.System.now(),
-            )
+            val current = schedulingByConversation[conversationId] ?: return@withLock false
+            val transition = current.requestResume(Clock.System.now())
+            if (!transition.result) return@withLock false
+            schedulingByConversation[conversationId] = transition.state
             appendControlTrace(conversationId, ConversationExecutionState.ControlState.RUNNING)
             scheduleNextRunnableTaskIfReady(conversationId)
             bumpRevision(conversationId)
@@ -806,14 +678,19 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
 
     override suspend fun abort(conversationId: Conversation.Id) {
         mutex.withLock {
-            clearConversation(conversationId)
+            val current = schedulingByConversation[conversationId]
+                ?: ConversationRuntimeSchedulingState(conversationId)
+            schedulingByConversation[conversationId] = current.abort().state
+            toolExecutionsByConversation.remove(conversationId)
+            readyWorkByConversation.remove(conversationId)
             bumpRevision(conversationId)
+            signalSchedulingChanged(conversationId)
         }
     }
 
     override suspend fun find(conversationId: Conversation.Id): ConversationExecutionState? =
         mutex.withLock {
-            statesByConversation[conversationId]
+            schedulingByConversation[conversationId]?.executionState
         }
 
     override suspend fun cancelByMessageId(
@@ -821,12 +698,10 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         messageId: Conversation.Message.Id,
     ): Boolean =
         mutex.withLock {
-            val tasks = tasksByConversation[conversationId] ?: return@withLock false
-            val removed = tasks.removeAll { it.userMessageIdOrNull() == messageId }
-            if (tasks.isEmpty()) {
-                tasksByConversation.remove(conversationId)
-            }
-            if (removed) {
+            val current = schedulingByConversation[conversationId] ?: return@withLock false
+            val transition = current.cancelByMessageId(messageId)
+            if (transition.result) {
+                schedulingByConversation[conversationId] = transition.state
                 removeScheduledWorkItems(conversationId, ConversationRuntimeTask.Id(messageId.value))
                 appendTrace(
                     conversationId = conversationId,
@@ -837,50 +712,46 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
                 )
                 bumpRevision(conversationId)
             }
-            removed
+            transition.result
         }
 
-    override suspend fun takeActiveInsertions(
+    override suspend fun claimActiveInsertions(
         conversationId: Conversation.Id,
         taskId: ConversationRuntimeTask.Id,
         executor: ConversationRuntimeExecutorIdentity,
         placement: QueuedMessagePlacement,
     ): List<ConversationRuntimeTask> =
         mutex.withLock {
-            val state = statesByConversation[conversationId] ?: return@withLock emptyList()
-            if (state.activeTaskId != taskId || state.activeExecutor != executor) {
-                return@withLock emptyList()
-            }
-            val tasks = tasksByConversation[conversationId] ?: return@withLock emptyList()
-            val ready = tasks.filter { it.placement == placement }
-            tasks.removeAll(ready.toSet())
-            if (tasks.isEmpty()) {
-                tasksByConversation.remove(conversationId)
-            }
-            if (ready.isNotEmpty()) {
+            val current = schedulingByConversation[conversationId] ?: return@withLock emptyList()
+            val transition = current.claimActiveInsertions(taskId, executor, placement)
+            if (transition.changed) {
+                schedulingByConversation[conversationId] = transition.state
                 bumpRevision(conversationId)
             }
-            ready
+            transition.result
         }
 
     override suspend fun listPending(conversationId: Conversation.Id): List<ConversationRuntimeTask> =
         mutex.withLock {
-            tasksByConversation[conversationId]?.toList().orEmpty()
+            schedulingByConversation[conversationId]?.listPending().orEmpty()
         }
 
     override suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot =
         mutex.withLock {
+            val scheduling = schedulingByConversation[conversationId]
             ConversationRuntimeSnapshot(
                 revision = revisionsByConversation[conversationId] ?: 0L,
                 conversationId = conversationId,
-                state = statesByConversation[conversationId],
-                activeTask = activeTasksByConversation[conversationId],
-                pendingTasks = tasksByConversation[conversationId]?.toList().orEmpty(),
+                state = scheduling?.executionState,
+                activeTask = scheduling?.activeTask,
+                activeInsertions = scheduling?.activeInsertions.orEmpty(),
+                continuationTask = scheduling?.continuationTask,
+                pendingTasks = scheduling?.pendingTasks.orEmpty(),
                 toolExecutions = toolExecutionsByConversation[conversationId]?.toList().orEmpty(),
                 memoryOperations = memoryOperationsByConversation[conversationId]?.toList().orEmpty(),
                 commandTasks = commandTasksByConversation[conversationId]?.toList().orEmpty(),
                 commandMonitors = commandMonitorsByConversation[conversationId]?.toList().orEmpty(),
-                incidents = incidentsByConversation[conversationId]?.toList().orEmpty(),
+                incidents = scheduling?.incidents.orEmpty(),
                 trace = traceByConversation[conversationId]?.takeLast(TRACE_SNAPSHOT_LIMIT).orEmpty(),
                 lastEventSequence = eventSequencesByConversation[conversationId] ?: 0L,
             )
@@ -1025,22 +896,12 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         conversationId: Conversation.Id,
         controlState: ConversationExecutionState.ControlState,
     ): Boolean {
-        val removedTasks = tasksByConversation.remove(conversationId)?.size ?: 0
+        val current = schedulingByConversation[conversationId] ?: return false
+        val transition = current.requestTerminalState(controlState, Clock.System.now())
+        if (!transition.result) return false
+        schedulingByConversation[conversationId] = transition.state
         readyWorkByConversation.remove(conversationId)
-        val state = statesByConversation[conversationId]
-        if (state == null && removedTasks == 0) {
-            return false
-        }
-        if (state?.activeTaskId != null) {
-            statesByConversation[conversationId] = state.copy(
-                controlState = controlState,
-                updatedAt = Clock.System.now(),
-            )
-        }
         appendControlTrace(conversationId, controlState)
-        if (state?.activeTaskId == null) {
-            clearConversation(conversationId)
-        }
         bumpRevision(conversationId)
         signalSchedulingChanged(conversationId)
         return true
@@ -1052,33 +913,14 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         return next
     }
 
-    private fun clearConversation(conversationId: Conversation.Id) {
-        tasksByConversation.remove(conversationId)
-        activeTasksByConversation.remove(conversationId)
-        statesByConversation.remove(conversationId)
-        toolExecutionsByConversation.remove(conversationId)
-        readyWorkByConversation.remove(conversationId)
-        signalSchedulingChanged(conversationId)
-    }
-
     private fun scheduleNextRunnableTaskIfReady(conversationId: Conversation.Id) {
-        val state = statesByConversation[conversationId]
-        if (state?.activeTaskId != null) {
+        val item = schedulingByConversation[conversationId]?.readyWorkItem()
+        if (item == null) {
+            if (readyWorkByConversation.remove(conversationId) != null) {
+                signalSchedulingChanged(conversationId)
+            }
             return
         }
-        if (state != null && state.controlState != ConversationExecutionState.ControlState.RUNNING) {
-            return
-        }
-        val task = tasksByConversation[conversationId]
-            ?.firstOrNull { it.placement == QueuedMessagePlacement.END_OF_TURN }
-            ?: return
-        val item = ConversationRuntimeWorkItem(
-            conversationId = conversationId,
-            reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
-            taskId = task.id,
-            requirements = task.requirements,
-            createdAt = task.createdAt,
-        )
         if (readyWorkByConversation[conversationId] == item) {
             return
         }
@@ -1087,7 +929,11 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     }
 
     private fun signalSchedulingChanged(conversationId: Conversation.Id) {
-        check(schedulingSignalChannel.trySend(conversationId).isSuccess) {
+        check(
+            schedulingSignalChannel.trySend(
+                ConversationRuntimeSchedulingSignal.Changed(conversationId)
+            ).isSuccess
+        ) {
             "Conversation runtime scheduling signal channel is closed"
         }
     }
@@ -1151,108 +997,25 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         CommandMonitor.Status.CANCELLED -> ConversationRuntimeTraceEntry.Status.CANCELLED
     }
 
-    private fun recordActiveTaskIncidentLocked(
-        conversationId: Conversation.Id,
-        kind: ConversationRuntimeTaskIncident.Kind,
-        message: String,
-        errorType: String?,
-    ): ConversationRuntimeTaskIncident? {
-        val state = statesByConversation[conversationId] ?: return null
-        val task = activeTasksByConversation[conversationId] ?: return null
-        check(
-            (kind == ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN) ==
-                (state.activeTaskStartedAt != null)
-        ) {
-            "Runtime incident kind does not match execution start boundary: task=${task.id.value} kind=$kind"
-        }
-        activeTasksByConversation.remove(conversationId)
-        completedIdempotencyKeysByConversation
-            .getOrPut(conversationId) { mutableSetOf() }
-            .add(task.idempotencyKey)
-        tasksByConversation[conversationId]?.removeAll { it.isInternalRuntimeStep() }
-        if (tasksByConversation[conversationId].isNullOrEmpty()) {
-            tasksByConversation.remove(conversationId)
-        }
-        readyWorkByConversation.remove(conversationId)
-        toolExecutionsByConversation.remove(conversationId)
-        val incident = ConversationRuntimeTaskIncident(
-            task = task,
-            kind = kind,
-            message = message,
-            errorType = errorType,
-            executor = state.activeExecutor,
-            executionStartedAt = state.activeTaskStartedAt,
-            occurredAt = Clock.System.now(),
-        )
-        incidentsByConversation.getOrPut(conversationId) { mutableListOf() }.add(incident)
+    private fun recordIncidentTrace(incident: ConversationRuntimeTaskIncident) {
         appendTrace(
-            conversationId = conversationId,
-            taskId = task.id,
-            executor = state.activeExecutor,
-            kind = when (kind) {
+            conversationId = incident.task.conversationId,
+            taskId = incident.task.id,
+            executor = incident.executor,
+            kind = when (incident.kind) {
                 ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED ->
                     ConversationRuntimeTraceEntry.Kind.TASK_FAILED
                 ConversationRuntimeTaskIncident.Kind.OUTCOME_UNKNOWN ->
                     ConversationRuntimeTraceEntry.Kind.TASK_IN_DOUBT
             },
             status = ConversationRuntimeTraceEntry.Status.FAILED,
-            message = "$kind: " +
-                formatIncidentMessage(errorType, message),
+            message = "${incident.kind}: " +
+                formatIncidentMessage(incident.errorType, incident.message),
         )
-
-        if (state.controlState == ConversationExecutionState.ControlState.STOPPING ||
-            state.controlState == ConversationExecutionState.ControlState.INTERRUPTING
-        ) {
-            clearConversation(conversationId)
-            bumpRevision(conversationId)
-            return incident
-        }
-
-        enqueueIncidentTaskIfNeeded(incident)
-        val pendingTasks = tasksByConversation[conversationId].orEmpty()
-        if (pendingTasks.isEmpty()) {
-            statesByConversation.remove(conversationId)
-        } else {
-            statesByConversation[conversationId] = state.copy(
-                controlState = when (state.controlState) {
-                    ConversationExecutionState.ControlState.PAUSE_REQUESTED ->
-                        ConversationExecutionState.ControlState.PAUSED
-                    else -> state.controlState
-                },
-                activeTaskId = null,
-                activeExecutor = null,
-                activeTaskStartedAt = null,
-                updatedAt = Clock.System.now(),
-            )
-            scheduleNextRunnableTaskIfReady(conversationId)
-        }
-        bumpRevision(conversationId)
-        return incident
-    }
-
-    private fun enqueueIncidentTaskIfNeeded(incident: ConversationRuntimeTaskIncident) {
-        if (incident.task.payload is ConversationRuntimeTask.Payload.ExecutionIncident) {
-            return
-        }
-        val task = ConversationRuntimeTask(
-            id = ConversationRuntimeTask.Id("${incident.task.id.value}:incident"),
-            conversationId = incident.task.conversationId,
-            actorUserId = incident.task.actorUserId,
-            payload = ConversationRuntimeTask.Payload.ExecutionIncident(incident.task.id),
-            placement = QueuedMessagePlacement.END_OF_TURN,
-            idempotencyKey = "${incident.task.idempotencyKey}:incident",
-            requirements = ConversationRuntimeTaskRequirements(
-                capabilities = setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
-                target = ConversationRuntimeTaskTarget.Server,
-            ),
-            createdAt = incident.occurredAt,
-        )
-        val tasks = tasksByConversation.getOrPut(task.conversationId) { mutableListOf() }
-        if (tasks.none { it.id == task.id }) {
-            tasks.add(0, task)
+        if (incident.task.payload !is ConversationRuntimeTask.Payload.ExecutionIncident) {
             appendTrace(
-                conversationId = task.conversationId,
-                taskId = task.id,
+                conversationId = incident.task.conversationId,
+                taskId = ConversationRuntimeTask.Id("${incident.task.id.value}:incident"),
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
                 status = ConversationRuntimeTraceEntry.Status.STARTED,
                 message = "Execution incident handling task submitted",

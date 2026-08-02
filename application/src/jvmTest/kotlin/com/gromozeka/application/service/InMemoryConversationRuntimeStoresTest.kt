@@ -8,8 +8,10 @@ import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
+import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
+import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
@@ -26,6 +28,8 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.ConversationRuntimeServerSessionId
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
@@ -51,7 +55,12 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.submit(first))
         assertTrue(coordinator.submit(second))
 
-        assertEquals(conversationId, withTimeout(1_000) { coordinator.schedulingSignals.first() })
+        assertEquals(
+            ConversationRuntimeSchedulingSignal.Changed(conversationId),
+            withTimeout(1_000) {
+                coordinator.schedulingSignals.first { it is ConversationRuntimeSchedulingSignal.Changed }
+            },
+        )
         assertEquals(listOf(first.id), coordinator.listReadyWorkItems(10).map { it.taskId })
         assertNull(coordinator.claimAsEligibleWorker(second, worker("worker-1")))
         assertEquals(first, coordinator.claimAsEligibleWorker(first, worker("worker-2")))
@@ -67,7 +76,14 @@ class InMemoryConversationRuntimeStoresTest {
                 Clock.System.now(),
             )
         )
-        assertTrue(coordinator.completeActiveTask(conversationId, first.id, executor(worker("worker-2"))))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                first.id,
+                executor(worker("worker-2")),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
         assertEquals(listOf(second.id), coordinator.listReadyWorkItems(10).map { it.taskId })
         assertEquals(second, coordinator.claimAsEligibleWorker(second, worker("worker-3")))
     }
@@ -92,7 +108,14 @@ class InMemoryConversationRuntimeStoresTest {
         )
         assertTrue(coordinator.requestPause(conversationId))
         assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
-        assertTrue(coordinator.completeActiveTask(conversationId, activeTask.id, executor(worker)))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                activeTask.id,
+                executor(worker),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
         assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
         assertTrue(coordinator.requestResume(conversationId))
         assertEquals(listOf(pendingTask.id), coordinator.listReadyWorkItems(10).map { it.taskId })
@@ -110,7 +133,7 @@ class InMemoryConversationRuntimeStoresTest {
 
         assertEquals(
             listOf(steering.id),
-            coordinator.takeActiveInsertions(
+            coordinator.claimActiveInsertions(
                 conversationId,
                 active.id,
                 executor(worker("worker-1")),
@@ -140,7 +163,14 @@ class InMemoryConversationRuntimeStoresTest {
                 Clock.System.now(),
             )
         )
-        assertTrue(coordinator.completeActiveTask(conversationId, active.id, executor(worker("worker-1"))))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                active.id,
+                executor(worker("worker-1")),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
 
         val promoted = coordinator.claimAsEligibleWorker(steering, worker("worker-2"))
         assertEquals(steering.id, promoted?.id)
@@ -153,7 +183,14 @@ class InMemoryConversationRuntimeStoresTest {
                 Clock.System.now(),
             )
         )
-        assertTrue(coordinator.completeActiveTask(conversationId, promoted.id, executor(worker("worker-2"))))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                promoted.id,
+                executor(worker("worker-2")),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
 
         assertEquals(
             queued.id,
@@ -162,11 +199,214 @@ class InMemoryConversationRuntimeStoresTest {
     }
 
     @Test
+    fun `continuation stays ahead of an async root input`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val root = task("root-message", QueuedMessagePlacement.END_OF_TURN)
+        val continuation = llmTask("root-message-llm", root)
+        val memoryCompletion = memoryCompletionTask("memory-run-1")
+        val worker = worker("worker-1")
+
+        assertTrue(coordinator.submit(root))
+        assertEquals(root, coordinator.claimAsEligibleWorker(root, worker))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, root.id, executor(worker), Clock.System.now()))
+        assertTrue(coordinator.submit(memoryCompletion))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                root.id,
+                executor(worker),
+                ConversationRuntimeTaskOutcome.Continue(continuation),
+            )
+        )
+
+        assertEquals(continuation.id, coordinator.listReadyWorkItems(10).single().taskId)
+        assertEquals(continuation, coordinator.claimAsEligibleWorker(continuation, worker("worker-2")))
+    }
+
+    @Test
+    fun `one active task can install only one continuation`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val root = task("root-message", QueuedMessagePlacement.END_OF_TURN)
+        val firstContinuation = llmTask("continuation-1", root)
+        val secondContinuation = llmTask("continuation-2", root)
+        val worker = worker("worker-1")
+
+        assertTrue(coordinator.submit(root))
+        assertEquals(root, coordinator.claimAsEligibleWorker(root, worker))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, root.id, executor(worker), Clock.System.now()))
+
+        val completions = listOf(firstContinuation, secondContinuation).map { continuation ->
+            async {
+                coordinator.completeActiveTask(
+                    conversationId,
+                    root.id,
+                    executor(worker),
+                    ConversationRuntimeTaskOutcome.Continue(continuation),
+                )
+            }
+        }.awaitAll()
+
+        assertEquals(1, completions.count { it })
+        assertEquals(1, coordinator.listReadyWorkItems(10).size)
+        assertEquals(1, listOfNotNull(coordinator.snapshot(conversationId).continuationTask).size)
+    }
+
+    @Test
+    fun `consumed active insertion cannot be submitted again`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val worker = worker("worker-1")
+
+        assertTrue(coordinator.submit(active))
+        assertEquals(active, coordinator.claimAsEligibleWorker(active, worker))
+        assertTrue(coordinator.submit(steering))
+        assertEquals(
+            listOf(steering),
+            coordinator.claimActiveInsertions(
+                conversationId,
+                active.id,
+                executor(worker),
+                QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            ),
+        )
+
+        assertFalse(coordinator.submit(steering))
+    }
+
+    @Test
+    fun `active insertions return to the queue when task outcome is unknown`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val worker = worker("worker-1")
+
+        assertTrue(coordinator.submit(active))
+        assertEquals(active, coordinator.claimAsEligibleWorker(active, worker))
+        assertTrue(coordinator.submit(steering))
+        assertEquals(
+            listOf(steering),
+            coordinator.claimActiveInsertions(
+                conversationId,
+                active.id,
+                executor(worker),
+                QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            ),
+        )
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                active.id,
+                executor(worker),
+                Clock.System.now(),
+            )
+        )
+
+        assertNotNull(
+            coordinator.markActiveTaskInDoubt(
+                conversationId = conversationId,
+                taskId = active.id,
+                executor = executor(worker),
+                message = "Worker connection was lost",
+            )
+        )
+
+        val snapshot = coordinator.snapshot(conversationId)
+        assertTrue(snapshot.activeInsertions.isEmpty())
+        assertEquals(
+            listOf(
+                ConversationRuntimeTask.Payload.ExecutionIncident(active.id),
+                steering.payload,
+            ),
+            snapshot.pendingTasks.map { it.payload },
+        )
+        assertEquals(
+            QueuedMessagePlacement.END_OF_TURN,
+            snapshot.pendingTasks.last().placement,
+        )
+    }
+
+    @Test
+    fun `started task cannot be claimed for execution again`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val worker = worker("worker-1")
+
+        assertTrue(coordinator.submit(active))
+        assertEquals(active, coordinator.claimAsEligibleWorker(active, worker))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                active.id,
+                executor(worker),
+                Clock.System.now(),
+            )
+        )
+
+        assertNull(coordinator.claimAsEligibleWorker(active, worker))
+    }
+
+    @Test
+    fun `delivery failure closes a continuation instead of leaving it ready`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val root = task("root-message", QueuedMessagePlacement.END_OF_TURN)
+        val continuation = llmTask("continuation-message", root)
+        val worker = worker("worker-1")
+
+        assertTrue(coordinator.submit(root))
+        assertEquals(root, coordinator.claimAsEligibleWorker(root, worker))
+        assertTrue(coordinator.markActiveTaskStarted(conversationId, root.id, executor(worker), Clock.System.now()))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                root.id,
+                executor(worker),
+                ConversationRuntimeTaskOutcome.Continue(continuation),
+            )
+        )
+
+        assertNotNull(
+            coordinator.recordPendingTaskDeliveryFailure(
+                conversationId = conversationId,
+                taskId = continuation.id,
+                executor = executor(worker("worker-2")),
+                message = "Continuation could not reach its executor",
+            )
+        )
+
+        val snapshot = coordinator.snapshot(conversationId)
+        assertNull(snapshot.continuationTask)
+        assertEquals(
+            ConversationRuntimeTask.Payload.ExecutionIncident(continuation.id),
+            snapshot.pendingTasks.single().payload,
+        )
+    }
+
+    @Test
     fun `coordinator gates claim by worker requirements`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val llmTask = llmTask("llm-message")
+        val rootTask = task("root-message", QueuedMessagePlacement.END_OF_TURN)
+        val rootWorker = worker("root-worker")
+        val llmTask = llmTask("llm-message", rootTask)
 
-        assertTrue(coordinator.submit(llmTask))
+        assertTrue(coordinator.submit(rootTask))
+        assertEquals(rootTask, coordinator.claimAsEligibleWorker(rootTask, rootWorker))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                rootTask.id,
+                executor(rootWorker),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                rootTask.id,
+                executor(rootWorker),
+                ConversationRuntimeTaskOutcome.Continue(llmTask),
+            )
+        )
         assertNull(
             coordinator.claimDeliveredTask(
                 conversationId = conversationId,
@@ -265,7 +505,14 @@ class InMemoryConversationRuntimeStoresTest {
             errorType = "WorkerUnavailable",
         )
         assertEquals(task.id, incident?.task?.id)
-        assertFalse(coordinator.completeActiveTask(conversationId, task.id, executor(first)))
+        assertFalse(
+            coordinator.completeActiveTask(
+                conversationId,
+                task.id,
+                executor(first),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
         assertNull(coordinator.claimAsEligibleWorker(task, second))
 
         val snapshot = coordinator.snapshot(conversationId)
@@ -289,7 +536,14 @@ class InMemoryConversationRuntimeStoresTest {
         assertTrue(coordinator.submit(task))
         assertEquals(task, coordinator.claimAsEligibleWorker(task, worker))
         assertNull(coordinator.listActiveTaskAssignments().single().startedAt)
-        assertFalse(coordinator.completeActiveTask(conversationId, task.id, executor(worker)))
+        assertFalse(
+            coordinator.completeActiveTask(
+                conversationId,
+                task.id,
+                executor(worker),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
         assertFailsWith<IllegalStateException> {
             coordinator.markActiveTaskInDoubt(
                 conversationId = conversationId,
@@ -325,12 +579,28 @@ class InMemoryConversationRuntimeStoresTest {
 
         assertTrue(coordinator.requestPause(conversationId))
         assertEquals(ConversationExecutionState.ControlState.PAUSE_REQUESTED, coordinator.find(conversationId)?.controlState)
-        assertTrue(coordinator.markPaused(conversationId))
+        assertFalse(coordinator.markPaused(conversationId))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId = conversationId,
+                taskId = task.id,
+                executor = executor(worker("worker-1")),
+                startedAt = Clock.System.now(),
+            )
+        )
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId = conversationId,
+                taskId = task.id,
+                executor = executor(worker("worker-1")),
+                outcome = ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
         assertEquals(ConversationExecutionState.ControlState.PAUSED, coordinator.find(conversationId)?.controlState)
         assertTrue(coordinator.requestResume(conversationId))
         assertEquals(ConversationExecutionState.ControlState.RUNNING, coordinator.find(conversationId)?.controlState)
         assertTrue(coordinator.requestStop(conversationId))
-        assertEquals(ConversationExecutionState.ControlState.STOPPING, coordinator.find(conversationId)?.controlState)
+        assertNull(coordinator.find(conversationId))
     }
 
     @Test
@@ -640,10 +910,15 @@ class InMemoryConversationRuntimeStoresTest {
         )
     }
 
-    private fun llmTask(messageId: String): ConversationRuntimeTask =
+    private fun llmTask(
+        messageId: String,
+        parentTask: ConversationRuntimeTask,
+    ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(messageId),
             conversationId = conversationId,
+            turnId = parentTask.turnId,
+            parentTaskId = parentTask.id,
             payload = ConversationRuntimeTask.Payload.LlmCall(
                 rootUserMessageId = Conversation.Message.Id("root-message"),
                 agentDefinitionId = agentDefinitionId,
@@ -654,6 +929,27 @@ class InMemoryConversationRuntimeStoresTest {
             requirements = ConversationRuntimeTaskRequirements(
                 capabilities = setOf(
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
+                    ConversationRuntimeCapability.MEMORY_PIPELINE,
+                ),
+                target = ConversationRuntimeTaskTarget.Server,
+            ),
+            createdAt = Clock.System.now(),
+        )
+
+    private fun memoryCompletionTask(runId: String): ConversationRuntimeTask =
+        ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("$runId:delivery"),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.MemoryRunCompletion(
+                runId = MemoryRun.Id(runId),
+                agentDefinitionId = agentDefinitionId,
+                statusToolName = "memory_run_status",
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "test:$runId:delivery",
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(
+                    ConversationRuntimeCapability.CONVERSATION_TURN,
                     ConversationRuntimeCapability.MEMORY_PIPELINE,
                 ),
                 target = ConversationRuntimeTaskTarget.Server,
