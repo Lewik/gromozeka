@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-noble
+FROM eclipse-temurin:21-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64
 
 RUN groupadd --gid 10001 gromozeka \
     && useradd --uid 10001 --gid gromozeka --create-home gromozeka
