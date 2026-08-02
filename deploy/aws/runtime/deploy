@@ -16,6 +16,7 @@ data_dir="${GROMOZEKA_DATA_DIR:-/data/gromozeka}"
 secrets_file="$data_dir/runtime/runtime.env"
 deployment_file="$data_dir/runtime/deployment.env"
 cloud_file="/etc/gromozeka/cloud.env"
+postgres_major="18"
 
 [[ "$release_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || {
   echo "RELEASE_VERSION must be a semantic Gromozeka release version" >&2
@@ -77,6 +78,16 @@ compose() {
 }
 
 compose config --quiet
+
+postgres_version_file="$(find "$data_dir/postgres" -maxdepth 4 -name PG_VERSION -print -quit)"
+installed_postgres_major="$(cat "$postgres_version_file" 2>/dev/null || true)"
+if [[ -n "$installed_postgres_major" && "$installed_postgres_major" != "$postgres_major" ]]; then
+  echo "Resetting PostgreSQL data for major upgrade: $installed_postgres_major -> $postgres_major"
+  compose down --remove-orphans
+  find "$data_dir/postgres" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+  chown 999:999 "$data_dir/postgres"
+fi
+
 compose pull
 if ! compose up --detach --remove-orphans --wait --wait-timeout 300; then
   echo "Gromozeka services did not become healthy" >&2

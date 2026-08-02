@@ -43,7 +43,7 @@ docker run -d \
   -e POSTGRES_DB=gromozeka \
   -e POSTGRES_USER=gromozeka \
   -e POSTGRES_PASSWORD=smoke \
-  pgvector/pgvector:0.8.6-pg16@sha256:a36250871de0833b8757561c72f2477ef1ddd1101afa4e617fb552e0de514c6b >/dev/null
+  pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62 >/dev/null
 
 for attempt in {1..60}; do
   if docker exec "$postgres" pg_isready -U gromozeka -d gromozeka >/dev/null 2>&1; then

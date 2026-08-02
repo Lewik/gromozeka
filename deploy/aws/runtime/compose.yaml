@@ -14,7 +14,7 @@ x-app-environment: &app-environment
 
 services:
   postgres:
-    image: pgvector/pgvector:0.8.6-pg16@sha256:a36250871de0833b8757561c72f2477ef1ddd1101afa4e617fb552e0de514c6b
+    image: pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
     restart: unless-stopped
     shm_size: 256m
     mem_limit: 512m
@@ -24,7 +24,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: --data-checksums
     volumes:
-      - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/postgres:/var/lib/postgresql/data
+      - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gromozeka -d gromozeka"]
       interval: 5s

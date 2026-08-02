@@ -2,14 +2,14 @@ name: gromozeka
 
 services:
   postgres:
-    image: pgvector/pgvector:0.8.6-pg16@sha256:a36250871de0833b8757561c72f2477ef1ddd1101afa4e617fb552e0de514c6b
+    image: pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
     restart: unless-stopped
     environment:
       POSTGRES_DB: gromozeka
       POSTGRES_USER: gromozeka
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres18-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gromozeka -d gromozeka"]
       interval: 5s
@@ -82,7 +82,7 @@ services:
       - ./certs:/certs:ro
 
 volumes:
-  postgres-data:
+  postgres18-data:
   gromozeka-home:
   gromozeka-worker-home:
   caddy-data:
