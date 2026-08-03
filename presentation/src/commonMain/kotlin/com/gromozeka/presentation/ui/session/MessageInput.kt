@@ -41,6 +41,7 @@ import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
+import com.gromozeka.presentation.ui.advancedPttGestures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -99,12 +100,6 @@ fun MessageInput(
         }
     }
 
-    fun toggleVoiceCapture() {
-        coroutineScope.launch {
-            pttEventHandler.toggleVoiceCapture()
-        }
-    }
-
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -115,7 +110,8 @@ fun MessageInput(
                 statusMessage = pttStatusMessage,
                 unavailableReason = pttUnavailableReason,
                 expandedIdle = compactVoiceMode,
-                onToggle = ::toggleVoiceCapture,
+                pttEventHandler = pttEventHandler,
+                coroutineScope = coroutineScope,
             )
         }
 
@@ -205,12 +201,22 @@ fun MessageInput(
                     if (showPttButton && !compactVoiceMode) {
                         val isRecording = pttState == PttState.RECORDING
                         CompactButton(
-                            onClick = ::toggleVoiceCapture,
+                            onClick = {},
                             enabled = pttState != PttState.TRANSCRIBING &&
                                 (pttState != PttState.IDLE || pttUnavailableReason == null),
                             modifier = Modifier
                                 .zIndex(2f)
                                 .size(actionButtonSize)
+                                .then(
+                                    if (
+                                        pttState == PttState.TRANSCRIBING ||
+                                        (pttState == PttState.IDLE && pttUnavailableReason != null)
+                                    ) {
+                                        Modifier
+                                    } else {
+                                        Modifier.advancedPttGestures(pttEventHandler, coroutineScope)
+                                    }
+                                )
                                 .testTag(UiTestTag.PttButton.value),
                             colors = if (isRecording) {
                                 ButtonDefaults.buttonColors(
@@ -300,7 +306,8 @@ private fun VoiceCaptureStatus(
     statusMessage: String?,
     unavailableReason: String?,
     expandedIdle: Boolean,
-    onToggle: () -> Unit,
+    pttEventHandler: PttEventHandler,
+    coroutineScope: CoroutineScope,
 ) {
     if (state == PttState.IDLE && statusMessage.isNullOrBlank() && !expandedIdle) return
 
@@ -354,7 +361,9 @@ private fun VoiceCaptureStatus(
         else -> MaterialTheme.colorScheme.onSecondaryContainer
     }
     val interactionModifier = if (isInteractive) {
-        Modifier.clickable(onClick = onToggle)
+        Modifier
+            .clickable(onClick = {})
+            .advancedPttGestures(pttEventHandler, coroutineScope)
     } else {
         Modifier
     }

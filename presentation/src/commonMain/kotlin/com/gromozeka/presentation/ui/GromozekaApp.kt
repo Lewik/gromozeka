@@ -246,11 +246,11 @@ fun GromozekaAppContent(
                         event.utf16CodePoint == 167 -> {
                             when (event.type) {
                                 KeyEventType.KeyDown -> {
-                                    coroutineScope.launch { keyboardPttGestureDetector.onGestureDown() }
+                                    keyboardPttGestureDetector.onGestureDown()
                                 }
 
                                 KeyEventType.KeyUp -> {
-                                    coroutineScope.launch { keyboardPttGestureDetector.onGestureUp() }
+                                    keyboardPttGestureDetector.onGestureUp()
                                 }
                             }
                             true

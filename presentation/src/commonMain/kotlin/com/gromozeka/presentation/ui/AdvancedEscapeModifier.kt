@@ -7,7 +7,6 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.input.key.*
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.UnifiedGestureDetector
-import kotlinx.coroutines.launch
 
 fun Modifier.advancedEscape(
     pttEventRouter: PttEventHandler,
@@ -18,9 +17,7 @@ fun Modifier.advancedEscape(
     this.onKeyEvent { event ->
         if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
             // Escape should only reset PTT state, not start new PTT
-            coroutineScope.launch {
-                gestureDetector.resetGestureState()
-            }
+            gestureDetector.resetGestureState()
             true
         } else {
             false

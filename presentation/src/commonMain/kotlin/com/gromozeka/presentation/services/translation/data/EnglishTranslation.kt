@@ -39,8 +39,8 @@ data class EnglishTranslation(
     override val screenshotTooltip: String = "Window screenshot",
     override val sendingMessageTooltip: String = "Sending message...",
     override val sendMessageTooltip: String = "Send message (Shift+Enter)",
-    override val recordingTooltip: String = "Recording... (tap to stop)",
-    override val pttButtonTooltip: String = "Tap to record voice",
+    override val recordingTooltip: String = "Recording... (release to stop)",
+    override val pttButtonTooltip: String = "Hold to talk · click to stop speech · double-click to interrupt",
     override val builtinStringsTooltip: String = "Use builtin strings",
     override val externalStringsTooltip: String = "Use external JSON strings",
 
