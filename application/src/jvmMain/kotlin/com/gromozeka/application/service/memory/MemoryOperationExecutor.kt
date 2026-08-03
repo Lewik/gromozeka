@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.WorkspaceTextFileReader
 import com.gromozeka.shared.uuid.uuid7
 import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
@@ -43,8 +44,9 @@ class MemoryOperationExecutor internal constructor(
     private val embeddingIndexer: MemoryEmbeddingIndexer,
     private val settingsProvider: SettingsProvider,
     private val memoryStore: MemoryStore,
+    workspaceTextFileReader: WorkspaceTextFileReader,
 ) {
-    private val rememberContentResolver = MemoryRememberContentResolver()
+    private val rememberContentResolver = MemoryRememberContentResolver(workspaceTextFileReader)
     private val sourceMapper = ConversationMessageMemorySourceMapper()
     private val sourceForgetCascade = MemorySourceForgetCascade()
     private val profileUpdater = ProjectionMemoryProfileUpdater(memoryStore)

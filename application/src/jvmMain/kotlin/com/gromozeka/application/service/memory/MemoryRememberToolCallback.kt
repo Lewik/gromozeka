@@ -1,8 +1,14 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.WorkspacePathReference
+import com.gromozeka.domain.service.WorkspacePathAccessContext
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ServerToolMetadata
+import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -21,7 +27,7 @@ class MemoryRememberToolCallback(
         val target: String = "previous_user_message",
         val target_message_id: String? = null,
         val text: String? = null,
-        val file_path: String? = null,
+        val workspace_file: WorkspacePathReference? = null,
         val raw_url: String? = null,
         val document_type: String? = null,
         val title: String? = null,
@@ -34,7 +40,7 @@ class MemoryRememberToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_REMEMBER_TOOL_NAME,
-        description = "Queue persistence of memory-worthy information into the current authorized memory bank and return a run_id immediately. Follow the returned result_delivery contract: Gromozeka delivers the final result automatically, while external callers poll memory_run_status. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. The runtime selects the memory bank; tool arguments cannot override it. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
+        description = "Queue persistence of memory-worthy information into the current authorized memory bank and return a run_id immediately. Follow the returned result_delivery contract: Gromozeka delivers the final result automatically, while external callers poll memory_run_status. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. The runtime selects the memory bank; tool arguments cannot override it. For documents, pass exactly one of text, workspace_file, or raw_url plus document_type='markdown'. workspace_file addresses a file through an exact WorkspaceMount and is read on that mount's Worker. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
         inputSchema = """
             {
               "type": "object",
@@ -42,7 +48,7 @@ class MemoryRememberToolCallback(
               "properties": {
                 "target": {
                   "type": "string",
-                  "description": "Memory write target. Supports 'previous_user_message', 'message_id', 'provided_text', 'file_path', 'raw_url', and 'provided_document'."
+                  "description": "Memory write target. Supports 'previous_user_message', 'message_id', 'provided_text', 'workspace_file', 'raw_url', and 'provided_document'."
                 },
                 "target_message_id": {
                   "type": "string",
@@ -52,9 +58,21 @@ class MemoryRememberToolCallback(
                   "type": "string",
                   "description": "Exact arbitrary text to persist when target is 'provided_text' or document content when document_type is set. This mode is allowed only with explicit user consent."
                 },
-                "file_path": {
-                  "type": "string",
-                  "description": "Absolute or working-directory-relative path to a local raw text/markdown file to remember. Use only with explicit user consent."
+                "workspace_file": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Raw text/markdown file addressed through an exact WorkspaceMount. Use only with explicit user consent.",
+                  "properties": {
+                    "workspace_mount_id": {
+                      "type": "string",
+                      "description": "Exact WorkspaceMount ID. It determines the Workspace, Worker, and root path."
+                    },
+                    "path": {
+                      "type": "string",
+                      "description": "Absolute path on the Worker or path relative to the WorkspaceMount root."
+                    }
+                  },
+                  "required": ["workspace_mount_id", "path"]
                 },
                 "raw_url": {
                   "type": "string",
@@ -62,7 +80,7 @@ class MemoryRememberToolCallback(
                 },
                 "document_type": {
                   "type": "string",
-                  "description": "Optional document type for provided content. Currently supports 'markdown'. Required for text-as-document; inferred as markdown for file_path/raw_url."
+                  "description": "Optional document type for provided content. Currently supports 'markdown'. Required for text-as-document; inferred as markdown for workspace_file/raw_url."
                 },
                 "title": {
                   "type": "string",
@@ -98,14 +116,15 @@ class MemoryRememberToolCallback(
         val namespace = context.requiredMemoryNamespace()
         val resultDelivery = context.memoryOperationResultDeliveryOrNull()
         val writeSurface = MemoryWriteSurface.fromContextValue(context?.getString(MEMORY_WRITE_SURFACE_CONTEXT_KEY))
-        val providedText = input.text?.trim().orEmpty()
-        val providedFilePath = input.file_path?.trim().orEmpty()
+        val providedText = input.text?.takeIf { it.isNotBlank() }
+        val providedWorkspaceFile = input.workspace_file
         val providedRawUrl = input.raw_url?.trim().orEmpty()
-        val hasProvidedContent = providedText.isNotBlank() || providedFilePath.isNotBlank() || providedRawUrl.isNotBlank()
+        val hasProvidedContent =
+            providedText != null || providedWorkspaceFile != null || providedRawUrl.isNotBlank()
         if (input.target in providedContentTargets || hasProvidedContent) {
             if (!hasProvidedContent) {
                 return@runBlocking MemoryToolResultRenderer.failureJsonString(
-                    "Provided content target requires exactly one of text, file_path, or raw_url."
+                    "Provided content target requires exactly one of text, workspace_file, or raw_url."
                 )
             }
             if (!input.user_consent_confirmed) {
@@ -113,11 +132,22 @@ class MemoryRememberToolCallback(
                     "Provided content targets require explicit user consent and user_consent_confirmed=true."
                 )
             }
+            val workspacePathAccess = providedWorkspaceFile?.let {
+                val actorUserId = context?.getString(TOOL_CONTEXT_USER_ID)?.let(User::Id)
+                val expectedProjectId = context?.getString(TOOL_CONTEXT_PROJECT_ID)?.let(Project::Id)
+                if (actorUserId == null && expectedProjectId == null) {
+                    return@runBlocking MemoryToolResultRenderer.failureJsonString(
+                        "workspace_file requires an authenticated user or project execution context."
+                    )
+                }
+                WorkspacePathAccessContext(actorUserId, expectedProjectId)
+            }
             return@runBlocking memoryOperations.rememberProvidedContent(
                 conversationIdValue = context?.getString("conversationId"),
                 namespace = namespace,
-                text = providedText.takeIf { it.isNotBlank() },
-                filePath = providedFilePath.takeIf { it.isNotBlank() },
+                text = providedText,
+                workspaceFile = providedWorkspaceFile,
+                workspacePathAccess = workspacePathAccess,
                 rawUrl = providedRawUrl.takeIf { it.isNotBlank() },
                 documentType = input.document_type ?: "markdown".takeIf { input.target == "provided_document" },
                 title = input.title,
@@ -160,6 +190,6 @@ class MemoryRememberToolCallback(
     }
 
     private companion object {
-        val providedContentTargets = setOf("provided_text", "provided_document", "file_path", "raw_url")
+        val providedContentTargets = setOf("provided_text", "provided_document", "workspace_file", "raw_url")
     }
 }

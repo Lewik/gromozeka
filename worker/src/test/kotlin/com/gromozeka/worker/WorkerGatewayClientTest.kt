@@ -25,6 +25,9 @@ import com.gromozeka.domain.service.WorkerControlHandler
 import com.gromozeka.domain.service.WorkerAudioCaptureHandler
 import com.gromozeka.domain.service.WorkerAudioCaptureRequest
 import com.gromozeka.domain.service.WorkerAudioCaptureResult
+import com.gromozeka.domain.service.WorkerWorkspaceTextFileHandler
+import com.gromozeka.domain.service.WorkerWorkspaceTextFileReadRequest
+import com.gromozeka.domain.service.WorkspaceTextFile
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
@@ -147,6 +150,10 @@ class WorkerGatewayClientTest {
             workerAudioCaptureHandler = object : WorkerAudioCaptureHandler {
                 override suspend fun handle(request: WorkerAudioCaptureRequest): WorkerAudioCaptureResult =
                     error("Unused Worker audio capture request")
+            },
+            workerWorkspaceTextFileHandler = object : WorkerWorkspaceTextFileHandler {
+                override suspend fun read(request: WorkerWorkspaceTextFileReadRequest): WorkspaceTextFile =
+                    error("Unused workspace text file request")
             },
             parallelToolExecutor = ParallelToolExecutor(
                 aiToolProvider = object : AiToolProvider {

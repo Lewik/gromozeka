@@ -1,5 +1,8 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.WorkspacePathReference
+import com.gromozeka.domain.service.WorkspacePathAccessContext
+import com.gromozeka.domain.service.WorkspaceTextFileReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
@@ -10,13 +13,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
 import java.time.Duration
-import kotlin.io.path.exists
-import kotlin.io.path.isRegularFile
-import kotlin.io.path.name
-import kotlin.io.path.readText
 
 internal const val MAX_MEMORY_REMEMBER_INPUT_BYTES = 10L * 1024L * 1024L
 
@@ -38,7 +35,7 @@ enum class MemoryDocumentType {
 @Serializable
 enum class MemoryRememberInputKind {
     TEXT,
-    FILE_PATH,
+    WORKSPACE_FILE,
     RAW_URL,
 }
 
@@ -53,9 +50,9 @@ sealed interface MemoryRememberContentInput {
     }
 
     @Serializable
-    @SerialName("file_path")
-    data class FilePath(val value: String) : MemoryRememberContentInput {
-        override val kind: MemoryRememberInputKind = MemoryRememberInputKind.FILE_PATH
+    @SerialName("workspace_file")
+    data class WorkspaceFile(val reference: WorkspacePathReference) : MemoryRememberContentInput {
+        override val kind: MemoryRememberInputKind = MemoryRememberInputKind.WORKSPACE_FILE
     }
 
     @Serializable
@@ -68,6 +65,7 @@ sealed interface MemoryRememberContentInput {
 @Serializable
 data class MemoryRememberContentRequest(
     val input: MemoryRememberContentInput,
+    val workspacePathAccess: WorkspacePathAccessContext? = null,
     val documentType: MemoryDocumentType? = null,
     val title: String? = null,
     val sourceRef: String? = null,
@@ -75,7 +73,8 @@ data class MemoryRememberContentRequest(
     companion object {
         fun fromExternal(
             text: String? = null,
-            filePath: String? = null,
+            workspaceFile: WorkspacePathReference? = null,
+            workspacePathAccess: WorkspacePathAccessContext? = null,
             rawUrl: String? = null,
             documentType: String? = null,
             title: String? = null,
@@ -83,13 +82,16 @@ data class MemoryRememberContentRequest(
         ): MemoryRememberContentRequest {
             val inputs = listOfNotNull(
                 text?.takeIf { it.isNotBlank() }?.let(MemoryRememberContentInput::Text),
-                filePath?.trim()?.takeIf { it.isNotBlank() }?.let(MemoryRememberContentInput::FilePath),
+                workspaceFile?.let(MemoryRememberContentInput::WorkspaceFile),
                 rawUrl?.trim()?.takeIf { it.isNotBlank() }?.let(MemoryRememberContentInput::RawUrl),
             )
             require(inputs.size == 1) {
-                "memory_remember requires exactly one of text, file_path, or raw_url for provided content."
+                "memory_remember requires exactly one of text, workspace_file, or raw_url for provided content."
             }
             val input = inputs.single()
+            require((input is MemoryRememberContentInput.WorkspaceFile) == (workspacePathAccess != null)) {
+                "memory_remember workspace_file requires workspace access context, and other inputs must not provide it."
+            }
             if (input is MemoryRememberContentInput.Text) {
                 require(input.value.toByteArray(StandardCharsets.UTF_8).size <= MAX_MEMORY_REMEMBER_INPUT_BYTES) {
                     "memory_remember text is too large; max=$MAX_MEMORY_REMEMBER_INPUT_BYTES bytes."
@@ -98,11 +100,12 @@ data class MemoryRememberContentRequest(
             val parsedDocumentType = MemoryDocumentType.parse(documentType)
                 ?: when (input) {
                     is MemoryRememberContentInput.Text -> null
-                    is MemoryRememberContentInput.FilePath,
+                    is MemoryRememberContentInput.WorkspaceFile,
                     is MemoryRememberContentInput.RawUrl -> MemoryDocumentType.MARKDOWN
                 }
             return MemoryRememberContentRequest(
                 input = input,
+                workspacePathAccess = workspacePathAccess,
                 documentType = parsedDocumentType,
                 title = title?.trim()?.takeIf { it.isNotBlank() },
                 sourceRef = sourceRef?.trim()?.takeIf { it.isNotBlank() },
@@ -156,6 +159,7 @@ internal object MarkdownDocumentImportDetector {
 }
 
 internal class MemoryRememberContentResolver(
+    private val workspaceTextFileReader: WorkspaceTextFileReader = UNSUPPORTED_WORKSPACE_FILE_READER,
     private val httpClient: HttpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
         .connectTimeout(RAW_URL_CONNECT_TIMEOUT)
@@ -164,7 +168,7 @@ internal class MemoryRememberContentResolver(
     suspend fun resolve(request: MemoryRememberContentRequest): MemoryResolvedRememberContent {
         val resolved = when (request.input) {
             is MemoryRememberContentInput.Text -> resolveText(request)
-            is MemoryRememberContentInput.FilePath -> resolveFile(request)
+            is MemoryRememberContentInput.WorkspaceFile -> resolveWorkspaceFile(request)
             is MemoryRememberContentInput.RawUrl -> resolveRawUrl(request)
         }
         require(resolved.text.isNotBlank()) { "Resolved memory content is blank." }
@@ -182,23 +186,23 @@ internal class MemoryRememberContentResolver(
         )
     }
 
-    private suspend fun resolveFile(request: MemoryRememberContentRequest): MemoryResolvedRememberContent =
-        withContext(Dispatchers.IO) {
-            val input = request.input as MemoryRememberContentInput.FilePath
-            val path = Path.of(input.value).toAbsolutePath().normalize()
-            require(path.exists()) { "memory_remember file_path does not exist: $path" }
-            require(path.isRegularFile()) { "memory_remember file_path is not a regular file: $path" }
-            require(Files.size(path) <= MAX_MEMORY_REMEMBER_INPUT_BYTES) {
-                "memory_remember file_path is too large: ${Files.size(path)} bytes; max=$MAX_MEMORY_REMEMBER_INPUT_BYTES."
-            }
-            MemoryResolvedRememberContent(
-                kind = MemoryRememberInputKind.FILE_PATH,
-                text = path.readText(),
-                documentType = request.documentType,
-                title = request.title ?: path.name,
-                sourceRef = request.sourceRef ?: path.toString(),
-            )
-        }
+    private suspend fun resolveWorkspaceFile(
+        request: MemoryRememberContentRequest,
+    ): MemoryResolvedRememberContent {
+        val input = request.input as MemoryRememberContentInput.WorkspaceFile
+        val file = workspaceTextFileReader.read(
+            reference = input.reference,
+            access = requireNotNull(request.workspacePathAccess),
+            maxBytes = MAX_MEMORY_REMEMBER_INPUT_BYTES,
+        )
+        return MemoryResolvedRememberContent(
+            kind = MemoryRememberInputKind.WORKSPACE_FILE,
+            text = file.content,
+            documentType = request.documentType,
+            title = request.title ?: file.fileName,
+            sourceRef = request.sourceRef ?: file.resolvedPath,
+        )
+    }
 
     private suspend fun resolveRawUrl(request: MemoryRememberContentRequest): MemoryResolvedRememberContent =
         withContext(Dispatchers.IO) {
@@ -239,6 +243,9 @@ internal class MemoryRememberContentResolver(
         }
 
     private companion object {
+        val UNSUPPORTED_WORKSPACE_FILE_READER = WorkspaceTextFileReader { _, _, _ ->
+            error("Workspace file reading is not configured")
+        }
         val RAW_URL_CONNECT_TIMEOUT: Duration = Duration.ofSeconds(30)
         val RAW_URL_REQUEST_TIMEOUT: Duration = Duration.ofMinutes(2)
     }

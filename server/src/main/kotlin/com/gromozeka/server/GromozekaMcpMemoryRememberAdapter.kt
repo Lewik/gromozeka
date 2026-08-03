@@ -17,23 +17,32 @@ internal object GromozekaMcpMemoryRememberAdapter {
     fun toInternalToolArguments(arguments: JsonObject): JsonObject {
         val providedForbiddenFields = arguments.keys.intersect(forbiddenFields)
         require(providedForbiddenFields.isEmpty()) {
-            "MCP memory_remember accepts only explicit text/file_path/raw_url content. Unsupported fields: ${providedForbiddenFields.sorted()}."
+            "MCP memory_remember accepts only explicit text/workspace_file/raw_url content. Unsupported fields: ${providedForbiddenFields.sorted()}."
         }
 
         val text = arguments.nonBlankString("text")
-        val filePath = arguments.nonBlankString("file_path")
+        val workspaceFile = arguments["workspace_file"]?.let { value ->
+            require(value is JsonObject) { "MCP memory_remember workspace_file must be an object." }
+            requireNotNull(value.nonBlankString("workspace_mount_id")) {
+                "MCP memory_remember workspace_file requires workspace_mount_id."
+            }
+            requireNotNull(value.nonBlankString("path")) {
+                "MCP memory_remember workspace_file requires path."
+            }
+            value
+        }
         val rawUrl = arguments.nonBlankString("raw_url")
         val documentType = arguments.nonBlankString("document_type")
         val explicitInputs = listOfNotNull(
             text?.let { "text" },
-            filePath?.let { "file_path" },
+            workspaceFile?.let { "workspace_file" },
             rawUrl?.let { "raw_url" },
         )
         require(explicitInputs.size == 1) {
-            "MCP memory_remember requires exactly one of text, file_path, or raw_url."
+            "MCP memory_remember requires exactly one of text, workspace_file, or raw_url."
         }
 
-        val target = if (filePath != null || rawUrl != null || documentType != null) {
+        val target = if (workspaceFile != null || rawUrl != null || documentType != null) {
             "provided_document"
         } else {
             "provided_text"

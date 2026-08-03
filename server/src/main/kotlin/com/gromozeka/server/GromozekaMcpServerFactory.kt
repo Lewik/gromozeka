@@ -12,9 +12,11 @@ import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_WRITE_SURFACE_CONTEXT_KEY
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_NAMESPACE
+import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.tool.ToolCancellationSignal
 import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.server.Server
@@ -44,9 +46,11 @@ class GromozekaMcpServerFactory(
     }
 
     internal fun create(caller: AuthenticatedMcpCaller): Server =
-        create(MemoryNamespace.forUser(caller.user.id))
+        create(MemoryNamespace.forUser(caller.user.id), caller.user.id)
 
-    internal fun create(namespace: MemoryNamespace): Server {
+    internal fun create(namespace: MemoryNamespace): Server = create(namespace, null)
+
+    private fun create(namespace: MemoryNamespace, userId: User.Id?): Server {
         val toolExposure = GromozekaMcpToolExposure.fromEnvironment()
         val availableToolNames = providedTools
             .map { it.definition.name }
@@ -68,7 +72,7 @@ class GromozekaMcpServerFactory(
         val exposedProvidedTools = providedTools
             .filter { toolExposure.exposes(it.definition.name) }
             .sortedBy { it.definition.name }
-        exposedProvidedTools.forEach { callback -> server.addAiToolCallback(callback, namespace) }
+        exposedProvidedTools.forEach { callback -> server.addAiToolCallback(callback, namespace, userId) }
         if (toolExposure.exposes(MCP_MEMORY_HELP_TOOL_NAME)) {
             server.addMemoryHelpTool()
         }
@@ -84,6 +88,7 @@ class GromozekaMcpServerFactory(
     private fun Server.addAiToolCallback(
         callback: AiToolCallback,
         namespace: MemoryNamespace,
+        userId: User.Id?,
     ) {
         val definition = callback.definition.toMcpDefinition()
         addTool(
@@ -97,7 +102,10 @@ class GromozekaMcpServerFactory(
                     .withoutMcpContext()
                     .toMcpToolArguments(definition.name)
                 val context = ToolExecutionContext(
-                    mapOf(TOOL_CONTEXT_MEMORY_NAMESPACE to namespace.value)
+                    buildMap {
+                        put(TOOL_CONTEXT_MEMORY_NAMESPACE, namespace.value)
+                        userId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
+                    }
                 ).toMcpToolContext(definition.name)
                 val result = callback.call(
                     toolInput = json.encodeToString(JsonObject.serializer(), arguments),
@@ -216,7 +224,7 @@ class GromozekaMcpServerFactory(
             MCP `memory_remember` accepts explicit content only:
 
             - `text`: exact user-approved text to remember.
-            - `file_path`: local raw text/markdown file to ingest as a document.
+            - `workspace_file`: raw text/markdown file addressed by `workspace_mount_id` and `path`; Gromozeka reads it on that mount's Worker.
             - `raw_url`: URL returning raw text/markdown, not HTML.
             - `document_type`: currently `markdown`; use it when `text` should be treated as a document.
 
@@ -271,7 +279,7 @@ class GromozekaMcpServerFactory(
         """.trimIndent()
 
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
-            "Queue persistence of explicit user-approved text or a raw markdown/text document in the authenticated user's personal memory bank and return a run_id. MCP callers must pass explicit content: text, file_path, or raw_url. The bank cannot be overridden by arguments or hidden context. Follow the returned result_delivery contract: poll memory_run_status only when poll_required=true. Use memory_help for typed-memory concepts and workflow."
+            "Queue persistence of explicit user-approved text or a raw markdown/text document in the authenticated user's personal memory bank and return a run_id. MCP callers must pass explicit content: text, workspace_file, or raw_url. workspace_file is read from an exact Gromozeka WorkspaceMount on its Worker; an MCP client's own local file must be read by that client and passed as text. The bank cannot be overridden by arguments or hidden context. Follow the returned result_delivery contract: poll memory_run_status only when poll_required=true. Use memory_help for typed-memory concepts and workflow."
 
         const val MCP_MEMORY_FORGET_SOURCE_DESCRIPTION =
             "Queue exact forgetting of one source_id in the authenticated user's personal memory bank and return a run_id. Requires an explicit user request and user_consent_confirmed=true. The operation forgets the logical source closure and updates directly dependent typed memory and profiles. Poll memory_run_status only when poll_required=true."
@@ -309,9 +317,21 @@ class GromozekaMcpServerFactory(
                   "type": "string",
                   "description": "Exact user-approved text to remember. If document_type is omitted, the router extracts typed memory from this text as a normal explicit memory source."
                 },
-                "file_path": {
-                  "type": "string",
-                  "description": "Absolute or working-directory-relative path to a local raw text/markdown file to ingest as a document."
+                "workspace_file": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Raw text/markdown file on an exact Gromozeka WorkspaceMount.",
+                  "properties": {
+                    "workspace_mount_id": {
+                      "type": "string",
+                      "description": "Exact WorkspaceMount ID."
+                    },
+                    "path": {
+                      "type": "string",
+                      "description": "Absolute path on the Worker or path relative to the WorkspaceMount root."
+                    }
+                  },
+                  "required": ["workspace_mount_id", "path"]
                 },
                 "raw_url": {
                   "type": "string",
@@ -319,7 +339,7 @@ class GromozekaMcpServerFactory(
                 },
                 "document_type": {
                   "type": "string",
-                  "description": "Optional document type. Currently supports 'markdown'. Required only when text should be ingested as a document; file_path/raw_url default to markdown."
+                  "description": "Optional document type. Currently supports 'markdown'. Required only when text should be ingested as a document; workspace_file/raw_url default to markdown."
                 },
                 "title": {
                   "type": "string",

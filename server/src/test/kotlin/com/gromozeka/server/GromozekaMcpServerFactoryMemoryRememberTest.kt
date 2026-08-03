@@ -11,6 +11,7 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_NAMESPACE
+import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
@@ -41,7 +42,8 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
         assertFalse(properties.containsKey("target_message_id"))
         assertFalse(properties.containsKey("user_consent_confirmed"))
         assertTrue(properties.containsKey("text"))
-        assertTrue(properties.containsKey("file_path"))
+        assertTrue(properties.containsKey("workspace_file"))
+        assertFalse(properties.containsKey("file_path"))
         assertTrue(properties.containsKey("raw_url"))
     }
 
@@ -133,7 +135,36 @@ class GromozekaMcpServerFactoryMemoryRememberTest {
             MemoryNamespace.forUser(secondUserId).value,
             secondCallback.lastContext?.getString(TOOL_CONTEXT_MEMORY_NAMESPACE),
         )
+        assertEquals(firstUserId.value, firstCallback.lastContext?.getString(TOOL_CONTEXT_USER_ID))
+        assertEquals(secondUserId.value, secondCallback.lastContext?.getString(TOOL_CONTEXT_USER_ID))
     }
+
+    @Test
+    fun `memory remember MCP call preserves an exact workspace file reference`() =
+        withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
+            val callback = CapturingToolCallback()
+            val server = GromozekaMcpServerFactory(FakeToolProvider(callback).getTools())
+                .create(testMcpCaller(User.Id("memory-user-a")))
+
+            runBlocking {
+                val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).callForTest(
+                    CallToolRequest(CallToolRequestParams(
+                        name = MEMORY_REMEMBER_TOOL_NAME,
+                        arguments = buildJsonObject {
+                            put("workspace_file", buildJsonObject {
+                                put("workspace_mount_id", "mount-1")
+                                put("path", "docs/memory.md")
+                            })
+                        },
+                    ))
+                )
+                assertFalse(result.isError == true)
+            }
+
+            assertContains(callback.lastToolInput.orEmpty(), "\"workspace_mount_id\":\"mount-1\"")
+            assertContains(callback.lastToolInput.orEmpty(), "\"path\":\"docs/memory.md\"")
+            assertContains(callback.lastToolInput.orEmpty(), "\"target\":\"provided_document\"")
+        }
 
     @Test
     fun `memory remember MCP call treats text with document type as provided document`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {

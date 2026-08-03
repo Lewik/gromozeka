@@ -1,5 +1,11 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.WorkspacePathReference
+import com.gromozeka.domain.service.WorkspacePathAccessContext
+import com.gromozeka.domain.service.WorkspaceTextFile
+import com.gromozeka.domain.service.WorkspaceTextFileReader
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
@@ -7,8 +13,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.InetSocketAddress
-import java.nio.file.Files
-import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -410,19 +414,38 @@ class MemoryRememberDocumentTest {
     }
 
     @Test
-    fun resolverTreatsFilePathAsMarkdownDocumentByDefault() = runBlocking {
-        val file = Files.createTempFile("memory-doc", ".md")
-        file.writeText("# Doc\n\nFact.")
+    fun resolverReadsWorkspaceFileOnItsMountAndTreatsItAsMarkdownByDefault() = runBlocking {
+        val reference = WorkspacePathReference(
+            workspaceMountId = WorkspaceMount.Id("mount-1"),
+            path = "docs/memory.md",
+        )
+        val access = WorkspacePathAccessContext(expectedProjectId = Project.Id("project-1"))
+        val content = "# Doc\n\nFact."
+        val reader = WorkspaceTextFileReader { requestedReference, requestedAccess, maxBytes ->
+            assertEquals(reference, requestedReference)
+            assertEquals(access, requestedAccess)
+            assertEquals(MAX_MEMORY_REMEMBER_INPUT_BYTES, maxBytes)
+            WorkspaceTextFile(
+                reference = reference,
+                resolvedPath = "/workspace/docs/memory.md",
+                fileName = "memory.md",
+                content = content,
+                sizeBytes = content.encodeToByteArray().size.toLong(),
+            )
+        }
 
-        val resolved = MemoryRememberContentResolver().resolve(
-            MemoryRememberContentRequest.fromExternal(filePath = file.toString())
+        val resolved = MemoryRememberContentResolver(reader).resolve(
+            MemoryRememberContentRequest.fromExternal(
+                workspaceFile = reference,
+                workspacePathAccess = access,
+            )
         )
 
-        assertEquals(MemoryRememberInputKind.FILE_PATH, resolved.kind)
+        assertEquals(MemoryRememberInputKind.WORKSPACE_FILE, resolved.kind)
         assertEquals(MemoryDocumentType.MARKDOWN, resolved.documentType)
-        assertEquals(file.fileName.toString(), resolved.title)
-        assertEquals(file.toAbsolutePath().normalize().toString(), resolved.sourceRef)
-        assertEquals("# Doc\n\nFact.", resolved.text)
+        assertEquals("memory.md", resolved.title)
+        assertEquals("/workspace/docs/memory.md", resolved.sourceRef)
+        assertEquals(content, resolved.text)
     }
 
     @Test
@@ -438,17 +461,36 @@ class MemoryRememberDocumentTest {
 
     @Test
     fun resolverRejectsAmbiguousProvidedInputs() = runBlocking {
-        val file = Files.createTempFile("memory-doc", ".md")
-        file.writeText("# Doc")
+        val reference = WorkspacePathReference(WorkspaceMount.Id("mount-1"), "doc.md")
 
         val error = runCatching {
             MemoryRememberContentResolver().resolve(
-                MemoryRememberContentRequest.fromExternal(text = "# Inline", filePath = file.toString())
+                MemoryRememberContentRequest.fromExternal(
+                    text = "# Inline",
+                    workspaceFile = reference,
+                    workspacePathAccess = WorkspacePathAccessContext(
+                        expectedProjectId = Project.Id("project-1")
+                    ),
+                )
             )
         }.exceptionOrNull()
 
         assertTrue(error is IllegalArgumentException)
         assertTrue(error.message.orEmpty().contains("exactly one"))
+    }
+
+    @Test
+    fun workspaceFileCannotFallBackToServerFilesystemWithoutAccessContext() {
+        val error = assertFailsWith<IllegalArgumentException> {
+            MemoryRememberContentRequest.fromExternal(
+                workspaceFile = WorkspacePathReference(
+                    WorkspaceMount.Id("mount-1"),
+                    "docs/memory.md",
+                )
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("workspace access context"))
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.domain.model.WorkspacePathReference
+import com.gromozeka.domain.service.WorkspacePathAccessContext
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
@@ -78,7 +80,8 @@ class MemoryOperationPreparer(
         conversationIdValue: String?,
         namespace: MemoryNamespace,
         text: String? = null,
-        filePath: String? = null,
+        workspaceFile: WorkspacePathReference? = null,
+        workspacePathAccess: WorkspacePathAccessContext? = null,
         rawUrl: String? = null,
         documentType: String? = null,
         title: String? = null,
@@ -90,7 +93,8 @@ class MemoryOperationPreparer(
     ): PreparedMemoryOperation {
         val content = MemoryRememberContentRequest.fromExternal(
             text = text,
-            filePath = filePath,
+            workspaceFile = workspaceFile,
+            workspacePathAccess = workspacePathAccess,
             rawUrl = rawUrl,
             documentType = documentType,
             title = title,
@@ -262,7 +266,8 @@ class MemoryOperationPreparer(
     private fun MemoryRememberContentInput.identityValue(): String =
         when (this) {
             is MemoryRememberContentInput.Text -> value
-            is MemoryRememberContentInput.FilePath -> value
+            is MemoryRememberContentInput.WorkspaceFile ->
+                "${reference.workspaceMountId.value}:${reference.path}"
             is MemoryRememberContentInput.RawUrl -> value
         }
 

@@ -1301,16 +1301,17 @@ class MemoryRealModelE2eTest {
         turnIndex: Int,
         timeoutMs: Long,
     ): ExecutedSeedTurn {
+        val resolvedFilePath = turn.resolvedFilePath(resolveProjectRoot())
         val toolResult = memoryOperationExecutor.executeSynchronously(
             memoryOperationPreparer.prepareRememberProvidedContent(
                 conversationIdValue = null,
                 namespace = namespace,
-                text = turn.text?.trim()?.takeIf { it.isNotBlank() && turn.documentType != null },
-                filePath = turn.resolvedFilePath(resolveProjectRoot()),
+                text = resolvedFilePath?.let { Path.of(it).readText() }
+                    ?: turn.text?.trim()?.takeIf { it.isNotBlank() && turn.documentType != null },
                 rawUrl = turn.rawUrl?.trim()?.takeIf { it.isNotBlank() },
-                documentType = turn.documentType,
-                title = turn.title,
-                sourceRef = turn.sourceRef,
+                documentType = turn.documentType ?: "markdown".takeIf { resolvedFilePath != null },
+                title = turn.title ?: resolvedFilePath?.let { Path.of(it).name },
+                sourceRef = turn.sourceRef ?: resolvedFilePath,
                 forceWrite = turn.forceWrite,
                 mode = turn.mode,
             )
