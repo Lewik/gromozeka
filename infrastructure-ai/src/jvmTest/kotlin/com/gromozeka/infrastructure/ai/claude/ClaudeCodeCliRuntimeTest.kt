@@ -307,6 +307,37 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun `passes user image attachment through Claude Code stream json`() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("Image received"),
+                )
+            )
+        )
+        val runtime = runtime(executor)
+        val message = userMessage("Inspect this screenshot").copy(
+            content = listOf(
+                Conversation.Message.ContentItem.UserMessage("Inspect this screenshot"),
+                Conversation.Message.ContentItem.ImageItem(
+                    Conversation.Message.ImageSource.Base64ImageSource(
+                        data = "AQID",
+                        mediaType = "image/png",
+                    )
+                ),
+            )
+        )
+
+        runtime.call(request(messages = listOf(message), tools = emptyList()))
+
+        val command = executor.commands.single()
+        assertEquals(1, command.userContentBlocks.size)
+        assertEquals("image", command.userContentBlocks.single()["type"]?.jsonPrimitive?.content)
+        assertTrue(command.userPrompt.contains("Inspect this screenshot"))
+    }
+
+    @Test
     fun rejectsUnsupportedClaudeCodeReasoningControls() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(
             response(

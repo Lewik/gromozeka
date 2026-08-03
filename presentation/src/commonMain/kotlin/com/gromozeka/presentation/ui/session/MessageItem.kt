@@ -1,6 +1,7 @@
 package com.gromozeka.presentation.ui.session
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,30 +19,40 @@ import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.GromozekaMarkdown
@@ -271,6 +282,7 @@ internal fun MessageItem(
     isSelected: Boolean = false,
     onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit = { _, _ -> },
+    loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     val message = entry.message
     val selectionBorderColor = MaterialTheme.colorScheme.primary
@@ -351,6 +363,7 @@ internal fun MessageItem(
                     toolResultsMap = toolResultsMap,
                     workspaceRootPath = workspaceRootPath,
                     onToggleContentItemCollapse = onToggleContentItemCollapse,
+                    loadArtifactContent = loadArtifactContent,
                 )
             }
         }
@@ -396,6 +409,7 @@ private fun MessageSegmentContent(
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     workspaceRootPath: String?,
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
+    loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (val segment = entry.segment) {
         is MessageSegment.MarkdownBlock -> MarkdownSegmentLayout(
@@ -434,6 +448,7 @@ private fun MessageSegmentContent(
             content = segment.content,
             toolResultsMap = toolResultsMap,
             workspaceRootPath = workspaceRootPath,
+            loadArtifactContent = loadArtifactContent,
         )
 
         is MessageSegment.Instructions -> InstructionChips(
@@ -589,12 +604,14 @@ private fun GenericContentItem(
     content: Conversation.Message.ContentItem,
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     workspaceRootPath: String?,
+    loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (content) {
         is Conversation.Message.ContentItem.ToolCall -> ToolCallItem(
             toolCall = content.call,
             toolResult = toolResultsMap[content.id.value],
             workspaceRootPath = workspaceRootPath,
+            loadArtifactContent = loadArtifactContent,
         )
 
         is Conversation.Message.ContentItem.ImageItem -> Row(
@@ -626,6 +643,47 @@ private fun GenericContentItem(
             }
         }
 
+        is Conversation.Message.ContentItem.DocumentItem -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(Icons.Default.AttachFile, contentDescription = "Document")
+            when (val source = content.source) {
+                is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                    Text("${source.fileName} · ${source.mediaType}")
+            }
+        }
+
+        is Conversation.Message.ContentItem.ArtifactItem -> Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    if (content.artifact.kind == com.gromozeka.domain.model.Artifact.Kind.IMAGE) {
+                        Icons.Default.Image
+                    } else {
+                        Icons.Default.AttachFile
+                    },
+                    contentDescription = "Attachment",
+                )
+                Column {
+                    Text(content.artifact.fileName)
+                    Text(
+                        "${content.artifact.mediaType} · ${content.artifact.sizeBytes.formatArtifactSize()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (content.artifact.kind == com.gromozeka.domain.model.Artifact.Kind.IMAGE) {
+                ArtifactImagePreview(content.artifact, loadArtifactContent)
+            }
+        }
+
         is Conversation.Message.ContentItem.System -> Text(text = content.content)
         is Conversation.Message.ContentItem.ContextCompactionResult -> ContextCompactionResultItem(content)
         is Conversation.Message.ContentItem.UnknownJson -> Row(
@@ -648,6 +706,54 @@ private fun GenericContentItem(
         is Conversation.Message.ContentItem.AssistantMessage,
         is Conversation.Message.ContentItem.ToolResult -> Unit
     }
+}
+
+@Composable
+internal fun ArtifactImagePreview(
+    artifact: com.gromozeka.domain.model.Artifact.Reference,
+    loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
+) {
+    var bitmap by remember(artifact.id) { mutableStateOf<ImageBitmap?>(null) }
+    var failed by remember(artifact.id) { mutableStateOf(false) }
+
+    LaunchedEffect(artifact.id) {
+        runCatching { loadArtifactContent(artifact.id).decodeToImageBitmap() }
+            .onSuccess { bitmap = it }
+            .onFailure { failed = true }
+    }
+
+    when {
+        bitmap != null -> Image(
+            bitmap = requireNotNull(bitmap),
+            contentDescription = artifact.fileName,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 360.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Fit,
+        )
+
+        failed -> Text(
+            text = "Preview unavailable",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        else -> Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
+        }
+    }
+}
+
+private fun Long.formatArtifactSize(): String = when {
+    this >= 1024 * 1024 -> "${this / (1024 * 1024)} MB"
+    this >= 1024 -> "${this / 1024} KB"
+    else -> "$this B"
 }
 
 @Composable

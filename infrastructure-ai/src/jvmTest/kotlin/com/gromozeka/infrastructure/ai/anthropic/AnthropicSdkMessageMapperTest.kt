@@ -114,6 +114,25 @@ class AnthropicSdkMessageMapperTest {
         }
     }
 
+    @Test
+    fun `maps binary screenshot tool result to an Anthropic image block`() {
+        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+            .toCreateParams(
+                "claude-sonnet-4-20250514",
+                AiRuntimeRequest(
+                    systemPrompts = emptyList(),
+                    messages = listOf(imageToolResultMessage()),
+                ),
+            )
+
+        val toolResult = params.messages().single()
+            .content().asBlockParams().single().asToolResult()
+        val image = toolResult.content().orElseThrow().asBlocks().single()
+
+        assertTrue(image.isImage())
+        assertEquals("call-screenshot", toolResult.toolUseId())
+    }
+
     private fun requestWithJsonSchema(): AiRuntimeRequest =
         AiRuntimeRequest(
             systemPrompts = listOf("Return JSON only."),
@@ -154,6 +173,28 @@ class AnthropicSdkMessageMapperTest {
             conversationId = Conversation.Id("conversation-1"),
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+        )
+
+    private fun imageToolResultMessage(): Conversation.Message =
+        Conversation.Message(
+            id = Conversation.Message.Id("tool-result-1"),
+            conversationId = Conversation.Id("conversation-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(
+                Conversation.Message.ContentItem.ToolResult(
+                    toolUseId = Conversation.Message.ContentItem.ToolCall.Id("call-screenshot"),
+                    toolName = "grz_capture_screenshot",
+                    result = listOf(
+                        Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                            data = "AQID",
+                            mediaType = Conversation.Message.MediaType.parse("image/png"),
+                            fileName = "worker-screen.png",
+                        )
+                    ),
+                    isError = false,
+                )
+            ),
             createdAt = Instant.parse("2026-01-01T00:00:00Z"),
         )
 }

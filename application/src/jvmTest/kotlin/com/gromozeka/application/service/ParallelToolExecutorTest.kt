@@ -12,6 +12,7 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -20,6 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import java.util.Base64
 
 class ParallelToolExecutorTest {
     private val server = ConversationRuntimeExecutorIdentity.Server(
@@ -85,6 +87,27 @@ class ParallelToolExecutorTest {
         )
     }
 
+    @Test
+    fun `binary tool result remains typed`() = runBlocking {
+        val bytes = byteArrayOf(1, 3, 3, 7)
+        val executor = executor(BinaryTestTool(bytes))
+
+        val result = executor.executeParallel(
+            toolCalls = listOf(toolCall("binary_tool")),
+            toolContext = ToolExecutionContext(),
+            runtimeTaskId = null,
+            executor = server,
+            expectedTarget = ConversationRuntimeTaskTarget.Server,
+        )
+
+        val binary = assertIs<Conversation.Message.ContentItem.ToolResult.Data.Base64Data>(
+            result.results.single().result.single()
+        )
+        assertEquals("capture.png", binary.fileName)
+        assertEquals("image/png", binary.mediaType.value)
+        assertTrue(bytes.contentEquals(Base64.getDecoder().decode(binary.data)))
+    }
+
     private fun executor(tool: AiToolCallback): ParallelToolExecutor =
         ParallelToolExecutor(
             aiToolProvider = object : AiToolProvider {
@@ -101,6 +124,22 @@ class ParallelToolExecutorTest {
                 input = JsonObject(emptyMap()),
             ),
         )
+}
+
+private class BinaryTestTool(
+    private val bytes: ByteArray,
+) : AiToolCallback {
+    override val definition = AiToolDefinition(
+        name = "binary_tool",
+        description = "binary_tool",
+        inputSchema = """{"type":"object"}""",
+    )
+    override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER)
+
+    override fun call(toolInput: String, context: ToolExecutionContext?): String = error("Text call is not supported")
+
+    override fun callResult(toolInput: String, context: ToolExecutionContext?): List<AiToolResult> =
+        listOf(AiToolResult.Binary(bytes, "capture.png", "image/png"))
 }
 
 private class TestTool(

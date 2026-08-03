@@ -101,6 +101,7 @@ class ConversationEngineService(
     private val aiToolRuntimeCatalogService: AiToolRuntimeCatalogService,
     private val aiToolCapabilityCatalogService: AiToolCapabilityCatalogService,
     private val toolRoutingService: ConversationRuntimeToolRoutingService,
+    private val artifactService: ConversationArtifactApplicationService,
 ) : ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
 
@@ -205,6 +206,7 @@ class ConversationEngineService(
         }
 
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
+        val runtimeMessages = artifactService.materialize(conversationId, currentMessages)
         val availableTools = aiToolRuntimeCatalogService.availableTools(
             agent = context.agent,
             catalog = context.toolCatalog,
@@ -213,7 +215,7 @@ class ConversationEngineService(
 
         val runtimeRequest = AiRuntimeRequest(
             systemPrompts = context.runtimeSystemPrompts,
-            messages = currentMessages,
+            messages = runtimeMessages,
             tools = availableTools,
             options = AiRuntimeOptions(
                 maxOutputTokens = context.agent.runtimeOverrides.maxOutputTokens,

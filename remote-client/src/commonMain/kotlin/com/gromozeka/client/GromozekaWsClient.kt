@@ -1,6 +1,8 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Artifact
+import com.gromozeka.domain.model.ArtifactUpload
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.remote.protocol.ClientActivityKind
@@ -49,8 +51,14 @@ import com.gromozeka.remote.protocol.SynthesizeSpeechStreamCommand
 import com.gromozeka.shared.uuid.uuid7
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.delete
 import io.ktor.client.request.post
+import io.ktor.client.request.parameter
+import io.ktor.client.request.setBody
+import io.ktor.client.call.body
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocketSession
@@ -162,6 +170,39 @@ internal class GromozekaWsClient(
             "Server request failed with HTTP ${response.status.value}: $body"
         }
         return body
+    }
+
+    internal suspend fun uploadArtifact(
+        conversationId: Conversation.Id,
+        upload: ArtifactUpload,
+    ): String {
+        val response = httpClient.post(serverResourceUrl("/api/artifacts")) {
+            parameter("conversation_id", conversationId.value)
+            parameter("file_name", upload.fileName)
+            parameter("purpose", upload.purpose.name)
+            contentType(ContentType.parse(upload.mediaType))
+            setBody(upload.content)
+        }
+        val body = response.bodyAsText()
+        check(response.status.isSuccess()) {
+            "Artifact upload failed with HTTP ${response.status.value}: $body"
+        }
+        return body
+    }
+
+    internal suspend fun getServerResourceBytes(path: String): ByteArray {
+        val response = httpClient.get(serverResourceUrl(path))
+        check(response.status.isSuccess()) {
+            "Server request failed with HTTP ${response.status.value}: ${response.bodyAsText()}"
+        }
+        return response.body()
+    }
+
+    internal suspend fun deleteServerResource(path: String) {
+        val response = httpClient.delete(serverResourceUrl(path))
+        check(response.status.isSuccess()) {
+            "Server request failed with HTTP ${response.status.value}: ${response.bodyAsText()}"
+        }
     }
 
     private fun serverResourceUrl(path: String): String =

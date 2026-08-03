@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
@@ -34,6 +35,7 @@ import java.security.MessageDigest
 class ConversationRuntimeDispatcher(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
+    private val artifactReferenceValidator: ArtifactReferenceValidator,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -44,6 +46,7 @@ class ConversationRuntimeDispatcher(
         placement: QueuedMessagePlacement,
         actorUserId: User.Id? = null,
     ): Boolean {
+        artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
         val state = runtimeCoordinator.find(conversationId)
         val pendingTasks = runtimeCoordinator.listPending(conversationId)
         val effectivePlacement = if (placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && state?.activeTaskId == null) {
@@ -168,6 +171,7 @@ class ConversationRuntimeDispatcher(
         agentDefinitionId: AgentDefinition.Id,
         actorUserId: User.Id? = null,
     ): Boolean {
+        artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
         val task = queuedRuntimeTask(
             conversationId = conversationId,
             userMessage = userMessage,

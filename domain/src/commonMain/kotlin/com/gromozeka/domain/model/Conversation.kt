@@ -272,6 +272,7 @@ data class Conversation(
                     data class Base64Data(
                         val data: String,
                         val mediaType: MediaType,
+                        val fileName: String? = null,
                     ) : Data()
 
                     /**
@@ -293,10 +294,7 @@ data class Conversation(
                      * @property mediaType optional MIME type hint
                      */
                     @Serializable
-                    data class FileData(
-                        val fileId: String,
-                        val mediaType: MediaType? = null,
-                    ) : Data()
+                    data class ArtifactData(val artifact: Artifact.Reference) : Data()
                 }
             }
 
@@ -364,6 +362,18 @@ data class Conversation(
             data class ImageItem(
                 val source: ImageSource,
                 override val state: BlockState = BlockState.COMPLETE
+            ) : ContentItem()
+
+            @Serializable
+            data class DocumentItem(
+                val source: DocumentSource,
+                override val state: BlockState = BlockState.COMPLETE,
+            ) : ContentItem()
+
+            @Serializable
+            data class ArtifactItem(
+                val artifact: Artifact.Reference,
+                override val state: BlockState = BlockState.COMPLETE,
             ) : ContentItem()
 
             @Serializable
@@ -488,6 +498,23 @@ data class Conversation(
                 val fileId: String,
                 override val type: String = "file",
             ) : ImageSource()
+        }
+
+        @Serializable
+        @JsonClassDiscriminator("type")
+        sealed class DocumentSource {
+            abstract val type: String
+
+            @Serializable
+            @SerialName("base64")
+            data class Base64DocumentSource(
+                val data: String,
+                @SerialName("media_type")
+                val mediaType: String,
+                @SerialName("file_name")
+                val fileName: String,
+                override val type: String = "base64",
+            ) : DocumentSource()
         }
 
         /**

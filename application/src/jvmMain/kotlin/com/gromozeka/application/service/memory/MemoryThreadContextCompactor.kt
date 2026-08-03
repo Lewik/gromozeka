@@ -283,10 +283,12 @@ private fun Conversation.Message.memoryCompactionCharCount(): Int =
                     is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content.length
                     is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> 64
                     is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> data.url.length
-                    is Conversation.Message.ContentItem.ToolResult.Data.FileData -> data.fileId.length
+                    is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData -> data.artifact.fileName.length
                 }
             }
             is Conversation.Message.ContentItem.ImageItem -> 64
+            is Conversation.Message.ContentItem.DocumentItem -> 128
+            is Conversation.Message.ContentItem.ArtifactItem -> item.artifact.fileName.length + item.artifact.mediaType.length
             is Conversation.Message.ContentItem.ContextCompactionResult -> item.compactionTextForMemory().length
             is Conversation.Message.ContentItem.UnknownJson -> item.json.toString().length
         }
@@ -305,10 +307,16 @@ private fun Conversation.Message.renderForMemoryCompaction(maxChars: Int): Strin
                     is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content.takeForMemoryCompaction(2_000)
                     is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> "[base64 ${data.mediaType.value}, ${data.data.length} chars]"
                     is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url ${data.url}]"
-                    is Conversation.Message.ContentItem.ToolResult.Data.FileData -> "[file ${data.fileId}]"
+                    is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData -> "[artifact ${data.artifact.fileName}]"
                 }
             }
             is Conversation.Message.ContentItem.ImageItem -> "[image]"
+            is Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
+                is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                    "[document:${source.fileName} media_type=${source.mediaType}]"
+            }
+            is Conversation.Message.ContentItem.ArtifactItem ->
+                "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
             is Conversation.Message.ContentItem.ContextCompactionResult -> item.compactionTextForMemory()
             is Conversation.Message.ContentItem.UnknownJson -> "[unknown_json] ${item.json}"
         }

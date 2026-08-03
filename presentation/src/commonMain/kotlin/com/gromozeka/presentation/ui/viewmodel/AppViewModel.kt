@@ -11,7 +11,8 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.SettingsService
-import com.gromozeka.presentation.services.ScreenCaptureController
+import com.gromozeka.client.ArtifactTransferService
+import com.gromozeka.presentation.services.AttachmentAcquisitionController
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -27,7 +28,8 @@ open class AppViewModel(
     private val settingsService: SettingsService,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val scope: CoroutineScope,
-    private val screenCaptureController: ScreenCaptureController,
+    internal val attachmentAcquisitionController: AttachmentAcquisitionController,
+    private val artifactTransferService: ArtifactTransferService,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val agentService: AgentDomainService,
     private val tokenStatsService: ConversationTokenStatsService,
@@ -307,7 +309,8 @@ open class AppViewModel(
         aiConfigurationProvider = aiConfigurationProvider,
         scope = scope,
         initialTabUiState = initialTabUiState,
-        screenCaptureController = screenCaptureController,
+        attachmentAcquisitionController = attachmentAcquisitionController,
+        artifactTransferService = artifactTransferService,
         tokenStatsService = tokenStatsService,
         messageInputClientPlatform = messageInputClientPlatform,
     )

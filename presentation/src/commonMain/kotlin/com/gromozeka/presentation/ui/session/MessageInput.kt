@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.LocationOn
@@ -36,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
+import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
@@ -64,7 +67,14 @@ fun MessageInput(
     instructionGroups: List<MessageInstructionGroup>,
     activeInstructionIds: Set<String>,
     onSelectInstruction: (MessageInstructionGroup, Int) -> Unit,
-    onCaptureScreenshot: suspend () -> Unit,
+    composerArtifacts: List<Artifact.Reference>,
+    artifactUploadInProgress: Boolean,
+    artifactError: String?,
+    canPickAttachments: Boolean,
+    canCaptureScreenshot: Boolean,
+    onPickAttachments: () -> Unit,
+    onCaptureScreenshot: () -> Unit,
+    onRemoveArtifact: (Artifact.Id) -> Unit,
     onInsertCurrentLocation: (() -> Unit)? = null,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -94,7 +104,7 @@ fun MessageInput(
     )
 
     fun submitInput() {
-        if (userInput.isBlank()) return
+        if ((userInput.isBlank() && composerArtifacts.isEmpty()) || artifactUploadInProgress) return
         coroutineScope.launch {
             onSendMessage()
         }
@@ -113,6 +123,52 @@ fun MessageInput(
                 pttEventHandler = pttEventHandler,
                 coroutineScope = coroutineScope,
             )
+        }
+
+        artifactError?.takeIf(String::isNotBlank)?.let { error ->
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    text = error,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
+        if (composerArtifacts.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                composerArtifacts.forEach { artifact ->
+                    InputChip(
+                        selected = false,
+                        onClick = {},
+                        label = {
+                            Text(
+                                text = "${artifact.fileName} · ${artifact.sizeBytes.formatArtifactSize()}",
+                                maxLines = 1,
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove ${artifact.fileName}",
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable { onRemoveArtifact(artifact.id) },
+                            )
+                        },
+                    )
+                }
+            }
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -198,6 +254,24 @@ fun MessageInput(
                         }
                     }
 
+                    if (canPickAttachments) {
+                        CompactButton(
+                            onClick = onPickAttachments,
+                            enabled = !artifactUploadInProgress,
+                            modifier = Modifier.size(actionButtonSize),
+                            tooltip = "Attach files",
+                        ) {
+                            if (artifactUploadInProgress) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(Icons.Default.AttachFile, contentDescription = "Attach files")
+                            }
+                        }
+                    }
+
                     if (showPttButton && !compactVoiceMode) {
                         val isRecording = pttState == PttState.RECORDING
                         CompactButton(
@@ -256,19 +330,18 @@ fun MessageInput(
                         }
                     }
 
-                    CompactButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                onCaptureScreenshot()
-                            }
-                        },
-                        modifier = Modifier.size(actionButtonSize),
-                        tooltip = LocalTranslation.current.screenshotTooltip,
-                    ) {
-                        Icon(
-                            Icons.Default.CameraAlt,
-                            contentDescription = LocalTranslation.current.screenshotTooltip,
-                        )
+                    if (canCaptureScreenshot) {
+                        CompactButton(
+                            onClick = onCaptureScreenshot,
+                            enabled = !artifactUploadInProgress,
+                            modifier = Modifier.size(actionButtonSize),
+                            tooltip = LocalTranslation.current.screenshotTooltip,
+                        ) {
+                            Icon(
+                                Icons.Default.CameraAlt,
+                                contentDescription = LocalTranslation.current.screenshotTooltip,
+                            )
+                        }
                     }
 
                     onInsertCurrentLocation?.let { insertCurrentLocation ->
@@ -429,3 +502,9 @@ private fun VoiceCaptureStatus(
 
 private fun Int.asRecordingDuration(): String =
     "${this / 60}:${(this % 60).toString().padStart(2, '0')}"
+
+private fun Long.formatArtifactSize(): String = when {
+    this >= 1024 * 1024 -> "${this / (1024 * 1024)} MB"
+    this >= 1024 -> "${this / 1024} KB"
+    else -> "$this B"
+}

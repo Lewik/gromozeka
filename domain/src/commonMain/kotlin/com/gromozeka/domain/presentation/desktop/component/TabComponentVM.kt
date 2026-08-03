@@ -183,13 +183,6 @@ interface TabComponentVM {
      */
     fun interrupt()
     
-    /**
-     * Capture screenshot and add file path to input field.
-     * Opens screen capture UI, saves screenshot, appends path to [userInput].
-     * If [userInput] is blank, sets path directly. Otherwise appends with space.
-     */
-    suspend fun captureAndAddToInput()
-    
     // Actions - Message Instructions
     /**
      * Select a message instruction within a group.

@@ -23,6 +23,7 @@ import com.gromozeka.presentation.services.BrowserClientAudioRecorder
 import com.gromozeka.presentation.services.BrowserClientAudioPlayer
 import com.gromozeka.presentation.services.BrowserRemoteClientSettingsStore
 import com.gromozeka.presentation.services.BrowserUIStateStore
+import com.gromozeka.presentation.services.BrowserAttachmentAcquisitionController
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.ui.GromozekaTheme
@@ -78,6 +79,7 @@ private fun GromozekaWebApp() {
                     remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
                     audioRecorder = BrowserClientAudioRecorder(),
                     audioPlayer = BrowserClientAudioPlayer(),
+                    attachmentAcquisitionController = BrowserAttachmentAcquisitionController(),
                     httpClient = authenticationConnection.httpClient,
                 )
             }
@@ -145,6 +147,7 @@ private fun GromozekaWebApp() {
                                 remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
                                 audioRecorder = BrowserClientAudioRecorder(),
                                 audioPlayer = BrowserClientAudioPlayer(),
+                                attachmentAcquisitionController = BrowserAttachmentAcquisitionController(),
                                 httpClient = authenticationConnection.httpClient,
                             )
                         } catch (error: Throwable) {

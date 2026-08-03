@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
@@ -8,6 +9,7 @@ import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolCancellationSignal
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
 import klog.KLoggers
@@ -17,6 +19,7 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.json.jsonObject
 import org.springframework.stereotype.Service
 import kotlin.coroutines.coroutineContext
+import java.util.Base64
 
 /**
  * Result of parallel tool execution.
@@ -256,7 +259,7 @@ class ParallelToolExecutor(
 
             // Execute on IO dispatcher (blocking call)
             val result = withContext(Dispatchers.IO) {
-                callback.call(arguments, cancellableToolContext)
+                callback.callResult(arguments, cancellableToolContext)
             }
 
             log.debug { "Tool $toolName completed successfully" }
@@ -264,9 +267,16 @@ class ParallelToolExecutor(
             return ContentItem.ToolResult(
                 toolUseId = toolId,
                 toolName = toolName,
-                result = listOf(
-                    ContentItem.ToolResult.Data.Text(result)
-                ),
+                result = result.map { item ->
+                    when (item) {
+                        is AiToolResult.Text -> ContentItem.ToolResult.Data.Text(item.content)
+                        is AiToolResult.Binary -> ContentItem.ToolResult.Data.Base64Data(
+                            data = Base64.getEncoder().encodeToString(item.content),
+                            mediaType = Conversation.Message.MediaType.parse(item.mediaType),
+                            fileName = item.fileName,
+                        )
+                    }
+                },
                 isError = false
             )
 

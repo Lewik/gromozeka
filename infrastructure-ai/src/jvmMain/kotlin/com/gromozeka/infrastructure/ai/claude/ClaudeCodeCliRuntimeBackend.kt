@@ -42,6 +42,7 @@ import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
@@ -125,7 +126,7 @@ internal class ClaudeCodeCliRuntime(
         val toolProtocol = request.toolProtocol()
         val sessionPlan = planSession(sessionStateKey, request.messages)
         val systemPrompt = buildSystemPrompt(request, toolProtocol)
-        val userPrompt = buildUserPrompt(sessionPlan, toolProtocol)
+        val userInput = buildUserInput(sessionPlan, toolProtocol)
         val schema = toolProtocol?.schema ?: (request.options.responseFormat as? AiResponseFormat.JsonSchema)?.schema
 
         log.info {
@@ -143,7 +144,8 @@ internal class ClaudeCodeCliRuntime(
             modelName = modelName,
             workspaceDirectory = workspaceDirectory,
             systemPrompt = systemPrompt,
-            userPrompt = userPrompt,
+            userPrompt = userInput.prompt,
+            userContentBlocks = userInput.contentBlocks,
             jsonSchema = schema,
             effort = request.options.reasoning?.effort,
             reasoningMode = request.options.reasoning?.mode,
@@ -321,19 +323,21 @@ internal class ClaudeCodeCliRuntime(
             .joinToString("\n\n")
     }
 
-    private fun buildUserPrompt(
+    private fun buildUserInput(
         plan: ClaudeCodeSessionPlan,
         toolProtocol: ClaudeCodeToolProtocol?,
-    ): String {
+    ): ClaudeCodeUserInput {
         val header = if (plan.resumeSessionId == null) {
             "Gromozeka conversation transcript:"
         } else {
             "New Gromozeka messages since the previous Claude Code session turn:"
         }
-        return listOf(
-            "$header\n\n${messagesToTranscript(plan.messagesToSend)}",
+        val attachments = ClaudeCodeAttachmentCollector()
+        val prompt = listOf(
+            "$header\n\n${messagesToTranscript(plan.messagesToSend, attachments)}",
             toolProtocol?.runtimeReminder(),
         ).filterNotNull().joinToString("\n\n")
+        return ClaudeCodeUserInput(prompt, attachments.contentBlocks)
     }
 
     private fun toRuntimeResponse(
@@ -443,7 +447,10 @@ internal class ClaudeCodeCliRuntime(
     private fun JsonObject.intField(name: String): Int =
         this[name]?.jsonPrimitive?.longOrNull?.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong())?.toInt() ?: 0
 
-    private fun messagesToTranscript(messages: List<Conversation.Message>): String =
+    private fun messagesToTranscript(
+        messages: List<Conversation.Message>,
+        attachments: ClaudeCodeAttachmentCollector,
+    ): String =
         messages.joinToString("\n\n") { message ->
             buildString {
                 append("<message role=\"")
@@ -461,7 +468,7 @@ internal class ClaudeCodeCliRuntime(
                 }
 
                 message.content.forEach { item ->
-                    append(contentItemToTranscript(item))
+                    append(contentItemToTranscript(item, attachments))
                     append("\n")
                 }
 
@@ -469,7 +476,10 @@ internal class ClaudeCodeCliRuntime(
             }
         }
 
-    private fun contentItemToTranscript(item: Conversation.Message.ContentItem): String =
+    private fun contentItemToTranscript(
+        item: Conversation.Message.ContentItem,
+        attachments: ClaudeCodeAttachmentCollector,
+    ): String =
         when (item) {
             is Conversation.Message.ContentItem.UserMessage -> xmlBlock("text", item.text)
             is Conversation.Message.ContentItem.AssistantMessage -> xmlBlock("text", item.structured.fullText)
@@ -482,15 +492,39 @@ internal class ClaudeCodeCliRuntime(
             }
             is Conversation.Message.ContentItem.ToolResult -> {
                 "<tool_result tool_call_id=\"${xmlEscape(item.toolUseId.value)}\" name=\"${xmlEscape(item.toolName)}\" is_error=\"${item.isError}\">" +
-                    xmlEscape(toolResultText(item)) +
+                    xmlEscape(toolResultTranscript(item, attachments)) +
                     "</tool_result>"
             }
-            is Conversation.Message.ContentItem.ImageItem -> {
-                "<image source=\"${xmlEscape(item.source.type)}\" />"
-            }
+            is Conversation.Message.ContentItem.ImageItem ->
+                attachments.addImage(item.source).toTranscriptMarker("image")
+            is Conversation.Message.ContentItem.DocumentItem ->
+                attachments.addDocument(item.source).toTranscriptMarker("document")
+            is Conversation.Message.ContentItem.ArtifactItem ->
+                error("Claude Code received an unmaterialized artifact: ${item.artifact.id.value}")
             is Conversation.Message.ContentItem.ContextCompactionResult -> compactionResultToTranscript(item)
             is Conversation.Message.ContentItem.UnknownJson -> xmlBlock("json", item.json.toString())
         }
+
+    private fun toolResultTranscript(
+        toolResult: Conversation.Message.ContentItem.ToolResult,
+        attachments: ClaudeCodeAttachmentCollector,
+    ): String = toolResult.result.joinToString("\n") { data ->
+        when (data) {
+            is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content
+            is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
+                attachments.addBinary(data.data, data.mediaType.value, data.fileName)
+                    .toTranscriptMarker("binary tool output")
+            is Conversation.Message.ContentItem.ToolResult.Data.UrlData ->
+                if (data.mediaType?.value?.startsWith("image/") == true) {
+                    attachments.addImage(Conversation.Message.ImageSource.UrlImageSource(data.url))
+                        .toTranscriptMarker("image tool output")
+                } else {
+                    "[url ${data.url}]"
+                }
+            is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                error("Claude Code received an unmaterialized tool artifact: ${data.artifact.id.value}")
+        }
+    }
 
     private fun compactionResultToTranscript(
         item: Conversation.Message.ContentItem.ContextCompactionResult,
@@ -510,9 +544,11 @@ internal class ClaudeCodeCliRuntime(
         toolResult.result.joinToString("\n") { data ->
             when (data) {
                 is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content
-                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> "[base64 ${data.mediaType.value}, ${data.data.length} chars]"
+                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
+                    "[base64 ${data.mediaType.value}, sha256=${sha256(data.data)}]"
                 is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url ${data.url}]"
-                is Conversation.Message.ContentItem.ToolResult.Data.FileData -> "[file ${data.fileId}]"
+                is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                    error("Claude Code received an unmaterialized tool artifact: ${data.artifact.id.value}")
             }
         }
 
@@ -555,9 +591,25 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.ToolResult -> "tool_result:${item.toolUseId.value}:${item.toolName}:${item.isError}:${toolResultText(item)}"
             is Conversation.Message.ContentItem.Thinking -> "thinking:${item.thinking}:${item.signature}"
             is Conversation.Message.ContentItem.System -> "system:${item.level}:${item.content}:${item.toolUseId?.value}"
-            is Conversation.Message.ContentItem.ImageItem -> "image:${item.source}"
+            is Conversation.Message.ContentItem.ImageItem -> "image:${imageSourceSignature(item.source)}"
+            is Conversation.Message.ContentItem.DocumentItem -> "document:${documentSourceSignature(item.source)}"
+            is Conversation.Message.ContentItem.ArtifactItem -> "artifact:${item.artifact}"
             is Conversation.Message.ContentItem.ContextCompactionResult -> "compaction:${compactionSignature(item)}"
             is Conversation.Message.ContentItem.UnknownJson -> "json:${item.json}"
+        }
+
+    private fun imageSourceSignature(source: Conversation.Message.ImageSource): String =
+        when (source) {
+            is Conversation.Message.ImageSource.Base64ImageSource ->
+                "base64:${source.mediaType}:${sha256(source.data)}"
+            is Conversation.Message.ImageSource.UrlImageSource -> "url:${source.url}"
+            is Conversation.Message.ImageSource.FileImageSource -> "file:${source.fileId}"
+        }
+
+    private fun documentSourceSignature(source: Conversation.Message.DocumentSource): String =
+        when (source) {
+            is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                "base64:${source.mediaType}:${source.fileName}:${sha256(source.data)}"
         }
 
     private fun compactionSignature(item: Conversation.Message.ContentItem.ContextCompactionResult): String =
@@ -602,6 +654,117 @@ internal class ClaudeCodeCliRuntime(
             .replace("'", "&apos;")
 }
 
+private data class ClaudeCodeAttachmentReference(val index: Int) {
+    fun toTranscriptMarker(label: String): String = "[$label attachment_index=$index]"
+}
+
+private class ClaudeCodeAttachmentCollector {
+    private val blocks = mutableListOf<JsonObject>()
+
+    val contentBlocks: List<JsonObject>
+        get() = blocks.toList()
+
+    fun addImage(source: Conversation.Message.ImageSource): ClaudeCodeAttachmentReference =
+        add(
+            when (source) {
+                is Conversation.Message.ImageSource.Base64ImageSource -> imageBlock(
+                    sourceType = "base64",
+                    sourceFields = mapOf(
+                        "media_type" to JsonPrimitive(source.mediaType),
+                        "data" to JsonPrimitive(source.data),
+                    ),
+                )
+                is Conversation.Message.ImageSource.UrlImageSource -> imageBlock(
+                    sourceType = "url",
+                    sourceFields = mapOf("url" to JsonPrimitive(source.url)),
+                )
+                is Conversation.Message.ImageSource.FileImageSource ->
+                    error("Claude Code does not accept a provider-independent image file id")
+            }
+        )
+
+    fun addDocument(source: Conversation.Message.DocumentSource): ClaudeCodeAttachmentReference =
+        when (source) {
+            is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                addBinary(source.data, source.mediaType, source.fileName)
+        }
+
+    fun addBinary(
+        data: String,
+        mediaType: String,
+        fileName: String?,
+    ): ClaudeCodeAttachmentReference {
+        val normalizedMediaType = mediaType.substringBefore(';').trim().lowercase()
+        val block = when {
+            normalizedMediaType.startsWith("image/") -> imageBlock(
+                sourceType = "base64",
+                sourceFields = mapOf(
+                    "media_type" to JsonPrimitive(normalizedMediaType),
+                    "data" to JsonPrimitive(data),
+                ),
+            )
+            normalizedMediaType == "application/pdf" -> documentBlock(
+                fileName = fileName ?: "attachment.pdf",
+                source = JsonObject(
+                    mapOf(
+                        "type" to JsonPrimitive("base64"),
+                        "media_type" to JsonPrimitive(normalizedMediaType),
+                        "data" to JsonPrimitive(data),
+                    )
+                ),
+            )
+            normalizedMediaType.startsWith("text/") || normalizedMediaType in CLAUDE_CODE_TEXT_DOCUMENT_TYPES ->
+                documentBlock(
+                    fileName = fileName ?: "attachment.txt",
+                    source = JsonObject(
+                        mapOf(
+                            "type" to JsonPrimitive("text"),
+                            "media_type" to JsonPrimitive("text/plain"),
+                            "data" to JsonPrimitive(Base64.getDecoder().decode(data).toString(Charsets.UTF_8)),
+                        )
+                    ),
+                )
+            else -> error("Claude Code does not support attachment type $normalizedMediaType")
+        }
+        return add(block)
+    }
+
+    private fun add(block: JsonObject): ClaudeCodeAttachmentReference {
+        blocks += block
+        return ClaudeCodeAttachmentReference(blocks.size)
+    }
+
+    private fun imageBlock(
+        sourceType: String,
+        sourceFields: Map<String, JsonElement>,
+    ): JsonObject = JsonObject(
+        mapOf(
+            "type" to JsonPrimitive("image"),
+            "source" to JsonObject(mapOf("type" to JsonPrimitive(sourceType)) + sourceFields),
+        )
+    )
+
+    private fun documentBlock(fileName: String, source: JsonObject): JsonObject = JsonObject(
+        mapOf(
+            "type" to JsonPrimitive("document"),
+            "source" to source,
+            "title" to JsonPrimitive(fileName),
+        )
+    )
+}
+
+private val CLAUDE_CODE_TEXT_DOCUMENT_TYPES = setOf(
+    "application/json",
+    "application/xml",
+    "application/x-yaml",
+    "application/yaml",
+)
+
+private data class ClaudeCodeUserInput(
+    val prompt: String,
+    val contentBlocks: List<JsonObject>,
+)
+
 private data class ClaudeCodeSessionPlan(
     val messagesToSend: List<Conversation.Message>,
     val resumeSessionId: String?,
@@ -644,6 +807,7 @@ internal data class ClaudeCodeCommand(
     val workspaceDirectory: File?,
     val systemPrompt: String,
     val userPrompt: String,
+    val userContentBlocks: List<JsonObject> = emptyList(),
     val jsonSchema: JsonElement?,
     val effort: AiReasoningEffort?,
     val reasoningMode: AiReasoningMode?,

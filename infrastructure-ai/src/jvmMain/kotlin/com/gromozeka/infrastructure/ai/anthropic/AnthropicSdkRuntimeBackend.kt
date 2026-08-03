@@ -8,7 +8,10 @@ import com.anthropic.core.JsonValue
 import com.anthropic.core.http.HttpRequest
 import com.anthropic.core.http.HttpResponse
 import com.anthropic.models.messages.CacheControlEphemeral
+import com.anthropic.models.messages.Base64ImageSource
 import com.anthropic.models.messages.ContentBlockParam
+import com.anthropic.models.messages.DocumentBlockParam
+import com.anthropic.models.messages.ImageBlockParam
 import com.anthropic.models.messages.JsonOutputFormat
 import com.anthropic.models.messages.Message
 import com.anthropic.models.messages.MessageCreateParams
@@ -63,6 +66,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain
 import kotlin.jvm.optionals.getOrNull
+import java.util.Base64
 
 @Service
 internal class AnthropicSdkRuntimeBackend(
@@ -315,6 +319,16 @@ internal class AnthropicSdkMessageMapper(
         }
 
         message.content
+            .filterIsInstance<Conversation.Message.ContentItem.ImageItem>()
+            .map { it.toAnthropicImageBlock() }
+            .forEach(blocks::add)
+
+        message.content
+            .filterIsInstance<Conversation.Message.ContentItem.DocumentItem>()
+            .map { it.toAnthropicDocumentBlock() }
+            .forEach(blocks::add)
+
+        message.content
             .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
             .forEach { toolResult ->
                 blocks.add(toolResultBlock(toolResult))
@@ -327,6 +341,43 @@ internal class AnthropicSdkMessageMapper(
                 .build()
         }
     }
+
+    private fun Conversation.Message.ContentItem.ImageItem.toAnthropicImageBlock(): ContentBlockParam {
+        val image = when (val imageSource = source) {
+            is Conversation.Message.ImageSource.Base64ImageSource -> {
+                val source = Base64ImageSource.builder()
+                    .data(imageSource.data)
+                    .mediaType(Base64ImageSource.MediaType.of(imageSource.mediaType))
+                    .build()
+                ImageBlockParam.builder().source(source).build()
+            }
+            is Conversation.Message.ImageSource.UrlImageSource ->
+                ImageBlockParam.builder().urlSource(imageSource.url).build()
+            is Conversation.Message.ImageSource.FileImageSource ->
+                error("Anthropic does not accept a provider-independent image file id")
+        }
+        return ContentBlockParam.ofImage(image)
+    }
+
+    private fun Conversation.Message.ContentItem.DocumentItem.toAnthropicDocumentBlock(): ContentBlockParam =
+        when (val documentSource = source) {
+            is Conversation.Message.DocumentSource.Base64DocumentSource -> {
+                val builder = DocumentBlockParam.builder().title(documentSource.fileName)
+                when {
+                    documentSource.mediaType == "application/pdf" ->
+                        builder.base64Source(documentSource.data)
+                    documentSource.mediaType.startsWith("text/") ||
+                        documentSource.mediaType in ANTHROPIC_TEXT_DOCUMENT_TYPES ->
+                        builder.textSource(
+                            Base64.getDecoder().decode(documentSource.data).toString(Charsets.UTF_8)
+                        )
+                    else -> error(
+                        "Anthropic does not support attachment type ${documentSource.mediaType}"
+                    )
+                }
+                ContentBlockParam.ofDocument(builder.build())
+            }
+        }
 
     private fun toAssistantMessageParam(message: Conversation.Message): MessageParam? {
         val toolResults = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
@@ -424,19 +475,67 @@ internal class AnthropicSdkMessageMapper(
         ContentBlockParam.ofToolResult(
             ToolResultBlockParam.builder()
                 .toolUseId(toolResult.toolUseId.value)
-                .content(toolResultText(toolResult))
+                .contentOfBlocks(toolResult.toAnthropicToolResultBlocks())
                 .isError(toolResult.isError)
                 .build()
         )
 
-    private fun toolResultText(toolResult: Conversation.Message.ContentItem.ToolResult): String =
-        toolResult.result.joinToString("\n") { data ->
+    private fun Conversation.Message.ContentItem.ToolResult.toAnthropicToolResultBlocks():
+        List<ToolResultBlockParam.Content.Block> = result.map { data ->
             when (data) {
-                is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content
-                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> "[base64 ${data.mediaType.value}, ${data.data.length} chars]"
-                is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url ${data.url}]"
-                is Conversation.Message.ContentItem.ToolResult.Data.FileData -> "[file ${data.fileId}]"
+                is Conversation.Message.ContentItem.ToolResult.Data.Text ->
+                    ToolResultBlockParam.Content.Block.ofText(
+                        TextBlockParam.builder().text(data.content).build()
+                    )
+
+                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
+                    data.toAnthropicToolResultBlock()
+
+                is Conversation.Message.ContentItem.ToolResult.Data.UrlData ->
+                    if (data.mediaType?.value?.startsWith("image/") == true) {
+                        ToolResultBlockParam.Content.Block.ofImage(
+                            ImageBlockParam.builder().urlSource(data.url).build()
+                        )
+                    } else {
+                        ToolResultBlockParam.Content.Block.ofText(
+                            TextBlockParam.builder().text("[url ${data.url}]").build()
+                        )
+                    }
+
+                is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                    error("Anthropic received an unmaterialized tool artifact: ${data.artifact.id.value}")
             }
+        }
+
+    private fun Conversation.Message.ContentItem.ToolResult.Data.Base64Data.toAnthropicToolResultBlock():
+        ToolResultBlockParam.Content.Block = when {
+            mediaType.value.startsWith("image/") -> {
+                val source = Base64ImageSource.builder()
+                    .data(data)
+                    .mediaType(Base64ImageSource.MediaType.of(mediaType.value))
+                    .build()
+                ToolResultBlockParam.Content.Block.ofImage(
+                    ImageBlockParam.builder().source(source).build()
+                )
+            }
+
+            mediaType.value == "application/pdf" ->
+                ToolResultBlockParam.Content.Block.ofDocument(
+                    DocumentBlockParam.builder()
+                        .title(fileName ?: "tool-output.pdf")
+                        .base64Source(data)
+                        .build()
+                )
+
+            mediaType.value.startsWith("text/") || mediaType.value in ANTHROPIC_TEXT_DOCUMENT_TYPES ->
+                ToolResultBlockParam.Content.Block.ofDocument(
+                    DocumentBlockParam.builder()
+                        .title(fileName ?: "tool-output.txt")
+                        .textSource(Base64.getDecoder().decode(data).toString(Charsets.UTF_8))
+                        .build()
+                )
+
+            else -> error("Anthropic does not support binary tool result type ${mediaType.value}")
         }
 
     private fun toolUseInput(input: JsonElement): ToolUseBlockParam.Input {
@@ -666,6 +765,12 @@ internal class AnthropicSdkMessageMapper(
         private const val CLAUDE_OPUS_5 = "claude-opus-5"
         private const val DEFAULT_MAX_TOKENS = 8192
         private const val DEFAULT_THINKING_BUDGET_TOKENS = 16_000
+        private val ANTHROPIC_TEXT_DOCUMENT_TYPES = setOf(
+            "application/json",
+            "application/xml",
+            "application/yaml",
+            "application/x-yaml",
+        )
     }
 }
 

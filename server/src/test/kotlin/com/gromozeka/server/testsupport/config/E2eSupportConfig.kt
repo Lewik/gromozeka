@@ -9,7 +9,6 @@ import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
 import com.gromozeka.application.service.TargetedAiEmbeddingProvider
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.NoOpGlobalHotkeyController
-import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.infrastructure.ai.platform.SystemAudioController
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import com.gromozeka.server.testsupport.llm.CassetteAiEmbeddingProvider
@@ -48,14 +47,6 @@ class E2eSupportConfig {
             aiConfigurationProvider = aiConfigurationProvider,
             settings = AiRuntimeCassetteSettings.fromSystemProperties(),
         )
-    }
-
-    @Bean
-    @Primary
-    fun screenCaptureController(): ScreenCaptureController = object : ScreenCaptureController {
-        override suspend fun captureWindow(): String? = null
-        override suspend fun captureFullScreen(): String? = null
-        override suspend fun captureArea(): String? = null
     }
 
     @Bean

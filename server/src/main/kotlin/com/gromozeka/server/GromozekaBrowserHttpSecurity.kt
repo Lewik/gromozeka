@@ -15,7 +15,7 @@ internal val gromozekaBrowserSecurityHeaders = createApplicationPlugin(
         call.response.headers.append("X-Frame-Options", "DENY")
         call.response.headers.append(
             "Permissions-Policy",
-            "camera=(self), microphone=(self), geolocation=(self)",
+            "camera=(self), microphone=(self), geolocation=(self), display-capture=(self)",
         )
     }
 }

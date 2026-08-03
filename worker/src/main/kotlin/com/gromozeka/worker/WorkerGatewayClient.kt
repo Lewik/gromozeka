@@ -112,7 +112,9 @@ class WorkerGatewayClient(
                     }
                 }
             }
-        install(WebSockets)
+        install(WebSockets) {
+            maxFrameSize = MAX_WORKER_GATEWAY_FRAME_BYTES
+        }
     }
     private val lifecycleLock = Any()
     private val termination = CompletableDeferred<Throwable?>()
@@ -470,5 +472,7 @@ internal fun workerGatewayWebSocketUrl(serverUrl: String): String {
         null,
     ).toString()
 }
+
+private const val MAX_WORKER_GATEWAY_FRAME_BYTES = 128L * 1024 * 1024
 
 private val workerGatewayLocalHosts = setOf("localhost", "127.0.0.1", "::1", "0:0:0:0:0:0:0:1")

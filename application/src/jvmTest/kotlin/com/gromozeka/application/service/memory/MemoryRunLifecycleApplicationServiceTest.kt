@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.domain.service.MemoryRunLifecycleEvent
 import com.gromozeka.domain.service.MemoryRunLifecycleEventPublisher
 import com.gromozeka.domain.service.MemoryRunLifecycleEventStream
@@ -42,6 +43,7 @@ class MemoryRunLifecycleApplicationServiceTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = runtimeCoordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            artifactReferenceValidator = ArtifactReferenceValidator { _, _ -> },
         )
         val service = MemoryRunLifecycleApplicationService(
             eventStream = lifecycleEvents,

@@ -24,10 +24,18 @@ import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.Response
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFormatTextJsonSchemaConfig
+import com.openai.models.responses.ResponseFunctionCallOutputItem
 import com.openai.models.responses.ResponseFunctionToolCall
 import com.openai.models.responses.ResponseFunctionWebSearch
 import com.openai.models.responses.ResponseIncludable
+import com.openai.models.responses.ResponseInputFileContent
+import com.openai.models.responses.ResponseInputImageContent
 import com.openai.models.responses.ResponseInputItem
+import com.openai.models.responses.ResponseInputContent
+import com.openai.models.responses.ResponseInputFile
+import com.openai.models.responses.ResponseInputImage
+import com.openai.models.responses.ResponseInputText
+import com.openai.models.responses.ResponseInputTextContent
 import com.openai.models.responses.ResponseOutputMessage
 import com.openai.models.responses.ResponseOutputText
 import com.openai.models.responses.ResponseReasoningItem
@@ -195,8 +203,34 @@ internal class OpenAiResponsesMessageMapper(
 
     private fun toInputItems(message: Conversation.Message): List<ResponseInputItem> = buildList {
         when (message.role) {
-            Conversation.Message.Role.USER -> userText(message).takeIf(String::isNotBlank)?.let { text ->
-                add(easyMessage(EasyInputMessage.Role.USER, text))
+            Conversation.Message.Role.USER -> {
+                val content = buildList {
+                    userText(message).takeIf(String::isNotBlank)?.let { text ->
+                        add(
+                            ResponseInputContent.ofInputText(
+                                ResponseInputText.builder().text(text).build()
+                            )
+                        )
+                    }
+                    message.content.filterIsInstance<Conversation.Message.ContentItem.ImageItem>()
+                        .map { it.toOpenAiInputImage() }
+                        .map(ResponseInputContent::ofInputImage)
+                        .forEach(::add)
+                    message.content.filterIsInstance<Conversation.Message.ContentItem.DocumentItem>()
+                        .map { it.toOpenAiInputFile() }
+                        .map(ResponseInputContent::ofInputFile)
+                        .forEach(::add)
+                }
+                if (content.isNotEmpty()) {
+                    add(
+                        ResponseInputItem.ofEasyInputMessage(
+                            EasyInputMessage.builder()
+                                .contentOfResponseInputMessageContentList(content)
+                                .role(EasyInputMessage.Role.USER)
+                                .build()
+                        )
+                    )
+                }
             }
 
             Conversation.Message.Role.ASSISTANT -> {
@@ -240,6 +274,26 @@ internal class OpenAiResponsesMessageMapper(
                 .build()
         )
 
+    private fun Conversation.Message.ContentItem.ImageItem.toOpenAiInputImage(): ResponseInputImage {
+        val builder = ResponseInputImage.builder().detail(ResponseInputImage.Detail.AUTO)
+        when (val imageSource = source) {
+            is Conversation.Message.ImageSource.Base64ImageSource ->
+                builder.imageUrl("data:${imageSource.mediaType};base64,${imageSource.data}")
+            is Conversation.Message.ImageSource.UrlImageSource -> builder.imageUrl(imageSource.url)
+            is Conversation.Message.ImageSource.FileImageSource -> builder.fileId(imageSource.fileId)
+        }
+        return builder.build()
+    }
+
+    private fun Conversation.Message.ContentItem.DocumentItem.toOpenAiInputFile(): ResponseInputFile =
+        when (val documentSource = source) {
+            is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                ResponseInputFile.builder()
+                    .filename(documentSource.fileName)
+                    .fileData("data:${documentSource.mediaType};base64,${documentSource.data}")
+                    .build()
+        }
+
     private fun functionCallItem(toolCall: Conversation.Message.ContentItem.ToolCall): ResponseInputItem =
         ResponseInputItem.ofFunctionCall(
             ResponseFunctionToolCall.builder()
@@ -253,7 +307,7 @@ internal class OpenAiResponsesMessageMapper(
         ResponseInputItem.ofFunctionCallOutput(
             ResponseInputItem.FunctionCallOutput.builder()
                 .callId(toolResult.toolUseId.value)
-                .output(toolResultText(toolResult))
+                .outputOfResponseFunctionCallOutputItemList(toolResult.toOpenAiFunctionOutput())
                 .build()
         )
 
@@ -307,14 +361,47 @@ internal class OpenAiResponsesMessageMapper(
             is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState -> null
         }
 
-    private fun toolResultText(toolResult: Conversation.Message.ContentItem.ToolResult): String =
-        toolResult.result.joinToString("\n") { data ->
+    private fun Conversation.Message.ContentItem.ToolResult.toOpenAiFunctionOutput():
+        List<ResponseFunctionCallOutputItem> = result.map { data ->
             when (data) {
-                is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content
+                is Conversation.Message.ContentItem.ToolResult.Data.Text ->
+                    ResponseFunctionCallOutputItem.ofInputText(
+                        ResponseInputTextContent.builder().text(data.content).build()
+                    )
+
                 is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
-                    "[base64 ${data.mediaType.value}, ${data.data.length} chars]"
-                is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url ${data.url}]"
-                is Conversation.Message.ContentItem.ToolResult.Data.FileData -> "[file ${data.fileId}]"
+                    if (data.mediaType.value.startsWith("image/")) {
+                        ResponseFunctionCallOutputItem.ofInputImage(
+                            ResponseInputImageContent.builder()
+                                .detail(ResponseInputImageContent.Detail.AUTO)
+                                .imageUrl("data:${data.mediaType.value};base64,${data.data}")
+                                .build()
+                        )
+                    } else {
+                        ResponseFunctionCallOutputItem.ofInputFile(
+                            ResponseInputFileContent.builder()
+                                .filename(data.fileName ?: "tool-output.bin")
+                                .fileData("data:${data.mediaType.value};base64,${data.data}")
+                                .build()
+                        )
+                    }
+
+                is Conversation.Message.ContentItem.ToolResult.Data.UrlData ->
+                    if (data.mediaType?.value?.startsWith("image/") == true) {
+                        ResponseFunctionCallOutputItem.ofInputImage(
+                            ResponseInputImageContent.builder()
+                                .detail(ResponseInputImageContent.Detail.AUTO)
+                                .imageUrl(data.url)
+                                .build()
+                        )
+                    } else {
+                        ResponseFunctionCallOutputItem.ofInputText(
+                            ResponseInputTextContent.builder().text("[url ${data.url}]").build()
+                        )
+                    }
+
+                is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                    error("OpenAI received an unmaterialized tool artifact: ${data.artifact.id.value}")
             }
         }
 

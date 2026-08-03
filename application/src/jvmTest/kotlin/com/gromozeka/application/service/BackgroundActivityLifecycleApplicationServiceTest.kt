@@ -12,6 +12,7 @@ import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
 import com.gromozeka.domain.service.CommandTaskLifecycleEventStream
+import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.coroutines.CoroutineScope
@@ -129,6 +130,7 @@ class BackgroundActivityLifecycleApplicationServiceTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            artifactReferenceValidator = ArtifactReferenceValidator { _, _ -> },
         )
         return BackgroundActivityLifecycleApplicationService(
             commandEventStream = commandEvents,

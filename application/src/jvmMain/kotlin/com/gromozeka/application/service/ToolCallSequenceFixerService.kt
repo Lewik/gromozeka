@@ -330,7 +330,7 @@ class ToolCallSequenceFixerService(
                     is ContentItem.ToolResult.Data.Text -> data.content
                     is ContentItem.ToolResult.Data.Base64Data -> "[Base64 data: ${data.mediaType}]"
                     is ContentItem.ToolResult.Data.UrlData -> "[URL: ${data.url}]"
-                    is ContentItem.ToolResult.Data.FileData -> "[File: ${data.fileId}]"
+                    is ContentItem.ToolResult.Data.ArtifactData -> "[Artifact: ${data.artifact.fileName}]"
                 }
             }
 

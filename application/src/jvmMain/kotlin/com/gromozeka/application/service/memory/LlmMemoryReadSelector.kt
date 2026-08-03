@@ -701,6 +701,12 @@ private fun MemoryReadRequest.targetTextForReadSelector(): String {
             is Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"
             is Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
             is Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
+            is Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
+                is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                    "[document:${source.fileName} media_type=${source.mediaType}]"
+            }
+            is Conversation.Message.ContentItem.ArtifactItem ->
+                "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
             is Conversation.Message.ContentItem.ContextCompactionResult -> item.readSelectorText()
             is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
             is Conversation.Message.ContentItem.Thinking -> null

@@ -6,6 +6,7 @@ import com.gromozeka.presentation.services.DesktopSystemAudioMuteService
 import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextService
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
+import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
 import com.gromozeka.presentation.services.WindowStateService
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.AuthenticatedUserView
@@ -38,6 +39,7 @@ internal suspend fun startRemotePresentation(
             audioPlayer = DesktopClientAudioPlayer(),
             systemAudioMuteService = DesktopSystemAudioMuteService(),
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
+            attachmentAcquisitionController = DesktopAttachmentAcquisitionController(),
             httpClient = httpClient,
         )
     } catch (error: Throwable) {

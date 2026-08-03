@@ -24,6 +24,9 @@ import com.openai.models.ResponseFormatJsonSchema
 import com.openai.models.chat.completions.ChatCompletion
 import com.openai.models.chat.completions.ChatCompletionDeveloperMessageParam
 import com.openai.models.chat.completions.ChatCompletionCreateParams
+import com.openai.models.chat.completions.ChatCompletionContentPart
+import com.openai.models.chat.completions.ChatCompletionContentPartImage
+import com.openai.models.chat.completions.ChatCompletionContentPartText
 import com.openai.models.chat.completions.ChatCompletionFunctionTool
 import com.openai.models.chat.completions.ChatCompletionMessageFunctionToolCall
 import com.openai.models.chat.completions.ChatCompletionMessageParam
@@ -198,8 +201,8 @@ private class OpenAiSdkMessageMapper(
     private fun toMessageParams(message: Conversation.Message): List<ChatCompletionMessageParam> =
         buildList {
             when (message.role) {
-                Conversation.Message.Role.USER -> userText(message).takeIf { it.isNotBlank() }?.let { text ->
-                    add(ChatCompletionMessageParam.ofUser(userMessageParam(text)))
+                Conversation.Message.Role.USER -> userMessageParam(message)?.let {
+                    add(ChatCompletionMessageParam.ofUser(it))
                 }
 
                 Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message)?.let(::add)
@@ -216,12 +219,64 @@ private class OpenAiSdkMessageMapper(
                 .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
                 .map(::toolMessageParam)
                 .forEach(::add)
+
+            toolResultAttachmentMessageParam(message)?.let {
+                add(ChatCompletionMessageParam.ofUser(it))
+            }
         }
 
-    private fun userMessageParam(text: String): ChatCompletionUserMessageParam =
-        ChatCompletionUserMessageParam.builder()
-            .content(text)
+    private fun userMessageParam(message: Conversation.Message): ChatCompletionUserMessageParam? {
+        val parts = buildList {
+            userText(message).takeIf(String::isNotBlank)?.let { text ->
+                add(
+                    ChatCompletionContentPart.ofText(
+                        ChatCompletionContentPartText.builder().text(text).build()
+                    )
+                )
+            }
+            message.content.filterIsInstance<Conversation.Message.ContentItem.ImageItem>()
+                .map { it.toOpenAiChatImagePart() }
+                .forEach(::add)
+            message.content.filterIsInstance<Conversation.Message.ContentItem.DocumentItem>()
+                .map { it.toOpenAiChatFilePart() }
+                .forEach(::add)
+        }
+        return parts.takeIf { it.isNotEmpty() }?.let {
+            ChatCompletionUserMessageParam.builder()
+                .contentOfArrayOfContentParts(parts)
+                .build()
+        }
+    }
+
+    private fun Conversation.Message.ContentItem.ImageItem.toOpenAiChatImagePart(): ChatCompletionContentPart {
+        val url = when (val imageSource = source) {
+            is Conversation.Message.ImageSource.Base64ImageSource ->
+                "data:${imageSource.mediaType};base64,${imageSource.data}"
+            is Conversation.Message.ImageSource.UrlImageSource -> imageSource.url
+            is Conversation.Message.ImageSource.FileImageSource ->
+                error("OpenAI-compatible chat does not accept an image file id")
+        }
+        val imageUrl = ChatCompletionContentPartImage.ImageUrl.builder()
+            .url(url)
+            .detail(ChatCompletionContentPartImage.ImageUrl.Detail.AUTO)
             .build()
+        return ChatCompletionContentPart.ofImageUrl(
+            ChatCompletionContentPartImage.builder().imageUrl(imageUrl).build()
+        )
+    }
+
+    private fun Conversation.Message.ContentItem.DocumentItem.toOpenAiChatFilePart(): ChatCompletionContentPart =
+        when (val documentSource = source) {
+            is Conversation.Message.DocumentSource.Base64DocumentSource -> {
+                val fileObject = ChatCompletionContentPart.File.FileObject.builder()
+                    .filename(documentSource.fileName)
+                    .fileData("data:${documentSource.mediaType};base64,${documentSource.data}")
+                    .build()
+                ChatCompletionContentPart.ofFile(
+                    ChatCompletionContentPart.File.builder().file(fileObject).build()
+                )
+            }
+        }
 
     private fun developerMessageParam(text: String): ChatCompletionDeveloperMessageParam =
         ChatCompletionDeveloperMessageParam.builder()
@@ -295,6 +350,60 @@ private class OpenAiSdkMessageMapper(
                 .build()
         )
 
+    private fun toolResultAttachmentMessageParam(
+        message: Conversation.Message,
+    ): ChatCompletionUserMessageParam? {
+        val parts = buildList {
+            message.content
+                .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+                .flatMap { toolResult ->
+                    toolResult.result.mapNotNull { data ->
+                        when (data) {
+                            is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
+                                if (data.mediaType.value.startsWith("image/")) {
+                                    Conversation.Message.ContentItem.ImageItem(
+                                        Conversation.Message.ImageSource.Base64ImageSource(
+                                            data = data.data,
+                                            mediaType = data.mediaType.value,
+                                        )
+                                    ).toOpenAiChatImagePart()
+                                } else {
+                                    Conversation.Message.ContentItem.DocumentItem(
+                                        Conversation.Message.DocumentSource.Base64DocumentSource(
+                                            data = data.data,
+                                            mediaType = data.mediaType.value,
+                                            fileName = data.fileName ?: "tool-output.bin",
+                                        )
+                                    ).toOpenAiChatFilePart()
+                                }
+
+                            is Conversation.Message.ContentItem.ToolResult.Data.UrlData ->
+                                data.takeIf { it.mediaType?.value?.startsWith("image/") == true }
+                                    ?.let {
+                                        Conversation.Message.ContentItem.ImageItem(
+                                            Conversation.Message.ImageSource.UrlImageSource(it.url)
+                                        ).toOpenAiChatImagePart()
+                                    }
+
+                            is Conversation.Message.ContentItem.ToolResult.Data.Text,
+                            is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData -> null
+                        }
+                    }
+                }
+                .forEach(::add)
+        }
+        if (parts.isEmpty()) return null
+
+        val description = ChatCompletionContentPart.ofText(
+            ChatCompletionContentPartText.builder()
+                .text("Binary content returned by the preceding tool calls.")
+                .build()
+        )
+        return ChatCompletionUserMessageParam.builder()
+            .contentOfArrayOfContentParts(listOf(description) + parts)
+            .build()
+    }
+
     private fun assistantToolCall(toolCall: Conversation.Message.ContentItem.ToolCall): ChatCompletionMessageToolCall =
         ChatCompletionMessageToolCall.ofFunction(
             ChatCompletionMessageFunctionToolCall.builder()
@@ -314,7 +423,8 @@ private class OpenAiSdkMessageMapper(
                 is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content
                 is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> "[base64 ${data.mediaType.value}, ${data.data.length} chars]"
                 is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url ${data.url}]"
-                is Conversation.Message.ContentItem.ToolResult.Data.FileData -> "[file ${data.fileId}]"
+                is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                    error("OpenAI received an unmaterialized tool artifact: ${data.artifact.id.value}")
             }
         }
 

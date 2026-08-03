@@ -43,6 +43,7 @@ class ConversationApplicationService(
     private val agentService: AgentDomainService,
     private val toolCallPairingService: ToolCallPairingService,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
+    private val artifactService: ConversationArtifactApplicationService,
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
 
@@ -213,7 +214,11 @@ class ConversationApplicationService(
         conversationRepo.create(newConversation)
         threadRepo.save(newThread)
         
-        val sourceMessages = threadMessageRepo.getMessagesByThread(sourceConversation.currentThread)
+        val sourceMessages = artifactService.cloneReferences(
+            sourceConversationId = sourceConversation.id,
+            targetConversation = newConversation,
+            messages = threadMessageRepo.getMessagesByThread(sourceConversation.currentThread),
+        )
         val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
         
         val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
@@ -265,10 +270,10 @@ class ConversationApplicationService(
             "Message conversationId mismatch"
         }
 
-        saveMessageIfAbsent(message)
-
         val conversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
+        artifactService.validateReferences(conversationId, message.content)
+        saveMessageIfAbsent(message)
 
         val currentThread = threadRepo.findById(conversation.currentThread)!!
         val existingLinks = threadMessageRepo.getByThread(currentThread.id)
@@ -371,6 +376,7 @@ class ConversationApplicationService(
         val targetMessage = messages.find { it.id == messageId }
             ?: throw IllegalArgumentException("Message $messageId not found in thread $currentThreadId")
         ensureMessagesAreNotCoveredByCompaction(messages, setOf(messageId), "edit")
+        artifactService.validateReferences(conversationId, newContent)
 
         val editedMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
@@ -630,6 +636,12 @@ class ConversationApplicationService(
                 is Conversation.Message.ContentItem.ToolResult -> "[tool_result:${content.toolName}]"
                 is Conversation.Message.ContentItem.Thinking -> null
                 is Conversation.Message.ContentItem.ImageItem -> "[image:${content.source.type}]"
+                is Conversation.Message.ContentItem.DocumentItem -> when (val source = content.source) {
+                    is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                        "[document:${source.fileName} media_type=${source.mediaType}]"
+                }
+                is Conversation.Message.ContentItem.ArtifactItem ->
+                    "[attachment:${content.artifact.fileName} media_type=${content.artifact.mediaType}]"
                 is Conversation.Message.ContentItem.UnknownJson -> content.json.toString()
             }
         }.joinToString("\n").trim()

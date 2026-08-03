@@ -64,6 +64,58 @@ class OpenAiSubscriptionRequestMapperTest {
     }
 
     @Test
+    fun `maps binary screenshot tool result to a Responses image output`() {
+        val toolCallId = Conversation.Message.ContentItem.ToolCall.Id("call-screenshot")
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = listOf(
+                    Conversation.Message(
+                        id = Conversation.Message.Id("tool-call-image"),
+                        conversationId = conversationId,
+                        role = Conversation.Message.Role.ASSISTANT,
+                        content = listOf(
+                            Conversation.Message.ContentItem.ToolCall(
+                                id = toolCallId,
+                                call = Conversation.Message.ContentItem.ToolCall.Data(
+                                    name = "grz_capture_screenshot",
+                                    input = buildJsonObject {},
+                                ),
+                            )
+                        ),
+                        createdAt = createdAt,
+                    ),
+                    Conversation.Message(
+                        id = Conversation.Message.Id("tool-result-image"),
+                        conversationId = conversationId,
+                        role = Conversation.Message.Role.USER,
+                        content = listOf(
+                            Conversation.Message.ContentItem.ToolResult(
+                                toolUseId = toolCallId,
+                                toolName = "grz_capture_screenshot",
+                                result = listOf(
+                                    Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                                        data = "AQID",
+                                        mediaType = Conversation.Message.MediaType.parse("image/png"),
+                                        fileName = "worker-screen.png",
+                                    )
+                                ),
+                            )
+                        ),
+                        createdAt = createdAt,
+                    )
+                ),
+            ),
+            modelName = "gpt-5",
+            conversationKey = "test-conversation",
+        )
+
+        val output = request.input.last().jsonArray("output").single().jsonObject
+        assertEquals("input_image", output.string("type"))
+        assertEquals("data:image/png;base64,AQID", output.string("image_url"))
+    }
+
+    @Test
     fun shortensLongToolCallIdsWithoutBreakingToolResultPairing() {
         val originalId = "call_" + "x".repeat(OPENAI_SUBSCRIPTION_KEY_MAX_LENGTH)
         val toolCallId = Conversation.Message.ContentItem.ToolCall.Id(originalId)

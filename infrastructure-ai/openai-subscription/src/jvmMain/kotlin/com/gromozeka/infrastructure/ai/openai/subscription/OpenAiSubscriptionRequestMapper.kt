@@ -169,8 +169,19 @@ class OpenAiSubscriptionRequestMapper {
 
     private fun Conversation.Message.toUserInputItems(): List<JsonObject> {
         val items = mutableListOf<JsonObject>()
-        buildUserMessageText(this)?.let { userText ->
-            items += messageItem(role = "user", content = JsonPrimitive(userText))
+        val userContent = buildJsonArray {
+            buildUserMessageText(this@toUserInputItems)?.let { userText ->
+                add(inputTextItem(userText))
+            }
+            content.filterIsInstance<Conversation.Message.ContentItem.ImageItem>()
+                .map { it.toInputImageItem() }
+                .forEach(::add)
+            content.filterIsInstance<Conversation.Message.ContentItem.DocumentItem>()
+                .map { it.toInputFileItem() }
+                .forEach(::add)
+        }
+        if (userContent.isNotEmpty()) {
+            items += messageItem(role = "user", content = userContent)
         }
 
         content
@@ -178,7 +189,7 @@ class OpenAiSubscriptionRequestMapper {
             .forEach { toolResult ->
                 items += functionCallOutputItem(
                     callId = toolResult.toolUseId.value,
-                    output = JsonPrimitive(toolResult.asPlainText()),
+                    output = toolResult.toOpenAiFunctionOutput(),
                 )
             }
 
@@ -472,6 +483,27 @@ class OpenAiSubscriptionRequestMapper {
             put("text", text)
         }
 
+    private fun Conversation.Message.ContentItem.ImageItem.toInputImageItem(): JsonObject =
+        buildJsonObject {
+            put("type", "input_image")
+            put("detail", "auto")
+            when (val imageSource = source) {
+                is Conversation.Message.ImageSource.Base64ImageSource ->
+                    put("image_url", "data:${imageSource.mediaType};base64,${imageSource.data}")
+                is Conversation.Message.ImageSource.UrlImageSource -> put("image_url", imageSource.url)
+                is Conversation.Message.ImageSource.FileImageSource -> put("file_id", imageSource.fileId)
+            }
+        }
+
+    private fun Conversation.Message.ContentItem.DocumentItem.toInputFileItem(): JsonObject =
+        when (val documentSource = source) {
+            is Conversation.Message.DocumentSource.Base64DocumentSource -> buildJsonObject {
+                put("type", "input_file")
+                put("filename", documentSource.fileName)
+                put("file_data", "data:${documentSource.mediaType};base64,${documentSource.data}")
+            }
+        }
+
     private fun reasoningItem(
         encryptedContent: String?,
         thinking: String,
@@ -518,27 +550,42 @@ class OpenAiSubscriptionRequestMapper {
         }
     }
 
-    private fun Conversation.Message.ContentItem.ToolResult.asPlainText(): String {
-        return result.joinToString("\n") { data ->
-            when (data) {
-                is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content
-                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
-                    "[base64:${data.mediaType.value}] ${data.data}"
-                is Conversation.Message.ContentItem.ToolResult.Data.UrlData ->
-                    buildString {
-                        append("[url")
-                        data.mediaType?.let { append(":${it.value}") }
-                        append("] ${data.url}")
-                    }
-                is Conversation.Message.ContentItem.ToolResult.Data.FileData ->
-                    buildString {
-                        append("[file")
-                        data.mediaType?.let { append(":${it.value}") }
-                        append("] ${data.fileId}")
-                    }
+    private fun Conversation.Message.ContentItem.ToolResult.toOpenAiFunctionOutput(): JsonArray =
+        buildJsonArray {
+            result.forEach { data ->
+                when (data) {
+                    is Conversation.Message.ContentItem.ToolResult.Data.Text -> add(inputTextItem(data.content))
+                    is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> add(
+                        if (data.mediaType.value.startsWith("image/")) {
+                            buildJsonObject {
+                                put("type", "input_image")
+                                put("detail", "auto")
+                                put("image_url", "data:${data.mediaType.value};base64,${data.data}")
+                            }
+                        } else {
+                            buildJsonObject {
+                                put("type", "input_file")
+                                put("filename", data.fileName ?: "tool-output.bin")
+                                put("file_data", "data:${data.mediaType.value};base64,${data.data}")
+                            }
+                        }
+                    )
+                    is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> add(
+                        if (data.mediaType?.value?.startsWith("image/") == true) {
+                            buildJsonObject {
+                                put("type", "input_image")
+                                put("detail", "auto")
+                                put("image_url", data.url)
+                            }
+                        } else {
+                            inputTextItem("[url ${data.url}]")
+                        }
+                    )
+                    is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                        error("OpenAI subscription received an unmaterialized tool artifact: ${data.artifact.id.value}")
+                }
             }
         }
-    }
 
     private fun normalizeReplayItem(
         item: JsonObject,

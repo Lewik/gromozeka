@@ -243,6 +243,7 @@ fun ToolCallItem(
     toolCall: Conversation.Message.ContentItem.ToolCall.Data,
     toolResult: Conversation.Message.ContentItem.ToolResult?,
     workspaceRootPath: String?,
+    loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -444,21 +445,30 @@ fun ToolCallItem(
                                             }
                                         }
 
-                                        is Conversation.Message.ContentItem.ToolResult.Data.FileData -> {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.fillMaxWidth()
+                                        is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData -> {
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(6.dp),
                                             ) {
-                                                Icon(
-                                                    Icons.Default.Folder,
-                                                    contentDescription = "File"
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(
-                                                    text = "File: ${dataItem.fileId}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        if (dataItem.artifact.kind == com.gromozeka.domain.model.Artifact.Kind.IMAGE) {
+                                                            Icons.Default.Image
+                                                        } else {
+                                                            Icons.Default.Folder
+                                                        },
+                                                        contentDescription = "File"
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        text = "${dataItem.artifact.fileName} (${dataItem.artifact.mediaType})",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                                if (dataItem.artifact.kind == com.gromozeka.domain.model.Artifact.Kind.IMAGE) {
+                                                    ArtifactImagePreview(dataItem.artifact, loadArtifactContent)
+                                                }
                                             }
                                         }
                                     }

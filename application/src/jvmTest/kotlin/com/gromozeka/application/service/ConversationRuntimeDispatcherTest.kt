@@ -14,6 +14,7 @@ import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -54,12 +55,14 @@ import kotlinx.serialization.json.JsonObject
 import org.springframework.beans.factory.ObjectProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private const val TEST_EVENT_TIMEOUT_MS = 10_000L
+private val acceptingArtifactReferenceValidator = ArtifactReferenceValidator { _, _ -> }
 
 class ConversationRuntimeDispatcherTest {
     private val conversationId = Conversation.Id("conversation-runtime-dispatcher-test")
@@ -89,6 +92,27 @@ class ConversationRuntimeDispatcherTest {
 
             harness.runner.releaseCurrentTask()
             waitUntil { harness.coordinator.find(conversationId) == null }
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun `dispatcher validates artifact references before persisting runtime task`() = runBlocking {
+        val harness = dispatcherHarness(
+            artifactReferenceValidator = ArtifactReferenceValidator { _, _ ->
+                throw IllegalArgumentException("Invalid artifact reference")
+            }
+        )
+        try {
+            assertFailsWith<IllegalArgumentException> {
+                harness.dispatcher.submitMessage(
+                    conversationId = conversationId,
+                    userMessage = userMessage("message-invalid-artifact"),
+                    agentDefinitionId = agentDefinitionId,
+                )
+            }
+            assertTrue(harness.coordinator.listPending(conversationId).isEmpty())
         } finally {
             harness.close()
         }
@@ -542,6 +566,7 @@ class ConversationRuntimeDispatcherTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = eventBus,
+            artifactReferenceValidator = acceptingArtifactReferenceValidator,
         )
         val serverExecutor = runtimeExecutor(
             coordinator = coordinator,
@@ -701,11 +726,13 @@ class ConversationRuntimeDispatcherTest {
             ConversationRuntimeCapability.MEMORY_PIPELINE,
         ),
         aiConfigurationService: AiConfigurationService = TestAiConfigurationService(),
+        artifactReferenceValidator: ArtifactReferenceValidator = acceptingArtifactReferenceValidator,
     ): DispatcherHarness {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = eventBus,
+            artifactReferenceValidator = artifactReferenceValidator,
         )
         val executor = runtimeExecutor(
             coordinator = coordinator,

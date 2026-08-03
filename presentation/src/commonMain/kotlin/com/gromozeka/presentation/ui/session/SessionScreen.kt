@@ -552,6 +552,7 @@ fun SessionScreen(
                             onToggleContentItemCollapse = { messageId, contentItemIndex ->
                                 viewModel.toggleContentItemCollapse(messageId, contentItemIndex)
                             },
+                            loadArtifactContent = viewModel::loadArtifactContent,
                         )
                     }
                 }
@@ -577,7 +578,14 @@ fun SessionScreen(
                         instructionGroups = viewModel.messageInstructionGroups,
                         activeInstructionIds = uiState.activeMessageInstructionIds,
                         onSelectInstruction = viewModel::selectMessageInstruction,
-                        onCaptureScreenshot = viewModel::captureAndAddToInput,
+                        composerArtifacts = uiState.composerArtifacts,
+                        artifactUploadInProgress = uiState.composerArtifactUploadInProgress,
+                        artifactError = uiState.composerArtifactError,
+                        canPickAttachments = viewModel.attachmentCapabilities.filePicker,
+                        canCaptureScreenshot = viewModel.attachmentCapabilities.screenshot,
+                        onPickAttachments = viewModel::pickAttachments,
+                        onCaptureScreenshot = viewModel::captureScreenshot,
+                        onRemoveArtifact = viewModel::removeComposerArtifact,
                         onInsertCurrentLocation = onInsertCurrentLocation,
                     )
 

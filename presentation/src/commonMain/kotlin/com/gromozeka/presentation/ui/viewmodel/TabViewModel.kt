@@ -3,10 +3,12 @@ package com.gromozeka.presentation.ui.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.gromozeka.presentation.services.ScreenCaptureController
+import com.gromozeka.client.ArtifactTransferService
+import com.gromozeka.presentation.services.AttachmentAcquisitionController
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.MessageInputContext
@@ -38,6 +40,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 
 class TabViewModel(
@@ -50,12 +54,17 @@ class TabViewModel(
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
-    private val screenCaptureController: ScreenCaptureController,
+    private val attachmentAcquisitionController: AttachmentAcquisitionController,
+    private val artifactTransferService: ArtifactTransferService,
     private val tokenStatsService: ConversationTokenStatsService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
 ) {
     private val log = KLoggers.logger(this)
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
+    private val artifactUploadMutex = Mutex()
+    private val artifactContentCacheMutex = Mutex()
+    private val artifactContentCache = linkedMapOf<com.gromozeka.domain.model.Artifact.Id, ByteArray>()
+    private var artifactContentCacheBytes = 0
 
     private val _uiState = MutableStateFlow(initialTabUiState)
     val uiState: StateFlow<UIState.Tab> = _uiState.asStateFlow()
@@ -74,6 +83,7 @@ class TabViewModel(
 
     companion object {
         private const val MID_TURN_STEER_INSTRUCTION_ID = "mid_turn_steer"
+        private const val MAX_ARTIFACT_CONTENT_CACHE_BYTES = 32 * 1024 * 1024
 
         private val MID_TURN_STEER_INSTRUCTION = Conversation.Message.Instruction.UserInstruction(
             id = MID_TURN_STEER_INSTRUCTION_ID,
@@ -90,6 +100,7 @@ class TabViewModel(
 
     val activeMessageInstructionIds: Set<String> get() = _uiState.value.activeMessageInstructionIds
     val userInput: String get() = _uiState.value.userInput
+    val attachmentCapabilities get() = attachmentAcquisitionController.capabilities
     val activeMessageInstructionIdsFlow: StateFlow<Set<String>> = _uiState.map { it.activeMessageInstructionIds }.stateIn(
         scope, SharingStarted.Lazily, initialTabUiState.activeMessageInstructionIds
     )
@@ -439,6 +450,7 @@ class TabViewModel(
                 _uiState.update {
                     it.copy(
                         userInput = "",
+                        composerArtifacts = emptyList(),
                         composerMessageInputContext = null,
                         workspaceContextReferences = emptyList(),
                     )
@@ -461,7 +473,7 @@ class TabViewModel(
     private fun claimUserInput(): PendingUserMessage? {
         while (true) {
             val currentState = _uiState.value
-            if (currentState.userInput.isBlank()) return null
+            if (currentState.userInput.isBlank() && currentState.composerArtifacts.isEmpty()) return null
 
             val pendingMessage = createPendingUserMessage(
                 message = currentState.userInput,
@@ -471,6 +483,7 @@ class TabViewModel(
             )
             val clearedState = currentState.copy(
                 userInput = "",
+                composerArtifacts = emptyList(),
                 composerMessageInputContext = null,
                 workspaceContextReferences = emptyList(),
             )
@@ -493,6 +506,8 @@ class TabViewModel(
                 userInput = restoredInput,
                 composerMessageInputContext = pendingMessage.messageInputContext
                     ?: currentState.composerMessageInputContext,
+                composerArtifacts = (pendingMessage.artifacts + currentState.composerArtifacts)
+                    .distinctBy { it.id },
                 workspaceContextReferences =
                     (pendingMessage.workspaceContextReferences + currentState.workspaceContextReferences)
                         .distinctBy { it.kind to it.relativePath },
@@ -523,6 +538,7 @@ class TabViewModel(
         _uiState.update {
             it.copy(
                 userInput = message.text,
+                composerArtifacts = message.artifacts,
                 composerMessageInputContext = message.messageInputContext,
                 workspaceContextReferences = message.workspaceContextReferences,
             )
@@ -607,11 +623,21 @@ class TabViewModel(
             listOfNotNull(workspaceContextInstruction) +
             otherAdditionalInstructions
 
+        val content = buildList {
+            message.takeIf(String::isNotBlank)?.let {
+                add(Conversation.Message.ContentItem.UserMessage(it))
+            }
+            currentState.composerArtifacts.forEach { artifact ->
+                add(Conversation.Message.ContentItem.ArtifactItem(artifact))
+            }
+        }
+        require(content.isNotEmpty()) { "User message must contain text or an attachment" }
+
         val userMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
-            content = listOf(Conversation.Message.ContentItem.UserMessage(message)),
+            content = content,
             createdAt = Clock.System.now(),
             instructions = instructions
         )
@@ -643,6 +669,7 @@ class TabViewModel(
         _uiState.update {
             it.copy(
                 userInput = "",
+                composerArtifacts = emptyList(),
                 composerMessageInputContext = null,
                 workspaceContextReferences = emptyList(),
                 isWaitingForResponse = true,
@@ -805,16 +832,114 @@ class TabViewModel(
         }
     }
 
-    suspend fun captureAndAddToInput() {
-        val filePath = screenCaptureController.captureWindow()
-        if (filePath != null) {
-            val currentInput = _uiState.value.userInput
-            val newInput = if (currentInput.isBlank()) {
-                filePath
-            } else {
-                "$currentInput $filePath"
+    fun pickAttachments() {
+        acquireAndUploadAttachments(attachmentAcquisitionController::pickAttachments)
+    }
+
+    fun captureScreenshot() {
+        acquireAndUploadAttachments {
+            listOfNotNull(attachmentAcquisitionController.captureScreenshot())
+        }
+    }
+
+    fun addAttachments(uploads: List<com.gromozeka.domain.model.ArtifactUpload>) {
+        if (uploads.isEmpty()) return
+        acquireAndUploadAttachments { uploads }
+    }
+
+    fun removeComposerArtifact(id: com.gromozeka.domain.model.Artifact.Id) {
+        val removedArtifact = _uiState.value.composerArtifacts.firstOrNull { it.id == id }
+        _uiState.update { state ->
+            state.copy(
+                composerArtifacts = state.composerArtifacts.filterNot { it.id == id },
+                composerArtifactError = null,
+            )
+        }
+        if (removedArtifact != null) {
+            scope.launch {
+                runCatching { artifactTransferService.deleteDraft(id) }
+                    .onFailure { error ->
+                        log.warn(error) { "Failed to release draft artifact ${id.value}: ${error.message}" }
+                    }
             }
-            _uiState.update { it.copy(userInput = newInput) }
+        }
+    }
+
+    fun clearComposerArtifactError() {
+        _uiState.update { it.copy(composerArtifactError = null) }
+    }
+
+    suspend fun loadArtifactContent(id: com.gromozeka.domain.model.Artifact.Id): ByteArray {
+        artifactContentCacheMutex.withLock {
+            artifactContentCache[id]?.let { return it }
+        }
+
+        val content = artifactTransferService.download(id)
+        if (content.size > MAX_ARTIFACT_CONTENT_CACHE_BYTES) return content
+
+        artifactContentCacheMutex.withLock {
+            artifactContentCache[id]?.let { return it }
+            while (
+                artifactContentCacheBytes + content.size > MAX_ARTIFACT_CONTENT_CACHE_BYTES &&
+                artifactContentCache.isNotEmpty()
+            ) {
+                val oldest = artifactContentCache.entries.first()
+                artifactContentCache.remove(oldest.key)
+                artifactContentCacheBytes -= oldest.value.size
+            }
+            artifactContentCache[id] = content
+            artifactContentCacheBytes += content.size
+        }
+        return content
+    }
+
+    fun reportAttachmentError(message: String) {
+        _uiState.update { it.copy(composerArtifactError = message) }
+    }
+
+    private fun acquireAndUploadAttachments(
+        acquire: suspend () -> List<com.gromozeka.domain.model.ArtifactUpload>,
+    ) {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            artifactUploadMutex.withLock {
+                _uiState.update {
+                    it.copy(
+                        composerArtifactUploadInProgress = true,
+                        composerArtifactError = null,
+                    )
+                }
+                try {
+                    acquire().forEach { upload ->
+                        require(upload.content.size <= ArtifactLimits.MAX_FILE_BYTES) {
+                            "${upload.fileName} exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB limit"
+                        }
+                        val currentArtifacts = _uiState.value.composerArtifacts
+                        require(currentArtifacts.size < ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE) {
+                            "A message can contain at most ${ArtifactLimits.MAX_ARTIFACTS_PER_MESSAGE} attachments"
+                        }
+                        val totalBytes = currentArtifacts.sumOf { it.sizeBytes } + upload.content.size
+                        require(totalBytes <= ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE) {
+                            "Message attachments exceed the ${ArtifactLimits.MAX_TOTAL_BYTES_PER_MESSAGE / (1024 * 1024)} MB total limit"
+                        }
+                        val reference = artifactTransferService.upload(conversationId, upload)
+                        _uiState.update { state ->
+                            state.copy(
+                                composerArtifacts = (state.composerArtifacts + reference)
+                                    .distinctBy { it.id },
+                            )
+                        }
+                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    log.warn(error) { "Artifact acquisition failed: ${error.message}" }
+                    _uiState.update {
+                        it.copy(composerArtifactError = error.message ?: "Failed to attach file")
+                    }
+                } finally {
+                    _uiState.update { it.copy(composerArtifactUploadInProgress = false) }
+                }
+            }
         }
     }
 
@@ -1198,6 +1323,11 @@ data class PendingUserMessage(
         get() = userMessage.content
             .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
             .joinToString("\n") { it.text }
+
+    val artifacts: List<com.gromozeka.domain.model.Artifact.Reference>
+        get() = userMessage.content
+            .filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>()
+            .map { it.artifact }
 
     val workspaceContextReferences: List<WorkspaceContextReference>
         get() = userMessage.instructions

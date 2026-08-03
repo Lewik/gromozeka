@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.MemoryToolApplicationService
+import com.gromozeka.application.service.ConversationArtifactApplicationService
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import com.gromozeka.domain.tool.Tool
@@ -68,6 +69,8 @@ fun main() {
     val bootstrapToken = context.getBean(FirstUserBootstrapToken::class.java)
     val authenticationAttemptLimiter = context.getBean(AuthenticationAttemptLimiter::class.java)
     val personalAccessTokenService = context.getBean(PersonalAccessTokenService::class.java)
+    val artifactService = context.getBean(ConversationArtifactApplicationService::class.java)
+    val remoteAuthorization = context.getBean(GromozekaRemoteAuthorization::class.java)
     val webRoot = resolveWebRoot()
     val secureCookie = resolveSecureCookie(host)
     val trustForwardedHttps = resolveTrustForwardedHttps(
@@ -147,6 +150,7 @@ fun main() {
             }
             gromozekaMemoryHttp(memoryToolApplicationService, authenticationService)
             gromozekaDistributions(workerEnrollmentService, authenticationService)
+            gromozekaArtifacts(artifactService, authenticationService, remoteAuthorization)
             gromozekaWeb(webRoot)
         }
     }.start(wait = false)

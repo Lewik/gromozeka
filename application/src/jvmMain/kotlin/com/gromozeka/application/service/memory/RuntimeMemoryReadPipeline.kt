@@ -946,6 +946,12 @@ private fun MemoryReadRequest.targetQueryText(): String {
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult -> "Tool result: ${item.toolName} error=${item.isError}"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
+            is com.gromozeka.domain.model.Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
+                is com.gromozeka.domain.model.Conversation.Message.DocumentSource.Base64DocumentSource ->
+                    "[document:${source.fileName} media_type=${source.mediaType}]"
+            }
+            is com.gromozeka.domain.model.Conversation.Message.ContentItem.ArtifactItem ->
+                "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult -> item.readPipelineText()
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.Thinking -> null

@@ -24,6 +24,7 @@ import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.IosClientAudioPlayer
 import com.gromozeka.presentation.services.IosClientAudioRecorder
+import com.gromozeka.presentation.services.IosAttachmentAcquisitionController
 import com.gromozeka.presentation.services.IosRemoteClientSettingsStore
 import com.gromozeka.presentation.services.IosRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.PTTEvent
@@ -100,6 +101,7 @@ private fun GromozekaIosApp() {
                     remoteClientSettingsStore = settingsStore,
                     audioRecorder = IosClientAudioRecorder(),
                     audioPlayer = IosClientAudioPlayer(),
+                    attachmentAcquisitionController = IosAttachmentAcquisitionController(),
                     deviceLocationService = NoOpDeviceLocationService,
                     httpClient = connection.httpClient,
                 )
@@ -158,6 +160,7 @@ private fun GromozekaIosApp() {
                                     remoteClientSettingsStore = settingsStore,
                                     audioRecorder = IosClientAudioRecorder(),
                                     audioPlayer = IosClientAudioPlayer(),
+                                    attachmentAcquisitionController = IosAttachmentAcquisitionController(),
                                     deviceLocationService = NoOpDeviceLocationService,
                                     httpClient = connection.httpClient,
                                 )

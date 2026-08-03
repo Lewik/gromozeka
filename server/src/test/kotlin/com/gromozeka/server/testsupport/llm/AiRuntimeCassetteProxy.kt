@@ -979,7 +979,7 @@ private fun Conversation.Message.ContentItem.ToolResult.Data.extractCassetteRunt
         is Conversation.Message.ContentItem.ToolResult.Data.Text -> content
         is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> mediaType.value
         is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> url
-        is Conversation.Message.ContentItem.ToolResult.Data.FileData -> fileId
+        is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData -> artifact.id.value
     }
 }
 
@@ -1072,7 +1072,8 @@ private fun Conversation.Message.ContentItem.ToolResult.Data.toStableCassetteToo
     Conversation.Message.ContentItem.ToolResult.Data {
     return when (this) {
         is Conversation.Message.ContentItem.ToolResult.Data.Text -> copy(content = normalizeRuntimeText(content, runtimeBindings))
-        is Conversation.Message.ContentItem.ToolResult.Data.FileData -> copy(fileId = STABLE_FILE_ID)
+        is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+            copy(artifact = artifact.copy(id = com.gromozeka.domain.model.Artifact.Id(STABLE_FILE_ID)))
         is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> copy(url = normalizeRuntimeText(url, runtimeBindings))
         is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> this
     }
@@ -1171,8 +1172,16 @@ private fun Conversation.Message.ContentItem.ToolResult.Data.rehydrateDynamicToo
 ): Conversation.Message.ContentItem.ToolResult.Data {
     return when (this) {
         is Conversation.Message.ContentItem.ToolResult.Data.Text -> this
-        is Conversation.Message.ContentItem.ToolResult.Data.FileData ->
-            if (fileId == STABLE_FILE_ID) copy(fileId = "cassette_file_${context.replaySuffix}") else this
+        is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+            if (artifact.id.value == STABLE_FILE_ID) {
+                copy(
+                    artifact = artifact.copy(
+                        id = com.gromozeka.domain.model.Artifact.Id("cassette_file_${context.replaySuffix}")
+                    )
+                )
+            } else {
+                this
+            }
         is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> this
         is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> this
     }

@@ -1,18 +1,48 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.model.ArtifactUpload
 import com.gromozeka.domain.model.TtsTask
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-interface ScreenCaptureController {
-    suspend fun captureWindow(): String?
-    suspend fun captureFullScreen(): String?
-    suspend fun captureArea(): String?
+data class AttachmentAcquisitionCapabilities(
+    val filePicker: Boolean,
+    val screenshot: Boolean,
+)
+
+sealed interface AttachmentAcquisitionEvent {
+    data class Acquired(val uploads: List<ArtifactUpload>) : AttachmentAcquisitionEvent
+
+    data class Failed(val message: String) : AttachmentAcquisitionEvent
+}
+
+interface AttachmentAcquisitionController {
+    val capabilities: AttachmentAcquisitionCapabilities
+    val externalEvents: Flow<AttachmentAcquisitionEvent>
+        get() = emptyFlow()
+
+    suspend fun pickAttachments(): List<ArtifactUpload>
+
+    suspend fun captureScreenshot(): ArtifactUpload?
+
+    fun close() = Unit
+}
+
+object NoOpAttachmentAcquisitionController : AttachmentAcquisitionController {
+    override val capabilities = AttachmentAcquisitionCapabilities(
+        filePicker = false,
+        screenshot = false,
+    )
+
+    override suspend fun pickAttachments(): List<ArtifactUpload> = emptyList()
+
+    override suspend fun captureScreenshot(): ArtifactUpload? = null
 }
 
 interface GlobalHotkeyController {

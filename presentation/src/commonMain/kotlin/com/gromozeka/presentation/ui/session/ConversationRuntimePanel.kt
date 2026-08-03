@@ -591,7 +591,9 @@ private fun PendingMessageGroup(
     messages.forEach { message ->
         Column {
             Text(
-                text = message.text,
+                text = message.text.ifBlank {
+                    message.artifacts.joinToString { it.fileName }
+                },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,

@@ -29,6 +29,7 @@ import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.AndroidRemoteClientSettingsStore
 import com.gromozeka.presentation.services.AndroidRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.AndroidClientAudioPlayer
+import com.gromozeka.presentation.services.AndroidAttachmentAcquisitionController
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.ui.GromozekaTheme
@@ -84,6 +85,15 @@ private fun GromozekaAndroidApp(
     val currentRemoteApp by rememberUpdatedState(remoteApp)
     val context = LocalContext.current.applicationContext
     val audioPlayer = remember { AndroidClientAudioPlayer(context) }
+    val attachmentController = remember { AndroidAttachmentAcquisitionController(context.contentResolver) }
+    val attachmentPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        attachmentController.onDocumentsPicked(uris)
+    }
+    attachmentController.launchFilePicker = {
+        attachmentPickerLauncher.launch(arrayOf("*/*"))
+    }
     val settingsStore = remember { AndroidRemoteClientSettingsStore(context) }
     val sessionCredentialStore = remember { AndroidRemoteSessionCredentialStore(context) }
     val initialResolution = remember {
@@ -147,6 +157,7 @@ private fun GromozekaAndroidApp(
                     remoteClientSettingsStore = settingsStore,
                     audioRecorder = NoOpClientAudioRecorder,
                     audioPlayer = audioPlayer,
+                    attachmentAcquisitionController = attachmentController,
                     deviceLocationService = if (BuildConfig.ENABLE_LOCATION_TELEMETRY) {
                         AndroidDeviceLocationService(context, locationPermissionRequester)
                     } else {
@@ -169,6 +180,7 @@ private fun GromozekaAndroidApp(
         onDispose {
             currentRemoteApp?.close()
             authenticationConnection?.close()
+            attachmentController.close()
         }
     }
 
@@ -206,6 +218,7 @@ private fun GromozekaAndroidApp(
                                     remoteClientSettingsStore = settingsStore,
                                     audioRecorder = NoOpClientAudioRecorder,
                                     audioPlayer = audioPlayer,
+                                    attachmentAcquisitionController = attachmentController,
                                     deviceLocationService = if (BuildConfig.ENABLE_LOCATION_TELEMETRY) {
                                         AndroidDeviceLocationService(context, locationPermissionRequester)
                                     } else {

@@ -67,7 +67,7 @@ internal class ProcessClaudeCodeCliExecutor(
         return if (effectiveCommand.noSessionPersistence || effectiveCommand.cacheKey == null) {
             val process = processCache.startUncached(effectiveCommand)
             try {
-                process.execute(effectiveCommand.userPrompt)
+                process.execute(effectiveCommand.userPrompt, effectiveCommand.userContentBlocks)
             } finally {
                 withContext(NonCancellable) {
                     process.close()
@@ -77,7 +77,10 @@ internal class ProcessClaudeCodeCliExecutor(
             val lease = processCache.acquire(effectiveCommand)
             var succeeded = false
             try {
-                lease.process.execute(effectiveCommand.userPrompt).also { succeeded = true }
+                lease.process.execute(
+                    effectiveCommand.userPrompt,
+                    effectiveCommand.userContentBlocks,
+                ).also { succeeded = true }
             } finally {
                 withContext(NonCancellable) {
                     processCache.release(lease, succeeded)
@@ -141,6 +144,14 @@ internal interface ClaudeCodeCliProcess {
     val isAlive: Boolean
 
     suspend fun execute(userPrompt: String): ClaudeCodeCliResponse
+
+    suspend fun execute(
+        userPrompt: String,
+        userContentBlocks: List<JsonObject>,
+    ): ClaudeCodeCliResponse {
+        check(userContentBlocks.isEmpty()) { "Claude Code process does not support rich user input" }
+        return execute(userPrompt)
+    }
 
     suspend fun executeNativeTool(
         userPrompt: String,
@@ -539,6 +550,12 @@ private class StreamingClaudeCodeCliProcess(
         get() = !closed.get() && process.isAlive
 
     override suspend fun execute(userPrompt: String): ClaudeCodeCliResponse =
+        execute(userPrompt, emptyList())
+
+    override suspend fun execute(
+        userPrompt: String,
+        userContentBlocks: List<JsonObject>,
+    ): ClaudeCodeCliResponse =
         requestMutex.withLock {
             check(isAlive) {
                 "Claude Code CLI process is not running${stderrDiagnostic().asDiagnosticSuffix()}"
@@ -546,7 +563,7 @@ private class StreamingClaudeCodeCliProcess(
 
             coroutineScope {
                 val response = async(Dispatchers.IO) {
-                    stdin.write(streamingUserMessage(userPrompt))
+                    stdin.write(streamingUserMessage(userPrompt, userContentBlocks))
                     stdin.newLine()
                     stdin.flush()
                     readResult()
@@ -669,14 +686,30 @@ private class StreamingClaudeCodeCliProcess(
         root.destroyForcibly()
     }
 
-    private fun streamingUserMessage(userPrompt: String): String =
+    private fun streamingUserMessage(
+        userPrompt: String,
+        userContentBlocks: List<JsonObject> = emptyList(),
+    ): String =
         JsonObject(
             mapOf(
                 "type" to JsonPrimitive("user"),
                 "message" to JsonObject(
                     mapOf(
                         "role" to JsonPrimitive("user"),
-                        "content" to JsonPrimitive(userPrompt),
+                        "content" to if (userContentBlocks.isEmpty()) {
+                            JsonPrimitive(userPrompt)
+                        } else {
+                            JsonArray(
+                                listOf(
+                                    JsonObject(
+                                        mapOf(
+                                            "type" to JsonPrimitive("text"),
+                                            "text" to JsonPrimitive(userPrompt),
+                                        )
+                                    )
+                                ) + userContentBlocks
+                            )
+                        },
                     )
                 ),
                 "parent_tool_use_id" to JsonNull,

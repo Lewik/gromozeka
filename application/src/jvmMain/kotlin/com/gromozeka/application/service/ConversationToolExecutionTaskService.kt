@@ -47,6 +47,7 @@ class ConversationToolExecutionTaskService(
     private val workerAccessService: WorkerAccessService,
     private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
     private val workerToolExecutionClient: WorkerToolExecutionClient,
+    private val artifactService: ConversationArtifactApplicationService,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -161,12 +162,17 @@ class ConversationToolExecutionTaskService(
                 }
             }
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
+            val persistedResults = artifactService.persistAndCommitToolResults(
+                conversation = conversation,
+                createdByUserId = task.actorUserId,
+                results = executionResult.results,
+            )
 
             val toolResultMessage = Conversation.Message(
                 id = toolResultMessageId,
                 conversationId = conversationId,
                 role = Conversation.Message.Role.USER,
-                content = executionResult.results,
+                content = persistedResults,
                 createdAt = Clock.System.now(),
             )
             if (addRuntimeMessageIfMissing(conversationId, toolResultMessage)) {

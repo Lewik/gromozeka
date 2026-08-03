@@ -19,6 +19,38 @@ interface AiToolCallback {
         get() = true
 
     fun call(toolInput: String, context: ToolExecutionContext? = null): String
+
+    fun callResult(toolInput: String, context: ToolExecutionContext? = null): List<AiToolResult> =
+        listOf(AiToolResult.Text(call(toolInput, context)))
+}
+
+sealed interface AiToolResult {
+    data class Text(val content: String) : AiToolResult
+
+    data class Binary(
+        val content: ByteArray,
+        val fileName: String,
+        val mediaType: String,
+    ) : AiToolResult {
+        init {
+            require(content.isNotEmpty()) { "Binary tool result must not be empty" }
+            require(fileName.isNotBlank()) { "Binary tool result file name must not be blank" }
+            require(mediaType.isNotBlank()) { "Binary tool result media type must not be blank" }
+        }
+
+        override fun equals(other: Any?): Boolean =
+            other is Binary &&
+                content.contentEquals(other.content) &&
+                fileName == other.fileName &&
+                mediaType == other.mediaType
+
+        override fun hashCode(): Int {
+            var result = content.contentHashCode()
+            result = 31 * result + fileName.hashCode()
+            result = 31 * result + mediaType.hashCode()
+            return result
+        }
+    }
 }
 
 interface AiToolCallbackContributor {

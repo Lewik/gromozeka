@@ -2,6 +2,7 @@ package com.gromozeka.presentation.ui.state
 
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.Project
@@ -32,6 +33,9 @@ data class UIState(
         val conversationId: Conversation.Id,
         val activeMessageInstructionIds: Set<String> = emptySet(),
         val userInput: String = "",
+        val composerArtifacts: List<Artifact.Reference> = emptyList(),
+        val composerArtifactUploadInProgress: Boolean = false,
+        val composerArtifactError: String? = null,
         val composerMessageInputContext: MessageInputContext? = null,
         val workspaceContextReferences: List<WorkspaceContextReference> = emptyList(),
         val isWaitingForResponse: Boolean = false,

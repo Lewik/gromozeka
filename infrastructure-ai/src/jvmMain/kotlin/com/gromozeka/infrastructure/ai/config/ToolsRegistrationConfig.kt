@@ -6,6 +6,7 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
@@ -76,7 +77,25 @@ class TypedToolCallbackAdapter {
                 val response = tool.execute(request, context)
                 return when (response) {
                     is String -> response
+                    is AiToolResult.Text -> response.content
+                    is AiToolResult.Binary -> objectMapper.writeValueAsString(
+                        mapOf(
+                            "file_name" to response.fileName,
+                            "media_type" to response.mediaType,
+                            "size_bytes" to response.content.size,
+                        )
+                    )
                     else -> objectMapper.writeValueAsString(response)
+                }
+            }
+
+            override fun callResult(toolInput: String, context: ToolExecutionContext?): List<AiToolResult> {
+                val request = objectMapper.readValue(toolInput, tool.requestType)
+                val response = tool.execute(request, context)
+                return when (response) {
+                    is AiToolResult -> listOf(response)
+                    is String -> listOf(AiToolResult.Text(response))
+                    else -> listOf(AiToolResult.Text(objectMapper.writeValueAsString(response)))
                 }
             }
         }

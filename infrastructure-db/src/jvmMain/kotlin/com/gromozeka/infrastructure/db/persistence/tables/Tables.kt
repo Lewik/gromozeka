@@ -240,6 +240,26 @@ internal object Conversations : Table("conversations") {
     override val primaryKey = PrimaryKey(id)
 }
 
+internal object Artifacts : Table("artifacts") {
+    val id = varchar("id", 255)
+    val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val conversationId = varchar("conversation_id", 255)
+        .references(Conversations.id, onDelete = ReferenceOption.CASCADE)
+    val createdByUserId = varchar("created_by_user_id", 255)
+        .references(Users.id, onDelete = ReferenceOption.SET_NULL)
+        .nullable()
+    val fileName = varchar("file_name", 255)
+    val mediaType = varchar("media_type", 255)
+    val sizeBytes = long("size_bytes")
+    val sha256 = varchar("sha256", 64)
+    val purpose = varchar("purpose", 64)
+    val state = varchar("state", 32)
+    val createdAt = timestamp("created_at")
+    val committedAt = timestamp("committed_at").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
 internal object AiConnections : Table("ai_connections") {
     val id = varchar("id", 255)
     val payloadJson = text("payload_json")
