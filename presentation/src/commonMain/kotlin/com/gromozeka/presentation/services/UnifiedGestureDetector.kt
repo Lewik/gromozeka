@@ -103,9 +103,12 @@ class UnifiedGestureDetector(
                         }
                     }
                 } else {
-                    // This was single hold, but released early
+                    // Preserve hold semantics when a busy event loop delays the threshold timer.
                     state = GestureState.IDLE
-                    dispatch { handlePTTRelease() }
+                    dispatchSequentially(
+                        { handlePTTEvent(PTTEvent.SINGLE_PUSH) },
+                        { handlePTTRelease() },
+                    )
                 }
             }
 
@@ -118,9 +121,12 @@ class UnifiedGestureDetector(
                     state = GestureState.IDLE
                     dispatch { handlePTTEvent(PTTEvent.DOUBLE_CLICK) }
                 } else {
-                    // This was double hold, but released early
+                    // Preserve hold semantics when a busy event loop delays the threshold timer.
                     state = GestureState.IDLE
-                    dispatch { handlePTTRelease() }
+                    dispatchSequentially(
+                        { handlePTTEvent(PTTEvent.DOUBLE_PUSH) },
+                        { handlePTTRelease() },
+                    )
                 }
             }
 
@@ -159,6 +165,12 @@ class UnifiedGestureDetector(
     private fun dispatch(action: suspend PttEventHandler.() -> Unit) {
         coroutineScope.launch {
             pttEventRouter.action()
+        }
+    }
+
+    private fun dispatchSequentially(vararg actions: suspend PttEventHandler.() -> Unit) {
+        coroutineScope.launch {
+            actions.forEach { action -> pttEventRouter.action() }
         }
     }
 }
