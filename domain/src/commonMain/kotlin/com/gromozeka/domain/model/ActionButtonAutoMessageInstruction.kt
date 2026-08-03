@@ -1,11 +1,5 @@
 package com.gromozeka.domain.model
 
-val VoiceInputMessageInstruction = Conversation.Message.Instruction.UserInstruction(
-    id = "voice-stt-source",
-    title = "Voice input",
-    description = "This user message was dictated through speech-to-text; tolerate likely recognition mistakes.",
-)
-
 val ActionButtonAutoMessageInstruction = Conversation.Message.Instruction.UserInstruction(
     id = "action-button-auto-mode",
     title = "Action Button auto mode",

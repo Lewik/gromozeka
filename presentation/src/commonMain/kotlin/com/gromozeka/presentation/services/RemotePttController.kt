@@ -1,6 +1,7 @@
 package com.gromozeka.presentation.services
 
 import com.gromozeka.client.AudioTranscriptionService
+import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.service.SettingsService
@@ -28,6 +29,7 @@ class RemotePttController(
     private val systemAudioMuteService: SystemAudioMuteService,
     private val settingsService: SettingsService,
     private val uiFeedbackController: UiFeedbackController,
+    private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val scope: CoroutineScope,
 ) : PttEventHandler, PttRecordingService {
     private val log = KLoggers.logger(this)
@@ -143,18 +145,24 @@ class RemotePttController(
         }
 
         _statusMessage.value = null
+        val messageInputContext = MessageInputContext(
+            modality = MessageInputContext.Modality.SPEECH_TO_TEXT,
+            source = MessageInputContext.Source.PUSH_TO_TALK,
+            clientPlatform = messageInputClientPlatform,
+            reliability = MessageInputContext.Reliability.MAY_CONTAIN_RECOGNITION_ERRORS,
+        )
         if (settingsService.userDeviceSettings.voiceInputSettings.autoSend) {
             log.info {
                 "PTT transcription sending message: " +
                     "session=${capture.session.sessionId} textChars=${text.length}"
             }
-            currentTab.sendMessageToSession(text)
+            currentTab.sendMessageToSession(text, messageInputContext = messageInputContext)
         } else {
             log.info {
                 "PTT transcription adding composer draft: " +
                     "session=${capture.session.sessionId} textChars=${text.length}"
             }
-            currentTab.appendUserInput(text)
+            currentTab.appendUserInput(text, messageInputContext)
         }
     }
 

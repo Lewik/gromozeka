@@ -32,6 +32,7 @@ open class AppViewModel(
     private val agentService: AgentDomainService,
     private val tokenStatsService: ConversationTokenStatsService,
     private val conversationTabLayoutService: ConversationTabLayoutService,
+    private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -308,6 +309,7 @@ open class AppViewModel(
         initialTabUiState = initialTabUiState,
         screenCaptureController = screenCaptureController,
         tokenStatsService = tokenStatsService,
+        messageInputClientPlatform = messageInputClientPlatform,
     )
 
     private suspend fun TabViewModel.sendInitialMessage(message: Conversation.Message) {

@@ -9,6 +9,7 @@ import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
@@ -51,6 +52,7 @@ class TabViewModel(
     initialTabUiState: UIState.Tab,
     private val screenCaptureController: ScreenCaptureController,
     private val tokenStatsService: ConversationTokenStatsService,
+    private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
 ) {
     private val log = KLoggers.logger(this)
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
@@ -63,6 +65,12 @@ class TabViewModel(
     private var currentRequestJob: kotlinx.coroutines.Job? = null
     private var lastRuntimeSnapshotRevision = -1L
     private var claimedUserInput: String? = null
+    private val textMessageInputContext = MessageInputContext(
+        modality = MessageInputContext.Modality.TEXT,
+        source = MessageInputContext.Source.CHAT_INPUT,
+        clientPlatform = messageInputClientPlatform,
+        reliability = MessageInputContext.Reliability.NORMAL,
+    )
 
     companion object {
         private const val MID_TURN_STEER_INSTRUCTION_ID = "mid_turn_steer"
@@ -354,11 +362,17 @@ class TabViewModel(
             claimedUserInput = null
         }
         _uiState.update { currentState ->
-            currentState.copy(userInput = input)
+            currentState.copy(
+                userInput = input,
+                composerMessageInputContext = currentState.composerMessageInputContext.takeUnless { input.isBlank() },
+            )
         }
     }
 
-    fun appendUserInput(input: String) {
+    fun appendUserInput(
+        input: String,
+        messageInputContext: MessageInputContext? = null,
+    ) {
         val appendedText = input.trim()
         if (appendedText.isEmpty()) return
 
@@ -366,7 +380,10 @@ class TabViewModel(
         _uiState.update { currentState ->
             val currentInput = currentState.userInput
             val separator = if (currentInput.isBlank() || currentInput.last().isWhitespace()) "" else " "
-            currentState.copy(userInput = "$currentInput$separator$appendedText")
+            currentState.copy(
+                userInput = "$currentInput$separator$appendedText",
+                composerMessageInputContext = messageInputContext ?: currentState.composerMessageInputContext,
+            )
         }
     }
 
@@ -387,12 +404,17 @@ class TabViewModel(
     suspend fun sendMessageToSession(
         message: String,
         additionalInstructions: List<Conversation.Message.Instruction> = emptyList(),
+        messageInputContext: MessageInputContext? = null,
     ) {
         if (message.isBlank()) {
             return
         }
 
-        val queuedMessage = createPendingUserMessage(message, additionalInstructions)
+        val queuedMessage = createPendingUserMessage(
+            message = message,
+            additionalInstructions = additionalInstructions,
+            messageInputContext = messageInputContext,
+        )
         sendPendingUserMessage(queuedMessage)
     }
 
@@ -417,6 +439,7 @@ class TabViewModel(
                 _uiState.update {
                     it.copy(
                         userInput = "",
+                        composerMessageInputContext = null,
                         workspaceContextReferences = emptyList(),
                     )
                 }
@@ -443,10 +466,12 @@ class TabViewModel(
             val pendingMessage = createPendingUserMessage(
                 message = currentState.userInput,
                 additionalInstructions = emptyList(),
+                messageInputContext = currentState.composerMessageInputContext ?: textMessageInputContext,
                 currentState = currentState,
             )
             val clearedState = currentState.copy(
                 userInput = "",
+                composerMessageInputContext = null,
                 workspaceContextReferences = emptyList(),
             )
             if (_uiState.compareAndSet(currentState, clearedState)) {
@@ -466,6 +491,8 @@ class TabViewModel(
             }
             currentState.copy(
                 userInput = restoredInput,
+                composerMessageInputContext = pendingMessage.messageInputContext
+                    ?: currentState.composerMessageInputContext,
                 workspaceContextReferences =
                     (pendingMessage.workspaceContextReferences + currentState.workspaceContextReferences)
                         .distinctBy { it.kind to it.relativePath },
@@ -496,6 +523,7 @@ class TabViewModel(
         _uiState.update {
             it.copy(
                 userInput = message.text,
+                composerMessageInputContext = message.messageInputContext,
                 workspaceContextReferences = message.workspaceContextReferences,
             )
         }
@@ -545,6 +573,7 @@ class TabViewModel(
     private fun createPendingUserMessage(
         message: String,
         additionalInstructions: List<Conversation.Message.Instruction>,
+        messageInputContext: MessageInputContext? = null,
         currentState: UIState.Tab = _uiState.value,
     ): PendingUserMessage {
         val activeInstructions = messageInstructionGroups.mapNotNull { group ->
@@ -564,7 +593,19 @@ class TabViewModel(
             .takeIf { it.isNotEmpty() }
             ?.let { Conversation.Message.Instruction.WorkspaceContext(it) }
 
-        val instructions = activeInstructions + listOfNotNull(workspaceContextInstruction) + additionalInstructions
+        val suppliedInputContextInstruction = additionalInstructions
+            .filterIsInstance<Conversation.Message.Instruction.MessageInputRuntimeContext>()
+            .lastOrNull()
+        val inputContextInstruction = messageInputContext
+            ?.let { Conversation.Message.Instruction.MessageInputRuntimeContext(it) }
+            ?: suppliedInputContextInstruction
+        val otherAdditionalInstructions = additionalInstructions.filterNot {
+            it is Conversation.Message.Instruction.MessageInputRuntimeContext
+        }
+        val instructions = listOfNotNull(inputContextInstruction) +
+            activeInstructions +
+            listOfNotNull(workspaceContextInstruction) +
+            otherAdditionalInstructions
 
         val userMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
@@ -602,6 +643,7 @@ class TabViewModel(
         _uiState.update {
             it.copy(
                 userInput = "",
+                composerMessageInputContext = null,
                 workspaceContextReferences = emptyList(),
                 isWaitingForResponse = true,
             )
@@ -1161,6 +1203,12 @@ data class PendingUserMessage(
         get() = userMessage.instructions
             .filterIsInstance<Conversation.Message.Instruction.WorkspaceContext>()
             .flatMap { it.references }
+
+    val messageInputContext: MessageInputContext?
+        get() = userMessage.instructions
+            .filterIsInstance<Conversation.Message.Instruction.MessageInputRuntimeContext>()
+            .lastOrNull()
+            ?.context
 }
 
 private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMessage? =

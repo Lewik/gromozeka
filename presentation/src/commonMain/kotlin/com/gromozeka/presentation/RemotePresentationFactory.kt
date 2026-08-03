@@ -5,6 +5,7 @@ import com.gromozeka.client.InMemoryRemoteClientSettingsStore
 import com.gromozeka.client.RemoteClientSettingsStore
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
+import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.presentation.services.AssistantAudioPresentationService
 import com.gromozeka.presentation.services.ClientAudioPlayer
 import com.gromozeka.presentation.services.ClientAudioRecorder
@@ -87,6 +88,7 @@ suspend fun createRemoteAppComponents(
         settingsService = remoteServices.settingsService,
         isTtsPlaying = { ttsQueue.isPlaying.value },
     )
+    val messageInputClientPlatform = clientPlatform.toMessageInputClientPlatform()
 
     val appViewModel = AppViewModel(
         conversationRuntimeService = remoteServices.conversationRuntimeService,
@@ -100,6 +102,7 @@ suspend fun createRemoteAppComponents(
         agentService = remoteServices.agentService,
         tokenStatsService = remoteServices.conversationTokenStatsService,
         conversationTabLayoutService = remoteServices.conversationTabLayoutService,
+        messageInputClientPlatform = messageInputClientPlatform,
     )
 
     val uiStateService = UIStateService(scope, remoteServices.conversationTabLayoutService, uiStateStore)
@@ -117,6 +120,7 @@ suspend fun createRemoteAppComponents(
         systemAudioMuteService = systemAudioMuteService,
         settingsService = remoteServices.settingsService,
         uiFeedbackController = uiFeedbackController,
+        messageInputClientPlatform = messageInputClientPlatform,
         scope = scope
     )
     val assistantAudioPresentationService = AssistantAudioPresentationService(
@@ -195,6 +199,15 @@ private fun ClientPlatform.toRemoteClientPlatform(): RemoteClientPlatform =
         ClientPlatform.IOS -> RemoteClientPlatform.IOS
         ClientPlatform.WEB_DESKTOP -> RemoteClientPlatform.WEB_DESKTOP
         ClientPlatform.WEB_TOUCH -> RemoteClientPlatform.WEB_TOUCH
+    }
+
+private fun ClientPlatform.toMessageInputClientPlatform(): MessageInputContext.ClientPlatform =
+    when (this) {
+        ClientPlatform.DESKTOP -> MessageInputContext.ClientPlatform.DESKTOP
+        ClientPlatform.ANDROID -> MessageInputContext.ClientPlatform.ANDROID
+        ClientPlatform.IOS -> MessageInputContext.ClientPlatform.IOS
+        ClientPlatform.WEB_DESKTOP -> MessageInputContext.ClientPlatform.WEB_DESKTOP
+        ClientPlatform.WEB_TOUCH -> MessageInputContext.ClientPlatform.WEB_TOUCH
     }
 
 class RemoteAppComponents(

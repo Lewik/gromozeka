@@ -1,6 +1,5 @@
 package com.gromozeka.domain.model
 
-import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
@@ -9,7 +8,6 @@ data class MessageInputContext(
     val modality: Modality,
     val source: Source,
     val clientPlatform: ClientPlatform,
-    val delivery: Delivery = Delivery(QueuedMessagePlacement.END_OF_TURN),
     val reliability: Reliability = Reliability.NORMAL,
 ) {
     @Serializable
@@ -41,19 +39,6 @@ data class MessageInputContext(
         MAY_CONTAIN_RECOGNITION_ERRORS,
     }
 
-    @Serializable
-    data class Delivery(
-        val placement: QueuedMessagePlacement,
-    ) {
-        val explanation: String
-            get() = when (placement) {
-                QueuedMessagePlacement.AFTER_TOOL_RESULT ->
-                    "deliver at the next safe boundary after a tool result; never between a tool call and its tool result"
-                QueuedMessagePlacement.END_OF_TURN ->
-                    "deliver after the current assistant turn finishes"
-            }
-    }
-
     fun toXml(): String =
         """
         <message_input_context>
@@ -61,7 +46,6 @@ data class MessageInputContext(
           <source>${source.xmlValue()}</source>
           <client_platform>${clientPlatform.xmlValue()}</client_platform>
           <input_reliability>${reliability.xmlValue()}</input_reliability>
-          <delivery placement="${delivery.placement.xmlValue()}">${delivery.explanation.escapeXml()}</delivery>
         </message_input_context>
         """.trimIndent()
 }
