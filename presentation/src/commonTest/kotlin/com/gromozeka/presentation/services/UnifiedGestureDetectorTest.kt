@@ -1,20 +1,25 @@
 package com.gromozeka.presentation.services
 
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.yield
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class UnifiedGestureDetectorTest {
     @Test
-    fun `quick click cancels capture and stops speech after double click window`() = runBlocking {
+    fun `quick click cancels capture and stops speech after double click window`() = runTest {
         val handler = RecordingPttEventHandler()
-        val detector = UnifiedGestureDetector(handler, this)
+        val detector = detector(handler)
 
         detector.onGestureDown()
         detector.onGestureUp()
-        delay(450)
+        runCurrent()
+        advanceTimeBy(400)
+        runCurrent()
 
         assertEquals(
             listOf("event:BUTTON_DOWN", "cancel", "event:SINGLE_CLICK"),
@@ -23,15 +28,19 @@ class UnifiedGestureDetectorTest {
     }
 
     @Test
-    fun `quick double click interrupts without emitting single click`() = runBlocking {
+    fun `quick double click interrupts without emitting single click`() = runTest {
         val handler = RecordingPttEventHandler()
-        val detector = UnifiedGestureDetector(handler, this)
+        val detector = detector(handler)
 
         detector.onGestureDown()
         detector.onGestureUp()
+        runCurrent()
+        advanceTimeBy(100)
         detector.onGestureDown()
         detector.onGestureUp()
-        delay(450)
+        runCurrent()
+        advanceTimeBy(400)
+        runCurrent()
 
         assertEquals(
             listOf(
@@ -46,14 +55,16 @@ class UnifiedGestureDetectorTest {
     }
 
     @Test
-    fun `hold records until physical release`() = runBlocking {
+    fun `hold records until physical release`() = runTest {
         val handler = RecordingPttEventHandler()
-        val detector = UnifiedGestureDetector(handler, this)
+        val detector = detector(handler)
 
         detector.onGestureDown()
-        delay(180)
+        runCurrent()
+        advanceTimeBy(150)
+        runCurrent()
         detector.onGestureUp()
-        yield()
+        runCurrent()
 
         assertEquals(
             listOf("event:BUTTON_DOWN", "event:SINGLE_PUSH", "release"),
@@ -62,20 +73,43 @@ class UnifiedGestureDetectorTest {
     }
 
     @Test
-    fun `cancelled hold cancels capture instead of releasing it`() = runBlocking {
+    fun `cancelled hold cancels capture instead of releasing it`() = runTest {
         val handler = RecordingPttEventHandler()
-        val detector = UnifiedGestureDetector(handler, this)
+        val detector = detector(handler)
 
         detector.onGestureDown()
-        delay(180)
+        runCurrent()
+        advanceTimeBy(150)
+        runCurrent()
         detector.cancelGesture()
-        yield()
+        runCurrent()
 
         assertEquals(
             listOf("event:BUTTON_DOWN", "event:SINGLE_PUSH", "cancel"),
             handler.actions,
         )
     }
+
+    @Test
+    fun `release preserves hold when threshold timer is delayed`() = runTest {
+        val handler = RecordingPttEventHandler()
+        var now = 0L
+        val detector = UnifiedGestureDetector(handler, this) { now }
+
+        detector.onGestureDown()
+        runCurrent()
+        now = 180
+        detector.onGestureUp()
+        runCurrent()
+
+        assertEquals(
+            listOf("event:BUTTON_DOWN", "event:SINGLE_PUSH", "release"),
+            handler.actions,
+        )
+    }
+
+    private fun TestScope.detector(handler: PttEventHandler): UnifiedGestureDetector =
+        UnifiedGestureDetector(handler, this) { testScheduler.currentTime }
 
     private class RecordingPttEventHandler : PttEventHandler {
         val actions = mutableListOf<String>()

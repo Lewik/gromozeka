@@ -10,6 +10,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class UnifiedGestureDetector(
     private val pttEventRouter: PttEventHandler,
     private val coroutineScope: CoroutineScope,
+    private val currentTimeMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val doubleClickWindow = 400.milliseconds
     private val shortClickThreshold = 150.milliseconds
@@ -19,7 +20,7 @@ class UnifiedGestureDetector(
     private var timeoutJob: Job? = null
 
     fun onGestureDown() {
-        val now = Clock.System.now().toEpochMilliseconds()
+        val now = currentTimeMillis()
         currentPressTime = now
 
         when (state) {
@@ -83,7 +84,7 @@ class UnifiedGestureDetector(
     }
 
     fun onGestureUp() {
-        val now = Clock.System.now().toEpochMilliseconds()
+        val now = currentTimeMillis()
         val holdDuration = now - currentPressTime
 
         when (state) {
