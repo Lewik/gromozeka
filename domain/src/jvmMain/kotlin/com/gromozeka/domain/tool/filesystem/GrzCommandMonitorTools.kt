@@ -30,6 +30,7 @@ interface GrzMonitorCommandTool : Tool<MonitorCommandRequest, Map<String, Any>> 
         get() = """
             Attach a line-oriented native filter to an existing managed command task on its exact Worker and WorkspaceMount.
             The filter receives the source command's merged stdout/stderr on stdin. Each stdout line is a monitor event; filter stderr is diagnostic output.
+            This tool is compatible with Readonly mode when filter_command is itself read-only and produces no persistent side effects.
             Use standard tools available on that Worker, and ensure the filter flushes stdout promptly. Buffered filters may delay events until their buffer fills or the source command ends.
             ONCE stops after the first event. CONTINUOUS reports every event until the source or filter ends or the monitor is cancelled.
             NOW observes only future bytes and cannot start on a terminal command. BEGINNING first replays retained command output, then follows new output.
