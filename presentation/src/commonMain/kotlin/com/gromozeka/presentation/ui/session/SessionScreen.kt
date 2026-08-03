@@ -1,6 +1,7 @@
 package com.gromozeka.presentation.ui.session
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,10 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Settings
-import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
-import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
@@ -46,7 +45,6 @@ fun SessionScreen(
     onCloseTab: (() -> Unit)? = null,
 
     // Services
-    ttsQueueService: TtsQueue,
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
     pttState: PttState = PttState.IDLE,
@@ -99,29 +97,43 @@ fun SessionScreen(
     val topToolbarScrollState = rememberScrollState()
     val editToolbarScrollState = rememberScrollState()
     var showMemoryMenu by remember { mutableStateOf(false) }
+    val messageEntries = rememberMessageListEntries(
+        messages = filteredHistory,
+        collapsedContentItems = uiState.collapsedContentItems,
+    )
 
     // LazyColumn sticky to bottom logic
     val isAtBottom by remember {
         derivedStateOf {
-            lazyListState.layoutInfo.let { layoutInfo ->
-                val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()
-                val totalItems = layoutInfo.totalItemsCount
-                lastVisibleItem?.index == totalItems - 1 || totalItems == 0
+            lazyListState.layoutInfo.totalItemsCount == 0 || !lazyListState.canScrollForward
+        }
+    }
+
+    LaunchedEffect(lazyListState) {
+        snapshotFlow {
+            isAtBottom to lazyListState.isScrollInProgress
+        }
+            .collect { (atBottom, isScrolling) ->
+                if (atBottom) {
+                    stickyToBottom = true
+                } else if (isScrolling) {
+                    stickyToBottom = false
+                }
             }
-        }
     }
 
-    LaunchedEffect(lazyListState.firstVisibleItemIndex, isAtBottom) {
-        if (isAtBottom) {
-            stickyToBottom = true
-        } else if (lazyListState.isScrollInProgress) {
-            stickyToBottom = false
-        }
-    }
-
-    LaunchedEffect(filteredHistory.size) {
-        if (stickyToBottom && filteredHistory.isNotEmpty()) {
-            lazyListState.animateScrollToItem(filteredHistory.size - 1)
+    LaunchedEffect(messageEntries.size, filteredHistory.lastOrNull()) {
+        if (stickyToBottom && messageEntries.isNotEmpty()) {
+            val lastIndex = messageEntries.lastIndex
+            lazyListState.scrollToItem(lastIndex)
+            val layoutInfo = lazyListState.layoutInfo
+            val lastItem = layoutInfo.visibleItemsInfo.firstOrNull { it.index == lastIndex }
+            val remainingDistance = lastItem?.let {
+                (it.offset + it.size - layoutInfo.viewportEndOffset).coerceAtLeast(0)
+            } ?: 0
+            if (remainingDistance > 0) {
+                lazyListState.scrollBy(remainingDistance.toFloat())
+            }
         }
     }
 
@@ -518,45 +530,28 @@ fun SessionScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // LazyColumn instead of Column + forEach
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
                         .testTag(UiTestTag.MessageList.value),
                     state = lazyListState,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(
-                        items = filteredHistory,
-                        key = { message -> message.id.value },
-                    ) { message ->
+                        items = messageEntries,
+                        key = MessageListEntry::key,
+                        contentType = { entry -> entry.segment::class },
+                    ) { entry ->
                         MessageItem(
-                            message = message,
-                            settings = settings,
+                            entry = entry,
                             toolResultsMap = toolResultsMap,
                             workspaceRootPath = null,
-                            isSelected = message.id in uiState.selectedMessageIds,
-                            collapsedContentItems = uiState.collapsedContentItems[message.id] ?: emptySet(),
+                            isSelected = entry.message.id in uiState.selectedMessageIds,
                             onToggleSelection = { messageId, isShiftPressed ->
                                 viewModel.toggleMessageSelectionRange(messageId, isShiftPressed)
                             },
                             onToggleContentItemCollapse = { messageId, contentItemIndex ->
                                 viewModel.toggleContentItemCollapse(messageId, contentItemIndex)
                             },
-                            onShowJson = { json -> viewModel.jsonToShow = json },
-                            onSpeakRequest = { text, tone ->
-                                coroutineScope.launch {
-                                    ttsQueueService.enqueue(TtsTask(text, tone))
-                                }
-                            },
-                            onEditRequest = { messageId ->
-                                viewModel.startEditMessage(messageId)
-                            },
-                            onDeleteRequest = { messageId ->
-                                coroutineScope.launch {
-                                    viewModel.deleteMessage(messageId)
-                                }
-                            }
                         )
                     }
                 }

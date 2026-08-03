@@ -17,12 +17,15 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.gromozeka.presentation.services.theming.data.DarkTheme
 import com.gromozeka.presentation.services.theming.data.Theme
+import com.mikepenz.markdown.compose.MarkdownElement
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.highlightedCodeBlock
 import com.mikepenz.markdown.compose.elements.highlightedCodeFence
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.markdownPadding
+import org.intellij.markdown.ast.ASTNode
 
 @Composable
 fun GromozekaTheme(
@@ -220,6 +223,50 @@ fun GromozekaMarkdown(
         padding = markdownPadding(
             block = 0.dp
         )
+    )
+}
+
+@Composable
+fun GromozekaMarkdownNode(
+    state: State.Success,
+    node: ASTNode,
+    modifier: Modifier = Modifier,
+) {
+    val bodyStyle = MaterialTheme.typography.bodyMedium
+
+    Markdown(
+        state = state,
+        modifier = modifier,
+        typography = markdownTypography(
+            h1 = MaterialTheme.typography.headlineLarge,
+            h2 = MaterialTheme.typography.headlineMedium,
+            h3 = MaterialTheme.typography.headlineSmall,
+            h4 = MaterialTheme.typography.titleLarge,
+            h5 = MaterialTheme.typography.titleMedium,
+            h6 = MaterialTheme.typography.titleSmall,
+            text = bodyStyle,
+            paragraph = bodyStyle,
+            ordered = bodyStyle,
+            bullet = bodyStyle,
+            list = bodyStyle,
+            textLink = TextLinkStyles(
+                style = bodyStyle.copy(
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = TextDecoration.Underline,
+                ).toSpanStyle(),
+            ),
+        ),
+        padding = markdownPadding(block = 0.dp),
+        success = { parsedState, components, contentModifier ->
+            Column(contentModifier) {
+                MarkdownElement(
+                    node = node,
+                    components = components,
+                    content = parsedState.content,
+                    includeSpacer = false,
+                )
+            }
+        },
     )
 }
 

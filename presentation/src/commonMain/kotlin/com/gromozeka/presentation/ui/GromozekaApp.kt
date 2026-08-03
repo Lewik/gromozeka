@@ -426,7 +426,6 @@ fun GromozekaAppContent(
                                                                 currentTabIndex?.let { appComponents.appViewModel.closeTab(it) }
                                                             }
                                                         },
-                                                        ttsQueueService = appComponents.ttsQueueService,
                                                         coroutineScope = coroutineScope,
                                                         pttEventHandler = appComponents.pttEventRouter,
                                                         pttState = pttState,

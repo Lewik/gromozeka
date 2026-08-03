@@ -1,12 +1,35 @@
 package com.gromozeka.presentation.ui.session
 
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -21,358 +44,633 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.ui.GromozekaMarkdown
+import com.gromozeka.presentation.ui.GromozekaMarkdownNode
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.format
+import com.mikepenz.markdown.model.State
+import com.mikepenz.markdown.model.rememberMarkdownState
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import org.intellij.markdown.ast.ASTNode
+
+internal data class MessageListEntry(
+    val message: Conversation.Message,
+    val segment: MessageSegment,
+    val isFirstInMessage: Boolean,
+    val isLastInMessage: Boolean,
+) {
+    val key: String = "${message.id.value}:${segment.key}"
+}
+
+internal sealed interface MessageSegment {
+    val key: String
+
+    data class MarkdownBlock(
+        val kind: MarkdownKind,
+        val contentIndex: Int,
+        val state: State.Success,
+        val node: ASTNode,
+        val nodeIndex: Int,
+        val isFirstInContent: Boolean,
+        val isLastInContent: Boolean,
+    ) : MessageSegment {
+        override val key: String = "$contentIndex:markdown:$nodeIndex"
+    }
+
+    data class RawMarkdownBlock(
+        val kind: MarkdownKind,
+        val contentIndex: Int,
+        val text: String,
+        val chunkIndex: Int,
+        val isFirstInContent: Boolean,
+        val isLastInContent: Boolean,
+    ) : MessageSegment {
+        override val key: String = "$contentIndex:raw-markdown:$chunkIndex"
+    }
+
+    data class CollapsedMarkdown(
+        val kind: MarkdownKind,
+        val contentIndex: Int,
+        val text: String,
+    ) : MessageSegment {
+        override val key: String = "$contentIndex:collapsed-markdown"
+    }
+
+    data class Content(
+        val contentIndex: Int,
+        val content: Conversation.Message.ContentItem,
+    ) : MessageSegment {
+        override val key: String = "$contentIndex:content"
+    }
+
+    data class Instructions(
+        val contentIndex: Int,
+    ) : MessageSegment {
+        override val key: String = "$contentIndex:instructions"
+    }
+
+    data object Error : MessageSegment {
+        override val key: String = "error"
+    }
+}
+
+internal enum class MarkdownKind {
+    USER,
+    THINKING,
+    ASSISTANT,
+}
 
 @Composable
-fun MessageItem(
-    message: Conversation.Message,
-    settings: Settings,
-    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
-    workspaceRootPath: String? = null,
-    isSelected: Boolean = false,
-    collapsedContentItems: Set<Int> = emptySet(), // indices of collapsed content items
-    onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
-    onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit = { _, _ -> }, // messageId, contentItemIndex
-    onShowJson: (String) -> Unit = {},
-    onSpeakRequest: (String, String) -> Unit = { _, _ -> },
-    onEditRequest: (Conversation.Message.Id) -> Unit = {},
-    onDeleteRequest: (Conversation.Message.Id) -> Unit = {},
-) {
-    val translation = LocalTranslation.current
-    val hasRenderableContent = message.content.any { content ->
-        when (content) {
-            is Conversation.Message.ContentItem.UserMessage -> content.text.isNotBlank()
-            is Conversation.Message.ContentItem.ToolCall -> true
-            is Conversation.Message.ContentItem.ToolResult -> false
-            is Conversation.Message.ContentItem.Thinking -> content.isVisible
-            is Conversation.Message.ContentItem.System -> content.content.isNotBlank()
-            is Conversation.Message.ContentItem.AssistantMessage -> content.structured.fullText.isNotBlank()
-            is Conversation.Message.ContentItem.ImageItem -> true
-            is Conversation.Message.ContentItem.ContextCompactionResult -> true
-            is Conversation.Message.ContentItem.UnknownJson -> true
+internal fun rememberMessageListEntries(
+    messages: List<Conversation.Message>,
+    collapsedContentItems: Map<Conversation.Message.Id, Set<Int>>,
+): List<MessageListEntry> {
+    val entries = mutableListOf<MessageListEntry>()
+
+    for (message in messages) {
+        val segments = mutableListOf<MessageSegment>()
+        val collapsedItems = collapsedContentItems[message.id].orEmpty()
+
+        for (contentIndex in message.content.indices) {
+            val content = message.content[contentIndex]
+            when (content) {
+                is Conversation.Message.ContentItem.UserMessage -> {
+                    if (content.text.isNotBlank()) {
+                        segments += rememberMarkdownSegments(
+                            messageId = message.id,
+                            contentIndex = contentIndex,
+                            kind = MarkdownKind.USER,
+                            text = content.text,
+                            isCollapsed = false,
+                        )
+                        if (message.instructions.isNotEmpty()) {
+                            segments += MessageSegment.Instructions(contentIndex)
+                        }
+                    }
+                }
+
+                is Conversation.Message.ContentItem.Thinking -> {
+                    if (content.isVisible && content.thinking.isNotBlank()) {
+                        segments += rememberMarkdownSegments(
+                            messageId = message.id,
+                            contentIndex = contentIndex,
+                            kind = MarkdownKind.THINKING,
+                            text = content.thinking,
+                            isCollapsed = contentIndex in collapsedItems,
+                        )
+                    }
+                }
+
+                is Conversation.Message.ContentItem.AssistantMessage -> {
+                    val text = content.structured.fullText.trim()
+                    if (text.isNotEmpty()) {
+                        segments += rememberMarkdownSegments(
+                            messageId = message.id,
+                            contentIndex = contentIndex,
+                            kind = MarkdownKind.ASSISTANT,
+                            text = text,
+                            isCollapsed = contentIndex in collapsedItems,
+                        )
+                    }
+                }
+
+                is Conversation.Message.ContentItem.ToolResult -> Unit
+                else -> segments += MessageSegment.Content(contentIndex, content)
+            }
+        }
+
+        if (message.error != null) {
+            segments += MessageSegment.Error
+        }
+
+        segments.forEachIndexed { index, segment ->
+            entries += MessageListEntry(
+                message = message,
+                segment = segment,
+                isFirstInMessage = index == 0,
+                isLastInMessage = index == segments.lastIndex,
+            )
         }
     }
 
-    if (!hasRenderableContent && message.error == null) {
-        return
+    return entries
+}
+
+@Composable
+private fun rememberMarkdownSegments(
+    messageId: Conversation.Message.Id,
+    contentIndex: Int,
+    kind: MarkdownKind,
+    text: String,
+    isCollapsed: Boolean,
+): List<MessageSegment> {
+    val parsedState = key(messageId.value, contentIndex) {
+        val markdownState = rememberMarkdownState(
+            content = text,
+            retainState = true,
+        )
+        val state by markdownState.state.collectAsState()
+        state
     }
 
+    if (isCollapsed) {
+        return listOf(MessageSegment.CollapsedMarkdown(kind, contentIndex, text))
+    }
+
+    if (parsedState is State.Success && parsedState.node.children.isNotEmpty()) {
+        return parsedState.node.children.mapIndexed { nodeIndex, node ->
+            MessageSegment.MarkdownBlock(
+                kind = kind,
+                contentIndex = contentIndex,
+                state = parsedState,
+                node = node,
+                nodeIndex = nodeIndex,
+                isFirstInContent = nodeIndex == 0,
+                isLastInContent = nodeIndex == parsedState.node.children.lastIndex,
+            )
+        }
+    }
+
+    val chunks = splitRawMarkdown(text)
+    return chunks.mapIndexed { chunkIndex, chunk ->
+        MessageSegment.RawMarkdownBlock(
+            kind = kind,
+            contentIndex = contentIndex,
+            text = chunk,
+            chunkIndex = chunkIndex,
+            isFirstInContent = chunkIndex == 0,
+            isLastInContent = chunkIndex == chunks.lastIndex,
+        )
+    }
+}
+
+private fun splitRawMarkdown(text: String, maxChunkLength: Int = 2_000): List<String> {
+    if (text.length <= maxChunkLength) {
+        return listOf(text)
+    }
+
+    val chunks = mutableListOf<String>()
+    var start = 0
+    while (start < text.length) {
+        val limit = minOf(start + maxChunkLength, text.length)
+        val lineBreak = text.lastIndexOf('\n', limit - 1).takeIf { it >= start + maxChunkLength / 2 }
+        val end = lineBreak?.plus(1) ?: limit
+        chunks += text.substring(start, end)
+        start = end
+    }
+    return chunks
+}
+
+@Composable
+internal fun MessageItem(
+    entry: MessageListEntry,
+    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
+    workspaceRootPath: String? = null,
+    isSelected: Boolean = false,
+    onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
+    onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit = { _, _ -> },
+) {
+    val message = entry.message
     val selectionBorderColor = MaterialTheme.colorScheme.primary
+    val userBackground = message.role == Conversation.Message.Role.USER &&
+        message.content.any { it is Conversation.Message.ContentItem.UserMessage }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (entry.isFirstInMessage) Modifier.heightIn(min = 48.dp) else Modifier)
+                .then(
+                    if (entry.isFirstInMessage) {
+                        Modifier.testTag(UiTestTag.MessageItem(message.id.value).value)
+                    } else {
+                        Modifier
+                    }
+                )
+                .background(
+                    color = if (userBackground) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    } else {
+                        Color.Transparent
+                    }
+                )
+                .messageSelectionInput(message.id, onToggleSelection)
+                .drawBehind {
+                    if (!isSelected) return@drawBehind
+
+                    val strokeWidth = 3.dp.toPx()
+                    if (entry.isFirstInMessage && entry.isLastInMessage) {
+                        drawRoundRect(
+                            color = selectionBorderColor,
+                            style = Stroke(width = strokeWidth),
+                            cornerRadius = CornerRadius(4.dp.toPx()),
+                        )
+                    } else {
+                        val halfStroke = strokeWidth / 2
+                        drawLine(
+                            color = selectionBorderColor,
+                            start = androidx.compose.ui.geometry.Offset(halfStroke, 0f),
+                            end = androidx.compose.ui.geometry.Offset(halfStroke, size.height),
+                            strokeWidth = strokeWidth,
+                        )
+                        drawLine(
+                            color = selectionBorderColor,
+                            start = androidx.compose.ui.geometry.Offset(size.width - halfStroke, 0f),
+                            end = androidx.compose.ui.geometry.Offset(size.width - halfStroke, size.height),
+                            strokeWidth = strokeWidth,
+                        )
+                        if (entry.isFirstInMessage) {
+                            drawLine(
+                                color = selectionBorderColor,
+                                start = androidx.compose.ui.geometry.Offset(0f, halfStroke),
+                                end = androidx.compose.ui.geometry.Offset(size.width, halfStroke),
+                                strokeWidth = strokeWidth,
+                            )
+                        }
+                        if (entry.isLastInMessage) {
+                            drawLine(
+                                color = selectionBorderColor,
+                                start = androidx.compose.ui.geometry.Offset(0f, size.height - halfStroke),
+                                end = androidx.compose.ui.geometry.Offset(size.width, size.height - halfStroke),
+                                strokeWidth = strokeWidth,
+                            )
+                        }
+                    }
+                },
+        ) {
+            Box(
+                modifier = Modifier.padding(
+                    start = if (message.role == Conversation.Message.Role.USER) 12.dp else 4.dp,
+                    end = 4.dp,
+                )
+            ) {
+                MessageSegmentContent(
+                    entry = entry,
+                    toolResultsMap = toolResultsMap,
+                    workspaceRootPath = workspaceRootPath,
+                    onToggleContentItemCollapse = onToggleContentItemCollapse,
+                )
+            }
+        }
+
+        if (entry.isLastInMessage) {
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+    }
+}
+
+private fun Modifier.messageSelectionInput(
+    messageId: Conversation.Message.Id,
+    onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit,
+): Modifier = pointerInput(messageId) {
+    awaitPointerEventScope {
+        while (true) {
+            val down = awaitPointerEvent()
+            if (down.changes.any { it.pressed && !it.previousPressed } && down.buttons.isPrimaryPressed) {
+                val downPosition = down.changes.first().position
+                val isShiftPressed = down.keyboardModifiers.isShiftPressed
+                var isDrag = false
+                do {
+                    val event = awaitPointerEvent()
+                    val currentPosition = event.changes.first().position
+                    if ((currentPosition - downPosition).getDistance() > 10f) {
+                        isDrag = true
+                        break
+                    }
+                } while (event.changes.any { it.pressed })
+
+                if (!isDrag) {
+                    down.changes.forEach { it.consume() }
+                    onToggleSelection(messageId, isShiftPressed)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageSegmentContent(
+    entry: MessageListEntry,
+    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
+    workspaceRootPath: String?,
+    onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
+) {
+    when (val segment = entry.segment) {
+        is MessageSegment.MarkdownBlock -> MarkdownSegmentLayout(
+            messageId = entry.message.id,
+            kind = segment.kind,
+            contentIndex = segment.contentIndex,
+            isFirstInContent = segment.isFirstInContent,
+            isLastInContent = segment.isLastInContent,
+            onToggleContentItemCollapse = onToggleContentItemCollapse,
+        ) {
+            GromozekaMarkdownNode(
+                state = segment.state,
+                node = segment.node,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        is MessageSegment.RawMarkdownBlock -> MarkdownSegmentLayout(
+            messageId = entry.message.id,
+            kind = segment.kind,
+            contentIndex = segment.contentIndex,
+            isFirstInContent = segment.isFirstInContent,
+            isLastInContent = segment.isLastInContent,
+            onToggleContentItemCollapse = onToggleContentItemCollapse,
+        ) {
+            Text(text = segment.text)
+        }
+
+        is MessageSegment.CollapsedMarkdown -> CollapsedMarkdownContent(
+            messageId = entry.message.id,
+            segment = segment,
+            onToggleContentItemCollapse = onToggleContentItemCollapse,
+        )
+
+        is MessageSegment.Content -> GenericContentItem(
+            content = segment.content,
+            toolResultsMap = toolResultsMap,
+            workspaceRootPath = workspaceRootPath,
+        )
+
+        is MessageSegment.Instructions -> InstructionChips(
+            instructions = entry.message.instructions,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp),
+        )
+
+        MessageSegment.Error -> MessageError(entry.message)
+    }
+}
+
+@Composable
+private fun MarkdownSegmentLayout(
+    messageId: Conversation.Message.Id,
+    kind: MarkdownKind,
+    contentIndex: Int,
+    isFirstInContent: Boolean,
+    isLastInContent: Boolean,
+    onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    when (kind) {
+        MarkdownKind.USER -> content()
+
+        MarkdownKind.ASSISTANT -> {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        content()
+                    }
+                    if (isFirstInContent) {
+                        CollapseButton(
+                            isCollapsed = false,
+                            onClick = { onToggleContentItemCollapse(messageId, contentIndex) },
+                        )
+                    }
+                }
+                if (isLastInContent) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+
+        MarkdownKind.THINKING -> {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            shape = thinkingSegmentShape(isFirstInContent, isLastInContent),
+                        )
+                        .padding(
+                            start = 8.dp,
+                            end = 8.dp,
+                            top = if (isFirstInContent) 8.dp else 0.dp,
+                            bottom = if (isLastInContent) 8.dp else 0.dp,
+                        ),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        content()
+                    }
+                    if (isFirstInContent) {
+                        CollapseButton(
+                            isCollapsed = false,
+                            onClick = { onToggleContentItemCollapse(messageId, contentIndex) },
+                        )
+                    }
+                }
+                if (isLastInContent) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+private fun thinkingSegmentShape(isFirst: Boolean, isLast: Boolean): RoundedCornerShape {
+    val radius = 4.dp
+    return RoundedCornerShape(
+        topStart = if (isFirst) radius else 0.dp,
+        topEnd = if (isFirst) radius else 0.dp,
+        bottomStart = if (isLast) radius else 0.dp,
+        bottomEnd = if (isLast) radius else 0.dp,
+    )
+}
+
+@Composable
+private fun CollapsedMarkdownContent(
+    messageId: Conversation.Message.Id,
+    segment: MessageSegment.CollapsedMarkdown,
+    onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
+) {
+    val backgroundModifier = if (segment.kind == MarkdownKind.THINKING) {
+        Modifier.background(
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            shape = MaterialTheme.shapes.small,
+        )
+    } else {
+        Modifier
+    }
 
     Box(
         modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .testTag(UiTestTag.MessageItem(message.id.value).value)
-                .background(
-                    color = if (message.role == Conversation.Message.Role.USER &&
-                        message.content.any { it is Conversation.Message.ContentItem.UserMessage }
-                    ) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                    else Color.Transparent
-                )
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val down = awaitPointerEvent()
-                            // Обрабатывать только левый клик (Primary button), правый клик пропускать для контекстного меню
-                            if (down.changes.any { it.pressed && !it.previousPressed } && down.buttons.isPrimaryPressed) {
-                                val downPosition = down.changes.first().position
-                                val isShiftPressed = down.keyboardModifiers.isShiftPressed
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .then(backgroundModifier)
+            .height(48.dp)
+            .clipToBounds()
+            .alpha(0.5f)
+            .then(if (segment.kind == MarkdownKind.THINKING) Modifier.padding(8.dp) else Modifier),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                GromozekaMarkdown(content = segment.text)
+            }
+            CollapseButton(
+                isCollapsed = true,
+                onClick = { onToggleContentItemCollapse(messageId, segment.contentIndex) },
+            )
+        }
+    }
+}
 
-                                // Ждем release и проверяем, не было ли движения мыши (drag для text selection)
-                                var isDrag = false
-                                do {
-                                    val event = awaitPointerEvent()
-                                    val currentPosition = event.changes.first().position
-                                    val distance = (currentPosition - downPosition).getDistance()
-
-                                    // Если мышь сдвинулась больше чем на 10 пикселей, это drag для text selection
-                                    if (distance > 10f) {
-                                        isDrag = true
-                                        break
-                                    }
-                                } while (event.changes.any { it.pressed })
-
-                                // Если мышь не двигалась, это клик для selection
-                                if (!isDrag) {
-                                    down.changes.forEach { it.consume() }
-                                    onToggleSelection(message.id, isShiftPressed)
-                                }
-                            }
-                        }
-                    }
-                }
-                .drawBehind {
-                    if (isSelected) {
-                        drawRoundRect(
-                            color = selectionBorderColor,
-                            style = Stroke(width = 3.dp.toPx()),
-                            cornerRadius = CornerRadius(4.dp.toPx())
-                        )
-                    }
-                }
+@Composable
+private fun CollapseButton(
+    isCollapsed: Boolean,
+    onClick: () -> Unit,
+) {
+    DisableSelection {
+        Box(
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(8.dp),
         ) {
+            Icon(
+                imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GenericContentItem(
+    content: Conversation.Message.ContentItem,
+    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
+    workspaceRootPath: String?,
+) {
+    when (content) {
+        is Conversation.Message.ContentItem.ToolCall -> ToolCallItem(
+            toolCall = content.call,
+            toolResult = toolResultsMap[content.id.value],
+            workspaceRootPath = workspaceRootPath,
+        )
+
+        is Conversation.Message.ContentItem.ImageItem -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(Icons.Default.Image, contentDescription = "Image")
             Column(
-                modifier = Modifier.padding(
-                    start = if (message.role == Conversation.Message.Role.USER) 12.dp else 4.dp,
-                    end = 4.dp
-                ),
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center,
             ) {
-                message.content.forEachIndexed { contentIndex, content ->
-                    val isContentCollapsed = contentIndex in collapsedContentItems
-                    when (content) {
-                        is Conversation.Message.ContentItem.UserMessage -> {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                GromozekaMarkdown(
-                                    content = content.text,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                InstructionChips(
-                                    instructions = message.instructions,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
+                when (val source = content.source) {
+                    is Conversation.Message.ImageSource.Base64ImageSource -> Text(
+                        LocalTranslation.current.imageDisplayText.format(
+                            source.mediaType,
+                            source.data.length,
+                        )
+                    )
 
-                        is Conversation.Message.ContentItem.ToolCall -> {
-                            // Find corresponding result from entire chat history
-                            val correspondingResult = toolResultsMap[content.id.value]
-                            ToolCallItem(
-                                toolCall = content.call,
-                                toolResult = correspondingResult,
-                                workspaceRootPath = workspaceRootPath,
-                            )
-                        }
-
-                        is Conversation.Message.ContentItem.ToolResult -> {
-                            // Don't render ToolResult separately - it's shown in ToolCallItem
-                        }
-
-                        is Conversation.Message.ContentItem.ImageItem -> {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Icon(Icons.Default.Image, contentDescription = "Image")
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.Center,
-                                ) {
-                                    when (val source = content.source) {
-                                        is Conversation.Message.ImageSource.Base64ImageSource -> {
-                                            // Base64 too long - show placeholder
-                                            Text(
-                                                LocalTranslation.current.imageDisplayText.format(
-                                                    source.mediaType,
-                                                    source.data.length
-                                                )
-                                            )
-                                        }
-
-                                        is Conversation.Message.ImageSource.UrlImageSource -> {
-                                            // URL can be shown in full
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(source.url)
-                                            }
-                                        }
-
-                                        is Conversation.Message.ImageSource.FileImageSource -> {
-                                            // File ID can be shown in full
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Image, contentDescription = "Image")
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text("File: ${source.fileId}")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        is Conversation.Message.ContentItem.Thinking -> {
-                            if (content.isVisible) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = 8.dp)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                            shape = MaterialTheme.shapes.small
-                                        )
-                                        .padding(8.dp)
-                                        .then(
-                                            if (isContentCollapsed) {
-                                                Modifier
-                                                    .height(48.dp)
-                                                    .clipToBounds()
-                                            } else {
-                                                Modifier
-                                            }
-                                        )
-                                        .alpha(if (isContentCollapsed) 0.5f else 1f)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.weight(1f),
-                                            verticalArrangement = Arrangement.Center,
-                                        ) {
-                                            GromozekaMarkdown(content = content.thinking)
-                                        }
-                                        DisableSelection {
-                                            FlowRow(
-                                                modifier = Modifier.align(Alignment.Top),
-                                                maxItemsInEachRow = 4,
-                                                verticalArrangement = Arrangement.Top,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier.clickable {
-                                                        onToggleContentItemCollapse(message.id, contentIndex)
-                                                    }
-                                                        .padding(8.dp)
-                                                ) {
-                                                    Icon(
-                                                        if (isContentCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                                        contentDescription = if (isContentCollapsed) "Expand" else "Collapse",
-                                                        tint = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        is Conversation.Message.ContentItem.System -> {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.Center,
-                                ) {
-                                    Text(text = content.content)
-                                }
-                            }
-                        }
-
-                        is Conversation.Message.ContentItem.AssistantMessage -> {
-                            val text = content.structured.fullText.trim()
-                            if (text.isNotEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = 8.dp)
-                                        .then(
-                                            if (isContentCollapsed) {
-                                                Modifier
-                                                    .height(48.dp)
-                                                    .clipToBounds()
-                                            } else {
-                                                Modifier
-                                            }
-                                        )
-                                        .alpha(if (isContentCollapsed) 0.5f else 1f)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.weight(1f),
-                                            verticalArrangement = Arrangement.Center,
-                                        ) {
-                                            GromozekaMarkdown(content = text)
-                                        }
-                                        DisableSelection {
-                                            FlowRow(
-                                                modifier = Modifier.align(Alignment.Top),
-                                                maxItemsInEachRow = 4,
-                                                verticalArrangement = Arrangement.Top,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            ) {
-                                                // Chevron for collapse/expand
-                                                Box(
-                                                    modifier = Modifier.clickable {
-                                                        onToggleContentItemCollapse(message.id, contentIndex)
-                                                    }
-                                                        .padding(8.dp)
-                                                ) {
-                                                    Icon(
-                                                        if (isContentCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                                        contentDescription = if (isContentCollapsed) "Expand" else "Collapse",
-                                                        tint = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        is Conversation.Message.ContentItem.ContextCompactionResult -> {
-                            ContextCompactionResultItem(content)
-                        }
-
-                        is Conversation.Message.ContentItem.UnknownJson -> {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = "Parse error",
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.Center,
-                                ) {
-                                    Text(text = jsonPrettyPrint(content.json))
-                                    Text(text = LocalTranslation.current.parseErrorText)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Show error if present
-                if (message.error != null) {
-                    val error = message.error!!
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    is Conversation.Message.ImageSource.UrlImageSource -> Text(source.url)
+                    is Conversation.Message.ImageSource.FileImageSource -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = "Error",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = error.message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Icon(Icons.Default.Image, contentDescription = "Image")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("File: ${source.fileId}")
                     }
                 }
             }
         }
+
+        is Conversation.Message.ContentItem.System -> Text(text = content.content)
+        is Conversation.Message.ContentItem.ContextCompactionResult -> ContextCompactionResultItem(content)
+        is Conversation.Message.ContentItem.UnknownJson -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = "Parse error",
+                tint = MaterialTheme.colorScheme.error,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = jsonPrettyPrint(content.json))
+                Text(text = LocalTranslation.current.parseErrorText)
+            }
+        }
+
+        is Conversation.Message.ContentItem.UserMessage,
+        is Conversation.Message.ContentItem.Thinking,
+        is Conversation.Message.ContentItem.AssistantMessage,
+        is Conversation.Message.ContentItem.ToolResult -> Unit
+    }
+}
+
+@Composable
+private fun MessageError(message: Conversation.Message) {
+    val error = message.error ?: return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            Icons.Default.Warning,
+            contentDescription = "Error",
+            tint = MaterialTheme.colorScheme.error,
+        )
+        Text(
+            text = error.message,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
 }
 
 @Composable
@@ -386,8 +684,7 @@ private fun ContextCompactionResultItem(
         Conversation.Message.ContentItem.ContextCompactionResult.Origin.RUNTIME_MIGRATION -> "Migration compact created"
     }
     val details = when (val payload = content.payload) {
-        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary ->
-            payload.text.trim()
+        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text.trim()
         is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
             "Opaque provider state: ${content.providerScope?.provider ?: "unknown provider"}"
     }
@@ -425,9 +722,7 @@ private fun InstructionChips(
     instructions: List<Conversation.Message.Instruction>,
     modifier: Modifier = Modifier,
 ) {
-    if (instructions.isEmpty()) {
-        return
-    }
+    if (instructions.isEmpty()) return
 
     DisableSelection {
         FlowRow(
@@ -442,7 +737,7 @@ private fun InstructionChips(
                     label = {
                         Text(
                             text = instruction.title,
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall,
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(),
