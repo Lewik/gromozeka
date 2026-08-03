@@ -49,6 +49,12 @@ data class Conversation(
     @JvmInline
     value class Id(val value: String)
 
+    @Serializable
+    enum class TurnTerminationReason {
+        STOPPED,
+        INTERRUPTED,
+    }
+
     /**
      * Conversation thread containing ordered message sequence.
      *
@@ -581,6 +587,40 @@ data class Conversation(
                 override val title = "User situation context"
                 override val description = "Runtime facts about the user's current situation"
                 override fun serializeContent() = context.toXml()
+                override fun toXmlLine() = serializeContent()
+            }
+
+            @Serializable
+            @SerialName("previous_turn_terminated")
+            data class PreviousTurnTerminated(
+                val turnId: String,
+                val reason: TurnTerminationReason,
+                val occurredAt: Instant,
+            ) : Instruction() {
+                override val title = when (reason) {
+                    TurnTerminationReason.STOPPED -> "Previous turn stopped"
+                    TurnTerminationReason.INTERRUPTED -> "Previous turn interrupted"
+                }
+                override val description = when (reason) {
+                    TurnTerminationReason.STOPPED ->
+                        "The user deliberately stopped the previous turn before normal completion"
+                    TurnTerminationReason.INTERRUPTED ->
+                        "The user deliberately interrupted the previous turn before normal completion"
+                }
+
+                override fun serializeContent(): String = when (reason) {
+                    TurnTerminationReason.STOPPED -> """
+                        <turn_aborted reason="user_stopped">
+                        The user stopped the previous turn on purpose before it reached normal completion. The operation already in flight may have completed, but later continuation steps were not run. Do not assume unfinished work completed or retry it automatically; use the user's new message to decide what to do next.
+                        </turn_aborted>
+                    """.trimIndent()
+                    TurnTerminationReason.INTERRUPTED -> """
+                        <turn_aborted reason="user_interrupted">
+                        The user interrupted the previous turn on purpose. In-flight operations may have been cancelled after partial execution, and background commands may still be running or stopping. Do not assume completion or retry automatically; inspect current state when relevant and follow the user's new message.
+                        </turn_aborted>
+                    """.trimIndent()
+                }
+
                 override fun toXmlLine() = serializeContent()
             }
 

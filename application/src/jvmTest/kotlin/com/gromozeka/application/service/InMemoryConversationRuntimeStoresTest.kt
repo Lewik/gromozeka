@@ -604,6 +604,117 @@ class InMemoryConversationRuntimeStoresTest {
     }
 
     @Test
+    fun `coordinator attaches a stopped turn marker to the next user message once`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val first = task("message-1", QueuedMessagePlacement.END_OF_TURN)
+        val firstWorker = worker("worker-1")
+
+        assertTrue(coordinator.submit(first))
+        assertEquals(first, coordinator.claimAsEligibleWorker(first, firstWorker))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                first.id,
+                executor(firstWorker),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(coordinator.requestStop(conversationId))
+        assertTrue(coordinator.requestStop(conversationId))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                first.id,
+                executor(firstWorker),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
+        assertTrue(coordinator.finishIfIdle(conversationId))
+
+        val second = task("message-2", QueuedMessagePlacement.END_OF_TURN)
+        assertTrue(coordinator.submit(second))
+        val secondWorker = worker("worker-2")
+        val claimedSecond = assertNotNull(coordinator.claimAsEligibleWorker(second, secondWorker))
+        val stopInstruction = claimedSecond.requireUserTurn().userMessage.instructions
+            .filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
+            .single()
+
+        assertEquals(first.turnId.value, stopInstruction.turnId)
+        assertEquals(Conversation.TurnTerminationReason.STOPPED, stopInstruction.reason)
+        assertTrue(stopInstruction.toXmlLine().contains("<turn_aborted reason=\"user_stopped\">"))
+
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                claimedSecond.id,
+                executor(secondWorker),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                claimedSecond.id,
+                executor(secondWorker),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
+        assertTrue(coordinator.finishIfIdle(conversationId))
+
+        val third = task("message-3", QueuedMessagePlacement.END_OF_TURN)
+        assertTrue(coordinator.submit(third))
+        val claimedThird = assertNotNull(coordinator.claimAsEligibleWorker(third, worker("worker-3")))
+        assertTrue(
+            claimedThird.requireUserTurn().userMessage.instructions
+                .none { it is Conversation.Message.Instruction.PreviousTurnTerminated }
+        )
+    }
+
+    @Test
+    fun `cancelling the next user message preserves its stopped turn marker`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val first = task("message-1", QueuedMessagePlacement.END_OF_TURN)
+        val firstWorker = worker("worker-1")
+
+        assertTrue(coordinator.submit(first))
+        assertEquals(first, coordinator.claimAsEligibleWorker(first, firstWorker))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                first.id,
+                executor(firstWorker),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(coordinator.requestStop(conversationId))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                first.id,
+                executor(firstWorker),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
+        assertTrue(coordinator.finishIfIdle(conversationId))
+
+        val cancelled = task("message-2", QueuedMessagePlacement.END_OF_TURN)
+        assertTrue(coordinator.submit(cancelled))
+        assertTrue(coordinator.cancelByMessageId(conversationId, cancelled.requireUserTurn().userMessage.id))
+
+        val replacement = task("message-3", QueuedMessagePlacement.END_OF_TURN)
+        assertTrue(coordinator.submit(replacement))
+        val claimedReplacement = assertNotNull(
+            coordinator.claimAsEligibleWorker(replacement, worker("worker-2"))
+        )
+        val stopInstruction = claimedReplacement.requireUserTurn().userMessage.instructions
+            .filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
+            .single()
+
+        assertEquals(first.turnId.value, stopInstruction.turnId)
+        assertEquals(Conversation.TurnTerminationReason.STOPPED, stopInstruction.reason)
+    }
+
+    @Test
     fun `coordinator records tool execution and snapshots`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val task = task("message-1", QueuedMessagePlacement.END_OF_TURN)

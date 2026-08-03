@@ -901,7 +901,10 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         if (!transition.result) return false
         schedulingByConversation[conversationId] = transition.state
         readyWorkByConversation.remove(conversationId)
-        appendControlTrace(conversationId, controlState)
+        appendControlTrace(
+            conversationId,
+            transition.state.executionState?.controlState ?: controlState,
+        )
         bumpRevision(conversationId)
         signalSchedulingChanged(conversationId)
         return true

@@ -13,6 +13,7 @@ data class ConversationRuntimeSchedulingState(
     val activeInsertions: List<ConversationRuntimeTask> = emptyList(),
     val continuationTask: ConversationRuntimeTask? = null,
     val pendingTasks: List<ConversationRuntimeTask> = emptyList(),
+    val pendingTurnTerminationInstructions: List<Conversation.Message.Instruction.PreviousTurnTerminated> = emptyList(),
     val incidents: List<ConversationRuntimeTaskIncident> = emptyList(),
     val completedIdempotencyKeys: Set<String> = emptySet(),
 ) {
@@ -40,6 +41,12 @@ data class ConversationRuntimeSchedulingState(
         }
         require(activeInsertions.all(ConversationRuntimeTask::isRootInput)) {
             "Conversation runtime insertion reservation accepts root inputs only"
+        }
+        require(
+            pendingTurnTerminationInstructions.map { it.turnId }.distinct().size ==
+                pendingTurnTerminationInstructions.size
+        ) {
+            "Conversation runtime can keep only one pending termination instruction per turn"
         }
 
         val scheduledTasks = listOfNotNull(activeTask, continuationTask) + activeInsertions + pendingTasks
@@ -91,10 +98,16 @@ data class ConversationRuntimeSchedulingState(
             return unchanged(false)
         }
 
+        val submittedTask = task.withTurnTerminationInstructions(pendingTurnTerminationInstructions)
         return changed(
             copy(
                 executionState = executionState ?: idleRunningState(now),
-                pendingTasks = pendingTasks + task,
+                pendingTasks = pendingTasks + submittedTask,
+                pendingTurnTerminationInstructions = if (task.payload is ConversationRuntimeTask.Payload.UserTurn) {
+                    emptyList()
+                } else {
+                    pendingTurnTerminationInstructions
+                },
             ),
             true,
         )
@@ -123,8 +136,9 @@ data class ConversationRuntimeSchedulingState(
         ) {
             "Updating a queued user turn cannot change its runtime identity"
         }
+        val updatedTask = task.withTurnTerminationInstructions(existing.turnTerminationInstructions())
         return changed(
-            copy(pendingTasks = pendingTasks.toMutableList().apply { this[index] = task }),
+            copy(pendingTasks = pendingTasks.toMutableList().apply { this[index] = updatedTask }),
             true,
         )
     }
@@ -489,17 +503,47 @@ data class ConversationRuntimeSchedulingState(
         if (currentState == null && activeTask == null && continuationTask == null && pendingTasks.isEmpty()) {
             return unchanged(false)
         }
+        val effectiveControlState = if (
+            controlState == ConversationExecutionState.ControlState.INTERRUPTING ||
+            currentState?.controlState == ConversationExecutionState.ControlState.INTERRUPTING
+        ) {
+            ConversationExecutionState.ControlState.INTERRUPTING
+        } else {
+            ConversationExecutionState.ControlState.STOPPING
+        }
+        val currentTurnInstruction = (activeTask ?: continuationTask)?.let { currentTask ->
+            Conversation.Message.Instruction.PreviousTurnTerminated(
+                turnId = currentTask.turnId.value,
+                reason = when (effectiveControlState) {
+                    ConversationExecutionState.ControlState.INTERRUPTING ->
+                        Conversation.TurnTerminationReason.INTERRUPTED
+                    else -> Conversation.TurnTerminationReason.STOPPED
+                },
+                occurredAt = now,
+            )
+        }
+        val nextPendingTurnTerminationInstructions = mergeTurnTerminationInstructions(
+            pendingTurnTerminationInstructions +
+                pendingTasks.flatMap { it.turnTerminationInstructions() } +
+                listOfNotNull(currentTurnInstruction)
+        )
         if (activeTask == null) {
-            return changed(clearOperationalState(), true)
+            return changed(
+                clearOperationalState().copy(
+                    pendingTurnTerminationInstructions = nextPendingTurnTerminationInstructions,
+                ),
+                true,
+            )
         }
         return changed(
             copy(
                 executionState = checkNotNull(currentState).copy(
-                    controlState = controlState,
+                    controlState = effectiveControlState,
                     updatedAt = now,
                 ),
                 continuationTask = null,
                 pendingTasks = emptyList(),
+                pendingTurnTerminationInstructions = nextPendingTurnTerminationInstructions,
             ),
             true,
         )
@@ -509,10 +553,15 @@ data class ConversationRuntimeSchedulingState(
         changed(clearOperationalState(), Unit)
 
     fun cancelByMessageId(messageId: Conversation.Message.Id): ConversationRuntimeStateTransition<Boolean> {
-        val removed = pendingTasks.any { it.userMessageIdOrNull() == messageId }
-        if (!removed) return unchanged(false)
+        val removedTask = pendingTasks.firstOrNull { it.userMessageIdOrNull() == messageId }
+            ?: return unchanged(false)
         return changed(
-            copy(pendingTasks = pendingTasks.filterNot { it.userMessageIdOrNull() == messageId }),
+            copy(
+                pendingTasks = pendingTasks.filterNot { it.userMessageIdOrNull() == messageId },
+                pendingTurnTerminationInstructions = mergeTurnTerminationInstructions(
+                    pendingTurnTerminationInstructions + removedTask.turnTerminationInstructions()
+                ),
+            ),
             true,
         )
     }
@@ -598,6 +647,55 @@ data class ConversationRuntimeSchedulingState(
             continuationTask = null,
             pendingTasks = emptyList(),
         )
+
+    private fun ConversationRuntimeTask.withTurnTerminationInstructions(
+        instructions: List<Conversation.Message.Instruction.PreviousTurnTerminated>,
+    ): ConversationRuntimeTask {
+        val userTurn = payload as? ConversationRuntimeTask.Payload.UserTurn ?: return this
+        if (instructions.isEmpty()) return this
+        val message = userTurn.userMessage
+        val mergedInstructions = mergeTurnTerminationInstructions(
+            message.instructions.filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>() +
+                instructions
+        )
+        val otherInstructions = message.instructions.filterNot {
+            it is Conversation.Message.Instruction.PreviousTurnTerminated
+        }
+        return copy(
+            payload = userTurn.copy(
+                userMessage = message.copy(instructions = mergedInstructions + otherInstructions),
+            )
+        )
+    }
+
+    private fun ConversationRuntimeTask.turnTerminationInstructions():
+        List<Conversation.Message.Instruction.PreviousTurnTerminated> =
+        (payload as? ConversationRuntimeTask.Payload.UserTurn)
+            ?.userMessage
+            ?.instructions
+            ?.filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
+            .orEmpty()
+
+    private fun mergeTurnTerminationInstructions(
+        instructions: List<Conversation.Message.Instruction.PreviousTurnTerminated>,
+    ): List<Conversation.Message.Instruction.PreviousTurnTerminated> =
+        instructions.fold(emptyList()) { merged, instruction ->
+            val existingIndex = merged.indexOfFirst { it.turnId == instruction.turnId }
+            if (existingIndex < 0) {
+                merged + instruction
+            } else {
+                val existing = merged[existingIndex]
+                val preferred = if (
+                    instruction.reason == Conversation.TurnTerminationReason.INTERRUPTED &&
+                    existing.reason != Conversation.TurnTerminationReason.INTERRUPTED
+                ) {
+                    instruction
+                } else {
+                    existing
+                }
+                merged.toMutableList().apply { this[existingIndex] = preferred }
+            }
+        }
 
     private fun <T> unchanged(result: T): ConversationRuntimeStateTransition<T> =
         ConversationRuntimeStateTransition(this, result, changed = false)

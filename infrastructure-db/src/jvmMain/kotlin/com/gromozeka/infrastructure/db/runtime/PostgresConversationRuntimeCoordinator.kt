@@ -625,7 +625,11 @@ class PostgresConversationRuntimeCoordinator(
             )
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
-            record.appendControlTrace(conversationId, ConversationExecutionState.ControlState.STOPPING)
+            record.appendControlTrace(
+                conversationId,
+                transition.state.executionState?.controlState
+                    ?: ConversationExecutionState.ControlState.STOPPING,
+            )
             record.bumpRevision()
             true
         }
@@ -638,7 +642,11 @@ class PostgresConversationRuntimeCoordinator(
             )
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
-            record.appendControlTrace(conversationId, ConversationExecutionState.ControlState.INTERRUPTING)
+            record.appendControlTrace(
+                conversationId,
+                transition.state.executionState?.controlState
+                    ?: ConversationExecutionState.ControlState.INTERRUPTING,
+            )
             record.bumpRevision()
             true
         }
