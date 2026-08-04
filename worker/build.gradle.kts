@@ -84,4 +84,7 @@ listOf("startScripts", "installDist", "distZip", "distTar").forEach { taskName -
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    providers.systemProperty("gromozeka.computer-use.live").orNull?.let { value ->
+        systemProperty("gromozeka.computer-use.live", value)
+    }
 }

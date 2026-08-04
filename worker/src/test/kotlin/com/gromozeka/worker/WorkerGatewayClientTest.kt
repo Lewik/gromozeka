@@ -37,6 +37,7 @@ import com.gromozeka.remote.protocol.WorkerGatewayMessage
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import com.gromozeka.remote.protocol.WorkerToolExecutionRequest
 import com.gromozeka.remote.protocol.WorkerToolExecutionResponse
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -143,6 +144,35 @@ class WorkerGatewayClientTest {
         assertEquals(null, response.payload)
     }
 
+    @Test
+    fun `gateway does not convert request cancellation into a tool failure`() = runBlocking {
+        val handler = operationHandler(
+            object : AiToolCallback {
+                override val definition = AiToolDefinition(
+                    name = "cancelled_worker_tool",
+                    description = "Cancelled worker tool",
+                    inputSchema = """{"type":"object"}""",
+                )
+                override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
+
+                override fun call(toolInput: String, context: ToolExecutionContext?): String =
+                    throw CancellationException("gateway disconnected")
+            }
+        )
+        val identity = workerIdentity("worker-1")
+
+        assertFailsWith<CancellationException> {
+            handler.execute(
+                identity = identity,
+                request = toolRequest(
+                    requestId = "request-cancelled",
+                    targetWorkerId = identity.workerId,
+                    toolName = "cancelled_worker_tool",
+                ),
+            )
+        }
+    }
+
     private fun operationHandler(tool: AiToolCallback): WorkerGatewayOperationHandler =
         WorkerGatewayOperationHandler(
             workerControlHandler = WorkerControlHandler { error("Unused worker control request") },
@@ -166,6 +196,7 @@ class WorkerGatewayClientTest {
     private fun toolRequest(
         requestId: String,
         targetWorkerId: ConversationRuntimeWorkerId,
+        toolName: String = "test_worker_tool",
     ): WorkerGatewayMessage.Request {
         val target = ConversationRuntimeTaskTarget.Worker(targetWorkerId)
         val payload = WorkerToolExecutionRequest(
@@ -174,7 +205,7 @@ class WorkerGatewayClientTest {
                 Conversation.Message.ContentItem.ToolCall(
                     id = Conversation.Message.ContentItem.ToolCall.Id("tool-call-1"),
                     call = Conversation.Message.ContentItem.ToolCall.Data(
-                        name = "test_worker_tool",
+                        name = toolName,
                         input = buildJsonObject {
                             put("path", "README.md")
                             putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {

@@ -94,3 +94,30 @@ Workers never receive PostgreSQL credentials. Database access is a private
 Server implementation detail. A Worker stores only its stable identity and
 revocable Gateway credential; AI and MCP configuration is synchronized into
 process memory after authentication.
+
+## Computer Use
+
+Add `COMPUTER_USE` together with `TOOL_EXECUTION` to enable pixel-based control
+of this Worker's interactive desktop. The Worker advertises the three
+`grz_computer_*` tools only when its local backend is available.
+
+- Run the Worker in the signed-in user's desktop session, not as a headless or
+  session-zero service.
+- macOS requires Screen Recording and Accessibility permission for the process
+  that launches the Worker.
+- Windows uses the current interactive desktop.
+- Linux currently requires X11; Wayland and headless sessions are reported as
+  unavailable.
+- `grz_computer_observe` returns a signed reference to one screenshot's exact
+  Worker process, display, and coordinate frame.
+- `grz_computer_act` executes one bounded action list synchronously and returns
+  a fresh screenshot. Calls on the same display are serialized while executing.
+- Stopping a turn or losing the Gateway cancels in-flight requests and releases
+  pressed keys and mouse buttons. A reference from an older Worker process is
+  rejected before input starts.
+
+Computer Use controls the real pointer, keyboard, focus, and clipboard of that
+desktop. It has the same trusted, unsandboxed authority as the Worker process.
+There is no automatic retry or reassignment after an action may have started.
+After a timeout or disconnect, the outcome is unknown and the model must capture
+a fresh observation before continuing.

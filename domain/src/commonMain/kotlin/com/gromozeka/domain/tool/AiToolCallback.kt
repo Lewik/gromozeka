@@ -76,6 +76,7 @@ data class AiToolMetadata(
     val requiredRuntimeCapabilities: Set<ConversationRuntimeCapability> = emptySet(),
     val executionScope: AiToolExecutionScope,
     val visibleToMemoryPipeline: Boolean = true,
+    val logInput: Boolean = true,
 )
 
 @Serializable

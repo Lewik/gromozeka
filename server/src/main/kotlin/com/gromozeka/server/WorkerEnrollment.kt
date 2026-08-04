@@ -30,6 +30,7 @@ data class WorkerEnrollmentProperties(
         ConversationRuntimeCapability.AUDIO_CAPTURE,
         ConversationRuntimeCapability.TOOL_EXECUTION,
         ConversationRuntimeCapability.LOCAL_AGENT_TOOL,
+        ConversationRuntimeCapability.COMPUTER_USE,
     ),
 ) {
     fun unavailableReason(): String? {

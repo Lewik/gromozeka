@@ -30,3 +30,12 @@ val WorkerInspectionToolMetadata = AiToolMetadata(
     requiredRuntimeCapabilities = setOf(ConversationRuntimeCapability.TOOL_EXECUTION),
     executionScope = AiToolExecutionScope.WORKER,
 )
+
+val WorkerComputerUseToolMetadata = AiToolMetadata(
+    requiredRuntimeCapabilities = setOf(
+        ConversationRuntimeCapability.TOOL_EXECUTION,
+        ConversationRuntimeCapability.COMPUTER_USE,
+    ),
+    executionScope = AiToolExecutionScope.WORKER,
+    logInput = false,
+)

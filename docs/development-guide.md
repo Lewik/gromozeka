@@ -100,6 +100,46 @@ heartbeat. `grz_get_worker_environment` recollects the complete profile and
 volatile capacity, process, executable, and project-mount data on the selected
 Worker when current facts are needed.
 
+## Computer Use
+
+Computer Use is pixel-based control of one exact Worker's real interactive
+desktop. Prefer Browser Use when DOM and accessibility state are available;
+Computer Use is the intrusive fallback for native applications, remote desktop
+content, OS dialogs, and other surfaces exposed only as pixels.
+
+The model uses three synchronous tools:
+
+1. `grz_computer_targets` lists displays on the selected Worker.
+2. `grz_computer_observe` returns a PNG and a signed opaque `observation_ref`
+   describing that screenshot's coordinate frame.
+3. `grz_computer_act` applies one bounded ordered action list exactly once and
+   returns a fresh screenshot.
+
+Computer Use has no durable session or reconciliation state. Each request is a
+plain Worker-targeted tool execution. The signed reference prevents coordinate
+geometry from being altered and is valid only for the exact Worker process that
+captured it, but it does not claim that the visible desktop has remained
+unchanged. Calls on the same display are serialized only while they execute.
+
+Desktop actions are never retried or reassigned. If a timeout or disconnect
+happens after dispatch, the outcome is reported as unknown and the model must
+observe again before deciding what to do. Cancelling the turn sends a
+request-scoped cancellation signal through the Worker Gateway; the backend
+checks it between actions and releases any pressed keys or mouse buttons in a
+`finally` block. A Gateway disconnect cancels every request still executing on
+that connection.
+
+Screenshots are ordinary tool-result Artifacts. Only the three latest Computer
+Use screenshots are materialized into an LLM request; older images remain
+durable but become compact text placeholders in provider context. Clients
+communicate only with the Server and never connect directly to a Worker.
+
+The current JVM backend supports interactive macOS, Windows, and X11 sessions.
+Headless and Wayland Workers omit the Computer Use tools. macOS capture and
+input still require the operating system's Screen Recording and Accessibility
+permissions. Computer Use intentionally controls the real pointer, keyboard,
+focus, and clipboard; there is no separate ownership or takeover UI.
+
 ## Identity And Authentication
 
 The Server owns user identity. Local username/password credentials are the

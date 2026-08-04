@@ -123,10 +123,6 @@ class ConversationToolExecutionTaskService(
                     )
 
                 is ConversationRuntimeTaskTarget.Worker -> {
-                    val targetIdentity = workerTargetResolver.requireOnline(
-                        target.workerId,
-                        ConversationRuntimeCapability.TOOL_EXECUTION,
-                    )
                     val startedAt = markRemoteToolExecutionsRunning(
                         conversationId = conversationId,
                         task = task,
@@ -134,6 +130,10 @@ class ConversationToolExecutionTaskService(
                         toolCalls = payload.toolCalls,
                     )
                     try {
+                        val targetIdentity = workerTargetResolver.requireOnline(
+                            target.workerId,
+                            ConversationRuntimeCapability.TOOL_EXECUTION,
+                        )
                         workerToolExecutionClient.execute(
                             target = targetIdentity,
                             executionTarget = target,
@@ -157,7 +157,11 @@ class ConversationToolExecutionTaskService(
                             toolCalls = payload.toolCalls,
                             startedAt = startedAt,
                         )
-                        throw error
+                        log.warn(error) {
+                            "Worker tool execution returned no result; reporting an unknown outcome to the model: " +
+                                "conversation=${conversationId.value} worker=${target.workerId.value}"
+                        }
+                        workerToolExecutionFailure(payload.toolCalls, error)
                     }
                 }
             }
@@ -400,6 +404,35 @@ class ConversationToolExecutionTaskService(
                     executor.identity.workerId == workerId
         }
 }
+
+internal fun workerToolExecutionFailure(
+    toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
+    error: Throwable,
+): ToolExecutionResult {
+    val detail = error.message
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?.take(MAX_WORKER_TOOL_FAILURE_DETAIL_LENGTH)
+    val message = buildString {
+        append("Worker tool execution did not return a result")
+        detail?.let { append(": ").append(it) }
+        append(". The operation may have started, so its outcome is unknown. ")
+        append("Do not retry automatically; inspect the current state before continuing.")
+    }
+    return ToolExecutionResult(
+        results = toolCalls.map { toolCall ->
+            Conversation.Message.ContentItem.ToolResult(
+                toolUseId = toolCall.id,
+                toolName = toolCall.call.name,
+                result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text(message)),
+                isError = true,
+            )
+        },
+        returnDirect = false,
+    )
+}
+
+private const val MAX_WORKER_TOOL_FAILURE_DETAIL_LENGTH = 2_000
 
 @Service
 @ConditionalOnProperty(

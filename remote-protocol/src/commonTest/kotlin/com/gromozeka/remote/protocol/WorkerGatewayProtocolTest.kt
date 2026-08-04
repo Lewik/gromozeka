@@ -16,6 +16,13 @@ class WorkerGatewayProtocolTest {
     }
 
     @Test
+    fun `request cancellation round trips through binary codec`() {
+        val expected = WorkerGatewayMessage.CancelRequest("request-1")
+
+        assertEquals(expected, WorkerGatewayCodec.decode(WorkerGatewayCodec.encode(expected)))
+    }
+
+    @Test
     fun `worker command runtime messages round trip through binary codec`() {
         val request = WorkerCommandRuntimeRequest.FindCommandTasks
         val response = WorkerCommandRuntimeResponse.CommandTasksResult(emptyList())

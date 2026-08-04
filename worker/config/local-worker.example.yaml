@@ -12,3 +12,4 @@ gromozeka:
         - AUDIO_CAPTURE
         - TOOL_EXECUTION
         - LOCAL_AGENT_TOOL
+        - COMPUTER_USE

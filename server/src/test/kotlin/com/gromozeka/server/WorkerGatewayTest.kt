@@ -272,6 +272,8 @@ class WorkerGatewayTest {
 
         request.cancel()
         request.join()
+        val cancellation = session.outgoingMessages().receive() as WorkerGatewayMessage.CancelRequest
+        assertEquals(dispatched.id, cancellation.requestId)
 
         val response = WorkerGatewayMessage.Response(
             requestId = dispatched.id,
@@ -285,12 +287,42 @@ class WorkerGatewayTest {
         )
     }
 
+    @Test
+    fun `timed out request is cancelled without retry`() = runBlocking {
+        val session = session("worker-1", "session-1")
+        val request = async {
+            runCatching {
+                session.execute(
+                    operation = WorkerGatewayOperation.WORKER_CONTROL,
+                    payload = "request".encodeToByteArray(),
+                    timeout = Duration.ofMillis(25),
+                )
+            }
+        }
+        val dispatched = session.outgoingMessages().receive() as WorkerGatewayMessage.Request
+
+        val error = request.await().exceptionOrNull()
+        assertTrue(error is IllegalStateException)
+        val cancellation = session.outgoingMessages().receive() as WorkerGatewayMessage.CancelRequest
+
+        assertEquals(dispatched.id, cancellation.requestId)
+        assertTrue(error.message.orEmpty().contains("outcome is unknown"))
+        assertEquals(WorkerGatewayResponseAcceptance.LATE, session.accept(success(dispatched.id)))
+    }
+
     private fun session(workerId: String, sessionId: String): WorkerGatewaySession =
         WorkerGatewaySession(
             ConversationRuntimeWorkerIdentity(
                 workerId = ConversationRuntimeWorkerId(workerId),
                 sessionId = ConversationRuntimeWorkerSessionId(sessionId),
             )
+        )
+
+    private fun success(requestId: String): WorkerGatewayMessage.Response =
+        WorkerGatewayMessage.Response(
+            requestId = requestId,
+            status = WorkerGatewayMessage.Response.Status.SUCCEEDED,
+            payload = "response".encodeToByteArray(),
         )
 
     private fun worker(workerId: String): WorkerResource =

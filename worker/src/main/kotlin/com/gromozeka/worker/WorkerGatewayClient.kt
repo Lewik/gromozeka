@@ -36,12 +36,14 @@ import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -58,6 +60,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.SmartLifecycle
 import org.springframework.stereotype.Service
 import java.net.URI
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -281,16 +284,31 @@ class WorkerGatewayClient(
                         outgoing.send(WorkerGatewayMessage.Heartbeat(Clock.System.now()))
                     }
                 }
+                val requestJobs = ConcurrentHashMap<String, Job>()
                 try {
                     for (frame in socket.incoming) {
                         val message = frame.decodeMessage()
                             ?: error("Worker Gateway Server sent a non-binary frame")
                         when (message) {
-                            is WorkerGatewayMessage.Request -> launch {
-                                requestConcurrency.withPermit {
-                                    outgoing.send(operationHandler.execute(identity, message))
+                            is WorkerGatewayMessage.Request -> {
+                                val requestJob = launch(start = CoroutineStart.LAZY) {
+                                    requestConcurrency.withPermit {
+                                        outgoing.send(operationHandler.execute(identity, message))
+                                    }
                                 }
+                                check(requestJobs.putIfAbsent(message.id, requestJob) == null) {
+                                    "Worker Gateway Server reused request id ${message.id}"
+                                }
+                                requestJob.invokeOnCompletion { requestJobs.remove(message.id, requestJob) }
+                                requestJob.start()
                             }
+
+                            is WorkerGatewayMessage.CancelRequest ->
+                                requestJobs[message.requestId]?.cancel(
+                                    CancellationException(
+                                        "Worker Gateway request ${message.requestId} was cancelled by Server"
+                                    )
+                                )
 
                             is WorkerGatewayMessage.Response -> {
                                 if (!outbound.accept(message)) {
@@ -313,6 +331,9 @@ class WorkerGatewayClient(
                     }
                 } finally {
                     outbound.detach(outgoing)
+                    val activeRequests = requestJobs.values.toList()
+                    activeRequests.forEach { it.cancel() }
+                    activeRequests.joinAll()
                     outgoing.close()
                     heartbeatJob.cancelAndJoin()
                     writer.cancelAndJoin()
@@ -436,6 +457,7 @@ class WorkerGatewayOperationHandler(
                 payload = payload,
             )
         }.getOrElse { error ->
+            if (error is CancellationException) throw error
             WorkerGatewayMessage.Response(
                 requestId = request.id,
                 status = WorkerGatewayMessage.Response.Status.FAILED,

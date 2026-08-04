@@ -12,3 +12,4 @@ gromozeka:
         - AI_REQUEST_RESPONSE
         - TOOL_EXECUTION
         - LOCAL_AGENT_TOOL
+        - COMPUTER_USE

@@ -95,6 +95,56 @@ class ConversationArtifactApplicationServiceTest {
     }
 
     @Test
+    fun `runtime materializes only the three latest computer use screenshots`() = runBlocking {
+        val messages = (1..5).map { index ->
+            val result = Conversation.Message.ContentItem.ToolResult(
+                toolUseId = Conversation.Message.ContentItem.ToolCall.Id("computer-call-$index"),
+                toolName = if (index % 2 == 0) "grz_computer_observe" else "grz_computer_act",
+                result = listOf(
+                    Conversation.Message.ContentItem.ToolResult.Data.Text(
+                        "{\"observation_ref\":\"ref-$index\"}"
+                    ),
+                    Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                        data = Base64.getEncoder().encodeToString(byteArrayOf(index.toByte())),
+                        mediaType = Conversation.Message.MediaType.parse("image/png"),
+                        fileName = "computer-$index.png",
+                    )
+                ),
+                isError = false,
+            )
+            val persisted = service.persistAndCommitToolResults(conversation, null, listOf(result)).single()
+            Conversation.Message(
+                id = Conversation.Message.Id("computer-message-$index"),
+                conversationId = conversation.id,
+                role = Conversation.Message.Role.USER,
+                content = listOf(persisted),
+                createdAt = Instant.fromEpochMilliseconds(index.toLong()),
+            )
+        }
+
+        val materialized = service.materialize(conversation.id, messages)
+        val results = materialized.map { message ->
+            assertIs<Conversation.Message.ContentItem.ToolResult>(message.content.single()).result
+        }
+
+        assertTrue(
+            results.take(2).all {
+                it.size == 1 &&
+                    (it.single() as? Conversation.Message.ContentItem.ToolResult.Data.Text)
+                        ?.content
+                        ?.contains("omitted") == true
+            }
+        )
+        assertTrue(
+            results.drop(2).all { result ->
+                result.size == 2 &&
+                    result[0] is Conversation.Message.ContentItem.ToolResult.Data.Text &&
+                    result[1] is Conversation.Message.ContentItem.ToolResult.Data.Base64Data
+            }
+        )
+    }
+
+    @Test
     fun `artifact from another conversation is rejected before content reaches a provider`() = runBlocking {
         val artifact = service.upload(
             conversation = conversation,

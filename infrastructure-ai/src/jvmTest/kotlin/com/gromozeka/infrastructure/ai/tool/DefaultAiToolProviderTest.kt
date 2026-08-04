@@ -6,6 +6,7 @@ import com.gromozeka.domain.tool.AiToolCallbackContributor
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.infrastructure.ai.config.TypedToolCallbackAdapter
@@ -57,6 +58,20 @@ class DefaultAiToolProviderTest {
         assertEquals(listOf("enabled"), provider.getTools().map { it.definition.name })
     }
 
+    @Test
+    fun `typed tool preserves mixed text and binary results`() {
+        val bytes = byteArrayOf(1, 2, 3)
+        val callback = TypedToolCallbackAdapter().adapt(MixedResultTool(bytes))
+
+        val result = callback.callResult("{}", ToolExecutionContext())
+
+        assertEquals(AiToolResult.Text("observation"), result[0])
+        val binary = result[1] as AiToolResult.Binary
+        assertEquals("screen.png", binary.fileName)
+        assertEquals("image/png", binary.mediaType)
+        assertEquals(bytes.toList(), binary.content.toList())
+    }
+
     private fun provider(
         declaredCallbacks: List<AiToolCallback>,
         localTools: List<Tool<*, *>>,
@@ -100,5 +115,22 @@ class DefaultAiToolProviderTest {
         override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
 
         override fun execute(request: TestRequest, context: ToolExecutionContext?): String = request.value
+    }
+
+    class MixedResultTool(
+        private val bytes: ByteArray,
+    ) : Tool<TestRequest, List<AiToolResult>> {
+        override val name = "mixed_result_tool"
+        override val description = "Mixed result tool"
+        override val requestType = TestRequest::class.java
+        override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
+
+        override fun execute(
+            request: TestRequest,
+            context: ToolExecutionContext?,
+        ): List<AiToolResult> = listOf(
+            AiToolResult.Text("observation"),
+            AiToolResult.Binary(bytes, "screen.png", "image/png"),
+        )
     }
 }

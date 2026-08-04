@@ -94,6 +94,10 @@ class TypedToolCallbackAdapter {
                 val response = tool.execute(request, context)
                 return when (response) {
                     is AiToolResult -> listOf(response)
+                    is List<*> -> response
+                        .takeIf { it.isNotEmpty() && it.all { item -> item is AiToolResult } }
+                        ?.map { it as AiToolResult }
+                        ?: listOf(AiToolResult.Text(objectMapper.writeValueAsString(response)))
                     is String -> listOf(AiToolResult.Text(response))
                     else -> listOf(AiToolResult.Text(objectMapper.writeValueAsString(response)))
                 }

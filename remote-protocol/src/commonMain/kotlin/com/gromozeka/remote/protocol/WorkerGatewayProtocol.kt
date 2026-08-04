@@ -90,6 +90,16 @@ sealed interface WorkerGatewayMessage {
     }
 
     @Serializable
+    @SerialName("cancel_request")
+    data class CancelRequest(
+        val requestId: String,
+    ) : WorkerGatewayMessage {
+        init {
+            require(requestId.isNotBlank()) { "Worker Gateway cancelled request id must not be blank" }
+        }
+    }
+
+    @Serializable
     @SerialName("response")
     data class Response(
         val requestId: String,
@@ -156,7 +166,7 @@ enum class WorkerGatewayOperation {
     WORKSPACE_STATE,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 8
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 9
 
 @OptIn(ExperimentalSerializationApi::class)
 object WorkerGatewayCodec {

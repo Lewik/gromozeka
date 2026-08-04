@@ -227,12 +227,13 @@ class ParallelToolExecutor(
                     ),
                     isError = true
                 )
+            val loggedArguments = if (callback.metadata.logInput) arguments else "[redacted]"
 
             // Validate JSON arguments before execution
             try {
                 kotlinx.serialization.json.Json.parseToJsonElement(arguments)
             } catch (e: Exception) {
-                log.error(e) { "Invalid JSON arguments for $toolName: $arguments" }
+                log.error(e) { "Invalid JSON arguments for $toolName: $loggedArguments" }
                 return ContentItem.ToolResult(
                     toolUseId = toolId,
                     toolName = toolName,
@@ -244,7 +245,7 @@ class ParallelToolExecutor(
             }
 
             // Log tool call arguments for debugging
-            log.info { "Executing tool: $toolName with arguments: $arguments" }
+            log.info { "Executing tool: $toolName with arguments: $loggedArguments" }
 
             val parentJob = coroutineContext[Job]
             val cancellableToolContext = toolContext
@@ -283,7 +284,11 @@ class ParallelToolExecutor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            log.error(e) { "Tool execution failed: $toolName with arguments: $arguments" }
+            val loggedArguments = callbackMap[toolName]
+                ?.takeIf { it.metadata.logInput }
+                ?.let { arguments }
+                ?: "[redacted]"
+            log.error(e) { "Tool execution failed: $toolName with arguments: $loggedArguments" }
             return ContentItem.ToolResult(
                 toolUseId = toolId,
                 toolName = toolName,

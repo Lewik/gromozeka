@@ -28,6 +28,7 @@ import io.ktor.websocket.readBytes
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -148,8 +149,16 @@ class WorkerGatewaySession(
                     withTimeout(timeout.toMillis()) {
                         response.await()
                     }
+                } catch (error: CancellationException) {
+                    requestCancellation(request.id)
+                    if (error !is TimeoutCancellationException) throw error
+                    throw IllegalStateException(
+                        "Worker Gateway request ${request.id} timed out; the outcome is unknown and " +
+                            "Gromozeka will not retry it automatically",
+                        error,
+                    )
                 } catch (error: Throwable) {
-                    if (error is CancellationException) throw error
+                    requestCancellation(request.id)
                     throw IllegalStateException(
                         "Worker Gateway request ${request.id} failed before a response was received; " +
                             "the outcome is unknown and Gromozeka will not retry it automatically",
@@ -165,6 +174,10 @@ class WorkerGatewaySession(
                 pending.remove(request.id, response)
             }
         }
+
+    private fun requestCancellation(requestId: String) {
+        outgoing.trySend(WorkerGatewayMessage.CancelRequest(requestId))
+    }
 
     suspend fun send(message: WorkerGatewayMessage) {
         outgoing.send(message)
@@ -400,6 +413,12 @@ class WorkerGatewayService(
                                 }
                             }
 
+                            is WorkerGatewayMessage.CancelRequest ->
+                                return@coroutineScope socket.fail(
+                                    "UNEXPECTED_MESSAGE",
+                                    "Worker cannot cancel a Server-owned Gateway request",
+                                )
+
                             is WorkerGatewayMessage.ToolCatalogUpdated -> {
                                 val updated = workerRegistry.updateTools(
                                     identity = registration.identity,
@@ -477,6 +496,7 @@ class WorkerGatewayService(
                 payload = handler.execute(identity, request),
             )
         }.getOrElse { error ->
+            if (error is CancellationException) throw error
             WorkerGatewayMessage.Response(
                 requestId = request.id,
                 status = WorkerGatewayMessage.Response.Status.FAILED,

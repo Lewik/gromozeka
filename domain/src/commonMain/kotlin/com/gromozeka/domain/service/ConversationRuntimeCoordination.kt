@@ -286,6 +286,7 @@ enum class ConversationRuntimeCapability {
     AUDIO_CAPTURE,
     TOOL_EXECUTION,
     LOCAL_AGENT_TOOL,
+    COMPUTER_USE,
     MEMORY_PIPELINE,
 }
 
@@ -487,6 +488,12 @@ private fun validateWorkerCapabilities(capabilities: Set<ConversationRuntimeCapa
             ConversationRuntimeCapability.TOOL_EXECUTION in capabilities
     ) {
         "LOCAL_AGENT_TOOL requires TOOL_EXECUTION"
+    }
+    require(
+        ConversationRuntimeCapability.COMPUTER_USE !in capabilities ||
+            ConversationRuntimeCapability.TOOL_EXECUTION in capabilities
+    ) {
+        "COMPUTER_USE requires TOOL_EXECUTION"
     }
 }
 

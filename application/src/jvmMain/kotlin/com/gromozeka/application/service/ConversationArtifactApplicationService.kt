@@ -108,7 +108,7 @@ class ConversationArtifactApplicationService(
                             fileName = data.fileName ?: toolResult.defaultArtifactFileName(data.mediaType),
                             mediaType = data.mediaType.value,
                             content = Base64.getDecoder().decode(data.data),
-                            purpose = if (toolResult.toolName == SCREENSHOT_TOOL_NAME) {
+                            purpose = if (toolResult.toolName in SCREENSHOT_TOOL_NAMES) {
                                 Artifact.Purpose.TOOL_SCREENSHOT
                             } else {
                                 Artifact.Purpose.TOOL_OUTPUT
@@ -127,13 +127,15 @@ class ConversationArtifactApplicationService(
         conversationId: Conversation.Id,
         messages: List<Conversation.Message>,
     ): List<Conversation.Message> {
-        val references = messages.flatMap { it.content }.contentArtifactReferences()
-        if (references.isEmpty()) return messages
+        val allReferences = messages.flatMap { it.content }.contentArtifactReferences()
+        if (allReferences.isEmpty()) return messages
 
-        val artifacts = requireArtifactReferences(conversationId, references)
+        val artifacts = requireArtifactReferences(conversationId, allReferences)
         require(artifacts.values.all { it.state == Artifact.State.COMMITTED }) {
             "Only committed artifacts can be sent to an AI provider"
         }
+        val runtimeMessages = messages.withBoundedComputerUseScreenshots()
+        val references = runtimeMessages.flatMap { it.content }.contentArtifactReferences()
         val artifactIds = references.map(Artifact.Reference::id).distinct()
 
         val materialized = mutableMapOf<Artifact.Id, MaterializedArtifact>()
@@ -143,7 +145,7 @@ class ConversationArtifactApplicationService(
             materialized[id] = MaterializedArtifact(artifact, encoded)
         }
 
-        return messages.map { message ->
+        return runtimeMessages.map { message ->
             message.copy(
                 content = message.content.map { item ->
                     when (item) {
@@ -161,6 +163,48 @@ class ConversationArtifactApplicationService(
                         )
 
                         else -> item
+                    }
+                }
+            )
+        }
+    }
+
+    private fun List<Conversation.Message>.withBoundedComputerUseScreenshots(): List<Conversation.Message> {
+        val screenshots = flatMap { message ->
+            message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+                .filter { it.toolName in COMPUTER_USE_SCREENSHOT_TOOL_NAMES }
+                .flatMap { result ->
+                    result.result
+                        .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
+                        .filter { it.artifact.kind == Artifact.Kind.IMAGE }
+                        .map { it.artifact.id }
+                }
+        }
+        val omitted = screenshots.dropLast(RECENT_COMPUTER_USE_SCREENSHOT_LIMIT).toSet()
+        if (omitted.isEmpty()) return this
+
+        return map { message ->
+            message.copy(
+                content = message.content.map { item ->
+                    if (item !is Conversation.Message.ContentItem.ToolResult ||
+                        item.toolName !in COMPUTER_USE_SCREENSHOT_TOOL_NAMES
+                    ) {
+                        item
+                    } else {
+                        val containsOmittedScreenshot = item.result
+                            .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
+                            .any { it.artifact.id in omitted }
+                        if (containsOmittedScreenshot) {
+                            item.copy(
+                                result = listOf(
+                                    Conversation.Message.ContentItem.ToolResult.Data.Text(
+                                        "[Older Computer Use observation omitted; capture a fresh observation if needed.]"
+                                    )
+                                )
+                            )
+                        } else {
+                            item
+                        }
                     }
                 }
             )
@@ -329,7 +373,16 @@ class ConversationArtifactApplicationService(
 
     companion object {
         const val DEFAULT_GC_BATCH_SIZE = 100
-        private const val SCREENSHOT_TOOL_NAME = "grz_capture_screenshot"
+        private val SCREENSHOT_TOOL_NAMES = setOf(
+            "grz_capture_screenshot",
+            "grz_computer_observe",
+            "grz_computer_act",
+        )
+        private val COMPUTER_USE_SCREENSHOT_TOOL_NAMES = setOf(
+            "grz_computer_observe",
+            "grz_computer_act",
+        )
+        private const val RECENT_COMPUTER_USE_SCREENSHOT_LIMIT = 3
         private const val MAX_FILE_NAME_LENGTH = 255
         private val MEDIA_TYPE_PATTERN = Regex("[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+")
     }
