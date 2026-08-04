@@ -75,6 +75,38 @@ deploy/aws/bin/tunnel
 deploy/aws/bin/backup
 ```
 
+## Optional AWS Computer
+
+AWS Computer adds a persistent graphical Linux session to the same EC2
+instance. It uses a minimal Xdcv and Metacity desktop, the official Chrome for
+Testing build, and a normal outbound Gromozeka Worker named `aws-computer`. Its
+home and browser profile live on the encrypted data EBS volume. DCV listens
+only on loopback; Tailscale Serve publishes its web client on private HTTPS
+port `8443`.
+
+Amazon DCV and Chrome for Testing are installed directly from their vendors
+and are not redistributed in Gromozeka artifacts. Their versions and checksums
+are pinned by the installer. The Gromozeka Worker and Browser Bridge are
+downloaded from the currently deployed GitHub Release and verified against
+that release's `SHA256SUMS`.
+
+Apply Terraform once to grant the EC2 role access to the regional DCV license,
+then install and enroll the optional computer:
+
+```bash
+deploy/aws/bin/terraform-plan
+deploy/aws/bin/terraform-apply
+deploy/aws/bin/computer install
+deploy/aws/bin/computer password
+deploy/aws/bin/computer enroll ONE_TIME_ENROLLMENT_TOKEN
+deploy/aws/bin/computer url
+```
+
+Use `deploy/aws/bin/computer status`, `start`, and `stop` for ordinary
+operations. Published Server deployments update an already-installed AWS
+Computer to the same Gromozeka version, but never install or start one
+implicitly.
+
 The first Tailscale login is interactive. Open `deploy/aws/bin/shell`, then run:
 
 ```bash

@@ -47,7 +47,7 @@ resource "aws_instance" "gromozeka" {
   }
 
   lifecycle {
-    ignore_changes = [ami]
+    ignore_changes = [ami, user_data]
   }
 
   depends_on = [

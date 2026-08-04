@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source /etc/gromozeka/computer.env
+
+if [[ "${1:-}" != "--dbus-session" && -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+  exec dbus-run-session -- "$0" --dbus-session
+fi
+
+export HOME="$GROMOZEKA_AWS_COMPUTER_HOME"
+export USER="$GROMOZEKA_AWS_COMPUTER_USER"
+export LOGNAME="$GROMOZEKA_AWS_COMPUTER_USER"
+export GROMOZEKA_HOME="$GROMOZEKA_AWS_COMPUTER_HOME/.gromozeka"
+
+log_directory="$GROMOZEKA_AWS_COMPUTER_DATA/logs"
+mkdir -p "$log_directory"
+: > "$log_directory/metacity.log"
+: > "$log_directory/chrome.log"
+: > "$log_directory/worker.log"
+
+child_processes=()
+stop_children() {
+  if [[ "${#child_processes[@]}" -gt 0 ]]; then
+    kill "${child_processes[@]}" 2>/dev/null || true
+  fi
+}
+trap stop_children EXIT INT TERM
+
+metacity --sm-disable >> "$log_directory/metacity.log" 2>&1 &
+window_manager_pid="$!"
+child_processes+=("$window_manager_pid")
+sleep 1
+
+"$GROMOZEKA_AWS_COMPUTER_CHROME" \
+  --disable-field-trial-config \
+  --disable-infobars \
+  --disable-session-crashed-bubble \
+  --hide-crash-restore-bubble \
+  --load-extension="$GROMOZEKA_AWS_COMPUTER_BROWSER_BRIDGE" \
+  --no-default-browser-check \
+  --no-first-run \
+  --start-maximized \
+  --user-data-dir="$GROMOZEKA_AWS_COMPUTER_HOME/.config/gromozeka-browser" \
+  chrome://newtab/ \
+  >> "$log_directory/chrome.log" 2>&1 &
+child_processes+=("$!")
+
+if [[ -f "$GROMOZEKA_HOME/worker.yaml" ]]; then
+  "$GROMOZEKA_AWS_COMPUTER_WORKER/bin/gromozeka-worker" \
+    >> "$log_directory/worker.log" 2>&1 &
+  child_processes+=("$!")
+fi
+
+wait "$window_manager_pid"

@@ -207,6 +207,12 @@ data "aws_iam_policy_document" "instance" {
   }
 
   statement {
+    sid       = "ReadDcvLicense"
+    actions   = ["s3:GetObject"]
+    resources = ["arn:${data.aws_partition.current.partition}:s3:::dcv-license.${var.aws_region}/*"]
+  }
+
+  statement {
     sid = "WriteBackups"
     actions = [
       "s3:AbortMultipartUpload",

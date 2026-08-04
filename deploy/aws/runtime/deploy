@@ -96,10 +96,6 @@ if ! compose up --detach --remove-orphans --wait --wait-timeout 300; then
   exit 1
 fi
 
-compose exec -T postgres \
-  psql -U gromozeka -d gromozeka -v ON_ERROR_STOP=1 \
-  -c "delete from conversation_runtime_workers where worker_id = 'cloud-primary';"
-
 umask 077
 printf 'GROMOZEKA_SERVER_IMAGE=%q\nGROMOZEKA_RELEASE_VERSION=%q\nGROMOZEKA_MCP_ALLOWED_HOSTS=%q\n' \
   "$server_image" \

@@ -1,0 +1,605 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+data_dir="${GROMOZEKA_DATA_DIR:-/data/gromozeka}"
+computer_id="${GROMOZEKA_AWS_COMPUTER_ID:-aws-computer}"
+computer_user="${GROMOZEKA_AWS_COMPUTER_USER:-gromozeka-computer}"
+computer_root="/opt/gromozeka/computer"
+computer_data="$data_dir/computer"
+computer_home="$computer_data/home"
+worker_root="$computer_root/worker"
+browser_bridge_root="$computer_root/browser-bridge"
+chrome_root="$computer_root/chrome"
+worker_current="$worker_root/current"
+browser_bridge_current="$browser_bridge_root/current"
+chrome_current="$chrome_root/current"
+enabled_file="/etc/gromozeka/computer.enabled"
+environment_file="/etc/gromozeka/computer.env"
+deployment_file="$data_dir/runtime/deployment.env"
+service_name="gromozeka-computer.service"
+github_repository="${GROMOZEKA_GITHUB_REPOSITORY:-Lewik/gromozeka}"
+dcv_archive_url="https://d1uj6qtbmh3dt5.cloudfront.net/2025.0/Servers/nice-dcv-2025.0-20103-amzn2023-x86_64.tgz"
+dcv_archive_sha256="d98eb986f3b547af22a7732ca26cb6541c3842b9ed57218f503c9acc3b29e7e2"
+chrome_version="151.0.7922.71"
+chrome_archive_url="https://storage.googleapis.com/chrome-for-testing-public/$chrome_version/linux64/chrome-linux64.zip"
+chrome_archive_sha256="6bd04aab53fba1544ce6027d9daddb24137295033124a61ecdf9840d785792e9"
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: computer COMMAND [ARGUMENT]
+
+Commands:
+  install [VERSION]       Install and start AWS Computer
+  update [VERSION]        Install a Gromozeka release if AWS Computer is enabled
+  enroll TOKEN            Enroll the aws-computer Worker
+  reenroll TOKEN          Replace the existing Worker enrollment
+  start                   Recreate the graphical session
+  stop                    Stop the graphical session
+  status                  Show DCV, browser, and Worker state
+  set-password-hash HASH  Set the Linux login password from a SHA-512 crypt hash
+  url                     Print the DCV web client URL
+EOF
+  exit 2
+}
+
+require_root() {
+  [[ "$(id -u)" == "0" ]] || {
+    echo "AWS Computer operations must run as root" >&2
+    exit 1
+  }
+}
+
+validate_version() {
+  [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || {
+    echo "Gromozeka release version must be semantic: $1" >&2
+    exit 2
+  }
+}
+
+deployed_version() {
+  [[ -f "$deployment_file" ]] || {
+    echo "No deployed Gromozeka release was found" >&2
+    exit 1
+  }
+  local GROMOZEKA_RELEASE_VERSION=""
+  source "$deployment_file"
+  validate_version "$GROMOZEKA_RELEASE_VERSION"
+  printf '%s\n' "$GROMOZEKA_RELEASE_VERSION"
+}
+
+resolve_version() {
+  local version="${1:-}"
+  if [[ -z "$version" ]]; then
+    version="$(deployed_version)"
+  fi
+  validate_version "$version"
+  printf '%s\n' "$version"
+}
+
+tailscale_dns_name() {
+  local status dns_name
+  status="$(tailscale status --json 2>/dev/null)" || {
+    echo "Tailscale is not connected" >&2
+    exit 1
+  }
+  jq -e '.BackendState == "Running"' <<< "$status" >/dev/null || {
+    echo "Tailscale is not connected" >&2
+    exit 1
+  }
+  dns_name="$(jq -r '(.Self.DNSName // "") | sub("\\.$"; "")' <<< "$status")"
+  [[ -n "$dns_name" ]] || {
+    echo "The Tailscale MagicDNS name is unavailable" >&2
+    exit 1
+  }
+  printf '%s\n' "$dns_name"
+}
+
+server_url() {
+  printf 'https://%s\n' "$(tailscale_dns_name)"
+}
+
+computer_url() {
+  printf 'https://%s:8443/#%s\n' "$(tailscale_dns_name)" "$computer_id"
+}
+
+configure_local_server_name() {
+  local dns_name tailscale_ipv4 temporary_hosts
+  dns_name="$(tailscale_dns_name)"
+  tailscale_ipv4="$(tailscale ip -4)"
+  [[ "$tailscale_ipv4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+    echo "The local Tailscale IPv4 address is unavailable" >&2
+    exit 1
+  }
+
+  temporary_hosts="$(mktemp /etc/hosts.gromozeka.XXXXXX)"
+  awk '!/# gromozeka-aws-computer$/ { print }' /etc/hosts > "$temporary_hosts"
+  printf '%s %s # gromozeka-aws-computer\n' "$tailscale_ipv4" "$dns_name" >> "$temporary_hosts"
+  chmod --reference=/etc/hosts "$temporary_hosts"
+  chown --reference=/etc/hosts "$temporary_hosts"
+  mv -f "$temporary_hosts" /etc/hosts
+}
+
+install_system_packages() {
+  dnf install -y \
+    alsa-lib \
+    at-spi2-atk \
+    at-spi2-core \
+    atk \
+    cairo \
+    cups-libs \
+    dbus-x11 \
+    dejavu-sans-fonts \
+    expat \
+    gtk3 \
+    liberation-fonts \
+    libX11 \
+    libXcomposite \
+    libXdamage \
+    libXext \
+    libXfixes \
+    libXrandr \
+    libxcb \
+    libxkbcommon \
+    mesa-libgbm \
+    google-noto-sans-fonts \
+    metacity \
+    nspr \
+    nss \
+    pango \
+    unzip \
+    vulkan-loader \
+    xdg-utils \
+    xorg-x11-xauth
+}
+
+verify_chrome_runtime() {
+  local unresolved_libraries
+  unresolved_libraries="$(ldd "$chrome_current/chrome" | awk '/not found/ { print }')"
+  [[ -z "$unresolved_libraries" ]] || {
+    printf 'Chrome for Testing has unresolved libraries:\n%s\n' "$unresolved_libraries" >&2
+    exit 1
+  }
+}
+
+install_chrome_for_testing() {
+  local chrome_release="$chrome_root/releases/$chrome_version"
+  if [[ -x "$chrome_release/chrome" && -f "$chrome_release/.complete" ]]; then
+    ln -sfn "$chrome_release" "$chrome_root/current.next"
+    mv -Tf "$chrome_root/current.next" "$chrome_current"
+    verify_chrome_runtime
+    return
+  fi
+
+  (
+    temporary_directory="$(mktemp -d "$computer_root/.chrome-$chrome_version.XXXXXX")"
+    trap 'rm -rf "$temporary_directory"' EXIT
+    archive="$temporary_directory/chrome-linux64.zip"
+    curl --fail --location --retry 3 --retry-all-errors --silent --show-error \
+      "$chrome_archive_url" \
+      --output "$archive"
+    printf '%s  %s\n' "$chrome_archive_sha256" "$archive" | sha256sum --check
+    unzip -q "$archive" -d "$temporary_directory"
+    [[ -x "$temporary_directory/chrome-linux64/chrome" ]] || {
+      echo "Chrome for Testing archive does not contain chrome" >&2
+      exit 1
+    }
+    [[ -f "$temporary_directory/chrome-linux64/chrome_sandbox" ]] || {
+      echo "Chrome for Testing archive does not contain chrome_sandbox" >&2
+      exit 1
+    }
+    chown root:root "$temporary_directory/chrome-linux64/chrome_sandbox"
+    chmod 4755 "$temporary_directory/chrome-linux64/chrome_sandbox"
+    touch "$temporary_directory/chrome-linux64/.complete"
+    rm -rf -- "$chrome_release"
+    mv "$temporary_directory/chrome-linux64" "$chrome_release"
+  )
+
+  touch "$chrome_release"
+  ln -sfn "$chrome_release" "$chrome_root/current.next"
+  mv -Tf "$chrome_root/current.next" "$chrome_current"
+  verify_chrome_runtime
+  cleanup_old_releases "$chrome_root/releases"
+}
+
+install_dcv() {
+  if rpm -q nice-dcv-server nice-dcv-web-viewer nice-xdcv >/dev/null 2>&1; then
+    return
+  fi
+
+  (
+    temporary_directory="$(mktemp -d /tmp/gromozeka-dcv.XXXXXX)"
+    trap 'rm -rf "$temporary_directory"' EXIT
+    archive="$temporary_directory/dcv.tgz"
+    extracted="$temporary_directory/extracted"
+    mkdir -p "$extracted"
+    curl --fail --location --retry 3 --retry-all-errors --silent --show-error \
+      "$dcv_archive_url" \
+      --output "$archive"
+    printf '%s  %s\n' "$dcv_archive_sha256" "$archive" | sha256sum --check
+    tar -xzf "$archive" -C "$extracted" --strip-components=1
+    rpm --import https://d1uj6qtbmh3dt5.cloudfront.net/NICE-GPG-KEY
+    dnf install -y \
+      "$extracted/nice-dcv-server-2025.0.20103-1.amzn2023.x86_64.rpm" \
+      "$extracted/nice-dcv-web-viewer-2025.0.20103-1.amzn2023.x86_64.rpm" \
+      "$extracted/nice-xdcv-2025.0.688-1.amzn2023.x86_64.rpm"
+  )
+}
+
+ensure_computer_user() {
+  local computer_group
+  if id "$computer_user" >/dev/null 2>&1; then
+    local configured_home
+    configured_home="$(getent passwd "$computer_user" | cut -d: -f6)"
+    [[ "$configured_home" == "$computer_home" ]] || {
+      echo "$computer_user has an unexpected home directory: $configured_home" >&2
+      exit 1
+    }
+  else
+    useradd \
+      --comment "Gromozeka AWS Computer" \
+      --home-dir "$computer_home" \
+      --no-create-home \
+      --shell /bin/bash \
+      --user-group \
+      "$computer_user"
+  fi
+
+  computer_group="$(id -gn "$computer_user")"
+  install -d -m 0700 -o "$computer_user" -g "$computer_group" "$computer_home"
+  install -d -m 0700 -o "$computer_user" -g "$computer_group" \
+    "$computer_home/.cache" \
+    "$computer_home/.config" \
+    "$computer_home/.gromozeka" \
+    "$computer_data/logs"
+  install -d -m 0750 -o "$computer_user" -g "$computer_group" "$computer_home/dcv-storage"
+  install -d -m 0755 \
+    "$computer_root" \
+    "$worker_root/releases" \
+    "$browser_bridge_root/releases" \
+    "$chrome_root/releases"
+}
+
+verify_release_asset() {
+  local checksums_file="$1"
+  local asset_directory="$2"
+  local asset_name="$3"
+  local expected
+  expected="$(awk -v asset="$asset_name" '$2 == asset { print $1 }' "$checksums_file")"
+  [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "SHA256SUMS does not contain $asset_name" >&2
+    exit 1
+  }
+  (
+    cd "$asset_directory"
+    printf '%s  %s\n' "$expected" "$asset_name" | sha256sum --check
+  )
+}
+
+cleanup_old_releases() {
+  local releases_directory="$1"
+  local stale_release
+  local -a stale_releases=()
+  mapfile -t stale_releases < <(
+    find "$releases_directory" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+      | sort -nr \
+      | tail -n +4 \
+      | cut -d' ' -f2-
+  )
+  for stale_release in "${stale_releases[@]}"; do
+    rm -rf -- "$stale_release"
+  done
+}
+
+install_release() {
+  local version="$1"
+  local worker_release="$worker_root/releases/$version"
+  local browser_bridge_release="$browser_bridge_root/releases/$version"
+  local worker_asset="gromozeka-worker-linux-x64.tar.gz"
+  local browser_bridge_asset="gromozeka-browser-bridge.zip"
+  local release_url="https://github.com/$github_repository/releases/download/v$version"
+
+  if [[ ! -f "$worker_release/.complete" || ! -f "$browser_bridge_release/.complete" ]]; then
+    (
+      temporary_directory="$(mktemp -d "$computer_root/.release-$version.XXXXXX")"
+      trap 'rm -rf "$temporary_directory"' EXIT
+      curl --fail --location --retry 3 --retry-all-errors --silent --show-error \
+        "$release_url/SHA256SUMS" \
+        --output "$temporary_directory/SHA256SUMS"
+      curl --fail --location --retry 3 --retry-all-errors --silent --show-error \
+        "$release_url/$worker_asset" \
+        --output "$temporary_directory/$worker_asset"
+      curl --fail --location --retry 3 --retry-all-errors --silent --show-error \
+        "$release_url/$browser_bridge_asset" \
+        --output "$temporary_directory/$browser_bridge_asset"
+      verify_release_asset "$temporary_directory/SHA256SUMS" "$temporary_directory" "$worker_asset"
+      verify_release_asset "$temporary_directory/SHA256SUMS" "$temporary_directory" "$browser_bridge_asset"
+
+      worker_staging="$temporary_directory/worker"
+      browser_bridge_staging="$temporary_directory/browser-bridge"
+      mkdir -p "$worker_staging" "$browser_bridge_staging"
+      tar -xzf "$temporary_directory/$worker_asset" -C "$worker_staging" --strip-components=1
+      unzip -q "$temporary_directory/$browser_bridge_asset" -d "$browser_bridge_staging"
+      [[ -x "$worker_staging/bin/gromozeka-worker" ]] || {
+        echo "Worker release does not contain bin/gromozeka-worker" >&2
+        exit 1
+      }
+      [[ -f "$browser_bridge_staging/gromozeka-browser-bridge/manifest.json" ]] || {
+        echo "Browser Bridge release does not contain manifest.json" >&2
+        exit 1
+      }
+
+      touch "$worker_staging/.complete"
+      touch "$browser_bridge_staging/gromozeka-browser-bridge/.complete"
+      rm -rf -- "$worker_release" "$browser_bridge_release"
+      mv "$worker_staging" "$worker_release"
+      mv "$browser_bridge_staging/gromozeka-browser-bridge" "$browser_bridge_release"
+    )
+  fi
+
+  touch "$worker_release" "$browser_bridge_release"
+  ln -sfn "$worker_release" "$worker_root/current.next"
+  mv -Tf "$worker_root/current.next" "$worker_current"
+  ln -sfn "$browser_bridge_release" "$browser_bridge_root/current.next"
+  mv -Tf "$browser_bridge_root/current.next" "$browser_bridge_current"
+  cleanup_old_releases "$worker_root/releases"
+  cleanup_old_releases "$browser_bridge_root/releases"
+}
+
+write_environment() {
+  install -d -m 0755 /etc/gromozeka
+  printf 'GROMOZEKA_AWS_COMPUTER_ID=%q\nGROMOZEKA_AWS_COMPUTER_USER=%q\nGROMOZEKA_AWS_COMPUTER_HOME=%q\nGROMOZEKA_AWS_COMPUTER_DATA=%q\nGROMOZEKA_AWS_COMPUTER_WORKER=%q\nGROMOZEKA_AWS_COMPUTER_BROWSER_BRIDGE=%q\nGROMOZEKA_AWS_COMPUTER_CHROME=%q\n' \
+    "$computer_id" \
+    "$computer_user" \
+    "$computer_home" \
+    "$computer_data" \
+    "$worker_current" \
+    "$browser_bridge_current" \
+    "$chrome_current/chrome" \
+    > "$environment_file"
+  chmod 0644 "$environment_file"
+}
+
+configure_dcv() {
+  if [[ -f /etc/dcv/dcv.conf && ! -f /etc/dcv/dcv.conf.vendor ]]; then
+    cp -a /etc/dcv/dcv.conf /etc/dcv/dcv.conf.vendor
+  fi
+  cat > /etc/dcv/dcv.conf <<'EOF'
+[connectivity]
+web-listen-endpoints=['127.0.0.1:8443']
+enable-quic-frontend=false
+idle-timeout=0
+
+[security]
+authentication="system"
+
+[session-management]
+enable-gl-in-virtual-sessions="always-off"
+EOF
+  chmod 0644 /etc/dcv/dcv.conf
+  systemctl enable --now dcvserver
+  systemctl restart dcvserver
+}
+
+configure_service() {
+  cat > /etc/systemd/system/gromozeka-computer.service <<EOF
+[Unit]
+Description=Gromozeka AWS Computer
+After=dcvserver.service network-online.target tailscaled.service
+Requires=dcvserver.service
+Wants=network-online.target tailscaled.service
+ConditionPathExists=$enabled_file
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/gromozeka/runtime/computer start-session
+ExecStop=/opt/gromozeka/runtime/computer stop-session
+TimeoutStartSec=120
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  chmod 0644 /etc/systemd/system/gromozeka-computer.service
+  systemctl daemon-reload
+}
+
+configure_tailscale_serve() {
+  tailscale_dns_name >/dev/null
+  tailscale serve \
+    --bg \
+    --yes \
+    --https=8443 \
+    https+insecure://127.0.0.1:8443
+}
+
+session_exists() {
+  dcv describe-session "$computer_id" >/dev/null 2>&1
+}
+
+start_session() {
+  [[ -f "$enabled_file" ]] || {
+    echo "AWS Computer is not installed" >&2
+    exit 1
+  }
+  if session_exists; then
+    return
+  fi
+  dcv create-session \
+    --type=virtual \
+    --name="AWS Computer" \
+    --user="$computer_user" \
+    --owner="$computer_user" \
+    --storage-root="$computer_home/dcv-storage" \
+    --gl=off \
+    --max-concurrent-clients=1 \
+    --init=/opt/gromozeka/runtime/computer-session \
+    "$computer_id"
+}
+
+stop_session() {
+  if session_exists; then
+    if ! dcv close-session "$computer_id"; then
+      if session_exists; then
+        return 1
+      fi
+    fi
+  fi
+}
+
+install_computer() {
+  local version="$1"
+  install_system_packages
+  ensure_computer_user
+  install_chrome_for_testing
+  install_dcv
+  install_release "$version"
+  configure_local_server_name
+  write_environment
+  configure_dcv
+  configure_service
+  configure_tailscale_serve
+  touch "$enabled_file"
+  systemctl enable --now "$service_name"
+  computer_url
+}
+
+update_computer() {
+  local version="$1"
+  local was_active="false"
+  [[ -f "$enabled_file" ]] || return
+  if systemctl is-active --quiet "$service_name"; then
+    was_active="true"
+  fi
+  install_system_packages
+  ensure_computer_user
+  install_chrome_for_testing
+  install_dcv
+  install_release "$version"
+  configure_local_server_name
+  write_environment
+  configure_service
+  configure_tailscale_serve
+  if [[ "$was_active" == "true" ]]; then
+    systemctl stop "$service_name"
+  fi
+  configure_dcv
+  if [[ "$was_active" == "true" ]]; then
+    systemctl start "$service_name"
+  fi
+}
+
+enroll_worker() {
+  local token="$1"
+  local replace_existing="$2"
+  [[ -x "$worker_current/bin/gromozeka-worker" ]] || {
+    echo "No AWS Computer Worker release is installed" >&2
+    exit 1
+  }
+  local arguments=(
+    enroll
+    --server "$(server_url)"
+    --token "$token"
+    --worker-id "$computer_id"
+  )
+  if [[ "$replace_existing" == "true" ]]; then
+    arguments+=(--force)
+  fi
+  runuser -u "$computer_user" -- env \
+    HOME="$computer_home" \
+    USER="$computer_user" \
+    LOGNAME="$computer_user" \
+    GROMOZEKA_HOME="$computer_home/.gromozeka" \
+    "$worker_current/bin/gromozeka-worker" \
+    "${arguments[@]}"
+  systemctl restart "$service_name"
+}
+
+set_password_hash() {
+  local password_hash="$1"
+  [[ "$password_hash" == \$6\$* ]] || {
+    echo "Password hash must use SHA-512 crypt" >&2
+    exit 2
+  }
+  usermod --password "$password_hash" "$computer_user"
+}
+
+show_status() {
+  printf 'Service: '
+  systemctl is-active "$service_name" 2>/dev/null || true
+  printf 'Enabled: '
+  systemctl is-enabled "$service_name" 2>/dev/null || true
+  printf 'Session:\n'
+  if session_exists; then
+    dcv describe-session "$computer_id" --json
+  else
+    echo "not running"
+  fi
+  printf 'Chrome: '
+  if pgrep -u "$computer_user" -x chrome >/dev/null 2>&1; then
+    printf 'running (%s)\n' "$("$chrome_current/chrome" --version)"
+  else
+    echo "not running"
+  fi
+  printf 'Worker: '
+  if pgrep -u "$computer_user" -f gromozeka-worker.jar >/dev/null 2>&1; then
+    echo "running"
+  elif [[ -f "$computer_home/.gromozeka/worker.yaml" ]]; then
+    echo "configured, not running"
+  else
+    echo "not enrolled"
+  fi
+  printf 'URL: '
+  computer_url
+}
+
+require_root
+command="${1:-}"
+case "$command" in
+  install)
+    [[ "$#" -le 2 ]] || usage
+    install_computer "$(resolve_version "${2:-}")"
+    ;;
+  update)
+    [[ "$#" -le 2 ]] || usage
+    update_computer "$(resolve_version "${2:-}")"
+    ;;
+  enroll)
+    [[ "$#" == 2 ]] || usage
+    enroll_worker "$2" false
+    ;;
+  reenroll)
+    [[ "$#" == 2 ]] || usage
+    enroll_worker "$2" true
+    ;;
+  start)
+    [[ "$#" == 1 ]] || usage
+    systemctl restart "$service_name"
+    ;;
+  stop)
+    [[ "$#" == 1 ]] || usage
+    systemctl stop "$service_name"
+    ;;
+  start-session)
+    [[ "$#" == 1 ]] || usage
+    start_session
+    ;;
+  stop-session)
+    [[ "$#" == 1 ]] || usage
+    stop_session
+    ;;
+  status)
+    [[ "$#" == 1 ]] || usage
+    show_status
+    ;;
+  set-password-hash)
+    [[ "$#" == 2 ]] || usage
+    set_password_hash "$2"
+    ;;
+  url)
+    [[ "$#" == 1 ]] || usage
+    computer_url
+    ;;
+  *) usage ;;
+esac

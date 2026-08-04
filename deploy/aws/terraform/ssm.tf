@@ -31,10 +31,11 @@ resource "aws_ssm_document" "deploy" {
             "release_dir=/opt/gromozeka/releases/{{ ReleaseVersion }}",
             "archive_path=$(mktemp /tmp/gromozeka-runtime.XXXXXX.tar.gz)",
             "trap 'rm -f \"$archive_path\"; [[ -z \"$${release_tmp:-}\" ]] || rm -rf \"$release_tmp\"' EXIT",
-            "if [[ ! -f \"$release_dir/.bundle-ready\" ]]; then release_tmp=\"$${release_dir}.new.$$\"; install -d -m 0755 \"$release_tmp\"; aws s3 cp 's3://${aws_s3_bucket.artifacts.id}/{{ RuntimeBundleKey }}' \"$archive_path\" --region '${var.aws_region}'; tar -xzf \"$archive_path\" -C \"$release_tmp\"; chmod 0755 \"$release_tmp/deploy\" \"$release_tmp/backup\"; touch \"$release_tmp/.bundle-ready\"; mv \"$release_tmp\" \"$release_dir\"; release_tmp=\"\"; fi",
+            "if [[ ! -f \"$release_dir/.bundle-ready\" ]]; then release_tmp=\"$${release_dir}.new.$$\"; install -d -m 0755 \"$release_tmp\"; aws s3 cp 's3://${aws_s3_bucket.artifacts.id}/{{ RuntimeBundleKey }}' \"$archive_path\" --region '${var.aws_region}'; tar -xzf \"$archive_path\" -C \"$release_tmp\"; chmod 0755 \"$release_tmp/deploy\" \"$release_tmp/backup\" \"$release_tmp/computer\" \"$release_tmp/computer-session\"; touch \"$release_tmp/.bundle-ready\"; mv \"$release_tmp\" \"$release_dir\"; release_tmp=\"\"; fi",
             "\"$release_dir/deploy\" '${aws_ecr_repository.server.repository_url}:{{ ReleaseVersion }}' '{{ ReleaseVersion }}' '${var.aws_region}' '${aws_s3_bucket.artifacts.id}'",
             "ln -sfn \"$release_dir\" /opt/gromozeka/runtime.next",
             "mv -Tf /opt/gromozeka/runtime.next /opt/gromozeka/runtime",
+            "if [[ -f /etc/gromozeka/computer.enabled ]]; then \"$release_dir/computer\" update '{{ ReleaseVersion }}'; fi",
             "touch \"$release_dir\"",
             "find /opt/gromozeka/releases -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\\n' | sort -nr | tail -n +6 | cut -d' ' -f2- | xargs -r rm -rf",
           ]

@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/aws-common"
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: computer COMMAND [ARGUMENT]
+
+Commands:
+  install           Install and start AWS Computer
+  enroll TOKEN      Enroll its Worker with a one-time token
+  reenroll TOKEN    Replace its Worker enrollment
+  start             Recreate the graphical session
+  stop              Stop the graphical session
+  status            Show graphical session, browser, and Worker state
+  password          Generate and set a new DCV login password
+  url               Print the DCV web client URL
+EOF
+  exit 2
+}
+
+action="${1:-}"
+shift || true
+
+case "$action" in
+  install | start | stop | status | url)
+    [[ "$#" == 0 ]] || usage
+    remote_arguments=("$action")
+    ;;
+  enroll | reenroll)
+    [[ "$#" == 1 ]] || usage
+    [[ -n "$1" ]] || usage
+    remote_arguments=("$action" "$1")
+    ;;
+  password)
+    [[ "$#" == 0 ]] || usage
+    require_command openssl
+    password="$(openssl rand -hex 12)"
+    password_hash="$(openssl passwd -6 -salt "$(openssl rand -hex 8)" "$password")"
+    remote_arguments=(set-password-hash "$password_hash")
+    ;;
+  *) usage ;;
+esac
+
+remote_command="/opt/gromozeka/runtime/computer"
+for argument in "${remote_arguments[@]}"; do
+  printf -v quoted_argument '%q' "$argument"
+  remote_command+=" $quoted_argument"
+done
+parameters="$(jq -nc --arg command "$remote_command" '{commands:[$command]}')"
+instance_id="$(terraform_output instance_id)"
+command_id="$(
+  aws_cli ssm send-command \
+    --instance-ids "$instance_id" \
+    --document-name AWS-RunShellScript \
+    --parameters "$parameters" \
+    --query Command.CommandId \
+    --output text
+)"
+
+status="Pending"
+for _ in $(seq 1 360); do
+  status="$(
+    aws_cli ssm get-command-invocation \
+      --command-id "$command_id" \
+      --instance-id "$instance_id" \
+      --query Status \
+      --output text \
+      2>/dev/null || true
+  )"
+  case "$status" in
+    Success | Cancelled | TimedOut | Failed | Cancelling) break ;;
+  esac
+  sleep 5
+done
+
+invocation="$(
+  aws_cli ssm get-command-invocation \
+    --command-id "$command_id" \
+    --instance-id "$instance_id" \
+    --output json
+)"
+jq -r '.StandardOutputContent' <<< "$invocation"
+jq -r '.StandardErrorContent' <<< "$invocation" >&2
+[[ "$(jq -r '.Status' <<< "$invocation")" == "Success" ]] || exit 1
+
+if [[ "$action" == "password" ]]; then
+  printf 'Username: %s\nPassword: %s\n' "gromozeka-computer" "$password"
+fi
