@@ -963,6 +963,19 @@ private fun Conversation.Message.ContentItem.extractCassetteRuntimeText(): Strin
             appendLine(payload.extractCassetteRuntimeText())
         }
         is Conversation.Message.ContentItem.ImageItem -> source.extractCassetteRuntimeText()
+        is Conversation.Message.ContentItem.DocumentItem -> buildString {
+            when (val document = source) {
+                is Conversation.Message.DocumentSource.Base64DocumentSource -> {
+                    appendLine(document.fileName)
+                    appendLine(document.mediaType)
+                }
+            }
+        }
+        is Conversation.Message.ContentItem.ArtifactItem -> buildString {
+            appendLine(artifact.id.value)
+            appendLine(artifact.fileName)
+            appendLine(artifact.mediaType)
+        }
         is Conversation.Message.ContentItem.UnknownJson -> compactCassetteJson.encodeToString(json)
     }
 }
@@ -1041,6 +1054,16 @@ private fun Conversation.Message.ContentItem.toStableCassetteContentItem(
             providerScope = providerScope?.toStableCassetteProviderScope(runtimeBindings),
         )
         is Conversation.Message.ContentItem.ImageItem -> copy(source = source.toStableCassetteImageSource(runtimeBindings))
+        is Conversation.Message.ContentItem.DocumentItem -> copy(
+            source = source.toStableCassetteDocumentSource(runtimeBindings)
+        )
+        is Conversation.Message.ContentItem.ArtifactItem -> copy(
+            artifact = artifact.copy(
+                id = com.gromozeka.domain.model.Artifact.Id(STABLE_FILE_ID),
+                fileName = normalizeRuntimeText(artifact.fileName, runtimeBindings),
+                mediaType = normalizeRuntimeText(artifact.mediaType, runtimeBindings),
+            )
+        )
         is Conversation.Message.ContentItem.UnknownJson -> copy(json = normalizeJsonElement(json, runtimeBindings))
     }
 }
@@ -1089,6 +1112,16 @@ private fun Conversation.Message.ImageSource.toStableCassetteImageSource(
     }
 }
 
+private fun Conversation.Message.DocumentSource.toStableCassetteDocumentSource(
+    runtimeBindings: AiRuntimeCassetteRuntimeBindings,
+): Conversation.Message.DocumentSource =
+    when (this) {
+        is Conversation.Message.DocumentSource.Base64DocumentSource -> copy(
+            fileName = normalizeRuntimeText(fileName, runtimeBindings),
+            mediaType = normalizeRuntimeText(mediaType, runtimeBindings),
+        )
+    }
+
 private fun Conversation.Message.StructuredText.toStableCassetteStructuredText(
     runtimeBindings: AiRuntimeCassetteRuntimeBindings,
 ): Conversation.Message.StructuredText {
@@ -1133,6 +1166,20 @@ private fun Conversation.Message.ContentItem.rehydrateDynamicContentItem(
             providerScope = providerScope?.rehydrateDynamicProviderScope(context),
         )
         is Conversation.Message.ContentItem.ImageItem -> copy(source = source.rehydrateDynamicImageSource(context))
+        is Conversation.Message.ContentItem.DocumentItem -> copy(
+            source = source.rehydrateDynamicDocumentSource(context)
+        )
+        is Conversation.Message.ContentItem.ArtifactItem -> copy(
+            artifact = artifact.copy(
+                id = if (artifact.id.value == STABLE_FILE_ID) {
+                    com.gromozeka.domain.model.Artifact.Id("cassette_file_${context.replaySuffix}")
+                } else {
+                    artifact.id
+                },
+                fileName = context.runtimeBindings.rehydrateText(artifact.fileName),
+                mediaType = context.runtimeBindings.rehydrateText(artifact.mediaType),
+            )
+        )
         is Conversation.Message.ContentItem.UnknownJson -> copy(json = rehydrateJsonElement(json, context))
     }
 }
@@ -1197,6 +1244,16 @@ private fun Conversation.Message.ImageSource.rehydrateDynamicImageSource(
             if (fileId == STABLE_FILE_ID) copy(fileId = "cassette_file_${context.replaySuffix}") else this
     }
 }
+
+private fun Conversation.Message.DocumentSource.rehydrateDynamicDocumentSource(
+    context: AiRuntimeCassetteReplayContext,
+): Conversation.Message.DocumentSource =
+    when (this) {
+        is Conversation.Message.DocumentSource.Base64DocumentSource -> copy(
+            fileName = context.runtimeBindings.rehydrateText(fileName),
+            mediaType = context.runtimeBindings.rehydrateText(mediaType),
+        )
+    }
 
 private fun AiRuntimeResponse.toCassetteResponseSnapshot(): AiRuntimeResponseSnapshot {
     return AiRuntimeResponseSnapshot(

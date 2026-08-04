@@ -33,7 +33,7 @@ class GromozekaBrowserHttpSecurityTest {
         assertEquals("no-referrer", response.headers["Referrer-Policy"])
         assertEquals("DENY", response.headers["X-Frame-Options"])
         assertEquals(
-            "camera=(self), microphone=(self), geolocation=(self)",
+            "camera=(self), microphone=(self), geolocation=(self), display-capture=(self)",
             response.headers["Permissions-Policy"],
         )
     }
