@@ -1,18 +1,23 @@
 package com.gromozeka.server
 
 import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
+import io.ktor.server.application.pluginOrNull
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respond
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.ktor.util.AttributeKey
 import io.modelcontextprotocol.kotlin.sdk.server.DnsRebindingProtection
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.StreamableHttpServerTransport
+import io.modelcontextprotocol.kotlin.sdk.types.McpJson
 
 internal fun Application.statelessMcpStreamableHttp(
     path: String,
@@ -20,6 +25,7 @@ internal fun Application.statelessMcpStreamableHttp(
     allowedOrigins: List<String>?,
     createServer: (ApplicationCall) -> Server,
 ) {
+    installMcpContentNegotiation()
     routing {
         route(path) {
             install(DnsRebindingProtection) {
@@ -45,6 +51,19 @@ internal fun Application.statelessMcpStreamableHttp(
         }
     }
 }
+
+private fun Application.installMcpContentNegotiation() {
+    if (attributes.getOrNull(mcpContentNegotiationInstalled) != null) return
+    check(pluginOrNull(ContentNegotiation) == null) {
+        "MCP routes require ContentNegotiation configured with McpJson"
+    }
+    install(ContentNegotiation) {
+        json(McpJson)
+    }
+    attributes.put(mcpContentNegotiationInstalled, Unit)
+}
+
+private val mcpContentNegotiationInstalled = AttributeKey<Unit>("GromozekaMcpContentNegotiationInstalled")
 
 private val LOCALHOST_ALLOWED_HOSTS = listOf("localhost", "127.0.0.1", "[::1]")
 private val LOCALHOST_ALLOWED_ORIGINS = listOf(
