@@ -30,6 +30,33 @@ export const patchTargets = [
         original: 'return await playwright.chromium.connectOverCDP(relay.cdpEndpoint(), { isLocal: true, timeout: 0 });',
         patched: 'return await playwright.chromium.connectOverCDP(relay.cdpEndpoint(), { isLocal: true, noDefaults: true, timeout: 0 });',
       },
+      {
+        original: `this._tabSessions = /* @__PURE__ */ new Map();
+        this._autoAttach = false;`,
+        patched: `this._tabSessions = /* @__PURE__ */ new Map();
+        this._tabSessionPromises = /* @__PURE__ */ new Map();
+        this._autoAttach = false;`,
+      },
+      {
+        original: `async _attachTab(tabId) {
+        const existing = this._tabSessions.get(tabId);
+        if (existing)
+          return existing;
+        await this._sendToExtension("chrome.debugger.attach", [{ tabId }, "1.3"]);`,
+        patched: `async _attachTab(tabId) {
+        const existing = this._tabSessions.get(tabId);
+        if (existing)
+          return existing;
+        const pending = this._tabSessionPromises.get(tabId);
+        if (pending)
+          return await pending;
+        const attach = this._attachTabOnce(tabId).finally(() => this._tabSessionPromises.delete(tabId));
+        this._tabSessionPromises.set(tabId, attach);
+        return await attach;
+      }
+      async _attachTabOnce(tabId) {
+        await this._sendToExtension("chrome.debugger.attach", [{ tabId }, "1.3"]);`,
+      },
     ],
   },
 ];

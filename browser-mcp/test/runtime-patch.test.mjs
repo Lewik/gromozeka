@@ -17,5 +17,7 @@ test('Playwright runtime uses the configured extension without changing browser 
   const runtimeSource = patchTargets.map(target => fs.readFileSync(target.path, 'utf8')).join('\n');
   assert.match(runtimeSource, new RegExp(`process\\.env\\.${extensionIdEnvironment}`));
   assert.match(runtimeSource, /noDefaults: true/);
+  assert.match(runtimeSource, /_tabSessionPromises/);
+  assert.match(runtimeSource, /_attachTabOnce/);
   assert.match(runtimeSource, new RegExp(upstreamExtensionId));
 });
