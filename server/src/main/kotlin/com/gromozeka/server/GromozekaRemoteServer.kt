@@ -1022,16 +1022,18 @@ class GromozekaRemoteServer(
 }
 
 private fun McpServer.toRemoteView(): RemoteMcpServerView {
-    val environmentVariables = (config.transport as? McpServerTransport.Stdio)
-        ?.environment
-        ?.keys
-        .orEmpty()
+    val environmentVariables = when (val transport = config.transport) {
+        is McpServerTransport.Stdio -> transport.environment.keys
+        is McpServerTransport.BundledStdio -> transport.environment.keys
+        is McpServerTransport.StreamableHttp -> emptySet()
+    }
     val httpHeaders = (config.transport as? McpServerTransport.StreamableHttp)
         ?.headers
         ?.keys
         .orEmpty()
     val redactedTransport = when (val transport = config.transport) {
         is McpServerTransport.Stdio -> transport.copy(environment = emptyMap())
+        is McpServerTransport.BundledStdio -> transport.copy(environment = emptyMap())
         is McpServerTransport.StreamableHttp -> transport.copy(headers = emptyMap())
     }
     return RemoteMcpServerView(

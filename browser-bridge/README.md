@@ -13,15 +13,13 @@ and interact with every other tab while the bridge is connected.
 
 1. Download `gromozeka-browser-bridge.zip` from the Gromozeka release matching
    your Server and extract it into a permanent directory.
-2. Remove the official Playwright Extension. The two extensions use the same
-   compatibility ID and cannot be installed together.
-3. Open `chrome://extensions` or `edge://extensions`.
-4. Enable **Developer mode**.
-5. Select **Load unpacked** and choose the extracted directory containing
+2. Open `chrome://extensions` or `edge://extensions`.
+3. Enable **Developer mode**.
+4. Select **Load unpacked** and choose the extracted directory containing
    `manifest.json`.
-6. Open the bridge from the browser toolbar and copy its
+5. Open the bridge from the browser toolbar and copy its
    `PLAYWRIGHT_MCP_EXTENSION_TOKEN` value.
-7. In Gromozeka, open **Settings > Tools > Browser Use**, select the Worker on
+6. In Gromozeka, open **Settings > Tools > Browser Use**, select the Worker on
    this machine, and paste the token into **Extension token**.
 
 The token is optional. Without it, the bridge asks for approval whenever a new
@@ -29,10 +27,9 @@ Playwright MCP process connects.
 
 ## Compatibility
 
-The bridge intentionally retains the public manifest key and extension ID used
-by Playwright Extension. Playwright MCP currently opens a fixed
-`chrome-extension://mmlmfjhmonkocbjadbfplnigmagldckm/connect.html` URL, so this
-keeps the wire protocol compatible without distributing a modified MCP server.
+The bridge has its own stable extension ID and can coexist with the official
+Playwright Extension. Gromozeka's bundled Browser MCP selects this ID and keeps
+the existing browser context, including the browser's real color scheme.
 
 ## Build
 

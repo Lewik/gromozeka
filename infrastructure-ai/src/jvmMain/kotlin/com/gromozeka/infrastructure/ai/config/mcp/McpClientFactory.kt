@@ -67,23 +67,42 @@ fun interface McpClientFactory {
 class DefaultMcpClientFactory : McpClientFactory {
     override suspend fun connect(config: McpServerConfig): McpConnectedClient =
         when (val transport = config.transport) {
-            is McpServerTransport.Stdio -> connectStdio(config, transport)
+            is McpServerTransport.Stdio -> connectStdio(
+                config = config,
+                command = transport.command,
+                arguments = transport.arguments,
+                environment = transport.environment,
+                ephemeralWorkingDirectory = transport.ephemeralWorkingDirectory,
+            )
+            is McpServerTransport.BundledStdio -> {
+                val runtime = BundledMcpRuntimeResolver.resolve(transport.runtime)
+                connectStdio(
+                    config = config,
+                    command = runtime.command,
+                    arguments = runtime.arguments + transport.arguments,
+                    environment = runtime.environment + transport.environment,
+                    ephemeralWorkingDirectory = transport.ephemeralWorkingDirectory,
+                )
+            }
             is McpServerTransport.StreamableHttp -> connectHttp(config, transport)
         }
 
     private suspend fun connectStdio(
         config: McpServerConfig,
-        transportConfig: McpServerTransport.Stdio,
+        command: String,
+        arguments: List<String>,
+        environment: Map<String, String>,
+        ephemeralWorkingDirectory: Boolean,
     ): McpConnectedClient {
-        val workingDirectory = if (transportConfig.ephemeralWorkingDirectory) {
+        val workingDirectory = if (ephemeralWorkingDirectory) {
             Files.createTempDirectory("gromozeka-mcp-${config.id.value}-").toFile()
         } else {
             null
         }
         val process = try {
-            ProcessBuilder(listOf(transportConfig.command) + transportConfig.arguments)
+            ProcessBuilder(listOf(command) + arguments)
                 .apply {
-                    environment().putAll(transportConfig.environment)
+                    environment().putAll(environment)
                     workingDirectory?.let(::directory)
                 }
                 .start()

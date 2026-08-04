@@ -5,17 +5,15 @@ import com.gromozeka.shared.utils.sha256
 
 object BrowserUseMcpPreset {
     const val SERVER_ID_PREFIX = "browser_"
-    const val PACKAGE_PREFIX = "@playwright/mcp@"
-    const val PACKAGE = "${PACKAGE_PREFIX}0.0.78"
     const val OPERATION_TIMEOUT_MS = 120_000L
     const val OUTPUT_MAX_BYTES = 52_428_800
     const val EXTENSION_TOKEN_ENV = "PLAYWRIGHT_MCP_EXTENSION_TOKEN"
+    const val EXTENSION_ID_ENV = "PLAYWRIGHT_MCP_EXTENSION_ID"
+    const val EXTENSION_ID = "jiadoiohindhpbaahcahcbeokjiojlml"
     const val BRIDGE_ARTIFACT_ID = "browser-bridge"
     const val BRIDGE_FILE_NAME = "gromozeka-browser-bridge.zip"
 
     val arguments: List<String> = listOf(
-        "--yes",
-        PACKAGE,
         "--extension",
         "--output-mode=stdout",
         "--output-max-size=$OUTPUT_MAX_BYTES",
@@ -32,15 +30,17 @@ object BrowserUseMcpPreset {
         timeoutMs = OPERATION_TIMEOUT_MS,
     )
 
-    fun transport(extensionToken: String? = null): McpServerTransport.Stdio =
-        McpServerTransport.Stdio(
-            command = "npx",
+    fun transport(extensionToken: String? = null): McpServerTransport.BundledStdio =
+        McpServerTransport.BundledStdio(
+            runtime = BundledMcpRuntime.BROWSER_USE,
             arguments = arguments,
-            environment = extensionToken
-                ?.let(::normalizeExtensionToken)
-                ?.takeIf(String::isNotBlank)
-                ?.let { mapOf(EXTENSION_TOKEN_ENV to it) }
-                .orEmpty(),
+            environment = buildMap {
+                put(EXTENSION_ID_ENV, EXTENSION_ID)
+                extensionToken
+                    ?.let(::normalizeExtensionToken)
+                    ?.takeIf(String::isNotBlank)
+                    ?.let { put(EXTENSION_TOKEN_ENV, it) }
+            },
             ephemeralWorkingDirectory = true,
         )
 
@@ -48,10 +48,9 @@ object BrowserUseMcpPreset {
         value.trim().removePrefix("$EXTENSION_TOKEN_ENV=").trim()
 
     fun isConnection(server: McpServer): Boolean {
-        val transport = server.config.transport as? McpServerTransport.Stdio ?: return false
+        val transport = server.config.transport as? McpServerTransport.BundledStdio ?: return false
         return server.config.id.value.startsWith(SERVER_ID_PREFIX) &&
-            transport.command == "npx" &&
-            transport.arguments.any { it.startsWith(PACKAGE_PREFIX) }
+            transport.runtime == BundledMcpRuntime.BROWSER_USE
     }
 
     fun serverId(workerId: ConversationRuntimeWorkerId): McpServerId {

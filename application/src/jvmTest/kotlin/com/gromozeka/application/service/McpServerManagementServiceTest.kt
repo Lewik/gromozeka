@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.BundledMcpRuntime
 import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
@@ -155,6 +156,51 @@ class McpServerManagementServiceTest {
                 ),
                 transport.environment,
             )
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `bundled runtime update preserves its internal configuration and token`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            val currentConfig = fixture.server.config.copy(
+                transport = McpServerTransport.BundledStdio(
+                    runtime = BundledMcpRuntime.BROWSER_USE,
+                    arguments = listOf("--extension"),
+                    environment = mapOf(
+                        "PLAYWRIGHT_MCP_EXTENSION_ID" to "bridge-id",
+                        "PLAYWRIGHT_MCP_EXTENSION_TOKEN" to "secret-token",
+                    ),
+                    ephemeralWorkingDirectory = true,
+                )
+            )
+            fixture.repository.create(fixture.server.copy(config = currentConfig))
+
+            fixture.service.update(
+                config = currentConfig.copy(
+                    displayName = "Updated Browser",
+                    transport = McpServerTransport.BundledStdio(
+                        runtime = BundledMcpRuntime.BROWSER_USE,
+                        arguments = listOf("--extension", "--output-mode=stdout"),
+                        environment = mapOf("PLAYWRIGHT_MCP_EXTENSION_ID" to "bridge-id"),
+                        ephemeralWorkingDirectory = true,
+                    ),
+                ),
+                expectedRevision = 1,
+            )
+
+            val command = fixture.request?.command as WorkerControlRequest.Command.ApplyMcpServer
+            val transport = command.config.transport as McpServerTransport.BundledStdio
+            assertEquals(
+                mapOf(
+                    "PLAYWRIGHT_MCP_EXTENSION_ID" to "bridge-id",
+                    "PLAYWRIGHT_MCP_EXTENSION_TOKEN" to "secret-token",
+                ),
+                transport.environment,
+            )
+            assertEquals(listOf("--extension", "--output-mode=stdout"), transport.arguments)
         } finally {
             fixture.close()
         }

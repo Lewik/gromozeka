@@ -301,6 +301,26 @@ private fun McpServerConfig.mergeTransportValuesFrom(
                         removals.environmentVariables
                 )
             }
+            requestedTransport is McpServerTransport.BundledStdio &&
+                existingTransport is McpServerTransport.BundledStdio -> {
+                require(removals.httpHeaders.isEmpty()) {
+                    "HTTP header removals require a Streamable HTTP MCP transport"
+                }
+                require(requestedTransport.runtime == existingTransport.runtime) {
+                    "Bundled MCP runtime cannot change while preserving transport values"
+                }
+                require(
+                    requestedTransport.environment.keys.intersect(
+                        removals.environmentVariables
+                    ).isEmpty()
+                ) {
+                    "MCP environment variables cannot be replaced and removed in the same update"
+                }
+                requestedTransport.copy(
+                    environment = (existingTransport.environment + requestedTransport.environment) -
+                        removals.environmentVariables
+                )
+            }
             requestedTransport is McpServerTransport.StreamableHttp &&
                 existingTransport is McpServerTransport.StreamableHttp -> {
                 require(removals.environmentVariables.isEmpty()) {

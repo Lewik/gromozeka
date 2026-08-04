@@ -837,6 +837,10 @@ data class RemoteMcpServerView(
                 "Remote MCP server view must not contain environment values"
             }
 
+            is McpServerTransport.BundledStdio -> require(transport.environment.isEmpty()) {
+                "Remote bundled MCP server view must not contain environment values"
+            }
+
             is McpServerTransport.StreamableHttp -> require(transport.headers.isEmpty()) {
                 "Remote MCP server view must not contain HTTP header values"
             }

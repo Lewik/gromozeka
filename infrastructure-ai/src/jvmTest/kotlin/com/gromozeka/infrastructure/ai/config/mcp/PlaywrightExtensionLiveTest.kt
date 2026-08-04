@@ -2,7 +2,7 @@ package com.gromozeka.infrastructure.ai.config.mcp
 
 import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
-import com.gromozeka.domain.model.mcp.McpServerTransport
+import com.gromozeka.domain.model.mcp.BrowserUseMcpPreset
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.tool.AiToolResult
 import kotlinx.coroutines.runBlocking
@@ -19,15 +19,8 @@ class PlaywrightExtensionLiveTest {
                 id = McpServerId("playwright_extension_live_test"),
                 displayName = "Playwright Extension Live Test",
                 workerId = ConversationRuntimeWorkerId("local-live-test"),
-                transport = McpServerTransport.Stdio(
-                    command = "npx",
-                    arguments = listOf(
-                        "--yes",
-                        "@playwright/mcp@0.0.78",
-                        "--extension",
-                        "--output-mode=stdout",
-                    ),
-                    ephemeralWorkingDirectory = true,
+                transport = BrowserUseMcpPreset.transport(
+                    System.getenv(BrowserUseMcpPreset.EXTENSION_TOKEN_ENV)
                 ),
                 timeoutMs = 120_000,
             )

@@ -1,0 +1,24 @@
+{
+  "name": "@gromozeka/browser-mcp-runtime",
+  "version": "0.1.0",
+  "description": "Pinned Playwright MCP runtime for Gromozeka Browser Use",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lewik/gromozeka.git",
+    "directory": "browser-mcp"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "postinstall": "node scripts/patch-playwright.mjs",
+    "patch": "node scripts/patch-playwright.mjs",
+    "test": "node --test test/*.test.mjs",
+    "verify": "node scripts/verify-runtime.mjs"
+  },
+  "dependencies": {
+    "@playwright/mcp": "0.0.78"
+  }
+}

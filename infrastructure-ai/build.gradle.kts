@@ -72,3 +72,7 @@ tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("jvmProcessResources
         into("META-INF")
     }
 }
+
+tasks.withType<Test>().configureEach {
+    systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
+}

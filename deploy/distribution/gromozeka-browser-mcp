@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+app_home="$(CDPATH='' cd -- "$script_dir/.." && pwd)"
+if [[ -n "${GROMOZEKA_BROWSER_MCP_HOME:-}" ]]; then
+  browser_mcp_home="$GROMOZEKA_BROWSER_MCP_HOME"
+elif [[ -d "$app_home/app/browser-mcp" ]]; then
+  browser_mcp_home="$app_home/app/browser-mcp"
+else
+  browser_mcp_home="$(CDPATH='' cd -- "$script_dir/../.." && pwd)/browser-mcp"
+fi
+runtime_bootstrap="${GROMOZEKA_RUNTIME_BOOTSTRAP:-$script_dir/runtime-bootstrap.sh}"
+
+source "$runtime_bootstrap"
+node_executable="$(gromozeka_resolve_node)"
+mcp_cli="$browser_mcp_home/node_modules/@playwright/mcp/cli.js"
+[[ -f "$mcp_cli" ]] || {
+  echo "Bundled Browser MCP is missing: $mcp_cli" >&2
+  exit 2
+}
+
+exec "$node_executable" "$mcp_cli" "$@"

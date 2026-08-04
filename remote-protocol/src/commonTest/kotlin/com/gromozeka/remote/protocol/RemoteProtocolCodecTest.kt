@@ -13,6 +13,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.BundledMcpRuntime
 import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
@@ -267,9 +268,9 @@ class RemoteProtocolCodecTest {
                     id = McpServerId("browser_worker"),
                     displayName = "Browser",
                     workerId = workerId,
-                    transport = McpServerTransport.Stdio(
-                        command = "npx",
-                        arguments = listOf("--yes", "@playwright/mcp@0.0.78", "--extension"),
+                    transport = McpServerTransport.BundledStdio(
+                        runtime = BundledMcpRuntime.BROWSER_USE,
+                        arguments = listOf("--extension"),
                         environment = mapOf("PLAYWRIGHT_MCP_EXTENSION_TOKEN" to "secret-token"),
                         ephemeralWorkingDirectory = true,
                     ),
@@ -279,7 +280,7 @@ class RemoteProtocolCodecTest {
         val decodedCreate = RemoteProtocolCodec.decodeClientBinary(
             RemoteProtocolCodec.encodeClientBinary(createEnvelope)
         ).payload as CreateMcpServerRequest
-        val decodedCreateTransport = decodedCreate.config.transport as McpServerTransport.Stdio
+        val decodedCreateTransport = decodedCreate.config.transport as McpServerTransport.BundledStdio
         assertEquals("secret-token", decodedCreateTransport.environment["PLAYWRIGHT_MCP_EXTENSION_TOKEN"])
         assertTrue(decodedCreateTransport.ephemeralWorkingDirectory)
 
@@ -332,7 +333,7 @@ class RemoteProtocolCodecTest {
             decodedResponse.servers.single().configuredEnvironmentVariables,
         )
         assertTrue(
-            (decodedResponse.servers.single().server.config.transport as McpServerTransport.Stdio)
+            (decodedResponse.servers.single().server.config.transport as McpServerTransport.BundledStdio)
                 .environment
                 .isEmpty()
         )

@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.BundledMcpRuntime
 import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
@@ -37,6 +38,27 @@ class ControlMcpServerCatalogToolsTest {
         assertFalse("environment" in transport)
         assertEquals(
             listOf("API_TOKEN", "REGION"),
+            configured["environmentVariables"]!!.jsonArray.map { it.jsonPrimitive.content },
+        )
+    }
+
+    @Test
+    fun `bundled runtime environment values are omitted from control MCP responses`() {
+        val server = testServer(
+            McpServerTransport.BundledStdio(
+                runtime = BundledMcpRuntime.BROWSER_USE,
+                environment = mapOf("PLAYWRIGHT_MCP_EXTENSION_TOKEN" to "bridge-secret"),
+            )
+        )
+
+        val redacted = server.toRedactedJson()
+        val transport = redacted["config"]!!.jsonObject["transport"]!!.jsonObject
+        val configured = redacted["configuredTransportValues"]!!.jsonObject
+
+        assertFalse(redacted.toString().contains("bridge-secret"))
+        assertFalse("environment" in transport)
+        assertEquals(
+            listOf("PLAYWRIGHT_MCP_EXTENSION_TOKEN"),
             configured["environmentVariables"]!!.jsonArray.map { it.jsonPrimitive.content },
         )
     }

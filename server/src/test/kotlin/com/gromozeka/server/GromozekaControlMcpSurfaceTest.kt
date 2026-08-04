@@ -143,7 +143,7 @@ class GromozekaControlMcpSurfaceTest {
             .getValue("transport").jsonObject
             .getValue("oneOf").jsonArray
         assertEquals(
-            setOf("stdio", "streamable_http"),
+            setOf("stdio", "bundled_stdio", "streamable_http"),
             transports.map { transport ->
                 transport.jsonObject
                     .getValue("properties").jsonObject
@@ -185,10 +185,11 @@ class GromozekaControlMcpSurfaceTest {
         val guide = result.getValue("result").jsonObject
             .getValue("guide").jsonPrimitive.content
 
-        assertContains(guide, "@playwright/mcp@0.0.78")
+        assertContains(guide, "bundled_stdio")
+        assertContains(guide, "runtime \"browser_use\"")
         assertContains(guide, "ephemeralWorkingDirectory true")
         assertContains(guide, "Settings > Downloads")
-        assertContains(guide, "remove the official Playwright Extension")
+        assertContains(guide, "coexist with the official Playwright Extension")
         assertContains(guide, "Settings > Tools > Browser Use > Extension token")
         assertContains(guide, "every ordinary tab")
         assertContains(guide, "Never ask the user to paste PLAYWRIGHT_MCP_EXTENSION_TOKEN")

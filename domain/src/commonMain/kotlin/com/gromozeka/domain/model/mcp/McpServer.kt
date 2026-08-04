@@ -76,6 +76,22 @@ sealed interface McpServerTransport {
     }
 
     @Serializable
+    @SerialName("bundled_stdio")
+    data class BundledStdio(
+        val runtime: BundledMcpRuntime,
+        val arguments: List<String> = emptyList(),
+        val environment: Map<String, String> = emptyMap(),
+        val ephemeralWorkingDirectory: Boolean = false,
+    ) : McpServerTransport {
+        init {
+            require(arguments.none(String::isBlank)) { "Bundled MCP arguments must not be blank" }
+            require(environment.keys.none(String::isBlank)) {
+                "Bundled MCP environment variable names must not be blank"
+            }
+        }
+    }
+
+    @Serializable
     @SerialName("streamable_http")
     data class StreamableHttp(
         val url: String,
@@ -93,6 +109,12 @@ sealed interface McpServerTransport {
             }
         }
     }
+}
+
+@Serializable
+enum class BundledMcpRuntime {
+    @SerialName("browser_use")
+    BROWSER_USE,
 }
 
 @Serializable

@@ -56,6 +56,18 @@ tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
 
 tasks.withType<JavaExec>().matching { it.name == "run" || it.name == "bootRun" }.configureEach {
     systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
+    environment(
+        "GROMOZEKA_BROWSER_MCP_LAUNCHER",
+        rootProject.layout.projectDirectory.file("deploy/distribution/gromozeka-browser-mcp").asFile.absolutePath,
+    )
+    environment(
+        "GROMOZEKA_BROWSER_MCP_HOME",
+        rootProject.layout.projectDirectory.dir("browser-mcp").asFile.absolutePath,
+    )
+    environment(
+        "GROMOZEKA_RUNTIME_BOOTSTRAP",
+        rootProject.layout.projectDirectory.file("deploy/distribution/runtime-bootstrap.sh").asFile.absolutePath,
+    )
 }
 
 distributions {

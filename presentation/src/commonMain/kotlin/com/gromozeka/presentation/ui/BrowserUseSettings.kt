@@ -530,20 +530,21 @@ private fun BrowserWorkerPicker(
 @Composable
 private fun BrowserExtensionExplanation() {
     Text(
-        text = "Uses every ordinary tab and sign-in from this browser profile. Remove the official Playwright Extension, then extract the Browser Bridge ZIP and load its folder from chrome://extensions with Developer mode enabled.",
+        text = "Uses every ordinary tab and sign-in from this browser profile. Extract the Browser Bridge ZIP and load its folder from chrome://extensions with Developer mode enabled. It can coexist with the official Playwright Extension.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
 private fun McpServerConfig.withExtensionToken(token: String): McpServerConfig {
-    val stdio = transport as? McpServerTransport.Stdio
-        ?: error("Playwright extension token requires a stdio MCP transport")
+    val stdio = transport as? McpServerTransport.BundledStdio
+        ?: error("Browser Bridge token requires the bundled Browser Use runtime")
     val normalizedToken = BrowserUseMcpPreset.normalizeExtensionToken(token)
     require(normalizedToken.isNotBlank()) { "Browser Bridge token must not be blank" }
     return copy(
         transport = stdio.copy(
-            environment = mapOf(BrowserUseMcpPreset.EXTENSION_TOKEN_ENV to normalizedToken)
+            environment = stdio.environment +
+                (BrowserUseMcpPreset.EXTENSION_TOKEN_ENV to normalizedToken)
         )
     )
 }

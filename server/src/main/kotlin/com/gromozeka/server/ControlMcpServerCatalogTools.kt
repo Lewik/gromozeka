@@ -178,6 +178,7 @@ private fun mcpServerConfigSchema(isUpdate: Boolean): JsonObject =
                     JsonArray(
                         listOf(
                             stdioTransportSchema(isUpdate),
+                            bundledStdioTransportSchema(isUpdate),
                             streamableHttpTransportSchema(isUpdate),
                         )
                     ),
@@ -221,6 +222,27 @@ private fun stdioTransportSchema(isUpdate: Boolean): JsonObject =
             ),
         ),
         required = listOf("type", "command"),
+    )
+
+private fun bundledStdioTransportSchema(isUpdate: Boolean): JsonObject =
+    strictObjectSchema(
+        description = "Start a Gromozeka-bundled MCP runtime on the selected Worker.",
+        properties = mapOf(
+            "type" to constantString("bundled_stdio"),
+            "runtime" to constantString("browser_use"),
+            "arguments" to nonBlankStringArray("Runtime arguments. Defaults to an empty list."),
+            "environment" to stringMap(
+                if (isUpdate) {
+                    "Environment variables to add or replace. Omitted stored variables are preserved."
+                } else {
+                    "Environment variables added to the bundled MCP process. Defaults to an empty object."
+                }
+            ),
+            "ephemeralWorkingDirectory" to ControlMcpSchemas.boolean(
+                "Run the MCP process in a fresh temporary directory and delete it when the process stops. Defaults to false."
+            ),
+        ),
+        required = listOf("type", "runtime"),
     )
 
 private fun streamableHttpTransportSchema(isUpdate: Boolean): JsonObject =
@@ -322,14 +344,15 @@ internal fun McpServer.toRedactedJson(): JsonObject {
     val encodedTransport = encodedConfig.getValue("transport").jsonObject
     val redactedTransport = when (config.transport) {
         is McpServerTransport.Stdio -> JsonObject(encodedTransport - "environment")
+        is McpServerTransport.BundledStdio -> JsonObject(encodedTransport - "environment")
         is McpServerTransport.StreamableHttp -> JsonObject(encodedTransport - "headers")
     }
     val configuredTransportValues = buildJsonObject {
-        val environmentVariables = (config.transport as? McpServerTransport.Stdio)
-            ?.environment
-            ?.keys
-            .orEmpty()
-            .sorted()
+        val environmentVariables = when (val transport = config.transport) {
+            is McpServerTransport.Stdio -> transport.environment.keys
+            is McpServerTransport.BundledStdio -> transport.environment.keys
+            is McpServerTransport.StreamableHttp -> emptySet()
+        }.sorted()
         val httpHeaders = (config.transport as? McpServerTransport.StreamableHttp)
             ?.headers
             ?.keys

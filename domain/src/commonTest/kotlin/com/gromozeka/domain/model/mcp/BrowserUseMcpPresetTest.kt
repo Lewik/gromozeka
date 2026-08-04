@@ -10,16 +10,19 @@ class BrowserUseMcpPresetTest {
     fun `creates a stable worker-scoped Playwright extension configuration`() {
         val workerId = ConversationRuntimeWorkerId("Local Worker/1")
         val config = BrowserUseMcpPreset.config(workerId, "extension-token")
-        val transport = config.transport as McpServerTransport.Stdio
+        val transport = config.transport as McpServerTransport.BundledStdio
 
         assertEquals(config.id, BrowserUseMcpPreset.serverId(workerId))
         assertTrue(config.id.value.startsWith("browser_local_worker_1_"))
         assertEquals("Browser · Local Worker/1", config.displayName)
         assertEquals(BrowserUseMcpPreset.OPERATION_TIMEOUT_MS, config.timeoutMs)
-        assertEquals("npx", transport.command)
+        assertEquals(BundledMcpRuntime.BROWSER_USE, transport.runtime)
         assertEquals(BrowserUseMcpPreset.arguments, transport.arguments)
         assertEquals(
-            mapOf(BrowserUseMcpPreset.EXTENSION_TOKEN_ENV to "extension-token"),
+            mapOf(
+                BrowserUseMcpPreset.EXTENSION_ID_ENV to BrowserUseMcpPreset.EXTENSION_ID,
+                BrowserUseMcpPreset.EXTENSION_TOKEN_ENV to "extension-token",
+            ),
             transport.environment,
         )
         assertTrue(transport.ephemeralWorkingDirectory)
@@ -34,7 +37,10 @@ class BrowserUseMcpPresetTest {
             ),
         )
         assertEquals(
-            mapOf(BrowserUseMcpPreset.EXTENSION_TOKEN_ENV to "extension-token"),
+            mapOf(
+                BrowserUseMcpPreset.EXTENSION_ID_ENV to BrowserUseMcpPreset.EXTENSION_ID,
+                BrowserUseMcpPreset.EXTENSION_TOKEN_ENV to "extension-token",
+            ),
             BrowserUseMcpPreset.transport(
                 "${BrowserUseMcpPreset.EXTENSION_TOKEN_ENV}=extension-token"
             ).environment,
