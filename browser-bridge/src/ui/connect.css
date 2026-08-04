@@ -1,0 +1,305 @@
+/*
+  Copyright (c) Microsoft Corporation.
+  Modified by the Gromozeka project in 2026.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+:root {
+  color-scheme: dark light;
+  --background: #10141a;
+  --surface: #171d25;
+  --surface-raised: #202936;
+  --border: #354253;
+  --text: #f2f6fb;
+  --muted: #9eacbd;
+  --accent: #1581ff;
+  --accent-hover: #3692ff;
+  --accent-soft: rgba(21, 129, 255, 0.14);
+  --warning: #ffb74d;
+  --warning-soft: rgba(255, 183, 77, 0.1);
+  --danger: #ff6b6b;
+  --success: #54d49a;
+  --shadow: rgba(0, 0, 0, 0.32);
+  --color-fg-muted: var(--muted);
+  --color-btn-selected-bg: var(--surface-raised);
+  --color-success-fg: var(--success);
+  --color-danger-fg: var(--danger);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #eef3f8;
+    --surface: #ffffff;
+    --surface-raised: #e7eef7;
+    --border: #c7d2df;
+    --text: #142033;
+    --muted: #5c6c80;
+    --accent: #056bd7;
+    --accent-hover: #005bb9;
+    --accent-soft: rgba(5, 107, 215, 0.1);
+    --warning: #9d5d00;
+    --warning-soft: rgba(198, 117, 0, 0.1);
+    --danger: #bd2929;
+    --success: #087c4c;
+    --shadow: rgba(33, 53, 76, 0.16);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 420px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(21, 129, 255, 0.17), transparent 34rem),
+    radial-gradient(circle at 94% 15%, rgba(255, 142, 28, 0.09), transparent 26rem),
+    var(--background);
+  color: var(--text);
+  font-family: "Avenir Next", "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+.app-container {
+  min-height: 100vh;
+  padding: 44px 24px;
+}
+
+.content-wrapper {
+  width: min(680px, 100%);
+  margin: 0 auto;
+}
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.brand-header img {
+  filter: drop-shadow(0 8px 14px var(--shadow));
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 2px 0 0;
+  font-size: 27px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.status-banner,
+.permission-card,
+.connection-header,
+.scope-note,
+.auth-token-section {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 18px 42px var(--shadow);
+}
+
+.status-banner {
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+
+.status-banner.connecting {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.status-banner.connected {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+}
+
+.status-banner.error {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+}
+
+.status-banner.idle {
+  color: var(--muted);
+}
+
+.permission-card {
+  padding: 20px;
+  margin-bottom: 16px;
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+  background: linear-gradient(145deg, var(--warning-soft), var(--surface) 60%);
+}
+
+.permission-card strong {
+  color: var(--warning);
+  font-size: 15px;
+}
+
+.permission-card p {
+  margin: 9px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.button {
+  min-height: 40px;
+  padding: 9px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--surface-raised);
+  font-weight: 650;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--border));
+}
+
+.button.primary {
+  border-color: var(--accent);
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.button.primary:hover {
+  background: var(--accent-hover);
+}
+
+.connection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+
+.connection-label {
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.scope-note {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  color: var(--muted);
+  line-height: 1.5;
+  box-shadow: none;
+}
+
+.tab-section-title {
+  margin: 0 4px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tab-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px 13px;
+  margin-bottom: 7px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.tab-item:hover {
+  border-color: var(--border);
+  background: var(--surface-raised);
+}
+
+.tab-favicon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.tab-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.tab-title,
+.tab-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-title {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.tab-url {
+  margin-top: 3px;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+}
+
+@media (max-width: 520px) {
+  body {
+    min-width: 320px;
+  }
+
+  .app-container {
+    padding: 24px 14px;
+  }
+
+  .button-container {
+    flex-direction: column-reverse;
+  }
+
+  .button {
+    width: 100%;
+  }
+}
