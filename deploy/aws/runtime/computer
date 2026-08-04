@@ -10,10 +10,10 @@ computer_data="$data_dir/computer"
 computer_home="$computer_data/home"
 worker_root="$computer_root/worker"
 browser_bridge_root="$computer_root/browser-bridge"
-chrome_root="$computer_root/chrome"
 worker_current="$worker_root/current"
 browser_bridge_current="$browser_bridge_root/current"
-chrome_current="$chrome_root/current"
+browser_bridge_extension_id="aagabdbpoegoochbmhkhdmhbpjhajmpf"
+browser_bridge_crx_name="gromozeka-browser-bridge.crx"
 enabled_file="/etc/gromozeka/computer.enabled"
 environment_file="/etc/gromozeka/computer.env"
 deployment_file="$data_dir/runtime/deployment.env"
@@ -21,9 +21,10 @@ service_name="gromozeka-computer.service"
 github_repository="${GROMOZEKA_GITHUB_REPOSITORY:-Lewik/gromozeka}"
 dcv_archive_url="https://d1uj6qtbmh3dt5.cloudfront.net/2025.0/Servers/nice-dcv-2025.0-20103-amzn2023-x86_64.tgz"
 dcv_archive_sha256="d98eb986f3b547af22a7732ca26cb6541c3842b9ed57218f503c9acc3b29e7e2"
-chrome_version="151.0.7922.71"
-chrome_archive_url="https://storage.googleapis.com/chrome-for-testing-public/$chrome_version/linux64/chrome-linux64.zip"
-chrome_archive_sha256="6bd04aab53fba1544ce6027d9daddb24137295033124a61ecdf9840d785792e9"
+chrome_package="google-chrome-stable"
+chrome_executable="/opt/google/chrome/chrome"
+chrome_rpm_url="https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
+chrome_extensions_directory="/opt/google/chrome/extensions"
 
 usage() {
   cat >&2 <<'EOF'
@@ -155,51 +156,47 @@ install_system_packages() {
 
 verify_chrome_runtime() {
   local unresolved_libraries
-  unresolved_libraries="$(ldd "$chrome_current/chrome" | awk '/not found/ { print }')"
+  [[ -x "$chrome_executable" ]] || {
+    echo "Google Chrome is not installed at $chrome_executable" >&2
+    exit 1
+  }
+  unresolved_libraries="$(ldd "$chrome_executable" | awk '/not found/ { print }')"
   [[ -z "$unresolved_libraries" ]] || {
-    printf 'Chrome for Testing has unresolved libraries:\n%s\n' "$unresolved_libraries" >&2
+    printf 'Google Chrome has unresolved libraries:\n%s\n' "$unresolved_libraries" >&2
     exit 1
   }
 }
 
-install_chrome_for_testing() {
-  local chrome_release="$chrome_root/releases/$chrome_version"
-  if [[ -x "$chrome_release/chrome" && -f "$chrome_release/.complete" ]]; then
-    ln -sfn "$chrome_release" "$chrome_root/current.next"
-    mv -Tf "$chrome_root/current.next" "$chrome_current"
-    verify_chrome_runtime
-    return
+install_google_chrome() {
+  if rpm -q "$chrome_package" >/dev/null 2>&1; then
+    dnf install -y "$chrome_package"
+  else
+    dnf install -y "$chrome_rpm_url"
   fi
-
-  (
-    temporary_directory="$(mktemp -d "$computer_root/.chrome-$chrome_version.XXXXXX")"
-    trap 'rm -rf "$temporary_directory"' EXIT
-    archive="$temporary_directory/chrome-linux64.zip"
-    curl --fail --location --retry 3 --retry-all-errors --silent --show-error \
-      "$chrome_archive_url" \
-      --output "$archive"
-    printf '%s  %s\n' "$chrome_archive_sha256" "$archive" | sha256sum --check
-    unzip -q "$archive" -d "$temporary_directory"
-    [[ -x "$temporary_directory/chrome-linux64/chrome" ]] || {
-      echo "Chrome for Testing archive does not contain chrome" >&2
-      exit 1
-    }
-    [[ -f "$temporary_directory/chrome-linux64/chrome_sandbox" ]] || {
-      echo "Chrome for Testing archive does not contain chrome_sandbox" >&2
-      exit 1
-    }
-    chown root:root "$temporary_directory/chrome-linux64/chrome_sandbox"
-    chmod 4755 "$temporary_directory/chrome-linux64/chrome_sandbox"
-    touch "$temporary_directory/chrome-linux64/.complete"
-    rm -rf -- "$chrome_release"
-    mv "$temporary_directory/chrome-linux64" "$chrome_release"
-  )
-
-  touch "$chrome_release"
-  ln -sfn "$chrome_release" "$chrome_root/current.next"
-  mv -Tf "$chrome_root/current.next" "$chrome_current"
   verify_chrome_runtime
-  cleanup_old_releases "$chrome_root/releases"
+  rm -rf -- "$computer_root/chrome"
+}
+
+configure_browser_bridge() {
+  local browser_bridge_crx="$browser_bridge_current/$browser_bridge_crx_name"
+  local browser_bridge_manifest="$browser_bridge_current/manifest.json"
+  local browser_bridge_version
+  [[ -f "$browser_bridge_crx" ]] || {
+    echo "Browser Bridge release does not contain $browser_bridge_crx_name" >&2
+    exit 1
+  }
+  browser_bridge_version="$(jq -r '.version // empty' "$browser_bridge_manifest")"
+  [[ "$browser_bridge_version" =~ ^[0-9]+(\.[0-9]+){0,3}$ ]] || {
+    echo "Browser Bridge has an invalid Chrome extension version: $browser_bridge_version" >&2
+    exit 1
+  }
+
+  install -d -m 0755 "$chrome_extensions_directory"
+  printf '{\n  "external_crx": "%s",\n  "external_version": "%s"\n}\n' \
+    "$browser_bridge_crx" \
+    "$browser_bridge_version" \
+    > "$chrome_extensions_directory/$browser_bridge_extension_id.json"
+  chmod 0644 "$chrome_extensions_directory/$browser_bridge_extension_id.json"
 }
 
 install_dcv() {
@@ -256,8 +253,7 @@ ensure_computer_user() {
   install -d -m 0755 \
     "$computer_root" \
     "$worker_root/releases" \
-    "$browser_bridge_root/releases" \
-    "$chrome_root/releases"
+    "$browser_bridge_root/releases"
 }
 
 verify_release_asset() {
@@ -328,6 +324,10 @@ install_release() {
         echo "Browser Bridge release does not contain manifest.json" >&2
         exit 1
       }
+      [[ -f "$browser_bridge_staging/gromozeka-browser-bridge/$browser_bridge_crx_name" ]] || {
+        echo "Browser Bridge release does not contain $browser_bridge_crx_name" >&2
+        exit 1
+      }
 
       touch "$worker_staging/.complete"
       touch "$browser_bridge_staging/gromozeka-browser-bridge/.complete"
@@ -348,14 +348,13 @@ install_release() {
 
 write_environment() {
   install -d -m 0755 /etc/gromozeka
-  printf 'GROMOZEKA_AWS_COMPUTER_ID=%q\nGROMOZEKA_AWS_COMPUTER_USER=%q\nGROMOZEKA_AWS_COMPUTER_HOME=%q\nGROMOZEKA_AWS_COMPUTER_DATA=%q\nGROMOZEKA_AWS_COMPUTER_WORKER=%q\nGROMOZEKA_AWS_COMPUTER_BROWSER_BRIDGE=%q\nGROMOZEKA_AWS_COMPUTER_CHROME=%q\n' \
+  printf 'GROMOZEKA_AWS_COMPUTER_ID=%q\nGROMOZEKA_AWS_COMPUTER_USER=%q\nGROMOZEKA_AWS_COMPUTER_HOME=%q\nGROMOZEKA_AWS_COMPUTER_DATA=%q\nGROMOZEKA_AWS_COMPUTER_WORKER=%q\nGROMOZEKA_AWS_COMPUTER_CHROME=%q\n' \
     "$computer_id" \
     "$computer_user" \
     "$computer_home" \
     "$computer_data" \
     "$worker_current" \
-    "$browser_bridge_current" \
-    "$chrome_current/chrome" \
+    "$chrome_executable" \
     > "$environment_file"
   chmod 0644 "$environment_file"
 }
@@ -452,9 +451,10 @@ install_computer() {
   local version="$1"
   install_system_packages
   ensure_computer_user
-  install_chrome_for_testing
+  install_google_chrome
   install_dcv
   install_release "$version"
+  configure_browser_bridge
   configure_local_server_name
   write_environment
   configure_dcv
@@ -474,9 +474,10 @@ update_computer() {
   fi
   install_system_packages
   ensure_computer_user
-  install_chrome_for_testing
+  install_google_chrome
   install_dcv
   install_release "$version"
+  configure_browser_bridge
   configure_local_server_name
   write_environment
   configure_service
@@ -538,7 +539,7 @@ show_status() {
   fi
   printf 'Chrome: '
   if pgrep -u "$computer_user" -x chrome >/dev/null 2>&1; then
-    printf 'running (%s)\n' "$("$chrome_current/chrome" --version)"
+    printf 'running (%s)\n' "$("$chrome_executable" --version)"
   else
     echo "not running"
   fi

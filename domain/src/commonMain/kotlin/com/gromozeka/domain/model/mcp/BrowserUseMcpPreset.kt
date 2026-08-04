@@ -9,7 +9,7 @@ object BrowserUseMcpPreset {
     const val OUTPUT_MAX_BYTES = 52_428_800
     const val EXTENSION_TOKEN_ENV = "PLAYWRIGHT_MCP_EXTENSION_TOKEN"
     const val EXTENSION_ID_ENV = "PLAYWRIGHT_MCP_EXTENSION_ID"
-    const val EXTENSION_ID = "jiadoiohindhpbaahcahcbeokjiojlml"
+    const val EXTENSION_ID = "aagabdbpoegoochbmhkhdmhbpjhajmpf"
     const val BRIDGE_ARTIFACT_ID = "browser-bridge"
     const val BRIDGE_FILE_NAME = "gromozeka-browser-bridge.zip"
 

@@ -17,7 +17,7 @@ describe('manifest identity', () => {
       .map(nibble => String.fromCharCode('a'.charCodeAt(0) + nibble))
       .join('');
 
-    expect(extensionId).toBe('jiadoiohindhpbaahcahcbeokjiojlml');
+    expect(extensionId).toBe('aagabdbpoegoochbmhkhdmhbpjhajmpf');
     expect(extensionId).not.toBe('mmlmfjhmonkocbjadbfplnigmagldckm');
   });
 });

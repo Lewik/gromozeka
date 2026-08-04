@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Gromozeka Browser Bridge",
   "short_name": "Gromozeka Bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Connect Gromozeka Browser Use to ordinary tabs in this Chromium profile.",
   "permissions": [
     "debugger",
@@ -30,5 +30,5 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwPgUKIV58eqoF/FYl0KcfoiyY7gs9ezarK6MEUpgIn+CHVEM4DVtk076gtjMZ3RubxaRoyx/W31t1EoWwVbK1Oq3Ed8kDLx6LuWAwZCYuy89f4x3R6Dtb6bsoxYYSvfsGL6bqAeFOZR+hfOBm2bv+t3ZUD5OcsoPgjv/el++ZRKfxXFLWGGTjTV1tzg63GMZi4I9t5ly22tgDjKg8HB8eSRhYdTbABtJv1WDrXhkXy17QH7Sj7KZW2+S4YGv4pCW2ATuSoJNF0aGvSpT/ezFy1kUWallI1UZkwpREj6RrTvlpLLRqjaRanV/k//SdGD25W3C/4SEPMgVWhB/lgGqlQIDAQAB"
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvSXTg/sFC6xammfi9aZ78LyU7iGJK4dl0NIHoiYijpISdnsGR4xNDiLrYIVKGOvyXsRsvhAcwggxrrIV+7R7TBUHjTQuFTik0oltwXSsgM5OEK6jMGDYUm1/FsopvAFH774ALoRYY+DHqgMbRdY5RhEy4jeli9LaV07iKUfZHZtu60FdTw8NzjLFJUu3+rFxdxhOFhCJPjKQCan7O2JJMhRpsSPWmkhHTro6oFqk8GjwVs0dZdsnIQgCAsaf+VOk05Iy6Anq2J4BeP5pMA2wpBsAZvIo/PIfIObHwwYcashDKpTwzzvItcwPDpDCI10+gtK8aPliBNG9cWfZVI1I0wIDAQAB"
 }

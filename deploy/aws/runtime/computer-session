@@ -14,6 +14,12 @@ export LOGNAME="$GROMOZEKA_AWS_COMPUTER_USER"
 export GROMOZEKA_HOME="$GROMOZEKA_AWS_COMPUTER_HOME/.gromozeka"
 
 log_directory="$GROMOZEKA_AWS_COMPUTER_DATA/logs"
+browser_profile="$GROMOZEKA_AWS_COMPUTER_HOME/.config/google-chrome"
+legacy_browser_profile="$GROMOZEKA_AWS_COMPUTER_HOME/.config/gromozeka-browser"
+if [[ -d "$legacy_browser_profile" && ! -e "$browser_profile" ]]; then
+  mkdir -p "$(dirname "$browser_profile")"
+  mv "$legacy_browser_profile" "$browser_profile"
+fi
 mkdir -p "$log_directory"
 : > "$log_directory/metacity.log"
 : > "$log_directory/chrome.log"
@@ -37,11 +43,10 @@ sleep 1
   --disable-infobars \
   --disable-session-crashed-bubble \
   --hide-crash-restore-bubble \
-  --load-extension="$GROMOZEKA_AWS_COMPUTER_BROWSER_BRIDGE" \
   --no-default-browser-check \
   --no-first-run \
   --start-maximized \
-  --user-data-dir="$GROMOZEKA_AWS_COMPUTER_HOME/.config/gromozeka-browser" \
+  --user-data-dir="$browser_profile" \
   chrome://newtab/ \
   >> "$log_directory/chrome.log" 2>&1 &
 child_processes+=("$!")

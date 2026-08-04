@@ -1,6 +1,6 @@
 {
   "name": "@gromozeka/browser-bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Connect Gromozeka Browser Use to every ordinary tab in an existing Chromium profile",
   "private": true,
   "repository": {
