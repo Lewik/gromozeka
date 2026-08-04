@@ -6,6 +6,7 @@ import com.gromozeka.client.RemoteClientPresentationService
 import com.gromozeka.client.RemoteDistributionService
 import com.gromozeka.client.RemoteLiveInterpreterService
 import com.gromozeka.client.RemoteMemoryActionItemService
+import com.gromozeka.client.RemoteMcpServerService
 import com.gromozeka.client.RemotePersonalAccessTokenService
 import com.gromozeka.client.RemoteUserAdministrationService
 import com.gromozeka.client.RemoteUserDirectoryService
@@ -54,6 +55,7 @@ data class AppComponents(
     val clientPresentationService: RemoteClientPresentationService,
     val distributionService: RemoteDistributionService,
     val memoryActionItemService: RemoteMemoryActionItemService,
+    val mcpServerService: RemoteMcpServerService,
     val personalAccessTokenService: RemotePersonalAccessTokenService,
     val userAdministrationService: RemoteUserAdministrationService,
     val securityAuditService: RemoteSecurityAuditService,

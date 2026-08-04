@@ -1,5 +1,6 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.mcp.BrowserUseMcpPreset
 import com.gromozeka.remote.protocol.DistributionComponent
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -65,6 +66,19 @@ class GromozekaDistributionRoutingTest {
         assertEquals(
             serverArtifacts.map { "https://downloads.example/gromozeka/${it.fileName}" },
             serverArtifacts.map { it.downloadUrl },
+        )
+    }
+
+    @Test
+    fun `distribution catalog exposes the Browser Bridge`() {
+        val bridge = distributionArtifacts("https://downloads.example/gromozeka")
+            .single { it.component == DistributionComponent.BROWSER_BRIDGE }
+
+        assertEquals(BrowserUseMcpPreset.BRIDGE_ARTIFACT_ID, bridge.id)
+        assertEquals(BrowserUseMcpPreset.BRIDGE_FILE_NAME, bridge.fileName)
+        assertEquals(
+            "https://downloads.example/gromozeka/${BrowserUseMcpPreset.BRIDGE_FILE_NAME}",
+            bridge.downloadUrl,
         )
     }
 }

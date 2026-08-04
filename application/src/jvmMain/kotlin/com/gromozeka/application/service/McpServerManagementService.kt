@@ -1,11 +1,13 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.mcp.McpServer
 import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpTransportValueRemovals
 import com.gromozeka.domain.repository.McpServerRepository
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
@@ -13,15 +15,24 @@ import com.gromozeka.domain.service.McpServerMutationKind
 import com.gromozeka.domain.service.WorkerControlClient
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
+import com.gromozeka.domain.service.WorkerToolExecutionClient
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
+import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
+import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import org.springframework.stereotype.Service
+import java.util.Base64
 
 @Service
 class McpServerManagementService(
     private val repository: McpServerRepository,
     private val workerRegistry: ConversationRuntimeWorkerRegistry,
     private val workerControlClient: WorkerControlClient,
+    private val workerToolExecutionClient: WorkerToolExecutionClient,
     private val capabilityCatalogService: AiToolCapabilityCatalogService,
 ) {
     suspend fun list(): List<McpServer> = repository.list()
@@ -44,6 +55,9 @@ class McpServerManagementService(
             ?: error("MCP server not found: ${config.id.value}")
         require(current.revision == expectedRevision) {
             "MCP server revision conflict: expected $expectedRevision, actual ${current.revision}"
+        }
+        require(current.config.workerId == config.workerId) {
+            "Moving an MCP server between Workers requires explicit delete and create operations"
         }
         return apply(
             kind = McpServerMutationKind.UPDATE,
@@ -93,6 +107,60 @@ class McpServerManagementService(
                 .onFailure(error::addSuppressed)
             throw error
         }
+    }
+
+    suspend fun testBrowserUse(serverId: McpServerId): BrowserUseProbeResult {
+        val server = repository.find(serverId)
+            ?: error("MCP server not found: ${serverId.value}")
+        val screenshotTool = server.snapshot.tools.singleOrNull {
+            it.remoteName == BROWSER_SCREENSHOT_TOOL_NAME
+        } ?: error("MCP server does not provide $BROWSER_SCREENSHOT_TOOL_NAME: ${serverId.value}")
+        val workerIdentity = onlineWorker(server.config.workerId)
+        val executionTarget = ConversationRuntimeTaskTarget.Worker(server.config.workerId)
+        val toolName = screenshotTool.toAiToolDefinition(serverId).name
+        val toolCallId = Conversation.Message.ContentItem.ToolCall.Id(uuid7())
+        val toolCall = Conversation.Message.ContentItem.ToolCall(
+            id = toolCallId,
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = toolName,
+                input = buildJsonObject {
+                    put("type", "png")
+                    putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                        put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, server.config.workerId.value)
+                    }
+                },
+            ),
+        )
+        val execution = workerToolExecutionClient.execute(
+            target = workerIdentity,
+            executionTarget = executionTarget,
+            toolCalls = listOf(toolCall),
+            toolContext = ToolExecutionContext(
+                mapOf(
+                    TOOL_CONTEXT_WORKER_ID to server.config.workerId.value,
+                    TOOL_CONTEXT_TOOL_NAME to toolName,
+                )
+            ),
+        )
+        val result = execution.results.singleOrNull()
+            ?: error("Browser Use probe returned ${execution.results.size} tool results")
+        check(result.toolUseId == toolCallId && result.toolName == toolName) {
+            "Browser Use probe response correlation mismatch"
+        }
+        check(!result.isError) {
+            result.result.filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
+                .joinToString("\n") { it.content }
+                .ifBlank { "Browser Use probe failed" }
+        }
+        val screenshot = result.result
+            .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Base64Data>()
+            .singleOrNull { it.mediaType.type == "image" }
+            ?: error("Browser Use probe did not return exactly one image")
+        return BrowserUseProbeResult(
+            screenshot = Base64.getDecoder().decode(screenshot.data),
+            mediaType = screenshot.mediaType.value,
+            fileName = screenshot.fileName,
+        )
     }
 
     private suspend fun apply(
@@ -202,6 +270,12 @@ class McpServerManagementService(
         }
 }
 
+data class BrowserUseProbeResult(
+    val screenshot: ByteArray,
+    val mediaType: String,
+    val fileName: String?,
+)
+
 private fun McpServerConfig.mergeTransportValuesFrom(
     existing: McpServerConfig,
     removals: McpTransportValueRemovals,
@@ -260,6 +334,8 @@ private fun McpServerConfig.mergeTransportValuesFrom(
         }
     )
 }
+
+private const val BROWSER_SCREENSHOT_TOOL_NAME = "browser_take_screenshot"
 
 private fun Map<String, String>.mergeHttpHeaders(
     replacements: Map<String, String>,

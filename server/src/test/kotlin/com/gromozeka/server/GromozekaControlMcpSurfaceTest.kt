@@ -1,10 +1,13 @@
 package com.gromozeka.server
 
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -148,11 +151,47 @@ class GromozekaControlMcpSurfaceTest {
                     .getValue("const").jsonPrimitive.content
             }.toSet(),
         )
+        val stdioProperties = transports
+            .single { transport ->
+                transport.jsonObject
+                    .getValue("properties").jsonObject
+                    .getValue("type").jsonObject
+                    .getValue("const").jsonPrimitive.content == "stdio"
+            }
+            .jsonObject
+            .getValue("properties").jsonObject
+        assertEquals(
+            "boolean",
+            stdioProperties.getValue("ephemeralWorkingDirectory").jsonObject
+                .getValue("type").jsonPrimitive.content,
+        )
         assertTrue(
             mcpConfigSchema.getValue("properties").jsonObject
                 .getValue("forwardGrzConversationContext").jsonObject
                 .getValue("type").jsonPrimitive.content == "boolean"
         )
+    }
+
+    @Test
+    fun `control help documents browser use self setup without exposing its token`() = runBlocking {
+        val provider = ControlMcpAiSettingsTools(
+            aiConfigurationService = mock(),
+            aiCatalogManagementService = mock(),
+            settingsService = mock(),
+        )
+        val result = provider.tools
+            .single { it.definition.name == "grz_control_help" }
+            .invokeStructured(testControlMcpContext(), buildJsonObject {})
+        val guide = result.getValue("result").jsonObject
+            .getValue("guide").jsonPrimitive.content
+
+        assertContains(guide, "@playwright/mcp@0.0.78")
+        assertContains(guide, "ephemeralWorkingDirectory true")
+        assertContains(guide, "Settings > Downloads")
+        assertContains(guide, "remove the official Playwright Extension")
+        assertContains(guide, "Settings > Tools > Browser Use > Extension token")
+        assertContains(guide, "every ordinary tab")
+        assertContains(guide, "Never ask the user to paste PLAYWRIGHT_MCP_EXTENSION_TOKEN")
     }
 
     private fun io.modelcontextprotocol.kotlin.sdk.server.Server.toolProperties(name: String) =

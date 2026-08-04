@@ -28,3 +28,15 @@ updates:
       container-images:
         patterns:
           - "*"
+
+  - package-ecosystem: npm
+    directory: /browser-bridge
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Jerusalem
+    groups:
+      browser-bridge:
+        patterns:
+          - "*"

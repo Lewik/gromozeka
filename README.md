@@ -184,6 +184,7 @@ currently provide:
 
 - an unsigned macOS ARM64 Client DMG;
 - a portable Windows x64 Client ZIP;
+- a Chrome/Edge/Chromium Browser Bridge ZIP loaded as an unpacked extension;
 - a Docker Compose Server stack with PostgreSQL and a Caddy HTTPS/WSS gateway;
 - macOS ARM64, Linux x64, and Windows x64 Worker archives with private Java 21 runtimes;
 - `ghcr.io/lewik/gromozeka-server` and `ghcr.io/lewik/gromozeka-worker` images;

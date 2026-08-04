@@ -52,7 +52,7 @@ internal class ControlMcpServerCatalogTools(
         },
         controlMcpTool(
             name = "grz_mcp_server_create",
-            description = "Connect and fully validate an external MCP server on one exact online Worker, then persist and activate it. No retry occurs after execution starts.",
+            description = "Connect and fully validate an external MCP server on one exact online Worker, then persist and activate it. No retry occurs after execution starts. Use grz_control_help for the canonical Browser Use self-setup recipe.",
             inputSchema = configMutationSchema(requireRevision = false),
             readOnly = false,
             accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
@@ -215,6 +215,9 @@ private fun stdioTransportSchema(isUpdate: Boolean): JsonObject =
                 } else {
                     "Environment variables added to the MCP process. Defaults to an empty object."
                 }
+            ),
+            "ephemeralWorkingDirectory" to ControlMcpSchemas.boolean(
+                "Run the MCP process in a fresh temporary directory and delete it when the process stops. Defaults to false."
             ),
         ),
         required = listOf("type", "command"),

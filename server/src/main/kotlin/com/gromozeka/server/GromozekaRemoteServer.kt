@@ -1,9 +1,13 @@
 package com.gromozeka.server
 
+import com.gromozeka.application.service.McpServerManagementService
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.McpServerTransport
+import com.gromozeka.domain.model.mcp.McpTransportValueRemovals
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
@@ -70,6 +74,7 @@ import kotlin.time.Duration.Companion.days
 class GromozekaRemoteServer(
     private val settingsService: SettingsService,
     private val aiConfigurationService: AiConfigurationService,
+    private val mcpServerManagementService: McpServerManagementService,
     private val runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val agentDomainService: AgentDomainService,
@@ -282,6 +287,44 @@ class GromozekaRemoteServer(
                         )
                     )
                 )
+                ListMcpServersRequest -> McpServersResponse(
+                    mcpServerManagementService.list().map(McpServer::toRemoteView)
+                )
+                is CreateMcpServerRequest -> McpServerResponse(
+                    mcpServerManagementService.create(request.config).toRemoteView()
+                )
+                is UpdateMcpServerRequest -> McpServerResponse(
+                    mcpServerManagementService.update(
+                        config = request.config,
+                        expectedRevision = request.expectedRevision,
+                        transportValueRemovals = McpTransportValueRemovals(
+                            environmentVariables = request.removeEnvironmentVariables,
+                            httpHeaders = request.removeHttpHeaders,
+                        ),
+                    ).toRemoteView()
+                )
+                is RefreshMcpServerRequest -> McpServerResponse(
+                    mcpServerManagementService.refresh(
+                        serverId = request.serverId,
+                        expectedRevision = request.expectedRevision,
+                    ).toRemoteView()
+                )
+                is TestBrowserUseRequest -> mcpServerManagementService
+                    .testBrowserUse(request.serverId)
+                    .let { result ->
+                        BrowserUseProbeResponse(
+                            screenshot = result.screenshot,
+                            mediaType = result.mediaType,
+                            fileName = result.fileName,
+                        )
+                    }
+                is DeleteMcpServerRequest -> {
+                    mcpServerManagementService.delete(
+                        serverId = request.serverId,
+                        expectedRevision = request.expectedRevision,
+                    )
+                    SavedResponse
+                }
                 ListPersonalAccessTokensRequest -> PersonalAccessTokensResponse(
                     personalAccessTokenService.list(user.id)
                         .map { it.toPersonalAccessTokenView() }
@@ -976,6 +1019,26 @@ class GromozekaRemoteServer(
         const val OPENAI_TTS_PCM_CHANNELS = 1
         const val OPENAI_TTS_PCM_BITS_PER_SAMPLE = 16
     }
+}
+
+private fun McpServer.toRemoteView(): RemoteMcpServerView {
+    val environmentVariables = (config.transport as? McpServerTransport.Stdio)
+        ?.environment
+        ?.keys
+        .orEmpty()
+    val httpHeaders = (config.transport as? McpServerTransport.StreamableHttp)
+        ?.headers
+        ?.keys
+        .orEmpty()
+    val redactedTransport = when (val transport = config.transport) {
+        is McpServerTransport.Stdio -> transport.copy(environment = emptyMap())
+        is McpServerTransport.StreamableHttp -> transport.copy(headers = emptyMap())
+    }
+    return RemoteMcpServerView(
+        server = copy(config = config.copy(transport = redactedTransport)),
+        configuredEnvironmentVariables = environmentVariables,
+        configuredHttpHeaders = httpHeaders,
+    )
 }
 
 private data class RuntimeActivitySignature(

@@ -64,6 +64,7 @@ sealed interface McpServerTransport {
         val command: String,
         val arguments: List<String> = emptyList(),
         val environment: Map<String, String> = emptyMap(),
+        val ephemeralWorkingDirectory: Boolean = false,
     ) : McpServerTransport {
         init {
             require(command.isNotBlank()) { "MCP stdio command must not be blank" }

@@ -103,6 +103,7 @@ private val DEFAULT_WORKER_EXECUTABLE_NAMES = setOf(
     "ninja",
     "node",
     "npm",
+    "npx",
     "pactl",
     "paplay",
     "podman",

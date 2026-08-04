@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteClientSettings
 import com.gromozeka.client.RemoteDistributionService
+import com.gromozeka.client.RemoteMcpServerService
 import com.gromozeka.client.RemotePersonalAccessTokenService
 import com.gromozeka.client.RemoteUserAdministrationService
 import com.gromozeka.client.RemoteSecurityAuditService
@@ -102,6 +103,7 @@ fun SettingsPanel(
     aiConfigurationService: AiConfigurationService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     workerCatalogService: WorkerCatalogService,
+    mcpServerService: RemoteMcpServerService,
     distributionService: RemoteDistributionService,
     personalAccessTokenService: RemotePersonalAccessTokenService,
     userAdministrationService: RemoteUserAdministrationService,
@@ -817,11 +819,19 @@ fun SettingsPanel(
                         contentMode == SettingsPanelContentMode.Full &&
                         selectedSection == SettingsSection.Tools
                     ) {
-                        WebToolSettingsEditor(
-                            aiConfigurationService = aiConfigurationService,
-                            coroutineScope = coroutineScope,
-                            translation = translation,
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                            BrowserUseSettings(
+                                service = mcpServerService,
+                                distributionService = distributionService,
+                                workers = workers,
+                                canManage = canAdministerUsers,
+                            )
+                            WebToolSettingsEditor(
+                                aiConfigurationService = aiConfigurationService,
+                                coroutineScope = coroutineScope,
+                                translation = translation,
+                            )
+                        }
                     }
 
                     if (
@@ -1365,7 +1375,7 @@ private fun DistributionCatalog(manifest: DistributionManifest) {
 
     SettingsGroup(title = "Downloads") {
         Text(
-            text = "Native clients, the Docker Server stack, and trusted Workers for version ${manifest.serverVersion}.",
+            text = "Native clients, the Browser Bridge, the Docker Server stack, and trusted Workers for version ${manifest.serverVersion}.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
@@ -1435,7 +1445,9 @@ private fun DistributionArtifactItem(
 }
 
 private fun DistributionArtifact.platformDisplayName(): String =
-    if (
+    if (component == DistributionComponent.BROWSER_BRIDGE) {
+        "Chrome, Edge, or Chromium"
+    } else if (
         operatingSystem == DistributionOperatingSystem.ANY &&
         architecture == DistributionArchitecture.ANY
     ) {
@@ -1548,6 +1560,7 @@ private fun DistributionComponent.displayName(): String =
         DistributionComponent.CLIENT -> "Clients"
         DistributionComponent.SERVER -> "Servers"
         DistributionComponent.WORKER -> "Workers"
+        DistributionComponent.BROWSER_BRIDGE -> "Browser Bridge"
     }
 
 private fun DistributionOperatingSystem.displayName(): String =
@@ -1567,6 +1580,7 @@ private fun DistributionArchitecture.displayName(): String =
 
 private fun DistributionFormat.displayName(): String =
     when (this) {
+        DistributionFormat.BROWSER_EXTENSION_ZIP -> "unpacked extension ZIP"
         DistributionFormat.DOCKER_COMPOSE_ZIP -> "Docker Compose ZIP"
         DistributionFormat.DMG -> "DMG"
         DistributionFormat.PORTABLE_ZIP -> "portable ZIP"
@@ -1961,7 +1975,7 @@ private fun List<AiCatalogSecretMutation>.withSecretMutation(
     filterNot { it.slot == slot } + listOfNotNull(mutation)
 
 @Composable
-private fun SettingsGroup(
+internal fun SettingsGroup(
     title: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {

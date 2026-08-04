@@ -26,6 +26,7 @@ enum class DistributionComponent {
     CLIENT,
     SERVER,
     WORKER,
+    BROWSER_BRIDGE,
 }
 
 @Serializable
@@ -45,6 +46,7 @@ enum class DistributionArchitecture {
 
 @Serializable
 enum class DistributionFormat {
+    BROWSER_EXTENSION_ZIP,
     DOCKER_COMPOSE_ZIP,
     DMG,
     PORTABLE_ZIP,

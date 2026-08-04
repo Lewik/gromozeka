@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.mcp.McpServer
 import com.gromozeka.domain.model.mcp.McpServerConfig
@@ -11,6 +12,7 @@ import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.repository.AiToolCapabilityCatalogRepository
 import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
@@ -18,7 +20,10 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkerControlClient
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
+import com.gromozeka.domain.service.WorkerToolExecutionClient
+import com.gromozeka.domain.service.WorkerToolExecutionResult
 import com.gromozeka.domain.tool.AiToolCapabilityCatalog
+import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,11 +31,46 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.util.Base64
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class McpServerManagementServiceTest {
+    @Test
+    fun `browser probe executes screenshot on the assigned worker and preserves binary`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            val created = fixture.service.create(fixture.server.config)
+            val result = fixture.service.testBrowserUse(created.config.id)
+
+            assertContentEquals(fixture.screenshot, result.screenshot)
+            assertEquals("image/png", result.mediaType)
+            assertEquals("page.png", result.fileName)
+            assertEquals(fixture.identity, fixture.toolExecutionIdentity)
+            assertEquals(
+                fixture.identity.workerId,
+                fixture.toolExecutionTarget?.workerId,
+            )
+            val toolCall = fixture.toolExecutionCalls.single()
+            assertEquals("mcp__test_server__browser_take_screenshot", toolCall.call.name)
+            assertEquals(
+                fixture.identity.workerId.value,
+                toolCall.call.input.jsonObject
+                    .getValue(AI_TOOL_EXECUTION_TARGET_FIELD)
+                    .jsonObject
+                    .getValue(AI_TOOL_EXECUTION_WORKER_ID_FIELD)
+                    .jsonPrimitive
+                    .content,
+            )
+        } finally {
+            fixture.close()
+        }
+    }
+
     @Test
     fun `create targets the current exact worker session and schedules its source catalog`() = runBlocking {
         val fixture = Fixture(online = true)
@@ -47,8 +87,10 @@ class McpServerManagementServiceTest {
             assertEquals(fixture.server.config.id.sourceId, fixture.generatedSource?.id)
             assertEquals(fixture.server.snapshot.instructions, fixture.generatedSource?.instructions)
             assertEquals(
-                fixture.server.snapshot.tools.map { it.remoteName },
-                fixture.generatedSource?.definitions?.map { it.name.substringAfterLast("__") },
+                fixture.server.snapshot.tools.map { it.remoteName }.sorted(),
+                fixture.generatedSource?.definitions
+                    ?.map { it.name.substringAfterLast("__") }
+                    ?.sorted(),
             )
         } finally {
             fixture.close()
@@ -189,6 +231,31 @@ class McpServerManagementServiceTest {
     }
 
     @Test
+    fun `update rejects moving a server to another worker`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            fixture.repository.create(fixture.server)
+
+            val error = assertFailsWith<IllegalArgumentException> {
+                fixture.service.update(
+                    config = fixture.server.config.copy(
+                        workerId = ConversationRuntimeWorkerId("other-worker")
+                    ),
+                    expectedRevision = 1,
+                )
+            }
+
+            assertEquals(
+                "Moving an MCP server between Workers requires explicit delete and create operations",
+                error.message,
+            )
+            assertEquals(null, fixture.request)
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
     fun `update rejects replacing and removing the same HTTP header`() = runBlocking {
         val fixture = Fixture(online = true)
         try {
@@ -238,6 +305,10 @@ class McpServerManagementServiceTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         var request: WorkerControlRequest? = null
         var generatedSource: AiToolCapabilitySource? = null
+        val screenshot = byteArrayOf(1, 3, 3, 7)
+        var toolExecutionIdentity: ConversationRuntimeWorkerIdentity? = null
+        var toolExecutionTarget: ConversationRuntimeTaskTarget.Worker? = null
+        var toolExecutionCalls = emptyList<Conversation.Message.ContentItem.ToolCall>()
 
         private val catalogService = AiToolCapabilityCatalogService(
             repository = TestCapabilityCatalogRepository(),
@@ -290,10 +361,40 @@ class McpServerManagementServiceTest {
                 }
             }
         }
+        private val toolExecutionClient = object : WorkerToolExecutionClient {
+            override suspend fun execute(
+                target: ConversationRuntimeWorkerIdentity,
+                executionTarget: ConversationRuntimeTaskTarget.Worker,
+                toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
+                toolContext: ToolExecutionContext,
+            ): WorkerToolExecutionResult {
+                toolExecutionIdentity = target
+                toolExecutionTarget = executionTarget
+                toolExecutionCalls = toolCalls
+                val call = toolCalls.single()
+                return WorkerToolExecutionResult(
+                    results = listOf(
+                        Conversation.Message.ContentItem.ToolResult(
+                            toolUseId = call.id,
+                            toolName = call.call.name,
+                            result = listOf(
+                                Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                                    data = Base64.getEncoder().encodeToString(screenshot),
+                                    mediaType = Conversation.Message.MediaType.IMAGE_PNG,
+                                    fileName = "page.png",
+                                )
+                            ),
+                        )
+                    ),
+                    returnDirect = false,
+                )
+            }
+        }
         val service = McpServerManagementService(
             repository = repository,
             workerRegistry = registry,
             workerControlClient = controlClient,
+            workerToolExecutionClient = toolExecutionClient,
             capabilityCatalogService = catalogService,
         )
 
@@ -371,7 +472,12 @@ private fun testServer(workerId: ConversationRuntimeWorkerId): McpServer {
             remoteName = "search",
             description = "Search test data.",
             inputSchema = "{}",
-        )
+        ),
+        McpToolSnapshot(
+            remoteName = "browser_take_screenshot",
+            description = "Capture a browser screenshot.",
+            inputSchema = "{}",
+        ),
     )
     val snapshot = McpServerSnapshot(
         serverName = "test-mcp",

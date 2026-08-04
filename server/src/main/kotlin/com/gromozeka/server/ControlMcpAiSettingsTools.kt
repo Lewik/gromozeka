@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
+import com.gromozeka.domain.model.mcp.BrowserUseMcpPreset
 import com.gromozeka.domain.service.AiCatalogManagementService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.SettingsService
@@ -32,10 +33,14 @@ internal class ControlMcpAiSettingsTools(
     override val tools: List<ControlMcpTool> = listOf(
         controlMcpTool(
             name = "grz_control_help",
-            description = "Explain Gromozeka configuration ownership and safe Control MCP workflows.",
+            description = "Explain Gromozeka configuration ownership, safe Control MCP workflows, and Browser Use self-setup.",
             readOnly = true,
             accessPolicy = ControlMcpAccessPolicy.SERVER_OWNER,
         ) {
+            val browserUseArguments = BrowserUseMcpPreset.arguments.joinToString(
+                prefix = "[",
+                postfix = "]",
+            ) { argument -> "\"$argument\"" }
             buildJsonObject {
                 put(
                     "guide",
@@ -51,6 +56,9 @@ internal class ControlMcpAiSettingsTools(
                     External MCP servers are assigned to one exact Worker. Create, update, refresh, and delete are explicit operations against its current live Worker session and are never retried automatically after execution starts.
                     External MCP environment and HTTP header values are never returned. Read configuredTransportValues for their names; update sends only add/replace values plus explicit removal lists.
                     MCP tools/list_changed notifications only set refreshAvailable; call grz_mcp_server_refresh explicitly to accept a changed tool snapshot.
+                    Browser Use is an ordinary external MCP definition and must be configured through the existing Worker and MCP tools. First read grz_worker_list and grz_mcp_server_list. Select the only online Worker automatically; if several online Workers are plausible, ask the user which machine owns the Chrome session. Never guess or reroute.
+                    A canonical Browser Use connection has a unique lowercase snake_case id beginning with ${BrowserUseMcpPreset.SERVER_ID_PREFIX}, displayName "Browser · <workerId>", the exact workerId, timeoutMs ${BrowserUseMcpPreset.OPERATION_TIMEOUT_MS}, and this stdio transport: command "npx"; arguments $browserUseArguments; ephemeralWorkingDirectory true. Create it when absent. If it exists but differs, update it using its latest revision; omitted environment values preserve stored secrets.
+                    Never ask the user to paste ${BrowserUseMcpPreset.EXTENSION_TOKEN_ENV} into the conversation or a Control MCP call. Tell the user to download Gromozeka Browser Bridge under Settings > Downloads, extract it permanently, remove the official Playwright Extension, and load the extracted folder from chrome://extensions with Developer mode enabled in the Chrome profile on the selected Worker's machine. The bridge exposes every ordinary tab in that profile. The user may then copy its token into Settings > Tools > Browser Use > Extension token to avoid repeated approval dialogs. Without a token, the user approves each connection in the bridge. Once the MCP connection is created, use its browser tools to verify the profile, normally with browser_take_screenshot.
                     Inline secrets are returned as null with configuredInlineSecretPaths. Keep them null and use the mutation's preserve-existing-secret option to retain their values.
                     Destructive operations never guess replacements and return dependency errors when an entity is still referenced.
                     Device UI settings are intentionally outside this control surface. grz_user_profile_update changes only shared user behavior.

@@ -6,6 +6,7 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_MEMORY_RESULT_DELIVERY
@@ -34,11 +35,7 @@ class McpToolCallbackAdapter(
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         try {
             log.debug { "Calling MCP tool: ${tool.remoteName} with input: $toolInput" }
-            val arguments = parseArguments(toolInput)
-                .withGrzConversationContext(
-                    context = context,
-                    enabled = forwardGrzConversationContext,
-                )
+            val arguments = arguments(toolInput, context)
             client.callTool(tool.remoteName, arguments).also { result ->
                 log.debug { "MCP tool ${tool.remoteName} result: $result" }
             }
@@ -50,6 +47,31 @@ class McpToolCallbackAdapter(
             throw IllegalStateException(message, error)
         }
     }
+
+    override fun callResult(
+        toolInput: String,
+        context: ToolExecutionContext?,
+    ): List<AiToolResult> = runBlocking {
+        try {
+            log.debug { "Calling MCP tool: ${tool.remoteName} with typed result" }
+            client.callToolResult(tool.remoteName, arguments(toolInput, context))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            val message = "Error executing MCP tool ${tool.remoteName}: ${error.message}"
+            log.error(error) { message }
+            throw IllegalStateException(message, error)
+        }
+    }
+
+    private fun arguments(
+        toolInput: String,
+        context: ToolExecutionContext?,
+    ): Map<String, Any?> = parseArguments(toolInput)
+        .withGrzConversationContext(
+            context = context,
+            enabled = forwardGrzConversationContext,
+        )
 
     private fun parseArguments(toolInput: String): Map<String, Any?> {
         if (toolInput.isBlank()) {

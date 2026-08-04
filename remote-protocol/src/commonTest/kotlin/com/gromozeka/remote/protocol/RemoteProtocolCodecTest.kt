@@ -12,6 +12,12 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.McpServerConfig
+import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.model.mcp.McpServerSnapshot
+import com.gromozeka.domain.model.mcp.McpServerTransport
+import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
@@ -249,6 +255,112 @@ class RemoteProtocolCodecTest {
         ).payload as ConversationTabLayoutSnapshotEvent
         assertEquals(7, decodedLayout.layout.revision)
         assertEquals("conversation-1", decodedLayout.layout.conversationIds.single().value)
+    }
+
+    @Test
+    fun roundTripSupportsRedactedMcpServerManagement() {
+        val workerId = ConversationRuntimeWorkerId("browser-worker")
+        val createEnvelope = GromozekaClientEnvelope(
+            id = "create-mcp-1",
+            payload = CreateMcpServerRequest(
+                McpServerConfig(
+                    id = McpServerId("browser_worker"),
+                    displayName = "Browser",
+                    workerId = workerId,
+                    transport = McpServerTransport.Stdio(
+                        command = "npx",
+                        arguments = listOf("--yes", "@playwright/mcp@0.0.78", "--extension"),
+                        environment = mapOf("PLAYWRIGHT_MCP_EXTENSION_TOKEN" to "secret-token"),
+                        ephemeralWorkingDirectory = true,
+                    ),
+                )
+            ),
+        )
+        val decodedCreate = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(createEnvelope)
+        ).payload as CreateMcpServerRequest
+        val decodedCreateTransport = decodedCreate.config.transport as McpServerTransport.Stdio
+        assertEquals("secret-token", decodedCreateTransport.environment["PLAYWRIGHT_MCP_EXTENSION_TOKEN"])
+        assertTrue(decodedCreateTransport.ephemeralWorkingDirectory)
+
+        val tool = McpToolSnapshot(
+            remoteName = "browser_snapshot",
+            description = "Capture a semantic page snapshot.",
+            inputSchema = "{}",
+        )
+        val snapshot = McpServerSnapshot(
+            serverName = "playwright-mcp",
+            serverVersion = "0.0.78",
+            tools = listOf(tool),
+            supportsToolsListChanged = false,
+            fingerprint = McpServerSnapshot.calculateFingerprint(
+                serverName = "playwright-mcp",
+                serverVersion = "0.0.78",
+                instructions = null,
+                supportsToolsListChanged = false,
+                tools = listOf(tool),
+            ),
+            capturedAt = Instant.parse("2026-08-03T00:00:00Z"),
+        )
+        val response = GromozekaServerEnvelope(
+            id = "list-mcp-1",
+            payload = McpServersResponse(
+                listOf(
+                    RemoteMcpServerView(
+                        server = McpServer(
+                            config = decodedCreate.config.copy(
+                                transport = decodedCreateTransport.copy(environment = emptyMap())
+                            ),
+                            snapshot = snapshot,
+                            revision = 1,
+                            refreshAvailable = false,
+                            createdAt = Instant.parse("2026-08-03T00:00:00Z"),
+                            updatedAt = Instant.parse("2026-08-03T00:00:00Z"),
+                        ),
+                        configuredEnvironmentVariables = setOf("PLAYWRIGHT_MCP_EXTENSION_TOKEN"),
+                    )
+                )
+            ),
+        )
+        val encodedResponse = RemoteProtocolCodec.encodeServerText(response)
+        val decodedResponse = RemoteProtocolCodec.decodeServerText(encodedResponse)
+            .payload as McpServersResponse
+
+        assertFalse("secret-token" in encodedResponse)
+        assertEquals(
+            setOf("PLAYWRIGHT_MCP_EXTENSION_TOKEN"),
+            decodedResponse.servers.single().configuredEnvironmentVariables,
+        )
+        assertTrue(
+            (decodedResponse.servers.single().server.config.transport as McpServerTransport.Stdio)
+                .environment
+                .isEmpty()
+        )
+
+        val probeRequest = GromozekaClientEnvelope(
+            id = "test-browser-use-1",
+            payload = TestBrowserUseRequest(McpServerId("browser_worker")),
+        )
+        val decodedProbeRequest = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(probeRequest)
+        ).payload as TestBrowserUseRequest
+        assertEquals("browser_worker", decodedProbeRequest.serverId.value)
+
+        val screenshot = byteArrayOf(1, 3, 3, 7)
+        val probeResponse = GromozekaServerEnvelope(
+            id = "test-browser-use-1",
+            payload = BrowserUseProbeResponse(
+                screenshot = screenshot,
+                mediaType = "image/png",
+                fileName = "page.png",
+            ),
+        )
+        val decodedProbeResponse = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(probeResponse)
+        ).payload as BrowserUseProbeResponse
+        assertContentEquals(screenshot, decodedProbeResponse.screenshot)
+        assertEquals("image/png", decodedProbeResponse.mediaType)
+        assertEquals("page.png", decodedProbeResponse.fileName)
     }
 
     @Test

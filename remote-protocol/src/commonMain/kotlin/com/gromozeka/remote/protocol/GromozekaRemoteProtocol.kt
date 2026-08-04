@@ -31,6 +31,10 @@ import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.redactInlineSecrets
 import com.gromozeka.domain.model.ai.secretStates
+import com.gromozeka.domain.model.mcp.McpServer
+import com.gromozeka.domain.model.mcp.McpServerConfig
+import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
@@ -133,6 +137,45 @@ data class SaveAiCatalogRequest(
     val catalog: AiCatalog,
     val expectedRevision: Long,
     val secretMutations: List<AiCatalogSecretMutation> = emptyList(),
+) : ClientRequest
+
+@Serializable
+@SerialName("list_mcp_servers")
+data object ListMcpServersRequest : ClientRequest
+
+@Serializable
+@SerialName("create_mcp_server")
+data class CreateMcpServerRequest(
+    val config: McpServerConfig,
+) : ClientRequest
+
+@Serializable
+@SerialName("update_mcp_server")
+data class UpdateMcpServerRequest(
+    val config: McpServerConfig,
+    val expectedRevision: Long,
+    val removeEnvironmentVariables: Set<String> = emptySet(),
+    val removeHttpHeaders: Set<String> = emptySet(),
+) : ClientRequest
+
+@Serializable
+@SerialName("refresh_mcp_server")
+data class RefreshMcpServerRequest(
+    val serverId: McpServerId,
+    val expectedRevision: Long,
+) : ClientRequest
+
+@Serializable
+@SerialName("test_browser_use")
+data class TestBrowserUseRequest(
+    val serverId: McpServerId,
+) : ClientRequest
+
+@Serializable
+@SerialName("delete_mcp_server")
+data class DeleteMcpServerRequest(
+    val serverId: McpServerId,
+    val expectedRevision: Long,
 ) : ClientRequest
 
 @Serializable
@@ -780,6 +823,51 @@ data class SettingsResponse(
 @SerialName("ai_catalog")
 data class AiCatalogResponse(
     val snapshot: RemoteAiCatalogSnapshot,
+) : ServerResponse
+
+@Serializable
+data class RemoteMcpServerView(
+    val server: McpServer,
+    val configuredEnvironmentVariables: Set<String> = emptySet(),
+    val configuredHttpHeaders: Set<String> = emptySet(),
+) {
+    init {
+        when (val transport = server.config.transport) {
+            is McpServerTransport.Stdio -> require(transport.environment.isEmpty()) {
+                "Remote MCP server view must not contain environment values"
+            }
+
+            is McpServerTransport.StreamableHttp -> require(transport.headers.isEmpty()) {
+                "Remote MCP server view must not contain HTTP header values"
+            }
+        }
+        require(configuredEnvironmentVariables.none(String::isBlank)) {
+            "Configured MCP environment variable names must not be blank"
+        }
+        require(configuredHttpHeaders.none(String::isBlank)) {
+            "Configured MCP HTTP header names must not be blank"
+        }
+    }
+}
+
+@Serializable
+@SerialName("mcp_servers")
+data class McpServersResponse(
+    val servers: List<RemoteMcpServerView>,
+) : ServerResponse
+
+@Serializable
+@SerialName("mcp_server")
+data class McpServerResponse(
+    val server: RemoteMcpServerView,
+) : ServerResponse
+
+@Serializable
+@SerialName("browser_use_probe")
+data class BrowserUseProbeResponse(
+    val screenshot: ByteArray,
+    val mediaType: String,
+    val fileName: String? = null,
 ) : ServerResponse
 
 @Serializable

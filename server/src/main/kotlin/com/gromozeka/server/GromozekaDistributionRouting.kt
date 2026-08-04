@@ -1,5 +1,6 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.mcp.BrowserUseMcpPreset
 import com.gromozeka.remote.protocol.DistributionArchitecture
 import com.gromozeka.remote.protocol.DistributionArtifact
 import com.gromozeka.remote.protocol.DistributionComponent
@@ -176,6 +177,15 @@ private const val MAX_ENROLLMENT_REQUEST_BYTES = 8 * 1024
 private const val DEVELOPMENT_SERVER_VERSION = "0.0.0-dev"
 
 internal fun distributionArtifacts(releaseDownloadBaseUrl: String) = listOf(
+    DistributionArtifact(
+        id = BrowserUseMcpPreset.BRIDGE_ARTIFACT_ID,
+        component = DistributionComponent.BROWSER_BRIDGE,
+        operatingSystem = DistributionOperatingSystem.ANY,
+        architecture = DistributionArchitecture.ANY,
+        format = DistributionFormat.BROWSER_EXTENSION_ZIP,
+        fileName = BrowserUseMcpPreset.BRIDGE_FILE_NAME,
+        downloadUrl = "$releaseDownloadBaseUrl/${BrowserUseMcpPreset.BRIDGE_FILE_NAME}",
+    ),
     DistributionArtifact(
         id = "client-macos-arm64",
         component = DistributionComponent.CLIENT,

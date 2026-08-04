@@ -53,10 +53,11 @@ No automatic rerouting occurs when Worker is offline. A browser session on anoth
 This is the preferred mode for the stated product goal.
 
 - The user installs a Gromozeka browser extension into the profile they already use.
-- The extension connects locally to the Worker or to a Worker-owned native messaging host.
-- It exposes explicitly attached tabs through browser debugging/extension APIs.
+- The extension connects to the loopback relay owned by Playwright MCP on one exact Worker.
+- While connected, it exposes every ordinary tab in the profile through Chrome debugging APIs.
 - Cookies and authentication remain browser-owned; Gromozeka does not copy the cookie database.
-- The extension can show which tabs are attached and allow detaching immediately.
+- The extension shows the currently available tabs and can disconnect the whole Browser Use connection immediately.
+- It never groups tabs or changes focus on its own. Opening a tab from the extension status UI is an explicit user action.
 
 This follows the same broad direction as current Codex and Claude browser integrations: an extension is the bridge into a regular profile. It also avoids depending on remote-debugging access to Chrome's default data directory, which Chrome intentionally restricts.
 
@@ -114,18 +115,20 @@ Important invariants:
 - loss of connection moves the session to `UNKNOWN` or `DISCONNECTED`, never silently to another browser;
 - actions with unknown outcome are never automatically retried.
 
-## Tab Attachment and Handoff
+## Profile Scope and Handoff
 
 The user should be able to:
 
 1. Open and authenticate a site normally.
-2. Attach the current tab to Gromozeka from the extension or Gromozeka UI.
+2. Connect Browser Use for that profile from Gromozeka.
 3. Ask the model to continue.
 4. Observe the tab without being forced to keep it foregrounded.
 5. Take control by interacting with it.
 6. Return control to the model without creating a new session.
 
-The first implementation should distinguish:
+The first implementation intentionally grants the connection access to every ordinary tab in the profile. Browser-internal, DevTools, and extension pages remain unavailable. New ordinary tabs join automatically, and closing one tab does not tear down the connection.
+
+A later explicit handoff layer may distinguish:
 
 - `AVAILABLE`: tab belongs to the profile but is not controlled;
 - `ATTACHED`: model may inspect and act;
@@ -157,7 +160,9 @@ Therefore:
 
 ## Tool Surface
 
-Avoid exposing every low-level CDP method directly. Start with a compact stable browser vocabulary:
+The first implementation reuses Playwright MCP's namespaced browser tools rather than translating them into a second Gromozeka-specific vocabulary. Tool discovery keeps the large surface out of the model's default prompt, while exact Worker routing remains Gromozeka-owned.
+
+If Browser Sessions later require provider-independent contracts, introduce a compact stable vocabulary at that boundary rather than exposing raw CDP methods:
 
 - `grz_browser_profiles`
 - `grz_browser_sessions`
@@ -200,7 +205,7 @@ Every action result includes:
 Runtime UI should show:
 
 - Worker and profile;
-- attached tabs with favicon/title/URL;
+- available tabs with favicon/title/URL;
 - who currently controls the tab;
 - latest action and status;
 - pause/detach/close controls;
@@ -214,9 +219,9 @@ Extension or Worker restarts must not imply that a browser action is safe to rep
 
 On reconnect:
 
-1. Worker lists attached/known tabs and their current URLs.
+1. Worker lists available tabs and their current URLs.
 2. Server reconciles Browser Session records.
-3. Exact matches return to `ATTACHED` but no interrupted mutation is replayed.
+3. Exact matches return to the available state but no interrupted mutation is replayed.
 4. Missing or ambiguous tabs become `UNKNOWN`/`DETACHED`.
 5. The model receives the reconciliation result on its next safe input.
 
@@ -226,13 +231,12 @@ No automatic retry of clicks, form submissions, navigation, payments, or downloa
 
 The extension should remain a thin local bridge:
 
-- attach/detach tabs;
-- collect semantic page state;
-- execute a bounded command protocol;
-- stream events/results to its Worker;
-- show visible attachment/control state.
+- announce ordinary tabs to the Worker-local Playwright MCP relay;
+- forward the allow-listed Chrome debugger protocol used by that relay;
+- show visible connection scope and state;
+- disconnect the relay on explicit user request.
 
-It should not own conversations, prompts, model access, or Server credentials. It authenticates only to the local Worker bridge using a per-install secret or native messaging channel.
+It should not own conversations, prompts, model access, or Server credentials. A per-install token authorizes the Worker-local Playwright relay, and the extension rejects non-loopback relay URLs.
 
 Extension permissions should be explicit and explainable. Host permissions may be broad because the product intentionally supports arbitrary authenticated sites, but the extension must not hide that scope.
 
@@ -252,9 +256,9 @@ Normal system security still applies:
 
 ## Implementation Sequence
 
-1. Finish common Artifact support and typed image/file tool results.
-2. Prototype an extension bridge that attaches one existing Chrome tab on one Worker.
-3. Implement Browser Session and semantic snapshot/screenshot.
+1. Finish common Artifact support and typed image/file tool results. Implemented.
+2. Ship the full-profile Browser Bridge and Worker-scoped Playwright MCP connection. Implemented.
+3. Decide whether a durable Browser Session abstraction adds value beyond the current MCP connection, then implement it if needed.
 4. Add navigate/click/type/wait with deterministic action IDs and no retries.
 5. Add user/model handoff and Runtime UI.
 6. Add downloads/uploads through Artifacts.
@@ -263,7 +267,8 @@ Normal system security still applies:
 
 ## Verification
 
-- attach a logged-in tab without copying cookies;
+- expose logged-in ordinary tabs without copying cookies;
+- add ordinary tabs automatically without grouping them or taking focus;
 - continue an operation started manually;
 - user takes control, edits the page, and returns it;
 - background interaction does not move the OS pointer or steal keyboard focus in ordinary cases;
@@ -275,7 +280,6 @@ Normal system security still applies:
 
 ## Open Questions
 
-- Is explicit per-tab attachment enough, or should the user be able to attach an entire browser window/profile?
 - How aggressively should recent user interaction pause model mutations?
 - Should a Browser Session survive conversation completion by default?
 - Which actions require an automatic before/after screenshot for debugging?

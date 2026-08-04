@@ -105,6 +105,43 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  browser-bridge:
+    needs: [metadata, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: browser-bridge/package-lock.json
+      - name: Build and test Browser Bridge
+        run: |
+          npm --prefix browser-bridge ci --no-audit --no-fund
+          npm --prefix browser-bridge test -- --reporter=dot
+          npm --prefix browser-bridge run build
+      - name: Package unpacked Browser Bridge
+        shell: bash
+        run: |
+          mkdir -p release-asset/gromozeka-browser-bridge
+          cp -R browser-bridge/dist/. release-asset/gromozeka-browser-bridge/
+          (
+            cd release-asset
+            zip -q -r gromozeka-browser-bridge.zip gromozeka-browser-bridge
+            rm -rf gromozeka-browser-bridge
+          )
+          unzip -Z1 release-asset/gromozeka-browser-bridge.zip | grep -qx 'gromozeka-browser-bridge/manifest.json'
+          unzip -Z1 release-asset/gromozeka-browser-bridge.zip | grep -qx 'gromozeka-browser-bridge/LICENSE'
+          unzip -Z1 release-asset/gromozeka-browser-bridge.zip | grep -qx 'gromozeka-browser-bridge/NOTICE'
+          unzip -Z1 release-asset/gromozeka-browser-bridge.zip | grep -qx 'gromozeka-browser-bridge/THIRD_PARTY_NOTICES.txt'
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: browser-bridge
+          path: release-asset/gromozeka-browser-bridge.zip
+          if-no-files-found: error
+          retention-days: 1
+
   client-macos:
     needs: [metadata, verify]
     runs-on: macos-latest
@@ -408,6 +445,7 @@ jobs:
       - client-windows
       - worker-unix
       - worker-windows
+      - browser-bridge
       - images
     runs-on: ubuntu-latest
     permissions:
@@ -426,6 +464,11 @@ jobs:
           pattern: worker-*
           path: downloaded-artifacts
           merge-multiple: true
+      - name: Download Browser Bridge artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: browser-bridge
+          path: downloaded-artifacts
       - name: Prepare release assets
         shell: bash
         run: |
@@ -455,6 +498,7 @@ jobs:
               gromozeka-worker-macos-arm64.tar.gz \
               gromozeka-worker-windows-x64.zip \
               gromozeka-worker-linux-x64.tar.gz \
+              gromozeka-browser-bridge.zip \
               > SHA256SUMS
           )
       - name: Write release notes
@@ -469,8 +513,11 @@ jobs:
           - macOS ARM64 Worker: `gromozeka-worker-macos-arm64.tar.gz`
           - Windows x64 Worker: `gromozeka-worker-windows-x64.zip`
           - Linux x64 Worker: `gromozeka-worker-linux-x64.tar.gz`
+          - Chrome/Edge/Chromium Browser Bridge: `gromozeka-browser-bridge.zip`
 
-          The desktop and Worker packages are currently unsigned. macOS Gatekeeper and
+          Remove the official Playwright Extension, then load the extracted Browser Bridge
+          directory from `chrome://extensions` with Developer mode enabled. The desktop and
+          Worker packages are currently unsigned. macOS Gatekeeper and
           Windows SmartScreen may require explicit confirmation on first launch.
           Verify downloaded files against `SHA256SUMS`.
           EOF
