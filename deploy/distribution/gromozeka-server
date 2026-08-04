@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+app_home="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+export GROMOZEKA_MODE="${GROMOZEKA_MODE:-prod}"
+export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$HOME/.gromozeka}"
+export GROMOZEKA_WEB_STATIC_DIR="${GROMOZEKA_WEB_STATIC_DIR:-$app_home/web}"
+server_config="${GROMOZEKA_SERVER_CONFIG:-$GROMOZEKA_HOME/server.yaml}"
+source "$app_home/bin/runtime-bootstrap.sh"
+java_executable="$(gromozeka_resolve_java)"
+
+exec "$java_executable" \
+  -XX:MaxRAMPercentage=75.0 \
+  -jar "$app_home/app/gromozeka-server.jar" \
+  "--spring.config.additional-location=optional:file:$server_config" \
+  "$@"

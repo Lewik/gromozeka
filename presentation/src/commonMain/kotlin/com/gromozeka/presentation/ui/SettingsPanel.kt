@@ -1375,7 +1375,7 @@ private fun DistributionCatalog(manifest: DistributionManifest) {
 
     SettingsGroup(title = "Downloads") {
         Text(
-            text = "Native clients, the Browser Bridge, the Docker Server stack, and trusted Workers for version ${manifest.serverVersion}.",
+            text = "Native clients, standalone and Docker Servers, the Browser Bridge, and trusted Workers for version ${manifest.serverVersion}.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(

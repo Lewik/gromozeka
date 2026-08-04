@@ -186,9 +186,14 @@ currently provide:
 - a portable Windows x64 Client ZIP;
 - a Chrome/Edge/Chromium Browser Bridge ZIP loaded as an unpacked extension;
 - a Docker Compose Server stack with PostgreSQL and a Caddy HTTPS/WSS gateway;
-- macOS ARM64, Linux x64, and Windows x64 Worker archives with private Java 21 runtimes;
+- thin macOS ARM64, Linux x64, and Windows x64 standalone Server archives;
+- thin macOS ARM64, Linux x64, and Windows x64 Worker archives with Browser MCP;
 - `ghcr.io/lewik/gromozeka-server` and `ghcr.io/lewik/gromozeka-worker` images;
 - SHA-256 checksums for every downloadable package.
+
+Standalone launchers use compatible system Java/Node installations when
+available. Otherwise they download checksum-pinned official runtimes once into
+`~/.gromozeka/runtimes`; Docker images remain self-contained.
 
 Pushing a `v<major>.<minor>.<patch>` tag runs the release workflow, publishes
 those assets and immutable images, then installs that exact release on the

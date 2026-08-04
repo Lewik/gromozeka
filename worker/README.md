@@ -46,18 +46,19 @@ Worker log directory.
 
 ## Distribution
 
-Release archives contain `gromozeka-worker.jar`, a private Java 21 runtime,
-launchers, and an example configuration. The GitHub release workflow builds
-macOS ARM64, Linux x64, and Windows x64 packages.
+Release archives contain `gromozeka-worker.jar`, Gromozeka Browser MCP,
+launchers, and an example configuration. They prefer compatible system Java
+and Node runtimes and otherwise download checksum-pinned official runtimes once
+under `~/.gromozeka/runtimes`. The GitHub release workflow builds macOS ARM64,
+Linux x64, and Windows x64 packages.
 
 Build a macOS or Linux archive locally:
 
 ```bash
-./gradlew :worker:bootJar -Pgromozeka.version=1.0.0
-deploy/distribution/package-worker.sh macos arm64 build/release
+npm --prefix browser-mcp ci
+./gradlew :worker:bootJar -Pgromozeka.version=1.0.0 -q
+deploy/distribution/package-standalone.sh worker macos arm64 build/release
 ```
-
-On Windows, run `deploy/distribution/package-worker.ps1` after `bootJar`.
 
 When Server enrollment is enabled, open its `/downloads` page, generate a
 one-time token, then run the displayed `bin/gromozeka-worker enroll` or

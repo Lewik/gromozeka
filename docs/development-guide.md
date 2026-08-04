@@ -56,6 +56,14 @@ selected provider and account contract. These dependency rules do not change
 Gromozeka's own license: commercial use still requires the permission described
 in `LICENSE`.
 
+Standalone Server and Worker archives stay thin. Their launchers prefer an
+explicit or compatible system Java runtime and otherwise cache a pinned,
+checksum-verified official Temurin JRE under the Gromozeka home directory. The
+Worker includes the pinned Gromozeka Browser MCP package; it resolves Node in
+the same way and downloads the official pinned runtime only when Browser Use is
+first started. Docker images remain self-contained and do not download runtimes
+at startup. Claude Code and browser binaries are never bundled.
+
 ## Runtime Language
 
 - A **Project** is a logical working context.

@@ -1,17 +1,22 @@
-#!/bin/sh
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
 app_home="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$HOME/.gromozeka}"
+export GROMOZEKA_BROWSER_MCP_LAUNCHER="${GROMOZEKA_BROWSER_MCP_LAUNCHER:-$app_home/bin/gromozeka-browser-mcp}"
+export GROMOZEKA_BROWSER_MCP_HOME="${GROMOZEKA_BROWSER_MCP_HOME:-$app_home/app/browser-mcp}"
+export GROMOZEKA_RUNTIME_BOOTSTRAP="${GROMOZEKA_RUNTIME_BOOTSTRAP:-$app_home/bin/runtime-bootstrap.sh}"
 worker_config="${GROMOZEKA_WORKER_CONFIG:-$GROMOZEKA_HOME/worker.yaml}"
+source "$app_home/bin/runtime-bootstrap.sh"
+java_executable="$(gromozeka_resolve_java)"
 
 if [ "${1:-}" = "enroll" ]; then
-  exec "$app_home/runtime/bin/java" \
+  exec "$java_executable" \
     -jar "$app_home/app/gromozeka-worker.jar" \
     "$@"
 fi
 
-exec "$app_home/runtime/bin/java" \
+exec "$java_executable" \
   -jar "$app_home/app/gromozeka-worker.jar" \
   "--spring.config.additional-location=optional:file:$worker_config" \
   "$@"

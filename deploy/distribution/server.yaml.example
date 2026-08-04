@@ -1,0 +1,5 @@
+gromozeka:
+  postgres:
+    jdbc-url: ${GROMOZEKA_POSTGRES_JDBC_URL:jdbc:postgresql://localhost:5432/gromozeka}
+    username: ${GROMOZEKA_POSTGRES_USERNAME:gromozeka}
+    password: ${GROMOZEKA_POSTGRES_PASSWORD:gromozeka}

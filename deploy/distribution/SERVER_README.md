@@ -26,7 +26,7 @@ Three TLS modes are available:
   chain and private key in `certs/`, set their file names in `gromozeka.env`,
   and set `GROMOZEKA_CADDY_CONFIG=Caddyfile.provided`. Client and Worker
   operating systems must trust the issuing CA; Workers can additionally use
-  `--ca-certificate` when their bundled Java runtime does not.
+  `--ca-certificate` when their Java runtime does not.
 
 The optional containerized Worker does not include Claude Code. Claude Code is
 installed, licensed, and authenticated separately on a standalone Worker host.
