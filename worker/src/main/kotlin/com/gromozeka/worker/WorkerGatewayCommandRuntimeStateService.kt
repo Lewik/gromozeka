@@ -22,7 +22,7 @@ class WorkerGatewayCommandRuntimeStateService(
         check(response is WorkerCommandRuntimeResponse.CommandTaskUpserted) {
             "Unexpected command task upsert response: ${response::class.simpleName}"
         }
-        return CommandTaskUpsertResult(response.evictedTasks)
+        return CommandTaskUpsertResult(response.task, response.evictedTasks)
     }
 
     override suspend fun findCommandTasks(): List<CommandTask> {

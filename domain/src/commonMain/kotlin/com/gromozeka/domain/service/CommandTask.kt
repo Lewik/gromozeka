@@ -69,5 +69,6 @@ data class CommandTaskOutput(
 )
 
 data class CommandTaskUpsertResult(
+    val task: CommandTask,
     val evictedTasks: List<CommandTask> = emptyList(),
 )

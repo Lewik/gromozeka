@@ -31,17 +31,18 @@ class ServerCommandRuntimeStateService(
 ) : CommandRuntimeStateService {
     override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult {
         val result = runtimeCoordinator.upsertCommandTask(task)
-        if (task.isTerminal &&
-            task.agentDefinitionId != null &&
-            task.completionNotificationRequestedAt != null &&
-            task.completionNotificationDeliveredAt == null
+        val storedTask = result.task
+        if (storedTask.isTerminal &&
+            storedTask.agentDefinitionId != null &&
+            storedTask.completionNotificationRequestedAt != null &&
+            storedTask.completionNotificationDeliveredAt == null
         ) {
             commandTaskLifecycleEventPublisher.publish(
                 CommandTaskLifecycleEvent(
-                    conversationId = task.conversationId,
-                    taskId = task.id,
-                    status = task.status,
-                    occurredAt = task.completedAt ?: task.updatedAt,
+                    conversationId = storedTask.conversationId,
+                    taskId = storedTask.id,
+                    status = storedTask.status,
+                    occurredAt = storedTask.completedAt ?: storedTask.updatedAt,
                 )
             )
         }

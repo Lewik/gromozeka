@@ -129,7 +129,7 @@ class DefaultCommandTaskService(
             val command = ActiveCommand(task, process, taskMutex(task.id))
             try {
                 command.mutex.withLock {
-                    persistCommandTask(task)
+                    command.task = persistCommandTask(task)
                     activeCommands[task.id] = command
                     publishSnapshot(conversationId)
                     scope.launch {
@@ -510,7 +510,7 @@ class DefaultCommandTaskService(
         statusMessage: String,
     ) {
         setTerminalState(activeCommand, status, exitCode, statusMessage)
-        persistCommandTask(activeCommand.task)
+        activeCommand.task = persistCommandTask(activeCommand.task)
         publishSnapshot(activeCommand.task.conversationId)
     }
 
@@ -549,7 +549,7 @@ class DefaultCommandTaskService(
     private suspend fun trySynchronizeCommandTask(activeCommand: ActiveCommand): Boolean =
         try {
             val task = activeCommand.task
-            persistCommandTask(task)
+            activeCommand.task = persistCommandTask(task)
             publishSnapshot(task.conversationId)
             activeCommand.lastControlPlaneWarningAtNanos = null
             true
@@ -622,13 +622,15 @@ class DefaultCommandTaskService(
             activeCommand.task
         }
 
-    private suspend fun persistCommandTask(task: CommandTask) {
-        runtimeState.upsertCommandTask(task).evictedTasks.forEach { evictedTask ->
+    private suspend fun persistCommandTask(task: CommandTask): CommandTask {
+        val result = runtimeState.upsertCommandTask(task)
+        result.evictedTasks.forEach { evictedTask ->
             runCatching { processRunner.deleteOutputArtifacts(evictedTask.outputFile) }
                 .onFailure { error ->
                     log.warn(error) { "Failed to delete evicted command output: ${evictedTask.outputFile}" }
                 }
         }
+        return result.task
     }
 
     private suspend fun runOutputGarbageCollectionLoop() {

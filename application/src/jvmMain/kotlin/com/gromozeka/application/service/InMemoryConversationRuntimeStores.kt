@@ -389,11 +389,13 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         mutex.withLock {
             val tasks = commandTasksByConversation.getOrPut(task.conversationId) { mutableListOf() }
             val existingIndex = tasks.indexOfFirst { it.id == task.id }
-            val previousStatus = tasks.getOrNull(existingIndex)?.status
+            val existing = tasks.getOrNull(existingIndex)
+            val previousStatus = existing?.status
+            val storedTask = task.mergeCoordinatorState(existing)
             if (existingIndex >= 0) {
-                tasks[existingIndex] = task
+                tasks[existingIndex] = storedTask
             } else {
-                tasks.add(task)
+                tasks.add(storedTask)
             }
             val monitoredTaskIds = commandMonitorsByConversation[task.conversationId]
                 .orEmpty()
@@ -412,16 +414,16 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             val evictedTasks = tasks.filterNot { it.id in retainedTaskIds }
             tasks.clear()
             tasks.addAll(retainedTasks)
-            if (previousStatus != task.status) {
+            if (previousStatus != storedTask.status) {
                 appendTrace(
-                    conversationId = task.conversationId,
+                    conversationId = storedTask.conversationId,
                     kind = ConversationRuntimeTraceEntry.Kind.COMMAND_TASK,
-                    status = task.status.toTraceStatus(),
-                    message = "${task.id.value}: ${task.status}",
+                    status = storedTask.status.toTraceStatus(),
+                    message = "${storedTask.id.value}: ${storedTask.status}",
                 )
             }
-            bumpRevision(task.conversationId)
-            CommandTaskUpsertResult(evictedTasks)
+            bumpRevision(storedTask.conversationId)
+            CommandTaskUpsertResult(storedTask, evictedTasks)
         }
 
     override suspend fun findCommandTasks(): List<CommandTask> = mutex.withLock {
@@ -865,14 +867,32 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         return true
     }
 
-    private fun CommandMonitor.mergeCoordinatorState(existing: CommandMonitor?): CommandMonitor {
+    private fun CommandTask.mergeCoordinatorState(existing: CommandTask?): CommandTask {
         if (existing == null) return this
-        val preserveCancellation = cancellationRequestedAt == null && existing.cancellationRequestedAt != null
+        val preserveCancellationStatus =
+            !isTerminal && cancellationRequestedAt == null && existing.cancellationRequestedAt != null
         return copy(
             cancellationRequestedAt = cancellationRequestedAt ?: existing.cancellationRequestedAt,
+            completionNotificationRequestedAt =
+                completionNotificationRequestedAt ?: existing.completionNotificationRequestedAt,
+            completionNotificationDeliveredAt =
+                completionNotificationDeliveredAt ?: existing.completionNotificationDeliveredAt,
+            statusMessage = if (preserveCancellationStatus) existing.statusMessage else statusMessage,
+            updatedAt = maxOf(updatedAt, existing.updatedAt),
+        )
+    }
+
+    private fun CommandMonitor.mergeCoordinatorState(existing: CommandMonitor?): CommandMonitor {
+        if (existing == null) return this
+        val preserveCancellationStatus =
+            !isTerminal && cancellationRequestedAt == null && existing.cancellationRequestedAt != null
+        return copy(
+            cancellationRequestedAt = cancellationRequestedAt ?: existing.cancellationRequestedAt,
+            terminalNotificationRequestedAt =
+                terminalNotificationRequestedAt ?: existing.terminalNotificationRequestedAt,
             terminalNotificationDeliveredAt =
                 terminalNotificationDeliveredAt ?: existing.terminalNotificationDeliveredAt,
-            statusMessage = if (preserveCancellation) existing.statusMessage else statusMessage,
+            statusMessage = if (preserveCancellationStatus) existing.statusMessage else statusMessage,
             updatedAt = maxOf(updatedAt, existing.updatedAt),
         )
     }

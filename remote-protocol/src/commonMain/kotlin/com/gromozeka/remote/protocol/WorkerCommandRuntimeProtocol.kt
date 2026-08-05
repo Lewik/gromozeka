@@ -83,6 +83,7 @@ sealed interface WorkerCommandRuntimeResponse {
     @Serializable
     @SerialName("command_task_upserted")
     data class CommandTaskUpserted(
+        val task: CommandTask,
         val evictedTasks: List<CommandTask>,
     ) : WorkerCommandRuntimeResponse
 

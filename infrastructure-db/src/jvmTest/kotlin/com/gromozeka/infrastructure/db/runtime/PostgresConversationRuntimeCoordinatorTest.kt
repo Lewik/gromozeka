@@ -465,14 +465,39 @@ class PostgresConversationRuntimeCoordinatorTest {
             )
 
             coordinator.upsertCommandTask(source)
+            val commandCancellationRequestedAt = Instant.fromEpochMilliseconds(5_000)
+            assertTrue(
+                coordinator.requestCommandTaskCancellation(
+                    conversationId,
+                    source.id,
+                    commandCancellationRequestedAt,
+                )
+            )
+            val cancelledSource = coordinator.upsertCommandTask(
+                source.copy(
+                    status = CommandTask.Status.CANCELLED,
+                    statusMessage = "Command was cancelled",
+                    completedAt = now,
+                )
+            ).task
+            assertEquals(commandCancellationRequestedAt, cancelledSource.cancellationRequestedAt)
+            assertEquals(commandCancellationRequestedAt, cancelledSource.updatedAt)
+            assertEquals("Command was cancelled", cancelledSource.statusMessage)
             coordinator.synchronizeCommandMonitor(monitor, listOf(event))
 
             assertEquals(monitor, reloadedCoordinator.findCommandMonitor(conversationId, monitor.id))
             assertEquals(listOf(event), reloadedCoordinator.findCommandMonitorEvents(conversationId, monitor.id))
             assertEquals(listOf(monitor), reloadedCoordinator.snapshot(conversationId).commandMonitors)
-            assertTrue(reloadedCoordinator.requestCommandMonitorCancellation(conversationId, monitor.id, now))
+            val monitorCancellationRequestedAt = Instant.fromEpochMilliseconds(5_000)
+            assertTrue(
+                reloadedCoordinator.requestCommandMonitorCancellation(
+                    conversationId,
+                    monitor.id,
+                    monitorCancellationRequestedAt,
+                )
+            )
             assertEquals(
-                now,
+                monitorCancellationRequestedAt,
                 reloadedCoordinator.findCommandMonitor(conversationId, monitor.id)?.cancellationRequestedAt,
             )
             assertTrue(
@@ -482,10 +507,9 @@ class PostgresConversationRuntimeCoordinatorTest {
                     deliveredAt = Instant.fromEpochMilliseconds(2_000),
                 )
             )
-            val terminal = requireNotNull(
-                reloadedCoordinator.findCommandMonitor(conversationId, monitor.id)
-            ).copy(
+            val terminal = monitor.copy(
                 status = CommandMonitor.Status.COMPLETED,
+                statusMessage = "Command monitor completed",
                 completedAt = Instant.fromEpochMilliseconds(3_000),
                 updatedAt = Instant.fromEpochMilliseconds(3_000),
                 terminalOutputStartByte = 0,
@@ -493,6 +517,14 @@ class PostgresConversationRuntimeCoordinatorTest {
                 terminalErrorOutput = "",
             )
             reloadedCoordinator.synchronizeCommandMonitor(terminal)
+            assertEquals(
+                monitorCancellationRequestedAt,
+                reloadedCoordinator.findCommandMonitor(conversationId, monitor.id)?.cancellationRequestedAt,
+            )
+            assertEquals(
+                "Command monitor completed",
+                reloadedCoordinator.findCommandMonitor(conversationId, monitor.id)?.statusMessage,
+            )
             assertTrue(
                 reloadedCoordinator.markCommandMonitorTerminalNotificationDelivered(
                     conversationId = conversationId,

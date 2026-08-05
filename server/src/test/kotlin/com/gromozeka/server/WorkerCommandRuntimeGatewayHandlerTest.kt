@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.repository.ConversationRepository
+import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorLifecycleEventPublisher
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
@@ -44,7 +45,7 @@ class WorkerCommandRuntimeGatewayHandlerTest {
         )
 
         assertEquals(
-            WorkerCommandRuntimeResponse.CommandTaskUpserted(emptyList()),
+            WorkerCommandRuntimeResponse.CommandTaskUpserted(task, emptyList()),
             response,
         )
         assertEquals(
@@ -86,6 +87,90 @@ class WorkerCommandRuntimeGatewayHandlerTest {
             response,
         )
         assertNull((response as WorkerCommandRuntimeResponse.CommandTaskResult).task)
+    }
+
+    @Test
+    fun `worker completes cancelled command when its clock is behind server`() = runBlocking {
+        val fixture = fixture()
+        val task = fixture.commandTask(fixture.workerId)
+        val cancellationRequestedAt = Instant.parse("2026-07-30T00:00:10Z")
+        fixture.coordinator.upsertCommandTask(task)
+        fixture.coordinator.requestCommandTaskCancellation(
+            fixture.conversation.id,
+            task.id,
+            cancellationRequestedAt,
+        )
+
+        fixture.execute(
+            WorkerCommandRuntimeRequest.UpsertCommandTask(
+                task.copy(
+                    outputBytes = 12,
+                    statusMessage = "Command is running",
+                )
+            )
+        )
+        val working = requireNotNull(
+            fixture.coordinator.findCommandTask(fixture.conversation.id, task.id)
+        )
+        assertEquals(CommandTask.Status.WORKING, working.status)
+        assertEquals("Cancellation requested", working.statusMessage)
+        assertEquals(cancellationRequestedAt, working.cancellationRequestedAt)
+        assertEquals(cancellationRequestedAt, working.updatedAt)
+        val cancelled = task.copy(
+            status = CommandTask.Status.CANCELLED,
+            statusMessage = "Command was cancelled",
+            completedAt = fixture.now,
+        )
+
+        val response = fixture.execute(WorkerCommandRuntimeRequest.UpsertCommandTask(cancelled))
+        val stored = requireNotNull(
+            fixture.coordinator.findCommandTask(fixture.conversation.id, task.id)
+        )
+
+        assertEquals(
+            WorkerCommandRuntimeResponse.CommandTaskUpserted(stored, emptyList()),
+            response,
+        )
+        assertEquals(CommandTask.Status.CANCELLED, stored.status)
+        assertEquals("Command was cancelled", stored.statusMessage)
+        assertEquals(cancellationRequestedAt, stored.cancellationRequestedAt)
+        assertEquals(cancellationRequestedAt, stored.updatedAt)
+    }
+
+    @Test
+    fun `worker completes cancelled monitor when its clock is behind server`() = runBlocking {
+        val fixture = fixture()
+        val source = fixture.commandTask(fixture.workerId)
+        val monitor = fixture.commandMonitor(source)
+        val cancellationRequestedAt = Instant.parse("2026-07-30T00:00:10Z")
+        fixture.coordinator.upsertCommandTask(source)
+        fixture.coordinator.synchronizeCommandMonitor(monitor)
+        fixture.coordinator.requestCommandMonitorCancellation(
+            fixture.conversation.id,
+            monitor.id,
+            cancellationRequestedAt,
+        )
+        val cancelled = monitor.copy(
+            status = CommandMonitor.Status.CANCELLED,
+            statusMessage = "Command monitor was cancelled",
+            completedAt = fixture.now,
+        )
+
+        val response = fixture.execute(
+            WorkerCommandRuntimeRequest.SynchronizeCommandMonitor(cancelled, emptyList())
+        )
+        val stored = requireNotNull(
+            fixture.coordinator.findCommandMonitor(fixture.conversation.id, monitor.id)
+        )
+
+        assertEquals(
+            WorkerCommandRuntimeResponse.CommandMonitorSynchronized(stored, emptyList()),
+            response,
+        )
+        assertEquals(CommandMonitor.Status.CANCELLED, stored.status)
+        assertEquals("Command monitor was cancelled", stored.statusMessage)
+        assertEquals(cancellationRequestedAt, stored.cancellationRequestedAt)
+        assertEquals(cancellationRequestedAt, stored.updatedAt)
     }
 
     private suspend fun fixture(): Fixture {
@@ -186,6 +271,29 @@ class WorkerCommandRuntimeGatewayHandlerTest {
                 processStartedAt = now,
                 outputFile = "/tmp/output.log",
                 outputBytes = 0,
+                createdAt = now,
+                updatedAt = now,
+            )
+
+        fun commandMonitor(source: CommandTask): CommandMonitor =
+            CommandMonitor(
+                id = CommandMonitor.Id("monitor-1"),
+                conversationId = conversation.id,
+                commandTaskId = source.id,
+                workerId = source.workerId,
+                workspaceMountId = source.workspaceMountId,
+                agentDefinitionId = conversation.agentDefinitionId,
+                filterCommand = "grep ready",
+                mode = CommandMonitor.Mode.CONTINUOUS,
+                startFrom = CommandMonitor.StartFrom.NOW,
+                status = CommandMonitor.Status.WORKING,
+                sourceOutputCursor = 0,
+                processId = 43,
+                processStartedAt = now,
+                outputFile = "/tmp/monitor.log",
+                errorFile = "/tmp/monitor.err",
+                outputBytes = 0,
+                eventOutputCursor = 0,
                 createdAt = now,
                 updatedAt = now,
             )

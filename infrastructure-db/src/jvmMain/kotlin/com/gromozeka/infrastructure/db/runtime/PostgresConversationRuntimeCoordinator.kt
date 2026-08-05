@@ -369,11 +369,13 @@ class PostgresConversationRuntimeCoordinator(
         mutateRecord(task.conversationId, createIfMissing = true) { record ->
             val tasks = record.commandTasks.toMutableList()
             val existingIndex = tasks.indexOfFirst { it.id == task.id }
-            val previousStatus = tasks.getOrNull(existingIndex)?.status
+            val existing = tasks.getOrNull(existingIndex)
+            val previousStatus = existing?.status
+            val storedTask = task.mergeCoordinatorState(existing)
             if (existingIndex >= 0) {
-                tasks[existingIndex] = task
+                tasks[existingIndex] = storedTask
             } else {
-                tasks += task
+                tasks += storedTask
             }
             val monitoredTaskIds = record.commandMonitors
                 .asSequence()
@@ -390,16 +392,16 @@ class PostgresConversationRuntimeCoordinator(
             val retainedTaskIds = retainedTasks.mapTo(mutableSetOf()) { it.id }
             val evictedTasks = tasks.filterNot { it.id in retainedTaskIds }
             record.commandTasks = retainedTasks
-            if (previousStatus != task.status) {
+            if (previousStatus != storedTask.status) {
                 record.appendTrace(
-                    conversationId = task.conversationId,
+                    conversationId = storedTask.conversationId,
                     kind = ConversationRuntimeTraceEntry.Kind.COMMAND_TASK,
-                    status = task.status.toTraceStatus(),
-                    message = "${task.id.value}: ${task.status}",
+                    status = storedTask.status.toTraceStatus(),
+                    message = "${storedTask.id.value}: ${storedTask.status}",
                 )
             }
             record.bumpRevision()
-            CommandTaskUpsertResult(evictedTasks)
+            CommandTaskUpsertResult(storedTask, evictedTasks)
         }
 
     override suspend fun findCommandTasks(): List<CommandTask> =
@@ -1162,14 +1164,32 @@ class PostgresConversationRuntimeCoordinator(
         CommandMonitor.Status.CANCELLED -> ConversationRuntimeTraceEntry.Status.CANCELLED
     }
 
-    private fun CommandMonitor.mergeCoordinatorState(existing: CommandMonitor?): CommandMonitor {
+    private fun CommandTask.mergeCoordinatorState(existing: CommandTask?): CommandTask {
         if (existing == null) return this
-        val preserveCancellation = cancellationRequestedAt == null && existing.cancellationRequestedAt != null
+        val preserveCancellationStatus =
+            !isTerminal && cancellationRequestedAt == null && existing.cancellationRequestedAt != null
         return copy(
             cancellationRequestedAt = cancellationRequestedAt ?: existing.cancellationRequestedAt,
+            completionNotificationRequestedAt =
+                completionNotificationRequestedAt ?: existing.completionNotificationRequestedAt,
+            completionNotificationDeliveredAt =
+                completionNotificationDeliveredAt ?: existing.completionNotificationDeliveredAt,
+            statusMessage = if (preserveCancellationStatus) existing.statusMessage else statusMessage,
+            updatedAt = maxOf(updatedAt, existing.updatedAt),
+        )
+    }
+
+    private fun CommandMonitor.mergeCoordinatorState(existing: CommandMonitor?): CommandMonitor {
+        if (existing == null) return this
+        val preserveCancellationStatus =
+            !isTerminal && cancellationRequestedAt == null && existing.cancellationRequestedAt != null
+        return copy(
+            cancellationRequestedAt = cancellationRequestedAt ?: existing.cancellationRequestedAt,
+            terminalNotificationRequestedAt =
+                terminalNotificationRequestedAt ?: existing.terminalNotificationRequestedAt,
             terminalNotificationDeliveredAt =
                 terminalNotificationDeliveredAt ?: existing.terminalNotificationDeliveredAt,
-            statusMessage = if (preserveCancellation) existing.statusMessage else statusMessage,
+            statusMessage = if (preserveCancellationStatus) existing.statusMessage else statusMessage,
             updatedAt = maxOf(updatedAt, existing.updatedAt),
         )
     }

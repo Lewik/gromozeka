@@ -48,7 +48,7 @@ class WorkerCommandRuntimeGatewayHandler(
             is WorkerCommandRuntimeRequest.UpsertCommandTask -> {
                 val task = validateCommandTask(identity.workerId, runtimeRequest.task)
                 val result = commandRuntimeStateService.upsertCommandTask(task)
-                WorkerCommandRuntimeResponse.CommandTaskUpserted(result.evictedTasks)
+                WorkerCommandRuntimeResponse.CommandTaskUpserted(result.task, result.evictedTasks)
             }
 
             WorkerCommandRuntimeRequest.FindCommandTasks ->
@@ -141,14 +141,7 @@ class WorkerCommandRuntimeGatewayHandler(
         require(!existing.isTerminal || requested.status == existing.status) {
             "Worker cannot move a terminal command task to another state"
         }
-        require(requested.updatedAt >= existing.updatedAt) {
-            "Worker cannot replace command task state with an older version"
-        }
-        return requested.copy(
-            cancellationRequestedAt = requested.cancellationRequestedAt ?: existing.cancellationRequestedAt,
-            completionNotificationDeliveredAt =
-                requested.completionNotificationDeliveredAt ?: existing.completionNotificationDeliveredAt,
-        )
+        return requested
     }
 
     private suspend fun validateCommandMonitor(
@@ -181,14 +174,7 @@ class WorkerCommandRuntimeGatewayHandler(
         require(!existing.isTerminal || requested.status == existing.status) {
             "Worker cannot move a terminal command monitor to another state"
         }
-        require(requested.updatedAt >= existing.updatedAt) {
-            "Worker cannot replace command monitor state with an older version"
-        }
-        return requested.copy(
-            cancellationRequestedAt = requested.cancellationRequestedAt ?: existing.cancellationRequestedAt,
-            terminalNotificationDeliveredAt =
-                requested.terminalNotificationDeliveredAt ?: existing.terminalNotificationDeliveredAt,
-        )
+        return requested
     }
 
     private suspend fun requireExecutionScope(
