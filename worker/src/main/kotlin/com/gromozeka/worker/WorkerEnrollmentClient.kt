@@ -213,7 +213,11 @@ internal data class WorkerEnrollmentOptions(
                 ?: Path.of(userHome, ".gromozeka", "worker.yaml")
             return WorkerEnrollmentOptions(
                 server = values.required("--server"),
-                token = values.required("--token"),
+                token = values["--token"]
+                    ?.takeIf(String::isNotBlank)
+                    ?: environment["GROMOZEKA_WORKER_ENROLLMENT_TOKEN"]
+                        ?.takeIf(String::isNotBlank)
+                    ?: error("--token or GROMOZEKA_WORKER_ENROLLMENT_TOKEN is required"),
                 workerId = values.required("--worker-id"),
                 configPath = values["--config"]?.let(Path::of) ?: defaultConfig,
                 caCertificatePath = values["--ca-certificate"]?.let(Path::of),

@@ -1,0 +1,232 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ "$(uname -s)" == "Darwin" ]] || {
+  echo "The Gromozeka Worker LaunchAgent is available only on macOS." >&2
+  exit 2
+}
+
+command_name="${1:-status}"
+app_home="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+source_launcher="$app_home/app/native/gromozeka-worker-launcher"
+worker_launcher="$app_home/bin/gromozeka-worker"
+service_root="${GROMOZEKA_WORKER_SERVICE_HOME:-$HOME/Library/Application Support/Gromozeka/worker/launcher}"
+launcher_app="$service_root/Gromozeka Worker.app"
+launcher_executable="$launcher_app/Contents/MacOS/Gromozeka Worker"
+launch_agent="$HOME/Library/LaunchAgents/com.gromozeka.worker.plist"
+log_directory="$HOME/Library/Logs/Gromozeka"
+service_target="gui/$(id -u)/com.gromozeka.worker"
+permission_service_target="gui/$(id -u)/com.gromozeka.worker.permissions"
+temporary_launch_agent=""
+
+cleanup() {
+  [[ -z "$temporary_launch_agent" ]] || rm -f "$temporary_launch_agent"
+}
+
+trap cleanup EXIT
+
+xml_escape() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
+environment_entry() {
+  local name="$1"
+  local value="${!name:-}"
+  [[ -n "$value" ]] || return
+  printf '      <key>%s</key>\n      <string>%s</string>\n' \
+    "$(xml_escape "$name")" "$(xml_escape "$value")"
+}
+
+install_launcher_app() {
+  [[ -f "$source_launcher" ]] || {
+    echo "The packaged macOS Worker launcher is missing: $source_launcher" >&2
+    exit 2
+  }
+  if [[ -e "$launcher_app" ]]; then
+    [[ -x "$launcher_executable" ]] && codesign --verify "$launcher_app" >/dev/null 2>&1 || {
+      echo "The stable Gromozeka Worker launcher is incomplete or has an invalid signature: $launcher_app" >&2
+      exit 2
+    }
+    return
+  fi
+  mkdir -p "$launcher_app/Contents/MacOS"
+  install -m 0755 "$source_launcher" "$launcher_executable"
+  cat > "$launcher_app/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>Gromozeka Worker</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.gromozeka.worker.launcher</string>
+  <key>CFBundleName</key>
+  <string>Gromozeka Worker</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>LSBackgroundOnly</key>
+  <true/>
+  <key>NSAccessibilityUsageDescription</key>
+  <string>Gromozeka Worker controls the desktop only when Computer Use is enabled.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Gromozeka Worker records audio only when a configured voice input uses this Mac.</string>
+</dict>
+</plist>
+PLIST
+  codesign --sign - --identifier com.gromozeka.worker.launcher "$launcher_app" >/dev/null
+}
+
+install_launch_agent() {
+  install_launcher_app
+  mkdir -p "$(dirname "$launch_agent")" "$log_directory"
+  local temporary
+  temporary="$(mktemp "${launch_agent}.XXXXXX")"
+  temporary_launch_agent="$temporary"
+  cat > "$temporary" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gromozeka.worker</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$(xml_escape "$launcher_executable")</string>
+    <string>/bin/bash</string>
+    <string>$(xml_escape "$worker_launcher")</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>$(xml_escape "$HOME")</string>
+    <key>GROMOZEKA_HOME</key>
+    <string>$(xml_escape "${GROMOZEKA_HOME:-$HOME/.gromozeka}")</string>
+    <key>GROMOZEKA_MODE</key>
+    <string>$(xml_escape "${GROMOZEKA_MODE:-prod}")</string>
+    <key>PATH</key>
+    <string>$(xml_escape "${PATH:-/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin}")</string>
+$(environment_entry GROMOZEKA_WORKER_CONFIG)
+$(environment_entry GROMOZEKA_JAVA_EXECUTABLE)
+$(environment_entry GROMOZEKA_JAVA_HOME)
+$(environment_entry GROMOZEKA_WORKER_JAVA_CLASSPATH)
+$(environment_entry JAVA_HOME)
+  </dict>
+  <key>WorkingDirectory</key>
+  <string>$(xml_escape "$HOME")</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>$(xml_escape "$log_directory/worker-launchd.stdout.log")</string>
+  <key>StandardErrorPath</key>
+  <string>$(xml_escape "$log_directory/worker-launchd.stderr.log")</string>
+</dict>
+</plist>
+PLIST
+  plutil -lint "$temporary" >/dev/null
+  if [[ "${GROMOZEKA_WORKER_SERVICE_DRY_RUN:-false}" == "true" ]]; then
+    cat "$temporary"
+    return
+  fi
+  launchctl bootout "$service_target" >/dev/null 2>&1 || true
+  local bootout_attempt
+  for bootout_attempt in {1..50}; do
+    launchctl print "$service_target" >/dev/null 2>&1 || break
+    sleep 0.1
+  done
+  launchctl print "$service_target" >/dev/null 2>&1 && {
+    echo "Timed out while stopping the existing Gromozeka Worker LaunchAgent." >&2
+    exit 1
+  }
+  install -m 0644 "$temporary" "$launch_agent"
+  local bootstrap_error=""
+  local bootstrap_attempt
+  for bootstrap_attempt in 1 2 3; do
+    if bootstrap_error="$(launchctl bootstrap "gui/$(id -u)" "$launch_agent" 2>&1)"; then
+      bootstrap_error=""
+      break
+    fi
+    if launchctl print "$service_target" >/dev/null 2>&1; then
+      bootstrap_error=""
+      break
+    fi
+    sleep "$bootstrap_attempt"
+  done
+  [[ -z "$bootstrap_error" ]] || {
+    printf '%s\n' "$bootstrap_error" >&2
+    exit 1
+  }
+  launchctl enable "$service_target"
+  echo "Gromozeka Worker LaunchAgent installed."
+  echo "For Computer Use, grant Screen Recording and Accessibility to:"
+  echo "  $launcher_app"
+}
+
+uninstall_launch_agent() {
+  stop_launch_agent
+  rm -f "$launch_agent"
+  echo "Gromozeka Worker LaunchAgent removed. The stable launcher was kept to preserve macOS permissions."
+}
+
+start_launch_agent() {
+  [[ -f "$launch_agent" ]] || {
+    echo "Gromozeka Worker LaunchAgent is not installed." >&2
+    exit 2
+  }
+  if launchctl print "$service_target" >/dev/null 2>&1; then
+    echo "Gromozeka Worker LaunchAgent is already running."
+    return
+  fi
+  launchctl bootstrap "gui/$(id -u)" "$launch_agent"
+  launchctl enable "$service_target"
+  echo "Gromozeka Worker LaunchAgent started."
+}
+
+stop_launch_agent() {
+  launchctl bootout "$service_target" >/dev/null 2>&1 || true
+}
+
+print_permissions_status() {
+  if [[ ! -x "$launcher_executable" ]]; then
+    printf '{"screenRecording":null,"accessibility":null}\n'
+    return
+  fi
+  "$launcher_executable" --computer-use-permissions-status
+}
+
+case "$command_name" in
+  install) install_launch_agent ;;
+  uninstall) uninstall_launch_agent ;;
+  start) start_launch_agent ;;
+  stop) stop_launch_agent ;;
+  status) launchctl print "$service_target" ;;
+  permissions-status) print_permissions_status ;;
+  open-permissions)
+    install_launcher_app
+    mkdir -p "$log_directory"
+    launchctl bootout "$permission_service_target" >/dev/null 2>&1 || true
+    launchctl submit \
+      -l com.gromozeka.worker.permissions \
+      -o "$log_directory/worker-permissions.log" \
+      -e "$log_directory/worker-permissions.log" \
+      -- "$launcher_executable" --request-computer-use-permissions
+    sleep 2
+    launchctl bootout "$permission_service_target" >/dev/null 2>&1 || true
+    open 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+    open 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
+    echo "Requested Screen Recording and Accessibility for $launcher_app"
+    ;;
+  *)
+    echo "Usage: $0 {install|uninstall|start|stop|status|permissions-status|open-permissions}" >&2
+    exit 2
+    ;;
+esac

@@ -142,6 +142,20 @@ class WorkerEnrollmentClientTest {
     }
 
     @Test
+    fun `enrollment token can be passed without exposing it in process arguments`() {
+        val options = WorkerEnrollmentOptions.parse(
+            arguments = listOf(
+                "--server", "https://gromozeka.example",
+                "--worker-id", "test-worker",
+            ),
+            environment = mapOf("GROMOZEKA_WORKER_ENROLLMENT_TOKEN" to "secret-token"),
+            userHome = "/unused",
+        )
+
+        assertEquals("secret-token", options.token)
+    }
+
+    @Test
     fun `explicit worker configuration overrides gromozeka home`() {
         val configPath = Files.createTempDirectory("gromozeka-worker-config")
             .resolve("custom.yaml")

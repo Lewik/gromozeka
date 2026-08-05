@@ -27,6 +27,7 @@ import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.ClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
 import com.gromozeka.presentation.services.LogEncryptor
+import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttRecordingService
@@ -73,6 +74,7 @@ data class AppComponents(
     val themeService: ThemeService,
     val aiThemeGenerator: AIThemeGenerator,
     val logEncryptor: LogEncryptor,
+    val localWorkerController: LocalWorkerController,
     val ollamaModelService: OllamaModelService,
     val projectService: ProjectDomainService,
     val workspaceCatalogService: WorkspaceCatalogService,

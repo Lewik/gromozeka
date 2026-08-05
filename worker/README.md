@@ -103,13 +103,15 @@ of this Worker's interactive desktop. The Worker advertises the three
 
 - Run the Worker in the signed-in user's desktop session, not as a headless or
   session-zero service.
-- macOS requires Screen Recording and Accessibility permission for the process
-  that launches the Worker.
+- macOS standalone Workers should use `bin/gromozeka-worker install-service`.
+  Run `bin/gromozeka-worker open-computer-use-permissions`, grant Screen
+  Recording and Accessibility to the stable `Gromozeka Worker.app`, then run
+  `install-service` again. Updates preserve that signed launcher.
 - Windows uses the current interactive desktop.
 - Linux currently requires X11; Wayland and headless sessions are reported as
   unavailable.
-- `grz_computer_observe` returns a signed reference to one screenshot's exact
-  Worker process, display, and coordinate frame.
+- `grz_computer_observe` returns a short, single-use process-local reference to
+  one screenshot's exact Worker process, display, and coordinate frame.
 - `grz_computer_act` executes one bounded action list synchronously and returns
   a fresh screenshot. Calls on the same display are serialized while executing.
 - Stopping a turn or losing the Gateway cancels in-flight requests and releases

@@ -46,6 +46,10 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.presentation.services.LogEncryptor
+import com.gromozeka.presentation.services.LocalWorkerController
+import com.gromozeka.presentation.services.LocalWorkerOperation
+import com.gromozeka.presentation.services.LocalWorkerPermissionState
+import com.gromozeka.presentation.services.LocalWorkerStatus
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -105,6 +109,7 @@ fun SettingsPanel(
     workerCatalogService: WorkerCatalogService,
     mcpServerService: RemoteMcpServerService,
     distributionService: RemoteDistributionService,
+    localWorkerController: LocalWorkerController,
     personalAccessTokenService: RemotePersonalAccessTokenService,
     userAdministrationService: RemoteUserAdministrationService,
     securityAuditService: RemoteSecurityAuditService,
@@ -178,6 +183,9 @@ fun SettingsPanel(
             runCatching { workerCatalogService.listWorkers() }
                 .onSuccess { workers = it }
                 .onFailure { log.warn(it) { "Failed to load Workers for settings: ${it.message}" } }
+            if (localWorkerController.status.value.supported) {
+                localWorkerController.refresh(workerCatalogService)
+            }
         }
     }
 
@@ -1230,6 +1238,15 @@ fun SettingsPanel(
                         contentMode == SettingsPanelContentMode.Full &&
                         selectedSection == SettingsSection.Advanced
                     ) {
+                    if (localWorkerController.status.value.supported) {
+                        LocalWorkerSettings(
+                            controller = localWorkerController,
+                            distributionService = distributionService,
+                            workerCatalogService = workerCatalogService,
+                            coroutineScope = coroutineScope,
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
                     // Logs & Diagnostics
                     SettingsGroup(title = translation.settings.logsAndDiagnosticsTitle) {
                         ButtonSettingItem(
@@ -1316,6 +1333,106 @@ fun SettingsPanel(
             }
             }
         }
+}
+
+@Composable
+private fun LocalWorkerSettings(
+    controller: LocalWorkerController,
+    distributionService: RemoteDistributionService,
+    workerCatalogService: WorkerCatalogService,
+    coroutineScope: CoroutineScope,
+) {
+    val status by controller.status.collectAsState()
+    SettingsGroup(title = "This Mac") {
+        SwitchSettingItem(
+            label = "Use this Mac as a Worker",
+            description = "Run trusted tools, local Claude Code, voice capture, and Computer Use on this Mac.",
+            value = status.installed,
+            enabled = status.operation == null,
+            onValueChange = { enabled ->
+                coroutineScope.launch {
+                    if (enabled) {
+                        controller.enable(distributionService, workerCatalogService)
+                    } else {
+                        controller.disable()
+                    }
+                }
+            },
+        )
+
+        Text(
+            text = status.description(),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (status.failure == null) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.error
+            },
+        )
+
+        status.workerId?.let { workerId ->
+            Text(
+                text = "Worker: ${workerId.value}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (status.installed) {
+            Text(
+                text = "Screen Recording: ${status.permissions.screenRecording.displayName()} · " +
+                    "Accessibility: ${status.permissions.accessibility.displayName()}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    enabled = status.operation == null,
+                    onClick = {
+                        coroutineScope.launch {
+                            if (status.running) controller.stop() else controller.start()
+                        }
+                    },
+                ) {
+                    Text(if (status.running) "Stop" else "Start")
+                }
+                OutlinedButton(
+                    enabled = status.operation == null,
+                    onClick = { coroutineScope.launch { controller.requestComputerUsePermissions() } },
+                ) {
+                    Text("Permissions...")
+                }
+                OutlinedButton(
+                    enabled = status.operation == null,
+                    onClick = { coroutineScope.launch { controller.refresh(workerCatalogService) } },
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Refresh")
+                }
+            }
+        }
+    }
+}
+
+private fun LocalWorkerStatus.description(): String = when {
+    operation == LocalWorkerOperation.STARTING -> "Starting the Local Worker..."
+    operation == LocalWorkerOperation.STOPPING -> "Stopping the Local Worker..."
+    operation == LocalWorkerOperation.ENROLLING -> "Enrolling this Mac with the Server..."
+    operation == LocalWorkerOperation.REQUESTING_PERMISSIONS -> "Opening macOS privacy settings..."
+    operation == LocalWorkerOperation.REFRESHING -> "Refreshing Local Worker status..."
+    failure != null -> failure
+    running && serverStatus == WorkerCatalogEntry.Status.ONLINE -> "Online and connected to the Server."
+    running -> "Running locally; waiting for the Server connection."
+    installed -> "Enabled but currently stopped."
+    else -> "Disabled. Existing standalone Workers are unaffected."
+}
+
+private fun LocalWorkerPermissionState.displayName(): String = when (this) {
+    LocalWorkerPermissionState.GRANTED -> "Granted"
+    LocalWorkerPermissionState.NOT_GRANTED -> "Required"
+    LocalWorkerPermissionState.UNKNOWN -> "Unknown"
 }
 
 @Composable

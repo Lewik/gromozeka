@@ -4,6 +4,11 @@ Gromozeka Worker is a trusted, unsandboxed executor. Enrolling or configuring a
 Worker authorizes the Gromozeka control plane and its selected models to invoke
 configured tools with the effective permissions of the Worker process.
 
+The macOS Gromozeka app already includes an optional Local Worker. Normal Mac
+installations should enable it from **Settings -> Advanced -> This Mac**. This
+standalone archive remains useful for headless machines, remote Workers, and
+multiple Worker processes on one host.
+
 Open the Server `/downloads` page, generate a one-time enrollment token, and
 run the command shown there. Enrollment writes the Worker configuration to
 `~/.gromozeka/worker.yaml`.
@@ -19,6 +24,20 @@ URL and Worker Gateway credential, then run:
 
 - macOS/Linux: `bin/gromozeka-worker`
 - Windows: `bin\gromozeka-worker.cmd`
+
+On macOS, install the Worker as a per-user LaunchAgent with:
+
+```bash
+bin/gromozeka-worker install-service
+```
+
+The command installs and signs `Gromozeka Worker.app` once outside the versioned
+archive. Worker updates preserve that launcher so macOS permissions remain
+valid. When Computer Use is enabled, run
+`bin/gromozeka-worker open-computer-use-permissions`, approve Screen Recording
+and Accessibility in **System Settings -> Privacy & Security**, then run
+`install-service` again. Use `start-service`, `stop-service`, `service-status`,
+and `uninstall-service` for the remaining service management commands.
 
 The launcher uses Java 21 or newer from `GROMOZEKA_JAVA_EXECUTABLE`,
 `GROMOZEKA_JAVA_HOME`, `JAVA_HOME`, or the system path. If none is compatible,

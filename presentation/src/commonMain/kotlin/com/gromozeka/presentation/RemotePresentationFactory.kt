@@ -12,11 +12,13 @@ import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
 import com.gromozeka.presentation.services.ClientFeedbackService
 import com.gromozeka.presentation.services.LogEncryptor
+import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
 import com.gromozeka.presentation.services.NoOpClientAudioPlayer
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.services.NoOpClientSideSpeechToTextService
 import com.gromozeka.presentation.services.NoOpSystemAudioMuteService
+import com.gromozeka.presentation.services.UnsupportedLocalWorkerController
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.RemotePttController
 import com.gromozeka.presentation.services.ResourceSoundNotificationPlayer
@@ -62,6 +64,7 @@ suspend fun createRemoteAppComponents(
     },
     deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
     attachmentAcquisitionController: AttachmentAcquisitionController = NoOpAttachmentAcquisitionController,
+    localWorkerController: LocalWorkerController = UnsupportedLocalWorkerController,
     httpClient: HttpClient? = null,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
@@ -184,6 +187,7 @@ suspend fun createRemoteAppComponents(
             themeService = themeService,
             aiThemeGenerator = AIThemeGenerator(),
             logEncryptor = LogEncryptor(),
+            localWorkerController = localWorkerController,
             ollamaModelService = OllamaModelService(),
             projectService = remoteServices.projectService,
             workspaceCatalogService = remoteServices.workspaceCatalogService,

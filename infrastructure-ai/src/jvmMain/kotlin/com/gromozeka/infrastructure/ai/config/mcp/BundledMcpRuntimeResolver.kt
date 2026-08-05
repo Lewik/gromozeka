@@ -53,10 +53,18 @@ internal object BundledMcpRuntimeResolver {
                 environment = environment,
             )
         } else {
-            BundledMcpProcess(
-                command = launcher.absolutePathString(),
-                environment = environment,
-            )
+            if (Files.isExecutable(launcher)) {
+                BundledMcpProcess(
+                    command = launcher.absolutePathString(),
+                    environment = environment,
+                )
+            } else {
+                BundledMcpProcess(
+                    command = "/bin/bash",
+                    arguments = listOf(launcher.absolutePathString()),
+                    environment = environment,
+                )
+            }
         }
     }
 }

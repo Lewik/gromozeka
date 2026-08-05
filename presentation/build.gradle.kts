@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
@@ -14,6 +15,73 @@ val nativePackageVersion = rootProject.version.toString()
     .substringBefore('-')
     .substringBefore('+')
     .let { version -> if (version == "0.0.0") "1.0.0" else version }
+val hostOperatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
+val localWorkerAppResources = layout.buildDirectory.dir("generated/local-worker-app-resources")
+val macWorkerLauncher = rootProject.layout.buildDirectory.file(
+    "native-launchers/macos-arm64/gromozeka-worker-launcher"
+)
+val macLocalWorkerLauncherProperties = rootProject.layout.projectDirectory.file(
+    "deploy/distribution/macos-local-worker-launcher.properties"
+)
+
+val compileMacWorkerLauncher by tasks.registering(Exec::class) {
+    inputs.file(rootProject.layout.projectDirectory.file("deploy/distribution/macos-worker-launcher.c"))
+    outputs.file(macWorkerLauncher)
+    macWorkerLauncher.get().asFile.parentFile.mkdirs()
+    commandLine(
+        "cc",
+        "-Os",
+        "-arch", "arm64",
+        "-mmacosx-version-min=12.0",
+        rootProject.layout.projectDirectory.file("deploy/distribution/macos-worker-launcher.c").asFile,
+        "-framework", "CoreGraphics",
+        "-framework", "ApplicationServices",
+        "-o", macWorkerLauncher.get().asFile,
+    )
+}
+
+val stageMacLocalWorkerResources by tasks.registering(Sync::class) {
+    dependsOn(compileMacWorkerLauncher)
+    into(localWorkerAppResources)
+    from(rootProject.layout.projectDirectory.file("deploy/distribution/gromozeka-bundled-worker")) {
+        into("common/local-worker/bin")
+        rename { "gromozeka-worker" }
+        filePermissions { unix("rwxr-xr-x") }
+    }
+    from(rootProject.layout.projectDirectory.file("deploy/distribution/gromozeka-worker-service")) {
+        into("common/local-worker/bin")
+        filePermissions { unix("rwxr-xr-x") }
+    }
+    from(rootProject.layout.projectDirectory.file("deploy/distribution/gromozeka-browser-mcp")) {
+        into("common/local-worker/bin")
+        filePermissions { unix("rwxr-xr-x") }
+    }
+    from(rootProject.layout.projectDirectory.file("deploy/distribution/runtime-bootstrap.sh")) {
+        into("common/local-worker/bin")
+        filePermissions { unix("rwxr-xr-x") }
+    }
+    from(rootProject.layout.projectDirectory.file("deploy/distribution/runtime-versions.properties")) {
+        into("common/local-worker/bin")
+    }
+    from(macWorkerLauncher) {
+        into("common/local-worker/app/native")
+        filePermissions { unix("rwxr-xr-x") }
+    }
+    from(rootProject.layout.projectDirectory.dir("browser-mcp")) {
+        into("common/local-worker/app/browser-mcp")
+        include(
+            "package.json",
+            "package-lock.json",
+            "README.md",
+            "NOTICE",
+            "UPSTREAM.md",
+            "THIRD_PARTY_NOTICES.txt",
+            "LICENSE",
+            "node_modules/**",
+        )
+        exclude("node_modules/.bin/**")
+    }
+}
 
 kotlin {
     jvmToolchain(javaVersion)
@@ -89,6 +157,9 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(project(":shared"))
+                if (hostOperatingSystem.isMacOsX) {
+                    implementation(project(":worker"))
+                }
                 implementation(compose.desktop.currentOs)
             }
         }
@@ -250,7 +321,11 @@ compose.desktop {
             copyright = "© 2024 Gromozeka Project"
             vendor = "Gromozeka"
             
-            appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/resources"))
+            if (hostOperatingSystem.isMacOsX) {
+                appResourcesRootDir.set(localWorkerAppResources)
+            } else {
+                appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/resources"))
+            }
             licenseFile.set(rootProject.layout.projectDirectory.file("LICENSE"))
             includeAllModules = true
             
@@ -332,6 +407,13 @@ tasks.register("removeJarSignatures") {
 
 tasks.whenTaskAdded {
     if (name == "run" && this is JavaExec) {
+        if (hostOperatingSystem.isMacOsX) {
+            dependsOn(stageMacLocalWorkerResources)
+            systemProperty(
+                "gromozeka.local-worker.bundle-root",
+                localWorkerAppResources.get().dir("common/local-worker").asFile.absolutePath,
+            )
+        }
         systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
         systemProperty(
             "gromozeka.remote.url",
@@ -343,6 +425,26 @@ tasks.whenTaskAdded {
         System.getenv("GROMOZEKA_MODE")?.let {
             environment("GROMOZEKA_MODE", it)
         }
+    }
+}
+
+tasks.matching {
+    it.name == "prepareAppResources" ||
+        it.name == "createDistributable" ||
+        it.name == "packageDmg"
+}.configureEach {
+    if (hostOperatingSystem.isMacOsX) {
+        dependsOn(stageMacLocalWorkerResources)
+    }
+}
+
+tasks.withType<AbstractJPackageTask>().matching { it.name == "createDistributable" }.configureEach {
+    if (hostOperatingSystem.isMacOsX) {
+        inputs.file(macLocalWorkerLauncherProperties)
+        freeArgs.addAll(
+            "--add-launcher",
+            "GromozekaWorker=${macLocalWorkerLauncherProperties.asFile.absolutePath}",
+        )
     }
 }
 

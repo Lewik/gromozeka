@@ -7,6 +7,34 @@ export GROMOZEKA_BROWSER_MCP_LAUNCHER="${GROMOZEKA_BROWSER_MCP_LAUNCHER:-$app_ho
 export GROMOZEKA_BROWSER_MCP_HOME="${GROMOZEKA_BROWSER_MCP_HOME:-$app_home/app/browser-mcp}"
 export GROMOZEKA_RUNTIME_BOOTSTRAP="${GROMOZEKA_RUNTIME_BOOTSTRAP:-$app_home/bin/runtime-bootstrap.sh}"
 worker_config="${GROMOZEKA_WORKER_CONFIG:-$GROMOZEKA_HOME/worker.yaml}"
+
+case "${1:-}" in
+  install-service)
+    shift
+    exec "$app_home/bin/gromozeka-worker-service" install "$@"
+    ;;
+  uninstall-service)
+    shift
+    exec "$app_home/bin/gromozeka-worker-service" uninstall "$@"
+    ;;
+  start-service)
+    shift
+    exec "$app_home/bin/gromozeka-worker-service" start "$@"
+    ;;
+  stop-service)
+    shift
+    exec "$app_home/bin/gromozeka-worker-service" stop "$@"
+    ;;
+  service-status)
+    shift
+    exec "$app_home/bin/gromozeka-worker-service" status "$@"
+    ;;
+  open-computer-use-permissions)
+    shift
+    exec "$app_home/bin/gromozeka-worker-service" open-permissions "$@"
+    ;;
+esac
+
 source "$app_home/bin/runtime-bootstrap.sh"
 java_executable="$(gromozeka_resolve_java)"
 

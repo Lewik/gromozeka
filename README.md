@@ -182,7 +182,7 @@ Open a running Server's Downloads settings to download a Client, Docker Server
 stack, or Worker from the matching Gromozeka release. Published releases
 currently provide:
 
-- an unsigned macOS ARM64 Client DMG;
+- an unsigned macOS ARM64 app DMG with an optional Local Worker and Browser MCP;
 - a portable Windows x64 Client ZIP;
 - a Chrome/Edge/Chromium Browser Bridge ZIP loaded as an unpacked extension;
 - a Docker Compose Server stack with PostgreSQL and a Caddy HTTPS/WSS gateway;
@@ -194,6 +194,12 @@ currently provide:
 Standalone launchers use compatible system Java/Node installations when
 available. Otherwise they download checksum-pinned official runtimes once into
 `~/.gromozeka/runtimes`; Docker images remain self-contained.
+
+On macOS, closing the application window keeps the Client available in the menu
+bar. **Settings -> Advanced -> This Mac** can enroll and run the bundled Local
+Worker without a second download. The Client and Worker remain separate
+processes; **Quit Gromozeka** stops both, while standalone Workers remain
+available for headless, remote, or multiple-Worker installations.
 
 Pushing a `v<major>.<minor>.<patch>` tag runs the release workflow, publishes
 those assets and immutable images, then installs that exact release on the

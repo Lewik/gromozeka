@@ -110,16 +110,18 @@ content, OS dialogs, and other surfaces exposed only as pixels.
 The model uses three synchronous tools:
 
 1. `grz_computer_targets` lists displays on the selected Worker.
-2. `grz_computer_observe` returns a PNG and a signed opaque `observation_ref`
-   describing that screenshot's coordinate frame.
+2. `grz_computer_observe` returns a PNG and a short opaque `observation_ref`
+   for that screenshot's coordinate frame.
 3. `grz_computer_act` applies one bounded ordered action list exactly once and
    returns a fresh screenshot.
 
 Computer Use has no durable session or reconciliation state. Each request is a
-plain Worker-targeted tool execution. The signed reference prevents coordinate
-geometry from being altered and is valid only for the exact Worker process that
-captured it, but it does not claim that the visible desktop has remained
-unchanged. Calls on the same display are serialized only while they execute.
+plain Worker-targeted tool execution. A cryptographically random process-local
+reference resolves to immutable coordinate geometry, expires after five
+minutes, and is consumed by one action request. It is valid only for the exact
+Worker process that captured it, but it does not claim that the visible desktop
+has remained unchanged. Calls on the same display are serialized only while
+they execute.
 
 Desktop actions are never retried or reassigned. If a timeout or disconnect
 happens after dispatch, the outcome is reported as unknown and the model must
@@ -135,10 +137,22 @@ durable but become compact text placeholders in provider context. Clients
 communicate only with the Server and never connect directly to a Worker.
 
 The current JVM backend supports interactive macOS, Windows, and X11 sessions.
-Headless and Wayland Workers omit the Computer Use tools. macOS capture and
-input still require the operating system's Screen Recording and Accessibility
-permissions. Computer Use intentionally controls the real pointer, keyboard,
-focus, and clipboard; there is no separate ownership or takeover UI.
+Headless and Wayland Workers omit the Computer Use tools. macOS Workers query
+Screen Recording and Accessibility before advertising the tools and again
+before each request. The standalone macOS LaunchAgent uses a stable native app
+launcher installed and signed only once, so these permissions do not attach to
+a versioned shell or JRE and survive Worker updates.
+Computer Use intentionally controls the real pointer, keyboard, focus, and
+clipboard; there is no separate ownership or takeover UI.
+
+The macOS application bundles the Worker dependencies, Browser MCP, and a
+second `jpackage` launcher into the same DMG and shared Java runtime. The Client
+owns the visible menu-bar item and enrollment UI; the Local Worker remains a
+separate hidden LaunchAgent process behind the standard Worker Gateway. Closing
+the Client window hides it, while an explicit application quit stops the
+managed Local Worker. The stable helper copied under Application Support owns
+macOS Screen Recording, Accessibility, and microphone consent across app
+updates. Standalone Worker packages use the same helper protocol.
 
 Deployments may attach a human-facing interactive desktop to a Worker. When
 configured, `grz_worker_interactive_access_get` returns a stable Server URL;

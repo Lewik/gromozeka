@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+bundle_root="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$HOME/.gromozeka}"
+export GROMOZEKA_MODE="${GROMOZEKA_MODE:-prod}"
+export GROMOZEKA_BROWSER_MCP_LAUNCHER="${GROMOZEKA_BROWSER_MCP_LAUNCHER:-$bundle_root/bin/gromozeka-browser-mcp}"
+export GROMOZEKA_BROWSER_MCP_HOME="${GROMOZEKA_BROWSER_MCP_HOME:-$bundle_root/app/browser-mcp}"
+export GROMOZEKA_RUNTIME_BOOTSTRAP="${GROMOZEKA_RUNTIME_BOOTSTRAP:-$bundle_root/bin/runtime-bootstrap.sh}"
+
+if [[ -n "${GROMOZEKA_JAVA_EXECUTABLE:-}" && -n "${GROMOZEKA_WORKER_JAVA_CLASSPATH:-}" ]]; then
+  java_executable="$GROMOZEKA_JAVA_EXECUTABLE"
+  worker_classpath="$GROMOZEKA_WORKER_JAVA_CLASSPATH"
+else
+  app_directory="$(CDPATH='' cd -- "$bundle_root/../.." && pwd)"
+  contents_directory="$(dirname "$app_directory")"
+  worker_launcher="$contents_directory/MacOS/GromozekaWorker"
+fi
+
+worker_config="${GROMOZEKA_WORKER_CONFIG:-$GROMOZEKA_HOME/worker.yaml}"
+worker_main="com.gromozeka.worker.GromozekaWorkerMainKt"
+
+if [[ -n "${worker_launcher:-}" ]]; then
+  [[ -x "$worker_launcher" ]] || {
+    echo "The bundled Gromozeka Worker launcher is missing: $worker_launcher" >&2
+    exit 2
+  }
+  if [[ "${1:-}" == "enroll" ]]; then
+    exec "$worker_launcher" "$@"
+  fi
+  exec "$worker_launcher" \
+    "--spring.config.additional-location=optional:file:$worker_config" \
+    "$@"
+fi
+
+[[ -x "$java_executable" ]] || {
+  echo "The configured Gromozeka Java runtime is missing: $java_executable" >&2
+  exit 2
+}
+
+if [[ "${1:-}" == "enroll" ]]; then
+  exec "$java_executable" -cp "$worker_classpath" "$worker_main" "$@"
+fi
+
+exec "$java_executable" \
+  -cp "$worker_classpath" \
+  "$worker_main" \
+  "--spring.config.additional-location=optional:file:$worker_config" \
+  "$@"

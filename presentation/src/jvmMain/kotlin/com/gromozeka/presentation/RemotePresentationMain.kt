@@ -4,6 +4,7 @@ import com.gromozeka.presentation.services.DesktopClientAudioRecorder
 import com.gromozeka.presentation.services.DesktopClientAudioPlayer
 import com.gromozeka.presentation.services.DesktopSystemAudioMuteService
 import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextService
+import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
@@ -23,6 +24,7 @@ internal suspend fun startRemotePresentation(
     remoteUrl: String,
     authenticatedUser: AuthenticatedUserView,
     remoteClientSettingsStore: DesktopRemoteClientSettingsStore,
+    localWorkerController: LocalWorkerController,
     httpClient: HttpClient? = null,
 ): RemoteStartedApp {
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -40,6 +42,7 @@ internal suspend fun startRemotePresentation(
             systemAudioMuteService = DesktopSystemAudioMuteService(),
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
             attachmentAcquisitionController = DesktopAttachmentAcquisitionController(),
+            localWorkerController = localWorkerController,
             httpClient = httpClient,
         )
     } catch (error: Throwable) {

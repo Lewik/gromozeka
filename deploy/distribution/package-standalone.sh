@@ -37,6 +37,7 @@ output_directory="$(cd "$output_directory" && pwd)"
 cp "$repository_root/$component/build/libs/gromozeka-$component.jar" "$package_root/app/"
 cp "$repository_root/deploy/distribution/runtime-versions.properties" "$package_root/bin/"
 cp "$repository_root/LICENSE" "$package_root/LICENSE"
+cp "$repository_root/THIRD_PARTY_NOTICES.md" "$package_root/THIRD_PARTY_NOTICES.md"
 
 if [[ "$platform" == "windows" ]]; then
   cp "$repository_root/deploy/distribution/runtime-bootstrap.ps1" "$package_root/bin/"
@@ -86,6 +87,29 @@ else
   else
     cp "$repository_root/deploy/distribution/gromozeka-browser-mcp" "$package_root/bin/"
     chmod +x "$package_root/bin/gromozeka-browser-mcp"
+  fi
+
+  if [[ "$platform/$architecture" == "macos/arm64" ]]; then
+    native_launcher="$repository_root/build/native-launchers/macos-arm64/gromozeka-worker-launcher"
+    if [[ "$(uname -s)/$(uname -m)" == "Darwin/arm64" ]]; then
+      mkdir -p "$(dirname "$native_launcher")"
+      cc -Os -arch arm64 -mmacosx-version-min=12.0 \
+        "$repository_root/deploy/distribution/macos-worker-launcher.c" \
+        -framework CoreGraphics \
+        -framework ApplicationServices \
+        -o "$native_launcher"
+      strip "$native_launcher"
+    fi
+    [[ -x "$native_launcher" ]] || {
+      echo "The macOS ARM64 Worker launcher was not built: $native_launcher" >&2
+      exit 2
+    }
+    mkdir -p "$package_root/app/native"
+    cp "$native_launcher" "$package_root/app/native/gromozeka-worker-launcher"
+    cp "$repository_root/deploy/distribution/gromozeka-worker-service" "$package_root/bin/"
+    chmod +x \
+      "$package_root/app/native/gromozeka-worker-launcher" \
+      "$package_root/bin/gromozeka-worker-service"
   fi
 fi
 

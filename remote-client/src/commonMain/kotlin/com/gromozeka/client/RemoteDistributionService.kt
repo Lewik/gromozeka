@@ -14,20 +14,34 @@ class RemoteDistributionService internal constructor(
     suspend fun getManifest(): DistributionManifest =
         json.decodeFromString(client.getServerResource("/api/distributions"))
 
-    suspend fun createWorkerEnrollment(): WorkerEnrollmentInstructions {
+    suspend fun createWorkerEnrollmentRequest(): WorkerEnrollmentRequest {
         val enrollment = json.decodeFromString<WorkerEnrollmentToken>(
             client.postServerResource("/api/worker-enrollments")
         )
-        val serverUrl = client.serverHttpBaseUrl
+        return WorkerEnrollmentRequest(
+            serverUrl = client.serverHttpBaseUrl,
+            token = enrollment.token,
+            expiresAt = enrollment.expiresAt,
+        )
+    }
+
+    suspend fun createWorkerEnrollment(): WorkerEnrollmentInstructions {
+        val enrollment = createWorkerEnrollmentRequest()
         return WorkerEnrollmentInstructions(
-            macOsLinuxCommand = "bin/gromozeka-worker enroll --server $serverUrl " +
+            macOsLinuxCommand = "bin/gromozeka-worker enroll --server ${enrollment.serverUrl} " +
                 "--token ${enrollment.token} --worker-id my-workstation",
-            windowsCommand = "bin\\gromozeka-worker.cmd enroll --server $serverUrl " +
+            windowsCommand = "bin\\gromozeka-worker.cmd enroll --server ${enrollment.serverUrl} " +
                 "--token ${enrollment.token} --worker-id my-workstation",
             expiresAt = enrollment.expiresAt,
         )
     }
 }
+
+data class WorkerEnrollmentRequest(
+    val serverUrl: String,
+    val token: String,
+    val expiresAt: String,
+)
 
 data class WorkerEnrollmentInstructions(
     val macOsLinuxCommand: String,

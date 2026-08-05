@@ -5,6 +5,7 @@ import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -38,6 +39,7 @@ fun ApplicationScope.ChatWindow(
     appComponents: AppComponents,
     windowStateService: WindowStateService,
     onExitRequest: () -> Unit = {},
+    visible: Boolean = true,
     skipLoadingScreen: Boolean = false,
 ) {
     val settingsService = appComponents.settingsService
@@ -79,6 +81,7 @@ fun ApplicationScope.ChatWindow(
 
     Window(
         state = windowState,
+        visible = visible,
         alwaysOnTop = windowSettings.alwaysOnTop,
         onCloseRequest = {
             windowStateService.saveWindowState(
@@ -106,6 +109,12 @@ fun ApplicationScope.ChatWindow(
         },
         icon = painterResource("logos/logo-256x256.png")
     ) {
+        LaunchedEffect(visible) {
+            if (visible) {
+                window.toFront()
+                window.requestFocus()
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
