@@ -1,6 +1,7 @@
 package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -101,6 +102,26 @@ data class AiCatalog(
                 it.provider == connection.kind.provider && it.id == configuration.providerModelId
             }
         }
+
+    fun resolveRuntime(
+        selection: AiRuntimeSelection,
+        runtimeEnabledConnectionIds: Set<AiConnection.Id> = emptySet(),
+    ): ResolvedAiRuntime {
+        val configuration = modelConfigurations.firstOrNull {
+            it.id == selection.modelConfigurationId
+        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
+        val connection = connectionFor(configuration)
+            ?: error("AI connection not found: ${configuration.connectionId.value}")
+        require(connection.enabled || connection.id in runtimeEnabledConnectionIds) {
+            "AI connection is disabled: ${connection.id.value}"
+        }
+        require(configuration.enabled) {
+            "AI model configuration is disabled: ${configuration.id.value}"
+        }
+        val modelSpec = modelSpecFor(configuration)
+            ?: error("AI model spec not found: ${connection.kind.provider}/${configuration.providerModelId}")
+        return ResolvedAiRuntime(connection, configuration, modelSpec)
+    }
 
     fun runtimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection? {
         var currentPurpose: AiRuntimeAssignment.Purpose? = purpose

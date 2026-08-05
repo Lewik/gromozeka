@@ -42,7 +42,6 @@ class AiRequestResponseGatewayCodecTest {
         val embeddingPayload = AiRequestResponseGatewayCodec.execute(
             AiRequestResponseGatewayCodec.encodeEmbeddingRequest(
                 handler.runtime,
-                handler.modelSpec,
                 handler.embeddingRequest,
             ),
             handler,
@@ -120,6 +119,14 @@ class AiRequestResponseGatewayCodecTest {
 
     private class TestHandler : AiRequestResponseExecutionHandler {
         private val selection = AiRuntimeSelection(AiModelConfiguration.Id("model-config"))
+        val modelSpec = AiModelSpec(
+            id = "test-model",
+            provider = AiProvider.OPENAI,
+            capabilities = setOf(AiModelCapability.EMBEDDINGS),
+            limits = AiModelSpec.Limits(
+                embeddings = AiModelSpec.Limits.Embeddings(dimensions = 2),
+            ),
+        )
         val runtime = ResolvedAiRuntime(
             connection = AiConnection.OpenAiApi(
                 id = AiConnection.Id("connection"),
@@ -132,14 +139,7 @@ class AiRequestResponseGatewayCodecTest {
                 providerModelId = "test-model",
                 displayName = "Test model",
             ),
-        )
-        val modelSpec = AiModelSpec(
-            id = runtime.modelConfiguration.providerModelId,
-            provider = AiProvider.OPENAI,
-            capabilities = setOf(AiModelCapability.EMBEDDINGS),
-            limits = AiModelSpec.Limits(
-                embeddings = AiModelSpec.Limits.Embeddings(dimensions = 2),
-            ),
+            modelSpec = modelSpec,
         )
         val runtimeRequest = AiRuntimeRequest(
             systemPrompts = listOf("system"),
@@ -196,11 +196,9 @@ class AiRequestResponseGatewayCodecTest {
 
         override suspend fun embed(
             runtime: ResolvedAiRuntime,
-            modelSpec: AiModelSpec,
             request: AiEmbeddingRequest,
         ): AiEmbeddingResponse {
             require(runtime == this.runtime)
-            require(modelSpec == this.modelSpec)
             require(request == embeddingRequest)
             return embeddingResponse
         }

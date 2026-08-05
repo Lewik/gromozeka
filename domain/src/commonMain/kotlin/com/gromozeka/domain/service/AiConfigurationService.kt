@@ -96,4 +96,17 @@ interface AiCatalogManagementService {
 data class ResolvedAiRuntime(
     val connection: AiConnection,
     val modelConfiguration: AiModelConfiguration,
-)
+    val modelSpec: AiModelSpec,
+) {
+    init {
+        require(modelConfiguration.connectionId == connection.id) {
+            "AI model configuration ${modelConfiguration.id.value} does not belong to connection ${connection.id.value}"
+        }
+        require(modelSpec.provider == connection.kind.provider) {
+            "AI model spec provider ${modelSpec.provider} does not match connection provider ${connection.kind.provider}"
+        }
+        require(modelSpec.id == modelConfiguration.providerModelId) {
+            "AI model spec ${modelSpec.id} does not match configured model ${modelConfiguration.providerModelId}"
+        }
+    }
+}

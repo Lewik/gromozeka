@@ -42,6 +42,14 @@ class AiCatalogTest {
     }
 
     @Test
+    fun resolvedRuntimeCarriesTheExactCatalogModelSpec() {
+        val catalog = testCatalog()
+        val runtime = catalog.resolveRuntime(AiRuntimeSelection(CHAT_CONFIGURATION_ID))
+
+        assertEquals(catalog.modelSpecFor(runtime.modelConfiguration), runtime.modelSpec)
+    }
+
+    @Test
     fun rejectsAssignmentToModelWithoutRequiredCapability() {
         val catalog = testCatalog()
 

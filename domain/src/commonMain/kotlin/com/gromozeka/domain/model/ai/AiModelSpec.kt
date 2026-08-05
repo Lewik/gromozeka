@@ -32,6 +32,12 @@ data class AiModelSpec(
         require(reasoning == null || AiModelCapability.TEXT_GENERATION in capabilities) {
             "AI reasoning capabilities are valid only for text generation models"
         }
+        require(
+            capabilities.intersect(AiModelCapability.INPUT_CAPABILITIES).isEmpty() ||
+                AiModelCapability.TEXT_GENERATION in capabilities
+        ) {
+            "AI model input capabilities are valid only for text generation models"
+        }
     }
 
     val contextWindowTokens: Int?
@@ -117,9 +123,17 @@ data class AiModelSpec(
 @Serializable
 enum class AiModelCapability {
     TEXT_GENERATION,
+    IMAGE_INPUT,
+    DOCUMENT_INPUT,
     STRUCTURED_OUTPUT,
     TOOL_CALLING,
     SPEECH_TO_TEXT,
     TEXT_TO_SPEECH,
     EMBEDDINGS,
+
+    ;
+
+    companion object {
+        val INPUT_CAPABILITIES = setOf(IMAGE_INPUT, DOCUMENT_INPUT)
+    }
 }

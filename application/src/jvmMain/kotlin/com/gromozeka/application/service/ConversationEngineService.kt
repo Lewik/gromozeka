@@ -16,11 +16,12 @@ import com.gromozeka.application.service.memory.MemoryToolResultRenderer
 import com.gromozeka.application.service.memory.forMemoryPipeline
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
-import com.gromozeka.domain.repository.AiModelSpecRepository
+import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
+import com.gromozeka.domain.model.ai.requireSupportsInputs
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.AiConfigurationProvider
@@ -93,7 +94,6 @@ class ConversationEngineService(
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
-    private val aiModelSpecRepository: AiModelSpecRepository,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
     private val distributedToolCatalog: DistributedAiToolCatalog,
@@ -206,6 +206,7 @@ class ConversationEngineService(
         }
 
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
+        context.modelSpec.requireSupportsInputs(currentMessages)
         val runtimeMessages = artifactService.materialize(conversationId, currentMessages)
         val availableTools = aiToolRuntimeCatalogService.availableTools(
             agent = context.agent,
@@ -774,6 +775,7 @@ class ConversationEngineService(
         val runtimeContext: RuntimeEnvironmentContext.ProjectBound,
         val agent: AgentDefinition,
         val runtime: AiRuntime,
+        val modelSpec: AiModelSpec,
         val provider: AiProvider,
         val modelName: String,
         val toolCatalog: DistributedAiToolCatalogSnapshot,
@@ -818,7 +820,7 @@ class ConversationEngineService(
             null,
         )
         val autoCompactionThresholdTokens = if (runtime.capabilities.supportsAutoCompaction) {
-            aiModelSpecRepository.find(provider, modelName)?.autoCompactionThresholdTokens.also { threshold ->
+            resolvedRuntime.modelSpec.autoCompactionThresholdTokens.also { threshold ->
                 if (threshold == null) {
                     log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
                 } else {
@@ -857,6 +859,7 @@ class ConversationEngineService(
             runtimeContext = runtimeContext,
             agent = agent,
             runtime = runtime,
+            modelSpec = resolvedRuntime.modelSpec,
             provider = provider,
             modelName = modelName,
             toolCatalog = toolCatalog,

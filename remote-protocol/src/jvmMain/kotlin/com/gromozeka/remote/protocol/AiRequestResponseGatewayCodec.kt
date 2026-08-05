@@ -6,7 +6,6 @@ import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -68,13 +67,11 @@ object AiRequestResponseGatewayCodec {
 
     fun encodeEmbeddingRequest(
         runtime: ResolvedAiRuntime,
-        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): ByteArray =
         encodeOperation(
             AiRequestResponseOperation.Embed(
                 runtime = runtime,
-                modelSpec = modelSpec,
                 request = request.toWire(),
             )
         )
@@ -128,7 +125,6 @@ object AiRequestResponseGatewayCodec {
             is AiRequestResponseOperation.Embed -> AiRequestResponsePayload.Embed(
                 handler.embed(
                     runtime = operation.runtime,
-                    modelSpec = operation.modelSpec,
                     request = operation.request.toRuntime(),
                 ).toWire()
             )
@@ -177,7 +173,6 @@ private sealed interface AiRequestResponseOperation {
     @SerialName("embed")
     data class Embed(
         val runtime: ResolvedAiRuntime,
-        val modelSpec: AiModelSpec,
         val request: AiEmbeddingRequestWire,
     ) : AiRequestResponseOperation
 

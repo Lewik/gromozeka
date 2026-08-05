@@ -374,22 +374,21 @@ private object TestAiConfigurationProvider : AiConfigurationProvider {
         providerModelId = "test-model",
         displayName = "Test model",
     )
+    private val modelSpec = AiModelSpec(
+        id = configuration.providerModelId,
+        provider = AiProvider.OPENAI,
+        capabilities = AiModelCapability.entries.toSet(),
+        limits = AiModelSpec.Limits(
+            textGeneration = AiModelSpec.Limits.TextGeneration(
+                contextWindowTokens = 1_024,
+            ),
+            embeddings = AiModelSpec.Limits.Embeddings(dimensions = 8),
+        ),
+    )
     override val snapshot = AiCatalogSnapshot(
         catalog = AiCatalog(
             connections = listOf(connection),
-            modelSpecs = listOf(
-                AiModelSpec(
-                    id = configuration.providerModelId,
-                    provider = AiProvider.OPENAI,
-                    capabilities = AiModelCapability.entries.toSet(),
-                    limits = AiModelSpec.Limits(
-                        textGeneration = AiModelSpec.Limits.TextGeneration(
-                            contextWindowTokens = 1_024,
-                        ),
-                        embeddings = AiModelSpec.Limits.Embeddings(dimensions = 8),
-                    ),
-                )
-            ),
+            modelSpecs = listOf(modelSpec),
             modelConfigurations = listOf(configuration),
             runtimeAssignments = AiRuntimeAssignment.Purpose.entries
                 .filter(AiRuntimeAssignment.Purpose::requiresExplicitAssignment)
@@ -407,7 +406,7 @@ private object TestAiConfigurationProvider : AiConfigurationProvider {
         MutableStateFlow<AiCatalogSnapshot?>(snapshot)
 
     override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime =
-        ResolvedAiRuntime(connection, configuration)
+        ResolvedAiRuntime(connection, configuration, modelSpec)
 }
 
 private data object EmptyMcpServerRepository : McpServerRepository {

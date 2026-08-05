@@ -6,12 +6,10 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
-import com.gromozeka.domain.model.ai.AiModelSpec
 
 interface DirectAiEmbeddingProvider {
     suspend fun embed(
         runtime: ResolvedAiRuntime,
-        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse
 }
@@ -99,7 +97,6 @@ interface AiRequestResponseExecutionClient {
     suspend fun embed(
         target: ConversationRuntimeWorkerIdentity,
         runtime: ResolvedAiRuntime,
-        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse
 
@@ -126,7 +123,6 @@ interface AiRequestResponseExecutionHandler {
 
     suspend fun embed(
         runtime: ResolvedAiRuntime,
-        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse
 

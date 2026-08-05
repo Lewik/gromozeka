@@ -1,12 +1,14 @@
 package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
+import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -185,6 +187,14 @@ class SpeechExecutionRoutingTest {
             providerModelId = "speech-model",
             displayName = "Speech model",
         )
+        private val modelSpec = AiModelSpec(
+            id = modelConfiguration.providerModelId,
+            provider = AiProvider.OPENAI,
+            capabilities = setOf(
+                AiModelCapability.SPEECH_TO_TEXT,
+                AiModelCapability.TEXT_TO_SPEECH,
+            ),
+        )
 
         override val snapshotFlow = MutableStateFlow<AiCatalogSnapshot?>(null)
         override val snapshot: AiCatalogSnapshot
@@ -194,7 +204,7 @@ class SpeechExecutionRoutingTest {
 
         override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
             assertEquals(modelConfiguration.id, selection.modelConfigurationId)
-            return ResolvedAiRuntime(connection, modelConfiguration)
+            return ResolvedAiRuntime(connection, modelConfiguration, modelSpec)
         }
     }
 
@@ -233,7 +243,6 @@ class SpeechExecutionRoutingTest {
         override suspend fun embed(
             target: ConversationRuntimeWorkerIdentity,
             runtime: ResolvedAiRuntime,
-            modelSpec: AiModelSpec,
             request: AiEmbeddingRequest,
         ): AiEmbeddingResponse =
             AiEmbeddingResponse(

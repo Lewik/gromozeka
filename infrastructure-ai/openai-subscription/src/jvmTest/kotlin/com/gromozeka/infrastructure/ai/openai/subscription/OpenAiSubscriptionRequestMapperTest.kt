@@ -116,6 +116,40 @@ class OpenAiSubscriptionRequestMapperTest {
     }
 
     @Test
+    fun `maps user document attachment to a Responses file input`() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = listOf(
+                    Conversation.Message(
+                        id = Conversation.Message.Id("user-document"),
+                        conversationId = conversationId,
+                        role = Conversation.Message.Role.USER,
+                        content = listOf(
+                            Conversation.Message.ContentItem.UserMessage("Inspect this report"),
+                            Conversation.Message.ContentItem.DocumentItem(
+                                Conversation.Message.DocumentSource.Base64DocumentSource(
+                                    data = "AQID",
+                                    mediaType = "application/pdf",
+                                    fileName = "report.pdf",
+                                )
+                            ),
+                        ),
+                        createdAt = createdAt,
+                    )
+                ),
+            ),
+            modelName = "gpt-5",
+            conversationKey = "test-conversation",
+        )
+
+        val file = request.input.single().jsonArray("content")[1].jsonObject
+        assertEquals("input_file", file.string("type"))
+        assertEquals("report.pdf", file.string("filename"))
+        assertEquals("data:application/pdf;base64,AQID", file.string("file_data"))
+    }
+
+    @Test
     fun shortensLongToolCallIdsWithoutBreakingToolResultPairing() {
         val originalId = "call_" + "x".repeat(OPENAI_SUBSCRIPTION_KEY_MAX_LENGTH)
         val toolCallId = Conversation.Message.ContentItem.ToolCall.Id(originalId)

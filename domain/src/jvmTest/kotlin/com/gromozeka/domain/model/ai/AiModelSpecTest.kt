@@ -99,4 +99,15 @@ class AiModelSpecTest {
             )
         }
     }
+
+    @Test
+    fun rejectsInputCapabilitiesWithoutTextGeneration() {
+        assertFailsWith<IllegalArgumentException> {
+            AiModelSpec(
+                id = "broken-model",
+                provider = AiProvider.OPENAI,
+                capabilities = setOf(AiModelCapability.IMAGE_INPUT),
+            )
+        }
+    }
 }

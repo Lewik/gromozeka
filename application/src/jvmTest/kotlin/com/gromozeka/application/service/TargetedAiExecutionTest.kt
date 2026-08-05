@@ -229,10 +229,9 @@ class TargetedAiExecutionTest {
         )
 
         val runtime = testRuntime(AiExecutionTarget.Server)
-        val modelSpec = testModelSpec()
 
         assertSame(runtimeProvider.response, handler.call(runtime, null, request))
-        assertSame(embeddingProvider.response, handler.embed(runtime, modelSpec, embeddingRequest))
+        assertSame(embeddingProvider.response, handler.embed(runtime, embeddingRequest))
         assertEquals("transcript", handler.transcribe(runtime, null, transcriptionRequest))
         assertSame(textToSpeechProvider.response, handler.synthesize(runtime, synthesisRequest))
         assertEquals(listOf(transcriptionRequest), speechToTextProvider.requests)
@@ -255,10 +254,9 @@ class TargetedAiExecutionTest {
         target: AiExecutionTarget,
     ) : AiConfigurationProvider {
         private val runtime = testRuntime(target)
-        private val modelSpec = testModelSpec()
         private val catalogValue = AiCatalog(
             connections = listOf(runtime.connection),
-            modelSpecs = listOf(modelSpec),
+            modelSpecs = listOf(runtime.modelSpec),
             modelConfigurations = listOf(runtime.modelConfiguration),
             runtimeAssignments = AiRuntimeAssignment.Purpose.entries
                 .filter(AiRuntimeAssignment.Purpose::requiresExplicitAssignment)
@@ -307,7 +305,6 @@ class TargetedAiExecutionTest {
 
         override suspend fun embed(
             runtime: ResolvedAiRuntime,
-            modelSpec: AiModelSpec,
             request: AiEmbeddingRequest,
         ): AiEmbeddingResponse {
             requests += request
@@ -379,7 +376,6 @@ class TargetedAiExecutionTest {
         override suspend fun embed(
             target: ConversationRuntimeWorkerIdentity,
             runtime: ResolvedAiRuntime,
-            modelSpec: AiModelSpec,
             request: AiEmbeddingRequest,
         ): AiEmbeddingResponse {
             embeddingTarget = target
@@ -415,6 +411,7 @@ class TargetedAiExecutionTest {
                 providerModelId = "test-model",
                 displayName = "Test model",
             ),
+            modelSpec = testModelSpec(),
         )
     }
 

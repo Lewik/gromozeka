@@ -2,7 +2,6 @@ package com.gromozeka.server
 
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
-import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
@@ -46,10 +45,9 @@ class GatewayAiRequestResponseExecutionClient(
     override suspend fun embed(
         target: ConversationRuntimeWorkerIdentity,
         runtime: ResolvedAiRuntime,
-        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse =
-        execute(target, AiRequestResponseGatewayCodec.encodeEmbeddingRequest(runtime, modelSpec, request))
+        execute(target, AiRequestResponseGatewayCodec.encodeEmbeddingRequest(runtime, request))
             .let(AiRequestResponseGatewayCodec::decodeEmbeddingResponse)
 
     override suspend fun transcribe(

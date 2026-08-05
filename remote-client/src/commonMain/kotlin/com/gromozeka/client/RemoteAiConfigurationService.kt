@@ -42,17 +42,6 @@ internal class RemoteAiConfigurationService(
     }
 
     override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
-        val configuration = catalog.modelConfigurations.firstOrNull {
-            it.id == selection.modelConfigurationId
-        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
-        val connection = catalog.connections.firstOrNull { it.id == configuration.connectionId }
-            ?: error("AI connection not found: ${configuration.connectionId.value}")
-        require(connection.enabled || connection.id in snapshot.runtimeEnabledConnectionIds) {
-            "AI connection is disabled: ${connection.id.value}"
-        }
-        require(configuration.enabled) {
-            "AI model configuration is disabled: ${configuration.id.value}"
-        }
-        return ResolvedAiRuntime(connection, configuration)
+        return catalog.resolveRuntime(selection, snapshot.runtimeEnabledConnectionIds)
     }
 }

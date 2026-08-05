@@ -143,7 +143,7 @@ private object TestAiConfigurationProvider : AiConfigurationProvider {
 
     override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
         require(selection.modelConfigurationId == modelConfiguration.id)
-        return ResolvedAiRuntime(connection, modelConfiguration)
+        return ResolvedAiRuntime(connection, modelConfiguration, modelSpec)
     }
 }
 

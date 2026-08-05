@@ -133,6 +133,25 @@ class AnthropicSdkMessageMapperTest {
         assertEquals("call-screenshot", toolResult.toolUseId())
     }
 
+    @Test
+    fun `maps binary document tool result to an Anthropic document block`() {
+        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
+            .toCreateParams(
+                "claude-sonnet-4-20250514",
+                AiRuntimeRequest(
+                    systemPrompts = emptyList(),
+                    messages = listOf(documentToolResultMessage()),
+                ),
+            )
+
+        val toolResult = params.messages().single()
+            .content().asBlockParams().single().asToolResult()
+        val document = toolResult.content().orElseThrow().asBlocks().single()
+
+        assertTrue(document.isDocument())
+        assertEquals("call-document", toolResult.toolUseId())
+    }
+
     private fun requestWithJsonSchema(): AiRuntimeRequest =
         AiRuntimeRequest(
             systemPrompts = listOf("Return JSON only."),
@@ -190,6 +209,28 @@ class AnthropicSdkMessageMapperTest {
                             data = "AQID",
                             mediaType = Conversation.Message.MediaType.parse("image/png"),
                             fileName = "worker-screen.png",
+                        )
+                    ),
+                    isError = false,
+                )
+            ),
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+        )
+
+    private fun documentToolResultMessage(): Conversation.Message =
+        Conversation.Message(
+            id = Conversation.Message.Id("tool-result-document"),
+            conversationId = Conversation.Id("conversation-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(
+                Conversation.Message.ContentItem.ToolResult(
+                    toolUseId = Conversation.Message.ContentItem.ToolCall.Id("call-document"),
+                    toolName = "grz_read_document",
+                    result = listOf(
+                        Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                            data = "AQID",
+                            mediaType = Conversation.Message.MediaType.parse("application/pdf"),
+                            fileName = "report.pdf",
                         )
                     ),
                     isError = false,

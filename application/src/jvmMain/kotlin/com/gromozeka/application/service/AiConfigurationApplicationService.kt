@@ -182,18 +182,7 @@ class AiConfigurationApplicationService(
     }
 
     override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
-        val modelConfiguration = catalog.modelConfigurations.firstOrNull {
-            it.id == selection.modelConfigurationId
-        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
-        val connection = catalog.connections.firstOrNull { it.id == modelConfiguration.connectionId }
-            ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
-        require(connection.enabled || connection.id in snapshot.runtimeEnabledConnectionIds) {
-            "AI connection is disabled: ${connection.id.value}"
-        }
-        require(modelConfiguration.enabled) {
-            "AI model configuration is disabled: ${modelConfiguration.id.value}"
-        }
-        return ResolvedAiRuntime(connection, modelConfiguration)
+        return catalog.resolveRuntime(selection, snapshot.runtimeEnabledConnectionIds)
     }
 
     override suspend fun find(provider: AiProvider, modelId: String): AiModelSpec? =

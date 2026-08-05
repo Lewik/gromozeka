@@ -2,7 +2,6 @@ package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelCapability
-import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.resolveEmbeddingDimensions
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingCache
@@ -26,9 +25,9 @@ class OpenAiSdkEmbeddingProvider(
 
     override suspend fun embed(
         runtime: ResolvedAiRuntime,
-        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse {
+        val modelSpec = runtime.modelSpec
         require(runtime.connection.kind == AiConnection.Kind.OPENAI_API || runtime.connection.kind == AiConnection.Kind.OPENAI_COMPATIBLE) {
             "OpenAI embedding provider supports only OpenAI-compatible connections, got ${runtime.connection.kind}"
         }

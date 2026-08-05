@@ -29,17 +29,14 @@ class TargetedAiEmbeddingProvider(
 ) : AiEmbeddingProvider {
     override suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse {
         val runtime = configurationProvider.resolveAiRuntime(request.selection)
-        val modelSpec = configurationProvider.catalog.modelSpecFor(runtime.modelConfiguration)
-            ?: error("AI embedding model spec not found: ${runtime.modelConfiguration.providerModelId}")
         return when (val target = runtime.connection.executionTarget) {
-            AiExecutionTarget.Server -> directProvider.embed(runtime, modelSpec, request)
+            AiExecutionTarget.Server -> directProvider.embed(runtime, request)
             is AiExecutionTarget.Worker -> remoteClient().embed(
                 target = workerTargetResolver.requireOnline(
                     ConversationRuntimeWorkerId(target.workerId),
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
                 ),
                 runtime = runtime,
-                modelSpec = modelSpec,
                 request = request,
             )
         }

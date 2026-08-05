@@ -26,15 +26,36 @@ internal class RoutingAiRuntimeProvider(
     ): AiRuntime {
         val backend = backendFor(runtime.connection.kind)
 
-        return ModelDefaultAiRuntime(
-            delegate = backend.createRuntime(runtime.connection, runtime.modelConfiguration, workspaceRootPath),
-            defaults = runtime.modelConfiguration.defaultParameters,
+        return AiInputValidatingRuntime(
+            delegate = ModelDefaultAiRuntime(
+                delegate = backend.createRuntime(runtime.connection, runtime.modelConfiguration, workspaceRootPath),
+                defaults = runtime.modelConfiguration.defaultParameters,
+            ),
+            runtime = runtime,
         )
     }
 
     private fun backendFor(connectionKind: com.gromozeka.domain.model.ai.AiConnection.Kind): AiRuntimeBackend =
         backends.firstOrNull { it.supports(connectionKind) }
             ?: error("No AI runtime backend registered for connection kind $connectionKind")
+}
+
+class AiInputValidatingRuntime(
+    private val delegate: AiRuntime,
+    private val runtime: ResolvedAiRuntime,
+) : AiRuntime {
+    override val capabilities: AiRuntimeCapabilities
+        get() = delegate.capabilities
+
+    override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+        AiRuntimeInputValidator.requireSupported(runtime, request.messages)
+        return delegate.call(request)
+    }
+
+    override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> {
+        AiRuntimeInputValidator.requireSupported(runtime, request.messages)
+        return delegate.stream(request)
+    }
 }
 
 class ModelDefaultAiRuntime(

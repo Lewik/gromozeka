@@ -2,7 +2,6 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
-import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
@@ -38,10 +37,9 @@ class DirectAiRequestResponseExecutionHandler(
 
     override suspend fun embed(
         runtime: ResolvedAiRuntime,
-        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse =
-        embeddingProvider.embed(runtime, modelSpec, request)
+        embeddingProvider.embed(runtime, request)
 
     override suspend fun transcribe(
         runtime: ResolvedAiRuntime?,

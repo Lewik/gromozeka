@@ -2,7 +2,7 @@
   {
     "id": "claude-opus-5",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 1000000,
@@ -19,7 +19,7 @@
   {
     "id": "claude-opus-4-7",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 1000000,
@@ -30,7 +30,7 @@
   {
     "id": "claude-sonnet-4-7",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 1000000,
@@ -41,7 +41,7 @@
   {
     "id": "claude-sonnet-4-5-20250929",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -52,7 +52,7 @@
   {
     "id": "claude-haiku-4-5-20251001",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -63,7 +63,7 @@
   {
     "id": "claude-3-5-sonnet-20241022",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -74,7 +74,7 @@
   {
     "id": "claude-3-5-haiku-20241022",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -85,7 +85,7 @@
   {
     "id": "claude-3-opus-20240229",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -96,7 +96,7 @@
   {
     "id": "anthropic.claude-sonnet-4-20250514-v1:0",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -107,7 +107,7 @@
   {
     "id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -118,7 +118,7 @@
   {
     "id": "claude-sonnet-4-5",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -129,7 +129,7 @@
   {
     "id": "sonnet",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 1000000,
@@ -140,7 +140,7 @@
   {
     "id": "opus",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 1000000,
@@ -151,7 +151,7 @@
   {
     "id": "haiku",
     "provider": "ANTHROPIC",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 200000,
@@ -195,7 +195,7 @@
   {
     "id": "gpt-4-turbo",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 128000,
@@ -206,7 +206,7 @@
   {
     "id": "gpt-4o",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 128000,
@@ -217,7 +217,7 @@
   {
     "id": "gpt-4o-mini",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 128000,
@@ -228,7 +228,7 @@
   {
     "id": "gpt-5.2",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 400000,
@@ -240,7 +240,7 @@
   {
     "id": "gpt-5.4",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 400000,
@@ -252,7 +252,7 @@
   {
     "id": "gpt-5.4-mini",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 400000,
@@ -264,7 +264,7 @@
   {
     "id": "gpt-5.6-sol",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 372000,
@@ -275,7 +275,7 @@
   {
     "id": "gpt-5.6-terra",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 372000,
@@ -286,7 +286,7 @@
   {
     "id": "gpt-5.6-luna",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 372000,
@@ -297,7 +297,7 @@
   {
     "id": "gpt-5.5",
     "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "capabilities": ["TEXT_GENERATION", "IMAGE_INPUT", "DOCUMENT_INPUT", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
     "limits": {
       "textGeneration": {
         "contextWindowTokens": 272000,

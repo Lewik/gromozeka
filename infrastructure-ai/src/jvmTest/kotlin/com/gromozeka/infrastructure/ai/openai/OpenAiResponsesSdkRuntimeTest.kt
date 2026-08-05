@@ -179,6 +179,25 @@ class OpenAiResponsesSdkRuntimeTest {
         assertEquals("data:image/png;base64,AQID", output.asInputImage().imageUrl().orElseThrow())
     }
 
+    @Test
+    fun `maps binary document tool result to a Responses file output`() {
+        val params = mapper.toCreateParams(
+            modelName = "gpt-5",
+            webSearchEnabled = false,
+            request = request(messages = listOf(documentToolResultMessage())),
+        )
+
+        val output = params.input().orElseThrow().asResponse().single()
+            .asFunctionCallOutput().output().asResponseFunctionCallOutputItemList().single()
+
+        assertTrue(output.isInputFile())
+        assertEquals("report.pdf", output.asInputFile().filename().orElseThrow())
+        assertEquals(
+            "data:application/pdf;base64,AQID",
+            output.asInputFile().fileData().orElseThrow(),
+        )
+    }
+
     private fun request(
         tools: List<AiToolCallback> = emptyList(),
         toolChoice: AiToolChoice = AiToolChoice.Auto,
@@ -211,6 +230,27 @@ class OpenAiResponsesSdkRuntimeTest {
                         data = "AQID",
                         mediaType = Conversation.Message.MediaType.parse("image/png"),
                         fileName = "worker-screen.png",
+                    )
+                ),
+                isError = false,
+            )
+        ),
+        createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+    )
+
+    private fun documentToolResultMessage() = Conversation.Message(
+        id = Conversation.Message.Id("tool-result-document"),
+        conversationId = Conversation.Id("conversation-1"),
+        role = Conversation.Message.Role.USER,
+        content = listOf(
+            Conversation.Message.ContentItem.ToolResult(
+                toolUseId = Conversation.Message.ContentItem.ToolCall.Id("call-document"),
+                toolName = "grz_read_document",
+                result = listOf(
+                    Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                        data = "AQID",
+                        mediaType = Conversation.Message.MediaType.parse("application/pdf"),
+                        fileName = "report.pdf",
                     )
                 ),
                 isError = false,

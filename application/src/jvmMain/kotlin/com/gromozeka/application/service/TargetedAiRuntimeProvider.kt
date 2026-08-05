@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.requireSupportsInputs
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRequestResponseExecutionClient
 import com.gromozeka.domain.service.AiRuntime
@@ -59,8 +60,9 @@ class TargetedAiRuntimeProvider(
         private val workerId: ConversationRuntimeWorkerId,
         override val capabilities: AiRuntimeCapabilities,
     ) : AiRuntime {
-        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse =
-            remoteClient().call(
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            runtime.modelSpec.requireSupportsInputs(request.messages)
+            return remoteClient().call(
                 target = workerTargetResolver.requireOnline(
                     workerId,
                     ConversationRuntimeCapability.AI_REQUEST_RESPONSE,
@@ -69,6 +71,7 @@ class TargetedAiRuntimeProvider(
                 workspaceRootPath = null,
                 request = request,
             )
+        }
 
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> =
             throw UnsupportedOperationException(

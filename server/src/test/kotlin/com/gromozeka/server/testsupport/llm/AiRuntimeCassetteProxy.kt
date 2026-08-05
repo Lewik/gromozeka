@@ -21,6 +21,7 @@ import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
+import com.gromozeka.infrastructure.ai.runtime.AiInputValidatingRuntime
 import com.gromozeka.infrastructure.ai.runtime.ModelDefaultAiRuntime
 import com.gromozeka.shared.utils.sha256
 import klog.KLoggers
@@ -63,7 +64,9 @@ internal class CassetteAiRuntimeProvider(
         selection: AiRuntimeSelection,
         projectPath: String?,
     ): AiRuntime {
-        val (connection, modelConfiguration) = resolveRuntime(selection)
+        val resolvedRuntime = resolveRuntime(selection)
+        val connection = resolvedRuntime.connection
+        val modelConfiguration = resolvedRuntime.modelConfiguration
         val backend = backends.firstOrNull { it.supports(connection.kind) }
             ?: error("No AI runtime backend registered for connection kind ${connection.kind}")
         val backendRuntime = backend.createRuntime(connection, modelConfiguration, projectPath)
@@ -79,9 +82,12 @@ internal class CassetteAiRuntimeProvider(
                 mode = settings.mode,
             )
         }
-        return ModelDefaultAiRuntime(
-            delegate = runtime,
-            defaults = modelConfiguration.defaultParameters,
+        return AiInputValidatingRuntime(
+            delegate = ModelDefaultAiRuntime(
+                delegate = runtime,
+                defaults = modelConfiguration.defaultParameters,
+            ),
+            runtime = resolvedRuntime,
         )
     }
 
@@ -94,16 +100,7 @@ internal class CassetteAiRuntimeProvider(
 }
 
 internal fun AiCatalog.resolveEnabledRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
-    val modelConfiguration = modelConfigurations.firstOrNull {
-        it.id == selection.modelConfigurationId
-    } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
-    val connection = connections.firstOrNull { it.id == modelConfiguration.connectionId }
-        ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
-    require(connection.enabled) { "AI connection is disabled: ${connection.id.value}" }
-    require(modelConfiguration.enabled) {
-        "AI model configuration is disabled: ${modelConfiguration.id.value}"
-    }
-    return ResolvedAiRuntime(connection, modelConfiguration)
+    return resolveRuntime(selection)
 }
 
 internal data class AiRuntimeCassetteSettings(

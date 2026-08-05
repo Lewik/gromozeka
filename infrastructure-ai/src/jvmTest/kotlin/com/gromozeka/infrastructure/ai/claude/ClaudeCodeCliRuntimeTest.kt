@@ -338,6 +338,43 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun `passes user document attachment through Claude Code stream json`() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("Document received"),
+                )
+            )
+        )
+        val runtime = runtime(executor)
+        val message = userMessage("Inspect this report").copy(
+            content = listOf(
+                Conversation.Message.ContentItem.UserMessage("Inspect this report"),
+                Conversation.Message.ContentItem.DocumentItem(
+                    Conversation.Message.DocumentSource.Base64DocumentSource(
+                        data = "AQID",
+                        mediaType = "application/pdf",
+                        fileName = "report.pdf",
+                    )
+                ),
+            )
+        )
+
+        runtime.call(request(messages = listOf(message), tools = emptyList()))
+
+        val command = executor.commands.single()
+        val document = command.userContentBlocks.single()
+        assertEquals("document", document["type"]?.jsonPrimitive?.content)
+        assertEquals("report.pdf", document["title"]?.jsonPrimitive?.content)
+        assertEquals(
+            "application/pdf",
+            document["source"]?.jsonObject?.get("media_type")?.jsonPrimitive?.content,
+        )
+        assertTrue(command.userPrompt.contains("Inspect this report"))
+    }
+
+    @Test
     fun rejectsUnsupportedClaudeCodeReasoningControls() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(
             response(

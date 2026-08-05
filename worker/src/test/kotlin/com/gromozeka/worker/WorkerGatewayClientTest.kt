@@ -6,7 +6,6 @@ import com.gromozeka.application.service.AutoApproveToolApprovalService
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserProfile
-import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.service.AiEmbeddingRequest
@@ -243,7 +242,6 @@ private object UnusedAiRequestResponseHandler : AiRequestResponseExecutionHandle
 
     override suspend fun embed(
         runtime: ResolvedAiRuntime,
-        modelSpec: AiModelSpec,
         request: AiEmbeddingRequest,
     ): AiEmbeddingResponse =
         error("Unused embedding call")
