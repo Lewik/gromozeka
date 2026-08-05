@@ -8,6 +8,8 @@ import com.gromozeka.domain.service.CommandMonitorEvent
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_MONITOR_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_TASK_TOOL_NAME
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -156,7 +158,7 @@ class BackgroundActivityCompletionApplicationService(
                 ContentItem.ToolCall(
                     id = toolCallId,
                     call = ContentItem.ToolCall.Data(
-                        name = COMMAND_TASK_STATUS_TOOL_NAME,
+                        name = GRZ_GET_COMMAND_TASK_TOOL_NAME,
                         input = buildJsonObject {
                             put("task_id", task.id.value)
                             put("after_byte", task.terminalOutputStartByte ?: task.outputBytes)
@@ -194,7 +196,7 @@ class BackgroundActivityCompletionApplicationService(
             content = listOf(
                 ContentItem.ToolResult(
                     toolUseId = toolCallId,
-                    toolName = COMMAND_TASK_STATUS_TOOL_NAME,
+                    toolName = GRZ_GET_COMMAND_TASK_TOOL_NAME,
                     result = listOf(ContentItem.ToolResult.Data.Text(result)),
                     isError = false,
                     state = BlockState.COMPLETE,
@@ -238,7 +240,7 @@ class BackgroundActivityCompletionApplicationService(
                 ContentItem.ToolCall(
                     id = toolCallId,
                     call = ContentItem.ToolCall.Data(
-                        name = COMMAND_MONITOR_STATUS_TOOL_NAME,
+                        name = GRZ_GET_COMMAND_MONITOR_TOOL_NAME,
                         input = buildJsonObject {
                             put("monitor_id", monitor.id.value)
                             put("after_byte", firstOutputByte)
@@ -301,7 +303,7 @@ class BackgroundActivityCompletionApplicationService(
             content = listOf(
                 ContentItem.ToolResult(
                     toolUseId = toolCallId,
-                    toolName = COMMAND_MONITOR_STATUS_TOOL_NAME,
+                    toolName = GRZ_GET_COMMAND_MONITOR_TOOL_NAME,
                     result = listOf(ContentItem.ToolResult.Data.Text(result)),
                     isError = false,
                     state = BlockState.COMPLETE,
@@ -377,8 +379,6 @@ class BackgroundActivityCompletionApplicationService(
     }
 
     private companion object {
-        const val COMMAND_TASK_STATUS_TOOL_NAME = "grz_get_command_task"
-        const val COMMAND_MONITOR_STATUS_TOOL_NAME = "grz_get_command_monitor"
         const val MAX_MONITOR_EVENTS_PER_DELIVERY = 32
         const val MAX_MONITOR_EVENT_BYTES_PER_DELIVERY = 16 * 1024
         const val MAX_DELIVERIES_PER_BATCH = 16

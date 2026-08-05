@@ -75,9 +75,17 @@ data class AiToolMetadata(
     val returnDirect: Boolean = false,
     val requiredRuntimeCapabilities: Set<ConversationRuntimeCapability> = emptySet(),
     val executionScope: AiToolExecutionScope,
+    val loadingPolicy: AiToolLoadingPolicy = AiToolLoadingPolicy.ON_DEMAND,
     val visibleToMemoryPipeline: Boolean = true,
     val logInput: Boolean = true,
 )
+
+@Serializable
+enum class AiToolLoadingPolicy {
+    ON_DEMAND,
+    PRELOAD_WHEN_AVAILABLE,
+    PRELOAD_WHEN_MEMORY_ENABLED,
+}
 
 @Serializable
 enum class AiToolExecutionScope {

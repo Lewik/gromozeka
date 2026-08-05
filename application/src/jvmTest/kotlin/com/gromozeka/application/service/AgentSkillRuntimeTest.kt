@@ -94,6 +94,19 @@ class AgentSkillRuntimeTest {
     }
 
     @Test
+    fun `runtime keeps assigned skill catalog when skill tools are unavailable`() = runBlocking {
+        val service = AgentSkillRuntimeCatalogService(TestAgentSkillRepository(listOf(skillPackage)))
+        val prepared = service.prepare(
+            agent = agent(listOf(skill.id)),
+            projectId = projectId,
+            toolCatalog = toolCatalog().copy(tools = emptyList(), entries = emptyMap()),
+        )
+
+        assertTrue(prepared.systemPrompt!!.contains("\"name\":\"release-check\""))
+        assertTrue(prepared.toolCatalog.tools.isEmpty())
+    }
+
+    @Test
     fun `activation returns only skills assigned to current agent`() {
         val assignedAgent = agent(listOf(skill.id))
         val repository = TestAgentSkillRepository(listOf(skillPackage))

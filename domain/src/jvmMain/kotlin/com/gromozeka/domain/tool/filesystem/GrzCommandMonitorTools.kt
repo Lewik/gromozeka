@@ -4,10 +4,15 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.MAX_COMMAND_MONITOR_WAIT_MILLIS
 import com.gromozeka.domain.tool.CommandMonitorOwnerToolMetadata
 import com.gromozeka.domain.tool.CommandTaskOwnerToolMetadata
-import com.gromozeka.domain.tool.ServerToolMetadata
+import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
+
+const val GRZ_MONITOR_COMMAND_TOOL_NAME = "grz_monitor_command"
+const val GRZ_GET_COMMAND_MONITOR_TOOL_NAME = "grz_get_command_monitor"
+const val GRZ_CANCEL_COMMAND_MONITOR_TOOL_NAME = "grz_cancel_command_monitor"
+const val GRZ_LIST_COMMANDS_AND_MONITORS_TOOL_NAME = "grz_list_commands_and_monitors"
 
 data class MonitorCommandRequest(
     val task_id: String,
@@ -21,7 +26,7 @@ data class MonitorCommandRequest(
 
 interface GrzMonitorCommandTool : Tool<MonitorCommandRequest, Map<String, Any>> {
     override val name: String
-        get() = "grz_monitor_command"
+        get() = GRZ_MONITOR_COMMAND_TOOL_NAME
 
     override val metadata
         get() = CommandTaskOwnerToolMetadata
@@ -61,7 +66,7 @@ data class GetCommandMonitorRequest(
 
 interface GrzGetCommandMonitorTool : Tool<GetCommandMonitorRequest, Map<String, Any>> {
     override val name: String
-        get() = "grz_get_command_monitor"
+        get() = GRZ_GET_COMMAND_MONITOR_TOOL_NAME
 
     override val metadata
         get() = CommandMonitorOwnerToolMetadata
@@ -87,7 +92,7 @@ data class CancelCommandMonitorRequest(
 
 interface GrzCancelCommandMonitorTool : Tool<CancelCommandMonitorRequest, Map<String, Any>> {
     override val name: String
-        get() = "grz_cancel_command_monitor"
+        get() = GRZ_CANCEL_COMMAND_MONITOR_TOOL_NAME
 
     override val metadata
         get() = CommandMonitorOwnerToolMetadata
@@ -107,10 +112,10 @@ data class ListCommandsAndMonitorsRequest(
 
 interface GrzListCommandsAndMonitorsTool : Tool<ListCommandsAndMonitorsRequest, Map<String, Any>> {
     override val name: String
-        get() = "grz_list_commands_and_monitors"
+        get() = GRZ_LIST_COMMANDS_AND_MONITORS_TOOL_NAME
 
     override val metadata
-        get() = ServerToolMetadata
+        get() = PreloadedServerToolMetadata
 
     override val description: String
         get() = """

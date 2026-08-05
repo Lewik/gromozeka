@@ -6,7 +6,6 @@ import com.gromozeka.domain.model.WorkspacePathReference
 import com.gromozeka.domain.service.WorkspacePathAccessContext
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
-import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -19,7 +18,7 @@ import org.springframework.stereotype.Component
 class MemoryRememberToolCallback(
     private val memoryOperations: MemoryAsyncOperationApplicationService,
 ) : AiToolCallback {
-    override val metadata = ServerToolMetadata
+    override val metadata = PreloadedMemoryToolMetadata
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @Serializable

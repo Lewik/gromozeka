@@ -2,6 +2,7 @@ package com.gromozeka.domain.tool.web
 
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -37,6 +38,7 @@ interface ClaudeCodeWebSearchTool : Tool<ClaudeCodeWebSearchRequest, String> {
         get() = AiToolMetadata(
             requiredRuntimeCapabilities = setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE),
             executionScope = AiToolExecutionScope.WORKER,
+            loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
         )
 
     override val requestType: Class<ClaudeCodeWebSearchRequest>

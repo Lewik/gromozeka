@@ -2,7 +2,7 @@ package com.gromozeka.domain.tool.web
 
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
-import com.gromozeka.domain.tool.ServerToolMetadata
+import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 
 /**
  * Request parameters for brave_local_search tool.
@@ -363,7 +363,7 @@ data class BraveLocalSearchRequest(
  * @see com.gromozeka.domain.service.WebSearchService.searchLocal (when created)
  */
 interface BraveLocalSearchTool : Tool<BraveLocalSearchRequest, Map<String, Any>> {
-    override val metadata get() = ServerToolMetadata
+    override val metadata get() = PreloadedServerToolMetadata
     
     override val name: String
         get() = "brave_local_search"

@@ -1,8 +1,10 @@
 package com.gromozeka.domain.tool.filesystem
 
-import com.gromozeka.domain.tool.LocalAgentToolMetadata
+import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
+
+const val GRZ_EDIT_FILE_TOOL_NAME = "grz_edit_file"
 
 /**
  * Request parameters for grz_edit_file tool.
@@ -417,10 +419,10 @@ data class EditFileRequest(
 interface GrzEditFileTool : Tool<EditFileRequest, Map<String, Any>> {
     
     override val name: String
-        get() = "grz_edit_file"
+        get() = GRZ_EDIT_FILE_TOOL_NAME
 
     override val metadata
-        get() = LocalAgentToolMetadata
+        get() = PreloadedWorkspaceToolMetadata
     
     override val description: String
         get() = """

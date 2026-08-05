@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.datetime.Instant
@@ -118,20 +119,47 @@ class AiToolRuntimeCatalogServiceTest {
     private val instant = Instant.fromEpochMilliseconds(0)
 
     @Test
-    fun `starts with search and agent pinned tools`() {
+    fun `starts with core and agent configured tools`() {
         val catalog = catalog(
             tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."),
             tool("grz_read_file", "Read files."),
-            tool("grz_write_file", "Write files."),
+            tool("custom_agent_tool", "Custom agent tool."),
+            tool("on_demand_tool", "Discoverable only."),
         )
 
-        val available = service.availableTools(
-            agent = agent(pinnedTools = listOf("grz_read_file")),
+        val selection = service.selectTools(
+            agent = agent(pinnedTools = listOf("custom_agent_tool")),
             catalog = catalog,
             messages = emptyList(),
+            memoryEnabled = false,
         )
 
-        assertEquals(listOf("grz_read_file", SEARCH_TOOLS_TOOL_NAME), available.map { it.definition.name })
+        assertEquals(
+            listOf("custom_agent_tool", "grz_read_file", SEARCH_TOOLS_TOOL_NAME),
+            selection.tools.map { it.definition.name },
+        )
+    }
+
+    @Test
+    fun `preloads the complete shell file command and monitor tool set`() {
+        val expected = listOf(
+            "grz_cancel_command_monitor",
+            "grz_cancel_command_task",
+            "grz_edit_file",
+            "grz_execute_command",
+            "grz_get_command_monitor",
+            "grz_get_command_task",
+            "grz_list_commands_and_monitors",
+            "grz_monitor_command",
+            "grz_read_file",
+            "grz_write_file",
+            SEARCH_TOOLS_TOOL_NAME,
+        ).sorted()
+        val catalog = catalog(*expected.map { tool(it, "$it description") }.toTypedArray())
+
+        val selection = service.selectTools(agent(), catalog, emptyList(), memoryEnabled = false)
+
+        assertEquals(expected, selection.tools.map { it.definition.name })
     }
 
     @Test
@@ -145,7 +173,7 @@ class AiToolRuntimeCatalogServiceTest {
                         id = callId,
                         call = Conversation.Message.ContentItem.ToolCall.Data(
                             name = SEARCH_TOOLS_TOOL_NAME,
-                            input = buildJsonObject { put("query", "write files") },
+                            input = buildJsonObject { put("query", "calendar") },
                         ),
                     )
                 ),
@@ -158,7 +186,7 @@ class AiToolRuntimeCatalogServiceTest {
                         toolName = SEARCH_TOOLS_TOOL_NAME,
                         result = listOf(
                             Conversation.Message.ContentItem.ToolResult.Data.Text(
-                                """{"tools":[{"name":"grz_write_file"}]}"""
+                                """{"tools":[{"name":"calendar_create_event"}]}"""
                             )
                         ),
                     )
@@ -168,18 +196,19 @@ class AiToolRuntimeCatalogServiceTest {
         val catalog = catalog(
             tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."),
             tool("grz_read_file", "Read files."),
-            tool("grz_write_file", "Write files."),
+            tool("calendar_create_event", "Create an event."),
         )
 
-        val available = service.availableTools(
+        val selection = service.selectTools(
             agent = agent(pinnedTools = listOf("grz_read_file")),
             catalog = catalog,
             messages = messages,
+            memoryEnabled = false,
         )
 
         assertEquals(
-            listOf("grz_read_file", "grz_write_file", SEARCH_TOOLS_TOOL_NAME),
-            available.map { it.definition.name },
+            listOf("calendar_create_event", "grz_read_file", SEARCH_TOOLS_TOOL_NAME),
+            selection.tools.map { it.definition.name },
         )
     }
 
@@ -194,7 +223,7 @@ class AiToolRuntimeCatalogServiceTest {
                         toolName = SEARCH_TOOLS_TOOL_NAME,
                         result = listOf(
                             Conversation.Message.ContentItem.ToolResult.Data.Text(
-                                """{"tools":[{"name":"grz_write_file"}]}"""
+                                """{"tools":[{"name":"custom_tool"}]}"""
                             ),
                             Conversation.Message.ContentItem.ToolResult.Data.Text("not-json"),
                         ),
@@ -204,12 +233,12 @@ class AiToolRuntimeCatalogServiceTest {
         )
         val catalog = catalog(
             tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."),
-            tool("grz_write_file", "Write files."),
+            tool("custom_tool", "Custom tool."),
         )
 
-        val available = service.availableTools(agent(), catalog, messages)
+        val selection = service.selectTools(agent(), catalog, messages, memoryEnabled = false)
 
-        assertEquals(listOf(SEARCH_TOOLS_TOOL_NAME), available.map { it.definition.name })
+        assertEquals(listOf(SEARCH_TOOLS_TOOL_NAME), selection.tools.map { it.definition.name })
     }
 
     @Test
@@ -236,7 +265,7 @@ class AiToolRuntimeCatalogServiceTest {
                         toolName = SEARCH_TOOLS_TOOL_NAME,
                         result = listOf(
                             Conversation.Message.ContentItem.ToolResult.Data.Text(
-                                """{"tools":[{"name":"grz_write_file"}]}"""
+                                """{"tools":[{"name":"custom_tool"}]}"""
                             )
                         ),
                     )
@@ -256,25 +285,69 @@ class AiToolRuntimeCatalogServiceTest {
         )
         val catalog = catalog(
             tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."),
-            tool("grz_write_file", "Write files."),
+            tool("custom_tool", "Custom tool."),
         )
 
-        val available = service.availableTools(agent(), catalog, messages)
+        val selection = service.selectTools(agent(), catalog, messages, memoryEnabled = false)
 
-        assertEquals(listOf(SEARCH_TOOLS_TOOL_NAME), available.map { it.definition.name })
+        assertEquals(listOf(SEARCH_TOOLS_TOOL_NAME), selection.tools.map { it.definition.name })
     }
 
     @Test
-    fun `fails fast when a pinned tool is unavailable`() {
+    fun `reports an unavailable pinned tool without failing selection`() {
         val catalog = catalog(tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."))
 
-        assertFailsWith<IllegalArgumentException> {
-            service.availableTools(
-                agent = agent(pinnedTools = listOf("missing_tool")),
-                catalog = catalog,
-                messages = emptyList(),
-            )
-        }
+        val selection = service.selectTools(
+            agent = agent(pinnedTools = listOf("missing_tool")),
+            catalog = catalog,
+            messages = emptyList(),
+            memoryEnabled = false,
+        )
+
+        assertEquals(listOf(SEARCH_TOOLS_TOOL_NAME), selection.tools.map { it.definition.name })
+        assertTrue("missing_tool" in selection.unavailableToolNames)
+        assertTrue(selection.unavailableToolsSystemPrompt()!!.contains("\"missing_tool\""))
+    }
+
+    @Test
+    fun `preloads available tools marked by runtime policy`() {
+        val catalog = catalog(
+            tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."),
+            tool(
+                "preloaded_tool",
+                "Always available.",
+                loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
+            ),
+            tool("on_demand_tool", "Discoverable only."),
+        )
+
+        val selection = service.selectTools(agent(), catalog, emptyList(), memoryEnabled = false)
+
+        assertEquals(
+            listOf("preloaded_tool", SEARCH_TOOLS_TOOL_NAME),
+            selection.tools.map { it.definition.name },
+        )
+    }
+
+    @Test
+    fun `preloads memory tools only when memory is enabled`() {
+        val catalog = catalog(
+            tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."),
+            tool(
+                "memory_enrich_context",
+                "Recall memory.",
+                loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_MEMORY_ENABLED,
+            ),
+        )
+
+        val disabled = service.selectTools(agent(), catalog, emptyList(), memoryEnabled = false)
+        val enabled = service.selectTools(agent(), catalog, emptyList(), memoryEnabled = true)
+
+        assertEquals(listOf(SEARCH_TOOLS_TOOL_NAME), disabled.tools.map { it.definition.name })
+        assertEquals(
+            listOf("memory_enrich_context", SEARCH_TOOLS_TOOL_NAME),
+            enabled.tools.map { it.definition.name },
+        )
     }
 
     private fun agent(pinnedTools: List<String> = emptyList()): AgentDefinition =
@@ -316,9 +389,10 @@ private fun tool(
     name: String,
     description: String,
     parameterDescription: String = "",
+    loadingPolicy: AiToolLoadingPolicy = AiToolLoadingPolicy.ON_DEMAND,
 ): AiToolCallback =
     object : AiToolCallback {
-        override val metadata = ServerToolMetadata
+        override val metadata = ServerToolMetadata.copy(loadingPolicy = loadingPolicy)
         override val definition = AiToolDefinition(
             name = name,
             description = description,

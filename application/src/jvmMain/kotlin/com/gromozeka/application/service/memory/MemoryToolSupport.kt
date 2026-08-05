@@ -10,6 +10,8 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolLoadingPolicy
+import com.gromozeka.domain.tool.ServerToolMetadata
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -27,6 +29,10 @@ const val MEMORY_MAINTENANCE_TOOL_NAME = "memory_maintenance"
 const val MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME = "memory_rebuild_embeddings"
 const val MEMORY_EMBEDDING_STATUS_TOOL_NAME = "memory_embedding_status"
 const val MEMORY_LIST_NAMESPACES_TOOL_NAME = "memory_list_namespaces"
+
+val PreloadedMemoryToolMetadata = ServerToolMetadata.copy(
+    loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_MEMORY_ENABLED,
+)
 
 fun List<AiToolCallback>.forMemoryPipeline(): List<AiToolCallback> =
     filter { tool ->

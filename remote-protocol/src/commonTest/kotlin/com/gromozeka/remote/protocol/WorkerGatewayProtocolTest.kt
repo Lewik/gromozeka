@@ -1,6 +1,11 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolDescriptor
+import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolLoadingPolicy
+import com.gromozeka.domain.tool.AiToolMetadata
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -18,6 +23,27 @@ class WorkerGatewayProtocolTest {
     @Test
     fun `request cancellation round trips through binary codec`() {
         val expected = WorkerGatewayMessage.CancelRequest("request-1")
+
+        assertEquals(expected, WorkerGatewayCodec.decode(WorkerGatewayCodec.encode(expected)))
+    }
+
+    @Test
+    fun `tool loading policy round trips through worker catalog`() {
+        val expected = WorkerGatewayMessage.Ready(
+            tools = listOf(
+                AiToolDescriptor(
+                    definition = AiToolDefinition(
+                        name = "preloaded_worker_tool",
+                        description = "Preloaded worker tool",
+                        inputSchema = """{"type":"object"}""",
+                    ),
+                    metadata = AiToolMetadata(
+                        executionScope = AiToolExecutionScope.WORKER,
+                        loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
+                    ),
+                )
+            )
+        )
 
         assertEquals(expected, WorkerGatewayCodec.decode(WorkerGatewayCodec.encode(expected)))
     }

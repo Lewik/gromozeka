@@ -208,16 +208,20 @@ class ConversationEngineService(
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
         context.modelSpec.requireSupportsInputs(currentMessages)
         val runtimeMessages = artifactService.materialize(conversationId, currentMessages)
-        val availableTools = aiToolRuntimeCatalogService.availableTools(
+        val toolSelection = aiToolRuntimeCatalogService.selectTools(
             agent = context.agent,
             catalog = context.toolCatalog,
             messages = currentMessages,
+            memoryEnabled = context.automaticMemoryRememberEnabled || context.automaticMemoryRecallEnabled,
         )
 
         val runtimeRequest = AiRuntimeRequest(
-            systemPrompts = context.runtimeSystemPrompts,
+            systemPrompts = buildList {
+                addAll(context.runtimeSystemPrompts)
+                toolSelection.unavailableToolsSystemPrompt()?.let(::add)
+            },
             messages = runtimeMessages,
-            tools = availableTools,
+            tools = toolSelection.tools,
             options = AiRuntimeOptions(
                 maxOutputTokens = context.agent.runtimeOverrides.maxOutputTokens,
                 reasoning = context.agent.runtimeOverrides.reasoning,

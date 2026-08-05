@@ -6,6 +6,8 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
 
 const val MAX_COMMAND_TASK_WAIT_MILLIS = 300_000L
+const val GRZ_GET_COMMAND_TASK_TOOL_NAME = "grz_get_command_task"
+const val GRZ_CANCEL_COMMAND_TASK_TOOL_NAME = "grz_cancel_command_task"
 
 data class GetCommandTaskRequest(
     val task_id: String,
@@ -24,7 +26,7 @@ data class GetCommandTaskRequest(
 
 interface GrzGetCommandTaskTool : Tool<GetCommandTaskRequest, Map<String, Any>> {
     override val name: String
-        get() = "grz_get_command_task"
+        get() = GRZ_GET_COMMAND_TASK_TOOL_NAME
 
     override val metadata
         get() = CommandTaskOwnerToolMetadata
@@ -50,7 +52,7 @@ data class CancelCommandTaskRequest(
 
 interface GrzCancelCommandTaskTool : Tool<CancelCommandTaskRequest, Map<String, Any>> {
     override val name: String
-        get() = "grz_cancel_command_task"
+        get() = GRZ_CANCEL_COMMAND_TASK_TOOL_NAME
 
     override val metadata
         get() = CommandTaskOwnerToolMetadata

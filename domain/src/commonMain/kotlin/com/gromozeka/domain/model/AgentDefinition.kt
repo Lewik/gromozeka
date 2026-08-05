@@ -28,7 +28,7 @@ import kotlin.jvm.JvmInline
  * @property skills Agent Skills available to the agent through progressive disclosure
  * @property runtimeSelection model configuration used to create the runtime for this agent.
  * @property runtimeOverrides optional per-agent overrides on top of the selected model configuration.
- * @property tools tool names that are always loaded for this agent; other tools remain discoverable
+ * @property tools additional tool names preloaded when available; unavailable tools are reported to the runtime
  * @property description optional human-readable explanation of agent's purpose
  * @property type definition scope
  * @property createdAt timestamp when agent was created (immutable)

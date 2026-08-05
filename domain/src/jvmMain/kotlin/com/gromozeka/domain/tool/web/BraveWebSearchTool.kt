@@ -2,7 +2,7 @@ package com.gromozeka.domain.tool.web
 
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
-import com.gromozeka.domain.tool.ServerToolMetadata
+import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 
 /**
  * Request parameters for brave_web_search tool.
@@ -380,7 +380,7 @@ data class BraveWebSearchRequest(
  * @see com.gromozeka.domain.service.WebSearchService.searchWeb (when created)
  */
 interface BraveWebSearchTool : Tool<BraveWebSearchRequest, Map<String, Any>> {
-    override val metadata get() = ServerToolMetadata
+    override val metadata get() = PreloadedServerToolMetadata
     
     override val name: String
         get() = "brave_web_search"

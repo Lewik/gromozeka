@@ -1,11 +1,12 @@
 package com.gromozeka.domain.tool.filesystem
 
-import com.gromozeka.domain.tool.LocalAgentToolMetadata
+import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
 
 const val MAX_COMMAND_INITIAL_YIELD_MILLIS = 30_000L
+const val GRZ_EXECUTE_COMMAND_TOOL_NAME = "grz_execute_command"
 
 /**
  * Request parameters for grz_execute_command tool.
@@ -154,10 +155,10 @@ data class ExecuteCommandRequest(
 interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> {
     
     override val name: String
-        get() = "grz_execute_command"
+        get() = GRZ_EXECUTE_COMMAND_TOOL_NAME
 
     override val metadata
-        get() = LocalAgentToolMetadata
+        get() = PreloadedWorkspaceToolMetadata
     
     override val description: String
         get() = """

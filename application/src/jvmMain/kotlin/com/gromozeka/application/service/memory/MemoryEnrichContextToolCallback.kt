@@ -2,7 +2,6 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
-import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.runBlocking
@@ -14,7 +13,7 @@ import org.springframework.stereotype.Component
 class MemoryEnrichContextToolCallback(
     private val memoryOperations: MemoryAsyncOperationApplicationService,
 ) : AiToolCallback {
-    override val metadata = ServerToolMetadata
+    override val metadata = PreloadedMemoryToolMetadata
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @Serializable

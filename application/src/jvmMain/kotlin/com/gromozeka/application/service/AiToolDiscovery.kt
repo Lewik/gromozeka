@@ -5,15 +5,29 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
-import com.gromozeka.domain.tool.AiToolExecutionScope
-import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.AiToolLoadingPolicy
+import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.filesystem.GRZ_CANCEL_COMMAND_MONITOR_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_CANCEL_COMMAND_TASK_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_EDIT_FILE_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_MONITOR_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_GET_COMMAND_TASK_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_LIST_COMMANDS_AND_MONITORS_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_MONITOR_COMMAND_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_READ_FILE_TOOL_NAME
+import com.gromozeka.domain.tool.filesystem.GRZ_WRITE_FILE_TOOL_NAME
 import com.gromozeka.domain.tool.requiredProjectId
 import com.gromozeka.domain.tool.requiredWorkerId
+import com.gromozeka.application.service.memory.MEMORY_ANSWER_QUESTION_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.shared.utils.sha256
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -22,6 +36,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -36,6 +51,26 @@ import kotlin.math.ln
 const val SEARCH_TOOLS_TOOL_NAME = "search_tools"
 const val SEARCH_TOOLS_DEFAULT_LIMIT = 8
 const val SEARCH_TOOLS_MAX_LIMIT = 20
+
+private val corePreloadedToolNames = setOf(
+    SEARCH_TOOLS_TOOL_NAME,
+    GRZ_EXECUTE_COMMAND_TOOL_NAME,
+    GRZ_READ_FILE_TOOL_NAME,
+    GRZ_EDIT_FILE_TOOL_NAME,
+    GRZ_WRITE_FILE_TOOL_NAME,
+    GRZ_GET_COMMAND_TASK_TOOL_NAME,
+    GRZ_CANCEL_COMMAND_TASK_TOOL_NAME,
+    GRZ_MONITOR_COMMAND_TOOL_NAME,
+    GRZ_GET_COMMAND_MONITOR_TOOL_NAME,
+    GRZ_CANCEL_COMMAND_MONITOR_TOOL_NAME,
+    GRZ_LIST_COMMANDS_AND_MONITORS_TOOL_NAME,
+)
+
+private val memoryPreloadedToolNames = setOf(
+    MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+    MEMORY_ANSWER_QUESTION_TOOL_NAME,
+    MEMORY_REMEMBER_TOOL_NAME,
+)
 
 data class AiToolSearchMatch(
     val tool: AiToolCallback,
@@ -149,32 +184,47 @@ class AiToolSearchService {
 class AiToolRuntimeCatalogService {
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun availableTools(
+    fun selectTools(
         agent: AgentDefinition,
         catalog: DistributedAiToolCatalogSnapshot,
         messages: List<Conversation.Message>,
-    ): List<AiToolCallback> {
+        memoryEnabled: Boolean,
+    ): AiToolRuntimeSelection {
         val toolsByName = catalog.tools.associateBy { it.definition.name }
-        require(SEARCH_TOOLS_TOOL_NAME in toolsByName) {
-            "Current conversation runtime does not provide required tool '$SEARCH_TOOLS_TOOL_NAME'"
-        }
-
-        val missingPinnedTools = agent.tools.filterNot(toolsByName::containsKey)
-        require(missingPinnedTools.isEmpty()) {
-            "Agent ${agent.id.value} pins unavailable tools: ${missingPinnedTools.sorted().joinToString()}"
-        }
-
-        return loadedToolNames(agent, messages)
-            .mapNotNull(toolsByName::get)
-            .sortedBy { it.definition.name }
+        val requestedToolNames = loadedToolNames(
+            agent = agent,
+            catalog = catalog,
+            messages = messages,
+            memoryEnabled = memoryEnabled,
+        )
+        return AiToolRuntimeSelection(
+            tools = requestedToolNames
+                .mapNotNull(toolsByName::get)
+                .sortedBy { it.definition.name },
+            unavailableToolNames = requestedToolNames
+                .filterNot(toolsByName::containsKey)
+                .sorted(),
+        )
     }
 
     internal fun loadedToolNames(
         agent: AgentDefinition,
+        catalog: DistributedAiToolCatalogSnapshot,
         messages: List<Conversation.Message>,
+        memoryEnabled: Boolean,
     ): Set<String> = buildSet {
-        add(SEARCH_TOOLS_TOOL_NAME)
+        addAll(corePreloadedToolNames)
         addAll(agent.tools)
+        if (memoryEnabled) {
+            addAll(memoryPreloadedToolNames)
+        }
+        if (agent.skills.isNotEmpty()) {
+            add(ACTIVATE_AGENT_SKILL_TOOL_NAME)
+            add(READ_AGENT_SKILL_RESOURCE_TOOL_NAME)
+        }
+        catalog.tools
+            .filter { tool -> tool.metadata.loadingPolicy.shouldPreload(memoryEnabled) }
+            .mapTo(this) { it.definition.name }
         addAll(discoveredToolNames(messages))
     }
 
@@ -221,6 +271,33 @@ class AiToolRuntimeCatalogService {
                     ?.takeIf(String::isNotBlank)
             }
     }.getOrDefault(emptyList())
+
+    private fun AiToolLoadingPolicy.shouldPreload(memoryEnabled: Boolean): Boolean =
+        when (this) {
+            AiToolLoadingPolicy.ON_DEMAND -> false
+            AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE -> true
+            AiToolLoadingPolicy.PRELOAD_WHEN_MEMORY_ENABLED -> memoryEnabled
+        }
+}
+
+data class AiToolRuntimeSelection(
+    val tools: List<AiToolCallback>,
+    val unavailableToolNames: List<String>,
+)
+
+internal fun AiToolRuntimeSelection.unavailableToolsSystemPrompt(): String? {
+    if (unavailableToolNames.isEmpty()) {
+        return null
+    }
+    val names = buildJsonArray {
+        unavailableToolNames.forEach { add(JsonPrimitive(it)) }
+    }
+    return """
+        <unavailable_tools>
+        These normally preloaded, agent-configured, or previously discovered tools are unavailable in the current runtime (JSON data): $names
+        This is a recoverable runtime condition, commonly caused by an offline Worker or disabled integration. Do not call a listed tool until it is advertised again. Continue with available tools or explain the limitation when it blocks the request.
+        </unavailable_tools>
+    """.trimIndent()
 }
 
 @Component
@@ -232,6 +309,7 @@ class SearchToolsToolCallback(
     private val agentSkillRuntimeCatalogService: AgentSkillRuntimeCatalogService,
     private val runtimeCatalogService: AiToolRuntimeCatalogService,
     private val searchService: AiToolSearchService,
+    private val settingsProvider: SettingsProvider,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -271,9 +349,7 @@ class SearchToolsToolCallback(
         source = "gromozeka",
     )
 
-    override val metadata: AiToolMetadata = AiToolMetadata(
-        executionScope = AiToolExecutionScope.SERVER,
-    )
+    override val metadata = PreloadedServerToolMetadata
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = json.decodeFromString<Input>(toolInput)
@@ -300,7 +376,9 @@ class SearchToolsToolCallback(
         ).toolCatalog
         val loadedToolNames = runtimeCatalogService.loadedToolNames(
             agent = agent,
+            catalog = preparedCatalog,
             messages = conversationDomainService.loadCurrentMessages(conversationId),
+            memoryEnabled = settingsProvider.userProfile.memorySettings.let { it.autoRemember || it.autoRecall },
         )
         val matches = searchService.search(
             tools = preparedCatalog.tools.filterNot { it.definition.name in loadedToolNames },

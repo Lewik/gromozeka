@@ -8,8 +8,8 @@ import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AgentSkillRepository
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
-import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
+import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.requiredProjectId
@@ -65,11 +65,6 @@ class AgentSkillRuntimeCatalogService(
             )
         }
 
-        agentSkillToolNames.forEach { toolName ->
-            toolCatalog.entries[toolName]
-                ?: error("Current runtime does not provide required Agent Skill tool '$toolName'")
-        }
-
         val names = skills.map(AgentSkill::name)
         val rewrittenTools = toolCatalog.tools.map { callback ->
             when (callback.definition.name) {
@@ -117,9 +112,7 @@ class ActivateAgentSkillToolCallback(
 
     override val definition: AiToolDefinition = activateAgentSkillDefinition(emptyList())
 
-    override val metadata: AiToolMetadata = AiToolMetadata(
-        executionScope = AiToolExecutionScope.SERVER,
-    )
+    override val metadata = PreloadedServerToolMetadata
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = json.decodeFromString<Input>(toolInput)
@@ -172,9 +165,7 @@ class ReadAgentSkillResourceToolCallback(
 
     override val definition: AiToolDefinition = readAgentSkillResourceDefinition(emptyList())
 
-    override val metadata: AiToolMetadata = AiToolMetadata(
-        executionScope = AiToolExecutionScope.SERVER,
-    )
+    override val metadata = PreloadedServerToolMetadata
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = json.decodeFromString<Input>(toolInput)
