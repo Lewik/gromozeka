@@ -5,6 +5,7 @@ import com.gromozeka.shared.utils.sha256
 
 object BrowserUseMcpPreset {
     const val SERVER_ID_PREFIX = "browser_"
+    val TOOL_NAMESPACE = McpToolNamespace("playwright")
     const val OPERATION_TIMEOUT_MS = 120_000L
     const val OUTPUT_MAX_BYTES = 52_428_800
     const val EXTENSION_TOKEN_ENV = "PLAYWRIGHT_MCP_EXTENSION_TOKEN"
@@ -24,6 +25,7 @@ object BrowserUseMcpPreset {
         extensionToken: String? = null,
     ): McpServerConfig = McpServerConfig(
         id = serverId(workerId),
+        namespace = TOOL_NAMESPACE,
         displayName = "Browser · ${workerId.value}",
         workerId = workerId,
         transport = transport(extensionToken),

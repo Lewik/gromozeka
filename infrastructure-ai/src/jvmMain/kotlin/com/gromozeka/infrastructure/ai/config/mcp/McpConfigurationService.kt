@@ -54,6 +54,9 @@ class McpConfigurationService(
             require(servers.all { it.config.workerId == workerId }) {
                 "Worker MCP synchronization contains a server assigned to another Worker"
             }
+            require(servers.map { it.config.namespace }.distinct().size == servers.size) {
+                "Worker MCP synchronization contains duplicate tool namespaces"
+            }
 
             val next = linkedMapOf<McpServerId, ActiveMcpServer>()
             val refreshAvailable = mutableListOf<McpServerRevision>()
@@ -94,6 +97,13 @@ class McpConfigurationService(
     ): McpServer = mutationMutex.withLock {
         require(config.workerId == workerId) {
             "MCP server ${config.id.value} targets worker ${config.workerId.value}, not ${workerId.value}"
+        }
+        require(
+            activeServers.values.none {
+                it.server.config.id != config.id && it.server.config.namespace == config.namespace
+            }
+        ) {
+            "Worker ${workerId.value} already has an MCP server in namespace ${config.namespace.value}"
         }
         val current = activeServers[config.id]?.server
         validateMutation(kind, config, expectedRevision, current)
@@ -249,7 +259,7 @@ class McpConfigurationService(
             client = client,
             tools = server.snapshot.tools.map { tool ->
                 McpToolCallbackAdapter(
-                    serverId = server.config.id,
+                    namespace = server.config.namespace,
                     client = client,
                     tool = tool,
                     forwardGrzConversationContext = server.config.forwardGrzConversationContext,

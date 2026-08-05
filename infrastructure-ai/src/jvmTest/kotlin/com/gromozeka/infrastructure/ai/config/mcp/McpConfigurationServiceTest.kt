@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
 import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
+import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.McpServerRefreshPublisher
 import com.gromozeka.domain.service.McpServerRevision
@@ -43,7 +44,7 @@ class McpConfigurationServiceTest {
             assertEquals(1, created.revision)
             assertEquals(listOf("Read", "Search"), created.snapshot.tools.map { it.remoteName })
             assertEquals(
-                listOf("mcp__test_server__Read", "mcp__test_server__Search"),
+                listOf("mcp__test__Read", "mcp__test__Search"),
                 fixture.service.getTools().map { it.definition.name },
             )
             assertFalse(fixture.client.closed)
@@ -70,7 +71,7 @@ class McpConfigurationServiceTest {
                 )
             }
 
-            assertEquals(listOf("mcp__test_server__Search"), fixture.service.getTools().map { it.definition.name })
+            assertEquals(listOf("mcp__test__Search"), fixture.service.getTools().map { it.definition.name })
             assertFalse(firstClient.closed)
             assertTrue(failedCandidate.forceClosed)
         }
@@ -129,7 +130,7 @@ class McpConfigurationServiceTest {
             assertFalse(accepted.refreshAvailable)
             assertEquals(listOf("Fetch", "Search"), accepted.snapshot.tools.map { it.remoteName })
             assertEquals(
-                listOf("mcp__test_server__Fetch", "mcp__test_server__Search"),
+                listOf("mcp__test__Fetch", "mcp__test__Search"),
                 fixture.service.getTools().map { it.definition.name },
             )
             assertTrue(original.closed)
@@ -153,12 +154,34 @@ class McpConfigurationServiceTest {
         try {
             val refreshAvailable = service.synchronize(listOf(persisted))
 
-            assertEquals(listOf("mcp__test_server__old_tool"), service.getTools().map { it.definition.name })
+            assertEquals(listOf("mcp__test__old_tool"), service.getTools().map { it.definition.name })
             assertEquals(listOf(McpServerRevision(config.id, 1)), refreshAvailable)
             assertFalse(observed.closed)
         } finally {
             service.shutdown()
             scope.cancel()
+        }
+    }
+
+    @Test
+    fun `worker rejects a second installation in the same tool namespace`() = runBlocking {
+        val firstClient = FakeMcpConnectedClient(tools("Search"))
+        val unusedSecondClient = FakeMcpConnectedClient(tools("Search"))
+        fixture(firstClient, unusedSecondClient).use { fixture ->
+            val first = fixture.config()
+            fixture.service.apply(McpServerMutationKind.CREATE, first, null)
+
+            val error = assertFailsWith<IllegalArgumentException> {
+                fixture.service.apply(
+                    McpServerMutationKind.CREATE,
+                    first.copy(id = McpServerId("test_server_copy")),
+                    null,
+                )
+            }
+
+            assertTrue(error.message.orEmpty().contains("already has an MCP server in namespace test"))
+            assertFalse(unusedSecondClient.closed)
+            assertFalse(unusedSecondClient.forceClosed)
         }
     }
 
@@ -198,6 +221,7 @@ class McpConfigurationServiceTest {
         fun testConfig(allowedTools: Set<String>? = null): McpServerConfig =
             McpServerConfig(
                 id = McpServerId("test_server"),
+                namespace = McpToolNamespace("test"),
                 displayName = "Test MCP",
                 workerId = WORKER_ID,
                 transport = McpServerTransport.Stdio(command = "unused"),

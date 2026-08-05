@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.mcp.McpServerSnapshot
 import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpTransportValueRemovals
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
+import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.repository.AiToolCapabilityCatalogRepository
 import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -39,6 +40,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class McpServerManagementServiceTest {
     @Test
@@ -57,7 +59,7 @@ class McpServerManagementServiceTest {
                 fixture.toolExecutionTarget?.workerId,
             )
             val toolCall = fixture.toolExecutionCalls.single()
-            assertEquals("mcp__test_server__browser_take_screenshot", toolCall.call.name)
+            assertEquals("mcp__test__browser_take_screenshot", toolCall.call.name)
             assertEquals(
                 fixture.identity.workerId.value,
                 toolCall.call.input.jsonObject
@@ -85,7 +87,7 @@ class McpServerManagementServiceTest {
             assertEquals(fixture.identity, fixture.request?.target)
             val command = fixture.request?.command as WorkerControlRequest.Command.ApplyMcpServer
             assertEquals(fixture.server.config, command.config)
-            assertEquals(fixture.server.config.id.sourceId, fixture.generatedSource?.id)
+            assertEquals(fixture.server.config.namespace.sourceId, fixture.generatedSource?.id)
             assertEquals(fixture.server.snapshot.instructions, fixture.generatedSource?.instructions)
             assertEquals(
                 fixture.server.snapshot.tools.map { it.remoteName }.sorted(),
@@ -93,6 +95,90 @@ class McpServerManagementServiceTest {
                     ?.map { it.name.substringAfterLast("__") }
                     ?.sorted(),
             )
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `matching namespace contracts are shared across workers`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            fixture.repository.create(
+                fixture.server.copy(
+                    config = fixture.server.config.copy(
+                        id = McpServerId("other_installation"),
+                        workerId = ConversationRuntimeWorkerId("other-worker"),
+                    )
+                )
+            )
+
+            val created = fixture.service.create(fixture.server.config)
+
+            assertEquals(fixture.server.config.namespace, created.config.namespace)
+            assertEquals(2, fixture.repository.list().size)
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `conflicting namespace contracts are rejected across workers`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            val conflictingTools = fixture.server.snapshot.tools.map { tool ->
+                if (tool.remoteName == "search") tool.copy(description = "Conflicting search contract.") else tool
+            }
+            val conflictingSnapshot = fixture.server.snapshot.copy(
+                tools = conflictingTools,
+                fingerprint = McpServerSnapshot.calculateFingerprint(
+                    serverName = fixture.server.snapshot.serverName,
+                    serverVersion = fixture.server.snapshot.serverVersion,
+                    instructions = fixture.server.snapshot.instructions,
+                    supportsToolsListChanged = fixture.server.snapshot.supportsToolsListChanged,
+                    tools = conflictingTools,
+                ),
+            )
+            fixture.repository.create(
+                fixture.server.copy(
+                    config = fixture.server.config.copy(
+                        id = McpServerId("other_installation"),
+                        workerId = ConversationRuntimeWorkerId("other-worker"),
+                    ),
+                    snapshot = conflictingSnapshot,
+                )
+            )
+
+            val error = assertFailsWith<IllegalArgumentException> {
+                fixture.service.create(fixture.server.config)
+            }
+
+            assertEquals(
+                "MCP namespace test conflicts with installations: other_installation",
+                error.message,
+            )
+            assertEquals(1, fixture.repository.list().size)
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `duplicate namespace installation on one worker is rejected before execution`() = runBlocking {
+        val fixture = Fixture(online = true)
+        try {
+            fixture.repository.create(
+                fixture.server.copy(
+                    config = fixture.server.config.copy(id = McpServerId("other_installation"))
+                )
+            )
+
+            val error = assertFailsWith<IllegalArgumentException> {
+                fixture.service.create(fixture.server.config)
+            }
+
+            assertTrue(error.message.orEmpty().contains("already has MCP server other_installation"))
+            assertEquals(null, fixture.request)
         } finally {
             fixture.close()
         }
@@ -509,6 +595,7 @@ private class TestCapabilityCatalogRepository : AiToolCapabilityCatalogRepositor
 private fun testServer(workerId: ConversationRuntimeWorkerId): McpServer {
     val config = McpServerConfig(
         id = McpServerId("test_server"),
+        namespace = McpToolNamespace("test"),
         displayName = "Test MCP",
         workerId = workerId,
         transport = McpServerTransport.Stdio(command = "unused"),

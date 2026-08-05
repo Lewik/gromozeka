@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.config.mcp
 
 import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.model.mcp.BrowserUseMcpPreset
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.tool.AiToolResult
@@ -17,6 +18,7 @@ class PlaywrightExtensionLiveTest {
         val client = DefaultMcpClientFactory().connect(
             McpServerConfig(
                 id = McpServerId("playwright_extension_live_test"),
+                namespace = McpToolNamespace("playwright"),
                 displayName = "Playwright Extension Live Test",
                 workerId = ConversationRuntimeWorkerId("local-live-test"),
                 transport = BrowserUseMcpPreset.transport(

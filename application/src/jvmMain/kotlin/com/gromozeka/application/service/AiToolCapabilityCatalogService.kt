@@ -7,7 +7,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
-import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.repository.AiToolCapabilityCatalogRepository
 import com.gromozeka.domain.repository.McpServerRepository
 import com.gromozeka.domain.service.AiConfigurationProvider
@@ -319,10 +319,17 @@ class AiToolCapabilityCatalogService(
         if (!sourceId.startsWith(MCP_SOURCE_PREFIX)) {
             return null
         }
-        val id = sourceId.removePrefix(MCP_SOURCE_PREFIX)
-        return runCatching { McpServerId(id) }
-            .getOrNull()
-            ?.let { mcpServerRepository.find(it)?.snapshot?.instructions }
+        val namespace = runCatching {
+            McpToolNamespace(sourceId.removePrefix(MCP_SOURCE_PREFIX))
+        }.getOrNull() ?: return null
+        val instructions = mcpServerRepository.list()
+            .filter { it.config.namespace == namespace }
+            .map { it.snapshot.instructions }
+            .distinct()
+        check(instructions.size <= 1) {
+            "MCP namespace ${namespace.value} has conflicting instructions"
+        }
+        return instructions.singleOrNull()
     }
 
     private suspend fun ensureGenerationStarted(

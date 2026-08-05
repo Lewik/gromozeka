@@ -21,6 +21,8 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
@@ -35,22 +37,26 @@ class McpServerManagementService(
     private val workerToolExecutionClient: WorkerToolExecutionClient,
     private val capabilityCatalogService: AiToolCapabilityCatalogService,
 ) {
+    private val mutationMutex = Mutex()
+
     suspend fun list(): List<McpServer> = repository.list()
 
     suspend fun get(id: McpServerId): McpServer? = repository.find(id)
 
-    suspend fun create(config: McpServerConfig): McpServer =
+    suspend fun create(config: McpServerConfig): McpServer = mutationMutex.withLock {
+        requireNamespaceAvailableOnWorker(config)
         apply(
             kind = McpServerMutationKind.CREATE,
             config = config,
             expectedRevision = null,
         )
+    }
 
     suspend fun update(
         config: McpServerConfig,
         expectedRevision: Long,
         transportValueRemovals: McpTransportValueRemovals = McpTransportValueRemovals(),
-    ): McpServer {
+    ): McpServer = mutationMutex.withLock {
         val current = repository.find(config.id)
             ?: error("MCP server not found: ${config.id.value}")
         require(current.revision == expectedRevision) {
@@ -59,7 +65,11 @@ class McpServerManagementService(
         require(current.config.workerId == config.workerId) {
             "Moving an MCP server between Workers requires explicit delete and create operations"
         }
-        return apply(
+        require(current.config.namespace == config.namespace) {
+            "Changing an MCP tool namespace requires explicit delete and create operations"
+        }
+        requireNamespaceAvailableOnWorker(config)
+        apply(
             kind = McpServerMutationKind.UPDATE,
             config = config.mergeTransportValuesFrom(
                 existing = current.config,
@@ -72,10 +82,10 @@ class McpServerManagementService(
     suspend fun refresh(
         serverId: McpServerId,
         expectedRevision: Long,
-    ): McpServer {
+    ): McpServer = mutationMutex.withLock {
         val current = repository.find(serverId)
             ?: error("MCP server not found: ${serverId.value}")
-        return apply(
+        apply(
             kind = McpServerMutationKind.REFRESH,
             config = current.config,
             expectedRevision = expectedRevision,
@@ -85,7 +95,7 @@ class McpServerManagementService(
     suspend fun delete(
         serverId: McpServerId,
         expectedRevision: Long,
-    ) {
+    ) = mutationMutex.withLock {
         val current = repository.find(serverId)
             ?: error("MCP server not found: ${serverId.value}")
         val result = execute(
@@ -117,7 +127,7 @@ class McpServerManagementService(
         } ?: error("MCP server does not provide $BROWSER_SCREENSHOT_TOOL_NAME: ${serverId.value}")
         val workerIdentity = onlineWorker(server.config.workerId)
         val executionTarget = ConversationRuntimeTaskTarget.Worker(server.config.workerId)
-        val toolName = screenshotTool.toAiToolDefinition(serverId).name
+        val toolName = screenshotTool.toAiToolDefinition(server.config.namespace).name
         val toolCallId = Conversation.Message.ContentItem.ToolCall.Id(uuid7())
         val toolCall = Conversation.Message.ContentItem.ToolCall(
             id = toolCallId,
@@ -198,6 +208,7 @@ class McpServerManagementService(
                 createdAt = current?.createdAt ?: now,
                 updatedAt = now,
             )
+            requireMatchingNamespaceContract(candidate)
             val persisted = when (kind) {
                 McpServerMutationKind.CREATE -> repository.create(candidate)
                 McpServerMutationKind.UPDATE,
@@ -215,12 +226,39 @@ class McpServerManagementService(
         }
         capabilityCatalogService.scheduleSource(
             AiToolCapabilitySource(
-                id = server.config.id.sourceId,
-                definitions = server.snapshot.tools.map { it.toAiToolDefinition(server.config.id) },
+                id = server.config.namespace.sourceId,
+                definitions = server.snapshot.tools.map { it.toAiToolDefinition(server.config.namespace) },
                 instructions = server.snapshot.instructions,
             )
         )
         return server
+    }
+
+    private suspend fun requireNamespaceAvailableOnWorker(config: McpServerConfig) {
+        val duplicate = repository.list().firstOrNull { server ->
+            server.config.id != config.id &&
+                server.config.workerId == config.workerId &&
+                server.config.namespace == config.namespace
+        }
+        require(duplicate == null) {
+            "Worker ${config.workerId.value} already has MCP server ${duplicate?.config?.id?.value} " +
+                "in namespace ${config.namespace.value}"
+        }
+    }
+
+    private suspend fun requireMatchingNamespaceContract(candidate: McpServer) {
+        val conflicts = repository.list().filter { server ->
+            server.config.id != candidate.config.id &&
+                server.config.namespace == candidate.config.namespace &&
+                (
+                    server.snapshot.tools != candidate.snapshot.tools ||
+                        server.snapshot.instructions != candidate.snapshot.instructions
+                    )
+        }
+        require(conflicts.isEmpty()) {
+            "MCP namespace ${candidate.config.namespace.value} conflicts with installations: " +
+                conflicts.joinToString { it.config.id.value }
+        }
     }
 
     private suspend fun synchronizeWorker(workerId: ConversationRuntimeWorkerId) {

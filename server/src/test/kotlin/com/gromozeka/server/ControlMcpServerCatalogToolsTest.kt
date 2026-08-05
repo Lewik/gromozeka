@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
 import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
+import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.jsonArray
@@ -114,6 +115,7 @@ private fun testServer(transport: McpServerTransport): McpServer {
     return McpServer(
         config = McpServerConfig(
             id = McpServerId("test_server"),
+            namespace = McpToolNamespace("test"),
             displayName = "Test Server",
             workerId = ConversationRuntimeWorkerId("worker"),
             transport = transport,

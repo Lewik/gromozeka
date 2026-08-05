@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.ai.config.mcp
 
-import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
+import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
@@ -187,7 +187,7 @@ class McpToolCallbackAdapterTest {
 
     private fun callback(client: McpConnectedClient) =
         McpToolCallbackAdapter(
-            serverId = McpServerId("test"),
+            namespace = McpToolNamespace("test"),
             client = client,
             tool = McpToolSnapshot(
                 remoteName = "echo",

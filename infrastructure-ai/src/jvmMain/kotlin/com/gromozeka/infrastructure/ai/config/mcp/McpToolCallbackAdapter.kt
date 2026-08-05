@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.ai.config.mcp
 
-import com.gromozeka.domain.model.mcp.McpServerId
+import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -20,7 +20,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 
 class McpToolCallbackAdapter(
-    serverId: McpServerId,
+    namespace: McpToolNamespace,
     private val client: McpConnectedClient,
     private val tool: McpToolSnapshot,
     private val forwardGrzConversationContext: Boolean = false,
@@ -29,7 +29,7 @@ class McpToolCallbackAdapter(
     private val log = KLoggers.logger {}
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    override val definition: AiToolDefinition = tool.toAiToolDefinition(serverId)
+    override val definition: AiToolDefinition = tool.toAiToolDefinition(namespace)
     override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER)
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {

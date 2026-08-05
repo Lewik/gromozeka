@@ -18,6 +18,7 @@ import com.gromozeka.domain.model.mcp.McpServerConfig
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.model.mcp.McpServerSnapshot
 import com.gromozeka.domain.model.mcp.McpServerTransport
+import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -266,6 +267,7 @@ class RemoteProtocolCodecTest {
             payload = CreateMcpServerRequest(
                 McpServerConfig(
                     id = McpServerId("browser_worker"),
+                    namespace = McpToolNamespace("playwright"),
                     displayName = "Browser",
                     workerId = workerId,
                     transport = McpServerTransport.BundledStdio(

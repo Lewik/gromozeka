@@ -47,6 +47,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
@@ -101,6 +102,15 @@ class DistributedAiToolRoutingTest {
             inputSchema = """{"type":"object","properties":{"executable_names":{"type":"array","items":{"type":"string"}}}}""",
         ),
         metadata = WorkerInspectionToolMetadata,
+    )
+    private val sharedMcpTool = AiToolDescriptor(
+        definition = AiToolDefinition(
+            name = "mcp__playwright__browser_tabs",
+            description = "List browser tabs.",
+            inputSchema = """{"type":"object","properties":{}}""",
+            source = "mcp:playwright",
+        ),
+        metadata = AiToolMetadata(executionScope = AiToolExecutionScope.WORKER),
     )
 
     @Test
@@ -206,6 +216,52 @@ class DistributedAiToolRoutingTest {
             setOf(AI_TOOL_EXECUTION_WORKER_ID_FIELD),
             targetSchema.getValue("properties").jsonObject.keys,
         )
+    }
+
+    @Test
+    fun `matching MCP namespaces merge as execution targets of one tool`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(sharedMcpTool))
+        registerWorker(workerRegistry, "worker-b", listOf(sharedMcpTool))
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = emptyList(),
+            mounts = emptyList(),
+        )
+
+        val catalog = distributedCatalog(workerRegistry, workspaceService).snapshot(project)
+
+        assertEquals(listOf(sharedMcpTool.definition.name), catalog.entries.keys.toList())
+        assertEquals(
+            listOf("worker-a", "worker-b"),
+            catalog.entries.getValue(sharedMcpTool.definition.name).workers.map { it.workerId.value },
+        )
+    }
+
+    @Test
+    fun `conflicting MCP namespace definitions fail catalog construction`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(sharedMcpTool))
+        registerWorker(
+            workerRegistry,
+            "worker-b",
+            listOf(
+                sharedMcpTool.copy(
+                    definition = sharedMcpTool.definition.copy(description = "Conflicting contract.")
+                )
+            ),
+        )
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = emptyList(),
+            mounts = emptyList(),
+        )
+
+        val error = assertFailsWith<IllegalStateException> {
+            distributedCatalog(workerRegistry, workspaceService).snapshot(project)
+        }
+
+        assertTrue(error.message.orEmpty().contains("conflicting definitions"))
     }
 
     @Test

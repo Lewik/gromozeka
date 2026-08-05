@@ -10,18 +10,18 @@ class McpServerTest {
     fun `keeps provider-compatible tool names readable`() {
         assertEquals(
             "mcp__test_server__read_file",
-            tool("read_file").toAiToolDefinition(McpServerId("test_server")).name,
+            tool("read_file").toAiToolDefinition(McpToolNamespace("test_server")).name,
         )
     }
 
     @Test
     fun `normalizes incompatible and oversized tool names without collisions`() {
-        val serverId = McpServerId("an_extremely_long_external_mcp_server_identifier")
+        val namespace = McpToolNamespace("an_extremely_long_external_mcp_server_identifier")
         val first = tool("documents.search/${"nested_".repeat(12)}first")
-            .toAiToolDefinition(serverId)
+            .toAiToolDefinition(namespace)
             .name
         val second = tool("documents/search/${"nested_".repeat(12)}first")
-            .toAiToolDefinition(serverId)
+            .toAiToolDefinition(namespace)
             .name
 
         assertNotEquals(first, second)

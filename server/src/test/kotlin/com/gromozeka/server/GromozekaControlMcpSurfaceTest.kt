@@ -133,7 +133,7 @@ class GromozekaControlMcpSurfaceTest {
             .jsonObject
         assertFalse(mcpConfigSchema.getValue("additionalProperties").jsonPrimitive.boolean)
         assertEquals(
-            setOf("id", "displayName", "workerId", "transport"),
+            setOf("id", "namespace", "displayName", "workerId", "transport"),
             mcpConfigSchema.getValue("required").jsonArray
                 .map { it.jsonPrimitive.content }
                 .toSet(),
@@ -187,6 +187,7 @@ class GromozekaControlMcpSurfaceTest {
 
         assertContains(guide, "bundled_stdio")
         assertContains(guide, "runtime \"browser_use\"")
+        assertContains(guide, "namespace \"playwright\"")
         assertContains(guide, "ephemeralWorkingDirectory true")
         assertContains(guide, "Settings > Downloads")
         assertContains(guide, "coexist with the official Playwright Extension")

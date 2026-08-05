@@ -13,6 +13,7 @@ class BrowserUseMcpPresetTest {
         val transport = config.transport as McpServerTransport.BundledStdio
 
         assertEquals(config.id, BrowserUseMcpPreset.serverId(workerId))
+        assertEquals(BrowserUseMcpPreset.TOOL_NAMESPACE, config.namespace)
         assertTrue(config.id.value.startsWith("browser_local_worker_1_"))
         assertEquals("Browser · Local Worker/1", config.displayName)
         assertEquals(BrowserUseMcpPreset.OPERATION_TIMEOUT_MS, config.timeoutMs)

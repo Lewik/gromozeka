@@ -13,6 +13,7 @@ import kotlin.jvm.JvmInline
 @Serializable
 data class McpServerConfig(
     val id: McpServerId,
+    val namespace: McpToolNamespace,
     val displayName: String,
     val workerId: ConversationRuntimeWorkerId,
     val transport: McpServerTransport,
@@ -188,12 +189,12 @@ data class McpToolSnapshot(
         }
     }
 
-    fun toAiToolDefinition(serverId: McpServerId): AiToolDefinition =
+    fun toAiToolDefinition(namespace: McpToolNamespace): AiToolDefinition =
         AiToolDefinition(
-            name = generatedToolName(serverId, remoteName),
+            name = generatedToolName(namespace, remoteName),
             description = description,
             inputSchema = inputSchema,
-            source = serverId.sourceId,
+            source = namespace.sourceId,
         )
 }
 
@@ -211,7 +212,7 @@ data class McpServer(
         require(updatedAt >= createdAt) { "MCP server update time cannot precede creation" }
         require(
             snapshot.tools
-                .map { it.toAiToolDefinition(config.id).name }
+                .map { it.toAiToolDefinition(config.namespace).name }
                 .distinct()
                 .size == snapshot.tools.size
         ) {
@@ -229,33 +230,44 @@ value class McpServerId(val value: String) {
         }
     }
 
+}
+
+@Serializable
+@JvmInline
+value class McpToolNamespace(val value: String) {
+    init {
+        require(value.matches(ID_PATTERN)) {
+            "MCP tool namespace must be stable lowercase snake_case: $value"
+        }
+    }
+
     val sourceId: String
         get() = "mcp:$value"
 }
 
 private fun generatedToolName(
-    serverId: McpServerId,
+    namespace: McpToolNamespace,
     remoteName: String,
 ): String {
     val normalizedRemoteName = remoteName.map { character ->
         if (character.isAsciiToolNameCharacter()) character else '_'
     }.joinToString("")
-    val directName = "mcp__${serverId.value}__$normalizedRemoteName"
+    val directName = "mcp__${namespace.value}__$normalizedRemoteName"
     if (directName.length <= MAX_AI_TOOL_NAME_LENGTH && normalizedRemoteName == remoteName) {
         return directName
     }
 
-    val hash = "${serverId.value}\u0000$remoteName".sha256().take(TOOL_NAME_HASH_LENGTH)
+    val hash = "${namespace.value}\u0000$remoteName".sha256().take(TOOL_NAME_HASH_LENGTH)
     val readableBudget = MAX_AI_TOOL_NAME_LENGTH -
         MCP_PREFIX.length -
         TOOL_NAME_SEPARATOR.length * 2 -
         hash.length
-    val serverPartLength = minOf(serverId.value.length, MAX_SERVER_ID_TOOL_NAME_CHARS)
-    val remotePartLength = readableBudget - serverPartLength
+    val namespacePartLength = minOf(namespace.value.length, MAX_NAMESPACE_TOOL_NAME_CHARS)
+    val remotePartLength = readableBudget - namespacePartLength
     check(remotePartLength > 0)
     return buildString(MAX_AI_TOOL_NAME_LENGTH) {
         append(MCP_PREFIX)
-        append(serverId.value.take(serverPartLength))
+        append(namespace.value.take(namespacePartLength))
         append(TOOL_NAME_SEPARATOR)
         append(normalizedRemoteName.take(remotePartLength))
         append(TOOL_NAME_SEPARATOR)
@@ -274,5 +286,5 @@ private val ID_PATTERN = Regex("[a-z][a-z0-9_]{0,63}")
 private const val MCP_PREFIX = "mcp__"
 private const val TOOL_NAME_SEPARATOR = "__"
 private const val MAX_AI_TOOL_NAME_LENGTH = 64
-private const val MAX_SERVER_ID_TOOL_NAME_CHARS = 16
+private const val MAX_NAMESPACE_TOOL_NAME_CHARS = 16
 private const val TOOL_NAME_HASH_LENGTH = 12

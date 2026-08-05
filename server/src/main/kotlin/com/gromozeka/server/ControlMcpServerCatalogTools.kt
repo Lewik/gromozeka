@@ -159,12 +159,21 @@ private fun configMutationSchema(requireRevision: Boolean) =
 
 private fun mcpServerConfigSchema(isUpdate: Boolean): JsonObject =
     strictObjectSchema(
-        description = "Complete external MCP configuration. The stable id determines generated tool names. " +
-            "workerId must identify one exact online Worker; Gromozeka never guesses or retries on another Worker.",
+        description = "Complete external MCP configuration. The internal id identifies this installation; " +
+            "namespace determines stable model-facing tool names. workerId must identify one exact online Worker; " +
+            "Gromozeka never guesses or retries on another Worker.",
         properties = mapOf(
             "id" to buildJsonObject {
                 put("type", "string")
-                put("description", "Stable lowercase snake_case id used in generated tool names.")
+                put("description", "Stable lowercase snake_case installation id.")
+                put("pattern", "^[a-z][a-z0-9_]{0,63}$")
+            },
+            "namespace" to buildJsonObject {
+                put("type", "string")
+                put(
+                    "description",
+                    "Stable lowercase snake_case namespace used in model-facing names such as mcp__namespace__tool."
+                )
                 put("pattern", "^[a-z][a-z0-9_]{0,63}$")
             },
             "displayName" to nonBlankString("Human-readable MCP server name."),
@@ -200,7 +209,7 @@ private fun mcpServerConfigSchema(isUpdate: Boolean): JsonObject =
                 "Whether Gromozeka conversation context is injected into calls to this MCP. Defaults to false."
             ),
         ),
-        required = listOf("id", "displayName", "workerId", "transport"),
+        required = listOf("id", "namespace", "displayName", "workerId", "transport"),
     )
 
 private fun stdioTransportSchema(isUpdate: Boolean): JsonObject =
