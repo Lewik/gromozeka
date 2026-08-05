@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.websockets)
     implementation(libs.klog)
+    implementation(libs.jna)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(kotlin("test"))
@@ -49,6 +50,12 @@ application {
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     archiveFileName.set("gromozeka-worker.jar")
+    manifest {
+        attributes["Implementation-Version"] = project.version
+    }
+}
+
+tasks.named<Jar>("jar") {
     manifest {
         attributes["Implementation-Version"] = project.version
     }

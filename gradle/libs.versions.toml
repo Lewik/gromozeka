@@ -40,6 +40,7 @@ aws-sdk = "2.33.1"
 androidx-activity-compose = "1.10.1"
 bouncycastle = "1.84"
 pty4j = "0.13.12"
+jna = "5.14.0"
 
 [libraries]
 # Ktor
@@ -76,6 +77,7 @@ spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-star
 spring-security-crypto = { module = "org.springframework.security:spring-security-crypto" }
 bouncycastle-provider = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 pty4j = { module = "org.jetbrains.pty4j:pty4j", version.ref = "pty4j" }
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 
 # Kotlinx

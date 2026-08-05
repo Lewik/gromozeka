@@ -21,8 +21,11 @@ class GrzComputerUseToolsImplTest {
     @Test
     fun `typed adapter maps nested actions and preserves screenshot result`() {
         val controller = FakeComputerUseController()
-        val callback = TypedToolCallbackAdapter().adapt(GrzComputerActToolImpl(controller))
-        val observationRef = ComputerUseObservationReferenceCodec.encode(Reference)
+        val observationReferences = ComputerUseObservationReferenceStore()
+        val callback = TypedToolCallbackAdapter().adapt(
+            GrzComputerActToolImpl(controller, observationReferences)
+        )
+        val observationRef = observationReferences.register(Reference)
 
         val result = callback.callResult(
             """{

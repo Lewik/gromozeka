@@ -18,16 +18,12 @@ import com.gromozeka.domain.tool.worker.GrzComputerActTool
 import com.gromozeka.domain.tool.worker.GrzComputerObserveTool
 import com.gromozeka.domain.tool.worker.GrzComputerTargetsTool
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
-import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
+import java.util.LinkedHashMap
+import kotlin.time.Duration.Companion.minutes
 
 @Service
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
@@ -61,6 +57,7 @@ class GrzComputerTargetsToolImpl(
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzComputerObserveToolImpl(
     private val controller: ComputerUseController,
+    private val observationReferences: ComputerUseObservationReferenceStore,
 ) : GrzComputerObserveTool {
     override val available: Boolean get() = controller.available
 
@@ -71,7 +68,7 @@ class GrzComputerObserveToolImpl(
         controller.observe(
             displayId = ComputerUseDisplayId(request.display_id),
             maxLongEdge = request.max_long_edge,
-        ).toToolResults(actionsCompleted = false)
+        ).toToolResults(observationReferences, actionsCompleted = false)
     }
 }
 
@@ -79,6 +76,7 @@ class GrzComputerObserveToolImpl(
 @ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
 class GrzComputerActToolImpl(
     private val controller: ComputerUseController,
+    private val observationReferences: ComputerUseObservationReferenceStore,
 ) : GrzComputerActTool {
     override val available: Boolean get() = controller.available
 
@@ -86,17 +84,15 @@ class GrzComputerActToolImpl(
         request: ComputerActRequest,
         context: ToolExecutionContext?,
     ): List<AiToolResult> = runBlocking {
-        require(request.observation_ref.length <= MAX_OBSERVATION_REFERENCE_LENGTH) {
-            "Computer Use observation_ref is too long"
-        }
+        val actions = request.actions.map(ComputerActionRequest::toDomain)
         controller.act(
-            observation = ComputerUseObservationReferenceCodec.decode(request.observation_ref),
-            actions = request.actions.map(ComputerActionRequest::toDomain),
+            observation = observationReferences.consume(request.observation_ref),
+            actions = actions,
             maxLongEdge = request.max_long_edge,
             cancellationCheck = context?.cancellationSignal?.let { signal ->
                 { signal.throwIfCancellationRequested() }
             } ?: {},
-        ).toToolResults(actionsCompleted = true)
+        ).toToolResults(observationReferences, actionsCompleted = true)
     }
 }
 
@@ -136,12 +132,15 @@ private fun ComputerActionRequest.optionalPoint(): ComputerUsePoint? {
     }
 }
 
-private fun ComputerUseObservation.toToolResults(actionsCompleted: Boolean): List<AiToolResult> = listOf(
+private fun ComputerUseObservation.toToolResults(
+    observationReferences: ComputerUseObservationReferenceStore,
+    actionsCompleted: Boolean,
+): List<AiToolResult> = listOf(
     AiToolResult.Text(
         json(
             buildMap {
                 put("actions_completed", actionsCompleted)
-                put("observation_ref", ComputerUseObservationReferenceCodec.encode(reference))
+                put("observation_ref", observationReferences.register(reference))
                 put("observation_id", reference.id.value)
                 put("worker_id", reference.workerId.value)
                 put("display_id", reference.displayId.value)
@@ -159,43 +158,82 @@ private fun ComputerUseObservation.toToolResults(actionsCompleted: Boolean): Lis
     ),
 )
 
-internal object ComputerUseObservationReferenceCodec {
-    private val json = Json {
-        encodeDefaults = true
-        ignoreUnknownKeys = false
+@Service
+@ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
+class ComputerUseObservationReferenceStore private constructor(
+    private val maxEntries: Int,
+    private val ttlNanos: Long,
+    private val nanoTime: () -> Long,
+) {
+    init {
+        require(maxEntries > 0) { "Computer Use observation reference capacity must be positive" }
+        require(ttlNanos > 0) { "Computer Use observation reference TTL must be positive" }
     }
+
+    constructor() : this(
+        maxEntries = DEFAULT_MAX_ENTRIES,
+        ttlNanos = DEFAULT_TTL.inWholeNanoseconds,
+        nanoTime = System::nanoTime,
+    )
+
+    private data class Entry(
+        val reference: ComputerUseObservationReference,
+        val expiresAtNanos: Long,
+    )
+
+    private val entries = LinkedHashMap<String, Entry>()
     private val encoder = Base64.getUrlEncoder().withoutPadding()
-    private val decoder = Base64.getUrlDecoder()
-    private val signingKey = ByteArray(SIGNING_KEY_BYTES).also(SecureRandom()::nextBytes)
+    private val random = SecureRandom()
 
-    fun encode(reference: ComputerUseObservationReference): String {
-        val payload = json.encodeToString(reference).encodeToByteArray()
-        return "${encoder.encodeToString(payload)}.${encoder.encodeToString(sign(payload))}"
-    }
-
-    fun decode(value: String): ComputerUseObservationReference = try {
-        val parts = value.split('.')
-        require(parts.size == 2) { "Computer Use observation_ref must contain a payload and signature" }
-        val payload = decoder.decode(parts[0])
-        val signature = decoder.decode(parts[1])
-        require(MessageDigest.isEqual(signature, sign(payload))) {
-            "Computer Use observation_ref signature is invalid"
+    @Synchronized
+    fun register(reference: ComputerUseObservationReference): String {
+        removeExpired()
+        while (entries.size >= maxEntries) {
+            entries.remove(entries.keys.first())
         }
-        json.decodeFromString(payload.decodeToString())
-    } catch (error: Throwable) {
-        throw IllegalArgumentException("Invalid Computer Use observation_ref", error)
+        val token = generateSequence(::newToken).first { it !in entries }
+        entries[token] = Entry(reference, nanoTime() + ttlNanos)
+        return token
     }
 
-    private fun sign(payload: ByteArray): ByteArray = Mac.getInstance(SIGNING_ALGORITHM).run {
-        init(SecretKeySpec(signingKey, SIGNING_ALGORITHM))
-        doFinal(payload)
+    @Synchronized
+    fun consume(value: String): ComputerUseObservationReference {
+        require(REFERENCE_PATTERN.matches(value)) {
+            "Computer Use observation_ref has an invalid format; capture a fresh observation"
+        }
+        removeExpired()
+        return entries.remove(value)?.reference
+            ?: throw IllegalArgumentException(
+                "Computer Use observation_ref is unknown, expired, or already used; capture a fresh observation"
+            )
+    }
+
+    private fun newToken(): String = buildString {
+        append(REFERENCE_PREFIX)
+        append(encoder.encodeToString(ByteArray(REFERENCE_RANDOM_BYTES).also(random::nextBytes)))
+    }
+
+    private fun removeExpired() {
+        val now = nanoTime()
+        entries.entries.removeIf { it.value.expiresAtNanos <= now }
+    }
+
+    internal companion object {
+        fun forTesting(
+            maxEntries: Int = DEFAULT_MAX_ENTRIES,
+            ttlNanos: Long = DEFAULT_TTL.inWholeNanoseconds,
+            nanoTime: () -> Long = System::nanoTime,
+        ): ComputerUseObservationReferenceStore =
+            ComputerUseObservationReferenceStore(maxEntries, ttlNanos, nanoTime)
+
+        private val DEFAULT_TTL = 5.minutes
+        private const val DEFAULT_MAX_ENTRIES = 64
+        private const val REFERENCE_PREFIX = "cu_"
+        private const val REFERENCE_RANDOM_BYTES = 16
+        private val REFERENCE_PATTERN = Regex("^cu_[A-Za-z0-9_-]{22}$")
     }
 }
 
 private fun json(value: Any): String = computerUseObjectMapper.writeValueAsString(value)
 
 private val computerUseObjectMapper = jacksonObjectMapper().findAndRegisterModules()
-
-private const val MAX_OBSERVATION_REFERENCE_LENGTH = 4_096
-private const val SIGNING_KEY_BYTES = 32
-private const val SIGNING_ALGORITHM = "HmacSHA256"

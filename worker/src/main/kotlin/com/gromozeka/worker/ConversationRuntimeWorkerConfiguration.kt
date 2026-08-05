@@ -33,6 +33,10 @@ class ConversationRuntimeWorkerConfiguration {
         JvmWorkerEnvironmentProbe(properties.environment.executableNames)
 
     @Bean
+    fun computerUsePlatformAccess(): ComputerUsePlatformAccess =
+        JvmComputerUsePlatformAccess()
+
+    @Bean
     fun conversationRuntimeWorkerDescriptor(
         properties: ConversationRuntimeWorkerProperties,
         workerEnvironmentProbe: WorkerEnvironmentProbe,

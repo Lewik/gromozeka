@@ -23,6 +23,7 @@ import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class JvmComputerUseControllerTest {
@@ -159,6 +160,59 @@ class JvmComputerUseControllerTest {
     }
 
     @Test
+    fun `permission revoked after observation is rejected before input`() = runBlocking {
+        val backend = FakeComputerUseBackend()
+        val controller = controller(backend)
+        val observed = controller.observe(Display.id, 2048)
+        backend.unavailableReasonValue = "macOS Accessibility permission is missing"
+
+        val error = assertFailsWith<IllegalStateException> {
+            controller.act(
+                observed.reference,
+                listOf(ComputerUseAction.Click(ComputerUsePoint(10, 10))),
+                2048,
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("Accessibility"))
+        assertEquals(0, backend.executeCount)
+    }
+
+    @Test
+    fun `macOS platform access requires screen capture and input permissions`() {
+        val missingScreenCapture = JvmComputerUsePlatformAccess(
+            osName = "Mac OS X",
+            screenCaptureAllowed = { false },
+            postEventAllowed = { true },
+        )
+        val missingInput = JvmComputerUsePlatformAccess(
+            osName = "Mac OS X",
+            screenCaptureAllowed = { true },
+            postEventAllowed = { false },
+        )
+        val available = JvmComputerUsePlatformAccess(
+            osName = "Mac OS X",
+            screenCaptureAllowed = { true },
+            postEventAllowed = { true },
+        )
+
+        assertTrue(missingScreenCapture.unavailableReason.orEmpty().contains("Screen Recording"))
+        assertTrue(missingInput.unavailableReason.orEmpty().contains("Accessibility"))
+        assertNull(available.unavailableReason)
+    }
+
+    @Test
+    fun `non macOS platform does not call macOS permission probes`() {
+        val access = JvmComputerUsePlatformAccess(
+            osName = "Windows 11",
+            screenCaptureAllowed = { error("must not run") },
+            postEventAllowed = { error("must not run") },
+        )
+
+        assertNull(access.unavailableReason)
+    }
+
+    @Test
     fun `windows key uses the platform key code`() {
         assertEquals(KeyEvent.VK_WINDOWS, "WIN".computerUseKeyCode())
         assertEquals(KeyEvent.VK_WINDOWS, "WINDOWS".computerUseKeyCode())
@@ -194,8 +248,9 @@ class JvmComputerUseControllerTest {
         )
 
     private class FakeComputerUseBackend : ComputerUseBackend {
-        override val available = true
-        override val unavailableReason: String? = null
+        var unavailableReasonValue: String? = null
+        override val available: Boolean get() = unavailableReasonValue == null
+        override val unavailableReason: String? get() = unavailableReasonValue
         var executeCount = 0
         var captureCount = 0
         var executeFailure: RuntimeException? = null

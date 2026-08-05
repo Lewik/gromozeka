@@ -58,7 +58,8 @@ data class ComputerActionRequest(
 
 data class ComputerActRequest(
     @property:ToolParameter(
-        description = "Opaque observation_ref returned by the latest grz_computer_observe or grz_computer_act call."
+        description = "Short single-use observation_ref from the latest grz_computer_observe or " +
+            "grz_computer_act call. Pass it back unchanged."
     )
     val observation_ref: String,
     @property:ToolParameter(
@@ -90,7 +91,8 @@ interface GrzComputerObserveTool : Tool<ComputerObserveRequest, List<AiToolResul
     override val name: String get() = NAME
     override val description: String
         get() = "Capture one display on the explicitly selected Worker. Returns an image and an opaque " +
-            "observation_ref that defines its coordinate frame. The desktop may change immediately after capture."
+            "single-use observation_ref that defines its coordinate frame. The desktop may change immediately " +
+            "after capture."
     override val metadata get() = WorkerComputerUseToolMetadata
     override val requestType: Class<ComputerObserveRequest> get() = ComputerObserveRequest::class.java
 

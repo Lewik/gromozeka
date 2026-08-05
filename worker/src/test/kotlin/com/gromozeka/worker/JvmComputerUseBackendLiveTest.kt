@@ -48,7 +48,7 @@ class JvmComputerUseBackendLiveTest {
 
         try {
             Thread.sleep(300)
-            val backend = JvmComputerUseBackend()
+            val backend = JvmComputerUseBackend(JvmComputerUsePlatformAccess())
             check(backend.available) { backend.unavailableReason ?: "Computer Use backend is unavailable" }
             val displayId = invokeAndWaitResult {
                 ComputerUseDisplayId(frame.graphicsConfiguration.device.iDstring)

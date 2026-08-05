@@ -26,3 +26,13 @@ Upstream pty4j notice:
 >
 > This library includes software (JNA) developed by Timothy Wall and others.
 > Copyright (C) 2012, Timothy Wall / JNA community.
+
+## Java Native Access
+
+Gromozeka uses the unmodified `net.java.dev.jna:jna` library to query native
+operating-system capabilities. JNA is distributed under the Apache License 2.0
+option offered by its dual-license terms. Source and license texts for the
+distributed `5.14.0` artifact are available from:
+
+- https://github.com/java-native-access/jna/tree/5.14.0
+- https://www.apache.org/licenses/LICENSE-2.0.txt

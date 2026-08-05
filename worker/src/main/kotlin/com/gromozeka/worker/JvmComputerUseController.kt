@@ -12,6 +12,8 @@ import com.gromozeka.domain.service.ComputerUsePoint
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.shared.uuid.uuid7
+import com.sun.jna.Library
+import com.sun.jna.Native
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -150,7 +152,9 @@ class ComputerUseBackendExecutionException(
 )
 
 @Service
-class JvmComputerUseBackend : ComputerUseBackend {
+class JvmComputerUseBackend(
+    private val platformAccess: ComputerUsePlatformAccess,
+) : ComputerUseBackend {
     override val available: Boolean
         get() = unavailableReason == null
 
@@ -158,7 +162,7 @@ class JvmComputerUseBackend : ComputerUseBackend {
         get() = when {
             GraphicsEnvironment.isHeadless() -> "Worker has no graphical desktop"
             isUnsupportedWaylandSession() -> "Wayland desktop control is not supported; use an X11 session"
-            else -> null
+            else -> platformAccess.unavailableReason
         }
 
     override fun targets(): List<ComputerUseDisplay> {
@@ -291,6 +295,72 @@ class JvmComputerUseBackend : ComputerUseBackend {
         return GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices
             .firstOrNull { it.getIDstring() == displayId.value }
             ?: error("Computer Use display not found: ${displayId.value}")
+    }
+}
+
+interface ComputerUsePlatformAccess {
+    val unavailableReason: String?
+}
+
+class JvmComputerUsePlatformAccess internal constructor(
+    private val osName: String,
+    private val screenCaptureAllowed: () -> Boolean,
+    private val postEventAllowed: () -> Boolean,
+) : ComputerUsePlatformAccess {
+    constructor() : this(
+        osName = System.getProperty("os.name"),
+        screenCaptureAllowed = MacOsComputerUsePermissions::screenCaptureAllowed,
+        postEventAllowed = MacOsComputerUsePermissions::postEventAllowed,
+    )
+
+    override val unavailableReason: String?
+        get() {
+            if (!osName.contains("mac", ignoreCase = true)) return null
+            return permissionReason(
+                permissionName = "Screen Recording",
+                allowed = screenCaptureAllowed,
+            ) ?: permissionReason(
+                permissionName = "Accessibility",
+                allowed = postEventAllowed,
+            )
+        }
+
+    private fun permissionReason(
+        permissionName: String,
+        allowed: () -> Boolean,
+    ): String? = try {
+        if (allowed()) {
+            null
+        } else {
+            "macOS $permissionName permission is missing for Gromozeka Worker; " +
+                "grant it in System Settings > Privacy & Security and restart the Worker"
+        }
+    } catch (error: Throwable) {
+        "macOS $permissionName permission could not be verified; Computer Use is disabled: " +
+            (error.message ?: error::class.simpleName)
+    }
+}
+
+private object MacOsComputerUsePermissions {
+    fun screenCaptureAllowed(): Boolean =
+        CoreGraphics.instance.CGPreflightScreenCaptureAccess().toInt() != 0
+
+    fun postEventAllowed(): Boolean =
+        CoreGraphics.instance.CGPreflightPostEventAccess().toInt() != 0
+
+    private interface CoreGraphics : Library {
+        fun CGPreflightScreenCaptureAccess(): Byte
+
+        fun CGPreflightPostEventAccess(): Byte
+
+        companion object {
+            val instance: CoreGraphics by lazy {
+                Native.load(
+                    "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics",
+                    CoreGraphics::class.java,
+                )
+            }
+        }
     }
 }
 
