@@ -134,7 +134,7 @@ write_server_interactive_access_environment() {
 }
 
 reload_server_configuration() {
-  [[ "$server_configuration_changed" == "true" ]] || return
+  [[ "$server_configuration_changed" == "true" ]] || return 0
   [[ -f "$secrets_file" && -f "$deployment_file" ]] || {
     echo "The deployed Server configuration is unavailable" >&2
     exit 1
@@ -532,7 +532,7 @@ install_computer() {
 update_computer() {
   local version="$1"
   local was_active="false"
-  [[ -f "$enabled_file" ]] || return
+  [[ -f "$enabled_file" ]] || return 0
   if systemctl is-active --quiet "$service_name"; then
     was_active="true"
   fi
