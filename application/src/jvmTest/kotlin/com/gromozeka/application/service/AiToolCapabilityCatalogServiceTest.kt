@@ -183,6 +183,36 @@ class AiToolCapabilityCatalogServiceTest {
         }
     }
 
+    @Test
+    fun `unavailable generator is not retried for every prompt`() = runBlocking {
+        val repository = InMemoryCatalogRepository()
+        val calls = AtomicInteger()
+        val unavailableGenerator = object : AiToolCapabilityCatalogGenerator {
+            override fun isAvailable(): Boolean = false
+
+            override suspend fun generate(
+                source: AiToolCapabilitySource,
+                fingerprint: String,
+            ): AiToolCapabilityCatalog {
+                calls.incrementAndGet()
+                return catalog(source, fingerprint)
+            }
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val service = service(repository, unavailableGenerator, scope)
+
+            val firstPrompt = checkNotNull(service.promptFor(sampleTools()))
+            val secondPrompt = checkNotNull(service.promptFor(sampleTools()))
+
+            assertContains(firstPrompt, """status="unavailable"""")
+            assertEquals(firstPrompt, secondPrompt)
+            assertEquals(0, calls.get())
+        } finally {
+            scope.cancel()
+        }
+    }
+
     private fun generator(): LlmAiToolCapabilityCatalogGenerator =
         LlmAiToolCapabilityCatalogGenerator(
             aiRuntimeProvider = UnusedRuntimeProvider,

@@ -420,7 +420,7 @@ class MemoryMessageRoutingApplicationService(
             MemoryThreadContextCompactor(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CONTEXT_COMPACTOR),
                 preCompactThresholdTokens = MemoryContextWindowPolicy.writePreCompactThresholdTokens(
-                    aiConfigurationProvider.catalog
+                    aiConfigurationProvider.snapshot
                 ),
             ).compactIfNeeded(
                 context = it,
@@ -559,7 +559,7 @@ class MemoryMessageRoutingApplicationService(
         fun runtimeFor(purpose: AiRuntimeAssignment.Purpose): AiRuntime =
             runtimes.getOrPut(purpose) {
                 aiRuntimeProvider.getRuntime(
-                    selection = aiConfigurationProvider.runtimeSelectionFor(purpose),
+                    selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(purpose),
                     workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
             }

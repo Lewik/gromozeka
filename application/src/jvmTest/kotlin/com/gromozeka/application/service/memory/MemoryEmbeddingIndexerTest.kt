@@ -27,6 +27,8 @@ import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class MemoryEmbeddingIndexerTest {
     @Test
@@ -76,12 +78,31 @@ class MemoryEmbeddingIndexerTest {
         assertEquals(listOf(1, 1), provider.requestSizes)
     }
 
+    @Test
+    fun unavailableEmbeddingRuntimeSkipsAutomaticIndexingWithoutCallingProvider() = runBlocking {
+        val namespace = MemoryNamespace("project:test")
+        val store = InMemoryMemoryStore()
+        val provider = FixedEmbeddingProvider()
+        val source = externalSource("source:one", namespace)
+        val batch = MemoryUpdateBatch(sources = listOf(source))
+        val indexer = indexer(
+            store = store,
+            provider = provider,
+            configurationProvider = UnavailableAiConfigurationProvider,
+        )
+
+        assertEquals(batch, indexer.withEmbeddings(batch))
+        assertNull(indexer.searchEmbedding("remember source one"))
+        assertTrue(provider.requestSizes.isEmpty())
+    }
+
     private fun indexer(
         store: InMemoryMemoryStore,
         provider: AiEmbeddingProvider,
+        configurationProvider: AiConfigurationProvider = TestAiConfigurationProvider,
     ): DefaultMemoryEmbeddingIndexer =
         DefaultMemoryEmbeddingIndexer(
-            aiConfigurationProvider = TestAiConfigurationProvider,
+            aiConfigurationProvider = configurationProvider,
             embeddingProvider = provider,
             store = store,
         )
@@ -145,6 +166,23 @@ private object TestAiConfigurationProvider : AiConfigurationProvider {
         require(selection.modelConfigurationId == modelConfiguration.id)
         return ResolvedAiRuntime(connection, modelConfiguration, modelSpec)
     }
+}
+
+private object UnavailableAiConfigurationProvider : AiConfigurationProvider {
+    override val snapshot: AiCatalogSnapshot = TestAiConfigurationProvider.snapshot.copy(
+        catalog = TestAiConfigurationProvider.snapshot.catalog.copy(
+            connections = TestAiConfigurationProvider.snapshot.catalog.connections.map { connection ->
+                when (connection) {
+                    is AiConnection.OpenAiApi -> connection.copy(enabled = false)
+                    else -> error("Unexpected test connection: ${connection::class.simpleName}")
+                }
+            }
+        )
+    )
+    override val snapshotFlow: StateFlow<AiCatalogSnapshot?> = MutableStateFlow(snapshot)
+
+    override fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime =
+        error("Unavailable runtime must not be resolved strictly")
 }
 
 private class FixedEmbeddingProvider : AiEmbeddingProvider {

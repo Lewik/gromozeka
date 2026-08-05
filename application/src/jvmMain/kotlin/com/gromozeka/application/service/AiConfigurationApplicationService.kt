@@ -152,6 +152,21 @@ class AiConfigurationApplicationService(
         assignment: AiRuntimeAssignment,
         expectedRevision: Long,
     ): AiCatalogSnapshot = mutateCatalog(expectedRevision) { catalog ->
+        val configuration = catalog.modelConfigurations.firstOrNull {
+            it.id == assignment.selection.modelConfigurationId
+        } ?: error(
+            "AI runtime assignment ${assignment.purpose.name} references missing model configuration " +
+                assignment.selection.modelConfigurationId.value
+        )
+        val candidateSnapshot = AiCatalogSnapshot(
+            catalog = catalog,
+            revision = snapshot.revision,
+            runtimeEnabledConnectionIds = settingsProvider.runtimeEnabledAiConnectionIds,
+        )
+        require(candidateSnapshot.supportsPurpose(configuration, assignment.purpose)) {
+            "AI runtime assignment ${assignment.purpose.name} requires an enabled compatible model, but " +
+                "${configuration.id.value} is unavailable"
+        }
         catalog.copy(
             runtimeAssignments = catalog.runtimeAssignments.upsertBy(
                 assignment,

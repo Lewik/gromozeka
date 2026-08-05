@@ -98,7 +98,7 @@ class MemoryApplicationService(
         val focusedThreadContext = MemoryThreadContextCompactor(
             runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_CONTEXT_COMPACTOR),
             preCompactThresholdTokens = MemoryContextWindowPolicy.readPreCompactThresholdTokens(
-                aiConfigurationProvider.catalog
+                aiConfigurationProvider.snapshot
             ),
         ).compactIfNeeded(
             context = threadContext,
@@ -174,7 +174,9 @@ class MemoryApplicationService(
             namespace = namespace,
         )
         val runtime = aiRuntimeProvider.getRuntime(
-            selection = aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
+            selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(
+                AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER
+            ),
             workspaceRootPath = runtimeContext.workspaceRootPath,
         )
         return collectMemoryRunTimings(llmCallObservers) {
@@ -197,7 +199,7 @@ class MemoryApplicationService(
         fun runtimeFor(purpose: AiRuntimeAssignment.Purpose): AiRuntime =
             runtimes.getOrPut(purpose) {
                 aiRuntimeProvider.getRuntime(
-                    selection = aiConfigurationProvider.runtimeSelectionFor(purpose),
+                    selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(purpose),
                     workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
             }

@@ -28,6 +28,20 @@ interface AiConfigurationProvider {
         resolveAiRuntime(runtimeSelectionFor(purpose))
 
     fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime
+
+    fun availableRuntimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection? =
+        snapshot.availableRuntimeSelectionFor(purpose)
+
+    fun requireAvailableRuntimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection =
+        requireNotNull(availableRuntimeSelectionFor(purpose)) {
+            "No enabled AI runtime is available for ${purpose.displayName}"
+        }
+
+    fun resolveAiRuntimeIfAvailable(selection: AiRuntimeSelection): ResolvedAiRuntime? =
+        snapshot.resolveRuntimeIfAvailable(selection)
+
+    fun resolveAiRuntimeIfAvailable(purpose: AiRuntimeAssignment.Purpose): ResolvedAiRuntime? =
+        availableRuntimeSelectionFor(purpose)?.let(::resolveAiRuntimeIfAvailable)
 }
 
 interface AiConfigurationService : AiConfigurationProvider {

@@ -17,6 +17,7 @@ import com.gromozeka.application.service.memory.forMemoryPipeline
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -850,6 +851,11 @@ class ConversationEngineService(
             .forMemoryPipeline()
         val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
+        val memorySettings = settingsProvider.userProfile.memorySettings
+        val automaticMemoryRememberEnabled = memorySettings.autoRemember &&
+            aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null
+        val automaticMemoryRecallEnabled = memorySettings.autoRecall &&
+            aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ) != null
         val runtimeSystemPrompts = buildList {
             addAll(baseSystemPrompts)
             add(currentAgentRuntimePrompt(agent))
@@ -872,8 +878,8 @@ class ConversationEngineService(
             runtimeSystemPrompts = runtimeSystemPrompts,
             assistantResponseFormat = assistantResponseFormat,
             autoCompactionThresholdTokens = autoCompactionThresholdTokens,
-            automaticMemoryRememberEnabled = settingsProvider.userProfile.memorySettings.autoRemember,
-            automaticMemoryRecallEnabled = settingsProvider.userProfile.memorySettings.autoRecall,
+            automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
+            automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
         )
     }
 

@@ -42,6 +42,23 @@ class AiCatalogTest {
     }
 
     @Test
+    fun unavailableRuntimeSelectionIsResolvedWithoutThrowing() {
+        val catalog = testCatalog(connectionEnabled = false)
+        val selection = AiRuntimeSelection(CHAT_CONFIGURATION_ID)
+        val unavailableSnapshot = AiCatalogSnapshot(catalog = catalog, revision = 1)
+        val runtimeEnabledSnapshot = unavailableSnapshot.copy(
+            runtimeEnabledConnectionIds = setOf(CONNECTION_ID),
+        )
+
+        assertNull(unavailableSnapshot.resolveRuntimeIfAvailable(selection))
+        assertEquals(selection, runtimeEnabledSnapshot.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.DEFAULT_CHAT))
+        assertEquals(
+            CHAT_CONFIGURATION_ID,
+            runtimeEnabledSnapshot.resolveRuntimeIfAvailable(selection)?.modelConfiguration?.id,
+        )
+    }
+
+    @Test
     fun resolvedRuntimeCarriesTheExactCatalogModelSpec() {
         val catalog = testCatalog()
         val runtime = catalog.resolveRuntime(AiRuntimeSelection(CHAT_CONFIGURATION_ID))
@@ -93,6 +110,39 @@ class AiCatalogTest {
         assertEquals(
             stageSelection,
             updated.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_ROUTER),
+        )
+    }
+
+    @Test
+    fun unavailableOptionalStageAssignmentFallsBackToAvailableParent() {
+        val catalog = testCatalog()
+        val disabledConnection = AiConnection.OpenAiApi(
+            id = AiConnection.Id("disabled-openai"),
+            displayName = "Disabled OpenAI",
+            enabled = false,
+        )
+        val disabledConfiguration = configuration(
+            id = AiModelConfiguration.Id("disabled-chat"),
+            providerModelId = "chat",
+        ).copy(connectionId = disabledConnection.id)
+        val stagePurpose = AiRuntimeAssignment.Purpose.MEMORY_WRITE_ROUTER
+        val updated = catalog.copy(
+            connections = catalog.connections + disabledConnection,
+            modelConfigurations = catalog.modelConfigurations + disabledConfiguration,
+            runtimeAssignments = catalog.runtimeAssignments + AiRuntimeAssignment(
+                purpose = stagePurpose,
+                selection = AiRuntimeSelection(disabledConfiguration.id),
+            ),
+        )
+        val snapshot = AiCatalogSnapshot(updated, revision = 1)
+
+        assertEquals(
+            AiRuntimeSelection(disabledConfiguration.id),
+            updated.runtimeSelectionFor(stagePurpose),
+        )
+        assertEquals(
+            updated.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE),
+            snapshot.availableRuntimeSelectionFor(stagePurpose),
         )
     }
 

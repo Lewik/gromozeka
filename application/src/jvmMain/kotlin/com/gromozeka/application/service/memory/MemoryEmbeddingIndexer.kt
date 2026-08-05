@@ -18,6 +18,7 @@ import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.ResolvedAiRuntime
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.datetime.Clock
@@ -89,7 +90,7 @@ class DefaultMemoryEmbeddingIndexer(
 
     override suspend fun withEmbeddings(batch: MemoryUpdateBatch): MemoryUpdateBatch {
         return runCatching {
-            val resolved = resolveEmbeddingRuntime()
+            val resolved = resolveEmbeddingRuntimeIfAvailable() ?: return@runCatching batch
             val entries = batch.toEmbeddingInputs(
                 modelConfigurationId = resolved.modelConfigurationId,
                 providerModelId = resolved.providerModelId,
@@ -114,7 +115,7 @@ class DefaultMemoryEmbeddingIndexer(
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) return null
         return runCatching {
-            val resolved = resolveEmbeddingRuntime()
+            val resolved = resolveEmbeddingRuntimeIfAvailable() ?: return@runCatching null
             val truncatedQuery = normalizedQuery.truncateForEmbedding(resolved.maxInputTokens)
             val response = requestEmbeddings(resolved, listOf(truncatedQuery))
             val vector = response.vectors.singleOrNull()?.values
@@ -303,18 +304,32 @@ class DefaultMemoryEmbeddingIndexer(
     private fun resolveEmbeddingRuntime(): ResolvedEmbeddingRuntime {
         val selection = aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS)
         val runtime = aiConfigurationProvider.resolveAiRuntime(selection)
-        val spec = aiConfigurationProvider.catalog.modelSpecFor(runtime.modelConfiguration)
-            ?: error("AI embedding model spec not found: ${runtime.modelConfiguration.providerModelId}")
+        return runtime.toEmbeddingRuntime(selection)
+    }
+
+    private fun resolveEmbeddingRuntimeIfAvailable(): ResolvedEmbeddingRuntime? {
+        val selection = aiConfigurationProvider.availableRuntimeSelectionFor(
+            AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS
+        ) ?: return null
+        val runtime = aiConfigurationProvider.resolveAiRuntimeIfAvailable(selection) ?: return null
+        return runtime.toEmbeddingRuntime(selection)
+    }
+
+    private fun ResolvedAiRuntime.toEmbeddingRuntime(
+        selection: com.gromozeka.domain.model.ai.AiRuntimeSelection,
+    ): ResolvedEmbeddingRuntime {
+        val spec = aiConfigurationProvider.catalog.modelSpecFor(modelConfiguration)
+            ?: error("AI embedding model spec not found: ${modelConfiguration.providerModelId}")
         require(AiModelCapability.EMBEDDINGS in spec.capabilities) {
-            "AI model ${runtime.modelConfiguration.providerModelId} does not support embeddings"
+            "AI model ${modelConfiguration.providerModelId} does not support embeddings"
         }
         val embeddingLimits = spec.limits.embeddings
-            ?: error("AI embedding model ${runtime.modelConfiguration.providerModelId} must declare embedding limits")
-        val dimensions = runtime.modelConfiguration.resolveEmbeddingDimensions(spec)
+            ?: error("AI embedding model ${modelConfiguration.providerModelId} must declare embedding limits")
+        val dimensions = modelConfiguration.resolveEmbeddingDimensions(spec)
         return ResolvedEmbeddingRuntime(
             selection = selection,
-            modelConfigurationId = runtime.modelConfiguration.id.value,
-            providerModelId = runtime.modelConfiguration.providerModelId,
+            modelConfigurationId = modelConfiguration.id.value,
+            providerModelId = modelConfiguration.providerModelId,
             dimensions = dimensions,
             maxInputTokens = embeddingLimits.maxInputTokens,
         )

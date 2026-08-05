@@ -355,9 +355,16 @@ private fun RuntimeAssignmentRow(
     }
     val fallbackLabel = purpose.fallbackPurpose?.let { "Inherit ${it.displayName}" }
     val selectedId = directAssignment?.selection?.modelConfigurationId
-    val selectedLabel = selectedId?.let { id ->
-        draft.modelConfigurations.firstOrNull { it.id == id }?.displayName
-    } ?: fallbackLabel ?: "Not configured"
+    val selectedConfiguration = selectedId?.let { id ->
+        draft.modelConfigurations.firstOrNull { it.id == id }
+    }
+    val selectedAvailable = selectedConfiguration?.let {
+        draft.supportsPurpose(it, purpose, runtimeEnabledConnectionIds)
+    } ?: (directAssignment == null && fallbackLabel != null)
+    val selectedLabel = selectedConfiguration?.displayName
+        ?.let { if (selectedAvailable) it else "$it · unavailable" }
+        ?: fallbackLabel
+        ?: "Not configured"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -400,6 +407,17 @@ private fun RuntimeAssignmentRow(
             if (options.isEmpty()) {
                 Text(
                     "No enabled model supports ${purpose.requiredCapabilities.joinToString()}",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            if (directAssignment != null && !selectedAvailable) {
+                Text(
+                    if (fallbackLabel == null) {
+                        "This capability is paused while its assigned connection is unavailable."
+                    } else {
+                        "This override is unavailable; runtime falls back to ${purpose.fallbackPurpose?.displayName}."
+                    },
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )

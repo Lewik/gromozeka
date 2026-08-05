@@ -68,6 +68,8 @@ fun interface AiToolCapabilityCatalogGenerator {
         source: AiToolCapabilitySource,
         fingerprint: String,
     ): AiToolCapabilityCatalog
+
+    fun isAvailable(): Boolean = true
 }
 
 @Service
@@ -90,7 +92,7 @@ class LlmAiToolCapabilityCatalogGenerator(
         source: AiToolCapabilitySource,
         fingerprint: String,
     ): AiToolCapabilityCatalog {
-        val selection = aiConfigurationProvider.runtimeSelectionFor(
+        val selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(
             AiRuntimeAssignment.Purpose.TOOL_CATALOG_SUMMARY
         )
         return generate(
@@ -100,6 +102,11 @@ class LlmAiToolCapabilityCatalogGenerator(
             modelConfigurationId = selection.modelConfigurationId,
         )
     }
+
+    override fun isAvailable(): Boolean =
+        aiConfigurationProvider.availableRuntimeSelectionFor(
+            AiRuntimeAssignment.Purpose.TOOL_CATALOG_SUMMARY
+        ) != null
 
     internal suspend fun generate(
         source: AiToolCapabilitySource,
@@ -274,13 +281,18 @@ class AiToolCapabilityCatalogService(
         if (sources.isEmpty()) {
             return null
         }
+        val generationAvailable = generator.isAvailable()
         val renderedSources = sources.map { source ->
             val fingerprint = toolCapabilityCatalogFingerprint(source)
             repository.find(source.id, fingerprint)
                 ?.let(::renderSourceCatalog)
                 ?: run {
-                    ensureGenerationStarted(source, fingerprint)
-                    renderPendingSource(source, fingerprint)
+                    if (generationAvailable) {
+                        ensureGenerationStarted(source, fingerprint)
+                        renderPendingSource(source, fingerprint)
+                    } else {
+                        renderUnavailableSource(source, fingerprint)
+                    }
                 }
         }
         return renderCatalogPrompt(renderedSources)
@@ -296,7 +308,7 @@ class AiToolCapabilityCatalogService(
     suspend fun scheduleSource(source: AiToolCapabilitySource) {
         val normalized = source.copy(definitions = normalizeToolDefinitions(source.definitions))
         val fingerprint = toolCapabilityCatalogFingerprint(normalized)
-        if (repository.find(normalized.id, fingerprint) == null) {
+        if (generator.isAvailable() && repository.find(normalized.id, fingerprint) == null) {
             ensureGenerationStarted(normalized, fingerprint)
         }
     }
@@ -451,6 +463,31 @@ internal fun renderPendingSource(
         append(fingerprint)
         append("\" status=\"generating\">\n")
         append("Capability summary is not ready. Deferred tool names (JSON data): ")
+        append(Json.encodeToString(visibleNames).replace("<", "\\u003c").replace(">", "\\u003e"))
+        if (omittedCount > 0) {
+            append(" and ")
+            append(omittedCount)
+            append(" more")
+        }
+        append(".\n</tool_source>\n")
+    }
+}
+
+internal fun renderUnavailableSource(
+    source: AiToolCapabilitySource,
+    fingerprint: String,
+): String {
+    val names = source.definitions.map(AiToolDefinition::name)
+    val visibleNames = names.take(MAX_PENDING_TOOL_NAMES)
+    val omittedCount = names.size - visibleNames.size
+    return buildString {
+        append("<tool_source id=\"")
+        append(source.id.xmlAttribute())
+        append("\" revision=\"")
+        append(fingerprint)
+        append("\" status=\"unavailable\">\n")
+        append("Capability summary generation is paused because its AI runtime is unavailable. ")
+        append("Deferred tool names (JSON data): ")
         append(Json.encodeToString(visibleNames).replace("<", "\\u003c").replace(">", "\\u003e"))
         if (omittedCount > 0) {
             append(" and ")

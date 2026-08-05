@@ -11,6 +11,7 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.model.ai.redactInlineSecrets
 import com.gromozeka.domain.repository.AgentRepository
@@ -75,6 +76,23 @@ class AiConfigurationApplicationServiceTest {
 
         assertEquals(11, repository.findRevision())
         assertTrue(repository.find()!!.catalog.connections.any { it.id.value == "openai-api" })
+    }
+
+    @Test
+    fun `runtime assignment mutation rejects an unavailable connection`() = runBlocking {
+        val repository = TestAiCatalogRepository(seed.aiCatalog, revision = 5)
+        val service = service(repository, runtimeEnabledConnectionIds = emptySet())
+        service.initialize()
+        val assignment = seed.aiCatalog.runtimeAssignments.single {
+            it.purpose == AiRuntimeAssignment.Purpose.MEMORY_READ
+        }
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            service.setRuntimeAssignment(assignment, expectedRevision = 5)
+        }
+
+        assertTrue(error.message.orEmpty().contains("requires an enabled compatible model"))
+        assertEquals(5, repository.findRevision())
     }
 
     @Test
@@ -172,13 +190,15 @@ class AiConfigurationApplicationServiceTest {
         assertEquals(braveKey, removed.catalog.webTools.braveSearch.apiKey)
     }
 
-    private fun service(repository: AiCatalogRepository) =
+    private fun service(
+        repository: AiCatalogRepository,
+        runtimeEnabledConnectionIds: Set<AiConnection.Id> =
+            seed.aiCatalog.connections.mapTo(mutableSetOf(), AiConnection::id),
+    ) =
         AiConfigurationApplicationService(
             repository = repository,
             agentRepository = TestAgentRepository(seed.agents),
-            settingsProvider = TestSettingsProvider(
-                seed.aiCatalog.connections.mapTo(mutableSetOf(), AiConnection::id)
-            ),
+            settingsProvider = TestSettingsProvider(runtimeEnabledConnectionIds),
         )
 }
 

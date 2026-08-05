@@ -123,6 +123,23 @@ data class AiCatalog(
         return ResolvedAiRuntime(connection, configuration, modelSpec)
     }
 
+    fun resolveRuntimeIfAvailable(
+        selection: AiRuntimeSelection,
+        runtimeEnabledConnectionIds: Set<AiConnection.Id> = emptySet(),
+    ): ResolvedAiRuntime? {
+        val configuration = modelConfigurations.firstOrNull {
+            it.id == selection.modelConfigurationId
+        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
+        val connection = connectionFor(configuration)
+            ?: error("AI connection not found: ${configuration.connectionId.value}")
+        if (!configuration.enabled || (!connection.enabled && connection.id !in runtimeEnabledConnectionIds)) {
+            return null
+        }
+        val modelSpec = modelSpecFor(configuration)
+            ?: error("AI model spec not found: ${connection.kind.provider}/${configuration.providerModelId}")
+        return ResolvedAiRuntime(connection, configuration, modelSpec)
+    }
+
     fun runtimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection? {
         var currentPurpose: AiRuntimeAssignment.Purpose? = purpose
         while (currentPurpose != null) {
@@ -171,4 +188,22 @@ data class AiCatalogSnapshot(
         val spec = catalog.modelSpecFor(configuration) ?: return false
         return spec.capabilities.containsAll(purpose.requiredCapabilities)
     }
+
+    fun availableRuntimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection? {
+        var currentPurpose: AiRuntimeAssignment.Purpose? = purpose
+        while (currentPurpose != null) {
+            val purposeToCheck = currentPurpose
+            val selection = catalog.runtimeAssignments
+                .firstOrNull { it.purpose == purposeToCheck }
+                ?.selection
+            if (selection != null && resolveRuntimeIfAvailable(selection) != null) {
+                return selection
+            }
+            currentPurpose = purposeToCheck.fallbackPurpose
+        }
+        return null
+    }
+
+    fun resolveRuntimeIfAvailable(selection: AiRuntimeSelection): ResolvedAiRuntime? =
+        catalog.resolveRuntimeIfAvailable(selection, runtimeEnabledConnectionIds)
 }

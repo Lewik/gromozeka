@@ -41,7 +41,7 @@ internal class MemoryIngestPreflightApplicationService(
                 sourceLabel = sourceLabel,
                 planner = LlmMemoryIngestPlanner(
                     runtime = aiRuntimeProvider.getRuntime(
-                        selection = aiConfigurationProvider.runtimeSelectionFor(
+                        selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(
                             AiRuntimeAssignment.Purpose.MEMORY_WRITE_INGEST_PLANNER
                         ),
                         workspaceRootPath = runtimeContext.workspaceRootPath,
