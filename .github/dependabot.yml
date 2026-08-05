@@ -28,6 +28,10 @@ updates:
       container-images:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: npm
     directory: /browser-bridge
@@ -40,3 +44,7 @@ updates:
       browser-bridge:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
