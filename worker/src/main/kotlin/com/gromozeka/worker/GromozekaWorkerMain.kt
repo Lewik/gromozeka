@@ -15,6 +15,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
 import org.springframework.context.annotation.Import
+import java.awt.GraphicsEnvironment
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -35,6 +36,7 @@ fun main(args: Array<String>) {
 
     val context = SpringApplicationBuilder(GromozekaWorkerApplication::class.java)
         .web(WebApplicationType.NONE)
+        .headless(GraphicsEnvironment.isHeadless())
         .profiles(resolveSpringProfile())
         .run(*args)
 
