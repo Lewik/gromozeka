@@ -8,6 +8,7 @@ import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.FirstUserBootstrapToken
 import com.gromozeka.domain.service.PersonalAccessTokenService
+import com.gromozeka.domain.service.WorkerAccessService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.install
 import io.ktor.server.application.createRouteScopedPlugin
@@ -71,6 +72,8 @@ fun main() {
     val personalAccessTokenService = context.getBean(PersonalAccessTokenService::class.java)
     val artifactService = context.getBean(ConversationArtifactApplicationService::class.java)
     val remoteAuthorization = context.getBean(GromozekaRemoteAuthorization::class.java)
+    val interactiveWorkerAccessService = context.getBean(InteractiveWorkerAccessService::class.java)
+    val workerAccessService = context.getBean(WorkerAccessService::class.java)
     val webRoot = resolveWebRoot()
     val secureCookie = resolveSecureCookie(host)
     val trustForwardedHttps = resolveTrustForwardedHttps(
@@ -151,6 +154,11 @@ fun main() {
             gromozekaMemoryHttp(memoryToolApplicationService, authenticationService)
             gromozekaDistributions(workerEnrollmentService, authenticationService)
             gromozekaArtifacts(artifactService, authenticationService, remoteAuthorization)
+            gromozekaInteractiveWorkerAccess(
+                interactiveAccessService = interactiveWorkerAccessService,
+                authenticationService = authenticationService,
+                workerAccessService = workerAccessService,
+            )
             gromozekaWeb(webRoot)
         }
     }.start(wait = false)

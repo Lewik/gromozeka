@@ -140,6 +140,13 @@ input still require the operating system's Screen Recording and Accessibility
 permissions. Computer Use intentionally controls the real pointer, keyboard,
 focus, and clipboard; there is no separate ownership or takeover UI.
 
+Deployments may attach a human-facing interactive desktop to a Worker. When
+configured, `grz_worker_interactive_access_get` returns a stable Server URL;
+opening it checks the current Gromozeka session and Worker access before issuing
+a short-lived, one-time handoff to the deployment's desktop transport. Transport
+details such as Amazon DCV remain optional Server/deployment adapters rather
+than part of the generic Worker protocol.
+
 ## Identity And Authentication
 
 The Server owns user identity. Local username/password credentials are the

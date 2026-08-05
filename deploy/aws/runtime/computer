@@ -3,6 +3,7 @@
 set -euo pipefail
 
 data_dir="${GROMOZEKA_DATA_DIR:-/data/gromozeka}"
+runtime_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 computer_id="${GROMOZEKA_AWS_COMPUTER_ID:-aws-computer}"
 computer_user="${GROMOZEKA_AWS_COMPUTER_USER:-gromozeka-computer}"
 computer_root="/opt/gromozeka/computer"
@@ -17,7 +18,10 @@ browser_bridge_crx_name="gromozeka-browser-bridge.crx"
 enabled_file="/etc/gromozeka/computer.enabled"
 environment_file="/etc/gromozeka/computer.env"
 deployment_file="$data_dir/runtime/deployment.env"
+secrets_file="$data_dir/runtime/runtime.env"
+interactive_access_file="$data_dir/runtime/interactive-access.env"
 service_name="gromozeka-computer.service"
+server_configuration_changed="false"
 github_repository="${GROMOZEKA_GITHUB_REPOSITORY:-Lewik/gromozeka}"
 dcv_archive_url="https://d1uj6qtbmh3dt5.cloudfront.net/2025.0/Servers/nice-dcv-2025.0-20103-amzn2023-x86_64.tgz"
 dcv_archive_sha256="d98eb986f3b547af22a7732ca26cb6541c3842b9ed57218f503c9acc3b29e7e2"
@@ -102,6 +106,62 @@ server_url() {
 
 computer_url() {
   printf 'https://%s:8443/#%s\n' "$(tailscale_dns_name)" "$computer_id"
+}
+
+interactive_access_url() {
+  printf '%s/api/workers/%s/interactive-access\n' "$(server_url)" "$computer_id"
+}
+
+write_server_interactive_access_environment() {
+  local dns_name temporary_file
+  dns_name="$(tailscale_dns_name)"
+  install -d -m 0700 "$data_dir/runtime"
+  temporary_file="$(mktemp "$data_dir/runtime/.interactive-access.env.XXXXXX")"
+  printf 'GROMOZEKA_DCV_ACCESS_WORKER_ID=%s\nGROMOZEKA_DCV_ACCESS_SERVER_BASE_URL=https://%s\nGROMOZEKA_DCV_ACCESS_BASE_URL=https://%s:8443\nGROMOZEKA_DCV_ACCESS_SESSION_ID=%s\nGROMOZEKA_DCV_ACCESS_USERNAME=%s\n' \
+    "$computer_id" \
+    "$dns_name" \
+    "$dns_name" \
+    "$computer_id" \
+    "$computer_user" \
+    > "$temporary_file"
+  chmod 0600 "$temporary_file"
+  if [[ -f "$interactive_access_file" ]] && cmp -s "$temporary_file" "$interactive_access_file"; then
+    rm -f "$temporary_file"
+    return
+  fi
+  mv -f "$temporary_file" "$interactive_access_file"
+  server_configuration_changed="true"
+}
+
+reload_server_configuration() {
+  [[ "$server_configuration_changed" == "true" ]] || return
+  [[ -f "$secrets_file" && -f "$deployment_file" ]] || {
+    echo "The deployed Server configuration is unavailable" >&2
+    exit 1
+  }
+  (
+    set -a
+    source "$secrets_file"
+    source "$deployment_file"
+    export GROMOZEKA_DATA_DIR="$data_dir"
+    set +a
+    docker compose \
+      --project-name gromozeka \
+      --file "$runtime_dir/compose.yaml" \
+      config --quiet
+    docker compose \
+      --project-name gromozeka \
+      --file "$runtime_dir/compose.yaml" \
+      up --detach --no-deps --force-recreate server
+  )
+  for _ in $(seq 1 60); do
+    if curl --fail --silent --show-error http://127.0.0.1:8765/auth/status >/dev/null 2>&1; then
+      return
+    fi
+    sleep 2
+  done
+  echo "The Server did not become ready after enabling interactive access" >&2
+  exit 1
 }
 
 configure_local_server_name() {
@@ -371,6 +431,8 @@ idle-timeout=0
 
 [security]
 authentication="system"
+auth-token-verifier="http://127.0.0.1:8765/internal/dcv-auth"
+auth-token-verifier-timeout=10
 
 [session-management]
 enable-gl-in-virtual-sessions="always-off"
@@ -457,12 +519,14 @@ install_computer() {
   configure_browser_bridge
   configure_local_server_name
   write_environment
+  write_server_interactive_access_environment
+  reload_server_configuration
   configure_dcv
   configure_service
   configure_tailscale_serve
   touch "$enabled_file"
   systemctl enable --now "$service_name"
-  computer_url
+  interactive_access_url
 }
 
 update_computer() {
@@ -480,6 +544,8 @@ update_computer() {
   configure_browser_bridge
   configure_local_server_name
   write_environment
+  write_server_interactive_access_environment
+  reload_server_configuration
   configure_service
   configure_tailscale_serve
   if [[ "$was_active" == "true" ]]; then
@@ -553,6 +619,8 @@ show_status() {
   fi
   printf 'URL: '
   computer_url
+  printf 'Interactive access: '
+  interactive_access_url
 }
 
 require_root

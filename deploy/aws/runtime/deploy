@@ -15,6 +15,7 @@ runtime_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir="${GROMOZEKA_DATA_DIR:-/data/gromozeka}"
 secrets_file="$data_dir/runtime/runtime.env"
 deployment_file="$data_dir/runtime/deployment.env"
+interactive_access_file="$data_dir/runtime/interactive-access.env"
 cloud_file="/etc/gromozeka/cloud.env"
 postgres_major="18"
 
@@ -42,7 +43,11 @@ if [[ ! -f "$secrets_file" ]]; then
     > "$secrets_file"
 fi
 
-chmod 0600 "$secrets_file"
+if [[ ! -f "$interactive_access_file" ]]; then
+  install -m 0600 /dev/null "$interactive_access_file"
+fi
+
+chmod 0600 "$secrets_file" "$interactive_access_file"
 set -a
 source "$secrets_file"
 set +a

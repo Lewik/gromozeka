@@ -84,6 +84,13 @@ home and browser profile live on the encrypted data EBS volume. DCV listens
 only on loopback; Tailscale Serve publishes its web client on private HTTPS
 port `8443`.
 
+An authenticated Gromozeka user with `USE` access to the Worker can ask an
+agent for its interactive desktop link. The read-only
+`grz_worker_interactive_access_get` tool returns a stable Server URL. Opening
+that URL creates a 60-second, one-time DCV handoff and redirects the browser to
+the `aws-computer` session without a second login. The Linux password remains
+available as a recovery path through the direct DCV URL.
+
 Amazon DCV and Google Chrome are installed directly from their vendors and are
 not redistributed in Gromozeka artifacts. The signed Browser Bridge is
 installed through Chrome's external extension mechanism. The Gromozeka Worker

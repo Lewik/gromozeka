@@ -39,6 +39,8 @@ services:
     restart: unless-stopped
     init: true
     mem_limit: 2176m
+    env_file:
+      - ${GROMOZEKA_DATA_DIR:-/data/gromozeka}/runtime/interactive-access.env
     security_opt:
       - no-new-privileges:true
     environment:
