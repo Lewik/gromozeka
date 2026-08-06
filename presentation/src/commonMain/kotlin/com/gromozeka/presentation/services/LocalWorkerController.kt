@@ -9,11 +9,12 @@ import kotlinx.coroutines.flow.StateFlow
 
 data class LocalWorkerStatus(
     val supported: Boolean,
+    val deviceDisplayName: String = "device",
     val installed: Boolean = false,
     val running: Boolean = false,
     val workerId: ConversationRuntimeWorkerId? = null,
     val serverStatus: WorkerCatalogEntry.Status? = null,
-    val permissions: LocalWorkerPermissions = LocalWorkerPermissions(),
+    val permissions: LocalWorkerPermissions? = null,
     val operation: LocalWorkerOperation? = null,
     val failure: String? = null,
 )

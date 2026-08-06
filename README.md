@@ -183,7 +183,7 @@ stack, or Worker from the matching Gromozeka release. Published releases
 currently provide:
 
 - an unsigned macOS ARM64 app DMG with an optional Local Worker and Browser MCP;
-- a portable Windows x64 Client ZIP;
+- a portable Windows x64 Client ZIP with an optional Local Worker and Browser MCP;
 - a Chrome/Edge/Chromium Browser Bridge ZIP loaded as an unpacked extension;
 - a Docker Compose Server stack with PostgreSQL and a Caddy HTTPS/WSS gateway;
 - thin macOS ARM64, Linux x64, and Windows x64 standalone Server archives;

@@ -220,12 +220,19 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: browser-mcp/package-lock.json
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
-      - name: Build portable Windows x64 client
+      - name: Build Browser MCP and portable Windows x64 client
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
         run: |
+          npm --prefix browser-mcp ci --no-audit --no-fund
+          npm --prefix browser-mcp run verify --silent
           & ./gradlew.bat `
             :presentation:createDistributable `
             "-Pgromozeka.version=$env:RELEASE_VERSION" `
@@ -247,6 +254,18 @@ jobs:
             Select-Object -First 1
           if ($null -eq $JvmLibrary) {
             throw "Bundled JVM library was not found"
+          }
+          $Worker = Join-Path $App.FullName "GromozekaWorker.exe"
+          if (-not (Test-Path $Worker -PathType Leaf)) {
+            throw "Bundled GromozekaWorker.exe was not found"
+          }
+          $BrowserLauncher = Join-Path $App.FullName "app/resources/local-worker/bin/gromozeka-browser-mcp.cmd"
+          if (-not (Test-Path $BrowserLauncher -PathType Leaf)) {
+            throw "Bundled Browser MCP launcher was not found"
+          }
+          $BrowserMcp = Join-Path $App.FullName "app/resources/local-worker/app/browser-mcp/node_modules/@playwright/mcp/cli.js"
+          if (-not (Test-Path $BrowserMcp -PathType Leaf)) {
+            throw "Bundled Browser MCP package was not found"
           }
           Copy-Item "LICENSE" (Join-Path $App.FullName "LICENSE")
           New-Item -ItemType Directory -Force "release-asset" | Out-Null

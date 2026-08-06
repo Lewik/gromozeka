@@ -145,14 +145,20 @@ a versioned shell or JRE and survive Worker updates.
 Computer Use intentionally controls the real pointer, keyboard, focus, and
 clipboard; there is no separate ownership or takeover UI.
 
-The macOS application bundles the Worker dependencies, Browser MCP, and a
-second `jpackage` launcher into the same DMG and shared Java runtime. The Client
-owns the visible menu-bar item and enrollment UI; the Local Worker remains a
-separate hidden LaunchAgent process behind the standard Worker Gateway. Closing
-the Client window hides it, while an explicit application quit stops the
-managed Local Worker. The stable helper copied under Application Support owns
-macOS Screen Recording, Accessibility, and microphone consent across app
-updates. Standalone Worker packages use the same helper protocol.
+The macOS and Windows applications bundle the Worker dependencies, Browser MCP,
+and a second `jpackage` launcher into the same application image and shared Java
+runtime. The Client owns the visible tray item and enrollment UI; the Local
+Worker remains a separate process behind the standard Worker Gateway. macOS
+uses a hidden LaunchAgent, while Windows launches the Worker in the current
+interactive session so Computer Use is never isolated in service Session 0.
+Closing the Client window hides it, while an explicit application quit stops
+the managed Local Worker. The stable macOS helper copied under Application
+Support owns Screen Recording, Accessibility, and microphone consent across app
+updates. Browser Bridge and Claude Code remain separately installed user tools.
+The managed Worker keeps its configuration under `~/.gromozeka/local-worker`
+and uses a `-local` Worker ID suffix, so a standalone Worker on the same machine
+retains a separate identity and credential. Standalone Worker packages use the
+same Worker Gateway protocol but keep their own lifecycle.
 
 Deployments may attach a human-facing interactive desktop to a Worker. When
 configured, `grz_worker_interactive_access_get` returns a stable Server URL;

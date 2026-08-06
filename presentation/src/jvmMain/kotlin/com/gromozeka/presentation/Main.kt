@@ -211,7 +211,7 @@ fun main() {
                             },
                         )
                     }
-                    if (localWorkerStatus.installed) {
+                    if (localWorkerStatus.installed && localWorkerStatus.permissions != null) {
                         Item(
                             text = "Computer Use Permissions...",
                             enabled = localWorkerStatus.operation == null,

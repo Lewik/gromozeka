@@ -1343,10 +1343,10 @@ private fun LocalWorkerSettings(
     coroutineScope: CoroutineScope,
 ) {
     val status by controller.status.collectAsState()
-    SettingsGroup(title = "This Mac") {
+    SettingsGroup(title = "This ${status.deviceDisplayName}") {
         SwitchSettingItem(
-            label = "Use this Mac as a Worker",
-            description = "Run trusted tools, local Claude Code, voice capture, and Computer Use on this Mac.",
+            label = "Use this ${status.deviceDisplayName} as a Worker",
+            description = "Run trusted tools, local Claude Code, voice capture, and Computer Use on this computer.",
             value = status.installed,
             enabled = status.operation == null,
             onValueChange = { enabled ->
@@ -1379,12 +1379,14 @@ private fun LocalWorkerSettings(
         }
 
         if (status.installed) {
-            Text(
-                text = "Screen Recording: ${status.permissions.screenRecording.displayName()} · " +
-                    "Accessibility: ${status.permissions.accessibility.displayName()}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            status.permissions?.let { permissions ->
+                Text(
+                    text = "Screen Recording: ${permissions.screenRecording.displayName()} · " +
+                        "Accessibility: ${permissions.accessibility.displayName()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
@@ -1397,11 +1399,13 @@ private fun LocalWorkerSettings(
                 ) {
                     Text(if (status.running) "Stop" else "Start")
                 }
-                OutlinedButton(
-                    enabled = status.operation == null,
-                    onClick = { coroutineScope.launch { controller.requestComputerUsePermissions() } },
-                ) {
-                    Text("Permissions...")
+                if (status.permissions != null) {
+                    OutlinedButton(
+                        enabled = status.operation == null,
+                        onClick = { coroutineScope.launch { controller.requestComputerUsePermissions() } },
+                    ) {
+                        Text("Permissions...")
+                    }
                 }
                 OutlinedButton(
                     enabled = status.operation == null,
@@ -1419,8 +1423,8 @@ private fun LocalWorkerSettings(
 private fun LocalWorkerStatus.description(): String = when {
     operation == LocalWorkerOperation.STARTING -> "Starting the Local Worker..."
     operation == LocalWorkerOperation.STOPPING -> "Stopping the Local Worker..."
-    operation == LocalWorkerOperation.ENROLLING -> "Enrolling this Mac with the Server..."
-    operation == LocalWorkerOperation.REQUESTING_PERMISSIONS -> "Opening macOS privacy settings..."
+    operation == LocalWorkerOperation.ENROLLING -> "Enrolling this ${deviceDisplayName} with the Server..."
+    operation == LocalWorkerOperation.REQUESTING_PERMISSIONS -> "Opening operating system privacy settings..."
     operation == LocalWorkerOperation.REFRESHING -> "Refreshing Local Worker status..."
     failure != null -> failure
     running && serverStatus == WorkerCatalogEntry.Status.ONLINE -> "Online and connected to the Server."
