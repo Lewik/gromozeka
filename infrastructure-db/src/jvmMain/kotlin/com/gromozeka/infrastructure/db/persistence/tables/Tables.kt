@@ -322,6 +322,18 @@ internal object AiToolCapabilityCatalogs : Table("ai_tool_capability_catalogs") 
     override val primaryKey = PrimaryKey(sourceId, fingerprint)
 }
 
+internal object AiToolContracts : Table("ai_tool_contracts") {
+    val fingerprint = varchar("fingerprint", 64)
+    val logicalName = varchar("logical_name", 255)
+    val modelName = varchar("model_name", 64)
+    val variant = integer("variant")
+    val sourceId = varchar("source_id", 255)
+    val payloadJson = text("payload_json")
+    val createdAt = timestamp("created_at")
+
+    override val primaryKey = PrimaryKey(fingerprint)
+}
+
 internal object ConversationTabLayouts : Table("conversation_tab_layouts") {
     val userId = varchar("user_id", 255).references(Users.id, onDelete = ReferenceOption.CASCADE)
     val conversationIdsJson = text("conversation_ids_json")

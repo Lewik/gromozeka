@@ -8,7 +8,6 @@ import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AgentSkillRepository
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
-import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -65,38 +64,30 @@ class AgentSkillRuntimeCatalogService(
             )
         }
 
-        val names = skills.map(AgentSkill::name)
-        val rewrittenTools = toolCatalog.tools.map { callback ->
-            when (callback.definition.name) {
-                ACTIVATE_AGENT_SKILL_TOOL_NAME ->
-                    callback.withDefinition(activateAgentSkillDefinition(names))
-                READ_AGENT_SKILL_RESOURCE_TOOL_NAME ->
-                    callback.withDefinition(readAgentSkillResourceDefinition(names))
-                else -> callback
-            }
-        }
         return AgentSkillRuntimeCatalog(
-            toolCatalog = toolCatalog.copy(tools = rewrittenTools),
-            systemPrompt = buildAgentSkillCatalogPrompt(skills),
+            toolCatalog = toolCatalog,
+            systemPrompt = buildAgentSkillCatalogPrompt(
+                skills = skills,
+                activateToolName = toolCatalog.entries.values
+                    .firstOrNull { it.logicalName == ACTIVATE_AGENT_SKILL_TOOL_NAME }
+                    ?.modelName
+                    ?: ACTIVATE_AGENT_SKILL_TOOL_NAME,
+                readResourceToolName = toolCatalog.entries.values
+                    .firstOrNull { it.logicalName == READ_AGENT_SKILL_RESOURCE_TOOL_NAME }
+                    ?.modelName
+                    ?: READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
+            ),
         )
     }
 
     private fun DistributedAiToolCatalogSnapshot.withoutAgentSkillTools(): DistributedAiToolCatalogSnapshot =
         copy(
-            tools = tools.filterNot { it.definition.name in agentSkillToolNames },
-            entries = entries.filterKeys { it !in agentSkillToolNames },
+            tools = tools.filterNot { callback ->
+                entries[callback.definition.name]?.logicalName in agentSkillToolNames
+            },
+            entries = entries.filterValues { it.logicalName !in agentSkillToolNames },
         )
 
-    private fun AiToolCallback.withDefinition(rewritten: AiToolDefinition): AiToolCallback {
-        val delegate = this
-        return object : AiToolCallback {
-            override val definition: AiToolDefinition = rewritten
-            override val metadata: AiToolMetadata = delegate.metadata
-
-            override fun call(toolInput: String, context: ToolExecutionContext?): String =
-                delegate.call(toolInput, context)
-        }
-    }
 }
 
 @Component
@@ -110,7 +101,7 @@ class ActivateAgentSkillToolCallback(
         val name: String,
     )
 
-    override val definition: AiToolDefinition = activateAgentSkillDefinition(emptyList())
+    override val definition: AiToolDefinition = activateAgentSkillDefinition()
 
     override val metadata = PreloadedServerToolMetadata
 
@@ -163,7 +154,7 @@ class ReadAgentSkillResourceToolCallback(
         val max_bytes: Int = DEFAULT_MAX_BYTES,
     )
 
-    override val definition: AiToolDefinition = readAgentSkillResourceDefinition(emptyList())
+    override val definition: AiToolDefinition = readAgentSkillResourceDefinition()
 
     override val metadata = PreloadedServerToolMetadata
 
@@ -271,26 +262,24 @@ class AgentSkillRuntimeAccess(
     }
 }
 
-private fun activateAgentSkillDefinition(skillNames: List<String>): AiToolDefinition =
+private fun activateAgentSkillDefinition(): AiToolDefinition =
     AiToolDefinition(
         name = ACTIVATE_AGENT_SKILL_TOOL_NAME,
         description = "Load the complete instructions and resource index for one Agent Skill assigned to this agent. " +
             "Activate a relevant skill before following it. Do not call this tool when the compact skill catalog is empty.",
         inputSchema = buildSkillNameSchema(
-            skillNames = skillNames,
             extraProperties = emptyMap(),
             required = listOf("name"),
         ),
     )
 
-private fun readAgentSkillResourceDefinition(skillNames: List<String>): AiToolDefinition =
+private fun readAgentSkillResourceDefinition(): AiToolDefinition =
     AiToolDefinition(
         name = READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
         description = "Read one file from an activated Agent Skill package. " +
             "Use an exact relative path referenced by the skill instructions or returned by activate_agent_skill, " +
             "and continue with next_offset when complete=false.",
         inputSchema = buildSkillNameSchema(
-            skillNames = skillNames,
             extraProperties = mapOf(
                 "path" to buildJsonObject {
                     put("type", "string")
@@ -313,7 +302,6 @@ private fun readAgentSkillResourceDefinition(skillNames: List<String>): AiToolDe
     )
 
 private fun buildSkillNameSchema(
-    skillNames: List<String>,
     extraProperties: Map<String, kotlinx.serialization.json.JsonObject>,
     required: List<String>,
 ): String =
@@ -324,11 +312,6 @@ private fun buildSkillNameSchema(
             put("name", buildJsonObject {
                 put("type", "string")
                 put("description", "Exact Agent Skill name from the compact catalog.")
-                if (skillNames.isNotEmpty()) {
-                    put("enum", buildJsonArray {
-                        skillNames.forEach { add(JsonPrimitive(it)) }
-                    })
-                }
             })
             extraProperties.forEach { (name, schema) -> put(name, schema) }
         })
@@ -337,15 +320,19 @@ private fun buildSkillNameSchema(
         })
     }.toString()
 
-private fun buildAgentSkillCatalogPrompt(skills: List<AgentSkill>): String =
+private fun buildAgentSkillCatalogPrompt(
+    skills: List<AgentSkill>,
+    activateToolName: String,
+    readResourceToolName: String,
+): String =
     buildString {
         append("<agent_skills>\n")
         append("Agent Skills provide specialized instructions through progressive disclosure. ")
         append("When a listed skill is relevant, call `")
-        append(ACTIVATE_AGENT_SKILL_TOOL_NAME)
+        append(activateToolName)
         append("` with its exact name before applying it. ")
         append("Use `")
-        append(READ_AGENT_SKILL_RESOURCE_TOOL_NAME)
+        append(readResourceToolName)
         append("` only for resources listed by the activated skill. ")
         append("Do not invent skill names or treat `allowed-tools` metadata as a permission grant.\n")
         append(buildJsonObject {

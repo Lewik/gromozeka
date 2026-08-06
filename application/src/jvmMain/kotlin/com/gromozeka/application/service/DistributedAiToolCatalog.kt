@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.repository.AiToolContractRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
@@ -14,6 +15,7 @@ import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.contractFingerprint
 import com.gromozeka.shared.utils.sha256
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
@@ -37,6 +39,10 @@ const val AI_TOOL_EXECUTION_WORKSPACE_MOUNT_ID_FIELD = "workspace_mount_id"
 data class DistributedAiTool(
     val descriptor: AiToolDescriptor,
     val workers: List<DistributedAiToolWorker>,
+    val logicalName: String = descriptor.definition.name,
+    val modelName: String = descriptor.definition.name,
+    val executionName: String = descriptor.definition.name,
+    val contractFingerprint: String = descriptor.contractFingerprint(),
 )
 
 data class DistributedAiToolWorker(
@@ -58,6 +64,7 @@ class DistributedAiToolCatalog(
     private val workspaceService: WorkspaceDomainService,
     private val aiToolProvider: com.gromozeka.domain.service.AiToolProvider,
     private val workerAccessService: WorkerAccessService,
+    private val aiToolContractRepository: AiToolContractRepository,
 ) {
     private val json = Json
 
@@ -82,20 +89,28 @@ class DistributedAiToolCatalog(
             registration.identity.workerId to projectMounts
                 .filter { it.workerId == registration.identity.workerId.value }
         }
-        val workerEntries = onlineRegistrations
+        val workerAdvertisements = onlineRegistrations
             .flatMap { registration ->
                 registration.tools
                     .filter { it.metadata.executionScope != AiToolExecutionScope.SERVER }
-                    .map { descriptor -> descriptor.definition.name to (registration to descriptor) }
+                    .map { descriptor -> registration to descriptor.asModelContractDescriptor() }
             }
-            .groupBy(keySelector = { it.first }, valueTransform = { it.second })
-            .mapNotNull { (toolName, advertised) ->
-                val descriptors = advertised.map { it.second }.distinct()
-                check(descriptors.size == 1) {
-                    "Online workers advertise conflicting definitions for tool '$toolName': " +
-                        advertised.joinToString { it.first.identity.workerId.value }
-                }
-                val descriptor = descriptors.single()
+        val serverDescriptors = aiToolProvider.getTools()
+            .asSequence()
+            .filter(AiToolCallback::available)
+            .filter { it.metadata.executionScope == AiToolExecutionScope.SERVER }
+            .map { callback ->
+                AiToolDescriptor(callback.definition, callback.metadata).asModelContractDescriptor()
+            }
+            .toList()
+        val contractsByFingerprint = aiToolContractRepository.resolveAll(
+            workerAdvertisements.map { it.second } + serverDescriptors
+        ).associateBy { it.fingerprint }
+        val workerEntries = workerAdvertisements
+            .groupBy { (_, descriptor) -> descriptor.contractFingerprint() }
+            .mapNotNull { (fingerprint, advertised) ->
+                val contract = contractsByFingerprint.getValue(fingerprint)
+                val descriptor = contract.descriptor
                 val workers = advertised
                     .map { (registration, _) ->
                         DistributedAiToolWorker(
@@ -111,24 +126,30 @@ class DistributedAiToolCatalog(
                     }
                     .sortedBy { it.workerId.value }
                 workers.takeIf { it.isNotEmpty() }
-                    ?.let { toolName to DistributedAiTool(descriptor, it) }
+                    ?.let {
+                        contract.modelName to DistributedAiTool(
+                            descriptor = descriptor,
+                            workers = it,
+                            logicalName = contract.logicalName,
+                            modelName = contract.modelName,
+                            executionName = contract.logicalName,
+                            contractFingerprint = contract.fingerprint,
+                        )
+                    }
             }
             .toMap()
-        val serverEntries = aiToolProvider.getTools()
-            .asSequence()
-            .filter(AiToolCallback::available)
-            .filter { it.metadata.executionScope == AiToolExecutionScope.SERVER }
-            .map { callback ->
-                callback.definition.name to DistributedAiTool(
-                    descriptor = AiToolDescriptor(callback.definition, callback.metadata),
+        val serverEntries = serverDescriptors
+            .associate { descriptor ->
+                val contract = contractsByFingerprint.getValue(descriptor.contractFingerprint())
+                contract.modelName to DistributedAiTool(
+                    descriptor = contract.descriptor,
                     workers = emptyList(),
+                    logicalName = contract.logicalName,
+                    modelName = contract.modelName,
+                    executionName = contract.logicalName,
+                    contractFingerprint = contract.fingerprint,
                 )
             }
-            .toMap()
-        val duplicateNames = workerEntries.keys intersect serverEntries.keys
-        check(duplicateNames.isEmpty()) {
-            "Server and Workers advertise conflicting tool execution scopes: ${duplicateNames.sorted().joinToString()}"
-        }
         val entries = (workerEntries + serverEntries).toSortedMap()
         val callbacks = entries.values.map(::modelCallback)
         val environmentTopology = buildEnvironmentTopology(
@@ -138,7 +159,21 @@ class DistributedAiToolCatalog(
             projectWorkspaces = projectWorkspaces,
             projectMounts = projectMounts,
         )
-        val environmentRevision = environmentTopology.toString().sha256()
+        val toolContracts = buildJsonArray {
+            entries.values.forEach { tool ->
+                add(buildJsonObject {
+                    put("model_name", tool.modelName)
+                    put("execution_scope", tool.descriptor.metadata.executionScope.name.lowercase())
+                    putJsonArray("compatible_worker_ids") {
+                        tool.workers.forEach { worker -> add(JsonPrimitive(worker.workerId.value)) }
+                    }
+                })
+            }
+        }
+        val environmentRevision = buildJsonObject {
+            put("topology", environmentTopology)
+            put("tool_contracts", toolContracts)
+        }.toString().sha256()
 
         return DistributedAiToolCatalogSnapshot(
             tools = callbacks,
@@ -148,6 +183,10 @@ class DistributedAiToolCatalog(
             environmentPrompt = buildEnvironmentPrompt(
                 revision = environmentRevision,
                 topology = environmentTopology,
+                toolContracts = toolContracts,
+                workerEnvironmentToolName = entries.values
+                    .firstOrNull { it.logicalName == "grz_get_worker_environment" }
+                    ?.modelName,
             ),
         )
     }
@@ -155,10 +194,7 @@ class DistributedAiToolCatalog(
     private fun modelCallback(tool: DistributedAiTool): AiToolCallback =
         object : AiToolCallback {
             override val definition: AiToolDefinition = tool.descriptor.definition.copy(
-                description = tool.descriptor.definition.description.withExecutionTargetDescription(
-                    tool.descriptor.metadata.executionScope
-                ),
-                inputSchema = tool.descriptor.definition.inputSchema.withExecutionTargetSchema(tool),
+                name = tool.modelName,
             )
             override val metadata: AiToolMetadata = tool.descriptor.metadata
 
@@ -166,11 +202,22 @@ class DistributedAiToolCatalog(
                 error("Distributed tool descriptors cannot execute locally")
         }
 
+    private fun AiToolDescriptor.asModelContractDescriptor(): AiToolDescriptor =
+        copy(
+            definition = definition.copy(
+                description = definition.description.withExecutionTargetDescription(metadata.executionScope),
+                inputSchema = definition.inputSchema.withExecutionTargetSchema(
+                    toolName = definition.name,
+                    scope = metadata.executionScope,
+                ),
+            )
+        )
+
     private fun String.withExecutionTargetDescription(scope: AiToolExecutionScope): String {
         val targetDescription = when (scope) {
             AiToolExecutionScope.SERVER -> return this
             AiToolExecutionScope.WORKER ->
-                "Select the exact online worker in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
+                "Select an exact compatible online worker from the current execution environment in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.WORKSPACE ->
                 "Select the exact online filesystem mount in `$AI_TOOL_EXECUTION_TARGET_FIELD`."
             AiToolExecutionScope.COMMAND_TASK_OWNER ->
@@ -181,17 +228,20 @@ class DistributedAiToolCatalog(
         return "$this\n\n$targetDescription"
     }
 
-    private fun String.withExecutionTargetSchema(tool: DistributedAiTool): String {
+    private fun String.withExecutionTargetSchema(
+        toolName: String,
+        scope: AiToolExecutionScope,
+    ): String {
         val schema = json.parseToJsonElement(this).jsonObject
         val properties = schema["properties"]?.jsonObject.orEmpty()
         check(AI_TOOL_EXECUTION_TARGET_FIELD !in properties) {
-            "Tool '${tool.descriptor.definition.name}' already declares reserved field " +
+            "Tool '$toolName' already declares reserved field " +
                 "'$AI_TOOL_EXECUTION_TARGET_FIELD'"
         }
         if (
-            tool.descriptor.metadata.executionScope == AiToolExecutionScope.SERVER ||
-            tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
-            tool.descriptor.metadata.executionScope == AiToolExecutionScope.COMMAND_MONITOR_OWNER
+            scope == AiToolExecutionScope.SERVER ||
+            scope == AiToolExecutionScope.COMMAND_TASK_OWNER ||
+            scope == AiToolExecutionScope.COMMAND_MONITOR_OWNER
         ) {
             return schema.toString()
         }
@@ -199,7 +249,7 @@ class DistributedAiToolCatalog(
             .map { it.jsonPrimitive.content }
             .toMutableSet()
             .apply { add(AI_TOOL_EXECUTION_TARGET_FIELD) }
-        val workspaceRequired = tool.descriptor.metadata.executionScope == AiToolExecutionScope.WORKSPACE
+        val workspaceRequired = scope == AiToolExecutionScope.WORKSPACE
 
         val targetSchema = buildJsonObject {
             put("type", "object")
@@ -330,6 +380,8 @@ class DistributedAiToolCatalog(
     private fun buildEnvironmentPrompt(
         revision: String,
         topology: JsonObject,
+        toolContracts: JsonArray,
+        workerEnvironmentToolName: String?,
     ): String =
         buildString {
             append("<execution_environment revision=\"")
@@ -339,9 +391,18 @@ class DistributedAiToolCatalog(
             append("Project is the logical scope for conversations, agents, prompts, and workspaces; it is not a filesystem path.\n")
             append("Conversation belongs to one Project and is not bound to a Workspace. Agent is its selected model and instruction configuration.\n")
             append("Worker is a named executor. Workspace is a logical filesystem resource. WorkspaceMount binds a Workspace to one worker-local root path and is the filesystem execution target.\n")
-            append("Each worker environment_profile is the stable profile advertised when that worker session started; when available, use grz_get_worker_environment if current process, capacity, storage, or executable data matters.\n")
+            append("Each worker environment_profile is the stable profile advertised when that worker session started")
+            workerEnvironmentToolName?.let { toolName ->
+                append("; when available, use ")
+                append(toolName)
+                append(" if current process, capacity, storage, or executable data matters")
+            }
+            append(".\n")
             append("Topology: ")
             append(topology)
+            append("\n")
+            append("Active tool routes: ")
+            append(toolContracts)
             append("\n")
             append("Worker-scoped and workspace-scoped tool calls must include `$AI_TOOL_EXECUTION_TARGET_FIELD`; ")
             append("command-task operations route by task_id. ")
@@ -350,6 +411,7 @@ class DistributedAiToolCatalog(
             append("Never infer that equal paths on different workers are the same workspace. ")
             append("Calls in one assistant response must target the same worker/mount; use separate responses otherwise. ")
             append("Failed or unavailable targets are never retried or reassigned automatically.\n")
+            append("Versioned tool names are immutable contracts. Use the exact exposed name; routing removes only the reserved execution_target field and preserves the original tool input.\n")
             append("</execution_environment>")
         }
 }

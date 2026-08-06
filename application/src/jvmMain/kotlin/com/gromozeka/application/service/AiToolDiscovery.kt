@@ -97,7 +97,7 @@ class AiToolSearchService {
         }
 
         val searchableTools = tools
-            .filterNot { it.definition.name == SEARCH_TOOLS_TOOL_NAME }
+            .filterNot { it.definition.name.isContractModelNameFor(SEARCH_TOOLS_TOOL_NAME) }
             .associateBy { it.definition.name }
             .toSortedMap()
         val index = indexFor(searchableTools.values.map(AiToolCallback::definition))
@@ -213,27 +213,35 @@ class AiToolRuntimeCatalogService {
         messages: List<Conversation.Message>,
         memoryEnabled: Boolean,
     ): Set<String> = buildSet {
-        addAll(corePreloadedToolNames)
-        addAll(agent.tools)
+        addConfiguredToolNames(corePreloadedToolNames, catalog)
+        addConfiguredToolNames(agent.tools, catalog)
         if (memoryEnabled) {
-            addAll(memoryPreloadedToolNames)
+            addConfiguredToolNames(memoryPreloadedToolNames, catalog)
         }
         if (agent.skills.isNotEmpty()) {
-            add(ACTIVATE_AGENT_SKILL_TOOL_NAME)
-            add(READ_AGENT_SKILL_RESOURCE_TOOL_NAME)
+            addConfiguredToolNames(
+                setOf(ACTIVATE_AGENT_SKILL_TOOL_NAME, READ_AGENT_SKILL_RESOURCE_TOOL_NAME),
+                catalog,
+            )
         }
         catalog.tools
             .filter { tool -> tool.metadata.loadingPolicy.shouldPreload(memoryEnabled) }
             .mapTo(this) { it.definition.name }
-        addAll(discoveredToolNames(messages))
+        addAll(discoveredToolNames(messages, catalog))
     }
 
-    internal fun discoveredToolNames(messages: List<Conversation.Message>): Set<String> {
+    internal fun discoveredToolNames(
+        messages: List<Conversation.Message>,
+        catalog: DistributedAiToolCatalogSnapshot,
+    ): Set<String> {
         val activeMessages = messages.afterLastCompaction()
-        val searchCallIds = activeMessages
+        val searchToolNames = catalog.entries.values
+            .filter { it.logicalName == SEARCH_TOOLS_TOOL_NAME }
+            .mapTo(mutableSetOf(), DistributedAiTool::modelName)
+            .ifEmpty { mutableSetOf(SEARCH_TOOLS_TOOL_NAME) }
+        val toolCallIds = activeMessages
             .flatMap(Conversation.Message::content)
             .filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
-            .filter { it.call.name == SEARCH_TOOLS_TOOL_NAME }
             .mapTo(mutableSetOf()) { it.id }
 
         return activeMessages
@@ -241,8 +249,8 @@ class AiToolRuntimeCatalogService {
             .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
             .filter {
                 !it.isError &&
-                    it.toolName == SEARCH_TOOLS_TOOL_NAME &&
-                    it.toolUseId in searchCallIds
+                    (it.executionToolName == SEARCH_TOOLS_TOOL_NAME || it.toolName in searchToolNames) &&
+                    it.toolUseId in toolCallIds
             }
             .flatMap { result ->
                 result.result
@@ -250,6 +258,23 @@ class AiToolRuntimeCatalogService {
                     .flatMap { text -> parseToolNames(text.content) }
             }
             .toSet()
+    }
+
+    private fun MutableSet<String>.addConfiguredToolNames(
+        configuredNames: Collection<String>,
+        catalog: DistributedAiToolCatalogSnapshot,
+    ) {
+        configuredNames.forEach { configuredName ->
+            val exact = catalog.entries[configuredName]
+            if (exact != null && exact.logicalName != configuredName) {
+                add(exact.modelName)
+                return@forEach
+            }
+            val variants = catalog.entries.values
+                .filter { it.logicalName == configuredName }
+                .map(DistributedAiTool::modelName)
+            if (variants.isEmpty()) add(configuredName) else addAll(variants)
+        }
     }
 
     private fun List<Conversation.Message>.afterLastCompaction(): List<Conversation.Message> {
@@ -278,6 +303,16 @@ class AiToolRuntimeCatalogService {
             AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE -> true
             AiToolLoadingPolicy.PRELOAD_WHEN_MEMORY_ENABLED -> memoryEnabled
         }
+}
+
+private fun String.isContractModelNameFor(logicalName: String): Boolean {
+    if (this == logicalName) return true
+    val suffix = removePrefix("${logicalName}__v")
+    if (suffix == this) return false
+    val variantLength = suffix.indexOfFirst { !it.isDigit() }
+        .let { if (it < 0) suffix.length else it }
+    if (variantLength == 0) return false
+    return variantLength == suffix.length || suffix[variantLength] == '_'
 }
 
 data class AiToolRuntimeSelection(

@@ -1134,6 +1134,7 @@ class ConversationEngineService(
                 toolCalls = toolCalls,
                 returnDirect = routing.returnDirect,
                 executionTarget = routing.requirements.target,
+                executionToolNamesByCallId = routing.executionToolNamesByCallId,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:tools:$iteration",

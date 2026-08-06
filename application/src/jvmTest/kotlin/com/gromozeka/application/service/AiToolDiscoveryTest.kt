@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -348,6 +349,49 @@ class AiToolRuntimeCatalogServiceTest {
             listOf("memory_enrich_context", SEARCH_TOOLS_TOOL_NAME),
             enabled.tools.map { it.definition.name },
         )
+    }
+
+    @Test
+    fun `configured logical names expand to active contract variants`() {
+        val search = tool("search_tools__v2", "Search tools.")
+        val read = tool("grz_read_file__v3", "Read files.")
+        val catalog = DistributedAiToolCatalogSnapshot(
+            tools = listOf(search, read),
+            entries = mapOf(
+                search.definition.name to DistributedAiTool(
+                    descriptor = AiToolDescriptor(
+                        search.definition.copy(name = SEARCH_TOOLS_TOOL_NAME),
+                        search.metadata,
+                    ),
+                    workers = emptyList(),
+                    logicalName = SEARCH_TOOLS_TOOL_NAME,
+                    modelName = search.definition.name,
+                    executionName = SEARCH_TOOLS_TOOL_NAME,
+                ),
+                read.definition.name to DistributedAiTool(
+                    descriptor = AiToolDescriptor(
+                        read.definition.copy(name = "grz_read_file"),
+                        read.metadata,
+                    ),
+                    workers = emptyList(),
+                    logicalName = "grz_read_file",
+                    modelName = read.definition.name,
+                    executionName = "grz_read_file",
+                ),
+            ),
+            registrations = emptyList(),
+            environmentRevision = "revision",
+            environmentPrompt = "",
+        )
+
+        val selection = service.selectTools(agent(), catalog, emptyList(), memoryEnabled = false)
+
+        assertEquals(
+            listOf("grz_read_file__v3", "search_tools__v2"),
+            selection.tools.map { it.definition.name },
+        )
+        assertTrue("grz_read_file" !in selection.unavailableToolNames)
+        assertTrue(SEARCH_TOOLS_TOOL_NAME !in selection.unavailableToolNames)
     }
 
     private fun agent(pinnedTools: List<String> = emptyList()): AgentDefinition =

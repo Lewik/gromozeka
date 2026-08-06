@@ -208,7 +208,6 @@ class McpServerManagementService(
                 createdAt = current?.createdAt ?: now,
                 updatedAt = now,
             )
-            requireMatchingNamespaceContract(candidate)
             val persisted = when (kind) {
                 McpServerMutationKind.CREATE -> repository.create(candidate)
                 McpServerMutationKind.UPDATE,
@@ -243,21 +242,6 @@ class McpServerManagementService(
         require(duplicate == null) {
             "Worker ${config.workerId.value} already has MCP server ${duplicate?.config?.id?.value} " +
                 "in namespace ${config.namespace.value}"
-        }
-    }
-
-    private suspend fun requireMatchingNamespaceContract(candidate: McpServer) {
-        val conflicts = repository.list().filter { server ->
-            server.config.id != candidate.config.id &&
-                server.config.namespace == candidate.config.namespace &&
-                (
-                    server.snapshot.tools != candidate.snapshot.tools ||
-                        server.snapshot.instructions != candidate.snapshot.instructions
-                    )
-        }
-        require(conflicts.isEmpty()) {
-            "MCP namespace ${candidate.config.namespace.value} conflicts with installations: " +
-                conflicts.joinToString { it.config.id.value }
         }
     }
 

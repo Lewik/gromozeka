@@ -22,7 +22,6 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -54,28 +53,23 @@ class AgentSkillRuntimeTest {
     )
 
     @Test
-    fun `runtime exposes compact catalog and constrained activation tools`() = runBlocking {
+    fun `runtime exposes compact catalog without mutating versioned tool contracts`() = runBlocking {
         val repository = TestAgentSkillRepository(listOf(skillPackage))
         val service = AgentSkillRuntimeCatalogService(repository)
+        val originalCatalog = toolCatalog()
         val prepared = service.prepare(
             agent = agent(listOf(skill.id)),
             projectId = projectId,
-            toolCatalog = toolCatalog(),
+            toolCatalog = originalCatalog,
         )
 
         assertTrue(prepared.systemPrompt!!.contains("\"name\":\"release-check\""))
         assertFalse(prepared.systemPrompt.contains(skill.instructions))
         val activation = prepared.toolCatalog.tools
             .single { it.definition.name == ACTIVATE_AGENT_SKILL_TOOL_NAME }
-        val nameSchema = Json.parseToJsonElement(activation.definition.inputSchema)
-            .jsonObject
-            .getValue("properties")
-            .jsonObject
-            .getValue("name")
-            .jsonObject
         assertEquals(
-            listOf("release-check"),
-            nameSchema.getValue("enum").jsonArray.map { it.jsonPrimitive.content },
+            originalCatalog.tools.single { it.definition.name == ACTIVATE_AGENT_SKILL_TOOL_NAME }.definition,
+            activation.definition,
         )
     }
 

@@ -123,7 +123,7 @@ class McpServerManagementServiceTest {
     }
 
     @Test
-    fun `conflicting namespace contracts are rejected across workers`() = runBlocking {
+    fun `different namespace contracts coexist across workers`() = runBlocking {
         val fixture = Fixture(online = true)
         try {
             val conflictingTools = fixture.server.snapshot.tools.map { tool ->
@@ -149,15 +149,10 @@ class McpServerManagementServiceTest {
                 )
             )
 
-            val error = assertFailsWith<IllegalArgumentException> {
-                fixture.service.create(fixture.server.config)
-            }
+            val created = fixture.service.create(fixture.server.config)
 
-            assertEquals(
-                "MCP namespace test conflicts with installations: other_installation",
-                error.message,
-            )
-            assertEquals(1, fixture.repository.list().size)
+            assertEquals(fixture.server.config.namespace, created.config.namespace)
+            assertEquals(2, fixture.repository.list().size)
         } finally {
             fixture.close()
         }

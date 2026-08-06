@@ -86,6 +86,10 @@ class ConversationToolExecutionTaskService(
             .firstOrNull { it.id == toolResultMessageId }
 
         if (existingToolResult == null) {
+            val modelToolNamesByCallId = payload.toolCalls.associate { it.id.value to it.call.name }
+            val executionToolCalls = payload.toolCalls.withExecutionToolNames(
+                payload.executionToolNamesByCallId
+            )
             val toolContext = ToolExecutionContext(
                 buildMap {
                     put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
@@ -112,13 +116,16 @@ class ConversationToolExecutionTaskService(
             val executionResult = when (target) {
                 ConversationRuntimeTaskTarget.Server ->
                     parallelToolExecutor.executeParallel(
-                        toolCalls = payload.toolCalls,
+                        toolCalls = executionToolCalls,
                         toolContext = toolContext,
                         runtimeTaskId = task.id,
                         executor = executor,
                         expectedTarget = target,
                         onToolExecutionChanged = { execution ->
-                            upsertRuntimeToolExecution(conversationId, execution)
+                            upsertRuntimeToolExecution(
+                                conversationId,
+                                execution.withModelToolName(modelToolNamesByCallId),
+                            )
                         },
                     )
 
@@ -137,17 +144,22 @@ class ConversationToolExecutionTaskService(
                         workerToolExecutionClient.execute(
                             target = targetIdentity,
                             executionTarget = target,
-                            toolCalls = payload.toolCalls,
+                            toolCalls = executionToolCalls,
                             toolContext = toolContext,
                         ).also { result ->
                             markRemoteToolExecutionsCompleted(
                                 conversationId = conversationId,
                                 task = task,
                                 executor = executor,
-                                results = result.results,
+                                results = result.results.map { it.withModelToolName(modelToolNamesByCallId) },
                                 startedAt = startedAt,
                             )
-                        }.let { ToolExecutionResult(it.results, it.returnDirect) }
+                        }.let {
+                            ToolExecutionResult(
+                                results = it.results,
+                                returnDirect = it.returnDirect,
+                            )
+                        }
                     } catch (error: Throwable) {
                         if (error is CancellationException) throw error
                         markRemoteToolExecutionsFailed(
@@ -161,7 +173,7 @@ class ConversationToolExecutionTaskService(
                             "Worker tool execution returned no result; reporting an unknown outcome to the model: " +
                                 "conversation=${conversationId.value} worker=${target.workerId.value}"
                         }
-                        workerToolExecutionFailure(payload.toolCalls, error)
+                        workerToolExecutionFailure(executionToolCalls, error)
                     }
                 }
             }
@@ -170,7 +182,7 @@ class ConversationToolExecutionTaskService(
                 conversation = conversation,
                 createdByUserId = task.actorUserId,
                 results = executionResult.results,
-            )
+            ).map { result -> result.withModelToolName(modelToolNamesByCallId) }
 
             val toolResultMessage = Conversation.Message(
                 id = toolResultMessageId,
@@ -404,6 +416,35 @@ class ConversationToolExecutionTaskService(
                     executor.identity.workerId == workerId
         }
 }
+
+internal fun List<Conversation.Message.ContentItem.ToolCall>.withExecutionToolNames(
+    executionToolNamesByCallId: Map<String, String>,
+): List<Conversation.Message.ContentItem.ToolCall> =
+    map { toolCall ->
+        val executionName = executionToolNamesByCallId[toolCall.id.value]
+            ?: toolCall.call.name
+        toolCall.copy(call = toolCall.call.copy(name = executionName))
+    }
+
+internal fun Conversation.Message.ContentItem.ToolResult.withModelToolName(
+    modelToolNamesByCallId: Map<String, String>,
+): Conversation.Message.ContentItem.ToolResult =
+    modelToolNamesByCallId[toolUseId.value]
+        ?.takeIf { modelName -> modelName != toolName }
+        ?.let { modelName ->
+            copy(
+                toolName = modelName,
+                executionToolName = executionToolName ?: toolName,
+            )
+        }
+        ?: this
+
+private fun ConversationRuntimeToolExecution.withModelToolName(
+    modelToolNamesByCallId: Map<String, String>,
+): ConversationRuntimeToolExecution =
+    modelToolNamesByCallId[toolCallId.value]
+        ?.let { modelName -> copy(toolName = modelName) }
+        ?: this
 
 internal fun workerToolExecutionFailure(
     toolCalls: List<Conversation.Message.ContentItem.ToolCall>,

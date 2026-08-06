@@ -28,6 +28,7 @@ sealed interface ConversationRuntimeToolRoutingResult {
     data class Accepted(
         val requirements: ConversationRuntimeTaskRequirements,
         val returnDirect: Boolean,
+        val executionToolNamesByCallId: Map<String, String> = emptyMap(),
     ) : ConversationRuntimeToolRoutingResult
 
     data class Rejected(
@@ -110,6 +111,9 @@ class ConversationRuntimeToolRoutingService(
             }
 
             resolved += ResolvedToolCall(
+                toolCallId = toolCall.id,
+                modelName = toolCall.call.name,
+                executionName = entry.executionName,
                 target = target,
                 requiredCapabilities = entry.descriptor.metadata.requiredRuntimeCapabilities,
                 returnDirect = entry.descriptor.metadata.returnDirect,
@@ -151,6 +155,9 @@ class ConversationRuntimeToolRoutingService(
                 target = targets.single(),
             ),
             returnDirect = resolved.all { it.returnDirect },
+            executionToolNamesByCallId = resolved
+                .filter { it.modelName != it.executionName }
+                .associate { it.toolCallId.value to it.executionName },
         )
     }
 
@@ -367,6 +374,9 @@ class ConversationRuntimeToolRoutingService(
         }
 
     private data class ResolvedToolCall(
+        val toolCallId: Conversation.Message.ContentItem.ToolCall.Id,
+        val modelName: String,
+        val executionName: String,
         val target: ConversationRuntimeTaskTarget,
         val requiredCapabilities: Set<ConversationRuntimeCapability>,
         val returnDirect: Boolean,

@@ -108,7 +108,7 @@ class ConversationArtifactApplicationService(
                             fileName = data.fileName ?: toolResult.defaultArtifactFileName(data.mediaType),
                             mediaType = data.mediaType.value,
                             content = Base64.getDecoder().decode(data.data),
-                            purpose = if (toolResult.toolName in SCREENSHOT_TOOL_NAMES) {
+                            purpose = if (toolResult.effectiveToolName in SCREENSHOT_TOOL_NAMES) {
                                 Artifact.Purpose.TOOL_SCREENSHOT
                             } else {
                                 Artifact.Purpose.TOOL_OUTPUT
@@ -172,7 +172,7 @@ class ConversationArtifactApplicationService(
     private fun List<Conversation.Message>.withBoundedComputerUseScreenshots(): List<Conversation.Message> {
         val screenshots = flatMap { message ->
             message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
-                .filter { it.toolName in COMPUTER_USE_SCREENSHOT_TOOL_NAMES }
+                .filter { it.effectiveToolName in COMPUTER_USE_SCREENSHOT_TOOL_NAMES }
                 .flatMap { result ->
                     result.result
                         .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
@@ -187,7 +187,7 @@ class ConversationArtifactApplicationService(
             message.copy(
                 content = message.content.map { item ->
                     if (item !is Conversation.Message.ContentItem.ToolResult ||
-                        item.toolName !in COMPUTER_USE_SCREENSHOT_TOOL_NAMES
+                        item.effectiveToolName !in COMPUTER_USE_SCREENSHOT_TOOL_NAMES
                     ) {
                         item
                     } else {
@@ -330,7 +330,10 @@ class ConversationArtifactApplicationService(
 
     private fun Conversation.Message.ContentItem.ToolResult.defaultArtifactFileName(
         mediaType: Conversation.Message.MediaType,
-    ): String = "$toolName-output.${mediaType.defaultExtension()}"
+    ): String = "$effectiveToolName-output.${mediaType.defaultExtension()}"
+
+    private val Conversation.Message.ContentItem.ToolResult.effectiveToolName: String
+        get() = executionToolName ?: toolName
 
     private fun Conversation.Message.MediaType.defaultExtension(): String = when (value) {
         "image/png" -> "png"

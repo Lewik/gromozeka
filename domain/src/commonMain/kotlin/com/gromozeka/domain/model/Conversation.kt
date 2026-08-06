@@ -239,6 +239,7 @@ data class Conversation(
              * @property toolName tool that was executed
              * @property result list of result data items (text, images, files)
              * @property isError true if tool execution failed
+             * @property executionToolName immutable executor-facing name when it differs from [toolName]
              */
             @Serializable
             data class ToolResult(
@@ -246,7 +247,8 @@ data class Conversation(
                 val toolName: String,
                 val result: List<Data>,
                 val isError: Boolean = false,
-                override val state: BlockState = BlockState.COMPLETE
+                override val state: BlockState = BlockState.COMPLETE,
+                val executionToolName: String? = null,
             ) : ContentItem() {
                 /**
                  * Tool result data item.

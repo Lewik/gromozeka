@@ -34,6 +34,7 @@ import com.gromozeka.domain.tool.CommandTaskOwnerToolMetadata
 import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.WorkerInspectionToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.contractFingerprint
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
@@ -47,7 +48,6 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
@@ -216,6 +216,14 @@ class DistributedAiToolRoutingTest {
             setOf(AI_TOOL_EXECUTION_WORKER_ID_FIELD),
             targetSchema.getValue("properties").jsonObject.keys,
         )
+        val entry = catalog.entries.getValue(workerEnvironmentTool.definition.name)
+        assertEquals(entry.contractFingerprint, entry.descriptor.contractFingerprint())
+        assertEquals(
+            entry.descriptor.definition.copy(name = entry.modelName),
+            catalog.tools.single().definition,
+        )
+        assertFalse(entry.descriptor.definition.description.contains("worker-a"))
+        assertTrue(catalog.environmentPrompt.contains("\"compatible_worker_ids\":[\"worker-a\",\"worker-b\"]"))
     }
 
     @Test
@@ -239,7 +247,7 @@ class DistributedAiToolRoutingTest {
     }
 
     @Test
-    fun `conflicting MCP namespace definitions fail catalog construction`() = runBlocking {
+    fun `conflicting MCP namespace definitions coexist as immutable tool variants`() = runBlocking {
         val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
         registerWorker(workerRegistry, "worker-a", listOf(sharedMcpTool))
         registerWorker(
@@ -257,11 +265,48 @@ class DistributedAiToolRoutingTest {
             mounts = emptyList(),
         )
 
-        val error = assertFailsWith<IllegalStateException> {
-            distributedCatalog(workerRegistry, workspaceService).snapshot(project)
-        }
+        val distributedCatalog = distributedCatalog(workerRegistry, workspaceService)
+        val catalog = distributedCatalog.snapshot(project)
 
-        assertTrue(error.message.orEmpty().contains("conflicting definitions"))
+        assertEquals(2, catalog.entries.size)
+        val workerAEntry = catalog.entries.values.single { tool ->
+            tool.workers.single().workerId == ConversationRuntimeWorkerId("worker-a")
+        }
+        val workerBEntry = catalog.entries.values.single { tool ->
+            tool.workers.single().workerId == ConversationRuntimeWorkerId("worker-b")
+        }
+        assertEquals(sharedMcpTool.definition.name, workerAEntry.logicalName)
+        assertEquals(sharedMcpTool.definition.name, workerBEntry.logicalName)
+        assertEquals(sharedMcpTool.definition.name, workerAEntry.executionName)
+        assertEquals(sharedMcpTool.definition.name, workerBEntry.executionName)
+        assertNotEquals(workerAEntry.modelName, workerBEntry.modelName)
+        assertEquals(
+            catalog.entries.keys,
+            distributedCatalog.snapshot(project).entries.keys,
+        )
+
+        val call = Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("variant-call"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = workerBEntry.modelName,
+                input = buildJsonObject {
+                    putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                        put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, "worker-b")
+                    }
+                },
+            ),
+        )
+        val routing = ConversationRuntimeToolRoutingService(
+            runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
+            workspaceService = workspaceService,
+            workerAccessService = workerAccessService,
+        ).route(conversation(project.id), project, listOf(call), catalog)
+
+        assertIs<ConversationRuntimeToolRoutingResult.Accepted>(routing)
+        assertEquals(
+            mapOf(call.id.value to sharedMcpTool.definition.name),
+            routing.executionToolNamesByCallId,
+        )
     }
 
     @Test
@@ -300,7 +345,7 @@ class DistributedAiToolRoutingTest {
         assertTrue(snapshot.environmentPrompt.contains("\"os_name\":\"Test Linux\""))
         assertTrue(snapshot.environmentPrompt.contains("\"architecture\":\"x86_64\""))
         assertTrue(snapshot.environmentPrompt.contains("\"available_executables\":[\"git\",\"sh\"]"))
-        assertTrue(snapshot.environmentPrompt.contains("use grz_get_worker_environment"))
+        assertFalse(snapshot.environmentPrompt.contains("use grz_get_worker_environment"))
 
         val schema = Json.parseToJsonElement(snapshot.tools.single().definition.inputSchema).jsonObject
         val targetSchema = schema["properties"]
@@ -642,6 +687,7 @@ class DistributedAiToolRoutingTest {
                     }
             },
             workerAccessService = workerAccessService,
+            aiToolContractRepository = InMemoryAiToolContractRepository(),
         )
 
     private fun project(id: String): Project =

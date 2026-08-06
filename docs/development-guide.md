@@ -230,11 +230,19 @@ Layer ownership for focused work:
 | PostgreSQL persistence | `:infrastructure-db` |
 | AI providers, live external MCP clients, memory, tools | `:infrastructure-ai` |
 | External MCP definitions and accepted tool snapshots | Server database through `:infrastructure-db` |
+| Immutable AI tool contracts and stable model-facing names | Server database through `:infrastructure-db` |
 | Durable runtime scheduling | `:application` and `:infrastructure-db` |
 | Session-addressed Worker control | `:server`, `:remote-protocol`, and `:worker` |
 | Compose UI and presentation state | `:presentation` |
 | Server endpoints and composition | `:server` |
 | Worker process and local execution | `:worker` |
+
+Every active Server, Worker, or external MCP tool resolves through the
+`ai_tool_contracts` registry. Its fingerprint includes the full definition and
+runtime metadata, including documentation. Equal contracts share one
+model-facing name across compatible executors; different contracts coexist as
+stable versioned names. Runtime routing translates that model-facing name back
+to the executor's original tool name without changing the tool argument body.
 
 Repository dependency sources may be cloned into `.sources/` when exact
 third-party behavior matters. They are research material and stay gitignored.

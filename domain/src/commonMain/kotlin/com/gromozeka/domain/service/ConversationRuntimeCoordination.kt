@@ -89,10 +89,16 @@ data class ConversationRuntimeTask(
             val toolCalls: List<ContentItem.ToolCall>,
             val returnDirect: Boolean,
             val executionTarget: ConversationRuntimeTaskTarget,
+            val executionToolNamesByCallId: Map<String, String> = emptyMap(),
         ) : Payload {
             init {
                 require(iteration >= 1) { "Conversation tool execution iteration must be positive" }
                 require(toolCalls.isNotEmpty()) { "Conversation tool execution task must contain at least one tool call" }
+                require(executionToolNamesByCallId.keys.all { callId ->
+                    toolCalls.any { it.id.value == callId }
+                }) {
+                    "Conversation tool execution name mapping references an unknown tool call"
+                }
             }
         }
 
