@@ -75,9 +75,9 @@ class RemotePttController(
             when (val current = captureLifecycle) {
                 null -> ReleaseAction.None
                 is CaptureLifecycle.Preparing -> {
-                    current.cancelRequested = true
-                    _statusMessage.value = "Отмена подготовки микрофона"
-                    ReleaseAction.CancelPreparation(current)
+                    current.completionRequest = PreparationCompletion.RELEASE
+                    _statusMessage.value = "Завершение записи"
+                    ReleaseAction.AwaitPreparation
                 }
                 is CaptureLifecycle.Recording -> {
                     captureLifecycle = null
@@ -90,13 +90,14 @@ class RemotePttController(
 
         val capture = when (release) {
             ReleaseAction.None -> return
-            is ReleaseAction.CancelPreparation -> {
-                cancelRemotePreparation(release.preparation)
-                return
-            }
+            ReleaseAction.AwaitPreparation -> return
             is ReleaseAction.Transcribe -> release.capture
         }
 
+        transcribeAndDeliver(capture)
+    }
+
+    private suspend fun transcribeAndDeliver(capture: CaptureLifecycle.Recording) {
         val text = try {
             runCatching {
                 when (val session = capture.session) {
@@ -114,7 +115,7 @@ class RemotePttController(
             }
         } finally {
             restoreSystemAudioAfterPtt(capture.systemAudioMuted)
-            _state.value = PttState.IDLE
+            finishPtt()
         }
 
         if (text.isBlank()) {
@@ -165,13 +166,12 @@ class RemotePttController(
                     CancelAction.None
                 }
                 is CaptureLifecycle.Preparing -> {
-                    current.cancelRequested = true
+                    current.completionRequest = PreparationCompletion.CANCEL
                     _statusMessage.value = "Отмена подготовки микрофона"
                     CancelAction.CancelPreparation(current)
                 }
                 is CaptureLifecycle.Recording -> {
                     captureLifecycle = null
-                    _state.value = PttState.IDLE
                     CancelAction.CancelRecording(current)
                 }
             }
@@ -188,9 +188,9 @@ class RemotePttController(
         runCatching { cancelSession(capture.session) }
             .onFailure { error ->
                 log.warn(error) { "PTT recording cancel failed: ${error.message}" }
-            }
+        }
         restoreSystemAudioAfterPtt(capture.systemAudioMuted)
-        _statusMessage.value = null
+        finishPtt()
         log.info { "PTT recording cancelled" }
     }
 
@@ -243,6 +243,9 @@ class RemotePttController(
                 systemAudioMuted = shouldMuteSystemAudioDuringPtt(),
             ).also { captureLifecycle = it }
         }
+        withContext(NonCancellable) {
+            ttsQueue.blockAndClear()
+        }
         scope.launch { prepareRecording(preparation, source) }
     }
 
@@ -256,7 +259,6 @@ class RemotePttController(
                 audioRecorder.unavailableReason?.let { error(it) }
             }
             muteSystemAudioBeforePtt(preparation.systemAudioMuted)
-            stopCurrentTts("button down")
             session = when (source) {
                 SpeechAudioSource.CurrentClient -> ActiveRecordingSession.Local(
                     sessionId = preparation.sessionId,
@@ -277,23 +279,32 @@ class RemotePttController(
             return
         }
 
-        val recordingStarted = mutex.withLock {
+        val preparedSession = requireNotNull(session)
+        val preparedAction = mutex.withLock {
             check(captureLifecycle === preparation) { "PTT preparation changed unexpectedly" }
-            if (preparation.cancelRequested) {
-                false
-            } else {
-                captureLifecycle = CaptureLifecycle.Recording(
-                    session = requireNotNull(session),
-                    systemAudioMuted = preparation.systemAudioMuted,
-                )
-                _state.value = PttState.RECORDING
-                true
+            val recording = CaptureLifecycle.Recording(
+                session = preparedSession,
+                systemAudioMuted = preparation.systemAudioMuted,
+            )
+            when (preparation.completionRequest) {
+                null -> {
+                    captureLifecycle = recording
+                    _state.value = PttState.RECORDING
+                    PreparedAction.Recording
+                }
+                PreparationCompletion.CANCEL -> PreparedAction.Cancel
+                PreparationCompletion.RELEASE -> {
+                    captureLifecycle = null
+                    _state.value = PttState.TRANSCRIBING
+                    _statusMessage.value = null
+                    PreparedAction.Transcribe(recording)
+                }
             }
         }
-        if (recordingStarted) {
-            log.info { "PTT recording started" }
-        } else {
-            cleanupPreparation(preparation, session, null)
+        when (preparedAction) {
+            PreparedAction.Recording -> log.info { "PTT recording started" }
+            PreparedAction.Cancel -> cleanupPreparation(preparation, preparedSession, null)
+            is PreparedAction.Transcribe -> transcribeAndDeliver(preparedAction.capture)
         }
     }
 
@@ -302,13 +313,16 @@ class RemotePttController(
         session: ActiveRecordingSession?,
         error: Throwable?,
     ) {
-        val reportFailure = mutex.withLock {
+        val cleanupResult = mutex.withLock {
             if (captureLifecycle === preparation) {
                 captureLifecycle = null
-                _state.value = PttState.IDLE
-                !preparation.cancelRequested && error != null
+                PreparationCleanupResult(
+                    ownsLifecycle = true,
+                    reportFailure = preparation.completionRequest != PreparationCompletion.CANCEL &&
+                        error != null,
+                )
             } else {
-                false
+                PreparationCleanupResult(ownsLifecycle = false, reportFailure = false)
             }
         }
         session?.let {
@@ -318,7 +332,10 @@ class RemotePttController(
                 }
         }
         restoreSystemAudioAfterPtt(preparation.systemAudioMuted)
-        if (reportFailure) {
+        if (cleanupResult.ownsLifecycle) {
+            finishPtt()
+        }
+        if (cleanupResult.reportFailure) {
             val failure = requireNotNull(error)
             reportError("Не удалось открыть микрофон: ${failure.message}")
             log.warn(failure) { "PTT recording start failed: ${failure.message}" }
@@ -360,6 +377,14 @@ class RemotePttController(
         withContext(NonCancellable) {
             log.info { "PTT system audio restore requested" }
             systemAudioMuteService.restore()
+        }
+    }
+
+    private suspend fun finishPtt() {
+        withContext(NonCancellable) {
+            _statusMessage.value = null
+            ttsQueue.allowPlayback()
+            _state.value = PttState.IDLE
         }
     }
 
@@ -423,7 +448,7 @@ class RemotePttController(
             val sessionId: String,
             val source: SpeechAudioSource,
             override val systemAudioMuted: Boolean,
-            var cancelRequested: Boolean = false,
+            var completionRequest: PreparationCompletion? = null,
         ) : CaptureLifecycle
 
         data class Recording(
@@ -445,12 +470,30 @@ class RemotePttController(
         ) : ActiveRecordingSession
     }
 
+    private enum class PreparationCompletion {
+        CANCEL,
+        RELEASE,
+    }
+
+    private data class PreparationCleanupResult(
+        val ownsLifecycle: Boolean,
+        val reportFailure: Boolean,
+    )
+
+    private sealed interface PreparedAction {
+        data object Recording : PreparedAction
+
+        data object Cancel : PreparedAction
+
+        data class Transcribe(
+            val capture: CaptureLifecycle.Recording,
+        ) : PreparedAction
+    }
+
     private sealed interface ReleaseAction {
         data object None : ReleaseAction
 
-        data class CancelPreparation(
-            val preparation: CaptureLifecycle.Preparing,
-        ) : ReleaseAction
+        data object AwaitPreparation : ReleaseAction
 
         data class Transcribe(
             val capture: CaptureLifecycle.Recording,

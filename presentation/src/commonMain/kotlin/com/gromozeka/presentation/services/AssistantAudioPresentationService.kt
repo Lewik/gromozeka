@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ class AssistantAudioPresentationService(
     private val ttsQueueService: TtsQueue,
     private val settingsService: SettingsService,
     private val soundNotificationPlayer: SoundNotificationPlayer,
+    private val pttState: StateFlow<PttState>,
     scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
@@ -34,6 +36,7 @@ class AssistantAudioPresentationService(
     private val playbackJobs = mutableSetOf<Job>()
     private var playbackTail: Job? = null
     private var directivesJob: Job? = null
+    private var pttStateJob: Job? = null
 
     fun start() {
         log.info("Starting assistant audio presentation service")
@@ -46,9 +49,24 @@ class AssistantAudioPresentationService(
                 }
             }
             .launchIn(serviceScope)
+        pttStateJob = pttState
+            .onEach { state ->
+                if (state != PttState.IDLE) {
+                    stopPlayback("push-to-talk entered $state")
+                }
+            }
+            .launchIn(serviceScope)
     }
 
     private suspend fun schedulePresentation(directive: PresentAssistantMessageDirective) {
+        if (pttState.value != PttState.IDLE) {
+            log.info {
+                "Assistant audio presentation skipped while push-to-talk is active: " +
+                    "message=${directive.messageId.value} state=${pttState.value}"
+            }
+            return
+        }
+
         val playbackJob = playbackJobsMutex.withLock {
             val previous = playbackTail
             serviceScope.launch(start = CoroutineStart.LAZY) {
@@ -73,6 +91,8 @@ class AssistantAudioPresentationService(
     }
 
     private suspend fun playPresentation(directive: PresentAssistantMessageDirective) {
+        if (pttState.value != PttState.IDLE) return
+
         when (directive.signal) {
             AssistantMessageSignal.ATTENTION -> soundNotificationPlayer.playAttentionSound()
             AssistantMessageSignal.ACTIVITY -> soundNotificationPlayer.playActivitySound()
@@ -83,6 +103,7 @@ class AssistantAudioPresentationService(
             log.info { "Auto TTS skipped because it is disabled: message=${directive.messageId.value}" }
             return
         }
+        if (pttState.value != PttState.IDLE) return
 
         log.info {
             "Auto TTS enqueue: message=${directive.messageId.value} textChars=${speech.text.length} " +
@@ -91,20 +112,22 @@ class AssistantAudioPresentationService(
         ttsQueueService.enqueue(TtsTask(speech.text, speech.tone))
     }
 
-    private suspend fun stopPlayback() {
+    private suspend fun stopPlayback(reason: String = "the active client changed") {
         val jobs = playbackJobsMutex.withLock {
             playbackTail = null
             playbackJobs.toList().also { playbackJobs.clear() }
         }
         jobs.forEach(Job::cancel)
         ttsQueueService.stopAndClear()
-        log.info { "Assistant audio presentation stopped because the active client changed" }
+        log.info { "Assistant audio presentation stopped because $reason" }
     }
 
     fun shutdown() {
         log.info("Shutting down assistant audio presentation service")
         directivesJob?.cancel()
         directivesJob = null
+        pttStateJob?.cancel()
+        pttStateJob = null
         serviceJob.cancel()
     }
 }

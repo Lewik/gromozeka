@@ -142,6 +142,7 @@ suspend fun createRemoteAppComponents(
         ttsQueueService = ttsQueue,
         settingsService = remoteServices.settingsService,
         soundNotificationPlayer = soundNotificationPlayer,
+        pttState = pttController.state,
         scope = scope,
     )
     assistantAudioPresentationService.start()

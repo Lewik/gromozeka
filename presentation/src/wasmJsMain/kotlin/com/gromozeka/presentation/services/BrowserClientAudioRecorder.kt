@@ -13,17 +13,24 @@ import kotlinx.coroutines.await
 
 class BrowserClientAudioRecorder : ClientAudioRecorder {
     private val log = KLoggers.logger(this)
+    private val manager = createBrowserAudioRecorderManager()
+
+    init {
+        prewarmBrowserAudioRecorder(manager)
+    }
 
     override suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession {
         log.info { "Browser audio recorder session requested: ${browserAudioDebugInfo()}" }
-        val session = BrowserClientAudioRecordingSession()
+        val session = BrowserClientAudioRecordingSession(manager)
         session.start()
         return session
     }
 }
 
 @OptIn(ExperimentalEncodingApi::class)
-private class BrowserClientAudioRecordingSession : ClientAudioRecordingSession {
+private class BrowserClientAudioRecordingSession(
+    private val manager: JsAny,
+) : ClientAudioRecordingSession {
     private val log = KLoggers.logger(this)
     private val started = CompletableDeferred<Unit>()
     private val stopped = CompletableDeferred<ClientRecordedAudio>()
@@ -33,8 +40,12 @@ private class BrowserClientAudioRecordingSession : ClientAudioRecordingSession {
         log.info { "Browser PCM audio recorder start requested: ${browserAudioDebugInfo()}" }
         runCatching {
             recordingHandle = startBrowserAudioRecording(
-                onStarted = {
-                    log.info { "Browser PCM audio recorder started" }
+                manager = manager,
+                onStarted = { firstSampleLatencyMillis: Double ->
+                    log.info {
+                        "Browser PCM audio recorder started: " +
+                            "firstSampleLatencyMs=${firstSampleLatencyMillis.toInt()}"
+                    }
                     started.complete(Unit)
                 },
                 onStopped = { dataUrl: String, pcmByteSize: Int ->
@@ -105,15 +116,164 @@ private external fun browserAudioDebugInfo(): String
 
 @JsFun(
     """
-    (onStarted, onStopped, onError) => {
-        const targetSampleRate = 16000;
+    () => {
+        const managerKey = Symbol.for("com.gromozeka.presentation.BrowserClientAudioRecorder");
+        const existingManager = globalThis[managerKey];
+        if (existingManager) return existingManager;
+
+        const AudioContextConstructor = globalThis.AudioContext || globalThis.webkitAudioContext;
         const processorName = "gromozeka-pcm-recorder";
+        const workletSource = `
+            class GromozekaPcmRecorderProcessor extends AudioWorkletProcessor {
+                constructor() {
+                    super();
+                    this.started = false;
+                    this.stopped = false;
+                    this.pendingChunks = [];
+                    this.pendingSamples = 0;
+                    this.port.onmessage = event => {
+                        if (event.data === "stop") {
+                            this.stopped = true;
+                            this.flush();
+                            this.port.postMessage({ type: "stopped" });
+                        }
+                    };
+                }
+
+                flush() {
+                    if (this.pendingSamples === 0) return;
+                    const samples = new Float32Array(this.pendingSamples);
+                    let offset = 0;
+                    for (const chunk of this.pendingChunks) {
+                        samples.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+                    this.pendingChunks = [];
+                    this.pendingSamples = 0;
+                    this.port.postMessage({ type: "samples", samples }, [samples.buffer]);
+                }
+
+                process(inputs) {
+                    if (this.stopped) return false;
+                    const channels = inputs[0];
+                    if (!channels || channels.length === 0 || channels[0].length === 0) return true;
+                    if (!this.started) {
+                        this.started = true;
+                        this.port.postMessage({ type: "started" });
+                    }
+
+                    const samples = new Float32Array(channels[0].length);
+                    if (channels.length === 1) {
+                        samples.set(channels[0]);
+                    } else {
+                        for (const channel of channels) {
+                            for (let index = 0; index < samples.length; index++) {
+                                samples[index] += channel[index] / channels.length;
+                            }
+                        }
+                    }
+                    this.pendingChunks.push(samples);
+                    this.pendingSamples += samples.length;
+                    if (this.pendingSamples >= 4096) this.flush();
+                    return true;
+                }
+            }
+            registerProcessor("gromozeka-pcm-recorder", GromozekaPcmRecorderProcessor);
+        `;
+
+        let context = null;
+        let contextReady = null;
+        let generation = 0;
+
+        const createContext = () => {
+            if (!AudioContextConstructor) {
+                throw new Error("Browser Web Audio API is not available");
+            }
+            const created = new AudioContextConstructor();
+            if (!created.audioWorklet) {
+                created.close();
+                throw new Error("Browser AudioWorklet API is not available");
+            }
+            const moduleUrl = URL.createObjectURL(new Blob([workletSource], { type: "text/javascript" }));
+            context = created;
+            contextReady = created.audioWorklet.addModule(moduleUrl)
+                .finally(() => URL.revokeObjectURL(moduleUrl))
+                .then(() => created)
+                .catch(async error => {
+                    if (context === created) {
+                        context = null;
+                        contextReady = null;
+                    }
+                    try { await created.close(); } catch (_) {}
+                    throw error;
+                });
+        };
+
+        const ensureContext = async () => {
+            if (!context || context.state === "closed") {
+                createContext();
+            }
+            const selectedContext = context;
+            const ready = contextReady;
+            const resume = selectedContext.state === "running"
+                ? Promise.resolve()
+                : selectedContext.resume();
+            await Promise.all([ready, resume]);
+            return selectedContext;
+        };
+
+        const manager = {
+            processorName,
+            begin() {
+                generation += 1;
+                return generation;
+            },
+            async prepare() {
+                if (!context || context.state === "closed") {
+                    createContext();
+                }
+                await contextReady;
+                return context;
+            },
+            ensureContext,
+            async release(recordingGeneration) {
+                if (recordingGeneration !== generation) return;
+                const selectedContext = context;
+                if (!selectedContext || selectedContext.state !== "running") return;
+                try {
+                    await selectedContext.suspend();
+                } catch (_) {
+                    return;
+                }
+                if (recordingGeneration !== generation && context === selectedContext) {
+                    try { await selectedContext.resume(); } catch (_) {}
+                }
+            }
+        };
+        globalThis[managerKey] = manager;
+        return manager;
+    }
+    """
+)
+private external fun createBrowserAudioRecorderManager(): JsAny
+
+@JsFun("(manager) => { manager.prepare().catch(() => {}); }")
+private external fun prewarmBrowserAudioRecorder(manager: JsAny)
+
+@JsFun(
+    """
+    (manager, onStarted, onStopped, onError) => {
+        const targetSampleRate = 16000;
+        const processorName = manager.processorName;
+        const requestedAt = performance.now();
+        const recordingGeneration = manager.begin();
         let stream = null;
         let audioContext = null;
         let sourceNode = null;
         let workletNode = null;
         let silentGain = null;
         let finalized = false;
+        let startedSignalled = false;
         const chunks = [];
 
         const cleanup = async () => {
@@ -121,9 +281,7 @@ private external fun browserAudioDebugInfo(): String
             try { workletNode?.disconnect(); } catch (_) {}
             try { silentGain?.disconnect(); } catch (_) {}
             stream?.getTracks().forEach(track => track.stop());
-            if (audioContext && audioContext.state !== "closed") {
-                await audioContext.close();
-            }
+            await manager.release(recordingGeneration);
         };
 
         const fail = async error => {
@@ -199,81 +357,29 @@ private external fun browserAudioDebugInfo(): String
                 if (!navigator.mediaDevices?.getUserMedia) {
                     throw new Error("Browser microphone API is not available");
                 }
-                if (typeof AudioContext === "undefined" || typeof AudioWorkletNode === "undefined") {
+                if (typeof AudioWorkletNode === "undefined") {
                     throw new Error("Browser AudioWorklet API is not available");
                 }
                 if (typeof OfflineAudioContext === "undefined") {
                     throw new Error("Browser offline audio rendering API is not available");
                 }
 
-                stream = await navigator.mediaDevices.getUserMedia({
+                const contextReady = manager.ensureContext()
+                    .then(preparedContext => {
+                        audioContext = preparedContext;
+                    });
+                const streamReady = navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
                         echoCancellation: true,
                         noiseSuppression: true,
                         autoGainControl: true
                     }
-                });
-                audioContext = new AudioContext();
-
-                const workletSource = `
-                    class GromozekaPcmRecorderProcessor extends AudioWorkletProcessor {
-                        constructor() {
-                            super();
-                            this.stopped = false;
-                            this.pendingChunks = [];
-                            this.pendingSamples = 0;
-                            this.port.onmessage = event => {
-                                if (event.data === "stop") {
-                                    this.stopped = true;
-                                    this.flush();
-                                    this.port.postMessage({ type: "stopped" });
-                                }
-                            };
-                        }
-
-                        flush() {
-                            if (this.pendingSamples === 0) return;
-                            const samples = new Float32Array(this.pendingSamples);
-                            let offset = 0;
-                            for (const chunk of this.pendingChunks) {
-                                samples.set(chunk, offset);
-                                offset += chunk.length;
-                            }
-                            this.pendingChunks = [];
-                            this.pendingSamples = 0;
-                            this.port.postMessage({ type: "samples", samples }, [samples.buffer]);
-                        }
-
-                        process(inputs) {
-                            if (this.stopped) return false;
-                            const channels = inputs[0];
-                            if (!channels || channels.length === 0 || channels[0].length === 0) return true;
-
-                            const samples = new Float32Array(channels[0].length);
-                            if (channels.length === 1) {
-                                samples.set(channels[0]);
-                            } else {
-                                for (const channel of channels) {
-                                    for (let index = 0; index < samples.length; index++) {
-                                        samples[index] += channel[index] / channels.length;
-                                    }
-                                }
-                            }
-                            this.pendingChunks.push(samples);
-                            this.pendingSamples += samples.length;
-                            if (this.pendingSamples >= 4096) this.flush();
-                            return true;
-                        }
-                    }
-                    registerProcessor("gromozeka-pcm-recorder", GromozekaPcmRecorderProcessor);
-                `;
-                const moduleUrl = URL.createObjectURL(new Blob([workletSource], { type: "text/javascript" }));
-                try {
-                    await audioContext.audioWorklet.addModule(moduleUrl);
-                } finally {
-                    URL.revokeObjectURL(moduleUrl);
-                }
+                })
+                    .then(capturedStream => {
+                        stream = capturedStream;
+                    });
+                await Promise.all([streamReady, contextReady]);
 
                 sourceNode = audioContext.createMediaStreamSource(stream);
                 workletNode = new AudioWorkletNode(audioContext, processorName);
@@ -281,7 +387,12 @@ private external fun browserAudioDebugInfo(): String
                 silentGain.gain.value = 0;
 
                 workletNode.port.onmessage = event => {
-                    if (event.data?.type === "samples") {
+                    if (event.data?.type === "started") {
+                        if (!finalized && !startedSignalled) {
+                            startedSignalled = true;
+                            onStarted(performance.now() - requestedAt);
+                        }
+                    } else if (event.data?.type === "samples") {
                         chunks.push(event.data.samples);
                     } else if (event.data?.type === "stopped") {
                         finish();
@@ -292,7 +403,6 @@ private external fun browserAudioDebugInfo(): String
                 sourceNode.connect(workletNode);
                 workletNode.connect(silentGain);
                 silentGain.connect(audioContext.destination);
-                await audioContext.resume();
 
                 const handle = {
                     state: "recording",
@@ -308,7 +418,6 @@ private external fun browserAudioDebugInfo(): String
                         cleanup();
                     }
                 };
-                onStarted();
                 return handle;
             } catch (error) {
                 await fail(error);
@@ -319,7 +428,8 @@ private external fun browserAudioDebugInfo(): String
     """
 )
 private external fun startBrowserAudioRecording(
-    onStarted: () -> Unit,
+    manager: JsAny,
+    onStarted: (Double) -> Unit,
     onStopped: (String, Int) -> Unit,
     onError: (String) -> Unit,
 ): Promise<JsAny?>

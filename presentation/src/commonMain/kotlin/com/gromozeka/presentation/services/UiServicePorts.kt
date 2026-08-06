@@ -90,6 +90,8 @@ interface TtsQueue {
     fun start()
     suspend fun enqueue(task: TtsTask)
     suspend fun stopAndClear()
+    suspend fun blockAndClear()
+    suspend fun allowPlayback()
     fun shutdown()
 }
 
@@ -98,6 +100,8 @@ class NoOpTtsQueue : TtsQueue {
     override fun start() = Unit
     override suspend fun enqueue(task: TtsTask) = Unit
     override suspend fun stopAndClear() = Unit
+    override suspend fun blockAndClear() = Unit
+    override suspend fun allowPlayback() = Unit
     override fun shutdown() = Unit
 }
 

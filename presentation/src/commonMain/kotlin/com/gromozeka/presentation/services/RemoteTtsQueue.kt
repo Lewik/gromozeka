@@ -5,6 +5,7 @@ import com.gromozeka.client.RemoteSpeechSynthesisService
 import com.gromozeka.domain.model.TtsTask
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
@@ -29,6 +30,8 @@ class RemoteTtsQueue(
     private val activeMutex = Mutex()
     private val _isPlaying = MutableStateFlow(false)
     private var activeJob: Job? = null
+    private var playbackGeneration = 0L
+    private var playbackBlocked = false
 
     override val isPlaying: StateFlow<Boolean> = _isPlaying
 
@@ -37,13 +40,32 @@ class RemoteTtsQueue(
     override suspend fun enqueue(task: TtsTask) {
         if (task.text.isBlank()) return
 
+        val requestedGeneration = activeMutex.withLock {
+            if (playbackBlocked) null else playbackGeneration
+        } ?: run {
+            log.info("Remote TTS skipped while playback is blocked")
+            return
+        }
+
         queueMutex.withLock {
             coroutineScope {
-                val job = launch { playTask(task) }
-                activeMutex.withLock {
-                    activeJob = job
-                    _isPlaying.value = true
+                val job = launch(start = CoroutineStart.LAZY) { playTask(task) }
+                val accepted = activeMutex.withLock {
+                    if (playbackBlocked || playbackGeneration != requestedGeneration) {
+                        false
+                    } else {
+                        activeJob = job
+                        _isPlaying.value = true
+                        true
+                    }
                 }
+                if (!accepted) {
+                    job.cancel()
+                    log.info("Remote TTS discarded after the playback queue was cleared")
+                    return@coroutineScope
+                }
+
+                job.start()
                 try {
                     job.join()
                 } finally {
@@ -61,23 +83,44 @@ class RemoteTtsQueue(
     }
 
     override suspend fun stopAndClear() {
-        audioPlayer.stop()
+        stopAndInvalidate(blockPlayback = false)
+    }
+
+    override suspend fun blockAndClear() {
+        stopAndInvalidate(blockPlayback = true)
+    }
+
+    override suspend fun allowPlayback() {
+        activeMutex.withLock {
+            playbackBlocked = false
+        }
+        log.info("Remote TTS playback allowed")
+    }
+
+    private suspend fun stopAndInvalidate(blockPlayback: Boolean) {
         val job = activeMutex.withLock {
+            playbackGeneration++
+            if (blockPlayback) {
+                playbackBlocked = true
+            }
             val current = activeJob
             activeJob = null
             _isPlaying.value = false
             current
         }
+        job?.cancel()
+        audioPlayer.stop()
         if (job == null) {
             log.info("Remote TTS stop requested: nothing is playing")
             return
         }
 
         log.info("Remote TTS stop requested")
-        job.cancel()
     }
 
     override fun shutdown() {
+        playbackBlocked = true
+        playbackGeneration++
         audioPlayer.stop()
         activeJob?.cancel()
         activeJob = null
