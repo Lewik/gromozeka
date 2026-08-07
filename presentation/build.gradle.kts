@@ -27,6 +27,9 @@ val bundledRuntimeManifest = rootProject.layout.projectDirectory.file(
 val bundledRuntimeScript = rootProject.layout.projectDirectory.file(
     "deploy/distribution/prepare-bundled-runtimes.sh"
 )
+val bundledRuntimePowerShellScript = rootProject.layout.projectDirectory.file(
+    "deploy/distribution/prepare-bundled-runtimes.ps1"
+)
 val localWorkerRuntimeTarget = when {
     hostOperatingSystem.isMacOsX -> "macos" to "arm64"
     hostOperatingSystem.isWindows -> "windows" to "x64"
@@ -55,16 +58,30 @@ val bundledBrowserMcpResources = copySpec {
 val prepareLocalWorkerRuntimes by tasks.registering(Exec::class) {
     inputs.file(bundledRuntimeManifest)
     inputs.file(bundledRuntimeScript)
+    inputs.file(bundledRuntimePowerShellScript)
     outputs.dir(localWorkerRuntimeResources)
     localWorkerRuntimeTarget?.let { target ->
-        commandLine(
-            "bash",
-            bundledRuntimeScript.asFile.absolutePath,
-            "worker",
-            target.first,
-            target.second,
-            localWorkerRuntimeResources.get().asFile.absolutePath,
-        )
+        if (hostOperatingSystem.isWindows) {
+            commandLine(
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", bundledRuntimePowerShellScript.asFile.absolutePath,
+                "-Component", "worker",
+                "-Platform", target.first,
+                "-Architecture", target.second,
+                "-Destination", localWorkerRuntimeResources.get().asFile.absolutePath,
+            )
+        } else {
+            commandLine(
+                "bash",
+                bundledRuntimeScript.asFile.absolutePath,
+                "worker",
+                target.first,
+                target.second,
+                localWorkerRuntimeResources.get().asFile.absolutePath,
+            )
+        }
     } ?: run {
         onlyIf { false }
         commandLine("true")
