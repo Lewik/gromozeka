@@ -56,13 +56,13 @@ selected provider and account contract. These dependency rules do not change
 Gromozeka's own license: commercial use still requires the permission described
 in `LICENSE`.
 
-Standalone Server and Worker archives stay thin. Their launchers prefer an
-explicit or compatible system Java runtime and otherwise cache a pinned,
-checksum-verified official Temurin JRE under the Gromozeka home directory. The
-Worker includes the pinned Gromozeka Browser MCP package; it resolves Node in
-the same way and downloads the official pinned runtime only when Browser Use is
-first started. Docker images remain self-contained and do not download runtimes
-at startup. Claude Code and browser binaries are never bundled.
+Standalone Server and Worker archives are self-contained. Release builds
+download pinned official Temurin JRE and Node.js archives, verify their SHA-256
+checksums, and preserve their legal notices inside the resulting packages. The
+Server includes Java. The Worker includes Java, Node.js, and the pinned
+Gromozeka Browser MCP package. Installed applications never select a system
+runtime or download executable code during first launch. Docker images follow
+the same runtime boundary. Claude Code and browser binaries are never bundled.
 
 ## Runtime Language
 
@@ -145,10 +145,13 @@ a versioned shell or JRE and survive Worker updates.
 Computer Use intentionally controls the real pointer, keyboard, focus, and
 clipboard; there is no separate ownership or takeover UI.
 
-The macOS and Windows applications bundle the Worker dependencies, Browser MCP,
-and a second `jpackage` launcher into the same application image and shared Java
-runtime. The Client owns the visible tray item and enrollment UI; the Local
-Worker remains a separate process behind the standard Worker Gateway. macOS
+The macOS and Windows applications bundle a self-contained Worker BootJar,
+Browser MCP, Temurin, and Node.js as Local Worker resources. Client and Worker
+remain separate processes with isolated classpaths; presentation dependencies
+can never replace Worker dependencies at runtime. The duplicated Java runtime
+is intentional until packaging can share it without coupling the two
+applications. The Client owns the visible tray item and enrollment UI; the
+Local Worker remains behind the standard Worker Gateway. macOS
 uses a hidden LaunchAgent, while Windows launches the Worker in the current
 interactive session so Computer Use is never isolated in service Session 0.
 Closing the Client window hides it, while an explicit application quit stops

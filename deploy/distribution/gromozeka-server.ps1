@@ -13,8 +13,10 @@ if (-not $env:GROMOZEKA_SERVER_CONFIG) {
     $env:GROMOZEKA_SERVER_CONFIG = Join-Path $env:GROMOZEKA_HOME "server.yaml"
 }
 
-. (Join-Path $AppHome "bin/runtime-bootstrap.ps1")
-$JavaExecutable = Resolve-GromozekaJava
+$JavaExecutable = Join-Path $AppHome "runtime/java/bin/java.exe"
+if (-not (Test-Path $JavaExecutable -PathType Leaf)) {
+    throw "Bundled Java runtime is missing: $(Join-Path $AppHome 'runtime/java')"
+}
 & $JavaExecutable `
     -XX:MaxRAMPercentage=75.0 `
     -jar (Join-Path $AppHome "app/gromozeka-server.jar") `

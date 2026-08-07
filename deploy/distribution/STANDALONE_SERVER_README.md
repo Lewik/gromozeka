@@ -1,10 +1,9 @@
 # Gromozeka Standalone Server
 
 This package contains the Gromozeka control plane and production Web client.
-It uses Java 21 or newer from `GROMOZEKA_JAVA_EXECUTABLE`,
-`GROMOZEKA_JAVA_HOME`, `JAVA_HOME`, or the system path. If none is compatible,
-the launcher downloads the pinned Eclipse Temurin JRE once, verifies its
-SHA-256 checksum, and stores it under `~/.gromozeka/runtimes`.
+It includes a pinned, checksum-verified Eclipse Temurin 21 JRE. The launcher
+always uses that private runtime, does not change system Java, and does not
+download executable code during startup.
 
 PostgreSQL with pgvector remains an external service. Copy
 `config/server.yaml.example` to `~/.gromozeka/server.yaml` and change its

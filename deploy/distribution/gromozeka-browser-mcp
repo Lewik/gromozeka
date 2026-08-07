@@ -10,10 +10,14 @@ elif [[ -d "$app_home/app/browser-mcp" ]]; then
 else
   browser_mcp_home="$(CDPATH='' cd -- "$script_dir/../.." && pwd)/browser-mcp"
 fi
-runtime_bootstrap="${GROMOZEKA_RUNTIME_BOOTSTRAP:-$script_dir/runtime-bootstrap.sh}"
-
-source "$runtime_bootstrap"
-node_executable="$(gromozeka_resolve_node)"
+node_executable="${GROMOZEKA_NODE_EXECUTABLE:-$app_home/runtime/node/bin/node}"
+if [[ "$node_executable" != */* ]]; then
+  node_executable="$(command -v "$node_executable" 2>/dev/null || true)"
+fi
+[[ -x "$node_executable" ]] || {
+  echo "Bundled Node.js runtime is missing: $app_home/runtime/node" >&2
+  exit 2
+}
 mcp_cli="$browser_mcp_home/node_modules/@playwright/mcp/cli.js"
 [[ -f "$mcp_cli" ]] || {
   echo "Bundled Browser MCP is missing: $mcp_cli" >&2

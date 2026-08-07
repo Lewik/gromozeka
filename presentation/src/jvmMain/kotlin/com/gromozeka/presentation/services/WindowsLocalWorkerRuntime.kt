@@ -170,33 +170,31 @@ internal class WindowsLocalWorkerRuntime(
     private fun isWorkerProcess(process: ProcessHandle): Boolean {
         val info = process.info()
         val command = info.command().orElse("")
-        if (command.endsWith("GromozekaWorker.exe", ignoreCase = true)) return true
+        if (command.endsWith("java.exe", ignoreCase = true)) {
+            val commandLine = info.commandLine().orElse("")
+            if (commandLine.contains(WORKER_JAR_NAME, ignoreCase = true)) return true
+        }
         val commandLine = info.commandLine().orElse("")
-        if (commandLine.contains(WORKER_MAIN_CLASS)) return true
-        return info.arguments().orElse(emptyArray<String>()).any { it == WORKER_MAIN_CLASS }
+        return commandLine.contains(WORKER_JAR_NAME, ignoreCase = true)
     }
 
-    private fun workerCommand(arguments: List<String>, includeConfig: Boolean): List<String> =
-        if (isPackagedApplication()) {
-            buildList {
-                add(packagedWorkerLauncher().toString())
-                if (includeConfig) {
-                    add("--spring.config.additional-location=optional:file:$workerConfig")
-                }
-                addAll(arguments)
+    private fun workerCommand(arguments: List<String>, includeConfig: Boolean): List<String> {
+        val bundleRoot = bundleRoot()
+        val javaExecutable = bundleRoot.resolve("runtime/java/bin/java.exe")
+        val workerJar = bundleRoot.resolve("app/$WORKER_JAR_NAME")
+        require(Files.isRegularFile(javaExecutable)) { "Bundled Java runtime is missing: $javaExecutable" }
+        require(Files.isRegularFile(workerJar)) { "Bundled Local Worker is missing: $workerJar" }
+        return buildList {
+            add(javaExecutable.toString())
+            add("-Djava.awt.headless=false")
+            add("-Dfile.encoding=UTF-8")
+            add("-jar")
+            add(workerJar.toString())
+            if (includeConfig) {
+                add("--spring.config.additional-location=optional:file:$workerConfig")
             }
-        } else {
-            developmentWorkerCommand(arguments, includeConfig)
+            addAll(arguments)
         }
-
-    private fun packagedWorkerLauncher(): Path {
-        val resourcesDirectory = requireNotNull(applicationResourcesDirectory())
-        val applicationRoot = requireNotNull(resourcesDirectory.parent?.parent) {
-            "Cannot resolve the packaged application root from $resourcesDirectory"
-        }
-        val launcher = applicationRoot.resolve("GromozekaWorker.exe")
-        require(Files.isRegularFile(launcher)) { "Bundled Local Worker executable is missing: $launcher" }
-        return launcher
     }
 
     private fun workerEnvironment(): Map<String, String> {
@@ -205,7 +203,6 @@ internal class WindowsLocalWorkerRuntime(
             "GROMOZEKA_MODE" to (environment["GROMOZEKA_MODE"] ?: "prod"),
             "GROMOZEKA_BROWSER_MCP_LAUNCHER" to bundleRoot.resolve("bin/gromozeka-browser-mcp.cmd").toString(),
             "GROMOZEKA_BROWSER_MCP_HOME" to bundleRoot.resolve("app/browser-mcp").toString(),
-            "GROMOZEKA_RUNTIME_BOOTSTRAP" to bundleRoot.resolve("bin/runtime-bootstrap.ps1").toString(),
         )
     }
 
@@ -219,6 +216,7 @@ internal class WindowsLocalWorkerRuntime(
     }
 
     private companion object {
+        const val WORKER_JAR_NAME = "gromozeka-worker.jar"
         const val STARTUP_PROBE_MILLISECONDS = 750L
         const val STOP_TIMEOUT_SECONDS = 10L
         const val FORCE_STOP_TIMEOUT_SECONDS = 2L

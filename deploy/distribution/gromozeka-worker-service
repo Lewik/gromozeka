@@ -110,10 +110,6 @@ install_launch_agent() {
     <key>PATH</key>
     <string>$(xml_escape "${PATH:-/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin}")</string>
 $(environment_entry GROMOZEKA_WORKER_CONFIG)
-$(environment_entry GROMOZEKA_JAVA_EXECUTABLE)
-$(environment_entry GROMOZEKA_JAVA_HOME)
-$(environment_entry GROMOZEKA_WORKER_JAVA_CLASSPATH)
-$(environment_entry JAVA_HOME)
   </dict>
   <key>WorkingDirectory</key>
   <string>$(xml_escape "$HOME")</string>

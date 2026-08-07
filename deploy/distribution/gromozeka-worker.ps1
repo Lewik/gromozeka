@@ -12,12 +12,10 @@ if (-not $env:GROMOZEKA_BROWSER_MCP_LAUNCHER) {
 if (-not $env:GROMOZEKA_BROWSER_MCP_HOME) {
     $env:GROMOZEKA_BROWSER_MCP_HOME = Join-Path $AppHome "app/browser-mcp"
 }
-if (-not $env:GROMOZEKA_RUNTIME_BOOTSTRAP) {
-    $env:GROMOZEKA_RUNTIME_BOOTSTRAP = Join-Path $AppHome "bin/runtime-bootstrap.ps1"
+$JavaExecutable = Join-Path $AppHome "runtime/java/bin/java.exe"
+if (-not (Test-Path $JavaExecutable -PathType Leaf)) {
+    throw "Bundled Java runtime is missing: $(Join-Path $AppHome 'runtime/java')"
 }
-
-. (Join-Path $AppHome "bin/runtime-bootstrap.ps1")
-$JavaExecutable = Resolve-GromozekaJava
 $WorkerJar = Join-Path $AppHome "app/gromozeka-worker.jar"
 
 if ($args.Count -gt 0 -and $args[0] -eq "enroll") {

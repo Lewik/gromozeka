@@ -39,10 +39,9 @@ and Accessibility in **System Settings -> Privacy & Security**, then run
 `install-service` again. Use `start-service`, `stop-service`, `service-status`,
 and `uninstall-service` for the remaining service management commands.
 
-The launcher uses Java 21 or newer from `GROMOZEKA_JAVA_EXECUTABLE`,
-`GROMOZEKA_JAVA_HOME`, `JAVA_HOME`, or the system path. If none is compatible,
-it downloads the pinned Eclipse Temurin JRE once, verifies its SHA-256 checksum,
-and stores it under `~/.gromozeka/runtimes` without changing system Java.
+The package includes pinned, checksum-verified Eclipse Temurin 21 and Node.js
+runtimes. Launchers always use those private runtimes, do not change system
+Java or Node.js, and do not download executable code during startup.
 
 The Worker connects outbound to the Server over WSS. It does not receive
 PostgreSQL credentials and does not share the Server data directory. Remote
@@ -51,7 +50,6 @@ plaintext connections are rejected.
 Claude Code is not bundled with Gromozeka. Install, license, and authenticate it
 separately on this Worker before enabling a Claude Code connection.
 
-The standalone Worker includes Gromozeka Browser MCP. Browser Use prefers an
-installed Node.js 20 or newer and otherwise downloads the pinned official Node
-runtime into the same local cache on first use. Browser binaries are not
-bundled; Browser Use connects to the separately installed Browser Bridge.
+The standalone Worker includes Gromozeka Browser MCP and its Node.js runtime.
+Browser binaries are not bundled; Browser Use connects to the separately
+installed Browser Bridge.

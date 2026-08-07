@@ -1,5 +1,4 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
@@ -17,19 +16,23 @@ val nativePackageVersion = rootProject.version.toString()
     .let { version -> if (version == "0.0.0") "1.0.0" else version }
 val hostOperatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
 val localWorkerAppResources = layout.buildDirectory.dir("generated/local-worker-app-resources")
+val localWorkerRuntimeResources = layout.buildDirectory.dir("generated/local-worker-runtime")
 val macWorkerLauncher = rootProject.layout.buildDirectory.file(
     "native-launchers/macos-arm64/gromozeka-worker-launcher"
 )
-val macLocalWorkerLauncherProperties = rootProject.layout.projectDirectory.file(
-    "deploy/distribution/macos-local-worker-launcher.properties"
+val workerBootJar = rootProject.layout.projectDirectory.file("worker/build/libs/gromozeka-worker.jar")
+val bundledRuntimeManifest = rootProject.layout.projectDirectory.file(
+    "deploy/distribution/bundled-runtime-versions.properties"
 )
-val windowsLocalWorkerLauncherProperties = rootProject.layout.projectDirectory.file(
-    "deploy/distribution/windows-local-worker-launcher.properties"
+val bundledRuntimeScript = rootProject.layout.projectDirectory.file(
+    "deploy/distribution/prepare-bundled-runtimes.sh"
 )
+val localWorkerRuntimeTarget = when {
+    hostOperatingSystem.isMacOsX -> "macos" to "arm64"
+    hostOperatingSystem.isWindows -> "windows" to "x64"
+    else -> null
+}
 val bundledBrowserMcpResources = copySpec {
-    from(rootProject.layout.projectDirectory.file("deploy/distribution/runtime-versions.properties")) {
-        into("common/local-worker/bin")
-    }
     from(rootProject.layout.projectDirectory.dir("browser-mcp")) {
         into("common/local-worker/app/browser-mcp")
         include(
@@ -44,6 +47,26 @@ val bundledBrowserMcpResources = copySpec {
         )
         exclude("node_modules/.bin/**")
     }
+    from(rootProject.layout.projectDirectory.file("THIRD_PARTY_NOTICES.md")) {
+        into("common")
+    }
+}
+
+val prepareLocalWorkerRuntimes by tasks.registering(Exec::class) {
+    val target = requireNotNull(localWorkerRuntimeTarget) {
+        "Bundled Local Worker runtimes are available only for macOS ARM64 and Windows x64"
+    }
+    inputs.file(bundledRuntimeManifest)
+    inputs.file(bundledRuntimeScript)
+    outputs.dir(localWorkerRuntimeResources)
+    commandLine(
+        "bash",
+        bundledRuntimeScript.asFile.absolutePath,
+        "worker",
+        target.first,
+        target.second,
+        localWorkerRuntimeResources.get().asFile.absolutePath,
+    )
 }
 
 val compileMacWorkerLauncher by tasks.registering(Exec::class) {
@@ -62,10 +85,24 @@ val compileMacWorkerLauncher by tasks.registering(Exec::class) {
     )
 }
 
+val cleanLocalWorkerAppResources by tasks.registering(Delete::class) {
+    delete(localWorkerAppResources)
+}
+
+val cleanPreparedAppResources by tasks.registering(Delete::class) {
+    delete(layout.buildDirectory.dir("compose/tmp/prepareAppResources"))
+}
+
 val stageMacLocalWorkerResources by tasks.registering(Sync::class) {
-    dependsOn(compileMacWorkerLauncher)
+    dependsOn(cleanLocalWorkerAppResources, compileMacWorkerLauncher, prepareLocalWorkerRuntimes, ":worker:bootJar")
     into(localWorkerAppResources)
     with(bundledBrowserMcpResources)
+    from(workerBootJar) {
+        into("common/local-worker/app")
+    }
+    from(localWorkerRuntimeResources) {
+        into("common/local-worker/runtime")
+    }
     from(rootProject.layout.projectDirectory.file("deploy/distribution/gromozeka-bundled-worker")) {
         into("common/local-worker/bin")
         rename { "gromozeka-worker" }
@@ -79,10 +116,6 @@ val stageMacLocalWorkerResources by tasks.registering(Sync::class) {
         into("common/local-worker/bin")
         filePermissions { unix("rwxr-xr-x") }
     }
-    from(rootProject.layout.projectDirectory.file("deploy/distribution/runtime-bootstrap.sh")) {
-        into("common/local-worker/bin")
-        filePermissions { unix("rwxr-xr-x") }
-    }
     from(macWorkerLauncher) {
         into("common/local-worker/app/native")
         filePermissions { unix("rwxr-xr-x") }
@@ -90,15 +123,19 @@ val stageMacLocalWorkerResources by tasks.registering(Sync::class) {
 }
 
 val stageWindowsLocalWorkerResources by tasks.registering(Sync::class) {
+    dependsOn(cleanLocalWorkerAppResources, prepareLocalWorkerRuntimes, ":worker:bootJar")
     into(localWorkerAppResources)
     with(bundledBrowserMcpResources)
+    from(workerBootJar) {
+        into("common/local-worker/app")
+    }
+    from(localWorkerRuntimeResources) {
+        into("common/local-worker/runtime")
+    }
     from(rootProject.layout.projectDirectory.file("deploy/distribution/gromozeka-browser-mcp.cmd")) {
         into("common/local-worker/bin")
     }
     from(rootProject.layout.projectDirectory.file("deploy/distribution/gromozeka-browser-mcp.ps1")) {
-        into("common/local-worker/bin")
-    }
-    from(rootProject.layout.projectDirectory.file("deploy/distribution/runtime-bootstrap.ps1")) {
         into("common/local-worker/bin")
     }
 }
@@ -177,9 +214,6 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(project(":shared"))
-                if (hostOperatingSystem.isMacOsX || hostOperatingSystem.isWindows) {
-                    implementation(project(":worker"))
-                }
                 implementation(compose.desktop.currentOs)
             }
         }
@@ -456,26 +490,42 @@ tasks.matching {
         it.name == "createDistributable" ||
         it.name == "packageDmg"
 }.configureEach {
+    if (name == "prepareAppResources") {
+        dependsOn(cleanPreparedAppResources)
+    }
     when {
         hostOperatingSystem.isMacOsX -> dependsOn(stageMacLocalWorkerResources)
         hostOperatingSystem.isWindows -> dependsOn(stageWindowsLocalWorkerResources)
     }
 }
 
-tasks.withType<AbstractJPackageTask>().matching { it.name == "createDistributable" }.configureEach {
+val restoreMacLocalWorkerExecutablePermissions by tasks.registering(Exec::class) {
+    mustRunAfter("createDistributable")
     if (hostOperatingSystem.isMacOsX) {
-        inputs.file(macLocalWorkerLauncherProperties)
-        freeArgs.addAll(
-            "--add-launcher",
-            "GromozekaWorker=${macLocalWorkerLauncherProperties.asFile.absolutePath}",
+        val script = rootProject.layout.projectDirectory.file(
+            "deploy/distribution/restore-bundled-executables.sh"
+        )
+        inputs.file(script)
+        inputs.dir(localWorkerAppResources)
+        commandLine(
+            "bash",
+            script.asFile.absolutePath,
+            localWorkerAppResources.get().dir("common/local-worker").asFile.absolutePath,
+            layout.buildDirectory.dir("compose/binaries").get().asFile.absolutePath,
         )
     } else if (hostOperatingSystem.isWindows) {
-        inputs.file(windowsLocalWorkerLauncherProperties)
-        freeArgs.addAll(
-            "--add-launcher",
-            "GromozekaWorker=${windowsLocalWorkerLauncherProperties.asFile.absolutePath}",
-        )
+        commandLine("cmd", "/c", "exit", "0")
+    } else {
+        commandLine("true")
     }
+}
+
+tasks.matching { it.name == "createDistributable" }.configureEach {
+    finalizedBy(restoreMacLocalWorkerExecutablePermissions)
+}
+
+tasks.matching { it.name == "packageDmg" }.configureEach {
+    dependsOn(restoreMacLocalWorkerExecutablePermissions)
 }
 
 // Enable zip64 for large JAR files (> 65535 entries)

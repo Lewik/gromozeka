@@ -186,14 +186,15 @@ currently provide:
 - a portable Windows x64 Client ZIP with an optional Local Worker and Browser MCP;
 - a Chrome/Edge/Chromium Browser Bridge ZIP loaded as an unpacked extension;
 - a Docker Compose Server stack with PostgreSQL and a Caddy HTTPS/WSS gateway;
-- thin macOS ARM64, Linux x64, and Windows x64 standalone Server archives;
-- thin macOS ARM64, Linux x64, and Windows x64 Worker archives with Browser MCP;
+- self-contained macOS ARM64, Linux x64, and Windows x64 standalone Server archives;
+- self-contained macOS ARM64, Linux x64, and Windows x64 Worker archives with Browser MCP;
 - `ghcr.io/lewik/gromozeka-server` and `ghcr.io/lewik/gromozeka-worker` images;
 - SHA-256 checksums for every downloadable package.
 
-Standalone launchers use compatible system Java/Node installations when
-available. Otherwise they download checksum-pinned official runtimes once into
-`~/.gromozeka/runtimes`; Docker images remain self-contained.
+Standalone packages include checksum-verified Eclipse Temurin and, where
+Browser MCP is available, Node.js. They do not install system runtimes or
+download executable code during first launch. Docker images remain
+self-contained as well.
 
 On macOS, closing the application window keeps the Client available in the menu
 bar. **Settings -> Advanced -> This Mac** can enroll and run the bundled Local

@@ -95,28 +95,7 @@ internal abstract class BaseDesktopLocalWorkerRuntime(
             ?.takeIf(String::isNotBlank)
             ?.let(Path::of)
 
-    protected fun isPackagedApplication(): Boolean = applicationResourcesDirectory() != null
-
-    protected fun developmentWorkerCommand(arguments: List<String>, includeConfig: Boolean): List<String> {
-        val javaExecutable = Path.of(
-            System.getProperty("java.home"),
-            "bin",
-            if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) "java.exe" else "java",
-        )
-        return buildList {
-            add(javaExecutable.toString())
-            add("-cp")
-            add(System.getProperty("java.class.path"))
-            add(WORKER_MAIN_CLASS)
-            if (includeConfig) {
-                add("--spring.config.additional-location=optional:file:$workerConfig")
-            }
-            addAll(arguments)
-        }
-    }
-
     protected companion object {
-        const val WORKER_MAIN_CLASS = "com.gromozeka.worker.GromozekaWorkerMainKt"
         const val GROMOZEKA_HOME_ENVIRONMENT_VARIABLE = "GROMOZEKA_HOME"
         const val GROMOZEKA_WORKER_CONFIG_ENVIRONMENT_VARIABLE = "GROMOZEKA_WORKER_CONFIG"
         const val WORKER_ENROLLMENT_TOKEN_ENVIRONMENT_VARIABLE = "GROMOZEKA_WORKER_ENROLLMENT_TOKEN"

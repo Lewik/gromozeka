@@ -6,8 +6,12 @@ export GROMOZEKA_MODE="${GROMOZEKA_MODE:-prod}"
 export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$HOME/.gromozeka}"
 export GROMOZEKA_WEB_STATIC_DIR="${GROMOZEKA_WEB_STATIC_DIR:-$app_home/web}"
 server_config="${GROMOZEKA_SERVER_CONFIG:-$GROMOZEKA_HOME/server.yaml}"
-source "$app_home/bin/runtime-bootstrap.sh"
-java_executable="$(gromozeka_resolve_java)"
+java_executable="$app_home/runtime/java/bin/java"
+[[ -x "$java_executable" ]] || java_executable="$app_home/runtime/java/Contents/Home/bin/java"
+[[ -x "$java_executable" ]] || {
+  echo "Bundled Java runtime is missing: $app_home/runtime/java" >&2
+  exit 2
+}
 
 exec "$java_executable" \
   -XX:MaxRAMPercentage=75.0 \

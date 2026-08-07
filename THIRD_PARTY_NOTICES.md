@@ -1,5 +1,29 @@
 # Third-Party Notices
 
+## Eclipse Temurin
+
+Gromozeka self-contained distributions include an unmodified Eclipse Temurin
+21 JRE. OpenJDK code is licensed under GNU GPL version 2 with the Classpath
+Exception and Assembly Exception. The complete runtime legal tree is preserved
+under `runtime/java`. Release identity, source, and license information are
+available from:
+
+- https://adoptium.net/temurin/releases/
+- https://github.com/adoptium/temurin21-binaries
+- https://openjdk.org/legal/
+
+## Node.js
+
+Gromozeka Worker distributions include an unmodified official Node.js binary.
+Node.js is licensed under the MIT License and includes components under the
+additional licenses collected in its distribution. The complete upstream
+`LICENSE` is preserved under `runtime/node/LICENSE`. Source and license
+information are available from:
+
+- https://nodejs.org/dist/
+- https://github.com/nodejs/node
+- https://github.com/nodejs/node/blob/main/LICENSE
+
 ## pty4j
 
 Gromozeka distributes the unmodified `org.jetbrains.pty4j:pty4j` library for

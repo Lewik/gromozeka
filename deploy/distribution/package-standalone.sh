@@ -35,18 +35,17 @@ trap cleanup EXIT
 mkdir -p "$package_root/app" "$package_root/bin" "$package_root/config" "$output_directory"
 output_directory="$(cd "$output_directory" && pwd)"
 cp "$repository_root/$component/build/libs/gromozeka-$component.jar" "$package_root/app/"
-cp "$repository_root/deploy/distribution/runtime-versions.properties" "$package_root/bin/"
 cp "$repository_root/LICENSE" "$package_root/LICENSE"
 cp "$repository_root/THIRD_PARTY_NOTICES.md" "$package_root/THIRD_PARTY_NOTICES.md"
+bash "$repository_root/deploy/distribution/prepare-bundled-runtimes.sh" \
+  "$component" "$platform" "$architecture" "$package_root/runtime"
 
 if [[ "$platform" == "windows" ]]; then
-  cp "$repository_root/deploy/distribution/runtime-bootstrap.ps1" "$package_root/bin/"
   cp "$repository_root/deploy/distribution/gromozeka-$component.cmd" "$package_root/bin/"
   cp "$repository_root/deploy/distribution/gromozeka-$component.ps1" "$package_root/bin/"
 else
-  cp "$repository_root/deploy/distribution/runtime-bootstrap.sh" "$package_root/bin/"
   cp "$repository_root/deploy/distribution/gromozeka-$component" "$package_root/bin/"
-  chmod +x "$package_root/bin/gromozeka-$component" "$package_root/bin/runtime-bootstrap.sh"
+  chmod +x "$package_root/bin/gromozeka-$component"
 fi
 
 if [[ "$component" == "server" ]]; then

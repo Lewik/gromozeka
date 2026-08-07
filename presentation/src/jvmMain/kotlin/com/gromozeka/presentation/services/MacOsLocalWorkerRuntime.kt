@@ -54,7 +54,6 @@ internal class MacOsLocalWorkerRuntime(
             requiredFile = launcher,
             description = "Local Worker ${arguments.firstOrNull().orEmpty()}",
             enrollmentToken = enrollmentToken,
-            additionalEnvironment = developmentWorkerEnvironment(),
         )
     }
 
@@ -92,19 +91,8 @@ internal class MacOsLocalWorkerRuntime(
             requiredFile = service,
             description = "Local Worker command: $command",
             requireSuccess = requireSuccess,
-            additionalEnvironment = developmentWorkerEnvironment(),
         )
     }
-
-    private fun developmentWorkerEnvironment(): Map<String, String> =
-        if (isPackagedApplication()) {
-            emptyMap()
-        } else {
-            mapOf(
-                "GROMOZEKA_JAVA_EXECUTABLE" to Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-                "GROMOZEKA_WORKER_JAVA_CLASSPATH" to System.getProperty("java.class.path"),
-            )
-        }
 
     private fun JsonElement?.permissionState(): LocalWorkerPermissionState =
         when (this?.jsonPrimitive?.booleanOrNull) {

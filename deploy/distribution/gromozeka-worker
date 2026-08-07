@@ -5,7 +5,6 @@ app_home="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$HOME/.gromozeka}"
 export GROMOZEKA_BROWSER_MCP_LAUNCHER="${GROMOZEKA_BROWSER_MCP_LAUNCHER:-$app_home/bin/gromozeka-browser-mcp}"
 export GROMOZEKA_BROWSER_MCP_HOME="${GROMOZEKA_BROWSER_MCP_HOME:-$app_home/app/browser-mcp}"
-export GROMOZEKA_RUNTIME_BOOTSTRAP="${GROMOZEKA_RUNTIME_BOOTSTRAP:-$app_home/bin/runtime-bootstrap.sh}"
 worker_config="${GROMOZEKA_WORKER_CONFIG:-$GROMOZEKA_HOME/worker.yaml}"
 
 case "${1:-}" in
@@ -35,8 +34,12 @@ case "${1:-}" in
     ;;
 esac
 
-source "$app_home/bin/runtime-bootstrap.sh"
-java_executable="$(gromozeka_resolve_java)"
+java_executable="$app_home/runtime/java/bin/java"
+[[ -x "$java_executable" ]] || java_executable="$app_home/runtime/java/Contents/Home/bin/java"
+[[ -x "$java_executable" ]] || {
+  echo "Bundled Java runtime is missing: $app_home/runtime/java" >&2
+  exit 2
+}
 
 if [ "${1:-}" = "enroll" ]; then
   exec "$java_executable" \

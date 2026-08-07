@@ -34,13 +34,7 @@ internal object BundledMcpRuntimeResolver {
         val environment = if (explicitLauncher == null && projectRoot != null) {
             mapOf(
                 BROWSER_MCP_HOME_ENV to projectRoot.resolve("browser-mcp").absolutePathString(),
-                RUNTIME_BOOTSTRAP_ENV to projectRoot.resolve(
-                    if (windows) {
-                        "deploy/distribution/runtime-bootstrap.ps1"
-                    } else {
-                        "deploy/distribution/runtime-bootstrap.sh"
-                    }
-                ).absolutePathString(),
+                NODE_EXECUTABLE_ENV to "node",
             )
         } else {
             emptyMap()
@@ -78,4 +72,4 @@ internal data class BundledMcpProcess(
 private const val PROJECT_ROOT_PROPERTY = "gromozeka.project.root"
 private const val BROWSER_MCP_LAUNCHER_ENV = "GROMOZEKA_BROWSER_MCP_LAUNCHER"
 private const val BROWSER_MCP_HOME_ENV = "GROMOZEKA_BROWSER_MCP_HOME"
-private const val RUNTIME_BOOTSTRAP_ENV = "GROMOZEKA_RUNTIME_BOOTSTRAP"
+private const val NODE_EXECUTABLE_ENV = "GROMOZEKA_NODE_EXECUTABLE"

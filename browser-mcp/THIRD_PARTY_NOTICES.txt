@@ -4,5 +4,6 @@ License: Apache License 2.0
 Source: https://github.com/microsoft/playwright-mcp
 Source: https://github.com/microsoft/playwright
 
-Node.js is not redistributed in this directory. Standalone launchers may
-download an official Node.js binary distribution selected by the operator.
+Gromozeka distributions may include an official unmodified Node.js binary in a
+separate runtime directory. Its complete LICENSE file is distributed beside
+that binary.

@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  JAVA_VERSION: "21"
+  JAVA_VERSION: "21.0.12+8"
 
 jobs:
   metadata:
@@ -113,7 +113,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "24"
+          node-version: "24.19.0"
           cache: npm
           cache-dependency-path: browser-bridge/package-lock.json
       - name: Build and test Browser Bridge
@@ -172,7 +172,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "24"
+          node-version: "24.19.0"
           cache: npm
           cache-dependency-path: browser-mcp/package-lock.json
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
@@ -191,15 +191,22 @@ jobs:
           app_binary="$(find presentation/build/compose/binaries -type f -path '*/Gromozeka.app/Contents/MacOS/Gromozeka' -print -quit)"
           test -n "$source_dmg"
           test -n "$app_binary"
-          worker_binary="$(find presentation/build/compose/binaries -type f -path '*/Gromozeka.app/Contents/MacOS/GromozekaWorker' -print -quit)"
+          worker_jar="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/app/gromozeka-worker.jar' -print -quit)"
+          worker_java="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/runtime/java/Contents/Home/bin/java' -print -quit)"
+          worker_node="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/runtime/node/bin/node' -print -quit)"
           worker_service="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/bin/gromozeka-worker-service' -print -quit)"
           browser_mcp="$(find presentation/build/compose/binaries -type f -path '*/resources/local-worker/app/browser-mcp/node_modules/@playwright/mcp/cli.js' -print -quit)"
-          test -n "$worker_binary"
+          test -n "$worker_jar"
+          test -x "$worker_java"
+          test -x "$worker_node"
           test -n "$worker_service"
           test -n "$browser_mcp"
+          test -d "$(dirname "$(dirname "$worker_java")")/legal"
+          test -f "$(dirname "$(dirname "$worker_node")")/LICENSE"
           test "$(uname -m)" = "arm64"
           file "$app_binary" | grep -q 'arm64'
-          file "$worker_binary" | grep -q 'arm64'
+          file "$worker_java" | grep -q 'arm64'
+          file "$worker_node" | grep -q 'arm64'
           hdiutil verify "$source_dmg"
           mkdir -p release-asset
           cp "$source_dmg" release-asset/gromozeka-client-macos-arm64.dmg
@@ -222,7 +229,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "24"
+          node-version: "24.19.0"
           cache: npm
           cache-dependency-path: browser-mcp/package-lock.json
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
@@ -255,9 +262,25 @@ jobs:
           if ($null -eq $JvmLibrary) {
             throw "Bundled JVM library was not found"
           }
-          $Worker = Join-Path $App.FullName "GromozekaWorker.exe"
-          if (-not (Test-Path $Worker -PathType Leaf)) {
-            throw "Bundled GromozekaWorker.exe was not found"
+          $WorkerJar = Join-Path $App.FullName "app/resources/local-worker/app/gromozeka-worker.jar"
+          if (-not (Test-Path $WorkerJar -PathType Leaf)) {
+            throw "Bundled Local Worker JAR was not found"
+          }
+          $WorkerJava = Join-Path $App.FullName "app/resources/local-worker/runtime/java/bin/java.exe"
+          if (-not (Test-Path $WorkerJava -PathType Leaf)) {
+            throw "Bundled Local Worker Java runtime was not found"
+          }
+          $WorkerNode = Join-Path $App.FullName "app/resources/local-worker/runtime/node/node.exe"
+          if (-not (Test-Path $WorkerNode -PathType Leaf)) {
+            throw "Bundled Local Worker Node.js runtime was not found"
+          }
+          $WorkerJavaLegal = Join-Path $App.FullName "app/resources/local-worker/runtime/java/legal"
+          if (-not (Test-Path $WorkerJavaLegal -PathType Container)) {
+            throw "Bundled Local Worker Java legal notices were not found"
+          }
+          $WorkerNodeLicense = Join-Path $App.FullName "app/resources/local-worker/runtime/node/LICENSE"
+          if (-not (Test-Path $WorkerNodeLicense -PathType Leaf)) {
+            throw "Bundled Local Worker Node.js LICENSE was not found"
           }
           $BrowserLauncher = Join-Path $App.FullName "app/resources/local-worker/bin/gromozeka-browser-mcp.cmd"
           if (-not (Test-Path $BrowserLauncher -PathType Leaf)) {
@@ -268,6 +291,7 @@ jobs:
             throw "Bundled Browser MCP package was not found"
           }
           Copy-Item "LICENSE" (Join-Path $App.FullName "LICENSE")
+          Copy-Item "THIRD_PARTY_NOTICES.md" (Join-Path $App.FullName "THIRD_PARTY_NOTICES.md")
           New-Item -ItemType Directory -Force "release-asset" | Out-Null
           Compress-Archive `
             -Path (Join-Path $App.FullName "*") `
@@ -317,7 +341,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "24"
+          node-version: "24.19.0"
           cache: npm
           cache-dependency-path: browser-mcp/package-lock.json
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
@@ -342,7 +366,7 @@ jobs:
             :worker:bootJar \
             -Pgromozeka.version=${{ needs.metadata.outputs.version }} \
             -q
-      - name: Package thin standalone distributions
+      - name: Package self-contained standalone distributions
         shell: bash
         run: |
           sudo apt-get update -qq
@@ -372,13 +396,23 @@ jobs:
           tar -tzf release-asset/gromozeka-worker-linux-x64.tar.gz > worker-linux.entries
           tar -tzf release-asset/gromozeka-server-linux-x64.tar.gz > server-linux.entries
           grep -q '/app/browser-mcp/node_modules/@playwright/mcp/cli.js$' worker-linux.entries
-          grep -q '/bin/runtime-versions.properties$' worker-linux.entries
+          grep -q '/runtime/java/bin/java$' worker-linux.entries
+          grep -q '/runtime/java/legal/' worker-linux.entries
+          grep -q '/runtime/node/bin/node$' worker-linux.entries
+          grep -q '/runtime/node/LICENSE$' worker-linux.entries
+          grep -q '/runtime/java/bin/java$' server-linux.entries
           grep -q '/web/index.html$' server-linux.entries
           tar -tzf release-asset/gromozeka-worker-macos-arm64.tar.gz > worker-macos.entries
           grep -q '/app/native/gromozeka-worker-launcher$' worker-macos.entries
           grep -q '/bin/gromozeka-worker-service$' worker-macos.entries
-          if grep -q '/runtime/' worker-linux.entries; then
-            echo "Thin Worker archive unexpectedly contains a Java runtime" >&2
+          grep -q '/runtime/java/Contents/Home/bin/java$' worker-macos.entries
+          grep -q '/runtime/node/bin/node$' worker-macos.entries
+          unzip -Z1 release-asset/gromozeka-worker-windows-x64.zip > worker-windows.entries
+          grep -q '/runtime/java/bin/java.exe$' worker-windows.entries
+          grep -q '/runtime/node/node.exe$' worker-windows.entries
+          grep -q '/runtime/node/LICENSE$' worker-windows.entries
+          if grep -q '/runtime/node/' server-linux.entries; then
+            echo "Server archive unexpectedly contains the unused Node.js runtime" >&2
             exit 2
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

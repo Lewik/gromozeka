@@ -18,5 +18,6 @@ class BundledMcpRuntimeResolverTest {
             Path.of(projectRoot, "browser-mcp").absolutePathString(),
             resolved.environment["GROMOZEKA_BROWSER_MCP_HOME"],
         )
+        assertEquals("node", resolved.environment["GROMOZEKA_NODE_EXECUTABLE"])
     }
 }
