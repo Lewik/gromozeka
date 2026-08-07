@@ -45,6 +45,19 @@ function Get-RuntimeProperty {
     return $Properties[$Name]
 }
 
+function Get-Sha256 {
+    param([string]$Path)
+
+    $Stream = [System.IO.File]::OpenRead($Path)
+    $Sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return ([System.BitConverter]::ToString($Sha256.ComputeHash($Stream))).Replace("-", "").ToLowerInvariant()
+    } finally {
+        $Sha256.Dispose()
+        $Stream.Dispose()
+    }
+}
+
 function Assert-RuntimeContents {
     param(
         [string]$Kind,
@@ -89,7 +102,7 @@ function Prepare-Runtime {
             New-Item -ItemType Directory -Force $Unpacked, $Extracted | Out-Null
             Write-Host "Bundling $Kind $Version for windows-x64..."
             Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Archive
-            $ActualSha256 = (Get-FileHash -Algorithm SHA256 $Archive).Hash.ToLowerInvariant()
+            $ActualSha256 = Get-Sha256 $Archive
             if ($ActualSha256 -ne $ExpectedSha256.ToLowerInvariant()) {
                 throw "Bundled runtime checksum mismatch: expected $ExpectedSha256, got $ActualSha256"
             }
