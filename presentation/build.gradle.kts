@@ -53,20 +53,22 @@ val bundledBrowserMcpResources = copySpec {
 }
 
 val prepareLocalWorkerRuntimes by tasks.registering(Exec::class) {
-    val target = requireNotNull(localWorkerRuntimeTarget) {
-        "Bundled Local Worker runtimes are available only for macOS ARM64 and Windows x64"
-    }
     inputs.file(bundledRuntimeManifest)
     inputs.file(bundledRuntimeScript)
     outputs.dir(localWorkerRuntimeResources)
-    commandLine(
-        "bash",
-        bundledRuntimeScript.asFile.absolutePath,
-        "worker",
-        target.first,
-        target.second,
-        localWorkerRuntimeResources.get().asFile.absolutePath,
-    )
+    localWorkerRuntimeTarget?.let { target ->
+        commandLine(
+            "bash",
+            bundledRuntimeScript.asFile.absolutePath,
+            "worker",
+            target.first,
+            target.second,
+            localWorkerRuntimeResources.get().asFile.absolutePath,
+        )
+    } ?: run {
+        onlyIf { false }
+        commandLine("true")
+    }
 }
 
 val compileMacWorkerLauncher by tasks.registering(Exec::class) {
