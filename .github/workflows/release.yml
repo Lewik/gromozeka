@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  JAVA_VERSION: "21.0.12+8"
+  JAVA_VERSION: "21"
 
 jobs:
   metadata:
