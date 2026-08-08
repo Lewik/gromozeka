@@ -49,7 +49,7 @@ running `terraform-apply`.
 ```bash
 gh workflow run release.yml \
   --ref main \
-  --field version=1.5.0 \
+  --field version=1.7.0 \
   --field publish_release=true \
   --field deploy_aws=true
 ```
@@ -62,7 +62,7 @@ the same release-and-deploy path.
 Redeploy an already published release without rebuilding it:
 
 ```bash
-deploy/aws/bin/deploy 1.5.0
+deploy/aws/bin/deploy 1.7.0
 ```
 
 ## Operate

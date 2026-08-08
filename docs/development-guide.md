@@ -289,6 +289,30 @@ gromozeka/
 Develop and verify in `dev/`. Synchronize other checkouts through Git instead
 of copying files manually.
 
+## Release Versioning
+
+Published releases follow Semantic Versioning as `MAJOR.MINOR.PATCH`.
+
+- `PATCH` contains backward-compatible fixes.
+- `MINOR` adds backward-compatible functionality.
+- `MAJOR` permits incompatible changes to the public compatibility surface.
+
+That public surface includes documented Server APIs, Client and Worker
+protocols, configuration formats, and other contracts consumed outside the
+implementing component. A newer Server must accept older Clients and Workers
+from the same major version. A newer Client or Worker may use functionality
+that an older Server does not provide, so compatibility in that direction is
+not guaranteed.
+
+Internal refactoring and database schema changes do not require a major version
+when existing persisted data is migrated forward automatically without loss.
+Breaking an external contract requires a major version even when the code
+change itself is small.
+
+All artifacts produced by one release carry the same product version. This
+policy applies beginning with `1.7.0`; earlier releases are not retroactively
+reclassified.
+
 ## Verification
 
 Default to the cheapest check that covers the changed boundary:

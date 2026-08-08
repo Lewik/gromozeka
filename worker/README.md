@@ -56,7 +56,7 @@ Build a macOS or Linux archive locally:
 
 ```bash
 npm --prefix browser-mcp ci
-./gradlew :worker:bootJar -Pgromozeka.version=1.0.0 -q
+./gradlew :worker:bootJar -Pgromozeka.version=1.7.0 -q
 deploy/distribution/package-standalone.sh worker macos arm64 build/release
 ```
 

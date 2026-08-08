@@ -204,7 +204,10 @@ available for headless, remote, or multiple-Worker installations.
 
 Pushing a `v<major>.<minor>.<patch>` tag runs the release workflow, publishes
 those assets and immutable images, then installs that exact release on the
-primary AWS deployment. Prerelease tags such as `v1.5.0-test.1` remain GitHub
+primary AWS deployment. Releases follow Semantic Versioning beginning with
+`1.7.0`; the compatibility surface is defined in
+[the development guide](docs/development-guide.md#release-versioning).
+Prerelease tags such as `v1.7.0-test.1` remain GitHub
 prereleases. The workflow can also be dispatched without publishing or
 deploying to verify all release jobs.
 
