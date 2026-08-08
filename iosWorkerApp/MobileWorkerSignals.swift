@@ -15,10 +15,13 @@ final class MobileWorkerSignals: NSObject {
 
     private let runtime: IosMobileWorkerRuntime
     private let locationManager = CLLocationManager()
+    private let currentLocationManager = CLLocationManager()
     private let healthStore = HKHealthStore()
     private var bluetoothManager: CBCentralManager?
     private var nfcSession: NFCTagReaderSession?
     private var sleepQuery: HKObserverQuery?
+    private var currentLocationCompletion: ((Result<CLLocation, Error>) -> Void)?
+    private var currentLocationRequestStarted = false
     private var connectedBleTargets: [UUID: WorkerBleDevice] = [:]
     private var retainedBlePeripherals: [UUID: CBPeripheral] = [:]
     private var started = false
@@ -28,6 +31,8 @@ final class MobileWorkerSignals: NSObject {
         self.runtime = runtime
         super.init()
         locationManager.delegate = self
+        currentLocationManager.delegate = self
+        currentLocationManager.desiredAccuracy = kCLLocationAccuracyBest
     }
 
     func start() {
@@ -81,6 +86,8 @@ final class MobileWorkerSignals: NSObject {
         observers.removeAll()
         UIDevice.current.isBatteryMonitoringEnabled = false
         locationManager.stopMonitoringSignificantLocationChanges()
+        currentLocationManager.stopUpdatingLocation()
+        finishCurrentLocationRequest(.failure(MobileWorkerLocationError.cancelled))
         locationManager.monitoredRegions.forEach(locationManager.stopMonitoring(for:))
         bluetoothManager?.stopScan()
         retainedBlePeripherals.values.forEach { peripheral in
@@ -106,7 +113,35 @@ final class MobileWorkerSignals: NSObject {
     }
 
     func requestLocationAuthorization() {
-        locationManager.requestAlwaysAuthorization()
+        switch locationManager.authorizationStatus {
+        case .authorizedAlways:
+            startLocation()
+        case .authorizedWhenInUse:
+            locationManager.requestAlwaysAuthorization()
+            onMessage?("Choose Always in iOS Settings to enable background location events")
+        case .denied, .restricted:
+            onMessage?("Always-on location access is disabled in iOS Settings")
+        default:
+            locationManager.requestAlwaysAuthorization()
+        }
+    }
+
+    func requestCurrentLocation(completion: @escaping (Result<CLLocation, Error>) -> Void) {
+        guard currentLocationCompletion == nil else {
+            completion(.failure(MobileWorkerLocationError.requestInProgress))
+            return
+        }
+        currentLocationCompletion = completion
+        switch currentLocationManager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            startCurrentLocationRequest()
+        case .notDetermined:
+            currentLocationManager.requestWhenInUseAuthorization()
+        case .denied, .restricted:
+            finishCurrentLocationRequest(.failure(MobileWorkerLocationError.permissionRequired))
+        @unknown default:
+            finishCurrentLocationRequest(.failure(MobileWorkerLocationError.permissionRequired))
+        }
     }
 
     func enableBluetooth() {
@@ -118,10 +153,6 @@ final class MobileWorkerSignals: NSObject {
         configureGeofences()
         scanForConfiguredBleDevices()
         captureWifi()
-    }
-
-    var latestLocationCoordinate: CLLocationCoordinate2D? {
-        locationManager.location?.coordinate
     }
 
     func requestSleepAuthorization() {
@@ -221,6 +252,34 @@ final class MobileWorkerSignals: NSObject {
         locationManager.startMonitoringSignificantLocationChanges()
         configureGeofences()
         onMessage?("Significant location changes are enabled")
+    }
+
+    private func recordLocation(_ location: CLLocation, significantChange: Bool) {
+        record { completion in
+            self.runtime.recordLocation(
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude,
+                accuracyMeters: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : .nan,
+                altitudeMeters: location.verticalAccuracy >= 0 ? location.altitude : .nan,
+                speedMetersPerSecond: location.speed >= 0 ? location.speed : .nan,
+                significantChange: significantChange,
+                observedAtEpochMilliseconds: location.timestamp.epochMilliseconds,
+                completionHandler: completion
+            )
+        }
+    }
+
+    private func finishCurrentLocationRequest(_ result: Result<CLLocation, Error>) {
+        let completion = currentLocationCompletion
+        currentLocationCompletion = nil
+        currentLocationRequestStarted = false
+        completion?(result)
+    }
+
+    private func startCurrentLocationRequest() {
+        guard currentLocationCompletion != nil, !currentLocationRequestStarted else { return }
+        currentLocationRequestStarted = true
+        currentLocationManager.requestLocation()
     }
 
     private func startBluetooth() {
@@ -411,9 +470,23 @@ final class MobileWorkerSignals: NSObject {
 
 extension MobileWorkerSignals: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if manager === currentLocationManager, currentLocationCompletion != nil {
+            switch manager.authorizationStatus {
+            case .authorizedAlways, .authorizedWhenInUse:
+                startCurrentLocationRequest()
+            case .denied, .restricted:
+                finishCurrentLocationRequest(.failure(MobileWorkerLocationError.permissionRequired))
+            default:
+                break
+            }
+            return
+        }
+        guard manager === locationManager else { return }
         switch manager.authorizationStatus {
         case .authorizedAlways:
             startLocation()
+        case .authorizedWhenInUse:
+            onMessage?("Choose Always in iOS Settings to enable background location events")
         case .denied, .restricted:
             onMessage?("Always-on location access is disabled")
         default:
@@ -423,18 +496,22 @@ extension MobileWorkerSignals: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard started else { return }
-        guard let location = locations.last else { return }
-        record { completion in
-            self.runtime.recordLocation(
-                latitude: location.coordinate.latitude,
-                longitude: location.coordinate.longitude,
-                accuracyMeters: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : .nan,
-                altitudeMeters: location.verticalAccuracy >= 0 ? location.altitude : .nan,
-                speedMetersPerSecond: location.speed >= 0 ? location.speed : .nan,
-                significantChange: true,
-                observedAtEpochMilliseconds: location.timestamp.epochMilliseconds,
-                completionHandler: completion
-            )
+        guard let location = locations.last else {
+            if manager === currentLocationManager {
+                finishCurrentLocationRequest(.failure(MobileWorkerLocationError.noLocation))
+            }
+            return
+        }
+        if manager === currentLocationManager {
+            guard currentLocationCompletion != nil else { return }
+            guard abs(location.timestamp.timeIntervalSinceNow) <= currentLocationMaximumAge else {
+                finishCurrentLocationRequest(.failure(MobileWorkerLocationError.staleLocation))
+                return
+            }
+            recordLocation(location, significantChange: false)
+            finishCurrentLocationRequest(.success(location))
+        } else {
+            recordLocation(location, significantChange: true)
         }
     }
 
@@ -449,7 +526,12 @@ extension MobileWorkerSignals: CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        onError?(error.localizedDescription)
+        if manager === currentLocationManager {
+            guard currentLocationCompletion != nil else { return }
+            finishCurrentLocationRequest(.failure(error))
+        } else {
+            onError?(error.localizedDescription)
+        }
     }
 
     private func recordGeofence(_ region: CLRegion, entered: Bool) {
@@ -463,6 +545,24 @@ extension MobileWorkerSignals: CLLocationManagerDelegate {
                 observedAtEpochMilliseconds: Date().epochMilliseconds,
                 completionHandler: completion
             )
+        }
+    }
+}
+
+private enum MobileWorkerLocationError: LocalizedError {
+    case cancelled
+    case noLocation
+    case permissionRequired
+    case requestInProgress
+    case staleLocation
+
+    var errorDescription: String? {
+        switch self {
+        case .cancelled: "Location request was cancelled"
+        case .noLocation: "iOS did not return a location"
+        case .permissionRequired: "Location access is disabled in iOS Settings"
+        case .requestInProgress: "A location request is already in progress"
+        case .staleLocation: "iOS returned an old cached location; try again"
         }
     }
 }
@@ -636,3 +736,4 @@ private let blePeripheralTargetPreference = "com.gromozeka.mobile-worker.ble-per
 private let sleepEnabledPreference = "com.gromozeka.mobile-worker.sleep-enabled"
 private let lastSleepSessionPreference = "com.gromozeka.mobile-worker.last-sleep-session"
 private let geofenceIdentifierPrefix = "gromozeka:"
+private let currentLocationMaximumAge: TimeInterval = 120

@@ -12,6 +12,7 @@ struct MobileWorkerSignalSettingsView: View {
     @State private var bleServiceUuid = ""
     @State private var wifiNetworkId = ""
     @State private var error: String?
+    @State private var locating = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -25,15 +26,24 @@ struct MobileWorkerSignalSettingsView: View {
             signalTitle("Geofences")
             HStack {
                 workerTextField("Name", text: $geofenceName)
-                Button("Use current") {
-                    guard let coordinate = signals.latestLocationCoordinate else {
-                        error = "No recent location is available yet"
-                        return
+                Button(locating ? "Locating..." : "Use current") {
+                    locating = true
+                    error = nil
+                    signals.requestCurrentLocation { result in
+                        DispatchQueue.main.async {
+                            locating = false
+                            switch result {
+                            case .success(let location):
+                                latitude = String(location.coordinate.latitude)
+                                longitude = String(location.coordinate.longitude)
+                            case .failure(let requestError):
+                                error = requestError.localizedDescription
+                            }
+                        }
                     }
-                    latitude = String(coordinate.latitude)
-                    longitude = String(coordinate.longitude)
                 }
                 .buttonStyle(.bordered)
+                .disabled(locating)
             }
             HStack {
                 workerTextField("Latitude", text: $latitude)
