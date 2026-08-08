@@ -9,12 +9,17 @@ Normal desktop installations should enable it from **Settings -> Advanced ->
 This Mac/PC**. This standalone archive remains useful for headless machines,
 remote Workers, and multiple Worker processes on one host.
 
-Open the Server `/downloads` page, generate a one-time enrollment token, and
-run the command shown there. Enrollment writes the Worker configuration to
-`~/.gromozeka/worker.yaml`.
+Open the Server `/downloads` page and run the connection command shown there.
+The Worker prints a short code. Review and approve it in **Settings -> Security**
+on an authorized Gromozeka Client. The Worker then writes its private
+configuration to `~/.gromozeka/worker.yaml`.
+
+For unattended provisioning, an Owner can still generate a short-lived
+one-time enrollment token from the advanced section of the downloads page and
+run `bin/gromozeka-worker enroll`.
 
 When the Server uses a private or corporate CA that is not in the bundled Java
-trust store, append `--ca-certificate /path/to/root-or-chain.pem`. Enrollment
+trust store, append `--ca-certificate /path/to/root-or-chain.pem`. Connection
 copies the CA beside the Worker configuration and uses system trust plus that
 CA for HTTPS and WSS.
 

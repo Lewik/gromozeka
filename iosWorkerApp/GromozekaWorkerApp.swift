@@ -20,6 +20,10 @@ private struct MobileWorkerView: View {
     @State private var serverUrl = ""
     @State private var enrollmentToken = ""
     @State private var workerId = defaultWorkerId()
+    @State private var usePassword = false
+    @State private var showAdvancedEnrollment = false
+    @State private var username = ""
+    @State private var password = ""
 
     var body: some View {
         ZStack {
@@ -67,6 +71,7 @@ private struct MobileWorkerView: View {
         .onChange(of: controller.status?.enrolled) { _, enrolled in
             if enrolled == true {
                 enrollmentToken = ""
+                password = ""
             }
         }
     }
@@ -75,25 +80,89 @@ private struct MobileWorkerView: View {
         VStack(spacing: 12) {
             workerField("Server URL", text: $serverUrl, prompt: "https://gromozeka.example")
             workerField("Worker ID", text: $workerId, prompt: "family-iphone")
-            SecureField("One-time enrollment token", text: $enrollmentToken)
-                .textContentType(.oneTimeCode)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .workerFieldStyle()
-            Button {
-                controller.enroll(
-                    serverUrl: serverUrl,
-                    enrollmentToken: enrollmentToken,
-                    workerId: workerId
+
+            if let code = controller.connectionCode {
+                VStack(spacing: 8) {
+                    Text("APPROVE THIS CODE")
+                        .font(.system(.caption, design: .monospaced, weight: .bold))
+                        .foregroundStyle(workerGreen)
+                    Text(code)
+                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                    Text("Open Settings > Security in an authorized Gromozeka Client.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button("Cancel") { controller.cancelConnection() }
+                        .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(18)
+                .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 18))
+            } else if usePassword {
+                workerField("Username", text: $username, prompt: "username")
+                SecureField("Password", text: $password)
+                    .textContentType(.password)
+                    .workerFieldStyle()
+                Button {
+                    controller.connectWithPassword(
+                        serverUrl: serverUrl,
+                        workerId: workerId,
+                        username: username,
+                        password: password
+                    )
+                } label: {
+                    Text(controller.busy ? "Connecting" : "Connect with password")
+                        .frame(maxWidth: .infinity)
+                        .fontWeight(.bold)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(
+                    controller.busy || serverUrl.isEmpty || workerId.isEmpty ||
+                    username.isEmpty || password.isEmpty
                 )
-            } label: {
-                Text(controller.busy ? "Enrolling" : "Enroll device")
-                    .frame(maxWidth: .infinity)
-                    .fontWeight(.bold)
+            } else {
+                Button {
+                    controller.startConnection(serverUrl: serverUrl, workerId: workerId)
+                } label: {
+                    Text(controller.busy ? "Creating code" : "Connect device")
+                        .frame(maxWidth: .infinity)
+                        .fontWeight(.bold)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(controller.busy || serverUrl.isEmpty || workerId.isEmpty)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(controller.busy || serverUrl.isEmpty || enrollmentToken.isEmpty || workerId.isEmpty)
+
+            Button(usePassword ? "Use connection code" : "Use username and password") {
+                usePassword.toggle()
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(workerGreen)
+
+            DisclosureGroup("Advanced", isExpanded: $showAdvancedEnrollment) {
+                VStack(spacing: 12) {
+                    SecureField("One-time enrollment token", text: $enrollmentToken)
+                        .textContentType(.oneTimeCode)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .workerFieldStyle()
+                    Button {
+                        controller.enroll(
+                            serverUrl: serverUrl,
+                            enrollmentToken: enrollmentToken,
+                            workerId: workerId
+                        )
+                    } label: {
+                        Text("Use one-time token").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(
+                        controller.busy || serverUrl.isEmpty || enrollmentToken.isEmpty || workerId.isEmpty
+                    )
+                }
+                .padding(.top, 12)
+            }
         }
     }
 

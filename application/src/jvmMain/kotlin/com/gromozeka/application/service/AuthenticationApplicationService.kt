@@ -10,7 +10,9 @@ import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.service.AuthenticationService
+import com.gromozeka.domain.service.AuthenticationSessionPolicy
 import com.gromozeka.domain.service.FirstUserBootstrapToken
+import com.gromozeka.domain.service.LocalCredentialVerifier
 import com.gromozeka.domain.service.PasswordHasher
 import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.shared.uuid.uuid7
@@ -21,8 +23,6 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 import java.util.HexFormat
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.minutes
 
 @Service
 class AuthenticationApplicationService(
@@ -31,7 +31,7 @@ class AuthenticationApplicationService(
     private val passwordHasher: PasswordHasher,
     private val bootstrapToken: FirstUserBootstrapToken,
     private val securityAuditRecorder: SecurityAuditRecorder,
-) : AuthenticationService {
+) : AuthenticationService, LocalCredentialVerifier {
     private val secureRandom = SecureRandom()
     private val dummyPasswordHash = passwordHasher.hash(DUMMY_PASSWORD.toCharArray())
 
@@ -89,7 +89,17 @@ class AuthenticationApplicationService(
         username: String,
         password: CharArray,
         clientLabel: String?,
-    ): IssuedUserSession {
+    ): IssuedUserSession =
+        issueSession(
+            user = verifyPassword(username, password),
+            clientLabel = clientLabel,
+            now = Clock.System.now(),
+        )
+
+    override suspend fun verifyPassword(
+        username: String,
+        password: CharArray,
+    ): User {
         val normalizedUsername = LocalIdentityInputPolicy.normalizeUsername(username)
         val user = identityRepository.findUserByUsername(normalizedUsername)
         val credential = user?.let { identityRepository.findPasswordCredential(it.id) }
@@ -114,7 +124,7 @@ class AuthenticationApplicationService(
                 )
             )
         }
-        return issueSession(user, clientLabel, Clock.System.now())
+        return user
     }
 
     override suspend fun authenticate(sessionToken: String): AuthenticatedUser? {
@@ -126,7 +136,7 @@ class AuthenticationApplicationService(
             ?.takeIf { it.status == User.Status.ACTIVE }
             ?: return null
 
-        if (session.lastSeenAt < now - SESSION_TOUCH_INTERVAL) {
+        if (session.lastSeenAt < now - AuthenticationSessionPolicy.touchInterval) {
             identityRepository.touchSession(session.id, now)
         }
         return AuthenticatedUser(user, session.id)
@@ -156,9 +166,12 @@ class AuthenticationApplicationService(
             tokenHash = hashToken(rawToken),
             createdAt = now,
             lastSeenAt = now,
-            expiresAt = now + SESSION_LIFETIME,
+            expiresAt = now + AuthenticationSessionPolicy.lifetime,
             revokedAt = null,
-            clientLabel = clientLabel?.trim()?.takeIf(String::isNotEmpty)?.take(MAX_CLIENT_LABEL_LENGTH),
+            clientLabel = clientLabel
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+                ?.take(AuthenticationSessionPolicy.maxClientLabelLength),
         )
         identityRepository.createSession(session)
         return IssuedUserSession(
@@ -176,10 +189,7 @@ class AuthenticationApplicationService(
         )
 
     private companion object {
-        const val MAX_CLIENT_LABEL_LENGTH = 255
         const val SESSION_TOKEN_BYTES = 32
-        val SESSION_LIFETIME = 30.days
-        val SESSION_TOUCH_INTERVAL = 5.minutes
         const val DUMMY_PASSWORD = "gromozeka-authentication-timing-padding"
     }
 }

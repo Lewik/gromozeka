@@ -40,6 +40,9 @@ data class SecurityAuditEvent(
         PROJECT_MEMBERSHIP_REMOVED,
         PERSONAL_ACCESS_TOKEN_ISSUED,
         PERSONAL_ACCESS_TOKEN_REVOKED,
+        DEVICE_CONNECTION_APPROVED,
+        DEVICE_CONNECTION_DENIED,
+        DEVICE_CONNECTED,
         WORKER_ENROLLMENT_CREATED,
         WORKER_ENROLLED,
         WORKER_USER_GRANT_SET,
@@ -56,6 +59,7 @@ data class SecurityAuditEvent(
         USER,
         PROJECT,
         PERSONAL_ACCESS_TOKEN,
+        DEVICE_CONNECTION,
         WORKER,
     }
 }

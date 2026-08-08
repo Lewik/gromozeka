@@ -199,13 +199,17 @@ private fun GromozekaAndroidApp(
                     initialized = requireNotNull(authenticationStatus).initialized,
                     submitting = connecting,
                     error = authenticationError,
-                    onSubmit = { input ->
+                    onSubmit = { input, deviceToken ->
                         val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
                         scope.launch {
                             connecting = true
                             authenticationError = null
                             try {
-                                connection.authenticate(requireNotNull(authenticationStatus).initialized, input)
+                                connection.authenticate(
+                                    requireNotNull(authenticationStatus).initialized,
+                                    input,
+                                    deviceToken,
+                                )
                                 val authenticatedStatus = connection.status()
                                 authenticationStatus = authenticatedStatus
                                 val app = createRemoteAppComponents(
@@ -233,6 +237,21 @@ private fun GromozekaAndroidApp(
                             }
                             connecting = false
                         }
+                    },
+                    onStartDeviceConnection = {
+                        requireNotNull(authenticationConnection).startDeviceConnection(
+                            deviceLabel = "Android client",
+                            platform = "android",
+                        )
+                    },
+                    onConsumeDeviceConnection = {
+                        requireNotNull(authenticationConnection).consumeDeviceConnection(it)
+                    },
+                    deviceConnectionVerificationUrl = {
+                        requireNotNull(authenticationConnection).deviceConnectionVerificationUrl(it)
+                    },
+                    onDeviceConnected = {
+                        connectionAttempt += 1
                     },
                 )
 

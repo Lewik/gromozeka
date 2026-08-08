@@ -43,6 +43,7 @@ androidx-health-connect = "1.1.0"
 bouncycastle = "1.84"
 pty4j = "0.13.12"
 jna = "5.14.0"
+qrose = "1.1.2"
 
 [libraries]
 # Ktor
@@ -80,6 +81,7 @@ spring-security-crypto = { module = "org.springframework.security:spring-securit
 bouncycastle-provider = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 pty4j = { module = "org.jetbrains.pty4j:pty4j", version.ref = "pty4j" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 
 # Kotlinx

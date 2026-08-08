@@ -4,6 +4,7 @@ import com.gromozeka.client.RemoteClientSettingsService
 import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.client.RemoteClientPresentationService
 import com.gromozeka.client.RemoteDistributionService
+import com.gromozeka.client.RemoteDeviceConnectionClient
 import com.gromozeka.client.RemoteLiveInterpreterService
 import com.gromozeka.client.RemoteMemoryActionItemService
 import com.gromozeka.client.RemoteMcpServerService
@@ -55,6 +56,7 @@ data class AppComponents(
     val remoteConnectionState: StateFlow<RemoteConnectionState>,
     val clientPresentationService: RemoteClientPresentationService,
     val distributionService: RemoteDistributionService,
+    val deviceConnectionService: RemoteDeviceConnectionClient,
     val memoryActionItemService: RemoteMemoryActionItemService,
     val mcpServerService: RemoteMcpServerService,
     val personalAccessTokenService: RemotePersonalAccessTokenService,

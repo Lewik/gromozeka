@@ -25,6 +25,14 @@ class RemoteDistributionService internal constructor(
         )
     }
 
+    fun workerConnectionInstructions(): WorkerConnectionInstructions =
+        WorkerConnectionInstructions(
+            macOsLinuxCommand = "bin/gromozeka-worker connect --server ${client.serverHttpBaseUrl} " +
+                "--worker-id my-workstation",
+            windowsCommand = "bin\\gromozeka-worker.cmd connect --server ${client.serverHttpBaseUrl} " +
+                "--worker-id my-workstation",
+        )
+
     suspend fun createWorkerEnrollment(): WorkerEnrollmentInstructions {
         val enrollment = createWorkerEnrollmentRequest()
         return WorkerEnrollmentInstructions(
@@ -47,4 +55,9 @@ data class WorkerEnrollmentInstructions(
     val macOsLinuxCommand: String,
     val windowsCommand: String,
     val expiresAt: String,
+)
+
+data class WorkerConnectionInstructions(
+    val macOsLinuxCommand: String,
+    val windowsCommand: String,
 )

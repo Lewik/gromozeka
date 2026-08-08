@@ -19,6 +19,7 @@ internal interface DesktopLocalWorkerRuntime : AutoCloseable {
     suspend fun start()
     suspend fun stop()
     suspend fun enroll(arguments: List<String>, enrollmentToken: String)
+    suspend fun configure(arguments: List<String>, bootstrap: String)
     suspend fun readComputerUsePermissions(): LocalWorkerPermissions?
     suspend fun requestComputerUsePermissions()
     fun requireStableInstallationPath()
@@ -51,6 +52,7 @@ internal abstract class BaseDesktopLocalWorkerRuntime(
         description: String,
         requireSuccess: Boolean = true,
         enrollmentToken: String? = null,
+        standardInput: String? = null,
         additionalEnvironment: Map<String, String> = emptyMap(),
     ): DesktopCommandResult = withContext(Dispatchers.IO) {
         require(Files.isRegularFile(requiredFile)) { "Bundled Local Worker executable is missing: $requiredFile" }
@@ -66,6 +68,11 @@ internal abstract class BaseDesktopLocalWorkerRuntime(
             }
             processBuilder.environment().putAll(additionalEnvironment)
             val process = processBuilder.start()
+            if (standardInput != null) {
+                process.outputStream.bufferedWriter().use { it.write(standardInput) }
+            } else {
+                process.outputStream.close()
+            }
             val completed = process.waitFor(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             if (!completed) {
                 process.destroyForcibly()

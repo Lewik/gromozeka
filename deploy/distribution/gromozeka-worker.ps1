@@ -18,7 +18,8 @@ if (-not (Test-Path $JavaExecutable -PathType Leaf)) {
 }
 $WorkerJar = Join-Path $AppHome "app/gromozeka-worker.jar"
 
-if ($args.Count -gt 0 -and $args[0] -eq "enroll") {
+$ConfigurationCommands = @("enroll", "connect", "configure")
+if ($args.Count -gt 0 -and $ConfigurationCommands -contains $args[0]) {
     & $JavaExecutable -jar $WorkerJar @args
 } else {
     & $JavaExecutable `

@@ -7,6 +7,8 @@ import com.gromozeka.domain.model.IssuedPersonalAccessToken
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.User
 import kotlinx.datetime.Instant
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 
 interface PasswordHasher {
     fun hash(password: CharArray): String
@@ -33,6 +35,19 @@ interface AuthenticationService {
     suspend fun authenticate(sessionToken: String): AuthenticatedUser?
     suspend fun logout(sessionToken: String)
     suspend fun revokeAllSessions(userId: User.Id)
+}
+
+interface LocalCredentialVerifier {
+    suspend fun verifyPassword(
+        username: String,
+        password: CharArray,
+    ): User
+}
+
+object AuthenticationSessionPolicy {
+    val lifetime = 30.days
+    val touchInterval = 5.minutes
+    const val maxClientLabelLength = 255
 }
 
 interface UserAdministrationService {

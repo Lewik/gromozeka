@@ -53,7 +53,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import java.util.UUID
 
 class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
@@ -187,6 +189,11 @@ private fun MainActivity.MobileWorkerApp(
     var serverUrl by remember { mutableStateOf("") }
     var enrollmentToken by remember { mutableStateOf("") }
     var workerId by remember { mutableStateOf(defaultWorkerId()) }
+    var connectionChallenge by remember { mutableStateOf<MobileWorkerConnectionChallenge?>(null) }
+    var usePassword by remember { mutableStateOf(false) }
+    var showAdvancedEnrollment by remember { mutableStateOf(false) }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var locationMessage by remember { mutableStateOf<String?>(null) }
@@ -255,6 +262,38 @@ private fun MainActivity.MobileWorkerApp(
     }
     LaunchedEffect(Unit) {
         status = runtime.status()
+    }
+    LaunchedEffect(connectionChallenge) {
+        val challenge = connectionChallenge ?: return@LaunchedEffect
+        while (Clock.System.now() < challenge.expiresAt && status?.enrolled != true) {
+            delay(challenge.pollIntervalSeconds * 1_000L)
+            runCatching {
+                runtime.consumeDeviceConnection(serverUrl, challenge.deviceToken)
+            }.onSuccess { result ->
+                when (result.status) {
+                    MobileWorkerConnectionStatus.PENDING -> error = null
+                    MobileWorkerConnectionStatus.CONNECTED -> {
+                        status = result.workerStatus
+                        connectionChallenge = null
+                        MobileWorkerSyncJobService.schedule(applicationContext)
+                        status = runtime.synchronize()
+                        return@LaunchedEffect
+                    }
+                    MobileWorkerConnectionStatus.DENIED,
+                    MobileWorkerConnectionStatus.EXPIRED -> {
+                        error = result.message ?: "Device connection ${result.status.name.lowercase()}"
+                        connectionChallenge = null
+                        return@LaunchedEffect
+                    }
+                }
+            }.onFailure {
+                error = "Connection interrupted. Retrying..."
+            }
+        }
+        if (connectionChallenge == challenge) {
+            error = "Connection code expired"
+            connectionChallenge = null
+        }
     }
 
     MaterialTheme(colorScheme = workerColors) {
@@ -408,40 +447,135 @@ private fun MainActivity.MobileWorkerApp(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    OutlinedTextField(
-                        value = enrollmentToken,
-                        onValueChange = { enrollmentToken = it },
-                        label = { Text("One-time enrollment token") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Button(
-                        enabled = !busy && serverUrl.isNotBlank() &&
-                            enrollmentToken.isNotBlank() && workerId.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(containerColor = workerColors.primary),
-                        onClick = {
-                            scope.launch {
-                                busy = true
-                                error = null
-                                runCatching {
-                                    status = runtime.enroll(serverUrl, enrollmentToken, workerId)
-                                    if (status?.enrolled == true) {
+                    connectionChallenge?.let { challenge ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = workerColors.surfaceVariant,
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text("APPROVE THIS CODE", color = workerColors.primary)
+                                Text(
+                                    challenge.userCode,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Black,
+                                )
+                                Text(
+                                    "Open Settings > Security in an authorized Gromozeka Client.",
+                                    color = workerColors.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    } ?: run {
+                        if (usePassword) {
+                            OutlinedTextField(
+                                value = username,
+                                onValueChange = { username = it },
+                                label = { Text("Username") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            OutlinedTextField(
+                                value = password,
+                                onValueChange = { password = it },
+                                label = { Text("Password") },
+                                visualTransformation = PasswordVisualTransformation(),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Button(
+                                enabled = !busy && serverUrl.isNotBlank() && workerId.isNotBlank() &&
+                                    username.isNotBlank() && password.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(containerColor = workerColors.primary),
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        error = null
+                                        runCatching {
+                                            val challenge = runtime.startDeviceConnection(serverUrl, workerId)
+                                            val result = runtime.connectWithPassword(
+                                                serverUrl,
+                                                challenge.deviceToken,
+                                                username,
+                                                password,
+                                            )
+                                            status = requireNotNull(result.workerStatus)
+                                            password = ""
+                                            MobileWorkerSyncJobService.schedule(applicationContext)
+                                            status = runtime.synchronize()
+                                        }.onFailure { failure ->
+                                            error = failure.message ?: failure.toString()
+                                        }
+                                        busy = false
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(if (busy) "Connecting" else "Connect with password")
+                            }
+                        } else {
+                            Button(
+                                enabled = !busy && serverUrl.isNotBlank() && workerId.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(containerColor = workerColors.primary),
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        error = null
+                                        runCatching { runtime.startDeviceConnection(serverUrl, workerId) }
+                                            .onSuccess { connectionChallenge = it }
+                                            .onFailure { error = it.message ?: it.toString() }
+                                        busy = false
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(if (busy) "Creating code" else "Connect device")
+                            }
+                        }
+                        TextButton(onClick = { usePassword = !usePassword }) {
+                            Text(if (usePassword) "Use connection code" else "Use username and password")
+                        }
+                    }
+
+                    TextButton(onClick = { showAdvancedEnrollment = !showAdvancedEnrollment }) {
+                        Text(if (showAdvancedEnrollment) "Hide advanced enrollment" else "Advanced")
+                    }
+                    if (showAdvancedEnrollment) {
+                        OutlinedTextField(
+                            value = enrollmentToken,
+                            onValueChange = { enrollmentToken = it },
+                            label = { Text("One-time enrollment token") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedButton(
+                            enabled = !busy && serverUrl.isNotBlank() &&
+                                enrollmentToken.isNotBlank() && workerId.isNotBlank(),
+                            onClick = {
+                                scope.launch {
+                                    busy = true
+                                    error = null
+                                    runCatching {
+                                        status = runtime.enroll(serverUrl, enrollmentToken, workerId)
                                         enrollmentToken = ""
                                         MobileWorkerSyncJobService.schedule(applicationContext)
                                         status = runtime.synchronize()
+                                    }.onFailure { failure ->
+                                        error = failure.message ?: failure.toString()
                                     }
-                                }.onFailure { failure ->
-                                    status = runCatching { runtime.status() }.getOrNull() ?: status
-                                    if (status?.enrolled == true) enrollmentToken = ""
-                                    error = failure.message ?: failure.toString()
+                                    busy = false
                                 }
-                                busy = false
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(if (busy) "Enrolling" else "Enroll device")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Use one-time token")
+                        }
                     }
                 }
 

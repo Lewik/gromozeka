@@ -57,6 +57,16 @@ internal class MacOsLocalWorkerRuntime(
         )
     }
 
+    override suspend fun configure(arguments: List<String>, bootstrap: String) {
+        val launcher = bundleRoot().resolve("bin/gromozeka-worker")
+        runCommand(
+            command = listOf("/bin/bash", launcher.toString()) + arguments,
+            requiredFile = launcher,
+            description = "Local Worker configure",
+            standardInput = bootstrap,
+        )
+    }
+
     override suspend fun readComputerUsePermissions(): LocalWorkerPermissions {
         if (!Files.isExecutable(stableLauncher)) return LocalWorkerPermissions()
         val result = runCatching { runService("permissions-status", requireSuccess = false) }.getOrNull()

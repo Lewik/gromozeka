@@ -70,6 +70,17 @@ internal class WindowsLocalWorkerRuntime(
         )
     }
 
+    override suspend fun configure(arguments: List<String>, bootstrap: String) {
+        val command = workerCommand(arguments, includeConfig = false)
+        runCommand(
+            command = command,
+            requiredFile = Path.of(command.first()),
+            description = "Local Worker configure",
+            standardInput = bootstrap,
+            additionalEnvironment = workerEnvironment(),
+        )
+    }
+
     override suspend fun readComputerUsePermissions(): LocalWorkerPermissions? = null
 
     override suspend fun requestComputerUsePermissions() = Unit

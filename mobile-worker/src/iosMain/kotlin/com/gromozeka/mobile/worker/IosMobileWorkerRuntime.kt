@@ -28,6 +28,29 @@ class IosMobileWorkerRuntime(
     ): IosMobileWorkerStatus = runtime.enroll(serverUrl, enrollmentToken, workerId).toIosStatus()
 
     @Throws(Exception::class)
+    suspend fun startDeviceConnection(
+        serverUrl: String,
+        workerId: String,
+    ): IosMobileWorkerConnectionChallenge =
+        runtime.startDeviceConnection(serverUrl, workerId).toIosChallenge()
+
+    @Throws(Exception::class)
+    suspend fun consumeDeviceConnection(
+        serverUrl: String,
+        deviceToken: String,
+    ): IosMobileWorkerConnectionResult =
+        runtime.consumeDeviceConnection(serverUrl, deviceToken).toIosResult()
+
+    @Throws(Exception::class)
+    suspend fun connectWithPassword(
+        serverUrl: String,
+        deviceToken: String,
+        username: String,
+        password: String,
+    ): IosMobileWorkerConnectionResult =
+        runtime.connectWithPassword(serverUrl, deviceToken, username, password).toIosResult()
+
+    @Throws(Exception::class)
     suspend fun status(): IosMobileWorkerStatus = runtime.status().toIosStatus()
 
     @Throws(Exception::class)
@@ -163,6 +186,21 @@ data class IosMobileWorkerStatus(
     val credentialAvailable: Boolean,
 )
 
+data class IosMobileWorkerConnectionChallenge(
+    val deviceToken: String,
+    val userCode: String,
+    val verificationUrl: String,
+    val expiresAtEpochMilliseconds: Long,
+    val pollIntervalSeconds: Int,
+)
+
+data class IosMobileWorkerConnectionResult(
+    val status: String,
+    val workerStatus: IosMobileWorkerStatus?,
+    val retryAfterSeconds: Int?,
+    val message: String?,
+)
+
 private fun MobileWorkerStatus.toIosStatus(): IosMobileWorkerStatus =
     IosMobileWorkerStatus(
         enrolled = enrolled,
@@ -171,6 +209,23 @@ private fun MobileWorkerStatus.toIosStatus(): IosMobileWorkerStatus =
         pendingEventCount = pendingEventCount,
         lastSynchronizedAt = lastSynchronizedAt?.toString(),
         credentialAvailable = credentialAvailable,
+    )
+
+private fun MobileWorkerConnectionChallenge.toIosChallenge(): IosMobileWorkerConnectionChallenge =
+    IosMobileWorkerConnectionChallenge(
+        deviceToken = deviceToken,
+        userCode = userCode,
+        verificationUrl = verificationUrl,
+        expiresAtEpochMilliseconds = expiresAt.toEpochMilliseconds(),
+        pollIntervalSeconds = pollIntervalSeconds,
+    )
+
+private fun MobileWorkerConnectionResult.toIosResult(): IosMobileWorkerConnectionResult =
+    IosMobileWorkerConnectionResult(
+        status = status.name,
+        workerStatus = workerStatus?.toIosStatus(),
+        retryAfterSeconds = retryAfterSeconds,
+        message = message,
     )
 
 private fun Long.toInstant(): Instant = Instant.fromEpochMilliseconds(this)

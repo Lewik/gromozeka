@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import com.gromozeka.remote.protocol.DeviceConnectionWorkerRequest
+import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -114,6 +117,40 @@ class DesktopLocalWorkerController(
         if (!runtime.isRunning()) return@withLock
         runCatching { runtime.stop() }
         refreshStatus()
+    }
+
+    override fun deviceConnectionWorkerRequest(): DeviceConnectionWorkerRequest? {
+        val runtime = runtime ?: return null
+        if (Files.isRegularFile(runtime.workerConfig)) return null
+        return DeviceConnectionWorkerRequest(workerId = defaultWorkerId(runtime))
+    }
+
+    override suspend fun acceptDeviceConnection(
+        serverUrl: String,
+        bootstrap: WorkerEnrollmentBootstrap,
+        workerCatalogService: WorkerCatalogService,
+    ) = mutex.withLock {
+        val runtime = runtime ?: return@withLock
+        runOperation(LocalWorkerOperation.ENROLLING) {
+            runtime.requireStableInstallationPath()
+            if (!Files.isRegularFile(runtime.workerConfig)) {
+                runtime.configure(
+                    arguments = listOf(
+                        "configure",
+                        "--server", serverUrl,
+                        "--config", runtime.workerConfig.toString(),
+                    ),
+                    bootstrap = Json.encodeToString(bootstrap),
+                )
+            }
+            mutableStatus.value = mutableStatus.value.copy(operation = LocalWorkerOperation.STARTING)
+            if (runtime.isEnabled()) {
+                if (!runtime.isRunning()) runtime.start()
+            } else {
+                runtime.enable()
+            }
+            refreshStatus(workerCatalogService)
+        }
     }
 
     override fun close() {

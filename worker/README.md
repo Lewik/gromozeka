@@ -17,12 +17,12 @@ GROMOZEKA_MODE=prod \
 ```
 
 For the local dev stack, start the Server with
-`GROMOZEKA_WORKER_ENROLLMENT_ENABLED=true`, generate a token in **Settings ->
-Downloads**, and enroll once from the repository root:
+`GROMOZEKA_WORKER_ENROLLMENT_ENABLED=true` and connect once from the repository
+root. Approve the printed code in **Settings -> Security**:
 
 ```bash
 ./gradlew :worker:run \
-  --args="enroll --server http://127.0.0.1:8765 --token <token> --worker-id local-dev --config $PWD/dev-data/client/.gromozeka/worker-dev.yaml --force" \
+  --args="connect --server http://127.0.0.1:8765 --worker-id local-dev --config $PWD/dev-data/client/.gromozeka/worker-dev.yaml --force" \
   -q
 ```
 
@@ -60,11 +60,13 @@ npm --prefix browser-mcp ci
 deploy/distribution/package-standalone.sh worker macos arm64 build/release
 ```
 
-When Server enrollment is enabled, open its `/downloads` page, generate a
-one-time token, then run the displayed `bin/gromozeka-worker enroll` or
-`bin\gromozeka-worker.cmd enroll` command. The Worker writes a private
-`~/.gromozeka/worker.yaml`; manual YAML configuration remains available for
-development and custom deployments.
+When Server enrollment is enabled, open its `/downloads` page and run the
+displayed `bin/gromozeka-worker connect` or
+`bin\gromozeka-worker.cmd connect` command. Approve the printed code in an
+authorized Client. The Worker writes a private `~/.gromozeka/worker.yaml`.
+Short-lived token enrollment remains available for unattended provisioning;
+manual YAML configuration remains available for development and custom
+deployments.
 
 Managed commands use the native host shell: `/bin/sh` on macOS/Linux and
 `cmd.exe` on Windows. Windows commands are staged in managed batch artifacts

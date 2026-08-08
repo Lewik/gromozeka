@@ -24,9 +24,6 @@ internal class WorkerEnrollmentClient(
 ) {
     fun enroll(arguments: List<String>): Path {
         val options = WorkerEnrollmentOptions.parse(arguments)
-        require(options.replaceExisting || !Files.exists(options.configPath)) {
-            "Worker configuration already exists at ${options.configPath}; pass --force to replace it"
-        }
         val endpoint = enrollmentEndpoint(options.server)
         val body = json.encodeToString(
             WorkerEnrollmentConsumeRequest(
@@ -55,16 +52,50 @@ internal class WorkerEnrollmentClient(
         }
 
         val bootstrap = json.decodeFromString<WorkerEnrollmentBootstrap>(response.body())
-        val persistedCaCertificate = options.caCertificatePath?.let { source ->
-            persistCaCertificate(source, options.configPath)
+        return persistConfiguration(
+            server = options.server,
+            bootstrap = bootstrap,
+            configPath = options.configPath,
+            caCertificatePath = options.caCertificatePath,
+            replaceExisting = options.replaceExisting,
+        )
+    }
+
+    fun persistConfiguration(
+        server: String,
+        bootstrap: WorkerEnrollmentBootstrap,
+        configPath: Path,
+        caCertificatePath: Path?,
+        replaceExisting: Boolean,
+    ): Path {
+        require(replaceExisting || !Files.exists(configPath)) {
+            "Worker configuration already exists at $configPath; pass --force to replace it"
+        }
+        val persistedCaCertificate = caCertificatePath?.let { source ->
+            persistCaCertificate(source, configPath)
         }
         writeConfiguration(
-            path = options.configPath,
-            server = serverBaseUri(options.server),
+            path = configPath,
+            server = workerServerBaseUri(server),
             bootstrap = bootstrap,
             caCertificatePath = persistedCaCertificate,
         )
-        return options.configPath
+        return configPath
+    }
+
+    fun configure(
+        arguments: List<String>,
+        bootstrapJson: String,
+    ): Path {
+        val options = WorkerBootstrapConfigurationOptions.parse(arguments)
+        val bootstrap = json.decodeFromString<WorkerEnrollmentBootstrap>(bootstrapJson)
+        return persistConfiguration(
+            server = options.server,
+            bootstrap = bootstrap,
+            configPath = options.configPath,
+            caCertificatePath = options.caCertificatePath,
+            replaceExisting = options.replaceExisting,
+        )
     }
 
     private fun writeConfiguration(
@@ -108,41 +139,13 @@ internal class WorkerEnrollmentClient(
     }
 
     private fun enrollmentEndpoint(server: String): URI {
-        val base = serverBaseUri(server)
+        val base = workerServerBaseUri(server)
         return URI(
             base.scheme,
             null,
             base.host,
             base.port,
             "/api/worker-enrollments/consume",
-            null,
-            null,
-        )
-    }
-
-    private fun serverBaseUri(server: String): URI {
-        val raw = URI(server.trim().let { if ("://" in it) it else "https://$it" })
-        val scheme = when (raw.scheme?.lowercase()) {
-            "https", "wss" -> "https"
-            "http", "ws" -> "http"
-            else -> error("Server address must use HTTPS, WSS, HTTP, or WS")
-        }
-        val host = raw.host ?: error("Server address must include a host")
-        require(scheme == "https" || host in localHosts) {
-            "Remote Worker enrollment requires HTTPS"
-        }
-        require(raw.userInfo == null && raw.query == null && raw.fragment == null) {
-            "Server address must not contain credentials, a query, or a fragment"
-        }
-        require(raw.path.isNullOrEmpty() || raw.path == "/") {
-            "Server address must not contain a path"
-        }
-        return URI(
-            scheme,
-            null,
-            host,
-            raw.port,
-            null,
             null,
             null,
         )
@@ -170,6 +173,34 @@ internal class WorkerEnrollmentClient(
 
     private fun yaml(value: String): String = json.encodeToString(value)
 
+}
+
+internal fun workerServerBaseUri(server: String): URI {
+    val raw = URI(server.trim().let { if ("://" in it) it else "https://$it" })
+    val scheme = when (raw.scheme?.lowercase()) {
+        "https", "wss" -> "https"
+        "http", "ws" -> "http"
+        else -> error("Server address must use HTTPS, WSS, HTTP, or WS")
+    }
+    val host = raw.host ?: error("Server address must include a host")
+    require(scheme == "https" || host in localHosts) {
+        "Remote Worker enrollment requires HTTPS"
+    }
+    require(raw.userInfo == null && raw.query == null && raw.fragment == null) {
+        "Server address must not contain credentials, a query, or a fragment"
+    }
+    require(raw.path.isNullOrEmpty() || raw.path == "/") {
+        "Server address must not contain a path"
+    }
+    return URI(
+        scheme,
+        null,
+        host,
+        raw.port,
+        null,
+        null,
+        null,
+    )
 }
 
 internal data class WorkerEnrollmentOptions(
@@ -227,6 +258,52 @@ internal data class WorkerEnrollmentOptions(
     }
 }
 
+internal data class WorkerBootstrapConfigurationOptions(
+    val server: String,
+    val configPath: Path,
+    val caCertificatePath: Path?,
+    val replaceExisting: Boolean,
+) {
+    companion object {
+        fun parse(
+            arguments: List<String>,
+            environment: Map<String, String> = System.getenv(),
+            userHome: String = System.getProperty("user.home"),
+        ): WorkerBootstrapConfigurationOptions {
+            val values = mutableMapOf<String, String>()
+            var replaceExisting = false
+            var index = 0
+            while (index < arguments.size) {
+                val name = arguments[index]
+                if (name == "--force") {
+                    replaceExisting = true
+                    index += 1
+                    continue
+                }
+                require(name in bootstrapConfigurationValueOptions) { "Unknown configuration option: $name" }
+                require(index + 1 < arguments.size) { "Missing value for $name" }
+                require(values.put(name, arguments[index + 1]) == null) {
+                    "Duplicate configuration option: $name"
+                }
+                index += 2
+            }
+            val defaultConfig = environment["GROMOZEKA_WORKER_CONFIG"]
+                ?.takeIf(String::isNotBlank)
+                ?.let(Path::of)
+                ?: environment["GROMOZEKA_HOME"]
+                    ?.takeIf(String::isNotBlank)
+                    ?.let { Path.of(it, "worker.yaml") }
+                ?: Path.of(userHome, ".gromozeka", "worker.yaml")
+            return WorkerBootstrapConfigurationOptions(
+                server = values.required("--server"),
+                configPath = values["--config"]?.let(Path::of) ?: defaultConfig,
+                caCertificatePath = values["--ca-certificate"]?.let(Path::of),
+                replaceExisting = replaceExisting,
+            )
+        }
+    }
+}
+
 private fun Map<String, String>.required(name: String): String =
     get(name)?.takeIf(String::isNotBlank)
         ?: error("$name is required")
@@ -235,6 +312,11 @@ private val valueOptions = setOf(
     "--server",
     "--token",
     "--worker-id",
+    "--config",
+    "--ca-certificate",
+)
+private val bootstrapConfigurationValueOptions = setOf(
+    "--server",
     "--config",
     "--ca-certificate",
 )

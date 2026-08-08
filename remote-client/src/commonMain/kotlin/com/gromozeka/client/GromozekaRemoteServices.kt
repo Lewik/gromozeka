@@ -93,6 +93,7 @@ class GromozekaRemoteServices(
     val memoryActionItemService: RemoteMemoryActionItemService = RemoteMemoryActionItemService(client)
     val clientPresentationService: RemoteClientPresentationService = RemoteClientPresentationService(client)
     val distributionService: RemoteDistributionService = RemoteDistributionService(client)
+    val deviceConnectionService: RemoteDeviceConnectionClient = RemoteDeviceConnectionClient(client)
     val mcpServerService: RemoteMcpServerService = RemoteMcpServerService(client)
     val personalAccessTokenService: RemotePersonalAccessTokenService =
         RemotePersonalAccessTokenService(client)

@@ -71,6 +71,7 @@ fun main() {
     val authenticationService = context.getBean(AuthenticationService::class.java)
     val bootstrapToken = context.getBean(FirstUserBootstrapToken::class.java)
     val authenticationAttemptLimiter = context.getBean(AuthenticationAttemptLimiter::class.java)
+    val deviceConnectionService = context.getBean(DeviceConnectionService::class.java)
     val personalAccessTokenService = context.getBean(PersonalAccessTokenService::class.java)
     val artifactService = context.getBean(ConversationArtifactApplicationService::class.java)
     val remoteAuthorization = context.getBean(GromozekaRemoteAuthorization::class.java)
@@ -131,6 +132,12 @@ fun main() {
             gromozekaAuthentication(
                 authenticationService = authenticationService,
                 bootstrapToken = bootstrapToken,
+                attemptLimiter = authenticationAttemptLimiter,
+                secureCookie = secureCookie,
+            )
+            gromozekaDeviceConnections(
+                deviceConnectionService = deviceConnectionService,
+                authenticationService = authenticationService,
                 attemptLimiter = authenticationAttemptLimiter,
                 secureCookie = secureCookie,
             )

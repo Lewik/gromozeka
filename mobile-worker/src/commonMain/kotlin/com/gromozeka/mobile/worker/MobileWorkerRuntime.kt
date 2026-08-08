@@ -7,12 +7,19 @@ import com.gromozeka.domain.model.MobileWorkerPlatform
 import com.gromozeka.domain.model.SleepState
 import com.gromozeka.domain.model.VehicleSystem
 import com.gromozeka.domain.model.WorkerResource
+import com.gromozeka.domain.model.DeviceConnection
 import com.gromozeka.domain.model.projectionKey
 import com.gromozeka.remote.protocol.MobileWorkerEventBatchRequest
 import com.gromozeka.remote.protocol.MobileWorkerEventBatchResponse
 import com.gromozeka.remote.protocol.MobileWorkerEventInput
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.gromozeka.remote.protocol.WorkerEnrollmentConsumeRequest
+import com.gromozeka.remote.protocol.DeviceConnectionChallenge
+import com.gromozeka.remote.protocol.DeviceConnectionConsumeRequest
+import com.gromozeka.remote.protocol.DeviceConnectionConsumeResponse
+import com.gromozeka.remote.protocol.DeviceConnectionPasswordRequest
+import com.gromozeka.remote.protocol.DeviceConnectionStartRequest
+import com.gromozeka.remote.protocol.DeviceConnectionWorkerRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
@@ -76,6 +83,115 @@ internal class MobileWorkerRuntime(
         require(bootstrap.kind == WorkerResource.Kind.MOBILE_DEVICE) {
             "Server enrolled an unexpected Worker kind"
         }
+        persistEnrollment(baseUrl, bootstrap)
+    }
+
+    suspend fun startDeviceConnection(
+        serverUrl: String,
+        workerId: String,
+    ): MobileWorkerConnectionChallenge = mobileWorkerStorageMutex.withLock {
+        check(!readState().enrolled) {
+            "Mobile Worker is already enrolled; remove the existing enrollment first"
+        }
+        val baseUrl = normalizeServerUrl(serverUrl)
+        val response = postDeviceConnection<DeviceConnectionStartRequest, DeviceConnectionChallenge>(
+            baseUrl = baseUrl,
+            path = "/auth/device-connections",
+            payload = DeviceConnectionStartRequest(
+                deviceLabel = deviceName,
+                platform = platform.name.lowercase(),
+                components = setOf(DeviceConnection.Component.WORKER),
+                worker = DeviceConnectionWorkerRequest(
+                    workerId = workerId,
+                    kind = WorkerResource.Kind.MOBILE_DEVICE,
+                ),
+            ),
+        )
+        MobileWorkerConnectionChallenge(
+            deviceToken = response.deviceToken,
+            userCode = response.userCode,
+            verificationUrl = baseUrl + response.verificationPathComplete,
+            expiresAt = response.expiresAt,
+            pollIntervalSeconds = response.pollIntervalSeconds,
+        )
+    }
+
+    suspend fun consumeDeviceConnection(
+        serverUrl: String,
+        deviceToken: String,
+    ): MobileWorkerConnectionResult = mobileWorkerStorageMutex.withLock {
+        check(!readState().enrolled) {
+            "Mobile Worker is already enrolled; remove the existing enrollment first"
+        }
+        val baseUrl = normalizeServerUrl(serverUrl)
+        completeDeviceConnection(
+            baseUrl,
+            postDeviceConnection<DeviceConnectionConsumeRequest, DeviceConnectionConsumeResponse>(
+                baseUrl = baseUrl,
+                path = "/auth/device-connections/consume",
+                payload = DeviceConnectionConsumeRequest(deviceToken),
+            ),
+        )
+    }
+
+    suspend fun connectWithPassword(
+        serverUrl: String,
+        deviceToken: String,
+        username: String,
+        password: String,
+    ): MobileWorkerConnectionResult = mobileWorkerStorageMutex.withLock {
+        check(!readState().enrolled) {
+            "Mobile Worker is already enrolled; remove the existing enrollment first"
+        }
+        val baseUrl = normalizeServerUrl(serverUrl)
+        completeDeviceConnection(
+            baseUrl,
+            postDeviceConnection<DeviceConnectionPasswordRequest, DeviceConnectionConsumeResponse>(
+                baseUrl = baseUrl,
+                path = "/auth/device-connections/password",
+                payload = DeviceConnectionPasswordRequest(
+                    deviceToken = deviceToken,
+                    username = username,
+                    password = password,
+                ),
+            ),
+        )
+    }
+
+    private fun completeDeviceConnection(
+        baseUrl: String,
+        response: DeviceConnectionConsumeResponse,
+    ): MobileWorkerConnectionResult = when (response.status) {
+        DeviceConnectionConsumeResponse.Status.PENDING -> MobileWorkerConnectionResult(
+            status = MobileWorkerConnectionStatus.PENDING,
+            retryAfterSeconds = response.retryAfterSeconds,
+        )
+        DeviceConnectionConsumeResponse.Status.CONNECTED -> {
+            val bootstrap = requireNotNull(response.worker) {
+                "Connected Mobile Worker response has no Worker credential"
+            }
+            MobileWorkerConnectionResult(
+                status = MobileWorkerConnectionStatus.CONNECTED,
+                workerStatus = persistEnrollment(baseUrl, bootstrap),
+            )
+        }
+        DeviceConnectionConsumeResponse.Status.DENIED -> MobileWorkerConnectionResult(
+            status = MobileWorkerConnectionStatus.DENIED,
+            message = response.message,
+        )
+        DeviceConnectionConsumeResponse.Status.EXPIRED -> MobileWorkerConnectionResult(
+            status = MobileWorkerConnectionStatus.EXPIRED,
+            message = response.message,
+        )
+    }
+
+    private fun persistEnrollment(
+        baseUrl: String,
+        bootstrap: WorkerEnrollmentBootstrap,
+    ): MobileWorkerStatus {
+        require(bootstrap.kind == WorkerResource.Kind.MOBILE_DEVICE) {
+            "Server enrolled an unexpected Worker kind"
+        }
         storage.writeCredential(bootstrap.gatewayCredential)
         check(storage.readCredential() == bootstrap.gatewayCredential) {
             "Mobile Worker credential could not be persisted"
@@ -99,7 +215,22 @@ internal class MobileWorkerRuntime(
                 ?: emptyMap(),
         )
         writeState(state)
-        state.toStatus(hasCredential = true)
+        return state.toStatus(hasCredential = true)
+    }
+
+    private suspend inline fun <reified TRequest, reified TResponse> postDeviceConnection(
+        baseUrl: String,
+        path: String,
+        payload: TRequest,
+    ): TResponse {
+        val response = httpClient.post("$baseUrl$path") {
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }
+        if (!response.status.isSuccess()) {
+            error(response.mobileWorkerError("Device connection failed"))
+        }
+        return response.body()
     }
 
     suspend fun status(): MobileWorkerStatus = mobileWorkerStorageMutex.withLock {
@@ -306,7 +437,7 @@ internal class MobileWorkerRuntime(
 }
 
 @Serializable
-internal data class MobileWorkerStatus(
+data class MobileWorkerStatus(
     val enrolled: Boolean,
     val serverUrl: String?,
     val workerId: String?,
@@ -314,6 +445,28 @@ internal data class MobileWorkerStatus(
     val lastSynchronizedAt: Instant?,
     val credentialAvailable: Boolean,
 )
+
+data class MobileWorkerConnectionChallenge(
+    val deviceToken: String,
+    val userCode: String,
+    val verificationUrl: String,
+    val expiresAt: Instant,
+    val pollIntervalSeconds: Int,
+)
+
+data class MobileWorkerConnectionResult(
+    val status: MobileWorkerConnectionStatus,
+    val workerStatus: MobileWorkerStatus? = null,
+    val retryAfterSeconds: Int? = null,
+    val message: String? = null,
+)
+
+enum class MobileWorkerConnectionStatus {
+    PENDING,
+    CONNECTED,
+    DENIED,
+    EXPIRED,
+}
 
 @Serializable
 private data class PersistedMobileWorkerState(

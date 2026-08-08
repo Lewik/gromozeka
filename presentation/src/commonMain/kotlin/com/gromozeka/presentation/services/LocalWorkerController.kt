@@ -6,6 +6,8 @@ import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerCatalogService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import com.gromozeka.remote.protocol.DeviceConnectionWorkerRequest
+import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 
 data class LocalWorkerStatus(
     val supported: Boolean,
@@ -49,6 +51,12 @@ interface LocalWorkerController : AutoCloseable {
     suspend fun stop()
     suspend fun requestComputerUsePermissions()
     suspend fun stopForApplicationExit()
+    fun deviceConnectionWorkerRequest(): DeviceConnectionWorkerRequest?
+    suspend fun acceptDeviceConnection(
+        serverUrl: String,
+        bootstrap: WorkerEnrollmentBootstrap,
+        workerCatalogService: WorkerCatalogService,
+    )
 
     override fun close() = Unit
 }
@@ -67,4 +75,10 @@ object UnsupportedLocalWorkerController : LocalWorkerController {
     override suspend fun stop() = Unit
     override suspend fun requestComputerUsePermissions() = Unit
     override suspend fun stopForApplicationExit() = Unit
+    override fun deviceConnectionWorkerRequest(): DeviceConnectionWorkerRequest? = null
+    override suspend fun acceptDeviceConnection(
+        serverUrl: String,
+        bootstrap: WorkerEnrollmentBootstrap,
+        workerCatalogService: WorkerCatalogService,
+    ) = Unit
 }

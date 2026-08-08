@@ -27,12 +27,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteClientSettings
 import com.gromozeka.client.RemoteDistributionService
+import com.gromozeka.client.RemoteDeviceConnectionClient
 import com.gromozeka.client.RemoteMcpServerService
 import com.gromozeka.client.RemotePersonalAccessTokenService
 import com.gromozeka.client.RemoteUserAdministrationService
 import com.gromozeka.client.RemoteSecurityAuditService
 import com.gromozeka.client.RemoteUserDirectoryService
 import com.gromozeka.client.WorkerEnrollmentInstructions
+import com.gromozeka.client.WorkerConnectionInstructions
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SpeechAudioSource
@@ -109,6 +111,7 @@ fun SettingsPanel(
     workerCatalogService: WorkerCatalogService,
     mcpServerService: RemoteMcpServerService,
     distributionService: RemoteDistributionService,
+    deviceConnectionService: RemoteDeviceConnectionClient,
     localWorkerController: LocalWorkerController,
     personalAccessTokenService: RemotePersonalAccessTokenService,
     userAdministrationService: RemoteUserAdministrationService,
@@ -853,6 +856,8 @@ fun SettingsPanel(
                         contentMode == SettingsPanelContentMode.Full &&
                         selectedSection == SettingsSection.Security
                     ) {
+                        DeviceConnectionApprovalSettings(deviceConnectionService)
+                        Spacer(modifier = Modifier.height(24.dp))
                         PersonalAccessTokenSettings(
                             service = personalAccessTokenService,
                             coroutineScope = coroutineScope,
@@ -1598,7 +1603,7 @@ private fun WorkerEnrollmentSettings(
         }
 
         Text(
-            text = "Generate a one-time token, extract the Worker archive, then run the command for its operating system.",
+            text = "Extract the Worker archive and run the command for its operating system. It prints a short code that you approve in Security.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
@@ -1607,7 +1612,14 @@ private fun WorkerEnrollmentSettings(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Button(
+        WorkerConnectionCommands(distributionService.workerConnectionInstructions())
+
+        Text(
+            text = "Advanced: generate a short-lived token for headless provisioning.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedButton(
             enabled = enrollmentState !is WorkerEnrollmentState.Loading,
             onClick = {
                 scope.launch {
@@ -1626,7 +1638,7 @@ private fun WorkerEnrollmentSettings(
                     strokeWidth = 2.dp,
                 )
             } else {
-                Text("Generate enrollment token")
+                Text("Generate one-time token")
             }
         }
 
@@ -1640,6 +1652,24 @@ private fun WorkerEnrollmentSettings(
             )
 
             is WorkerEnrollmentState.Ready -> WorkerEnrollmentCommands(state.instructions)
+        }
+    }
+}
+
+@Composable
+private fun WorkerConnectionCommands(instructions: WorkerConnectionInstructions) {
+    SelectionContainer {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Text(
+                text = "macOS / Linux\n${instructions.macOsLinuxCommand}\n\n" +
+                    "Windows\n${instructions.windowsCommand}",
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }

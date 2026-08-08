@@ -27,6 +27,7 @@ import com.gromozeka.presentation.services.BrowserAttachmentAcquisitionControlle
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.DeviceConnectionApprovalScreen
 import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
 import kotlinx.browser.document
@@ -58,6 +59,9 @@ private fun GromozekaWebApp() {
     var authenticationError by remember { mutableStateOf<String?>(null) }
     var authenticationStatus by remember { mutableStateOf<AuthenticationStatusResponse?>(null) }
     var authenticating by remember { mutableStateOf(false) }
+    var pendingDeviceConnectionCode by remember {
+        mutableStateOf(resolveDeviceConnectionCode())
+    }
     val remoteUrl = remember { resolveRemoteUrl() }
     val authenticationConnection = remember {
         RemoteAuthenticationConnection(remoteUrl, "Web client")
@@ -116,6 +120,19 @@ private fun GromozekaWebApp() {
     }
 
     when {
+        pendingDeviceConnectionCode != null && authenticationStatus?.authenticatedUser != null ->
+            GromozekaTheme {
+                DeviceConnectionApprovalScreen(
+                    initialCode = requireNotNull(pendingDeviceConnectionCode),
+                    preview = authenticationConnection::previewDeviceConnection,
+                    approve = authenticationConnection::approveDeviceConnection,
+                    deny = authenticationConnection::denyDeviceConnection,
+                    onDone = {
+                        pendingDeviceConnectionCode = null
+                        window.history.replaceState(null, "", window.location.pathname)
+                    },
+                )
+            }
         remoteApp != null -> GromozekaApp(
             appComponents = remoteApp!!.components,
             skipLoadingScreen = true,
@@ -129,12 +146,12 @@ private fun GromozekaWebApp() {
                 initialized = status.initialized,
                 submitting = authenticating,
                 error = authenticationError,
-                onSubmit = { input ->
+                onSubmit = { input, deviceToken ->
                     scope.launch {
                         authenticating = true
                         authenticationError = null
                         try {
-                            authenticationConnection.authenticate(status.initialized, input)
+                            authenticationConnection.authenticate(status.initialized, input, deviceToken)
                             val authenticatedStatus = authenticationConnection.status()
                             authenticationStatus = authenticatedStatus
                             remoteApp = createRemoteAppComponents(
@@ -156,6 +173,45 @@ private fun GromozekaWebApp() {
                         authenticating = false
                     }
                 },
+                onStartDeviceConnection = {
+                    authenticationConnection.startDeviceConnection(
+                        deviceLabel = "Web client",
+                        platform = if (layoutHints.clientPlatform == ClientPlatform.WEB_TOUCH) {
+                            "web-touch"
+                        } else {
+                            "web-desktop"
+                        },
+                    )
+                },
+                onConsumeDeviceConnection = authenticationConnection::consumeDeviceConnection,
+                deviceConnectionVerificationUrl = authenticationConnection::deviceConnectionVerificationUrl,
+                onDeviceConnected = {
+                    scope.launch {
+                        authenticating = true
+                        authenticationError = null
+                        try {
+                            val authenticatedStatus = authenticationConnection.status()
+                            authenticationStatus = authenticatedStatus
+                            remoteApp = createRemoteAppComponents(
+                                remoteUrl = remoteUrl,
+                                authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
+                                scope = scope,
+                                clientHomeDirectory = "browser",
+                                clientPlatform = layoutHints.clientPlatform,
+                                uiStateStore = BrowserUIStateStore(),
+                                remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
+                                audioRecorder = BrowserClientAudioRecorder(),
+                                audioPlayer = BrowserClientAudioPlayer(),
+                                attachmentAcquisitionController = BrowserAttachmentAcquisitionController(),
+                                httpClient = authenticationConnection.httpClient,
+                            )
+                        } catch (error: Throwable) {
+                            authenticationError = error.message ?: error.toString()
+                        }
+                        authenticating = false
+                    }
+                },
+                preferPassword = pendingDeviceConnectionCode != null,
             )
         }
         startupError != null -> GromozekaTheme {
@@ -166,6 +222,17 @@ private fun GromozekaWebApp() {
         }
     }
 }
+
+private fun resolveDeviceConnectionCode(): String? =
+    window.location.search
+        .removePrefix("?")
+        .split('&')
+        .mapNotNull { parameter ->
+            val name = parameter.substringBefore('=', missingDelimiterValue = "")
+            val value = parameter.substringAfter('=', missingDelimiterValue = "")
+            value.takeIf { name == "connectDevice" && it.isNotBlank() }
+        }
+        .firstOrNull()
 
 private fun resolveRemoteUrl(): String {
     val protocol = if (window.location.protocol == "https:") "wss" else "ws"

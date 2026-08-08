@@ -147,11 +147,12 @@ The server defaults to `127.0.0.1:8765`. It prints a line like:
 
 The Server only accepts commands, persists runtime state, publishes work, and
 streams events. Before the first local Worker start, open **Settings ->
-Downloads**, generate an enrollment token, and save its private configuration:
+Downloads**, run the connection command, approve its short code in
+**Settings -> Security**, and save its private configuration:
 
 ```bash
 ./gradlew :worker:run \
-  --args="enroll --server http://127.0.0.1:8765 --token <token> --worker-id local-dev --config $PWD/dev-data/client/.gromozeka/worker-dev.yaml --force" \
+  --args="connect --server http://127.0.0.1:8765 --worker-id local-dev --config $PWD/dev-data/client/.gromozeka/worker-dev.yaml --force" \
   -q
 ```
 

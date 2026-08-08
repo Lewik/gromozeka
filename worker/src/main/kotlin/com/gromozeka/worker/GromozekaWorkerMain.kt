@@ -20,6 +20,30 @@ import java.io.File
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
+    if (args.firstOrNull() == "configure") {
+        runCatching {
+            val bootstrap = System.`in`.bufferedReader().use { it.readText() }
+            require(bootstrap.isNotBlank()) { "Worker bootstrap is required on stdin" }
+            WorkerEnrollmentClient().configure(args.drop(1), bootstrap)
+        }.onSuccess { configPath ->
+            println("Worker configuration saved to $configPath")
+        }.onFailure { error ->
+            System.err.println("Worker configuration failed: ${error.message}")
+            exitProcess(2)
+        }
+        return
+    }
+    if (args.firstOrNull() == "connect") {
+        runCatching {
+            WorkerDeviceConnectionClient().connect(args.drop(1))
+        }.onSuccess { configPath ->
+            println("Worker connected. Configuration saved to $configPath")
+        }.onFailure { error ->
+            System.err.println("Worker connection failed: ${error.message}")
+            exitProcess(2)
+        }
+        return
+    }
     if (args.firstOrNull() == "enroll") {
         runCatching {
             WorkerEnrollmentClient().enroll(args.drop(1))

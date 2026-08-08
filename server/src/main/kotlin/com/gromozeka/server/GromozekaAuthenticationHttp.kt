@@ -171,7 +171,7 @@ internal suspend fun ApplicationCall.authenticateOrNull(
     request.cookies[SESSION_COOKIE_NAME]
         ?.let { authenticationService.authenticate(it) }
 
-private fun ApplicationCall.setSessionCookie(
+internal fun ApplicationCall.setSessionCookie(
     token: String,
     expiresAtEpochSeconds: Long,
     secureCookie: Boolean,
@@ -196,7 +196,7 @@ private fun ApplicationCall.setSessionCookie(
 
 internal class MissingAuthenticationException : RuntimeException("Authentication required")
 
-private suspend inline fun <reified T> ApplicationCall.respondAuthenticationJson(
+internal suspend inline fun <reified T> ApplicationCall.respondAuthenticationJson(
     payload: T,
     status: HttpStatusCode = HttpStatusCode.OK,
 ) {
@@ -208,7 +208,7 @@ private suspend inline fun <reified T> ApplicationCall.respondAuthenticationJson
     )
 }
 
-private suspend fun ApplicationCall.requireSecureAuthenticationTransport(): Boolean {
+internal suspend fun ApplicationCall.requireSecureAuthenticationTransport(): Boolean {
     if (isSecureTransport()) return true
     respondAuthenticationJson(
         AuthenticationErrorResponse("Authentication requires HTTPS"),
@@ -217,7 +217,7 @@ private suspend fun ApplicationCall.requireSecureAuthenticationTransport(): Bool
     return false
 }
 
-private suspend fun ApplicationCall.requireAllowedAuthenticationOrigin(): Boolean {
+internal suspend fun ApplicationCall.requireAllowedAuthenticationOrigin(): Boolean {
     if (hasAllowedBrowserOrigin()) return true
     respondAuthenticationJson(
         AuthenticationErrorResponse("Cross-origin browser request rejected"),
@@ -226,7 +226,7 @@ private suspend fun ApplicationCall.requireAllowedAuthenticationOrigin(): Boolea
     return false
 }
 
-private suspend inline fun <reified T> ApplicationCall.receiveAuthenticationRequest(): T? {
+internal suspend inline fun <reified T> ApplicationCall.receiveAuthenticationRequest(): T? {
     val contentLength = request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
     if (contentLength != null && contentLength > MAX_AUTHENTICATION_REQUEST_BYTES) {
         respondAuthenticationJson(

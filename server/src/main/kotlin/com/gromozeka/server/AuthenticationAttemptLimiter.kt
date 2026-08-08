@@ -46,6 +46,26 @@ class AuthenticationAttemptLimiter internal constructor(
         failures.remove(USER_PREFIX + username.normalizedRateLimitPart())
     }
 
+    fun deviceConnectionRetryAfterSeconds(remoteAddress: String): Long? = synchronized(lock) {
+        val now = nanoTime()
+        removeExpired(now)
+        failures[DEVICE_CONNECTION_IP_PREFIX + remoteAddress.normalizedRateLimitPart()]
+            ?.blockedUntilNanos
+            ?.takeIf { it > now }
+            ?.let { nanosToCeilingSeconds(it - now) }
+    }
+
+    fun recordDeviceConnectionRequest(remoteAddress: String): Unit = synchronized(lock) {
+        val now = nanoTime()
+        removeExpired(now)
+        recordFailure(
+            DEVICE_CONNECTION_IP_PREFIX + remoteAddress.normalizedRateLimitPart(),
+            MAX_DEVICE_CONNECTION_REQUESTS_PER_IP,
+            now,
+        )
+        trimToMaximumSize()
+    }
+
     private fun recordFailure(
         key: String,
         limit: Int,
@@ -87,8 +107,10 @@ class AuthenticationAttemptLimiter internal constructor(
     private companion object {
         const val IP_PREFIX = "ip:"
         const val USER_PREFIX = "user:"
+        const val DEVICE_CONNECTION_IP_PREFIX = "device-connection-ip:"
         const val MAX_FAILURES_PER_USERNAME = 8
         const val MAX_FAILURES_PER_IP = 50
+        const val MAX_DEVICE_CONNECTION_REQUESTS_PER_IP = 30
         const val MAX_TRACKED_KEYS = 4_096
         val WINDOW_NANOS = 15.minutes.inWholeNanoseconds
         val LOCKOUT_NANOS = 15.minutes.inWholeNanoseconds

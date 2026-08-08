@@ -31,6 +31,7 @@ import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
+import com.gromozeka.remote.protocol.DeviceConnectionConsumeResponse
 import java.awt.Desktop
 import java.awt.desktop.AppReopenedListener
 import java.awt.desktop.QuitHandler
@@ -69,6 +70,34 @@ fun main() {
         val localWorkerStatus by localWorkerController.status.collectAsState()
         val traySupported = isTraySupported
         val scope = rememberCoroutineScope()
+
+        suspend fun startAuthenticatedRemoteApp(
+            connection: RemoteAuthenticationConnection,
+            deviceConnection: DeviceConnectionConsumeResponse? = null,
+        ) {
+            val authenticatedStatus = connection.status()
+            authenticationStatus = authenticatedStatus
+            val started = startRemotePresentation(
+                remoteUrl = requireNotNull(remoteUrl),
+                authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
+                remoteClientSettingsStore = settingsStore,
+                localWorkerController = localWorkerController,
+                httpClient = connection.httpClient,
+            )
+            try {
+                deviceConnection?.worker?.let { bootstrap ->
+                    localWorkerController.acceptDeviceConnection(
+                        serverUrl = connection.serverHttpBaseUrl,
+                        bootstrap = bootstrap,
+                        workerCatalogService = started.components.workerCatalogService,
+                    )
+                }
+            } catch (error: Throwable) {
+                started.close()
+                throw error
+            }
+            remoteApp = started
+        }
 
         fun showWindow() {
             windowVisible = true
@@ -257,22 +286,46 @@ fun main() {
                             initialized = status.initialized,
                             submitting = connecting,
                             error = authenticationError,
-                            onSubmit = { input ->
+                            onSubmit = { input, deviceToken ->
                                 val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
                                 scope.launch {
                                     connecting = true
                                     authenticationError = null
                                     try {
-                                        connection.authenticate(status.initialized, input)
-                                        val authenticatedStatus = connection.status()
-                                        authenticationStatus = authenticatedStatus
-                                        remoteApp = startRemotePresentation(
-                                            remoteUrl = requireNotNull(remoteUrl),
-                                            authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
-                                            remoteClientSettingsStore = settingsStore,
-                                            localWorkerController = localWorkerController,
-                                            httpClient = connection.httpClient,
+                                        val deviceConnection = connection.authenticate(
+                                            initialized = status.initialized,
+                                            input = input,
+                                            deviceToken = deviceToken,
                                         )
+                                        startAuthenticatedRemoteApp(connection, deviceConnection)
+                                    } catch (error: CancellationException) {
+                                        throw error
+                                    } catch (error: Throwable) {
+                                        authenticationError = error.message ?: error.toString()
+                                    }
+                                    connecting = false
+                                }
+                            },
+                            onStartDeviceConnection = {
+                                requireNotNull(authenticationConnection).startDeviceConnection(
+                                    deviceLabel = localWorkerStatus.deviceDisplayName,
+                                    platform = System.getProperty("os.name"),
+                                    worker = localWorkerController.deviceConnectionWorkerRequest(),
+                                )
+                            },
+                            onConsumeDeviceConnection = {
+                                requireNotNull(authenticationConnection).consumeDeviceConnection(it)
+                            },
+                            deviceConnectionVerificationUrl = {
+                                requireNotNull(authenticationConnection).deviceConnectionVerificationUrl(it)
+                            },
+                            onDeviceConnected = { deviceConnection ->
+                                val connection = authenticationConnection ?: return@RemoteAuthenticationScreen
+                                scope.launch {
+                                    connecting = true
+                                    authenticationError = null
+                                    try {
+                                        startAuthenticatedRemoteApp(connection, deviceConnection)
                                     } catch (error: CancellationException) {
                                         throw error
                                     } catch (error: Throwable) {

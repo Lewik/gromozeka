@@ -90,7 +90,7 @@ import kotlinx.coroutines.sync.withLock
 internal class GromozekaWsClient(
     private val url: String = GromozekaRemoteDefaults.REMOTE_URL,
     encoding: RemoteProtocolEncoding = RemoteProtocolEncoding.CBOR,
-    private val httpClient: HttpClient = HttpClient {
+    internal val httpClient: HttpClient = HttpClient {
         install(WebSockets)
     },
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob()),

@@ -41,11 +41,13 @@ java_executable="$app_home/runtime/java/bin/java"
   exit 2
 }
 
-if [ "${1:-}" = "enroll" ]; then
-  exec "$java_executable" \
-    -jar "$app_home/app/gromozeka-worker.jar" \
-    "$@"
-fi
+case "${1:-}" in
+  enroll | connect | configure)
+    exec "$java_executable" \
+      -jar "$app_home/app/gromozeka-worker.jar" \
+      "$@"
+    ;;
+esac
 
 exec "$java_executable" \
   -jar "$app_home/app/gromozeka-worker.jar" \
