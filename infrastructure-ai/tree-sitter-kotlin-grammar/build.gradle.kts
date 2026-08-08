@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    id("io.github.tree-sitter.ktreesitter-plugin") version "0.24.1"
+    id("io.github.tree-sitter.ktreesitter-plugin") version "0.25.1"
 }
 
 val grammarDir = projectDir.resolve("../build/tree-sitter-kotlin")
@@ -46,7 +46,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("io.github.tree-sitter:ktreesitter:0.24.1")
+                implementation("io.github.tree-sitter:ktreesitter:0.25.1")
             }
         }
     }
