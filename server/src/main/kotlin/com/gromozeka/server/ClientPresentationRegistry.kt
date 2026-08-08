@@ -2,6 +2,9 @@ package com.gromozeka.server
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
+import com.gromozeka.application.service.ContextStateApplicationService
+import com.gromozeka.domain.model.ClientActivity as ContextClientActivity
+import com.gromozeka.domain.model.ClientPlatform as ContextClientPlatform
 import com.gromozeka.remote.protocol.AssistantMessageSignal
 import com.gromozeka.remote.protocol.AssistantMessageSpeech
 import com.gromozeka.remote.protocol.ClientFeedbackEffect
@@ -22,7 +25,9 @@ import org.springframework.stereotype.Service
 internal typealias ClientPresentationSend = suspend (ServerPayload, RemoteProtocolEncoding) -> Unit
 
 @Service
-class ClientPresentationRegistry {
+class ClientPresentationRegistry(
+    private val activityListeners: List<ClientActivityListener> = emptyList(),
+) {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
     private val deliveryMutex = Mutex()
@@ -38,11 +43,11 @@ class ClientPresentationRegistry {
         command: RegisterClientSessionCommand,
         encoding: RemoteProtocolEncoding,
         send: ClientPresentationSend,
-    ) {
+    ) = deliveryMutex.withLock {
         require(command.clientInstanceId.value.isNotBlank()) { "Client instance ID must not be blank" }
         require(command.clientSessionId.value.isNotBlank()) { "Client session ID must not be blank" }
 
-        mutex.withLock {
+        val reconnected = mutex.withLock {
             val sessionKey = ClientSessionKey(userId, command.clientSessionId)
             sessionKeysByConnection.put(connectionId, sessionKey)
                 ?.takeIf { it != sessionKey }
@@ -51,23 +56,35 @@ class ClientPresentationRegistry {
                         ?.takeIf { it.connectionId == connectionId }
                         ?.let { sessionsByKey.remove(previousSessionKey) }
                 }
+            val current = RegisteredClientSession(
+                connectionId = connectionId,
+                userId = userId,
+                identity = command,
+                encoding = encoding,
+                send = send,
+            )
             sessionsByKey.put(
                 sessionKey,
-                RegisteredClientSession(
-                    connectionId = connectionId,
-                    userId = userId,
-                    identity = command,
-                    encoding = encoding,
-                    send = send,
-                ),
+                current,
             )?.let { previous ->
                 sessionKeysByConnection.remove(previous.connectionId)
             }
             sessionKeysByConnection[connectionId] = sessionKey
+            current.takeIf { activeSessionKeysByUser[userId] == sessionKey }
         }
         log.info {
             "Client presentation session registered: user=${userId.value} instance=${command.clientInstanceId.value} " +
                 "session=${command.clientSessionId.value} platform=${command.platform}"
+        }
+        reconnected?.let { session ->
+            activityListeners.forEach { listener ->
+                listener.onActivity(
+                    userId = session.userId,
+                    identity = session.identity,
+                    activity = ContextClientActivity.RECONNECTED,
+                    active = true,
+                )
+            }
         }
     }
 
@@ -99,13 +116,27 @@ class ClientPresentationRegistry {
             }
 
             val previous = activeSessionKeysByUser[sessionKey.userId]?.let(sessionsByKey::get)
-            activeSessionKeysByUser[sessionKey.userId] = sessionKey
             Activation(
+                sessionKey = sessionKey,
                 current = sessionsByKey.getValue(sessionKey),
                 previous = previous,
             )
         } ?: return
 
+        activityListeners.forEach { listener ->
+            listener.onActivity(
+                userId = activation.current.userId,
+                identity = activation.current.identity,
+                activity = kind.toContextActivity(),
+                active = true,
+            )
+        }
+        mutex.withLock {
+            check(sessionsByKey[activation.sessionKey] === activation.current) {
+                "Client session changed while activating"
+            }
+            activeSessionKeysByUser[activation.current.userId] = activation.sessionKey
+        }
         log.info {
             "Active interaction client changed: user=${activation.current.userId.value} " +
                 "instance=${activation.current.identity.clientInstanceId.value} " +
@@ -123,18 +154,33 @@ class ClientPresentationRegistry {
         }
     }
 
-    suspend fun disconnect(connectionId: String) {
-        val disconnected = mutex.withLock {
+    suspend fun disconnect(connectionId: String) = deliveryMutex.withLock {
+        val disconnection = mutex.withLock {
             val sessionKey = sessionKeysByConnection.remove(connectionId) ?: return@withLock null
-            sessionsByKey[sessionKey]
+            val session = sessionsByKey[sessionKey]
                 ?.takeIf { it.connectionId == connectionId }
-                ?.also { sessionsByKey.remove(sessionKey) }
+                ?: return@withLock null
+            val wasActive = activeSessionKeysByUser[sessionKey.userId] == sessionKey
+            sessionsByKey.remove(sessionKey)
+            Disconnection(session, wasActive)
         } ?: return
+
+        val disconnected = disconnection.session
 
         log.info {
             "Client presentation session disconnected: user=${disconnected.userId.value} " +
                 "instance=${disconnected.identity.clientInstanceId.value} " +
                 "session=${disconnected.identity.clientSessionId.value}"
+        }
+        if (disconnection.wasActive) {
+            activityListeners.forEach { listener ->
+                listener.onActivity(
+                    userId = disconnected.userId,
+                    identity = disconnected.identity,
+                    activity = ContextClientActivity.DISCONNECTED,
+                    active = false,
+                )
+            }
         }
     }
 
@@ -319,8 +365,14 @@ class ClientPresentationRegistry {
     )
 
     private data class Activation(
+        val sessionKey: ClientSessionKey,
         val current: RegisteredClientSession,
         val previous: RegisteredClientSession?,
+    )
+
+    private data class Disconnection(
+        val session: RegisteredClientSession,
+        val wasActive: Boolean,
     )
 
     private data class AssistantSpeech(
@@ -345,3 +397,48 @@ class ClientPresentationRegistry {
         const val ACTIVITY_SOUND_INTERVAL_MILLIS = 1_750L
     }
 }
+
+fun interface ClientActivityListener {
+    suspend fun onActivity(
+        userId: User.Id,
+        identity: RegisterClientSessionCommand,
+        activity: ContextClientActivity,
+        active: Boolean,
+    )
+}
+
+@Service
+internal class ContextStateClientActivityListener(
+    private val contextStateService: ContextStateApplicationService,
+) : ClientActivityListener {
+    override suspend fun onActivity(
+        userId: User.Id,
+        identity: RegisterClientSessionCommand,
+        activity: ContextClientActivity,
+        active: Boolean,
+    ) {
+        contextStateService.recordClientActivity(
+            userId = userId,
+            instanceId = identity.clientInstanceId.value,
+            sessionId = identity.clientSessionId.value,
+            platform = identity.platform.toContextPlatform(),
+            activity = activity,
+            active = active,
+        )
+    }
+}
+
+private fun ClientActivityKind.toContextActivity(): ContextClientActivity =
+    when (this) {
+        ClientActivityKind.WINDOW_FOCUSED -> ContextClientActivity.WINDOW_FOCUSED
+        ClientActivityKind.USER_INTERACTION -> ContextClientActivity.USER_INTERACTION
+    }
+
+private fun com.gromozeka.remote.protocol.RemoteClientPlatform.toContextPlatform(): ContextClientPlatform =
+    when (this) {
+        com.gromozeka.remote.protocol.RemoteClientPlatform.DESKTOP -> ContextClientPlatform.DESKTOP
+        com.gromozeka.remote.protocol.RemoteClientPlatform.ANDROID -> ContextClientPlatform.ANDROID
+        com.gromozeka.remote.protocol.RemoteClientPlatform.IOS -> ContextClientPlatform.IOS
+        com.gromozeka.remote.protocol.RemoteClientPlatform.WEB_DESKTOP -> ContextClientPlatform.WEB_DESKTOP
+        com.gromozeka.remote.protocol.RemoteClientPlatform.WEB_TOUCH -> ContextClientPlatform.WEB_TOUCH
+    }

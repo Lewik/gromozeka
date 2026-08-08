@@ -167,12 +167,16 @@ kotlin {
         binaries.framework {
             baseName = "GromozekaPresentation"
             binaryOption("bundleId", "com.gromozeka.presentation")
+            binaryOption("bundleShortVersionString", nativePackageVersion)
+            binaryOption("bundleVersion", nativePackageVersion)
         }
     }
     iosSimulatorArm64 {
         binaries.framework {
             baseName = "GromozekaPresentation"
             binaryOption("bundleId", "com.gromozeka.presentation")
+            binaryOption("bundleShortVersionString", nativePackageVersion)
+            binaryOption("bundleVersion", nativePackageVersion)
         }
     }
     androidTarget {

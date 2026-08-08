@@ -449,6 +449,7 @@ private class GatewayAuthenticationRepository(
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: Instant,
+        kind: WorkerResource.Kind,
     ): WorkerResource? = error("Not used")
 
     override suspend fun authenticateGatewayCredential(

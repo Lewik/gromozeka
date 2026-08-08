@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.WorkerResource
 import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.SecurityAuditRecord
 import com.gromozeka.domain.repository.WorkerEnrollmentRepository
@@ -43,11 +44,13 @@ data class WorkerEnrollmentProperties(
     fun bootstrap(
         workerId: String,
         gatewayCredential: String,
+        kind: WorkerResource.Kind,
     ): WorkerEnrollmentBootstrap =
         WorkerEnrollmentBootstrap(
             workerId = workerId,
             gatewayCredential = gatewayCredential,
-            capabilities = capabilities,
+            capabilities = if (kind == WorkerResource.Kind.EXECUTION) capabilities else emptySet(),
+            kind = kind,
         )
 }
 
@@ -102,7 +105,11 @@ class WorkerEnrollmentService(
         return WorkerEnrollmentToken(token = token, expiresAt = expiresAt.toString())
     }
 
-    suspend fun consume(token: String, workerId: String): WorkerEnrollmentBootstrap {
+    suspend fun consume(
+        token: String,
+        workerId: String,
+        kind: WorkerResource.Kind = WorkerResource.Kind.EXECUTION,
+    ): WorkerEnrollmentBootstrap {
         properties.unavailableReason()?.let { error(it) }
         require(workerId.matches(workerIdPattern)) {
             "Worker ID must start with a letter or digit and contain at most 64 letters, digits, dots, dashes, or underscores"
@@ -116,6 +123,7 @@ class WorkerEnrollmentService(
             workerId = ConversationRuntimeWorkerId(workerId),
             displayName = workerId,
             consumedAt = clock.instant().toKotlinx(),
+            kind = kind,
         )
         require(worker != null) { "Worker enrollment token is invalid or expired" }
         securityAuditRecorder.record(
@@ -126,7 +134,7 @@ class WorkerEnrollmentService(
                 targetId = worker.id.value,
             )
         )
-        return properties.bootstrap(worker.id.value, gatewayCredential)
+        return properties.bootstrap(worker.id.value, gatewayCredential, worker.kind)
     }
 
     private fun randomToken(): String =

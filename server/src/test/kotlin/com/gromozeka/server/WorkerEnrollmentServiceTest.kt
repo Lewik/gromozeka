@@ -129,6 +129,7 @@ private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: KotlinInstant,
+        kind: WorkerResource.Kind,
     ): WorkerResource? {
         val issued = enrollment
             ?.takeIf { it.tokenHash == tokenHash && it.expiresAt > consumedAt }
@@ -139,6 +140,8 @@ private class TestWorkerEnrollmentRepository : WorkerEnrollmentRepository {
             id = workerId,
             displayName = displayName,
             ownerUserId = issued.ownerUserId,
+            kind = kind,
+            subjectUserId = issued.ownerUserId.takeIf { kind == WorkerResource.Kind.MOBILE_DEVICE },
             runtimeWideAccess = false,
             status = WorkerResource.Status.ACTIVE,
             createdAt = consumedAt,

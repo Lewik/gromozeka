@@ -129,6 +129,7 @@ class PostgresWorkerEnrollmentRepositoryTest {
                     "db/migration/postgres/V27__worker_access.sql",
                     "db/migration/postgres/V28__worker_gateway_credentials.sql",
                     "db/migration/postgres/V29__rename_worker_runtime_wide_access.sql",
+                    "db/migration/postgres/V37__context_state_and_mobile_workers.sql",
                 ).map { resource ->
                     checkNotNull(javaClass.classLoader.getResource(resource)).readText()
                 }.forEach { script ->

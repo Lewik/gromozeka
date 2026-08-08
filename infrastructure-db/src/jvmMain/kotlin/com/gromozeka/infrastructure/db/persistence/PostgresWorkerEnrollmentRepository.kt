@@ -66,6 +66,7 @@ class PostgresWorkerEnrollmentRepository(
         workerId: ConversationRuntimeWorkerId,
         displayName: String,
         consumedAt: Instant,
+        kind: WorkerResource.Kind,
     ): WorkerResource? =
         withContext(Dispatchers.IO) {
             require(gatewayCredentialHash.length == 64) {
@@ -84,6 +85,9 @@ class PostgresWorkerEnrollmentRepository(
                             require(existing.ownerUserId == ownerUserId) {
                                 "Worker ID is already registered"
                             }
+                            require(existing.kind == kind) {
+                                "Worker ID is already registered with another kind"
+                            }
                             require(existing.status == WorkerResource.Status.ACTIVE) {
                                 "Worker is revoked"
                             }
@@ -92,6 +96,8 @@ class PostgresWorkerEnrollmentRepository(
                             id = workerId,
                             displayName = displayName,
                             ownerUserId = ownerUserId,
+                            kind = kind,
+                            subjectUserId = ownerUserId.takeIf { kind == WorkerResource.Kind.MOBILE_DEVICE },
                             runtimeWideAccess = false,
                             status = WorkerResource.Status.ACTIVE,
                             createdAt = consumedAt,
@@ -125,6 +131,8 @@ class PostgresWorkerEnrollmentRepository(
                     SELECT w.id,
                            w.display_name,
                            w.owner_user_id,
+                           w.kind,
+                           w.subject_user_id,
                            w.runtime_wide_access,
                            w.status,
                            w.created_at,
@@ -175,7 +183,8 @@ class PostgresWorkerEnrollmentRepository(
     ): WorkerResource? =
         prepareStatement(
             """
-            SELECT id, display_name, owner_user_id, runtime_wide_access, status, created_at, updated_at
+            SELECT id, display_name, owner_user_id, kind, subject_user_id,
+                   runtime_wide_access, status, created_at, updated_at
             FROM workers
             WHERE id = ?
             FOR UPDATE
@@ -194,21 +203,25 @@ class PostgresWorkerEnrollmentRepository(
                 id,
                 display_name,
                 owner_user_id,
+                kind,
+                subject_user_id,
                 runtime_wide_access,
                 status,
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, worker.id.value)
             statement.setString(2, worker.displayName)
             statement.setString(3, worker.ownerUserId.value)
-            statement.setBoolean(4, worker.runtimeWideAccess)
-            statement.setString(5, worker.status.name)
-            statement.setTimestamp(6, worker.createdAt.toTimestamp())
-            statement.setTimestamp(7, worker.updatedAt.toTimestamp())
+            statement.setString(4, worker.kind.name)
+            statement.setString(5, worker.subjectUserId?.value)
+            statement.setBoolean(6, worker.runtimeWideAccess)
+            statement.setString(7, worker.status.name)
+            statement.setTimestamp(8, worker.createdAt.toTimestamp())
+            statement.setTimestamp(9, worker.updatedAt.toTimestamp())
             check(statement.executeUpdate() == 1) {
                 "Worker was not stored: ${worker.id.value}"
             }
@@ -270,6 +283,8 @@ class PostgresWorkerEnrollmentRepository(
             id = ConversationRuntimeWorkerId(getString("id")),
             displayName = getString("display_name"),
             ownerUserId = User.Id(getString("owner_user_id")),
+            kind = WorkerResource.Kind.valueOf(getString("kind")),
+            subjectUserId = getString("subject_user_id")?.let(User::Id),
             runtimeWideAccess = getBoolean("runtime_wide_access"),
             status = WorkerResource.Status.valueOf(getString("status")),
             createdAt = getTimestamp("created_at").toKotlinxInstant(),

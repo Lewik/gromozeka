@@ -15,6 +15,7 @@ rootProject.name = "gromozeka"
 
 include(":shared")
 include(":device-telemetry")
+include(":mobile-worker")
 include(":domain")
 include(":remote-protocol")
 include(":remote-client")

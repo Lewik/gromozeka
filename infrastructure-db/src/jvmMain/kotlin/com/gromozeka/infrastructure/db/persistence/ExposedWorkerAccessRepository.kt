@@ -39,6 +39,8 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
         val updated = Workers.update({ Workers.id eq worker.id.value }) {
             it[displayName] = worker.displayName
             it[ownerUserId] = worker.ownerUserId.value
+            it[kind] = worker.kind.name
+            it[subjectUserId] = worker.subjectUserId?.value
             it[runtimeWideAccess] = worker.runtimeWideAccess
             it[status] = worker.status.name
             it[updatedAt] = worker.updatedAt.toKotlin()
@@ -48,6 +50,8 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
                 it[id] = worker.id.value
                 it[displayName] = worker.displayName
                 it[ownerUserId] = worker.ownerUserId.value
+                it[kind] = worker.kind.name
+                it[subjectUserId] = worker.subjectUserId?.value
                 it[runtimeWideAccess] = worker.runtimeWideAccess
                 it[status] = worker.status.name
                 it[createdAt] = worker.createdAt.toKotlin()
@@ -179,6 +183,8 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
             id = ConversationRuntimeWorkerId(this[Workers.id]),
             displayName = this[Workers.displayName],
             ownerUserId = User.Id(this[Workers.ownerUserId]),
+            kind = WorkerResource.Kind.valueOf(this[Workers.kind]),
+            subjectUserId = this[Workers.subjectUserId]?.let(User::Id),
             runtimeWideAccess = this[Workers.runtimeWideAccess],
             status = WorkerResource.Status.valueOf(this[Workers.status]),
             createdAt = this[Workers.createdAt].toKotlinx(),

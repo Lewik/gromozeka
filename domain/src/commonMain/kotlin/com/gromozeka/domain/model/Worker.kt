@@ -9,6 +9,8 @@ data class WorkerResource(
     val id: ConversationRuntimeWorkerId,
     val displayName: String,
     val ownerUserId: User.Id,
+    val kind: Kind = Kind.EXECUTION,
+    val subjectUserId: User.Id? = null,
     val runtimeWideAccess: Boolean,
     val status: Status,
     val createdAt: Instant,
@@ -16,6 +18,15 @@ data class WorkerResource(
 ) {
     init {
         require(displayName.isNotBlank()) { "Worker display name must not be blank" }
+        require((kind == Kind.MOBILE_DEVICE) == (subjectUserId != null)) {
+            "Only mobile device Workers must have a subject user"
+        }
+    }
+
+    @Serializable
+    enum class Kind {
+        EXECUTION,
+        MOBILE_DEVICE,
     }
 
     @Serializable
