@@ -62,6 +62,7 @@ sealed interface AiConnection {
     enum class Kind(val provider: AiProvider) {
         OPENAI_API(AiProvider.OPENAI),
         OPENAI_SUBSCRIPTION(AiProvider.OPENAI),
+        GITHUB_COPILOT(AiProvider.OPENAI),
         OPENAI_COMPATIBLE(AiProvider.CUSTOM),
         ANTHROPIC_API(AiProvider.ANTHROPIC),
         ANTHROPIC_BEDROCK(AiProvider.ANTHROPIC),
@@ -83,6 +84,46 @@ sealed interface AiConnection {
 
         init {
             validateDisplayName(displayName)
+        }
+    }
+
+    @Serializable
+    enum class GitHubCopilotAuthMode {
+        SERVER_CLI,
+        PER_USER_TOKEN,
+    }
+
+    @Serializable
+    @SerialName("github_copilot")
+    data class GitHubCopilot(
+        override val id: Id,
+        override val displayName: String,
+        override val enabled: Boolean = false,
+        val executablePath: String = "copilot",
+        val copilotHomePath: String? = null,
+        val authMode: GitHubCopilotAuthMode = GitHubCopilotAuthMode.SERVER_CLI,
+        val requestTimeoutSeconds: Int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+        val sessionIdleTimeoutSeconds: Int = DEFAULT_SESSION_IDLE_TIMEOUT_SECONDS,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+    ) : AiConnection {
+        override val kind = Kind.GITHUB_COPILOT
+
+        init {
+            validateDisplayName(displayName)
+            require(executablePath.isNotBlank()) { "GitHub Copilot executable path must not be blank" }
+            require(copilotHomePath == null || copilotHomePath.isNotBlank()) {
+                "GitHub Copilot home path must not be blank"
+            }
+            require(requestTimeoutSeconds > 0) { "GitHub Copilot request timeout must be positive" }
+            require(sessionIdleTimeoutSeconds > 0) { "GitHub Copilot session idle timeout must be positive" }
+            require(executionTarget is AiExecutionTarget.Server) {
+                "GitHub Copilot execution target must be the Server"
+            }
+        }
+
+        companion object {
+            const val DEFAULT_REQUEST_TIMEOUT_SECONDS = 1_200
+            const val DEFAULT_SESSION_IDLE_TIMEOUT_SECONDS = 300
         }
     }
 

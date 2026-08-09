@@ -3,6 +3,7 @@ package com.gromozeka.client
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeService
@@ -97,6 +98,8 @@ class GromozekaRemoteServices(
     val mcpServerService: RemoteMcpServerService = RemoteMcpServerService(client)
     val personalAccessTokenService: RemotePersonalAccessTokenService =
         RemotePersonalAccessTokenService(client)
+    val aiUserCredentialService: CurrentUserAiCredentialService =
+        RemoteAiUserCredentialService(client)
     val userAdministrationService: RemoteUserAdministrationService =
         RemoteUserAdministrationService(client)
     val securityAuditService: RemoteSecurityAuditService =

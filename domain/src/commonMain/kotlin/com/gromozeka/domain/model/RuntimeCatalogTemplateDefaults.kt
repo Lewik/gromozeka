@@ -41,6 +41,11 @@ object RuntimeCatalogTemplateDefaults {
             displayName = "OpenAI Subscription",
             enabled = false,
         ),
+        AiConnection.GitHubCopilot(
+            id = AiConnection.Id("github-copilot"),
+            displayName = "GitHub Copilot",
+            enabled = false,
+        ),
         AiConnection.AnthropicApi(
             id = AiConnection.Id("anthropic-direct"),
             displayName = "Anthropic",
@@ -83,6 +88,24 @@ object RuntimeCatalogTemplateDefaults {
             connectionId = AiConnection.Id("openai-subscription"),
             providerModelId = "gpt-5.6-luna",
             displayName = "GPT-5.6 Luna subscription",
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("github-copilot-gpt-5.6-sol"),
+            connectionId = AiConnection.Id("github-copilot"),
+            providerModelId = "gpt-5.6-sol",
+            displayName = "GPT-5.6 Sol via GitHub Copilot",
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("github-copilot-gpt-5.6-terra"),
+            connectionId = AiConnection.Id("github-copilot"),
+            providerModelId = "gpt-5.6-terra",
+            displayName = "GPT-5.6 Terra via GitHub Copilot",
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("github-copilot-gpt-5.6-luna"),
+            connectionId = AiConnection.Id("github-copilot"),
+            providerModelId = "gpt-5.6-luna",
+            displayName = "GPT-5.6 Luna via GitHub Copilot",
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("anthropic-opus-5"),

@@ -18,6 +18,7 @@ internal object AiRuntimeInputValidator {
         when (runtime.connection.kind) {
             AiConnection.Kind.OPENAI_API,
             AiConnection.Kind.OPENAI_SUBSCRIPTION -> validateOpenAi(mediaInputs)
+            AiConnection.Kind.GITHUB_COPILOT -> validateGitHubCopilot(mediaInputs)
             AiConnection.Kind.OPENAI_COMPATIBLE -> validateOpenAiCompatible(mediaInputs)
             AiConnection.Kind.ANTHROPIC_API,
             AiConnection.Kind.CLAUDE_CODE -> validateAnthropic(mediaInputs, MAX_ANTHROPIC_IMAGE_BASE64_BYTES, true)
@@ -64,6 +65,17 @@ internal object AiRuntimeInputValidator {
         }
         require(documentBytes.sum() <= MAX_OPENAI_FILE_BYTES) {
             "OpenAI combined input files exceed $MAX_OPENAI_FILE_BYTES bytes"
+        }
+    }
+
+    private fun validateGitHubCopilot(inputs: List<MediaInput>) {
+        validateOpenAi(inputs)
+        inputs.forEach { input ->
+            if (input is MediaInput.Image) {
+                require(input.source is MediaSource.EmbeddedBase64) {
+                    "GitHub Copilot accepts only materialized base64 image inputs"
+                }
+            }
         }
     }
 

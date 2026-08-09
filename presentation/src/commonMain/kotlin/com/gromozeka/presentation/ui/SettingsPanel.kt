@@ -54,6 +54,7 @@ import com.gromozeka.presentation.services.LocalWorkerPermissionState
 import com.gromozeka.presentation.services.LocalWorkerStatus
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkerCatalogService
@@ -114,6 +115,7 @@ fun SettingsPanel(
     deviceConnectionService: RemoteDeviceConnectionClient,
     localWorkerController: LocalWorkerController,
     personalAccessTokenService: RemotePersonalAccessTokenService,
+    aiUserCredentialService: CurrentUserAiCredentialService,
     userAdministrationService: RemoteUserAdministrationService,
     securityAuditService: RemoteSecurityAuditService,
     userDirectoryService: RemoteUserDirectoryService,
@@ -744,6 +746,8 @@ fun SettingsPanel(
                             aiConfigurationService = aiConfigurationService,
                             runtimeCatalogTemplateService = runtimeCatalogTemplateService,
                             workerCatalogService = workerCatalogService,
+                            aiUserCredentialService = aiUserCredentialService,
+                            canManageCatalog = canAdministerUsers,
                             coroutineScope = coroutineScope,
                         )
                     }

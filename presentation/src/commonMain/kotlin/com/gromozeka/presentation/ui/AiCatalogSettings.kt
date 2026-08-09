@@ -75,6 +75,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.model.ai.apiKeyOrNull
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerCatalogService
@@ -85,6 +86,7 @@ private enum class AiCatalogSection(val title: String) {
     Runtime("Runtime"),
     Models("Models"),
     Connections("Connections"),
+    Credentials("My access"),
     Specs("Specs"),
 }
 
@@ -136,11 +138,20 @@ fun AiCatalogSettings(
     aiConfigurationService: AiConfigurationService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     workerCatalogService: WorkerCatalogService,
+    aiUserCredentialService: CurrentUserAiCredentialService,
+    canManageCatalog: Boolean,
     coroutineScope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
     val snapshot by aiConfigurationService.snapshotFlow.collectAsState()
-    var selectedSection by remember { mutableStateOf(AiCatalogSection.Runtime) }
+    val availableSections = if (canManageCatalog) {
+        AiCatalogSection.entries
+    } else {
+        listOf(AiCatalogSection.Credentials)
+    }
+    var selectedSection by remember(canManageCatalog) {
+        mutableStateOf(if (canManageCatalog) AiCatalogSection.Runtime else AiCatalogSection.Credentials)
+    }
     var draft by remember { mutableStateOf(snapshot?.catalog?.let(AiCatalogDraft::from)) }
     var isSaving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -210,43 +221,45 @@ fun AiCatalogSettings(
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = "Reload AI catalog")
                     }
-                    OutlinedButton(
-                        onClick = {
-                            draft = AiCatalogDraft.from(currentSnapshot.catalog)
-                            error = null
-                        },
-                        enabled = isDirty && !isSaving,
-                    ) {
-                        Icon(Icons.Default.Restore, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Revert")
-                    }
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                isSaving = true
+                    if (canManageCatalog) {
+                        OutlinedButton(
+                            onClick = {
+                                draft = AiCatalogDraft.from(currentSnapshot.catalog)
                                 error = null
-                                runCatching {
-                                    aiConfigurationService.replaceCatalog(
-                                        currentDraft.toCatalog(),
-                                        currentSnapshot.revision,
-                                        currentDraft.secretMutations,
-                                    )
-                                }.onFailure {
-                                    error = it.message ?: it::class.simpleName
-                                    isSaving = false
+                            },
+                            enabled = isDirty && !isSaving,
+                        ) {
+                            Icon(Icons.Default.Restore, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Revert")
+                        }
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isSaving = true
+                                    error = null
+                                    runCatching {
+                                        aiConfigurationService.replaceCatalog(
+                                            currentDraft.toCatalog(),
+                                            currentSnapshot.revision,
+                                            currentDraft.secretMutations,
+                                        )
+                                    }.onFailure {
+                                        error = it.message ?: it::class.simpleName
+                                        isSaving = false
+                                    }
                                 }
+                            },
+                            enabled = isDirty && !isSaving,
+                        ) {
+                            if (isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.width(18.dp).height(18.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Text("Save")
                             }
-                        },
-                        enabled = isDirty && !isSaving,
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.width(18.dp).height(18.dp),
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Text("Save")
                         }
                     }
                 }
@@ -256,13 +269,15 @@ fun AiCatalogSettings(
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
-            TabRow(selectedTabIndex = selectedSection.ordinal) {
-                AiCatalogSection.entries.forEach { section ->
-                    Tab(
-                        selected = selectedSection == section,
-                        onClick = { selectedSection = section },
-                        text = { Text(section.title) },
-                    )
+            if (availableSections.size > 1) {
+                TabRow(selectedTabIndex = availableSections.indexOf(selectedSection)) {
+                    availableSections.forEach { section ->
+                        Tab(
+                            selected = selectedSection == section,
+                            onClick = { selectedSection = section },
+                            text = { Text(section.title) },
+                        )
+                    }
                 }
             }
 
@@ -287,6 +302,12 @@ fun AiCatalogSettings(
                     secretStates = currentSnapshot.secretStates,
                     onChange = { draft = it },
                     onError = { error = it },
+                )
+
+                AiCatalogSection.Credentials -> GitHubCopilotCredentialSettings(
+                    connections = currentDraft.connections.filterIsInstance<AiConnection.GitHubCopilot>(),
+                    service = aiUserCredentialService,
+                    coroutineScope = coroutineScope,
                 )
 
                 AiCatalogSection.Specs -> ModelSpecsEditor(
@@ -816,6 +837,30 @@ private fun ConnectionDialog(
     var executablePath by remember {
         mutableStateOf((existing as? AiConnection.ClaudeCode)?.executablePath ?: "claude")
     }
+    var copilotExecutablePath by remember {
+        mutableStateOf((existing as? AiConnection.GitHubCopilot)?.executablePath ?: "copilot")
+    }
+    var copilotHomePath by remember {
+        mutableStateOf((existing as? AiConnection.GitHubCopilot)?.copilotHomePath.orEmpty())
+    }
+    var copilotAuthMode by remember {
+        mutableStateOf(
+            (existing as? AiConnection.GitHubCopilot)?.authMode
+                ?: AiConnection.GitHubCopilotAuthMode.SERVER_CLI
+        )
+    }
+    var copilotRequestTimeoutSeconds by remember {
+        mutableStateOf(
+            (existing as? AiConnection.GitHubCopilot)?.requestTimeoutSeconds?.toString()
+                ?: AiConnection.GitHubCopilot.DEFAULT_REQUEST_TIMEOUT_SECONDS.toString()
+        )
+    }
+    var copilotSessionIdleTimeoutSeconds by remember {
+        mutableStateOf(
+            (existing as? AiConnection.GitHubCopilot)?.sessionIdleTimeoutSeconds?.toString()
+                ?: AiConnection.GitHubCopilot.DEFAULT_SESSION_IDLE_TIMEOUT_SECONDS.toString()
+        )
+    }
     var maxCachedProcesses by remember {
         mutableStateOf(
             (existing as? AiConnection.ClaudeCode)?.maxCachedProcesses?.toString()
@@ -868,6 +913,9 @@ private fun ConnectionDialog(
             workers.firstOrNull()?.let { worker ->
                 executionTarget = AiExecutionTarget.Worker(worker.workerId.value)
             }
+        }
+        if (kind == AiConnection.Kind.GITHUB_COPILOT) {
+            executionTarget = AiExecutionTarget.Server
         }
     }
 
@@ -934,8 +982,14 @@ private fun ConnectionDialog(
                     if (kind != AiConnection.Kind.CLAUDE_CODE) {
                         add(AiExecutionTarget.Server)
                     }
-                    workers.forEach { add(AiExecutionTarget.Worker(it.workerId.value)) }
-                    if (kind != AiConnection.Kind.CLAUDE_CODE && executionTarget !in this) {
+                    if (kind != AiConnection.Kind.GITHUB_COPILOT) {
+                        workers.forEach { add(AiExecutionTarget.Worker(it.workerId.value)) }
+                    }
+                    if (
+                        kind != AiConnection.Kind.CLAUDE_CODE &&
+                        kind != AiConnection.Kind.GITHUB_COPILOT &&
+                        executionTarget !in this
+                    ) {
                         add(executionTarget)
                     }
                 }
@@ -949,6 +1003,8 @@ private fun ConnectionDialog(
                 Text(
                     if (kind == AiConnection.Kind.CLAUDE_CODE) {
                         "Claude Code runs only on the selected Worker, using that machine's installation and credentials."
+                    } else if (kind == AiConnection.Kind.GITHUB_COPILOT) {
+                        "GitHub Copilot runs only on the Server. The CLI is installed separately; Gromozeka does not bundle or silently replace it."
                     } else {
                         "Finite LLM, embedding, speech-to-text, and text-to-speech requests use this exact target. " +
                             "Streaming and live voice require Server."
@@ -1087,6 +1143,58 @@ private fun ConnectionDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+                if (kind == AiConnection.Kind.GITHUB_COPILOT) {
+                    LabeledDropdown(
+                        label = "Authentication",
+                        value = copilotAuthMode,
+                        options = AiConnection.GitHubCopilotAuthMode.entries,
+                        optionLabel = {
+                            when (it) {
+                                AiConnection.GitHubCopilotAuthMode.SERVER_CLI -> "Server CLI login"
+                                AiConnection.GitHubCopilotAuthMode.PER_USER_TOKEN -> "Per-user token"
+                            }
+                        },
+                        onSelect = { copilotAuthMode = it },
+                    )
+                    Text(
+                        if (copilotAuthMode == AiConnection.GitHubCopilotAuthMode.SERVER_CLI) {
+                            "All requests use the GitHub account logged into Copilot CLI on the Server."
+                        } else {
+                            "Each user configures their own GitHub token in the My access tab. No shared fallback is used."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = copilotExecutablePath,
+                        onValueChange = { copilotExecutablePath = it },
+                        label = { Text("Copilot executable") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = copilotHomePath,
+                        onValueChange = { copilotHomePath = it },
+                        label = { Text("Copilot home override") },
+                        supportingText = { Text("Optional. Server CLI login defaults to ~/.copilot.") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = copilotRequestTimeoutSeconds,
+                        onValueChange = { copilotRequestTimeoutSeconds = it.filter(Char::isDigit) },
+                        label = { Text("Request timeout (seconds)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = copilotSessionIdleTimeoutSeconds,
+                        onValueChange = { copilotSessionIdleTimeoutSeconds = it.filter(Char::isDigit) },
+                        label = { Text("CLI session idle timeout (seconds)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
@@ -1104,6 +1212,11 @@ private fun ConnectionDialog(
                             secretMode = secretMode,
                             secretValue = secretValue,
                             executablePath = executablePath,
+                            copilotExecutablePath = copilotExecutablePath,
+                            copilotHomePath = copilotHomePath,
+                            copilotAuthMode = copilotAuthMode,
+                            copilotRequestTimeoutSeconds = copilotRequestTimeoutSeconds,
+                            copilotSessionIdleTimeoutSeconds = copilotSessionIdleTimeoutSeconds,
                             maxCachedProcesses = maxCachedProcesses,
                             processIdleTtlMinutes = processIdleTtlMinutes,
                             voiceTranscriptionEnabled = voiceTranscriptionEnabled,
@@ -1143,6 +1256,11 @@ private fun createConnection(
     secretMode: String,
     secretValue: String,
     executablePath: String,
+    copilotExecutablePath: String,
+    copilotHomePath: String,
+    copilotAuthMode: AiConnection.GitHubCopilotAuthMode,
+    copilotRequestTimeoutSeconds: String,
+    copilotSessionIdleTimeoutSeconds: String,
     maxCachedProcesses: String,
     processIdleTtlMinutes: String,
     voiceTranscriptionEnabled: Boolean,
@@ -1171,6 +1289,20 @@ private fun createConnection(
             enabled = enabled,
             webSearchEnabled = webSearchEnabled,
             executionTarget = executionTarget,
+        )
+        AiConnection.Kind.GITHUB_COPILOT -> AiConnection.GitHubCopilot(
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            executablePath = copilotExecutablePath.trim(),
+            copilotHomePath = copilotHomePath.trim().ifBlank { null },
+            authMode = copilotAuthMode,
+            requestTimeoutSeconds = copilotRequestTimeoutSeconds.toIntOrNull()
+                ?: error("Request timeout must be a positive integer"),
+            sessionIdleTimeoutSeconds = copilotSessionIdleTimeoutSeconds.toIntOrNull()
+                ?: error("Session idle timeout must be a positive integer"),
+            executionTarget = executionTarget as? AiExecutionTarget.Server
+                ?: error("GitHub Copilot requires the Server execution target"),
         )
         AiConnection.Kind.OPENAI_COMPATIBLE -> AiConnection.OpenAiCompatible(
             id = connectionId,

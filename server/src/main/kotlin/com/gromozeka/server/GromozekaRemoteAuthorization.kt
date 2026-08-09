@@ -35,7 +35,6 @@ class GromozekaRemoteAuthorization(
         when (request) {
             GetSettingsRequest,
             is SaveSettingsRequest,
-            GetAiCatalogRequest,
             is SaveAiCatalogRequest,
             ListMcpServersRequest,
             is CreateMcpServerRequest,
@@ -53,6 +52,10 @@ class GromozekaRemoteAuthorization(
             ListPersonalAccessTokensRequest,
             is CreatePersonalAccessTokenRequest,
             is RevokePersonalAccessTokenRequest,
+            is GetAiUserCredentialStatusRequest,
+            is ConfigureAiUserCredentialRequest,
+            is RemoveAiUserCredentialRequest,
+            GetAiCatalogRequest,
             ListUserDirectoryRequest,
             GetRuntimeCatalogTemplatesRequest,
             GetDefaultAgentRequest,

@@ -62,7 +62,8 @@ checksums, and preserve their legal notices inside the resulting packages. The
 Server includes Java. The Worker includes Java, Node.js, and the pinned
 Gromozeka Browser MCP package. Installed applications never select a system
 runtime or download executable code during first launch. Docker images follow
-the same runtime boundary. Claude Code and browser binaries are never bundled.
+the same runtime boundary. Claude Code, GitHub Copilot CLI, and browser binaries
+are never bundled.
 
 ## Runtime Language
 
@@ -90,6 +91,10 @@ Worker. Finite LLM calls, embeddings, speech transcription, and speech synthesis
 use that target. Realtime and long-lived streaming AI sessions are Server-only.
 Claude Code is the exception to general target selection: its connection always
 targets a Worker where Claude Code is separately installed and authenticated.
+GitHub Copilot connections are Server-only. Gromozeka bundles the MIT-licensed
+Java SDK, but the operator installs and licenses Copilot CLI separately. A
+connection uses either the exact Server CLI login or an encrypted per-user
+GitHub token; it never falls back between those modes or to another model.
 An unavailable or incompatible target fails explicitly; Gromozeka does not fall
 back to another Worker or to the Server and does not automatically retry an
 operation whose outcome may be unknown.

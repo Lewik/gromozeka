@@ -136,6 +136,18 @@ internal object PersonalAccessTokenScopes : Table("personal_access_token_scopes"
     override val primaryKey = PrimaryKey(tokenId, scope)
 }
 
+internal object AiUserCredentials : Table("ai_user_credentials") {
+    val userId = varchar("user_id", 255).references(Users.id, onDelete = ReferenceOption.CASCADE)
+    val connectionId = varchar("connection_id", 255).references(AiConnections.id, onDelete = ReferenceOption.CASCADE)
+    val ciphertext = text("ciphertext")
+    val nonce = varchar("nonce", 64)
+    val encryptionVersion = integer("encryption_version")
+    val createdAt = timestamp("created_at")
+    val updatedAt = timestamp("updated_at")
+
+    override val primaryKey = PrimaryKey(userId, connectionId)
+}
+
 internal object SecurityAuditEvents : Table("security_audit_events") {
     val id = varchar("id", 255)
     val occurredAt = timestamp("occurred_at")

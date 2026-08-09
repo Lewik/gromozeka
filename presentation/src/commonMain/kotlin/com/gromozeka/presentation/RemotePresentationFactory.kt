@@ -171,6 +171,7 @@ suspend fun createRemoteAppComponents(
             memoryActionItemService = remoteServices.memoryActionItemService,
             mcpServerService = remoteServices.mcpServerService,
             personalAccessTokenService = remoteServices.personalAccessTokenService,
+            aiUserCredentialService = remoteServices.aiUserCredentialService,
             userAdministrationService = remoteServices.userAdministrationService,
             securityAuditService = remoteServices.securityAuditService,
             userDirectoryService = remoteServices.userDirectoryService,

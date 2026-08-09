@@ -36,6 +36,7 @@ ktreesitter = "0.24.1"
 lsp4j = "0.23.1"
 openai-java = "4.49.0"
 anthropic-java = "2.30.0"
+copilot-sdk-java = "1.0.10-preview.0"
 aws-sdk = "2.33.1"
 androidx-activity-compose = "1.10.1"
 androidx-car-app = "1.7.0"
@@ -73,6 +74,7 @@ spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-depe
 openai-java = { module = "com.openai:openai-java", version.ref = "openai-java" }
 anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropic-java" }
 anthropic-java-bedrock = { module = "com.anthropic:anthropic-java-bedrock", version.ref = "anthropic-java" }
+copilot-sdk-java = { module = "com.github:copilot-sdk-java", version.ref = "copilot-sdk-java" }
 aws-sdk-sso = { module = "software.amazon.awssdk:sso", version.ref = "aws-sdk" }
 aws-sdk-ssooidc = { module = "software.amazon.awssdk:ssooidc", version.ref = "aws-sdk" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }

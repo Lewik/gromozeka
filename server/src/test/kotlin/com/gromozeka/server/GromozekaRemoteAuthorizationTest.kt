@@ -44,12 +44,13 @@ class GromozekaRemoteAuthorizationTest {
     )
 
     @Test
-    fun `global configuration requires server owner`() = runBlocking {
-        assertFailsWith<ProjectAccessDeniedException> {
-            authorization.authorize(testUser(User.Role.MEMBER), GetAiCatalogRequest)
-        }
-
+    fun `AI catalog reads are available to members`() = runBlocking {
+        authorization.authorize(testUser(User.Role.MEMBER), GetAiCatalogRequest)
         authorization.authorize(testUser(User.Role.OWNER), GetAiCatalogRequest)
+    }
+
+    @Test
+    fun `global configuration requires server owner`() = runBlocking {
         authorization.authorize(testUser(User.Role.OWNER), ListMcpServersRequest)
         authorization.authorize(
             testUser(User.Role.OWNER),

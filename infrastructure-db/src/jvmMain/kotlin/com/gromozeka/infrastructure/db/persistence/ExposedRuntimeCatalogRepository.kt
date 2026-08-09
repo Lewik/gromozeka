@@ -24,6 +24,7 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
@@ -151,13 +152,25 @@ class ExposedRuntimeCatalogRepository(
         AiRuntimeAssignments.deleteAll()
         AiModelConfigurations.deleteAll()
         AiModelSpecs.deleteAll()
-        AiConnections.deleteAll()
 
+        val existingConnectionIds = AiConnections.selectAll()
+            .mapTo(mutableSetOf()) { it[AiConnections.id] }
+        val desiredConnectionIds = catalog.connections.mapTo(mutableSetOf()) { it.id.value }
         catalog.connections.forEach { connection ->
-            AiConnections.insert {
-                it[id] = connection.id.value
-                it[payloadJson] = json.encodeToString<AiConnection>(connection)
+            val payload = json.encodeToString<AiConnection>(connection)
+            if (connection.id.value in existingConnectionIds) {
+                AiConnections.update({ AiConnections.id eq connection.id.value }) {
+                    it[payloadJson] = payload
+                }
+            } else {
+                AiConnections.insert {
+                    it[id] = connection.id.value
+                    it[payloadJson] = payload
+                }
             }
+        }
+        (existingConnectionIds - desiredConnectionIds).forEach { connectionId ->
+            AiConnections.deleteWhere { AiConnections.id eq connectionId }
         }
         catalog.modelSpecs.forEach { spec ->
             AiModelSpecs.insert {

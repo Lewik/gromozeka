@@ -18,6 +18,7 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
@@ -60,6 +61,7 @@ data class AppComponents(
     val memoryActionItemService: RemoteMemoryActionItemService,
     val mcpServerService: RemoteMcpServerService,
     val personalAccessTokenService: RemotePersonalAccessTokenService,
+    val aiUserCredentialService: CurrentUserAiCredentialService,
     val userAdministrationService: RemoteUserAdministrationService,
     val securityAuditService: RemoteSecurityAuditService,
     val userDirectoryService: RemoteUserDirectoryService,

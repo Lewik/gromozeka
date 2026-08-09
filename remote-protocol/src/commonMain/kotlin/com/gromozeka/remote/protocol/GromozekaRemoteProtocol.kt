@@ -25,6 +25,7 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiUserCredentialStatus
 import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
@@ -194,6 +195,28 @@ data class CreatePersonalAccessTokenRequest(
 @SerialName("revoke_personal_access_token")
 data class RevokePersonalAccessTokenRequest(
     val tokenId: PersonalAccessToken.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("get_ai_user_credential_status")
+data class GetAiUserCredentialStatusRequest(
+    val connectionId: AiConnection.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("configure_ai_user_credential")
+data class ConfigureAiUserCredentialRequest(
+    val connectionId: AiConnection.Id,
+    val secret: String,
+) : ClientRequest {
+    override fun toString(): String =
+        "ConfigureAiUserCredentialRequest(connectionId=$connectionId, secret=[REDACTED])"
+}
+
+@Serializable
+@SerialName("remove_ai_user_credential")
+data class RemoveAiUserCredentialRequest(
+    val connectionId: AiConnection.Id,
 ) : ClientRequest
 
 @Serializable
@@ -941,6 +964,12 @@ data class IssuedPersonalAccessTokenResponse(
 @SerialName("personal_access_token_revoked")
 data class PersonalAccessTokenRevokedResponse(
     val revoked: Boolean,
+) : ServerResponse
+
+@Serializable
+@SerialName("ai_user_credential_status")
+data class AiUserCredentialStatusResponse(
+    val status: AiUserCredentialStatus,
 ) : ServerResponse
 
 @Serializable

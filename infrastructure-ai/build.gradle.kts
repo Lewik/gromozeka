@@ -19,6 +19,7 @@ kotlin {
                 implementation(libs.openai.java)
                 implementation(libs.anthropic.java)
                 implementation(libs.anthropic.java.bedrock)
+                implementation(libs.copilot.sdk.java)
                 implementation(libs.aws.sdk.sso)
                 implementation(libs.aws.sdk.ssooidc)
                 // Spring Boot
