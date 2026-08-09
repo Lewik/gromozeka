@@ -688,9 +688,10 @@ jobs:
 
           Load the extracted Browser Bridge directory from `chrome://extensions` with
           Developer mode enabled; it can coexist with the official Playwright Extension.
-          Standalone Server and Worker launchers use compatible system runtimes or download
-          checksum-pinned Java/Node runtimes once. The desktop and Worker packages are
-          currently unsigned. macOS Gatekeeper and
+          Standalone Server and Worker packages include checksum-verified Java and, where
+          Browser MCP is available, Node.js. They do not install system runtimes or download
+          executable code on first launch. The desktop and Worker packages are currently
+          unsigned. macOS Gatekeeper and
           Windows SmartScreen may require explicit confirmation on first launch.
           Verify downloaded files against `SHA256SUMS`.
           EOF
