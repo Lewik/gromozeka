@@ -28,6 +28,7 @@ import com.gromozeka.presentation.services.IosAttachmentAcquisitionController
 import com.gromozeka.presentation.services.IosRemoteClientSettingsStore
 import com.gromozeka.presentation.services.IosRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.PTTEvent
+import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.ui.GromozekaTheme
@@ -35,8 +36,10 @@ import com.gromozeka.presentation.ui.RemoteServerSetupScreen
 import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
 import platform.UIKit.UIViewController
@@ -215,34 +218,41 @@ private fun resolveBundledRemoteUrl(): String? {
 
 private suspend fun handleActionButtonEvents(app: RemoteAppComponents) {
     val defaults = NSUserDefaults.standardUserDefaults
-    var lastCounter = defaults.integerForKey(ActionButtonCounterKey)
-    var lastActive = defaults.boolForKey(ActionButtonActiveKey)
+    var handledCommandCounter = defaults.integerForKey(ActionButtonHandledCommandCounterKey)
 
-    if (lastActive) {
-        app.components.pttEventRouter.handlePTTEvent(PTTEvent.BUTTON_DOWN)
-        app.components.pttEventRouter.handlePTTEvent(PTTEvent.SINGLE_PUSH)
+    try {
+        while (true) {
+            val commandCounter = defaults.integerForKey(ActionButtonCommandCounterKey)
+            if (commandCounter < handledCommandCounter) {
+                handledCommandCounter = commandCounter
+                defaults.setInteger(handledCommandCounter, ActionButtonHandledCommandCounterKey)
+            }
+
+            while (handledCommandCounter < commandCounter) {
+                handledCommandCounter += 1
+                defaults.setInteger(handledCommandCounter, ActionButtonHandledCommandCounterKey)
+                toggleActionButtonConversation(app)
+            }
+
+            delay(250)
+        }
+    } finally {
+        withContext(NonCancellable) {
+            runCatching { app.components.pttEventRouter.handlePTTCancel() }
+        }
     }
+}
 
-    while (true) {
-        delay(250)
-        val counter = defaults.integerForKey(ActionButtonCounterKey)
-        if (counter == lastCounter) {
-            continue
-        }
-
-        lastCounter = counter
-        val active = defaults.boolForKey(ActionButtonActiveKey)
-        if (active == lastActive) {
-            continue
-        }
-
-        lastActive = active
-        if (active) {
+private suspend fun toggleActionButtonConversation(app: RemoteAppComponents) {
+    when (app.components.pttService.state.value) {
+        PttState.IDLE -> {
             app.components.pttEventRouter.handlePTTEvent(PTTEvent.BUTTON_DOWN)
             app.components.pttEventRouter.handlePTTEvent(PTTEvent.SINGLE_PUSH)
-        } else {
-            app.components.pttEventRouter.handlePTTRelease()
         }
+
+        PttState.PREPARING,
+        PttState.RECORDING,
+        PttState.TRANSCRIBING -> app.components.pttEventRouter.handlePTTRelease()
     }
 }
 
@@ -255,6 +265,6 @@ private fun StartupLoading() {
     }
 }
 
-private const val ActionButtonActiveKey = "gromozeka.actionButton.active"
-private const val ActionButtonCounterKey = "gromozeka.actionButton.counter"
+private const val ActionButtonCommandCounterKey = "gromozeka.actionButton.commandCounter"
+private const val ActionButtonHandledCommandCounterKey = "gromozeka.actionButton.handledCommandCounter"
 private const val RemoteUrlInfoKey = "GromozekaRemoteURL"

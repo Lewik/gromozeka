@@ -8,9 +8,8 @@ struct ToggleConversationIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         let defaults = UserDefaults.standard
-        let nextActive = !defaults.bool(forKey: ActionButtonDefaults.activeKey)
-        defaults.set(nextActive, forKey: ActionButtonDefaults.activeKey)
-        defaults.set(defaults.integer(forKey: ActionButtonDefaults.counterKey) + 1, forKey: ActionButtonDefaults.counterKey)
+        let nextCommand = defaults.integer(forKey: ActionButtonDefaults.commandCounterKey) + 1
+        defaults.set(nextCommand, forKey: ActionButtonDefaults.commandCounterKey)
         return .result()
     }
 }
@@ -30,6 +29,5 @@ struct GromozekaShortcuts: AppShortcutsProvider {
 }
 
 private enum ActionButtonDefaults {
-    static let activeKey = "gromozeka.actionButton.active"
-    static let counterKey = "gromozeka.actionButton.counter"
+    static let commandCounterKey = "gromozeka.actionButton.commandCounter"
 }
