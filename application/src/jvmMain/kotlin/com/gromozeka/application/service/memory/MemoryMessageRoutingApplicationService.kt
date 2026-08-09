@@ -1,5 +1,7 @@
 package com.gromozeka.application.service.memory
 
+import com.gromozeka.application.service.BackgroundAiExecutionPacer
+import com.gromozeka.application.service.backgroundWorkloadOrNull
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
@@ -42,6 +44,7 @@ class MemoryMessageRoutingApplicationService(
     private val writeTraceSinks: List<MemoryWriteTraceSink>,
     private val llmCallObservers: List<MemoryRunLlmCallObserver>,
     private val embeddingIndexer: MemoryEmbeddingIndexer,
+    private val backgroundAiExecutionPacer: BackgroundAiExecutionPacer,
 ) {
     private val log = KLoggers.logger(this)
     private val sourceMapper = ConversationMessageMemorySourceMapper()
@@ -558,10 +561,18 @@ class MemoryMessageRoutingApplicationService(
 
         fun runtimeFor(purpose: AiRuntimeAssignment.Purpose): AiRuntime =
             runtimes.getOrPut(purpose) {
-                aiRuntimeProvider.getRuntime(
-                    selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(purpose),
+                val selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(purpose)
+                val delegate = aiRuntimeProvider.getRuntime(
+                    selection = selection,
                     workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
+                purpose.backgroundWorkloadOrNull()?.let { workload ->
+                    backgroundAiExecutionPacer.wrap(
+                        delegate = delegate,
+                        runtime = aiConfigurationProvider.resolveAiRuntime(selection),
+                        workload = workload,
+                    )
+                } ?: delegate
             }
     }
 

@@ -2,6 +2,8 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
@@ -12,6 +14,7 @@ import com.gromozeka.domain.service.AiSpeechTranscriptionRequest
 import com.gromozeka.domain.service.DirectAiEmbeddingProvider
 import com.gromozeka.domain.service.DirectAiRuntimeProvider
 import com.gromozeka.domain.service.DirectAiSpeechToTextProvider
+import com.gromozeka.domain.service.DirectAiSubscriptionQuotaProvider
 import com.gromozeka.domain.service.DirectAiTextToSpeechProvider
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -27,6 +30,7 @@ class DirectAiRequestResponseExecutionHandler(
     private val embeddingProvider: DirectAiEmbeddingProvider,
     private val speechToTextProvider: DirectAiSpeechToTextProvider,
     private val textToSpeechProvider: DirectAiTextToSpeechProvider,
+    private val subscriptionQuotaProviders: List<DirectAiSubscriptionQuotaProvider>,
 ) : AiRequestResponseExecutionHandler {
     override suspend fun call(
         runtime: ResolvedAiRuntime,
@@ -53,4 +57,16 @@ class DirectAiRequestResponseExecutionHandler(
         request: AiSpeechSynthesisRequest,
     ): AiSpeechSynthesisResponse =
         textToSpeechProvider.synthesize(runtime, request)
+
+    override suspend fun readSubscriptionQuota(
+        request: AiSubscriptionQuotaRequest,
+    ): AiSubscriptionQuotaSnapshot =
+        subscriptionQuotaProviders.singleOrNull { it.supports(request) }?.read(request)
+            ?: error(
+                if (subscriptionQuotaProviders.none { it.supports(request) }) {
+                    "No subscription quota provider registered for ${request.connection.kind}"
+                } else {
+                    "Multiple subscription quota providers registered for ${request.connection.kind}"
+                }
+            )
 }

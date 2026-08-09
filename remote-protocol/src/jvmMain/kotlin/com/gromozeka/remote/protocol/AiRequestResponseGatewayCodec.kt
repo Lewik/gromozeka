@@ -12,6 +12,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiEmbeddingRequest
@@ -109,6 +111,12 @@ object AiRequestResponseGatewayCodec {
     fun decodeSynthesisResponse(payload: ByteArray): AiSpeechSynthesisResponse =
         decodePayload<AiRequestResponsePayload.Synthesize>(payload).response.toRuntime()
 
+    fun encodeSubscriptionQuotaRequest(request: AiSubscriptionQuotaRequest): ByteArray =
+        encodeOperation(AiRequestResponseOperation.SubscriptionQuota(request))
+
+    fun decodeSubscriptionQuotaResponse(payload: ByteArray): AiSubscriptionQuotaSnapshot =
+        decodePayload<AiRequestResponsePayload.SubscriptionQuota>(payload).snapshot
+
     suspend fun execute(
         payload: ByteArray,
         handler: AiRequestResponseExecutionHandler,
@@ -142,6 +150,10 @@ object AiRequestResponseGatewayCodec {
                     runtime = operation.runtime,
                     request = operation.request.toRuntime(),
                 ).toWire()
+            )
+
+            is AiRequestResponseOperation.SubscriptionQuota -> AiRequestResponsePayload.SubscriptionQuota(
+                handler.readSubscriptionQuota(operation.request)
             )
         }
         return json.encodeToString(AiRequestResponsePayload.serializer(), result).encodeToByteArray()
@@ -190,6 +202,12 @@ private sealed interface AiRequestResponseOperation {
         val runtime: ResolvedAiRuntime,
         val request: AiSpeechSynthesisRequestWire,
     ) : AiRequestResponseOperation
+
+    @Serializable
+    @SerialName("subscription_quota")
+    data class SubscriptionQuota(
+        val request: AiSubscriptionQuotaRequest,
+    ) : AiRequestResponseOperation
 }
 
 @Serializable
@@ -210,6 +228,12 @@ private sealed interface AiRequestResponsePayload {
     @Serializable
     @SerialName("synthesize")
     data class Synthesize(val response: AiSpeechSynthesisResponseWire) : AiRequestResponsePayload
+
+    @Serializable
+    @SerialName("subscription_quota")
+    data class SubscriptionQuota(
+        val snapshot: AiSubscriptionQuotaSnapshot,
+    ) : AiRequestResponsePayload
 }
 
 @Serializable

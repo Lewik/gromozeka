@@ -166,7 +166,7 @@ enum class WorkerGatewayOperation {
     WORKSPACE_STATE,
 }
 
-const val WORKER_GATEWAY_PROTOCOL_VERSION = 9
+const val WORKER_GATEWAY_PROTOCOL_VERSION = 10
 
 @OptIn(ExperimentalSerializationApi::class)
 object WorkerGatewayCodec {

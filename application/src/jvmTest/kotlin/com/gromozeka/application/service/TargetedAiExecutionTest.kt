@@ -16,6 +16,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
@@ -34,6 +36,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.service.DirectAiEmbeddingProvider
 import com.gromozeka.domain.service.DirectAiRuntimeProvider
 import com.gromozeka.domain.service.DirectAiSpeechToTextProvider
+import com.gromozeka.domain.service.DirectAiSubscriptionQuotaProvider
 import com.gromozeka.domain.service.DirectAiTextToSpeechProvider
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import kotlinx.coroutines.flow.Flow
@@ -164,6 +167,33 @@ class TargetedAiExecutionTest {
     }
 
     @Test
+    fun `Subscription quota uses only the connection execution target`() = runBlocking {
+        val directProvider = RecordingDirectSubscriptionQuotaProvider()
+        val remoteClient = RecordingRemoteClient()
+        val resolver = RecordingWorkerTargetResolver(workerIdentity)
+        val serverRequest = subscriptionQuotaRequest(AiExecutionTarget.Server)
+        val workerRequest = subscriptionQuotaRequest(AiExecutionTarget.Worker(workerIdentity.workerId.value))
+        val provider = TargetedAiSubscriptionQuotaProvider(
+            directProviders = listOf(directProvider),
+            workerTargetResolver = resolver,
+            remoteClients = listOf(remoteClient),
+        )
+
+        val serverSnapshot = provider.read(serverRequest)
+        val workerSnapshot = provider.read(workerRequest)
+
+        assertEquals(serverRequest.connection.id, serverSnapshot.connectionId)
+        assertEquals(workerRequest.connection.id, workerSnapshot.connectionId)
+        assertEquals(listOf(serverRequest), directProvider.requests)
+        assertEquals(workerIdentity, remoteClient.quotaTarget)
+        assertEquals(workerRequest, remoteClient.quotaRequest)
+        assertEquals(
+            listOf(workerIdentity.workerId to ConversationRuntimeCapability.AI_REQUEST_RESPONSE),
+            resolver.requests,
+        )
+    }
+
+    @Test
     fun `Worker resolver rejects missing offline and incapable Workers`() = runBlocking {
         val registry = InMemoryConversationRuntimeWorkerRegistry()
         val resolver = DefaultConversationRuntimeWorkerTargetResolver(registry)
@@ -210,6 +240,7 @@ class TargetedAiExecutionTest {
             embeddingProvider = embeddingProvider,
             speechToTextProvider = speechToTextProvider,
             textToSpeechProvider = textToSpeechProvider,
+            subscriptionQuotaProviders = emptyList(),
         )
         val embeddingRequest = AiEmbeddingRequest(selection, listOf("one"))
         val transcriptionRequest = AiSpeechTranscriptionRequest(
@@ -338,6 +369,17 @@ class TargetedAiExecutionTest {
         }
     }
 
+    private class RecordingDirectSubscriptionQuotaProvider : DirectAiSubscriptionQuotaProvider {
+        val requests = mutableListOf<AiSubscriptionQuotaRequest>()
+
+        override fun supports(request: AiSubscriptionQuotaRequest): Boolean = true
+
+        override suspend fun read(request: AiSubscriptionQuotaRequest): AiSubscriptionQuotaSnapshot {
+            requests += request
+            return quotaSnapshot(request.connection.id)
+        }
+    }
+
     private class RecordingWorkerTargetResolver(
         private val identity: ConversationRuntimeWorkerIdentity,
     ) : ConversationRuntimeWorkerTargetResolver {
@@ -362,6 +404,8 @@ class TargetedAiExecutionTest {
         )
         var callTarget: ConversationRuntimeWorkerIdentity? = null
         var embeddingTarget: ConversationRuntimeWorkerIdentity? = null
+        var quotaTarget: ConversationRuntimeWorkerIdentity? = null
+        var quotaRequest: AiSubscriptionQuotaRequest? = null
 
         override suspend fun call(
             target: ConversationRuntimeWorkerIdentity,
@@ -394,7 +438,27 @@ class TargetedAiExecutionTest {
             runtime: ResolvedAiRuntime,
             request: AiSpeechSynthesisRequest,
         ): AiSpeechSynthesisResponse = AiSpeechSynthesisResponse(byteArrayOf(1), "audio/wav", "wav")
+
+        override suspend fun readSubscriptionQuota(
+            target: ConversationRuntimeWorkerIdentity,
+            request: AiSubscriptionQuotaRequest,
+        ): AiSubscriptionQuotaSnapshot {
+            quotaTarget = target
+            quotaRequest = request
+            return quotaSnapshot(request.connection.id)
+        }
     }
+
+    private fun subscriptionQuotaRequest(target: AiExecutionTarget) = AiSubscriptionQuotaRequest(
+        connection = AiConnection.OpenAiSubscription(
+            id = AiConnection.Id("subscription-${if (target is AiExecutionTarget.Worker) "worker" else "server"}"),
+            displayName = "Subscription",
+            enabled = true,
+            executionTarget = target,
+        ),
+        modelId = "gpt-test",
+        userId = "user",
+    )
 
     private fun testRuntime(target: AiExecutionTarget): ResolvedAiRuntime {
         val connection = AiConnection.OpenAiApi(
@@ -425,4 +489,13 @@ class TargetedAiExecutionTest {
                 embeddings = AiModelSpec.Limits.Embeddings(dimensions = 2),
             ),
         )
+
+    companion object {
+        private fun quotaSnapshot(connectionId: AiConnection.Id) = AiSubscriptionQuotaSnapshot(
+            connectionId = connectionId,
+            observedAt = Clock.System.now(),
+            windows = emptyList(),
+            unlimited = true,
+        )
+    }
 }

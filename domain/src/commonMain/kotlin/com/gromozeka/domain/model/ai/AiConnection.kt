@@ -78,8 +78,9 @@ sealed interface AiConnection {
         override val displayName: String,
         override val enabled: Boolean = false,
         val webSearchEnabled: Boolean = true,
+        override val quotaPacing: AiSubscriptionQuotaPacingPolicy = AiSubscriptionQuotaPacingPolicy(),
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
-    ) : AiConnection {
+    ) : AiConnection, AiSubscriptionConnection {
         override val kind = Kind.OPENAI_SUBSCRIPTION
 
         init {
@@ -104,8 +105,9 @@ sealed interface AiConnection {
         val authMode: GitHubCopilotAuthMode = GitHubCopilotAuthMode.SERVER_CLI,
         val requestTimeoutSeconds: Int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
         val sessionIdleTimeoutSeconds: Int = DEFAULT_SESSION_IDLE_TIMEOUT_SECONDS,
+        override val quotaPacing: AiSubscriptionQuotaPacingPolicy = AiSubscriptionQuotaPacingPolicy(),
         override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
-    ) : AiConnection {
+    ) : AiConnection, AiSubscriptionConnection {
         override val kind = Kind.GITHUB_COPILOT
 
         init {
@@ -216,8 +218,9 @@ sealed interface AiConnection {
         val maxCachedProcesses: Int = DEFAULT_MAX_CACHED_PROCESSES,
         val processIdleTtlMinutes: Int = DEFAULT_PROCESS_IDLE_TTL_MINUTES,
         val voiceTranscriptionEnabled: Boolean = false,
+        override val quotaPacing: AiSubscriptionQuotaPacingPolicy = AiSubscriptionQuotaPacingPolicy(),
         override val executionTarget: AiExecutionTarget,
-    ) : AiConnection {
+    ) : AiConnection, AiSubscriptionConnection {
         override val kind = Kind.CLAUDE_CODE
 
         init {

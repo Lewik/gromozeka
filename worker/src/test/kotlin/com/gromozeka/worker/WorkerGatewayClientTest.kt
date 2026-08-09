@@ -8,6 +8,8 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiRequestResponseExecutionHandler
@@ -258,4 +260,8 @@ private object UnusedAiRequestResponseHandler : AiRequestResponseExecutionHandle
         request: AiSpeechSynthesisRequest,
     ): AiSpeechSynthesisResponse =
         error("Unused speech synthesis")
+
+    override suspend fun readSubscriptionQuota(
+        request: AiSubscriptionQuotaRequest,
+    ): AiSubscriptionQuotaSnapshot = error("Unused subscription quota")
 }

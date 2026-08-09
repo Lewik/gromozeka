@@ -65,6 +65,7 @@ class MemoryApplicationService(
     private val maintenanceTraceSinks: List<MemoryMaintenanceTraceSink>,
     private val llmCallObservers: List<MemoryRunLlmCallObserver>,
     private val embeddingIndexer: MemoryEmbeddingIndexer,
+    private val backgroundAiExecutionPacer: BackgroundAiExecutionPacer,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -198,10 +199,18 @@ class MemoryApplicationService(
 
         fun runtimeFor(purpose: AiRuntimeAssignment.Purpose): AiRuntime =
             runtimes.getOrPut(purpose) {
-                aiRuntimeProvider.getRuntime(
-                    selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(purpose),
+                val selection = aiConfigurationProvider.requireAvailableRuntimeSelectionFor(purpose)
+                val delegate = aiRuntimeProvider.getRuntime(
+                    selection = selection,
                     workspaceRootPath = runtimeContext.workspaceRootPath,
                 )
+                purpose.backgroundWorkloadOrNull()?.let { workload ->
+                    backgroundAiExecutionPacer.wrap(
+                        delegate = delegate,
+                        runtime = aiConfigurationProvider.resolveAiRuntime(selection),
+                        workload = workload,
+                    )
+                } ?: delegate
             }
     }
 

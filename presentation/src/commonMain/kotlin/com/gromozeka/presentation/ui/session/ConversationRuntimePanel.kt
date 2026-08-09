@@ -40,6 +40,9 @@ import com.gromozeka.client.RemoteConnectionState
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.model.ai.AiSubscriptionConnection
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
@@ -268,6 +271,23 @@ private fun RuntimeConfigurationCard(
         configuration?.defaultParameters?.timeoutSeconds?.let { add("timeout=${it}s") }
         configuration?.assistantResponseFormat?.let { add("format=${it.name.lowercase()}") }
     }
+    val backgroundQuotaPolicies = AiRuntimeAssignment.Purpose.entries
+        .filter { purpose ->
+            purpose == AiRuntimeAssignment.Purpose.MEMORY_WRITE ||
+                purpose == AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE ||
+                purpose.fallbackPurpose == AiRuntimeAssignment.Purpose.MEMORY_WRITE ||
+                purpose.fallbackPurpose == AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE
+        }
+        .mapNotNull(aiCatalog::runtimeSelectionFor)
+        .mapNotNull { selection ->
+            aiCatalog.modelConfigurations.firstOrNull { it.id == selection.modelConfigurationId }
+        }
+        .mapNotNull { modelConfiguration ->
+            val subscription = aiCatalog.connectionFor(modelConfiguration) as? AiSubscriptionConnection
+                ?: return@mapNotNull null
+            (subscription as AiConnection) to subscription.quotaPacing
+        }
+        .distinctBy { (backgroundConnection, _) -> backgroundConnection.id }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -296,6 +316,20 @@ private fun RuntimeConfigurationCard(
             if (parameters.isNotEmpty()) {
                 Text(
                     text = parameters.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            backgroundQuotaPolicies.forEach { (backgroundConnection, policy) ->
+                Text(
+                    text = if (policy.enabled) {
+                        "Background quota · ${backgroundConnection.displayName} · " +
+                            "reserve=${policy.reservePercent.runtimePercent()}% · " +
+                            "headroom=${policy.minimumHeadroomPercent.runtimePercent()}% · " +
+                            "refresh=${policy.refreshIntervalSeconds}s"
+                    } else {
+                        "Background quota · ${backgroundConnection.displayName} · disabled"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -349,6 +383,9 @@ private fun RuntimeConfigurationCard(
         }
     }
 }
+
+private fun Double.runtimePercent(): String =
+    if (this % 1.0 == 0.0) toInt().toString() else toString()
 
 @Composable
 private fun RuntimeTasksSection(

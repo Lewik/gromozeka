@@ -15,6 +15,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
@@ -271,6 +273,11 @@ class SpeechExecutionRoutingTest {
             synthesisTarget = target
             return synthesisResponse
         }
+
+        override suspend fun readSubscriptionQuota(
+            target: ConversationRuntimeWorkerIdentity,
+            request: AiSubscriptionQuotaRequest,
+        ): AiSubscriptionQuotaSnapshot = error("Unused subscription quota")
     }
 
     private data object NoOpAudioController : AudioController {

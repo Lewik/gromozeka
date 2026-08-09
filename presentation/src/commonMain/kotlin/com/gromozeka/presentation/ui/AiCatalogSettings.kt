@@ -72,6 +72,8 @@ import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiSubscriptionConnection
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaPacingPolicy
 import com.gromozeka.domain.model.ai.AiWebToolConfiguration
 import com.gromozeka.domain.model.ai.apiKeyOrNull
 import com.gromozeka.domain.service.AiConfigurationService
@@ -876,6 +878,16 @@ private fun ConnectionDialog(
     var voiceTranscriptionEnabled by remember {
         mutableStateOf((existing as? AiConnection.ClaudeCode)?.voiceTranscriptionEnabled ?: false)
     }
+    val existingQuotaPacing = (existing as? AiSubscriptionConnection)?.quotaPacing
+        ?: AiSubscriptionQuotaPacingPolicy()
+    var quotaPacingEnabled by remember { mutableStateOf(existingQuotaPacing.enabled) }
+    var quotaReservePercent by remember { mutableStateOf(existingQuotaPacing.reservePercent.toString()) }
+    var quotaMinimumHeadroomPercent by remember {
+        mutableStateOf(existingQuotaPacing.minimumHeadroomPercent.toString())
+    }
+    var quotaRefreshIntervalSeconds by remember {
+        mutableStateOf(existingQuotaPacing.refreshIntervalSeconds.toString())
+    }
     var awsRegion by remember {
         mutableStateOf((existing as? AiConnection.AwsAiConnection)?.awsRegion.orEmpty())
     }
@@ -1208,6 +1220,51 @@ private fun ConnectionDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+                if (kind in subscriptionConnectionKinds) {
+                    HorizontalDivider()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = quotaPacingEnabled,
+                            onCheckedChange = { quotaPacingEnabled = it },
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Protect subscription quota from background work")
+                            Text(
+                                "Applies to memory writes and maintenance. Memory recall and foreground requests bypass it.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = quotaReservePercent,
+                        onValueChange = { quotaReservePercent = it.filterQuotaNumber() },
+                        label = { Text("Protected reserve (%)") },
+                        supportingText = { Text("Keep this much subscription capacity for foreground work") },
+                        enabled = quotaPacingEnabled,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = quotaMinimumHeadroomPercent,
+                        onValueChange = { quotaMinimumHeadroomPercent = it.filterQuotaNumber() },
+                        label = { Text("Per-call headroom (%)") },
+                        supportingText = { Text("Required surplus above the time-based spending curve") },
+                        enabled = quotaPacingEnabled,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = quotaRefreshIntervalSeconds,
+                        onValueChange = { quotaRefreshIntervalSeconds = it.filter(Char::isDigit) },
+                        label = { Text("Quota refresh interval (seconds)") },
+                        supportingText = { Text("A fresh quota snapshot is required after every background model call") },
+                        enabled = quotaPacingEnabled,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
@@ -1233,6 +1290,10 @@ private fun ConnectionDialog(
                             maxCachedProcesses = maxCachedProcesses,
                             processIdleTtlMinutes = processIdleTtlMinutes,
                             voiceTranscriptionEnabled = voiceTranscriptionEnabled,
+                            quotaPacingEnabled = quotaPacingEnabled,
+                            quotaReservePercent = quotaReservePercent,
+                            quotaMinimumHeadroomPercent = quotaMinimumHeadroomPercent,
+                            quotaRefreshIntervalSeconds = quotaRefreshIntervalSeconds,
                             awsRegion = awsRegion,
                             awsProfile = awsProfile,
                             executionTarget = executionTarget,
@@ -1277,6 +1338,10 @@ private fun createConnection(
     maxCachedProcesses: String,
     processIdleTtlMinutes: String,
     voiceTranscriptionEnabled: Boolean,
+    quotaPacingEnabled: Boolean,
+    quotaReservePercent: String,
+    quotaMinimumHeadroomPercent: String,
+    quotaRefreshIntervalSeconds: String,
     awsRegion: String,
     awsProfile: String,
     executionTarget: AiExecutionTarget,
@@ -1286,6 +1351,15 @@ private fun createConnection(
     val secret = secretValue.trim().ifBlank { null }?.let {
         if (secretMode == "Inline") SecretRef.Inline(it) else SecretRef.EnvironmentVariable(it)
     }
+    val quotaPacing = AiSubscriptionQuotaPacingPolicy(
+        enabled = quotaPacingEnabled,
+        reservePercent = quotaReservePercent.toDoubleOrNull()
+            ?: error("Protected reserve must be a number"),
+        minimumHeadroomPercent = quotaMinimumHeadroomPercent.toDoubleOrNull()
+            ?: error("Per-call headroom must be a number"),
+        refreshIntervalSeconds = quotaRefreshIntervalSeconds.toLongOrNull()
+            ?: error("Quota refresh interval must be a positive integer"),
+    )
     return when (kind) {
         AiConnection.Kind.OPENAI_API -> AiConnection.OpenAiApi(
             id = connectionId,
@@ -1301,6 +1375,7 @@ private fun createConnection(
             displayName = displayName,
             enabled = enabled,
             webSearchEnabled = webSearchEnabled,
+            quotaPacing = quotaPacing,
             executionTarget = executionTarget,
         )
         AiConnection.Kind.GITHUB_COPILOT -> AiConnection.GitHubCopilot(
@@ -1314,6 +1389,7 @@ private fun createConnection(
                 ?: error("Request timeout must be a positive integer"),
             sessionIdleTimeoutSeconds = copilotSessionIdleTimeoutSeconds.toIntOrNull()
                 ?: error("Session idle timeout must be a positive integer"),
+            quotaPacing = quotaPacing,
             executionTarget = executionTarget,
         )
         AiConnection.Kind.OPENAI_COMPATIBLE -> AiConnection.OpenAiCompatible(
@@ -1351,6 +1427,7 @@ private fun createConnection(
             processIdleTtlMinutes = processIdleTtlMinutes.toIntOrNull()
                 ?: error("Idle TTL must be a positive integer"),
             voiceTranscriptionEnabled = voiceTranscriptionEnabled,
+            quotaPacing = quotaPacing,
             executionTarget = executionTarget as? AiExecutionTarget.Worker
                 ?: error("Claude Code requires a Worker execution target"),
         )
@@ -1369,6 +1446,20 @@ private fun createConnection(
             baseUrl = baseUrl.trim(),
             executionTarget = executionTarget,
         )
+    }
+}
+
+private fun String.filterQuotaNumber(): String {
+    var decimalSeen = false
+    return filter { character ->
+        when {
+            character.isDigit() -> true
+            character == '.' && !decimalSeen -> {
+                decimalSeen = true
+                true
+            }
+            else -> false
+        }
     }
 }
 
@@ -1943,4 +2034,10 @@ private val apiKeyConnectionKinds = setOf(
     AiConnection.Kind.OPENAI_COMPATIBLE,
     AiConnection.Kind.ANTHROPIC_API,
     AiConnection.Kind.GEMINI_API,
+)
+
+private val subscriptionConnectionKinds = setOf(
+    AiConnection.Kind.OPENAI_SUBSCRIPTION,
+    AiConnection.Kind.GITHUB_COPILOT,
+    AiConnection.Kind.CLAUDE_CODE,
 )

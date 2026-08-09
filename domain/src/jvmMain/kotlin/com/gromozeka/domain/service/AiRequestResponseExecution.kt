@@ -6,6 +6,8 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 
 interface DirectAiEmbeddingProvider {
     suspend fun embed(
@@ -86,6 +88,16 @@ interface DirectAiTextToSpeechProvider {
     ): AiSpeechSynthesisResponse
 }
 
+interface DirectAiSubscriptionQuotaProvider {
+    fun supports(request: AiSubscriptionQuotaRequest): Boolean
+
+    suspend fun read(request: AiSubscriptionQuotaRequest): AiSubscriptionQuotaSnapshot
+}
+
+interface AiSubscriptionQuotaProvider {
+    suspend fun read(request: AiSubscriptionQuotaRequest): AiSubscriptionQuotaSnapshot
+}
+
 interface AiRequestResponseExecutionClient {
     suspend fun call(
         target: ConversationRuntimeWorkerIdentity,
@@ -112,6 +124,11 @@ interface AiRequestResponseExecutionClient {
         runtime: ResolvedAiRuntime,
         request: AiSpeechSynthesisRequest,
     ): AiSpeechSynthesisResponse
+
+    suspend fun readSubscriptionQuota(
+        target: ConversationRuntimeWorkerIdentity,
+        request: AiSubscriptionQuotaRequest,
+    ): AiSubscriptionQuotaSnapshot
 }
 
 interface AiRequestResponseExecutionHandler {
@@ -136,4 +153,8 @@ interface AiRequestResponseExecutionHandler {
         runtime: ResolvedAiRuntime,
         request: AiSpeechSynthesisRequest,
     ): AiSpeechSynthesisResponse
+
+    suspend fun readSubscriptionQuota(
+        request: AiSubscriptionQuotaRequest,
+    ): AiSubscriptionQuotaSnapshot
 }

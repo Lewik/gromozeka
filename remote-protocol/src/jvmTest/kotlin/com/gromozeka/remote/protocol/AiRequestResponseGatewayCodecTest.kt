@@ -11,6 +11,9 @@ import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaWindow
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
 import com.gromozeka.domain.service.AiEmbeddingVector
@@ -20,6 +23,7 @@ import com.gromozeka.domain.service.AiSpeechSynthesisResponse
 import com.gromozeka.domain.service.AiSpeechTranscriptionRequest
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -75,6 +79,15 @@ class AiRequestResponseGatewayCodecTest {
         assertContentEquals(handler.synthesisResponse.audioData, synthesis.audioData)
         assertEquals(handler.synthesisResponse.mediaType, synthesis.mediaType)
         assertEquals(handler.synthesisResponse.fileExtension, synthesis.fileExtension)
+
+        val quotaPayload = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeSubscriptionQuotaRequest(handler.quotaRequest),
+            handler,
+        )
+        assertEquals(
+            handler.quotaSnapshot,
+            AiRequestResponseGatewayCodec.decodeSubscriptionQuotaResponse(quotaPayload),
+        )
     }
 
     @Test
@@ -239,6 +252,28 @@ class AiRequestResponseGatewayCodecTest {
             mediaType = "audio/wav",
             fileExtension = "wav",
         )
+        val quotaRequest = AiSubscriptionQuotaRequest(
+            connection = AiConnection.OpenAiSubscription(
+                id = AiConnection.Id("subscription"),
+                displayName = "Subscription",
+                enabled = true,
+            ),
+            modelId = "gpt-5.6",
+            userId = "user-1",
+        )
+        val quotaSnapshot = AiSubscriptionQuotaSnapshot(
+            connectionId = quotaRequest.connection.id,
+            observedAt = Instant.parse("2026-08-10T00:00:00Z"),
+            windows = listOf(
+                AiSubscriptionQuotaWindow(
+                    id = "primary",
+                    displayName = "Primary",
+                    usedPercent = 42.0,
+                    startedAt = Instant.parse("2026-08-10T00:00:00Z"),
+                    resetsAt = Instant.parse("2026-08-10T05:00:00Z"),
+                )
+            ),
+        )
 
         override suspend fun call(
             runtime: ResolvedAiRuntime,
@@ -283,6 +318,13 @@ class AiRequestResponseGatewayCodecTest {
             require(runtime == this.runtime)
             require(request == synthesisRequest)
             return synthesisResponse
+        }
+
+        override suspend fun readSubscriptionQuota(
+            request: AiSubscriptionQuotaRequest,
+        ): AiSubscriptionQuotaSnapshot {
+            require(request == quotaRequest)
+            return quotaSnapshot
         }
     }
 }

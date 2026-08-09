@@ -2,6 +2,8 @@ package com.gromozeka.server
 
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
@@ -73,6 +75,13 @@ class GatewayAiRequestResponseExecutionClient(
     ): AiSpeechSynthesisResponse =
         execute(target, AiRequestResponseGatewayCodec.encodeSynthesisRequest(runtime, request))
             .let(AiRequestResponseGatewayCodec::decodeSynthesisResponse)
+
+    override suspend fun readSubscriptionQuota(
+        target: ConversationRuntimeWorkerIdentity,
+        request: AiSubscriptionQuotaRequest,
+    ): AiSubscriptionQuotaSnapshot =
+        execute(target, AiRequestResponseGatewayCodec.encodeSubscriptionQuotaRequest(request))
+            .let(AiRequestResponseGatewayCodec::decodeSubscriptionQuotaResponse)
 
     private suspend fun execute(
         target: ConversationRuntimeWorkerIdentity,
