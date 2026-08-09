@@ -116,8 +116,11 @@ sealed interface AiConnection {
             }
             require(requestTimeoutSeconds > 0) { "GitHub Copilot request timeout must be positive" }
             require(sessionIdleTimeoutSeconds > 0) { "GitHub Copilot session idle timeout must be positive" }
-            require(executionTarget is AiExecutionTarget.Server) {
-                "GitHub Copilot execution target must be the Server"
+            require(
+                executionTarget is AiExecutionTarget.Server ||
+                    authMode == GitHubCopilotAuthMode.SERVER_CLI
+            ) {
+                "GitHub Copilot per-user token authentication requires the Server execution target"
             }
         }
 

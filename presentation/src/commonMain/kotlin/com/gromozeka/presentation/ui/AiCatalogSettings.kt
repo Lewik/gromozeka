@@ -908,14 +908,18 @@ private fun ConnectionDialog(
     var removeConfiguredSecret by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(kind, workers) {
+    LaunchedEffect(kind, workers, executionTarget, copilotAuthMode) {
         if (kind == AiConnection.Kind.CLAUDE_CODE && executionTarget !is AiExecutionTarget.Worker) {
             workers.firstOrNull()?.let { worker ->
                 executionTarget = AiExecutionTarget.Worker(worker.workerId.value)
             }
         }
-        if (kind == AiConnection.Kind.GITHUB_COPILOT) {
-            executionTarget = AiExecutionTarget.Server
+        if (
+            kind == AiConnection.Kind.GITHUB_COPILOT &&
+            executionTarget is AiExecutionTarget.Worker &&
+            copilotAuthMode == AiConnection.GitHubCopilotAuthMode.PER_USER_TOKEN
+        ) {
+            copilotAuthMode = AiConnection.GitHubCopilotAuthMode.SERVER_CLI
         }
     }
 
@@ -982,14 +986,8 @@ private fun ConnectionDialog(
                     if (kind != AiConnection.Kind.CLAUDE_CODE) {
                         add(AiExecutionTarget.Server)
                     }
-                    if (kind != AiConnection.Kind.GITHUB_COPILOT) {
-                        workers.forEach { add(AiExecutionTarget.Worker(it.workerId.value)) }
-                    }
-                    if (
-                        kind != AiConnection.Kind.CLAUDE_CODE &&
-                        kind != AiConnection.Kind.GITHUB_COPILOT &&
-                        executionTarget !in this
-                    ) {
+                    workers.forEach { add(AiExecutionTarget.Worker(it.workerId.value)) }
+                    if (executionTarget is AiExecutionTarget.Worker && executionTarget !in this) {
                         add(executionTarget)
                     }
                 }
@@ -1004,7 +1002,8 @@ private fun ConnectionDialog(
                     if (kind == AiConnection.Kind.CLAUDE_CODE) {
                         "Claude Code runs only on the selected Worker, using that machine's installation and credentials."
                     } else if (kind == AiConnection.Kind.GITHUB_COPILOT) {
-                        "GitHub Copilot runs only on the Server. The CLI is installed separately; Gromozeka does not bundle or silently replace it."
+                        "GitHub Copilot runs on the selected target using that machine's separately installed CLI. " +
+                            "Gromozeka does not bundle, reassign, or silently replace it."
                     } else {
                         "Finite LLM, embedding, speech-to-text, and text-to-speech requests use this exact target. " +
                             "Streaming and live voice require Server."
@@ -1147,10 +1146,19 @@ private fun ConnectionDialog(
                     LabeledDropdown(
                         label = "Authentication",
                         value = copilotAuthMode,
-                        options = AiConnection.GitHubCopilotAuthMode.entries,
+                        options = if (executionTarget is AiExecutionTarget.Worker) {
+                            listOf(AiConnection.GitHubCopilotAuthMode.SERVER_CLI)
+                        } else {
+                            AiConnection.GitHubCopilotAuthMode.entries
+                        },
                         optionLabel = {
                             when (it) {
-                                AiConnection.GitHubCopilotAuthMode.SERVER_CLI -> "Server CLI login"
+                                AiConnection.GitHubCopilotAuthMode.SERVER_CLI ->
+                                    if (executionTarget is AiExecutionTarget.Worker) {
+                                        "Worker CLI login"
+                                    } else {
+                                        "Server CLI login"
+                                    }
                                 AiConnection.GitHubCopilotAuthMode.PER_USER_TOKEN -> "Per-user token"
                             }
                         },
@@ -1158,7 +1166,12 @@ private fun ConnectionDialog(
                     )
                     Text(
                         if (copilotAuthMode == AiConnection.GitHubCopilotAuthMode.SERVER_CLI) {
-                            "All requests use the GitHub account logged into Copilot CLI on the Server."
+                            when (val target = executionTarget) {
+                                AiExecutionTarget.Server ->
+                                    "All requests use the GitHub account logged into Copilot CLI on the Server."
+                                is AiExecutionTarget.Worker ->
+                                    "All requests use the GitHub account logged into Copilot CLI on Worker ${target.workerId}."
+                            }
                         } else {
                             "Each user configures their own GitHub token in the My access tab. No shared fallback is used."
                         },
@@ -1176,7 +1189,7 @@ private fun ConnectionDialog(
                         value = copilotHomePath,
                         onValueChange = { copilotHomePath = it },
                         label = { Text("Copilot home override") },
-                        supportingText = { Text("Optional. Server CLI login defaults to ~/.copilot.") },
+                        supportingText = { Text("Optional. CLI login defaults to ~/.copilot on the execution target.") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -1301,8 +1314,7 @@ private fun createConnection(
                 ?: error("Request timeout must be a positive integer"),
             sessionIdleTimeoutSeconds = copilotSessionIdleTimeoutSeconds.toIntOrNull()
                 ?: error("Session idle timeout must be a positive integer"),
-            executionTarget = executionTarget as? AiExecutionTarget.Server
-                ?: error("GitHub Copilot requires the Server execution target"),
+            executionTarget = executionTarget,
         )
         AiConnection.Kind.OPENAI_COMPATIBLE -> AiConnection.OpenAiCompatible(
             id = connectionId,

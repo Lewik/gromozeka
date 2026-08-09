@@ -117,6 +117,63 @@ class AiRequestResponseGatewayCodecTest {
         assertEquals("voice transcript", AiRequestResponseGatewayCodec.decodeTranscriptionResponse(payload))
     }
 
+    @Test
+    fun `codec preserves Worker-targeted Copilot runtime`() = runBlocking {
+        val connection = AiConnection.GitHubCopilot(
+            id = AiConnection.Id("copilot-worker"),
+            displayName = "Copilot Worker",
+            executablePath = "/opt/copilot/bin/copilot",
+            copilotHomePath = "/var/lib/copilot",
+            executionTarget = AiExecutionTarget.Worker("worker-1"),
+        )
+        val runtime = ResolvedAiRuntime(
+            connection = connection,
+            modelConfiguration = AiModelConfiguration(
+                id = AiModelConfiguration.Id("copilot-terra"),
+                connectionId = connection.id,
+                providerModelId = "gpt-5.6-terra",
+                displayName = "Copilot Terra",
+            ),
+            modelSpec = AiModelSpec(
+                id = "gpt-5.6-terra",
+                provider = AiProvider.OPENAI,
+                capabilities = setOf(
+                    AiModelCapability.TEXT_GENERATION,
+                    AiModelCapability.TOOL_CALLING,
+                ),
+                limits = AiModelSpec.Limits(
+                    textGeneration = AiModelSpec.Limits.TextGeneration(128_000),
+                ),
+            ),
+        )
+        var receivedRuntime: ResolvedAiRuntime? = null
+        val handler = object : AiRequestResponseExecutionHandler by TestHandler() {
+            override suspend fun call(
+                runtime: ResolvedAiRuntime,
+                workspaceRootPath: String?,
+                request: AiRuntimeRequest,
+            ): AiRuntimeResponse {
+                receivedRuntime = runtime
+                return AiRuntimeResponse(messages = emptyList(), finishReason = "copilot-worker")
+            }
+        }
+
+        val payload = AiRequestResponseGatewayCodec.execute(
+            AiRequestResponseGatewayCodec.encodeCallRequest(
+                runtime,
+                null,
+                AiRuntimeRequest(systemPrompts = listOf("system"), messages = emptyList()),
+            ),
+            handler,
+        )
+
+        assertEquals(runtime, receivedRuntime)
+        assertEquals(
+            "copilot-worker",
+            AiRequestResponseGatewayCodec.decodeCallResponse(payload).finishReason,
+        )
+    }
+
     private class TestHandler : AiRequestResponseExecutionHandler {
         private val selection = AiRuntimeSelection(AiModelConfiguration.Id("model-config"))
         val modelSpec = AiModelSpec(

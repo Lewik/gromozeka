@@ -120,6 +120,49 @@ class AiConnectionTest {
     }
 
     @Test
+    fun githubCopilotAllowsServerAndWorkerCliTargets() {
+        val server = AiConnection.GitHubCopilot(
+            id = AiConnection.Id("copilot-server"),
+            displayName = "Copilot Server",
+            executionTarget = AiExecutionTarget.Server,
+        )
+        val worker = AiConnection.GitHubCopilot(
+            id = AiConnection.Id("copilot-worker"),
+            displayName = "Copilot Worker",
+            executionTarget = AiExecutionTarget.Worker("worker-1"),
+        )
+
+        assertEquals(AiExecutionTarget.Server, server.executionTarget)
+        assertEquals(AiExecutionTarget.Worker("worker-1"), worker.executionTarget)
+    }
+
+    @Test
+    fun githubCopilotWorkerRejectsPerUserTokenAuthentication() {
+        assertFailsWith<IllegalArgumentException> {
+            AiConnection.GitHubCopilot(
+                id = AiConnection.Id("copilot-worker"),
+                displayName = "Copilot Worker",
+                authMode = AiConnection.GitHubCopilotAuthMode.PER_USER_TOKEN,
+                executionTarget = AiExecutionTarget.Worker("worker-1"),
+            )
+        }
+    }
+
+    @Test
+    fun githubCopilotWorkerTargetSurvivesSerialization() {
+        val connection: AiConnection = AiConnection.GitHubCopilot(
+            id = AiConnection.Id("copilot-worker"),
+            displayName = "Copilot Worker",
+            executablePath = "/opt/copilot/bin/copilot",
+            executionTarget = AiExecutionTarget.Worker("worker-1"),
+        )
+
+        val restored = Json.decodeFromString<AiConnection>(Json.encodeToString(connection))
+
+        assertEquals(connection, restored)
+    }
+
+    @Test
     fun executionTargetSurvivesSerialization() {
         val connection: AiConnection = AiConnection.OpenAiApi(
             id = AiConnection.Id("worker-openai"),

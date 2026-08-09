@@ -90,6 +90,7 @@ private val DEFAULT_WORKER_EXECUTABLE_NAMES = setOf(
     "cmd",
     "cmake",
     "claude",
+    "copilot",
     "curl",
     "docker",
     "dotnet",

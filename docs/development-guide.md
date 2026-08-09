@@ -91,10 +91,13 @@ Worker. Finite LLM calls, embeddings, speech transcription, and speech synthesis
 use that target. Realtime and long-lived streaming AI sessions are Server-only.
 Claude Code is the exception to general target selection: its connection always
 targets a Worker where Claude Code is separately installed and authenticated.
-GitHub Copilot connections are Server-only. Gromozeka bundles the MIT-licensed
-Java SDK, but the operator installs and licenses Copilot CLI separately. A
-connection uses either the exact Server CLI login or an encrypted per-user
-GitHub token; it never falls back between those modes or to another model.
+GitHub Copilot can target the Server or one exact Worker. Gromozeka bundles the
+MIT-licensed Java SDK, but the operator installs and licenses Copilot CLI
+separately on the selected target. Server-targeted connections can use either
+that Server's CLI login or an encrypted per-user GitHub token. Worker-targeted
+connections use only that Worker's local CLI login; user tokens are never sent
+to Workers. A connection never falls back between auth modes, execution targets,
+Workers, or models.
 An unavailable or incompatible target fails explicitly; Gromozeka does not fall
 back to another Worker or to the Server and does not automatically retry an
 operation whose outcome may be unknown.

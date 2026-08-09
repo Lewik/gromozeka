@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiUserCredentialStatus
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import kotlinx.coroutines.CoroutineScope
@@ -89,7 +90,12 @@ private fun GitHubCopilotCredentialCard(
             )
             when (connection.authMode) {
                 AiConnection.GitHubCopilotAuthMode.SERVER_CLI -> Text(
-                    "Uses the GitHub account logged into Copilot CLI on the Server.",
+                    when (val target = connection.executionTarget) {
+                        AiExecutionTarget.Server ->
+                            "Uses the GitHub account logged into Copilot CLI on the Server."
+                        is AiExecutionTarget.Worker ->
+                            "Uses the GitHub account logged into Copilot CLI on Worker ${target.workerId}."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

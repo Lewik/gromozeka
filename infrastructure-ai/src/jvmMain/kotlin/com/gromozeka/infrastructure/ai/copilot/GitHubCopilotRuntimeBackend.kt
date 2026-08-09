@@ -56,8 +56,16 @@ import java.util.concurrent.CopyOnWriteArrayList
 @Service
 internal class GitHubCopilotRuntimeBackend(
     private val clientPool: GitHubCopilotClientPool,
-    private val credentialRepository: AiUserCredentialRepository,
+    credentialRepositories: List<AiUserCredentialRepository>,
 ) : AiRuntimeBackend {
+    private val credentialRepository = credentialRepositories.singleOrNull()
+
+    init {
+        require(credentialRepositories.size <= 1) {
+            "Multiple GitHub Copilot credential repositories are configured"
+        }
+    }
+
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.GITHUB_COPILOT
 
@@ -87,7 +95,7 @@ internal class GitHubCopilotRuntime(
     private val connection: AiConnection.GitHubCopilot,
     private val modelConfiguration: AiModelConfiguration,
     private val clientPool: GitHubCopilotClientPool,
-    private val credentialRepository: AiUserCredentialRepository,
+    private val credentialRepository: AiUserCredentialRepository?,
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
 ) : AiRuntime {
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
@@ -147,12 +155,15 @@ internal class GitHubCopilotRuntime(
         when (connection.authMode) {
             AiConnection.GitHubCopilotAuthMode.SERVER_CLI -> null
             AiConnection.GitHubCopilotAuthMode.PER_USER_TOKEN -> {
+                val repository = requireNotNull(credentialRepository) {
+                    "GitHub Copilot per-user authentication is unavailable on this execution target"
+                }
                 val userId = request.options.toolContext[TOOL_CONTEXT_USER_ID]
                     ?.toString()
                     ?.takeIf { it.isNotBlank() }
                     ?.let(User::Id)
                     ?: error("GitHub Copilot per-user authentication requires the runtime user id")
-                credentialRepository.find(userId, connection.id)?.secret
+                repository.find(userId, connection.id)?.secret
                     ?: error("GitHub Copilot is not authorized for the current user")
             }
         }
@@ -248,7 +259,7 @@ internal class GitHubCopilotRuntime(
     ): SessionConfig {
         val config = SessionConfig()
             .setSessionId(sessionId)
-            .setClientName("gromozeka-server")
+            .setClientName("gromozeka")
             .setModel(modelConfiguration.providerModelId)
             .setTools(toolPlan.definitions)
             .setAvailableTools(toolPlan.definitions.map { it.name() })

@@ -47,6 +47,11 @@ class ConversationRuntimeWorkerConfigurationTest {
     }
 
     @Test
+    fun `default environment discovery includes separately installed Copilot CLI`() {
+        assertTrue("copilot" in WorkerEnvironmentProperties().executableNames)
+    }
+
+    @Test
     fun `fails fast without capabilities`() {
         contextRunner()
             .withPropertyValues("gromozeka.runtime.worker.id=worker-1")
