@@ -2,6 +2,7 @@ package com.gromozeka.mobile.worker
 
 import com.gromozeka.domain.model.GeofenceTransition
 import com.gromozeka.domain.model.LocationCause
+import com.gromozeka.domain.model.MobileWorkerAppState
 import com.gromozeka.domain.model.MobileWorkerPlatform
 import com.gromozeka.domain.model.SleepState
 import kotlinx.datetime.Instant
@@ -57,6 +58,15 @@ class IosMobileWorkerRuntime(
     suspend fun synchronize(): IosMobileWorkerStatus = runtime.synchronize().toIosStatus()
 
     @Throws(Exception::class)
+    suspend fun synchronize(
+        foreground: Boolean,
+        heartbeatWhenIdle: Boolean,
+    ): IosMobileWorkerStatus = runtime.synchronize(
+        appState = if (foreground) MobileWorkerAppState.FOREGROUND else MobileWorkerAppState.BACKGROUND,
+        heartbeatWhenIdle = heartbeatWhenIdle,
+    ).toIosStatus()
+
+    @Throws(Exception::class)
     suspend fun reset() = runtime.reset()
 
     @Throws(Exception::class)
@@ -88,6 +98,24 @@ class IosMobileWorkerRuntime(
         altitudeMeters.takeUnless(Double::isNaN),
         speedMetersPerSecond.takeUnless(Double::isNaN),
         if (significantChange) LocationCause.SIGNIFICANT_CHANGE else LocationCause.CURRENT,
+        observedAtEpochMilliseconds.toInstant(),
+    )
+
+    @Throws(Exception::class)
+    suspend fun recordLiveLocation(
+        latitude: Double,
+        longitude: Double,
+        accuracyMeters: Double,
+        altitudeMeters: Double,
+        speedMetersPerSecond: Double,
+        observedAtEpochMilliseconds: Long,
+    ) = runtime.recordLocation(
+        latitude,
+        longitude,
+        accuracyMeters.takeUnless(Double::isNaN),
+        altitudeMeters.takeUnless(Double::isNaN),
+        speedMetersPerSecond.takeUnless(Double::isNaN),
+        LocationCause.LIVE_TRACKING,
         observedAtEpochMilliseconds.toInstant(),
     )
 

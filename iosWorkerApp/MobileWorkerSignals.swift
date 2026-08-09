@@ -22,10 +22,12 @@ final class MobileWorkerSignals: NSObject {
     private var sleepQuery: HKObserverQuery?
     private var currentLocationCompletion: ((Result<CLLocation, Error>) -> Void)?
     private var currentLocationRequestStarted = false
+    private var activeLocationTrackingMode: WorkerLocationTrackingMode?
     private var connectedBleTargets: [UUID: WorkerBleDevice] = [:]
     private var retainedBlePeripherals: [UUID: CBPeripheral] = [:]
     private var started = false
     private var observers: [NSObjectProtocol] = []
+    private var foregroundHeartbeatTimer: Timer?
 
     init(runtime: IosMobileWorkerRuntime) {
         self.runtime = runtime
@@ -64,12 +66,12 @@ final class MobileWorkerSignals: NSObject {
                 forName: UIApplication.didBecomeActiveNotification,
                 object: nil,
                 queue: .main
-            ) { [weak self] _ in self?.captureAllAvailableState() },
+            ) { [weak self] _ in self?.applicationDidBecomeActive() },
             NotificationCenter.default.addObserver(
                 forName: UIApplication.didEnterBackgroundNotification,
                 object: nil,
                 queue: .main
-            ) { [weak self] _ in self?.captureAllAvailableState() },
+            ) { [weak self] _ in self?.applicationDidEnterBackground() },
             NotificationCenter.default.addObserver(
                 forName: AVAudioSession.routeChangeNotification,
                 object: AVAudioSession.sharedInstance(),
@@ -78,6 +80,12 @@ final class MobileWorkerSignals: NSObject {
         ]
         resumeAuthorizedSignals()
         captureAllAvailableState()
+        if UIApplication.shared.applicationState == .active {
+            startForegroundHeartbeat()
+            synchronize(heartbeatWhenIdle: true, foreground: true)
+        } else {
+            synchronize(heartbeatWhenIdle: true, foreground: false)
+        }
     }
 
     func stop() {
@@ -85,7 +93,10 @@ final class MobileWorkerSignals: NSObject {
         observers.forEach(NotificationCenter.default.removeObserver)
         observers.removeAll()
         UIDevice.current.isBatteryMonitoringEnabled = false
+        stopForegroundHeartbeat()
+        activeLocationTrackingMode = nil
         locationManager.stopMonitoringSignificantLocationChanges()
+        locationManager.stopUpdatingLocation()
         currentLocationManager.stopUpdatingLocation()
         finishCurrentLocationRequest(.failure(MobileWorkerLocationError.cancelled))
         locationManager.monitoredRegions.forEach(locationManager.stopMonitoring(for:))
@@ -115,7 +126,7 @@ final class MobileWorkerSignals: NSObject {
     func requestLocationAuthorization() {
         switch locationManager.authorizationStatus {
         case .authorizedAlways:
-            startLocation()
+            configureLocationTracking()
         case .authorizedWhenInUse:
             locationManager.requestAlwaysAuthorization()
             onMessage?("Choose Always in iOS Settings to enable background location events")
@@ -150,7 +161,11 @@ final class MobileWorkerSignals: NSObject {
     }
 
     func reloadConfiguration() {
-        configureGeofences()
+        if locationManager.authorizationStatus == .authorizedAlways {
+            configureLocationTracking()
+        } else {
+            configureGeofences()
+        }
         scanForConfiguredBleDevices()
         captureWifi()
     }
@@ -193,7 +208,7 @@ final class MobileWorkerSignals: NSObject {
 
     private func resumeAuthorizedSignals() {
         if locationManager.authorizationStatus == .authorizedAlways {
-            startLocation()
+            configureLocationTracking()
         }
         if UserDefaults.standard.bool(forKey: bluetoothEnabledPreference) {
             startBluetooth()
@@ -211,6 +226,35 @@ final class MobileWorkerSignals: NSObject {
             captureLatestSleep()
         }
         synchronize()
+    }
+
+    private func applicationDidBecomeActive() {
+        captureAllAvailableState()
+        startForegroundHeartbeat()
+        synchronize(heartbeatWhenIdle: true, foreground: true)
+    }
+
+    private func applicationDidEnterBackground() {
+        stopForegroundHeartbeat()
+        captureAllAvailableState()
+        synchronize(heartbeatWhenIdle: true, foreground: false)
+    }
+
+    private func startForegroundHeartbeat() {
+        guard foregroundHeartbeatTimer == nil else { return }
+        let timer = Timer(
+            timeInterval: foregroundHeartbeatInterval,
+            repeats: true
+        ) { [weak self] _ in
+            self?.synchronize(heartbeatWhenIdle: true, foreground: true)
+        }
+        foregroundHeartbeatTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopForegroundHeartbeat() {
+        foregroundHeartbeatTimer?.invalidate()
+        foregroundHeartbeatTimer = nil
     }
 
     private func captureBattery() {
@@ -242,30 +286,58 @@ final class MobileWorkerSignals: NSObject {
         }
     }
 
-    private func startLocation() {
-        guard CLLocationManager.significantLocationChangeMonitoringAvailable() else {
-            onMessage?("Significant location changes are unavailable")
-            return
-        }
+    private func configureLocationTracking() {
+        activeLocationTrackingMode = nil
+        locationManager.stopMonitoringSignificantLocationChanges()
+        locationManager.stopUpdatingLocation()
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = true
-        locationManager.startMonitoringSignificantLocationChanges()
+        let configuration = MobileWorkerSignalConfigurationStore.shared.configuration
+        switch configuration.locationTrackingMode {
+        case .significantChanges:
+            guard CLLocationManager.significantLocationChangeMonitoringAvailable() else {
+                onMessage?("Significant location changes are unavailable")
+                return
+            }
+            activeLocationTrackingMode = .significantChanges
+            locationManager.startMonitoringSignificantLocationChanges()
+            onMessage?("Significant location changes are enabled")
+        case .liveTracking:
+            locationManager.desiredAccuracy = kCLLocationAccuracyBest
+            locationManager.distanceFilter = configuration.liveTrackingDistanceMeters
+            locationManager.activityType = .other
+            activeLocationTrackingMode = .liveTracking
+            locationManager.startUpdatingLocation()
+            onMessage?("Live location tracking is enabled")
+        }
         configureGeofences()
-        onMessage?("Significant location changes are enabled")
     }
 
-    private func recordLocation(_ location: CLLocation, significantChange: Bool) {
+    private func recordLocation(_ location: CLLocation, cause: RecordedLocationCause) {
         record { completion in
-            self.runtime.recordLocation(
-                latitude: location.coordinate.latitude,
-                longitude: location.coordinate.longitude,
-                accuracyMeters: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : .nan,
-                altitudeMeters: location.verticalAccuracy >= 0 ? location.altitude : .nan,
-                speedMetersPerSecond: location.speed >= 0 ? location.speed : .nan,
-                significantChange: significantChange,
-                observedAtEpochMilliseconds: location.timestamp.epochMilliseconds,
-                completionHandler: completion
-            )
+            switch cause {
+            case .current, .significantChange:
+                self.runtime.recordLocation(
+                    latitude: location.coordinate.latitude,
+                    longitude: location.coordinate.longitude,
+                    accuracyMeters: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : .nan,
+                    altitudeMeters: location.verticalAccuracy >= 0 ? location.altitude : .nan,
+                    speedMetersPerSecond: location.speed >= 0 ? location.speed : .nan,
+                    significantChange: cause == .significantChange,
+                    observedAtEpochMilliseconds: location.timestamp.epochMilliseconds,
+                    completionHandler: completion
+                )
+            case .liveTracking:
+                self.runtime.recordLiveLocation(
+                    latitude: location.coordinate.latitude,
+                    longitude: location.coordinate.longitude,
+                    accuracyMeters: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : .nan,
+                    altitudeMeters: location.verticalAccuracy >= 0 ? location.altitude : .nan,
+                    speedMetersPerSecond: location.speed >= 0 ? location.speed : .nan,
+                    observedAtEpochMilliseconds: location.timestamp.epochMilliseconds,
+                    completionHandler: completion
+                )
+            }
         }
     }
 
@@ -452,9 +524,16 @@ final class MobileWorkerSignals: NSObject {
         }
     }
 
-    private func synchronize() {
+    private func synchronize(
+        heartbeatWhenIdle: Bool = false,
+        foreground: Bool? = nil
+    ) {
         guard started else { return }
-        runtime.synchronize { [weak self] status, error in
+        let isForeground = foreground ?? (UIApplication.shared.applicationState == .active)
+        runtime.synchronize(
+            foreground: isForeground,
+            heartbeatWhenIdle: heartbeatWhenIdle
+        ) { [weak self] status, error in
             if let error {
                 self?.onError?(error.localizedDescription)
             } else if let status {
@@ -484,7 +563,7 @@ extension MobileWorkerSignals: CLLocationManagerDelegate {
         guard manager === locationManager else { return }
         switch manager.authorizationStatus {
         case .authorizedAlways:
-            startLocation()
+            configureLocationTracking()
         case .authorizedWhenInUse:
             onMessage?("Choose Always in iOS Settings to enable background location events")
         case .denied, .restricted:
@@ -508,10 +587,17 @@ extension MobileWorkerSignals: CLLocationManagerDelegate {
                 finishCurrentLocationRequest(.failure(MobileWorkerLocationError.staleLocation))
                 return
             }
-            recordLocation(location, significantChange: false)
+            recordLocation(location, cause: .current)
             finishCurrentLocationRequest(.success(location))
         } else {
-            recordLocation(location, significantChange: true)
+            switch activeLocationTrackingMode {
+            case .significantChanges:
+                recordLocation(location, cause: .significantChange)
+            case .liveTracking:
+                recordLocation(location, cause: .liveTracking)
+            case nil:
+                break
+            }
         }
     }
 
@@ -565,6 +651,12 @@ private enum MobileWorkerLocationError: LocalizedError {
         case .staleLocation: "iOS returned an old cached location; try again"
         }
     }
+}
+
+private enum RecordedLocationCause {
+    case current
+    case significantChange
+    case liveTracking
 }
 
 extension MobileWorkerSignals: CBCentralManagerDelegate {
@@ -737,3 +829,4 @@ private let sleepEnabledPreference = "com.gromozeka.mobile-worker.sleep-enabled"
 private let lastSleepSessionPreference = "com.gromozeka.mobile-worker.last-sleep-session"
 private let geofenceIdentifierPrefix = "gromozeka:"
 private let currentLocationMaximumAge: TimeInterval = 120
+private let foregroundHeartbeatInterval: TimeInterval = 60

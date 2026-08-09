@@ -29,7 +29,7 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>Gromozeka Worker reads sleep sessions to publish sleep state events you enable.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Gromozeka Worker uses background location for significant movement and geofence events.</string>
+	<string>Gromozeka Worker uses background location for the tracking mode and geofences you enable.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Gromozeka Worker uses location for device state and configured geofences.</string>
 	<key>NFCReaderUsageDescription</key>

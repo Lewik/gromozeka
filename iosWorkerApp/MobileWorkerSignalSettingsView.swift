@@ -5,6 +5,8 @@ struct MobileWorkerSignalSettingsView: View {
 
     @ObservedObject private var store = MobileWorkerSignalConfigurationStore.shared
     @State private var geofenceName = ""
+    @State private var locationTrackingMode: WorkerLocationTrackingMode = .significantChanges
+    @State private var liveTrackingDistance = "10"
     @State private var latitude = ""
     @State private var longitude = ""
     @State private var radius = "250"
@@ -22,6 +24,21 @@ struct MobileWorkerSignalSettingsView: View {
             Text("Only the geofences, BLE services and Wi-Fi network listed here are monitored.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            signalTitle("Location tracking")
+            Picker("Location tracking mode", selection: $locationTrackingMode) {
+                Text("Significant changes").tag(WorkerLocationTrackingMode.significantChanges)
+                Text("Live tracking").tag(WorkerLocationTrackingMode.liveTracking)
+            }
+            .pickerStyle(.segmented)
+            if locationTrackingMode == .liveTracking {
+                workerTextField("Minimum movement, m", text: $liveTrackingDistance)
+            }
+            Text(locationTrackingDescription)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button("Apply location mode") { applyLocationTracking() }
+                .buttonStyle(.borderedProminent)
 
             signalTitle("Geofences")
             HStack {
@@ -106,6 +123,33 @@ struct MobileWorkerSignalSettingsView: View {
         }
         .onAppear {
             wifiNetworkId = store.configuration.wifiNetworkId ?? ""
+            locationTrackingMode = store.configuration.locationTrackingMode
+            liveTrackingDistance = String(store.configuration.liveTrackingDistanceMeters)
+        }
+    }
+
+    private func applyLocationTracking() {
+        do {
+            guard let distance = Double(liveTrackingDistance) else {
+                throw LocalConfigurationError.invalidNumber
+            }
+            try store.setLocationTracking(
+                mode: locationTrackingMode,
+                liveDistanceMeters: distance
+            )
+            error = nil
+            signals.reloadConfiguration()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private var locationTrackingDescription: String {
+        switch locationTrackingMode {
+        case .significantChanges:
+            "Battery-friendly. iOS wakes the Worker only after substantial movement."
+        case .liveTracking:
+            "More frequent and power-hungry. iOS treats the distance as a hint, not a guarantee."
         }
     }
 

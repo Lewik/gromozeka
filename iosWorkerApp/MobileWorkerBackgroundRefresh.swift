@@ -17,6 +17,9 @@ final class MobileWorkerAppDelegate: NSObject, UIApplicationDelegate {
             }
             MobileWorkerBackgroundRefresh.run(refreshTask)
         }
+        if launchOptions?[.location] != nil {
+            MobileWorkerSignalHost.shared.restoreAfterLocationLaunch()
+        }
         return true
     }
 
@@ -80,7 +83,7 @@ enum MobileWorkerBackgroundRefresh {
         _ runtime: IosMobileWorkerRuntime,
         completion: MobileWorkerBackgroundTaskCompletion
     ) {
-        runtime.synchronize { _, error in
+        runtime.synchronize(foreground: false, heartbeatWhenIdle: true) { _, error in
             completion.finish(success: error == nil)
         }
     }

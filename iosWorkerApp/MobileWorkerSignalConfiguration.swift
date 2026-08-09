@@ -13,10 +13,47 @@ struct WorkerBleDevice: Codable, Identifiable, Equatable {
     let serviceUuid: String
 }
 
+enum WorkerLocationTrackingMode: String, Codable, CaseIterable, Identifiable {
+    case significantChanges = "significant_changes"
+    case liveTracking = "live_tracking"
+
+    var id: String { rawValue }
+}
+
 struct MobileWorkerSignalConfiguration: Codable, Equatable {
     var geofences: [WorkerGeofence] = []
     var bleDevices: [WorkerBleDevice] = []
     var wifiNetworkId: String?
+    var locationTrackingMode: WorkerLocationTrackingMode = .significantChanges
+    var liveTrackingDistanceMeters: Double = 10
+
+    private enum CodingKeys: String, CodingKey {
+        case geofences
+        case bleDevices
+        case wifiNetworkId
+        case locationTrackingMode
+        case liveTrackingDistanceMeters
+    }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        geofences = try values.decodeIfPresent([WorkerGeofence].self, forKey: .geofences) ?? []
+        bleDevices = try values.decodeIfPresent([WorkerBleDevice].self, forKey: .bleDevices) ?? []
+        wifiNetworkId = try values.decodeIfPresent(String.self, forKey: .wifiNetworkId)
+        locationTrackingMode = try values.decodeIfPresent(
+            WorkerLocationTrackingMode.self,
+            forKey: .locationTrackingMode
+        ) ?? .significantChanges
+        let liveTrackingDistance = try values.decodeIfPresent(
+            Double.self,
+            forKey: .liveTrackingDistanceMeters
+        ) ?? 10
+        liveTrackingDistanceMeters = liveTrackingDistance.isFinite && liveTrackingDistance > 0
+            ? liveTrackingDistance
+            : 10
+    }
 }
 
 final class MobileWorkerSignalConfigurationStore: ObservableObject {
@@ -96,6 +133,19 @@ final class MobileWorkerSignalConfigurationStore: ObservableObject {
         persist(updated)
     }
 
+    func setLocationTracking(
+        mode: WorkerLocationTrackingMode,
+        liveDistanceMeters: Double
+    ) throws {
+        guard liveDistanceMeters.isFinite, liveDistanceMeters > 0 else {
+            throw SignalConfigurationError.invalidLiveTrackingDistance
+        }
+        var updated = configuration
+        updated.locationTrackingMode = mode
+        updated.liveTrackingDistanceMeters = liveDistanceMeters
+        persist(updated)
+    }
+
     func reset() {
         configuration = MobileWorkerSignalConfiguration()
         UserDefaults.standard.removeObject(forKey: key)
@@ -117,6 +167,7 @@ private enum SignalConfigurationError: LocalizedError {
     case invalidBluetoothUuid
     case bluetoothNameTooLong
     case wifiNameTooLong
+    case invalidLiveTrackingDistance
 
     var errorDescription: String? {
         switch self {
@@ -127,6 +178,7 @@ private enum SignalConfigurationError: LocalizedError {
         case .invalidBluetoothUuid: "Enter a full BLE service UUID"
         case .bluetoothNameTooLong: "Bluetooth display name must not exceed 255 characters"
         case .wifiNameTooLong: "Wi-Fi network name must not exceed 128 characters"
+        case .invalidLiveTrackingDistance: "Live tracking distance must be greater than zero"
         }
     }
 }

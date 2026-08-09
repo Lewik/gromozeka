@@ -6,6 +6,7 @@ import android.content.Intent
 import android.location.LocationManager
 import android.util.Log
 import com.gromozeka.domain.model.GeofenceTransition
+import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +26,7 @@ class MobileWorkerGeofenceReceiver : BroadcastReceiver() {
                     regionId,
                     if (entering) GeofenceTransition.ENTERED else GeofenceTransition.EXITED,
                 )
-                runtime.synchronize()
+                runtime.synchronize(MobileWorkerAppState.BACKGROUND)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {

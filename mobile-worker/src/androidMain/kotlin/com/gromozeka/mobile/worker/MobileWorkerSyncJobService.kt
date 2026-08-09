@@ -7,6 +7,7 @@ import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
 import android.util.Log
+import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +38,7 @@ class MobileWorkerSyncJobService : JobService() {
                     AndroidSleepSignals(applicationContext).captureLatestSession(runtime)
                     sensors.enableSignificantLocationUpdates()
                     sensors.enableBlePresenceUpdates()
-                    runtime.synchronize()
+                    runtime.synchronize(MobileWorkerAppState.BACKGROUND, heartbeatWhenIdle = true)
                 }
             } catch (error: CancellationException) {
                 throw error

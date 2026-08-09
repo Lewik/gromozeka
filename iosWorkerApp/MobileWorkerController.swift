@@ -18,6 +18,22 @@ final class MobileWorkerRuntimeHost {
     }
 }
 
+final class MobileWorkerSignalHost {
+    static let shared = MobileWorkerSignalHost()
+
+    let signals = MobileWorkerSignals(runtime: MobileWorkerRuntimeHost.shared.runtime)
+
+    private init() {}
+
+    func restoreAfterLocationLaunch() {
+        signals.start()
+        MobileWorkerRuntimeHost.shared.runtime.status { [weak self] status, error in
+            guard error == nil, status?.enrolled == false else { return }
+            DispatchQueue.main.async { self?.signals.stop() }
+        }
+    }
+}
+
 @MainActor
 final class MobileWorkerController: ObservableObject {
     @Published var status: IosMobileWorkerStatus?
@@ -34,7 +50,7 @@ final class MobileWorkerController: ObservableObject {
     private var connectionPollSeconds: Int = 2
 
     init() {
-        signals = MobileWorkerSignals(runtime: MobileWorkerRuntimeHost.shared.runtime)
+        signals = MobileWorkerSignalHost.shared.signals
         signals.onStatus = { [weak self] status in
             Task { @MainActor in self?.status = status }
         }
@@ -192,7 +208,7 @@ final class MobileWorkerController: ObservableObject {
     func synchronize() {
         busy = true
         error = nil
-        runtime.synchronize { [weak self] status, error in
+        runtime.synchronize(foreground: true, heartbeatWhenIdle: true) { [weak self] status, error in
             Task { @MainActor in
                 guard let self else { return }
                 self.busy = false

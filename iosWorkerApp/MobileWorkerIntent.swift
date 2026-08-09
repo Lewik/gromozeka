@@ -30,7 +30,7 @@ struct SendGromozekaEventIntent: AppIntent {
             )
         }
         let synchronized = await withCheckedContinuation { continuation in
-            runtime.synchronize { _, error in
+            runtime.synchronize(foreground: false, heartbeatWhenIdle: false) { _, error in
                 continuation.resume(returning: error == nil)
             }
         }

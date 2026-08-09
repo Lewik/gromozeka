@@ -3,6 +3,7 @@ package com.gromozeka.mobile.worker
 import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.GeofenceTransition
 import com.gromozeka.domain.model.LocationCause
+import com.gromozeka.domain.model.MobileWorkerAppState
 import com.gromozeka.domain.model.MobileWorkerPlatform
 import com.gromozeka.domain.model.SleepState
 import com.gromozeka.domain.model.VehicleSystem
@@ -12,6 +13,9 @@ import com.gromozeka.domain.model.projectionKey
 import com.gromozeka.remote.protocol.MobileWorkerEventBatchRequest
 import com.gromozeka.remote.protocol.MobileWorkerEventBatchResponse
 import com.gromozeka.remote.protocol.MobileWorkerEventInput
+import com.gromozeka.remote.protocol.MobileWorkerContactMetadata
+import com.gromozeka.remote.protocol.MobileWorkerHeartbeatRequest
+import com.gromozeka.remote.protocol.MobileWorkerHeartbeatResponse
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.gromozeka.remote.protocol.WorkerEnrollmentConsumeRequest
 import com.gromozeka.remote.protocol.DeviceConnectionChallenge
@@ -199,12 +203,7 @@ internal class MobileWorkerRuntime(
         val deviceInfo = MobileWorkerEventInput(
             id = randomMobileWorkerEventId(),
             observedAt = Clock.System.now(),
-            payload = DeviceStateEvent.DeviceInfo(
-                platform = platform,
-                deviceName = deviceName,
-                operatingSystemVersion = operatingSystemVersion,
-                appVersion = appVersion,
-            ),
+            payload = currentDeviceInfo(),
         )
         val state = PersistedMobileWorkerState(
             serverUrl = baseUrl,
@@ -237,8 +236,11 @@ internal class MobileWorkerRuntime(
         readState().toStatus(storage.readCredential() != null)
     }
 
-    suspend fun synchronize(): MobileWorkerStatus = mobileWorkerStorageMutex.withLock {
-        synchronizeLocked(readState())
+    suspend fun synchronize(
+        appState: MobileWorkerAppState = MobileWorkerAppState.UNKNOWN,
+        heartbeatWhenIdle: Boolean = false,
+    ): MobileWorkerStatus = mobileWorkerStorageMutex.withLock {
+        synchronizeLocked(readState(), appState, heartbeatWhenIdle)
     }
 
     suspend fun reset() = mobileWorkerStorageMutex.withLock {
@@ -381,17 +383,31 @@ internal class MobileWorkerRuntime(
         )
     }
 
-    private suspend fun synchronizeLocked(initialState: PersistedMobileWorkerState): MobileWorkerStatus {
-        var state = initialState
+    private suspend fun synchronizeLocked(
+        initialState: PersistedMobileWorkerState,
+        appState: MobileWorkerAppState,
+        heartbeatWhenIdle: Boolean,
+    ): MobileWorkerStatus {
+        var state = ensureCurrentDeviceInfo(initialState)
         if (!state.enrolled) return state.toStatus(storage.readCredential() != null)
         val credential = storage.readCredential()
             ?: error("Mobile Worker credential is missing; enroll the device again")
+        var sentEventBatch = false
         while (state.pendingEvents.isNotEmpty()) {
             val batch = state.pendingEvents.take(MAX_SYNC_BATCH_SIZE)
             val response = httpClient.post("${state.serverUrl}/api/mobile-worker/events") {
                 header("Authorization", "Bearer $credential")
                 contentType(ContentType.Application.Json)
-                setBody(MobileWorkerEventBatchRequest(batch))
+                setBody(
+                    MobileWorkerEventBatchRequest(
+                        events = batch,
+                        contact = contactMetadata(
+                            requestId = batch.first().id,
+                            appState = appState,
+                            pendingEventCount = state.pendingEvents.size,
+                        ),
+                    )
+                )
             }
             if (!response.status.isSuccess()) {
                 error(response.mobileWorkerError("Synchronization failed"))
@@ -407,9 +423,69 @@ internal class MobileWorkerRuntime(
                 lastSynchronizedAt = acknowledgement.serverReceivedAt,
             )
             writeState(state)
+            sentEventBatch = true
+        }
+        if (heartbeatWhenIdle && !sentEventBatch) {
+            val response = httpClient.post("${state.serverUrl}/api/mobile-worker/heartbeat") {
+                header("Authorization", "Bearer $credential")
+                contentType(ContentType.Application.Json)
+                setBody(
+                    MobileWorkerHeartbeatRequest(
+                        contactMetadata(
+                            requestId = randomMobileWorkerEventId(),
+                            appState = appState,
+                            pendingEventCount = 0,
+                        )
+                    )
+                )
+            }
+            if (!response.status.isSuccess()) {
+                error(response.mobileWorkerError("Heartbeat failed"))
+            }
+            val acknowledgement = response.body<MobileWorkerHeartbeatResponse>()
+            state = state.copy(lastSynchronizedAt = acknowledgement.serverReceivedAt)
+            writeState(state)
         }
         return state.toStatus(hasCredential = true)
     }
+
+    private fun ensureCurrentDeviceInfo(state: PersistedMobileWorkerState): PersistedMobileWorkerState {
+        if (!state.enrolled) return state
+        val deviceInfo = currentDeviceInfo()
+        val projectionKey = requireNotNull(deviceInfo.projectionKey())
+        if (state.lastRecordedValues[projectionKey] == deviceInfo) return state
+        val updated = state.copy(
+            pendingEvents = state.pendingEvents + MobileWorkerEventInput(
+                id = randomMobileWorkerEventId(),
+                observedAt = Clock.System.now(),
+                payload = deviceInfo,
+            ),
+            lastRecordedValues = state.lastRecordedValues + (projectionKey to deviceInfo),
+        )
+        writeState(updated)
+        return updated
+    }
+
+    private fun currentDeviceInfo(): DeviceStateEvent.DeviceInfo =
+        DeviceStateEvent.DeviceInfo(
+            platform = platform,
+            deviceName = deviceName,
+            operatingSystemVersion = operatingSystemVersion,
+            appVersion = appVersion,
+        )
+
+    private fun contactMetadata(
+        requestId: String,
+        appState: MobileWorkerAppState,
+        pendingEventCount: Int,
+    ): MobileWorkerContactMetadata =
+        MobileWorkerContactMetadata(
+            requestId = requestId,
+            sentAt = Clock.System.now(),
+            appState = appState,
+            appVersion = appVersion,
+            pendingEventCount = pendingEventCount,
+        )
 
     private fun readState(): PersistedMobileWorkerState =
         storage.readState()

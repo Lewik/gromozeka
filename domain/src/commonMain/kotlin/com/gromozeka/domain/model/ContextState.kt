@@ -305,6 +305,7 @@ enum class MobileWorkerPlatform {
 enum class LocationCause {
     CURRENT,
     SIGNIFICANT_CHANGE,
+    LIVE_TRACKING,
     GEOFENCE,
 }
 
