@@ -4,7 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+val javaVersion = libs.versions.java.get().toInt()
+
 kotlin {
+    jvmToolchain(javaVersion)
     jvm {}
     
     sourceSets {
