@@ -7,7 +7,7 @@ licensed under the MIT License. GitHub Copilot CLI and the GitHub Copilot
 service are separately installed, authenticated, and licensed; they are not
 included in Gromozeka distributions.
 
-Copyright GitHub, Inc. and contributors
+Copyright GitHub, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
