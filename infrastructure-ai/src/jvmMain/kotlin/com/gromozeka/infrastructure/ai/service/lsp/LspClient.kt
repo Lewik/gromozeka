@@ -405,9 +405,9 @@ private fun Diagnostic.toDiagnosticInfo() = DiagnosticInfo(
         DiagnosticSeverity.Hint -> "hint"
         else -> "unknown"
     },
-    message = message,
+    message = message.map({ it }, { it.value }),
     range = range.toRangeInfo(),
-    code = code?.left,
+    code = code?.map({ it }, { it.toString() }),
     source = source
 )
 

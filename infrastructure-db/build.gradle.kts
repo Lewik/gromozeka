@@ -34,7 +34,6 @@ kotlin {
                 
                 // Serialization
                 implementation(libs.kotlinx.serialization.json)
-                implementation(libs.jackson.module.kotlin)
                 
                 // Logging
                 implementation(libs.klog)

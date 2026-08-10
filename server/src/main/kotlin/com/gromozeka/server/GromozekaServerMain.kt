@@ -28,8 +28,6 @@ import kotlinx.coroutines.runBlocking
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
-import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.ComponentScan
@@ -272,9 +270,9 @@ private fun determineLogPath(mode: String?): String {
 }
 
 @SpringBootApplication(
-    exclude = [
-        JdbcTemplateAutoConfiguration::class,
-        DataSourceTransactionManagerAutoConfiguration::class,
+    excludeName = [
+        "org.springframework.boot.jdbc.autoconfigure.JdbcTemplateAutoConfiguration",
+        "org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration",
     ]
 )
 @ComponentScan(

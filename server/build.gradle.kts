@@ -13,6 +13,7 @@ extra["kotlin.version"] = libs.versions.kotlin.get()
 extra["kotlin-serialization.version"] = libs.versions.kotlinx.serialization.get()
 extra["kotlin-coroutines.version"] = libs.versions.kotlinx.coroutines.get()
 extra["flyway.version"] = libs.versions.flyway.get()
+extra["hikaricp.version"] = libs.versions.hikaricp.get()
 extra["postgresql.version"] = libs.versions.postgresql.get()
 
 val javaVersion = libs.versions.java.get().toInt()

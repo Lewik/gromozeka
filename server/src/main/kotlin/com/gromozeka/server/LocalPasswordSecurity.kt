@@ -19,7 +19,9 @@ class Argon2PasswordHasher : PasswordHasher {
     )
 
     override fun hash(password: CharArray): String =
-        encoder.encode(password.concatToString())
+        requireNotNull(encoder.encode(password.concatToString())) {
+            "Argon2 encoder returned no password hash"
+        }
 
     override fun verify(password: CharArray, passwordHash: String): Boolean =
         encoder.matches(password.concatToString(), passwordHash)
