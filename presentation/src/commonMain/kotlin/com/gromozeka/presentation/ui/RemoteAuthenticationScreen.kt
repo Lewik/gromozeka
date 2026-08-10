@@ -44,7 +44,7 @@ import com.gromozeka.remote.protocol.DeviceConnectionConsumeResponse
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 data class RemoteAuthenticationInput(
     val username: String,

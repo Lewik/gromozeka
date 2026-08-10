@@ -77,7 +77,7 @@ class DeviceConnectionService(
     private val secureRandom: SecureRandom = SecureRandom(),
 ) {
     suspend fun create(request: DeviceConnectionStartRequest): DeviceConnectionChallenge {
-        val now = clock.instant().toKotlinx()
+        val now = clock.instant().toKotlinInstant()
         val deviceLabel = request.deviceLabel.normalized("Device label", MAX_DEVICE_LABEL_LENGTH)
         val platform = request.platform.normalized("Device platform", MAX_PLATFORM_LENGTH)
         require(request.components.isNotEmpty()) { "At least one device component is required" }
@@ -372,10 +372,10 @@ class DeviceConnectionService(
             require(it.length <= maxLength) { "$label must contain at most $maxLength characters" }
         }
 
-    private fun now(): kotlinx.datetime.Instant = clock.instant().toKotlinx()
+    private fun now(): kotlin.time.Instant = clock.instant().toKotlinInstant()
 
-    private fun java.time.Instant.toKotlinx(): kotlinx.datetime.Instant =
-        kotlinx.datetime.Instant.fromEpochMilliseconds(toEpochMilli())
+    private fun java.time.Instant.toKotlinInstant(): kotlin.time.Instant =
+        kotlin.time.Instant.fromEpochMilliseconds(toEpochMilli())
 
     private companion object {
         const val TOKEN_BYTES = 32

@@ -26,7 +26,7 @@ import com.gromozeka.remote.protocol.TestBrowserUseRequest
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
 import com.gromozeka.remote.protocol.UpdateProjectRequest
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertFailsWith

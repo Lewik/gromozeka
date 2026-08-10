@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.RuntimeEnvironmentExecutor
 import com.gromozeka.domain.model.Workspace
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFalse

@@ -30,7 +30,7 @@ import com.gromozeka.remote.protocol.StartSpeechCaptureRequest
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,7 +1,7 @@
 package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.Conversation
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Repository for managing conversation threads.

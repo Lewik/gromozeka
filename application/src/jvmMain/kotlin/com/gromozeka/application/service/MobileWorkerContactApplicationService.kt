@@ -5,8 +5,8 @@ import com.gromozeka.domain.model.MobileWorkerContactKind
 import com.gromozeka.domain.model.MobileWorkerContactObservation
 import com.gromozeka.domain.model.WorkerResource
 import com.gromozeka.domain.repository.MobileWorkerContactRepository
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service

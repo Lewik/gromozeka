@@ -2,7 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.WorkerAudioInput
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable

@@ -28,7 +28,7 @@ import com.gromozeka.domain.model.memory.MemoryActionItemUpdater
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlanner
 import com.gromozeka.domain.model.memory.MemoryWriteRouter
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class SequentialMemoryIdFactory(
     private val prefix: String = "memory",

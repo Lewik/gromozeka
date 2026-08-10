@@ -9,8 +9,8 @@ import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaWindow
 import com.gromozeka.domain.repository.AiUserCredentialRepository
 import com.gromozeka.domain.service.DirectAiSubscriptionQuotaProvider
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service

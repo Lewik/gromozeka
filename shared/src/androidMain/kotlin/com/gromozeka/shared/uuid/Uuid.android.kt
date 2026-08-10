@@ -1,6 +1,6 @@
 package com.gromozeka.shared.uuid
 
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.random.Random
 
 actual fun uuid7(): String {

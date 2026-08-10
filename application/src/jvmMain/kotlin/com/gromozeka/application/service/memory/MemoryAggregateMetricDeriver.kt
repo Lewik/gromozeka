@@ -8,7 +8,7 @@ import com.gromozeka.domain.model.memory.MemoryPredicateDefinition.AggregateEffe
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.resolvePredicateDefinition
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull

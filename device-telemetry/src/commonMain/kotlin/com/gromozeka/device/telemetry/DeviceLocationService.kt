@@ -1,6 +1,6 @@
 package com.gromozeka.device.telemetry
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 interface DeviceLocationService {

@@ -7,7 +7,7 @@ import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.UserConversationTabLayoutService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 /**

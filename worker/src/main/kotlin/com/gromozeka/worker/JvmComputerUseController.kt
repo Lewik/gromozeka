@@ -17,7 +17,7 @@ import com.sun.jna.Native
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import java.awt.GraphicsDevice
 import java.awt.GraphicsEnvironment

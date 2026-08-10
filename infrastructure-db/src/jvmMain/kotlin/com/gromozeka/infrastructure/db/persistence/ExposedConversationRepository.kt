@@ -8,7 +8,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 
 @Service
@@ -21,8 +21,8 @@ class ExposedConversationRepository : ConversationRepository {
             it[agentDefinitionId] = conversation.agentDefinitionId.value
             it[displayName] = conversation.displayName
             it[currentThreadId] = conversation.currentThread.value
-            it[createdAt] = conversation.createdAt.toKotlin()
-            it[updatedAt] = conversation.updatedAt.toKotlin()
+            it[createdAt] = conversation.createdAt
+            it[updatedAt] = conversation.updatedAt
         }
         conversation
     }
@@ -48,7 +48,7 @@ class ExposedConversationRepository : ConversationRepository {
     override suspend fun updateCurrentThread(id: Conversation.Id, threadId: Conversation.Thread.Id): Unit = dbQuery {
         Conversations.update({ Conversations.id eq id.value }) {
             it[currentThreadId] = threadId.value
-            it[updatedAt] = Clock.System.now().toKotlin()
+            it[updatedAt] = Clock.System.now()
         }
     }
 
@@ -61,13 +61,13 @@ class ExposedConversationRepository : ConversationRepository {
     override suspend fun updateAgentDefinition(id: Conversation.Id, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id): Unit = dbQuery {
         Conversations.update({ Conversations.id eq id.value }) {
             it[Conversations.agentDefinitionId] = agentDefinitionId.value
-            it[updatedAt] = Clock.System.now().toKotlin()
+            it[updatedAt] = Clock.System.now()
         }
     }
 
     override suspend fun touch(id: Conversation.Id): Unit = dbQuery {
         Conversations.update({ Conversations.id eq id.value }) {
-            it[updatedAt] = Clock.System.now().toKotlin()
+            it[updatedAt] = Clock.System.now()
         }
     }
 
@@ -77,7 +77,7 @@ class ExposedConversationRepository : ConversationRepository {
         agentDefinitionId = com.gromozeka.domain.model.AgentDefinition.Id(this[Conversations.agentDefinitionId]),
         displayName = this[Conversations.displayName],
         currentThread = Conversation.Thread.Id(this[Conversations.currentThreadId]),
-        createdAt = this[Conversations.createdAt].toKotlinx(),
-        updatedAt = this[Conversations.updatedAt].toKotlinx()
+        createdAt = this[Conversations.createdAt],
+        updatedAt = this[Conversations.updatedAt]
     )
 }

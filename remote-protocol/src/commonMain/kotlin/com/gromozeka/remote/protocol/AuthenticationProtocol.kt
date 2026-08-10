@@ -1,7 +1,7 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.User
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable

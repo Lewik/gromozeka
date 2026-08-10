@@ -26,17 +26,10 @@ plugins {
     alias(libs.plugins.jetbrains.compose) apply false
 }
 
-// Centralized experimental API opt-ins for all Kotlin modules
+// Experimental API opt-ins shared by all Kotlin modules
 val experimentalOptIns = listOf(
     "kotlin.time.ExperimentalTime",
-    "kotlinx.serialization.ExperimentalSerializationApi",
-    "androidx.compose.material3.ExperimentalMaterial3Api",
-    "androidx.compose.ui.ExperimentalComposeUiApi",
-    "androidx.compose.foundation.ExperimentalFoundationApi"
-)
-
-val experimentalTestOptIns = listOf(
-    "androidx.compose.ui.test.ExperimentalTestApi"
+    "kotlinx.serialization.ExperimentalSerializationApi"
 )
 
 val projectVersion = providers.gradleProperty("gromozeka.version")
@@ -51,9 +44,6 @@ allprojects {
     tasks.withType<KotlinCompilationTask<*>>().configureEach {
         compilerOptions {
             experimentalOptIns.forEach { optIn.add(it) }
-            if (name.contains("Test", ignoreCase = true)) {
-                experimentalTestOptIns.forEach { optIn.add(it) }
-            }
         }
     }
 

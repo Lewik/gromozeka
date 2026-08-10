@@ -9,7 +9,7 @@ import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizationOp
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.JsonPrimitive
 
 object MemoryWritePipelineSmokeScenario {

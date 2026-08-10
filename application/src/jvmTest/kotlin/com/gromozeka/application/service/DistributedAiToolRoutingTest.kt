@@ -36,7 +36,7 @@ import com.gromozeka.domain.tool.WorkerInspectionToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.contractFingerprint
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive

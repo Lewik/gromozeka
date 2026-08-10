@@ -9,7 +9,7 @@ import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.SecurityAuditRecorder
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant as KotlinInstant
+import kotlin.time.Instant as KotlinInstant
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset

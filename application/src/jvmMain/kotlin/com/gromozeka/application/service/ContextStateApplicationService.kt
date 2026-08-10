@@ -15,8 +15,8 @@ import com.gromozeka.domain.model.WorkerResource
 import com.gromozeka.domain.repository.ContextStateRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement

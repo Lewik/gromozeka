@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryReadResult
 import com.gromozeka.domain.model.memory.MemoryRun
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface MemoryReadTraceSink {
     fun onMemoryRead(event: MemoryReadTraceEvent)

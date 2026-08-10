@@ -3,7 +3,6 @@ package com.gromozeka.presentation.services.theming.data
 import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Serializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -48,7 +47,6 @@ value class HexColor(val hex: String) {
     override fun toString(): String = hex
 }
 
-@Serializer(forClass = HexColor::class)
 object HexColorSerializer : KSerializer<HexColor> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("HexColor", PrimitiveKind.STRING)
 

@@ -3,7 +3,7 @@ package com.gromozeka.domain.model.mcp
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.shared.utils.sha256
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

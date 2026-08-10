@@ -37,7 +37,7 @@ class ExposedAiToolCapabilityCatalogRepository(
             it[fingerprint] = catalog.fingerprint
             it[modelConfigurationId] = catalog.generatedByModelConfigurationId.value
             it[payloadJson] = payload
-            it[generatedAt] = catalog.generatedAt.toKotlin()
+            it[generatedAt] = catalog.generatedAt
         }
         val storedPayload = AiToolCapabilityCatalogs.selectAll()
             .where {

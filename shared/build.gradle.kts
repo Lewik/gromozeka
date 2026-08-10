@@ -8,6 +8,9 @@ val javaVersion = libs.versions.java.get().toInt()
 
 kotlin {
     jvmToolchain(javaVersion)
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 
     jvm {}
     iosArm64()

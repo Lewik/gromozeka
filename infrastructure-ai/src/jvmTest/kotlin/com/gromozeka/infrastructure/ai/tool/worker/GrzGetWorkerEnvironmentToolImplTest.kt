@@ -16,7 +16,7 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.worker.GetWorkerEnvironmentRequest
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

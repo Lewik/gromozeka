@@ -11,7 +11,7 @@ import com.gromozeka.domain.repository.DeviceConnectionRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.sql.ResultSet

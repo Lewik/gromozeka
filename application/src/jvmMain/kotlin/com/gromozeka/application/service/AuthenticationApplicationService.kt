@@ -16,7 +16,7 @@ import com.gromozeka.domain.service.LocalCredentialVerifier
 import com.gromozeka.domain.service.PasswordHasher
 import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.security.MessageDigest
@@ -155,7 +155,7 @@ class AuthenticationApplicationService(
     private suspend fun issueSession(
         user: User,
         clientLabel: String?,
-        now: kotlinx.datetime.Instant,
+        now: kotlin.time.Instant,
     ): IssuedUserSession {
         val rawToken = ByteArray(SESSION_TOKEN_BYTES)
             .also(secureRandom::nextBytes)

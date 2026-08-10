@@ -10,7 +10,7 @@ import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.NSURL

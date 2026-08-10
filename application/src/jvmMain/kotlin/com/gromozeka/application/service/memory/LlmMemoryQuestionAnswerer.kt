@@ -9,7 +9,7 @@ import com.gromozeka.domain.model.memory.MemoryReadResult
 import com.gromozeka.domain.model.memory.MemoryReadTrace
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString

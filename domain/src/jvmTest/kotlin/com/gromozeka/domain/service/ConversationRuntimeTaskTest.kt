@@ -2,7 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test
 import kotlin.test.assertFailsWith

@@ -10,7 +10,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service
@@ -26,7 +26,7 @@ class ExposedMessageRepository(
             it[replyToId] = message.replyTo?.value
             it[squashOperationId] = message.squashOperationId?.value
             it[role] = message.role.name
-            it[createdAt] = message.createdAt.toKotlin()
+            it[createdAt] = message.createdAt
             it[messageJson] = json.encodeToString(message)
         }
         message

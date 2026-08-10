@@ -7,7 +7,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.minutes
@@ -40,7 +40,7 @@ class WorkerCatalogApplicationServiceTest {
     private suspend fun register(
         registry: InMemoryConversationRuntimeWorkerRegistry,
         workerId: String,
-        at: kotlinx.datetime.Instant,
+        at: kotlin.time.Instant,
     ) {
         registry.register(
             ConversationRuntimeWorkerRegistration(

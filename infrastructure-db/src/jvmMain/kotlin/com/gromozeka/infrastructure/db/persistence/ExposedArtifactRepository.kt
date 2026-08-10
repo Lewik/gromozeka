@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ArtifactRepository
 import com.gromozeka.infrastructure.db.persistence.tables.Artifacts
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -32,8 +32,8 @@ class ExposedArtifactRepository : ArtifactRepository {
             it[sha256] = artifact.sha256
             it[purpose] = artifact.purpose.name
             it[state] = artifact.state.name
-            it[createdAt] = artifact.createdAt.toKotlin()
-            it[committedAt] = artifact.committedAt?.toKotlin()
+            it[createdAt] = artifact.createdAt
+            it[committedAt] = artifact.committedAt
         }
         artifact
     }
@@ -69,7 +69,7 @@ class ExposedArtifactRepository : ArtifactRepository {
                 (Artifacts.id inList values) and (Artifacts.state eq Artifact.State.DRAFT.name)
             }) {
                 it[state] = Artifact.State.COMMITTED.name
-                it[Artifacts.committedAt] = committedAt.toKotlin()
+                it[Artifacts.committedAt] = committedAt
             }
             val committedIds = Artifacts.selectAll()
                 .where {
@@ -94,7 +94,7 @@ class ExposedArtifactRepository : ArtifactRepository {
             Artifacts.selectAll()
                 .where {
                     (Artifacts.state eq Artifact.State.DRAFT.name) and
-                        (Artifacts.createdAt less createdBefore.toKotlin())
+                        (Artifacts.createdAt less createdBefore)
                 }
                 .limit(limit)
                 .map { it.toArtifact() }
@@ -112,7 +112,7 @@ class ExposedArtifactRepository : ArtifactRepository {
         sha256 = this[Artifacts.sha256],
         purpose = Artifact.Purpose.valueOf(this[Artifacts.purpose]),
         state = Artifact.State.valueOf(this[Artifacts.state]),
-        createdAt = this[Artifacts.createdAt].toKotlinx(),
-        committedAt = this[Artifacts.committedAt]?.toKotlinx(),
+        createdAt = this[Artifacts.createdAt],
+        committedAt = this[Artifacts.committedAt],
     )
 }

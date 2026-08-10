@@ -161,6 +161,11 @@ val stageWindowsLocalWorkerResources by tasks.registering(Sync::class) {
 
 kotlin {
     jvmToolchain(javaVersion)
+    compilerOptions {
+        optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
+        optIn.add("androidx.compose.ui.ExperimentalComposeUiApi")
+        optIn.add("androidx.compose.foundation.ExperimentalFoundationApi")
+    }
 
     jvm {}
     iosArm64 {

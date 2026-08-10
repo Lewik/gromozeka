@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.JsFun
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi

@@ -43,7 +43,7 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
             it[subjectUserId] = worker.subjectUserId?.value
             it[runtimeWideAccess] = worker.runtimeWideAccess
             it[status] = worker.status.name
-            it[updatedAt] = worker.updatedAt.toKotlin()
+            it[updatedAt] = worker.updatedAt
         }
         if (updated == 0) {
             Workers.insert {
@@ -54,8 +54,8 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
                 it[subjectUserId] = worker.subjectUserId?.value
                 it[runtimeWideAccess] = worker.runtimeWideAccess
                 it[status] = worker.status.name
-                it[createdAt] = worker.createdAt.toKotlin()
-                it[updatedAt] = worker.updatedAt.toKotlin()
+                it[createdAt] = worker.createdAt
+                it[updatedAt] = worker.updatedAt
             }
         }
         worker
@@ -99,7 +99,7 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
             WorkerUserGrants.insert {
                 it[workerId] = grant.workerId.value
                 it[userId] = grant.userId.value
-                it[createdAt] = grant.createdAt.toKotlin()
+                it[createdAt] = grant.createdAt
                 it[createdByUserId] = grant.createdByUserId.value
             }
         }
@@ -161,7 +161,7 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
             WorkerProjectGrants.insert {
                 it[workerId] = grant.workerId.value
                 it[projectId] = grant.projectId.value
-                it[createdAt] = grant.createdAt.toKotlin()
+                it[createdAt] = grant.createdAt
                 it[createdByUserId] = grant.createdByUserId.value
             }
         }
@@ -187,15 +187,15 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
             subjectUserId = this[Workers.subjectUserId]?.let(User::Id),
             runtimeWideAccess = this[Workers.runtimeWideAccess],
             status = WorkerResource.Status.valueOf(this[Workers.status]),
-            createdAt = this[Workers.createdAt].toKotlinx(),
-            updatedAt = this[Workers.updatedAt].toKotlinx(),
+            createdAt = this[Workers.createdAt],
+            updatedAt = this[Workers.updatedAt],
         )
 
     private fun ResultRow.toUserGrant(): WorkerUserGrant =
         WorkerUserGrant(
             workerId = ConversationRuntimeWorkerId(this[WorkerUserGrants.workerId]),
             userId = User.Id(this[WorkerUserGrants.userId]),
-            createdAt = this[WorkerUserGrants.createdAt].toKotlinx(),
+            createdAt = this[WorkerUserGrants.createdAt],
             createdByUserId = User.Id(this[WorkerUserGrants.createdByUserId]),
         )
 
@@ -203,7 +203,7 @@ class ExposedWorkerAccessRepository : WorkerAccessRepository {
         WorkerProjectGrant(
             workerId = ConversationRuntimeWorkerId(this[WorkerProjectGrants.workerId]),
             projectId = Project.Id(this[WorkerProjectGrants.projectId]),
-            createdAt = this[WorkerProjectGrants.createdAt].toKotlinx(),
+            createdAt = this[WorkerProjectGrants.createdAt],
             createdByUserId = User.Id(this[WorkerProjectGrants.createdByUserId]),
         )
 }

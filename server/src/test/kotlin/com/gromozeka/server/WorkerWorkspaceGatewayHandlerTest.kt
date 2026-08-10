@@ -17,7 +17,7 @@ import com.gromozeka.remote.protocol.WorkerWorkspaceGatewayCodec
 import com.gromozeka.remote.protocol.WorkerWorkspaceRequest
 import com.gromozeka.remote.protocol.WorkerWorkspaceResponse
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals

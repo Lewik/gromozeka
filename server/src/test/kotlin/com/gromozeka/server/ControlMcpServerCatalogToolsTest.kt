@@ -9,7 +9,7 @@ import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive

@@ -3,7 +3,7 @@ package com.gromozeka.domain.repository
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.User
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface ProjectMembershipRepository {
     suspend fun save(membership: ProjectMembership): ProjectMembership

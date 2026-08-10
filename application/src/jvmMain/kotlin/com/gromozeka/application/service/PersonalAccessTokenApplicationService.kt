@@ -10,8 +10,8 @@ import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.service.PersonalAccessTokenService
 import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 import java.security.SecureRandom

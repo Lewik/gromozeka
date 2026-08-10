@@ -10,7 +10,7 @@ import com.gromozeka.infrastructure.db.persistence.tables.PersonalAccessTokenSco
 import com.gromozeka.infrastructure.db.persistence.tables.PersonalAccessTokens
 import com.gromozeka.infrastructure.db.persistence.tables.UserSessions
 import com.gromozeka.infrastructure.db.persistence.tables.Users
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -72,13 +72,13 @@ class ExposedIdentityRepository : IdentityRepository {
             it[displayName] = user.displayName
             it[status] = user.status.name
             it[role] = user.role.name
-            it[createdAt] = user.createdAt.toKotlin()
-            it[updatedAt] = user.updatedAt.toKotlin()
+            it[createdAt] = user.createdAt
+            it[updatedAt] = user.updatedAt
         }
         LocalPasswordCredentials.insert {
             it[userId] = credential.userId.value
             it[passwordHash] = credential.passwordHash
-            it[passwordChangedAt] = credential.passwordChangedAt.toKotlin()
+            it[passwordChangedAt] = credential.passwordChangedAt
         }
         user
     }
@@ -90,7 +90,7 @@ class ExposedIdentityRepository : IdentityRepository {
             it[displayName] = user.displayName
             it[status] = user.status.name
             it[role] = user.role.name
-            it[updatedAt] = user.updatedAt.toKotlin()
+            it[updatedAt] = user.updatedAt
         }
         check(updated == 1) { "User does not exist: ${user.id.value}" }
         user
@@ -108,7 +108,7 @@ class ExposedIdentityRepository : IdentityRepository {
             where = { LocalPasswordCredentials.userId eq credential.userId.value },
         ) {
             it[passwordHash] = credential.passwordHash
-            it[passwordChangedAt] = credential.passwordChangedAt.toKotlin()
+            it[passwordChangedAt] = credential.passwordChangedAt
         }
         check(updated == 1) { "Password credential does not exist for user ${credential.userId.value}" }
     }
@@ -118,10 +118,10 @@ class ExposedIdentityRepository : IdentityRepository {
             it[id] = session.id.value
             it[userId] = session.userId.value
             it[tokenHash] = session.tokenHash
-            it[createdAt] = session.createdAt.toKotlin()
-            it[lastSeenAt] = session.lastSeenAt.toKotlin()
-            it[expiresAt] = session.expiresAt.toKotlin()
-            it[revokedAt] = session.revokedAt?.toKotlin()
+            it[createdAt] = session.createdAt
+            it[lastSeenAt] = session.lastSeenAt
+            it[expiresAt] = session.expiresAt
+            it[revokedAt] = session.revokedAt
             it[clientLabel] = session.clientLabel
         }
     }
@@ -140,7 +140,7 @@ class ExposedIdentityRepository : IdentityRepository {
                     UserSessions.revokedAt.isNull()
             },
         ) {
-            it[UserSessions.lastSeenAt] = lastSeenAt.toKotlin()
+            it[UserSessions.lastSeenAt] = lastSeenAt
         }
     }
 
@@ -151,7 +151,7 @@ class ExposedIdentityRepository : IdentityRepository {
                     UserSessions.revokedAt.isNull()
             },
         ) {
-            it[UserSessions.revokedAt] = revokedAt.toKotlin()
+            it[UserSessions.revokedAt] = revokedAt
         }
     }
 
@@ -162,13 +162,13 @@ class ExposedIdentityRepository : IdentityRepository {
                     UserSessions.revokedAt.isNull()
             },
         ) {
-            it[UserSessions.revokedAt] = revokedAt.toKotlin()
+            it[UserSessions.revokedAt] = revokedAt
         }
     }
 
     override suspend fun deleteExpiredSessions(expiredBefore: Instant): Int = dbQuery {
         UserSessions.deleteWhere {
-            UserSessions.expiresAt less expiredBefore.toKotlin()
+            UserSessions.expiresAt less expiredBefore
         }
     }
 
@@ -179,10 +179,10 @@ class ExposedIdentityRepository : IdentityRepository {
             it[name] = token.name
             it[tokenHash] = token.tokenHash
             it[tokenPrefix] = token.tokenPrefix
-            it[createdAt] = token.createdAt.toKotlin()
-            it[expiresAt] = token.expiresAt?.toKotlin()
-            it[lastUsedAt] = token.lastUsedAt?.toKotlin()
-            it[revokedAt] = token.revokedAt?.toKotlin()
+            it[createdAt] = token.createdAt
+            it[expiresAt] = token.expiresAt
+            it[lastUsedAt] = token.lastUsedAt
+            it[revokedAt] = token.revokedAt
         }
         PersonalAccessTokenScopes.batchInsert(token.scopes) { scope ->
             this[PersonalAccessTokenScopes.tokenId] = token.id.value
@@ -206,7 +206,7 @@ class ExposedIdentityRepository : IdentityRepository {
                     PersonalAccessTokens.revokedAt.isNull() and
                     (
                         PersonalAccessTokens.expiresAt.isNull() or
-                            (PersonalAccessTokens.expiresAt greater now.toKotlin())
+                            (PersonalAccessTokens.expiresAt greater now)
                         )
             }
             .count()
@@ -232,7 +232,7 @@ class ExposedIdentityRepository : IdentityRepository {
                     PersonalAccessTokens.revokedAt.isNull()
             },
         ) {
-            it[PersonalAccessTokens.lastUsedAt] = lastUsedAt.toKotlin()
+            it[PersonalAccessTokens.lastUsedAt] = lastUsedAt
         }
     }
 
@@ -248,7 +248,7 @@ class ExposedIdentityRepository : IdentityRepository {
                     PersonalAccessTokens.revokedAt.isNull()
             },
         ) {
-            it[PersonalAccessTokens.revokedAt] = revokedAt.toKotlin()
+            it[PersonalAccessTokens.revokedAt] = revokedAt
         } == 1
     }
 
@@ -262,7 +262,7 @@ class ExposedIdentityRepository : IdentityRepository {
                     PersonalAccessTokens.revokedAt.isNull()
             },
         ) {
-            it[PersonalAccessTokens.revokedAt] = revokedAt.toKotlin()
+            it[PersonalAccessTokens.revokedAt] = revokedAt
         }
     }
 
@@ -273,15 +273,15 @@ class ExposedIdentityRepository : IdentityRepository {
             displayName = this[Users.displayName],
             status = User.Status.valueOf(this[Users.status]),
             role = User.Role.valueOf(this[Users.role]),
-            createdAt = this[Users.createdAt].toKotlinx(),
-            updatedAt = this[Users.updatedAt].toKotlinx(),
+            createdAt = this[Users.createdAt],
+            updatedAt = this[Users.updatedAt],
         )
 
     private fun ResultRow.toLocalPasswordCredential(): LocalPasswordCredential =
         LocalPasswordCredential(
             userId = User.Id(this[LocalPasswordCredentials.userId]),
             passwordHash = this[LocalPasswordCredentials.passwordHash],
-            passwordChangedAt = this[LocalPasswordCredentials.passwordChangedAt].toKotlinx(),
+            passwordChangedAt = this[LocalPasswordCredentials.passwordChangedAt],
         )
 
     private fun ResultRow.toUserSession(): UserSession =
@@ -289,10 +289,10 @@ class ExposedIdentityRepository : IdentityRepository {
             id = UserSession.Id(this[UserSessions.id]),
             userId = User.Id(this[UserSessions.userId]),
             tokenHash = this[UserSessions.tokenHash],
-            createdAt = this[UserSessions.createdAt].toKotlinx(),
-            lastSeenAt = this[UserSessions.lastSeenAt].toKotlinx(),
-            expiresAt = this[UserSessions.expiresAt].toKotlinx(),
-            revokedAt = this[UserSessions.revokedAt]?.toKotlinx(),
+            createdAt = this[UserSessions.createdAt],
+            lastSeenAt = this[UserSessions.lastSeenAt],
+            expiresAt = this[UserSessions.expiresAt],
+            revokedAt = this[UserSessions.revokedAt],
             clientLabel = this[UserSessions.clientLabel],
         )
 
@@ -322,9 +322,9 @@ class ExposedIdentityRepository : IdentityRepository {
             tokenHash = this[PersonalAccessTokens.tokenHash],
             tokenPrefix = this[PersonalAccessTokens.tokenPrefix],
             scopes = scopes,
-            createdAt = this[PersonalAccessTokens.createdAt].toKotlinx(),
-            expiresAt = this[PersonalAccessTokens.expiresAt]?.toKotlinx(),
-            lastUsedAt = this[PersonalAccessTokens.lastUsedAt]?.toKotlinx(),
-            revokedAt = this[PersonalAccessTokens.revokedAt]?.toKotlinx(),
+            createdAt = this[PersonalAccessTokens.createdAt],
+            expiresAt = this[PersonalAccessTokens.expiresAt],
+            lastUsedAt = this[PersonalAccessTokens.lastUsedAt],
+            revokedAt = this[PersonalAccessTokens.revokedAt],
         )
 }

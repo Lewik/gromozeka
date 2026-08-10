@@ -8,7 +8,7 @@ import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.memory.MemoryThreadContext
 import com.gromozeka.domain.service.AiRuntime
 import klog.KLoggers
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 

@@ -4,7 +4,7 @@ import com.gromozeka.domain.repository.AiToolContractRepository
 import com.gromozeka.domain.tool.AiToolContract
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.contractFingerprint
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 internal class InMemoryAiToolContractRepository : AiToolContractRepository {
     private val contracts = linkedMapOf<String, AiToolContract>()

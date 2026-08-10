@@ -147,7 +147,7 @@ class MessageSquashService(
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage(commandPrompt)),
-            createdAt = kotlinx.datetime.Clock.System.now()
+            createdAt = kotlin.time.Clock.System.now()
         )
 
         log.debug {

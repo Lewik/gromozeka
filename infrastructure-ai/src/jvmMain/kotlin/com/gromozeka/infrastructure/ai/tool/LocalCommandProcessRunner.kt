@@ -7,7 +7,7 @@ import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionResult
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
 import com.gromozeka.domain.service.RunningCommandProcess
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.charset.StandardCharsets

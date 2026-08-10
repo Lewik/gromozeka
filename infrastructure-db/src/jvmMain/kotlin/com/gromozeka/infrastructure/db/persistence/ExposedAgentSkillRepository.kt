@@ -42,8 +42,8 @@ class ExposedAgentSkillRepository(
                 it[metadataJson] = json.encodeToString(skill.metadata)
                 it[allowedTools] = skill.allowedTools
                 it[contentHash] = skill.contentHash
-                it[createdAt] = skill.createdAt.toKotlin()
-                it[updatedAt] = skill.updatedAt.toKotlin()
+                it[createdAt] = skill.createdAt
+                it[updatedAt] = skill.updatedAt
             }
         } else {
             require(existing[AgentSkills.projectId] == skill.projectId.value) {
@@ -58,7 +58,7 @@ class ExposedAgentSkillRepository(
                 it[metadataJson] = json.encodeToString(skill.metadata)
                 it[allowedTools] = skill.allowedTools
                 it[contentHash] = skill.contentHash
-                it[updatedAt] = skill.updatedAt.toKotlin()
+                it[updatedAt] = skill.updatedAt
             }
         }
 
@@ -147,7 +147,7 @@ class ExposedAgentSkillRepository(
             metadata = json.decodeFromString(this[AgentSkills.metadataJson]),
             allowedTools = this[AgentSkills.allowedTools],
             contentHash = this[AgentSkills.contentHash],
-            createdAt = this[AgentSkills.createdAt].toKotlinx(),
-            updatedAt = this[AgentSkills.updatedAt].toKotlinx(),
+            createdAt = this[AgentSkills.createdAt],
+            updatedAt = this[AgentSkills.updatedAt],
         )
 }

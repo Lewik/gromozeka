@@ -9,7 +9,7 @@ import com.gromozeka.domain.model.RuntimeCatalogTemplates
 import com.gromozeka.domain.model.RuntimeCatalogTemplateDefaults
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver

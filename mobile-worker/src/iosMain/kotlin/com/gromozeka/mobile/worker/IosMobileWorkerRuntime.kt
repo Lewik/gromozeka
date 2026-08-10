@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.LocationCause
 import com.gromozeka.domain.model.MobileWorkerAppState
 import com.gromozeka.domain.model.MobileWorkerPlatform
 import com.gromozeka.domain.model.SleepState
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class IosMobileWorkerRuntime(
     storage: MobileWorkerStorage,

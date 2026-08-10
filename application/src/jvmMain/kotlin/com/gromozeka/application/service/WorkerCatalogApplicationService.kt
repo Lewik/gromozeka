@@ -3,7 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerCatalogService
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 
 @Service

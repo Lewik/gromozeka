@@ -1,7 +1,7 @@
 package com.gromozeka.domain.model.memory
 
 import com.gromozeka.domain.model.Conversation
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class MemoryThreadContext(
     val conversationId: Conversation.Id,

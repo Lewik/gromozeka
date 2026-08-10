@@ -2,7 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * [SPECIFICATION] Search across conversation message history.

@@ -19,7 +19,7 @@ import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import com.gromozeka.domain.model.memory.resolvePredicateDefinition
 import klog.KLoggers
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -534,7 +534,7 @@ private fun List<MemoryNote>.consolidationRelatedSearchQuery(): String =
 
 private fun MemoryNote.applyLifecycle(
     op: MemoryNoteLifecycleOp,
-    completedAt: kotlinx.datetime.Instant,
+    completedAt: kotlin.time.Instant,
 ): MemoryNote =
     when (op.action) {
         MemoryNoteLifecycleOp.Action.KEEP_ACTIVE -> this

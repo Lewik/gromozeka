@@ -7,7 +7,7 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.repository.ProjectRepository
 import com.gromozeka.domain.repository.WorkspaceRepository
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

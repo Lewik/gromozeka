@@ -23,7 +23,7 @@ import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.activeDefinitions
 import com.gromozeka.domain.model.memory.requireValidEntityIds
 import klog.KLoggers
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

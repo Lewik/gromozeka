@@ -21,7 +21,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -124,7 +124,7 @@ class BackgroundAiExecutionPacerTest {
         val quotaProvider = object : AiSubscriptionQuotaProvider {
             override suspend fun read(request: AiSubscriptionQuotaRequest): AiSubscriptionQuotaSnapshot {
                 quotaReads.incrementAndGet()
-                val now = kotlinx.datetime.Clock.System.now()
+                val now = kotlin.time.Clock.System.now()
                 return AiSubscriptionQuotaSnapshot(
                     connectionId = request.connection.id,
                     observedAt = now,

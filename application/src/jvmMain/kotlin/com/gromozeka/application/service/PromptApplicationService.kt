@@ -8,7 +8,7 @@ import com.gromozeka.domain.repository.PromptRepository
 import com.gromozeka.domain.service.PromptAssemblyService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 
 @Service

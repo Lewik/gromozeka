@@ -9,6 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -171,20 +174,20 @@ private fun getToolIcon(toolName: String): ImageVector = when (toolName) {
     "create_agent" -> Icons.Default.DeveloperBoard
     "tell_agent" -> Icons.Default.DeveloperBoard
     "switch_tab" -> Icons.Default.Tab
-    "list_tabs" -> Icons.Default.ViewList
+    "list_tabs" -> Icons.AutoMirrored.Filled.ViewList
     "hello_world" -> Icons.Default.BugReport
     else -> Icons.Default.Build
 }
 
 private fun getToolSecondaryIcon(toolName: String): ImageVector? = when (toolName) {
-    "grz_read_file" -> Icons.Default.ArrowForward
-    "grz_write_file" -> Icons.Default.ArrowBack
-    "grz_edit_file" -> Icons.Default.ArrowBack
+    "grz_read_file" -> Icons.AutoMirrored.Filled.ArrowForward
+    "grz_write_file" -> Icons.AutoMirrored.Filled.ArrowBack
+    "grz_edit_file" -> Icons.AutoMirrored.Filled.ArrowBack
     "brave_web_search" -> Icons.Default.Search
     "brave_local_search" -> Icons.Default.Search
-    "jina_read_url" -> Icons.Default.ArrowForward
+    "jina_read_url" -> Icons.AutoMirrored.Filled.ArrowForward
     "create_agent" -> Icons.Default.Add
-    "tell_agent" -> Icons.Default.ArrowBack
+    "tell_agent" -> Icons.AutoMirrored.Filled.ArrowBack
     else -> null
 }
 

@@ -18,7 +18,7 @@ import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.domain.service.WorkerAccessDeniedException
 import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.service.WorkerConnectionRevocationService
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

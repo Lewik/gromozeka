@@ -6,7 +6,7 @@ import com.gromozeka.domain.tool.AiToolContract
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.contractFingerprint
 import com.gromozeka.infrastructure.db.persistence.tables.AiToolContracts
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -82,7 +82,7 @@ class ExposedAiToolContractRepository(
                     it[AiToolContracts.variant] = candidate.variant
                     it[AiToolContracts.sourceId] = candidate.descriptor.definition.source
                     it[AiToolContracts.payloadJson] = json.encodeToString(candidate)
-                    it[AiToolContracts.createdAt] = candidate.createdAt.toKotlin()
+                    it[AiToolContracts.createdAt] = candidate.createdAt
                 }.insertedCount == 1) {
                     "AI tool contract allocation conflicted while holding the registry lock"
                 }

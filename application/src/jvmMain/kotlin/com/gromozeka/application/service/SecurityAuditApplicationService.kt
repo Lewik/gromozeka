@@ -8,7 +8,7 @@ import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.domain.service.SecurityAuditService
 import com.gromozeka.domain.service.UserAdministrationDeniedException
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 
 @Service

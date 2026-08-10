@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import java.util.Collections
 import kotlinx.coroutines.asContextElement
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 internal class MemoryRunTimingCollector(
     observers: List<MemoryRunLlmCallObserver> = emptyList(),

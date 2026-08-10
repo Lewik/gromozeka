@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.ContextEvent
 import com.gromozeka.domain.model.ContextEventAppendResult
 import com.gromozeka.domain.model.ContextStateEntry
 import com.gromozeka.domain.model.User
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface ContextStateRepository {
     suspend fun append(events: List<ContextEvent>): ContextEventAppendResult

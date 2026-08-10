@@ -33,7 +33,7 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
@@ -286,7 +286,7 @@ class ConversationToolExecutionTaskService(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
         toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
-    ): kotlinx.datetime.Instant {
+    ): kotlin.time.Instant {
         val startedAt = Clock.System.now()
         toolCalls.forEach { toolCall ->
             upsertRuntimeToolExecution(
@@ -309,7 +309,7 @@ class ConversationToolExecutionTaskService(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
         results: List<Conversation.Message.ContentItem.ToolResult>,
-        startedAt: kotlinx.datetime.Instant,
+        startedAt: kotlin.time.Instant,
     ) {
         val completedAt = Clock.System.now()
         results.forEach { result ->
@@ -338,7 +338,7 @@ class ConversationToolExecutionTaskService(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
         toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
-        startedAt: kotlinx.datetime.Instant,
+        startedAt: kotlin.time.Instant,
     ) {
         val failedAt = Clock.System.now()
         toolCalls.forEach { toolCall ->

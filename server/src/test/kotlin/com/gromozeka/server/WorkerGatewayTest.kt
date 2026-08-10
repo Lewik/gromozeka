@@ -53,7 +53,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withTimeout
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import java.security.MessageDigest
 import java.time.Duration
 import kotlin.test.Test

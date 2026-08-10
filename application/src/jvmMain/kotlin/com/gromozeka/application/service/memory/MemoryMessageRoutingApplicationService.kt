@@ -25,7 +25,7 @@ import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import java.security.MessageDigest
 import klog.KLoggers
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject

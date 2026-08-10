@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.filled.MergeType
 import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material.icons.filled.*
@@ -263,7 +264,9 @@ fun SessionScreen(
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("Action items") },
-                                    leadingIcon = { Icon(Icons.Default.ListAlt, contentDescription = null) },
+                                    leadingIcon = {
+                                        Icon(Icons.AutoMirrored.Filled.ListAlt, contentDescription = null)
+                                    },
                                     onClick = {
                                         showMemoryMenu = false
                                         onShowMemoryActionItemsPanelChange(!showMemoryActionItemsPanel)

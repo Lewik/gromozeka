@@ -127,8 +127,8 @@ class MemoryRepairPipeline(
 
     private fun materialize(
         request: MemoryMaintenanceRequest,
-        startedAt: kotlinx.datetime.Instant,
-        completedAt: kotlinx.datetime.Instant,
+        startedAt: kotlin.time.Instant,
+        completedAt: kotlin.time.Instant,
         snapshot: MemoryNamespaceSnapshot,
         candidateClusters: List<MemoryRepairCandidateCluster>,
         plan: MemoryRepairPlan,
@@ -196,7 +196,7 @@ class MemoryRepairPipeline(
 
     private fun applyAction(
         action: MemoryRepairPlan.Action,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         snapshot: MemoryNamespaceSnapshot,
         suspiciousRefs: Set<MemoryItemRef>,
         repairedClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
@@ -231,7 +231,7 @@ class MemoryRepairPipeline(
 
     private fun applyClaimAction(
         action: MemoryRepairPlan.Action,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         snapshot: MemoryNamespaceSnapshot,
         repairedClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
     ): List<AppliedRepairOp> {
@@ -250,7 +250,7 @@ class MemoryRepairPipeline(
 
     private fun mergeDuplicateClaims(
         claims: List<MemoryClaim>,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         repairedClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
         reason: String,
     ): List<AppliedRepairOp> {
@@ -279,7 +279,7 @@ class MemoryRepairPipeline(
     private fun archiveClaimsIfSafe(
         claims: List<MemoryClaim>,
         snapshot: MemoryNamespaceSnapshot,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         repairedClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
         reason: String,
     ): List<AppliedRepairOp> =
@@ -292,7 +292,7 @@ class MemoryRepairPipeline(
     private fun supersedeClaimsIfSafe(
         claims: List<MemoryClaim>,
         snapshot: MemoryNamespaceSnapshot,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         repairedClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
         reason: String,
     ): List<AppliedRepairOp> =
@@ -304,7 +304,7 @@ class MemoryRepairPipeline(
 
     private fun applyNoteAction(
         action: MemoryRepairPlan.Action,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         snapshot: MemoryNamespaceSnapshot,
         repairedNotes: MutableMap<MemoryNote.Id, MemoryNote>,
     ): List<AppliedRepairOp> {
@@ -323,7 +323,7 @@ class MemoryRepairPipeline(
 
     private fun mergeDuplicateNotes(
         notes: List<MemoryNote>,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         repairedNotes: MutableMap<MemoryNote.Id, MemoryNote>,
         reason: String,
     ): List<AppliedRepairOp> {
@@ -353,7 +353,7 @@ class MemoryRepairPipeline(
     private fun archiveNotesIfSafe(
         notes: List<MemoryNote>,
         snapshot: MemoryNamespaceSnapshot,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         repairedNotes: MutableMap<MemoryNote.Id, MemoryNote>,
         reason: String,
     ): List<AppliedRepairOp> =
@@ -366,7 +366,7 @@ class MemoryRepairPipeline(
     private fun supersedeNotesIfSafe(
         notes: List<MemoryNote>,
         snapshot: MemoryNamespaceSnapshot,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         repairedNotes: MutableMap<MemoryNote.Id, MemoryNote>,
         reason: String,
     ): List<AppliedRepairOp> =
@@ -378,7 +378,7 @@ class MemoryRepairPipeline(
 
     private fun applyTaskAction(
         action: MemoryRepairPlan.Action,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         snapshot: MemoryNamespaceSnapshot,
         repairedActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
     ): List<AppliedRepairOp> {
@@ -401,7 +401,7 @@ class MemoryRepairPipeline(
 
     private fun applyEpisodeAction(
         action: MemoryRepairPlan.Action,
-        completedAt: kotlinx.datetime.Instant,
+        completedAt: kotlin.time.Instant,
         snapshot: MemoryNamespaceSnapshot,
         repairedEpisodes: MutableMap<MemoryEpisode.Id, MemoryEpisode>,
     ): List<AppliedRepairOp> {
@@ -778,7 +778,7 @@ private val repairPipelineHitComparator: Comparator<MemoryStore.SearchHit> =
         .thenBy { it.toRepairPipelineItemRef().type.name }
         .thenBy { it.toRepairPipelineItemRef().id }
 
-private fun MemoryStore.SearchHit.repairPipelineSortTime(): kotlinx.datetime.Instant? =
+private fun MemoryStore.SearchHit.repairPipelineSortTime(): kotlin.time.Instant? =
     when (this) {
         is MemoryStore.SearchHit.SourceHit -> source.observedAt
         is MemoryStore.SearchHit.EntityHit -> entity.updatedAt

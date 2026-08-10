@@ -24,7 +24,7 @@ class ExposedSquashOperationRepository(
             it[prompt] = operation.prompt
             it[model] = operation.model
             it[performedByAgent] = operation.performedByAgent
-            it[createdAt] = operation.createdAt.toKotlin()
+            it[createdAt] = operation.createdAt
         }
         operation
     }
@@ -60,7 +60,7 @@ class ExposedSquashOperationRepository(
             prompt = this[SquashOperations.prompt],
             model = this[SquashOperations.model],
             performedByAgent = this[SquashOperations.performedByAgent],
-            createdAt = this[SquashOperations.createdAt].toKotlinx()
+            createdAt = this[SquashOperations.createdAt]
         )
     }
 }

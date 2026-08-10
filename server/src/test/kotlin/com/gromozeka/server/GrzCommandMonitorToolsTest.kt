@@ -28,7 +28,7 @@ import com.gromozeka.infrastructure.ai.tool.GrzMonitorCommandToolImpl
 import com.gromozeka.infrastructure.ai.config.ToolsRegistrationConfig
 import com.gromozeka.infrastructure.ai.config.TypedToolCallbackAdapter
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

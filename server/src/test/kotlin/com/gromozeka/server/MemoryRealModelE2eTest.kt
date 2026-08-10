@@ -86,7 +86,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -663,8 +663,8 @@ class MemoryRealModelE2eTest {
         index: Int,
     ): MemoryUpdateBatch {
         val prefix = "${caseId.sanitizePathSegment()}-fixture-${index + 1}"
-        val olderAt = kotlinx.datetime.Instant.parse("2026-01-01T00:00:00Z")
-        val newerAt = kotlinx.datetime.Instant.parse("2026-01-02T00:00:00Z")
+        val olderAt = kotlin.time.Instant.parse("2026-01-01T00:00:00Z")
+        val newerAt = kotlin.time.Instant.parse("2026-01-02T00:00:00Z")
         val subjectEntityId = MemoryEntity.Id("$prefix-entity-subject")
         val subject = preloadedSubjectEntity(namespace, subjectEntityId, olderAt, newerAt)
 
@@ -683,8 +683,8 @@ class MemoryRealModelE2eTest {
     private fun MemoryE2ePreloadedMemory.preloadedSubjectEntity(
         namespace: MemoryNamespace,
         subjectEntityId: MemoryEntity.Id,
-        firstSeenAt: kotlinx.datetime.Instant,
-        lastSeenAt: kotlinx.datetime.Instant,
+        firstSeenAt: kotlin.time.Instant,
+        lastSeenAt: kotlin.time.Instant,
     ): MemoryEntity =
         MemoryEntity(
             id = subjectEntityId,
@@ -703,8 +703,8 @@ class MemoryRealModelE2eTest {
         conversationId: Conversation.Id,
         prefix: String,
         subject: MemoryEntity,
-        olderAt: kotlinx.datetime.Instant,
-        newerAt: kotlinx.datetime.Instant,
+        olderAt: kotlin.time.Instant,
+        newerAt: kotlin.time.Instant,
     ): MemoryUpdateBatch {
         val olderSourceId = MemorySource.Id("$prefix-source-older")
         val newerSourceId = MemorySource.Id("$prefix-source-newer")
@@ -808,8 +808,8 @@ class MemoryRealModelE2eTest {
         conversationId: Conversation.Id,
         prefix: String,
         subject: MemoryEntity,
-        olderAt: kotlinx.datetime.Instant,
-        newerAt: kotlinx.datetime.Instant,
+        olderAt: kotlin.time.Instant,
+        newerAt: kotlin.time.Instant,
     ): MemoryUpdateBatch {
         val firstSourceId = MemorySource.Id("$prefix-source-first")
         val secondSourceId = MemorySource.Id("$prefix-source-second")
@@ -882,8 +882,8 @@ class MemoryRealModelE2eTest {
         conversationId: Conversation.Id,
         prefix: String,
         subject: MemoryEntity,
-        olderAt: kotlinx.datetime.Instant,
-        newerAt: kotlinx.datetime.Instant,
+        olderAt: kotlin.time.Instant,
+        newerAt: kotlin.time.Instant,
     ): MemoryUpdateBatch {
         val firstSourceId = MemorySource.Id("$prefix-source-first")
         val secondSourceId = MemorySource.Id("$prefix-source-second")
@@ -938,8 +938,8 @@ class MemoryRealModelE2eTest {
         conversationId: Conversation.Id,
         prefix: String,
         subject: MemoryEntity,
-        olderAt: kotlinx.datetime.Instant,
-        newerAt: kotlinx.datetime.Instant,
+        olderAt: kotlin.time.Instant,
+        newerAt: kotlin.time.Instant,
     ): MemoryUpdateBatch {
         val firstSourceId = MemorySource.Id("$prefix-source-first")
         val secondSourceId = MemorySource.Id("$prefix-source-second")
@@ -992,8 +992,8 @@ class MemoryRealModelE2eTest {
         conversationId: Conversation.Id,
         prefix: String,
         subject: MemoryEntity,
-        olderAt: kotlinx.datetime.Instant,
-        newerAt: kotlinx.datetime.Instant,
+        olderAt: kotlin.time.Instant,
+        newerAt: kotlin.time.Instant,
     ): MemoryUpdateBatch {
         val firstSourceId = MemorySource.Id("$prefix-source-first")
         val secondSourceId = MemorySource.Id("$prefix-source-second")
@@ -1044,8 +1044,8 @@ class MemoryRealModelE2eTest {
         conversationId: Conversation.Id,
         prefix: String,
         subject: MemoryEntity,
-        olderAt: kotlinx.datetime.Instant,
-        newerAt: kotlinx.datetime.Instant,
+        olderAt: kotlin.time.Instant,
+        newerAt: kotlin.time.Instant,
     ): MemoryUpdateBatch {
         val sourceId = MemorySource.Id("$prefix-source-fresh")
         val claimText = newerText.ifBlank { firstText }
@@ -1106,8 +1106,8 @@ class MemoryRealModelE2eTest {
         conversationId: Conversation.Id,
         prefix: String,
         subject: MemoryEntity,
-        olderAt: kotlinx.datetime.Instant,
-        newerAt: kotlinx.datetime.Instant,
+        olderAt: kotlin.time.Instant,
+        newerAt: kotlin.time.Instant,
     ): MemoryUpdateBatch {
         val olderSourceId = MemorySource.Id("$prefix-source-older")
         val newerSourceId = MemorySource.Id("$prefix-source-newer")
@@ -1183,7 +1183,7 @@ class MemoryRealModelE2eTest {
         conversationId: Conversation.Id,
         id: MemorySource.Id,
         text: String,
-        observedAt: kotlinx.datetime.Instant,
+        observedAt: kotlin.time.Instant,
     ): MemorySource.ChatTurn =
         MemorySource.ChatTurn(
             id = id,
@@ -2777,10 +2777,10 @@ class MemoryRealModelE2eTest {
             }
         }
 
-    private fun String.lifecycleStatusForReport(archivedAt: kotlinx.datetime.Instant?): String =
+    private fun String.lifecycleStatusForReport(archivedAt: kotlin.time.Instant?): String =
         archivedAt?.let { "ARCHIVED(status=$this,archivedAt=$it)" } ?: this
 
-    private fun kotlinx.datetime.Instant?.episodeLifecycleStatusForReport(): String =
+    private fun kotlin.time.Instant?.episodeLifecycleStatusForReport(): String =
         this?.let { "ARCHIVED(archivedAt=$it)" } ?: "ACTIVE"
 
     private fun renderMemoryWriteTrace(event: MemoryWriteTraceEvent?): String {

@@ -2,7 +2,7 @@ package com.gromozeka.domain.model.ai
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable

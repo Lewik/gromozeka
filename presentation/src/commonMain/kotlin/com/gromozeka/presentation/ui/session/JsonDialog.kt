@@ -7,7 +7,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +35,7 @@ fun JsonDialog(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // Scrollable content - Dialog is outside main SelectionContainer
                 SelectionContainer {

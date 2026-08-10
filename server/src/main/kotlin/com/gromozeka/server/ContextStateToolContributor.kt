@@ -18,7 +18,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.requiredUserId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

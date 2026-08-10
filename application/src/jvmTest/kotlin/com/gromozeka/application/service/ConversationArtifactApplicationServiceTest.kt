@@ -10,7 +10,7 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ArtifactRepository
 import com.gromozeka.domain.service.ArtifactContentStore
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertContentEquals

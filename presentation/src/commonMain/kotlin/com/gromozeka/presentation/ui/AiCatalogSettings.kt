@@ -39,7 +39,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -272,7 +272,7 @@ fun AiCatalogSettings(
             }
 
             if (availableSections.size > 1) {
-                TabRow(selectedTabIndex = availableSections.indexOf(selectedSection)) {
+                SecondaryTabRow(selectedTabIndex = availableSections.indexOf(selectedSection)) {
                     availableSections.forEach { section ->
                         Tab(
                             selected = selectedSection == section,

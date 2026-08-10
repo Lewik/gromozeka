@@ -23,7 +23,7 @@ import com.gromozeka.domain.service.AiSpeechSynthesisResponse
 import com.gromozeka.domain.service.AiSpeechTranscriptionRequest
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals

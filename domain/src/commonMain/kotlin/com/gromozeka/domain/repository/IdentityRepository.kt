@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.LocalPasswordCredential
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface IdentityRepository {
     suspend fun countUsers(): Long

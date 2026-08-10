@@ -247,11 +247,11 @@ class WorkerCommandRuntimeGatewayHandler(
         val command: String,
         val workingDirectory: String,
         val processId: Long?,
-        val processStartedAt: kotlinx.datetime.Instant?,
+        val processStartedAt: kotlin.time.Instant?,
         val processTreeId: Long?,
         val outputFile: String,
-        val timeoutAt: kotlinx.datetime.Instant?,
-        val createdAt: kotlinx.datetime.Instant,
+        val timeoutAt: kotlin.time.Instant?,
+        val createdAt: kotlin.time.Instant,
     )
 
     private data class CommandMonitorIdentity(
@@ -265,10 +265,10 @@ class WorkerCommandRuntimeGatewayHandler(
         val mode: CommandMonitor.Mode,
         val startFrom: CommandMonitor.StartFrom,
         val processId: Long?,
-        val processStartedAt: kotlinx.datetime.Instant?,
+        val processStartedAt: kotlin.time.Instant?,
         val processTreeId: Long?,
         val outputFile: String,
         val errorFile: String,
-        val createdAt: kotlinx.datetime.Instant,
+        val createdAt: kotlin.time.Instant,
     )
 }

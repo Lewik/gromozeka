@@ -3,7 +3,7 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface CommandTaskService {
     suspend fun start(

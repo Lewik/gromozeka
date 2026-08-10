@@ -275,7 +275,7 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
                 altitudeMeters = altitude.takeIf { hasAltitude() },
                 speedMetersPerSecond = speed.takeIf { hasSpeed() }?.toDouble(),
                 cause = LocationCause.SIGNIFICANT_CHANGE,
-                observedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(time),
+                observedAt = kotlin.time.Instant.fromEpochMilliseconds(time),
             )
 
         private const val LOCATION_REQUEST_CODE = 27_041

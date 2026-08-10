@@ -5,7 +5,7 @@ import com.gromozeka.domain.service.WorkspacePathAccessContext
 import com.gromozeka.domain.service.WorkspaceTextFileReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.net.URI

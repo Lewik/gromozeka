@@ -3,7 +3,7 @@ package com.gromozeka.application.service.memory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class MemoryTemporalParsingTest {
     @Test

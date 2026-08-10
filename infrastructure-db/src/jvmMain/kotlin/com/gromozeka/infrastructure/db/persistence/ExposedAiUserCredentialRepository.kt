@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiUserCredential
 import com.gromozeka.domain.repository.AiUserCredentialRepository
 import com.gromozeka.infrastructure.db.persistence.tables.AiUserCredentials
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -46,7 +46,7 @@ internal class ExposedAiUserCredentialRepository(
                     (AiUserCredentials.connectionId eq connectionId.value)
             }
             .singleOrNull()
-        val createdAt = existing?.get(AiUserCredentials.createdAt)?.toKotlinx() ?: updatedAt
+        val createdAt = existing?.get(AiUserCredentials.createdAt) ?: updatedAt
         if (existing == null) {
             AiUserCredentials.insert {
                 it[AiUserCredentials.userId] = userId.value
@@ -54,8 +54,8 @@ internal class ExposedAiUserCredentialRepository(
                 it[ciphertext] = encrypted.ciphertext
                 it[nonce] = encrypted.nonce
                 it[encryptionVersion] = encrypted.version
-                it[AiUserCredentials.createdAt] = createdAt.toKotlin()
-                it[AiUserCredentials.updatedAt] = updatedAt.toKotlin()
+                it[AiUserCredentials.createdAt] = createdAt
+                it[AiUserCredentials.updatedAt] = updatedAt
             }
         } else {
             AiUserCredentials.update(
@@ -67,7 +67,7 @@ internal class ExposedAiUserCredentialRepository(
                 it[ciphertext] = encrypted.ciphertext
                 it[nonce] = encrypted.nonce
                 it[encryptionVersion] = encrypted.version
-                it[AiUserCredentials.updatedAt] = updatedAt.toKotlin()
+                it[AiUserCredentials.updatedAt] = updatedAt
             }
         }
         AiUserCredential(userId, connectionId, secret, createdAt, updatedAt)
@@ -96,8 +96,8 @@ internal class ExposedAiUserCredentialRepository(
             userId = userId,
             connectionId = connectionId,
             secret = cipher.decrypt(encrypted, associatedData(userId, connectionId)),
-            createdAt = this[AiUserCredentials.createdAt].toKotlinx(),
-            updatedAt = this[AiUserCredentials.updatedAt].toKotlinx(),
+            createdAt = this[AiUserCredentials.createdAt],
+            updatedAt = this[AiUserCredentials.updatedAt],
         )
     }
 

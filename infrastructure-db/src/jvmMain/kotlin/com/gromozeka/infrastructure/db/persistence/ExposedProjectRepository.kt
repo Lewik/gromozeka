@@ -22,15 +22,15 @@ class ExposedProjectRepository : ProjectRepository {
             Projects.update({ Projects.id eq project.id.value }) {
                 it[name] = project.name
                 it[description] = project.description
-                it[lastUsedAt] = project.lastUsedAt.toKotlin()
+                it[lastUsedAt] = project.lastUsedAt
             }
         } else {
             Projects.insert {
                 it[id] = project.id.value
                 it[name] = project.name
                 it[description] = project.description
-                it[createdAt] = project.createdAt.toKotlin()
-                it[lastUsedAt] = project.lastUsedAt.toKotlin()
+                it[createdAt] = project.createdAt
+                it[lastUsedAt] = project.lastUsedAt
             }
         }
 
@@ -68,7 +68,7 @@ class ExposedProjectRepository : ProjectRepository {
         id = Project.Id(this[Projects.id]),
         name = this[Projects.name],
         description = this[Projects.description],
-        createdAt = this[Projects.createdAt].toKotlinx(),
-        lastUsedAt = this[Projects.lastUsedAt].toKotlinx()
+        createdAt = this[Projects.createdAt],
+        lastUsedAt = this[Projects.lastUsedAt]
     )
 }

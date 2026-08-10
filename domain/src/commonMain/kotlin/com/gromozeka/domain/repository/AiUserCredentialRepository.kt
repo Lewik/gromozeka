@@ -3,7 +3,7 @@ package com.gromozeka.domain.repository
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiUserCredential
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface AiUserCredentialRepository {
     suspend fun find(

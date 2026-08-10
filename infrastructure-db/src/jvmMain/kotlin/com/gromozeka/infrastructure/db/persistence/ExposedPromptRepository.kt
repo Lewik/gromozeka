@@ -49,8 +49,8 @@ class ExposedPromptRepository : PromptRepository {
                 it[name] = prompt.name
                 it[content] = prompt.content
                 it[scope] = prompt.type.databaseValue()
-                it[createdAt] = prompt.createdAt.toKotlin()
-                it[updatedAt] = prompt.updatedAt.toKotlin()
+                it[createdAt] = prompt.createdAt
+                it[updatedAt] = prompt.updatedAt
             }
         } else {
             require(existing[Prompts.projectId] == prompt.projectId?.value) {
@@ -60,7 +60,7 @@ class ExposedPromptRepository : PromptRepository {
                 it[name] = prompt.name
                 it[content] = prompt.content
                 it[scope] = prompt.type.databaseValue()
-                it[updatedAt] = prompt.updatedAt.toKotlin()
+                it[updatedAt] = prompt.updatedAt
             }
         }
         prompt
@@ -85,8 +85,8 @@ class ExposedPromptRepository : PromptRepository {
             name = this[Prompts.name],
             content = this[Prompts.content],
             type = type,
-            createdAt = this[Prompts.createdAt].toKotlinx(),
-            updatedAt = this[Prompts.updatedAt].toKotlinx(),
+            createdAt = this[Prompts.createdAt],
+            updatedAt = this[Prompts.updatedAt],
         )
     }
 

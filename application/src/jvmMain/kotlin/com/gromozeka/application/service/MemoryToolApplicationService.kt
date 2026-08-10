@@ -27,7 +27,7 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty

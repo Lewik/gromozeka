@@ -13,14 +13,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -248,7 +249,7 @@ internal fun BrowserUseSettings(
             onClick = { bridgeDownloadUrl?.let(uriHandler::openUri) },
             enabled = bridgeDownloadUrl != null,
         ) {
-            Icon(Icons.Default.OpenInNew, contentDescription = null)
+            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text("Download Gromozeka Browser Bridge")
         }
@@ -507,7 +508,9 @@ private fun BrowserWorkerPicker(
             onValueChange = {},
             readOnly = true,
             label = { Text("Worker") },
-            modifier = Modifier.fillMaxWidth().menuAnchor(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
         )
         ExposedDropdownMenu(

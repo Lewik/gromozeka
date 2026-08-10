@@ -88,8 +88,8 @@ class ExposedRuntimeCatalogRepository(
                 it[name] = prompt.name
                 it[content] = prompt.content
                 it[scope] = prompt.type.databaseValue()
-                it[createdAt] = prompt.createdAt.toKotlin()
-                it[updatedAt] = prompt.updatedAt.toKotlin()
+                it[createdAt] = prompt.createdAt
+                it[updatedAt] = prompt.updatedAt
             }
         }
         seed.agents.forEach { agent ->
@@ -104,8 +104,8 @@ class ExposedRuntimeCatalogRepository(
                 it[toolsJson] = json.encodeToString(agent.tools)
                 it[description] = agent.description
                 it[type] = agent.type.databaseValue()
-                it[createdAt] = agent.createdAt.toKotlin()
-                it[updatedAt] = agent.updatedAt.toKotlin()
+                it[createdAt] = agent.createdAt
+                it[updatedAt] = agent.updatedAt
             }
         }
         replaceAiCatalogRows(seed.aiCatalog)

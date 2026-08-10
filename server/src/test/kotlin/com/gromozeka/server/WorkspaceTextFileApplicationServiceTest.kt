@@ -22,7 +22,7 @@ import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkspacePathAccessContext
 import com.gromozeka.domain.service.WorkspaceTextFile
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals

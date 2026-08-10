@@ -43,7 +43,7 @@ class ExposedAgentRepository(
                 statement[Agents.toolsJson] = json.encodeToString(agent.tools)
                 statement[Agents.description] = agent.description
                 statement[Agents.type] = agent.type.databaseValue()
-                statement[Agents.updatedAt] = agent.updatedAt.toKotlin()
+                statement[Agents.updatedAt] = agent.updatedAt
             }
         }
         agent
@@ -87,8 +87,8 @@ class ExposedAgentRepository(
         this[Agents.toolsJson] = json.encodeToString(agent.tools)
         this[Agents.description] = agent.description
         this[Agents.type] = agent.type.databaseValue()
-        this[Agents.createdAt] = agent.createdAt.toKotlin()
-        this[Agents.updatedAt] = agent.updatedAt.toKotlin()
+        this[Agents.createdAt] = agent.createdAt
+        this[Agents.updatedAt] = agent.updatedAt
     }
 
     private fun ResultRow.toAgent(): AgentDefinition {
@@ -108,8 +108,8 @@ class ExposedAgentRepository(
             tools = json.decodeFromString<List<String>>(this[Agents.toolsJson]),
             description = this[Agents.description],
             type = type,
-            createdAt = this[Agents.createdAt].toKotlinx(),
-            updatedAt = this[Agents.updatedAt].toKotlinx(),
+            createdAt = this[Agents.createdAt],
+            updatedAt = this[Agents.updatedAt],
         )
     }
 

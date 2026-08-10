@@ -12,7 +12,7 @@ import com.gromozeka.domain.service.PasswordHasher
 import com.gromozeka.domain.service.SoleProjectOwnerException
 import com.gromozeka.domain.service.UserAdministrationDeniedException
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

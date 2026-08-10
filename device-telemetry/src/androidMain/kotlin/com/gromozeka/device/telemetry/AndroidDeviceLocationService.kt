@@ -13,7 +13,7 @@ import android.os.CancellationSignal
 import android.os.Looper
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.coroutines.resume
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds

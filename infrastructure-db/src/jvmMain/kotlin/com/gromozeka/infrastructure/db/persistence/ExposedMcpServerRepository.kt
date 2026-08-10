@@ -49,8 +49,8 @@ class ExposedMcpServerRepository(
             it[revision] = server.revision
             it[refreshAvailable] = server.refreshAvailable
             it[payloadJson] = json.encodeToString(server)
-            it[createdAt] = server.createdAt.toKotlin()
-            it[updatedAt] = server.updatedAt.toKotlin()
+            it[createdAt] = server.createdAt
+            it[updatedAt] = server.updatedAt
         }.insertedCount == 1
     }
 
@@ -69,7 +69,7 @@ class ExposedMcpServerRepository(
             it[revision] = server.revision
             it[refreshAvailable] = server.refreshAvailable
             it[payloadJson] = json.encodeToString(server)
-            it[updatedAt] = server.updatedAt.toKotlin()
+            it[updatedAt] = server.updatedAt
         } == 1
     }
 

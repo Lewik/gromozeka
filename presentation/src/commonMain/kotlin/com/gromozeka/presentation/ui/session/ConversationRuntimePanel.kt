@@ -9,12 +9,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.HourglassTop
-import androidx.compose.material.icons.filled.PlaylistAddCheck
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
@@ -733,7 +733,7 @@ private fun RuntimeStatusFooter(
         pttState == PttState.RECORDING -> Icons.Default.FiberManualRecord
         isReady -> Icons.Default.CheckCircle
         pendingMessages.isEmpty() -> Icons.Default.HourglassTop
-        else -> Icons.Default.PlaylistAddCheck
+        else -> Icons.AutoMirrored.Filled.PlaylistAddCheck
     }
 
     Spacer(modifier = Modifier.height(12.dp))

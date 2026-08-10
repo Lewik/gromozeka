@@ -50,13 +50,13 @@ class ExposedConversationTabLayoutRepository : ConversationTabLayoutRepository {
                 it[ConversationTabLayouts.userId] = userId.value
                 it[conversationIdsJson] = encodedIds
                 it[revision] = layout.revision
-                it[updatedAt] = layout.updatedAt?.toKotlin()
+                it[updatedAt] = layout.updatedAt
             }
         } else {
             ConversationTabLayouts.update({ ConversationTabLayouts.userId eq userId.value }) {
                 it[conversationIdsJson] = encodedIds
                 it[revision] = layout.revision
-                it[updatedAt] = layout.updatedAt?.toKotlin()
+                it[updatedAt] = layout.updatedAt
             }
         }
         layout
@@ -69,6 +69,6 @@ class ExposedConversationTabLayoutRepository : ConversationTabLayoutRepository {
                 this[ConversationTabLayouts.conversationIdsJson],
             ).map(Conversation::Id),
             revision = this[ConversationTabLayouts.revision],
-            updatedAt = this[ConversationTabLayouts.updatedAt]?.toKotlinx(),
+            updatedAt = this[ConversationTabLayouts.updatedAt],
         )
 }

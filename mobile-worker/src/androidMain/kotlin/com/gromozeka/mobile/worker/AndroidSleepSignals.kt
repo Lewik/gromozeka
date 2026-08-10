@@ -48,8 +48,8 @@ internal class AndroidSleepSignals(private val context: Context) {
         val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
         if (preferences.getString(LAST_SESSION_KEY, null) == signature) return false
         runtime.recordCompletedSleepSession(
-            startedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(latest.startTime.toEpochMilli()),
-            endedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(latest.endTime.toEpochMilli()),
+            startedAt = kotlin.time.Instant.fromEpochMilliseconds(latest.startTime.toEpochMilli()),
+            endedAt = kotlin.time.Instant.fromEpochMilliseconds(latest.endTime.toEpochMilli()),
         )
         check(preferences.edit().putString(LAST_SESSION_KEY, signature).commit()) {
             "Latest sleep session marker could not be persisted"

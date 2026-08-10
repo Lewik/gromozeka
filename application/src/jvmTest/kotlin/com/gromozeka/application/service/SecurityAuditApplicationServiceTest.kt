@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.SecurityAuditRepository
 import com.gromozeka.domain.service.UserAdministrationDeniedException
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.MemoryReadRequest
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryThreadContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 internal fun DirectStructuredMemoryWriteRequest.toMemoryStageMessages(
     stageName: String,

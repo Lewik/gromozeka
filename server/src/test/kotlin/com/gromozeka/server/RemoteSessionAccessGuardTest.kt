@@ -9,7 +9,7 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
 import com.gromozeka.domain.service.AuthenticationService
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals

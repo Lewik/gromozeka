@@ -51,7 +51,7 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import com.gromozeka.shared.uuid.uuid7

@@ -3,7 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.domain.model.AuthenticatedUser
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserSession
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 internal fun testControlMcpCaller(
     role: User.Role = User.Role.OWNER,

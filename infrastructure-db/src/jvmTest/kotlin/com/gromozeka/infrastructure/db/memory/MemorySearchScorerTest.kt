@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class MemorySearchScorerTest {
 

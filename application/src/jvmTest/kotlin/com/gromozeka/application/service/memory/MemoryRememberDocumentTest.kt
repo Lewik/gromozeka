@@ -8,7 +8,7 @@ import com.gromozeka.domain.service.WorkspaceTextFile
 import com.gromozeka.domain.service.WorkspaceTextFileReader
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive

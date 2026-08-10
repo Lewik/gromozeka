@@ -2,7 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable

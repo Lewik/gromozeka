@@ -5,7 +5,7 @@ import com.gromozeka.domain.service.ComputerUseObservationId
 import com.gromozeka.domain.service.ComputerUseObservationReference
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerSessionId
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

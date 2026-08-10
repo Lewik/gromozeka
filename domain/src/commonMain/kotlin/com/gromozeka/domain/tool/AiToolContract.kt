@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool
 
 import com.gromozeka.shared.utils.sha256
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray

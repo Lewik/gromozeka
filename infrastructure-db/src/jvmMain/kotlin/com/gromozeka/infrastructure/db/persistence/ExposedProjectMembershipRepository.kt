@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.infrastructure.db.persistence.tables.ProjectMemberships
 import com.gromozeka.infrastructure.db.persistence.tables.Projects
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -32,7 +32,7 @@ class ExposedProjectMembershipRepository : ProjectMembershipRepository {
                 it[projectId] = membership.projectId.value
                 it[userId] = membership.userId.value
                 it[role] = membership.role.name
-                it[createdAt] = membership.createdAt.toKotlin()
+                it[createdAt] = membership.createdAt
                 it[createdByUserId] = membership.createdByUserId.value
             }
         }
@@ -97,7 +97,7 @@ class ExposedProjectMembershipRepository : ProjectMembershipRepository {
                 it[ProjectMemberships.projectId] = projectId
                 it[ProjectMemberships.userId] = userId.value
                 it[role] = ProjectMembership.Role.OWNER.name
-                it[ProjectMemberships.createdAt] = createdAt.toKotlin()
+                it[ProjectMemberships.createdAt] = createdAt
                 it[createdByUserId] = userId.value
             }
         }
@@ -109,7 +109,7 @@ class ExposedProjectMembershipRepository : ProjectMembershipRepository {
             projectId = Project.Id(this[ProjectMemberships.projectId]),
             userId = User.Id(this[ProjectMemberships.userId]),
             role = ProjectMembership.Role.valueOf(this[ProjectMemberships.role]),
-            createdAt = this[ProjectMemberships.createdAt].toKotlinx(),
+            createdAt = this[ProjectMemberships.createdAt],
             createdByUserId = User.Id(this[ProjectMemberships.createdByUserId]),
         )
 }

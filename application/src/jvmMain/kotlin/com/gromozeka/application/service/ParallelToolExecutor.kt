@@ -15,7 +15,7 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
 import klog.KLoggers
 import kotlinx.coroutines.*
 import com.gromozeka.domain.tool.ToolExecutionContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.jsonObject
 import org.springframework.stereotype.Service
 import kotlin.coroutines.coroutineContext

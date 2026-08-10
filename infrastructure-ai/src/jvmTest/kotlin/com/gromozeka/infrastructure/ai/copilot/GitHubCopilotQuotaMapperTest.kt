@@ -3,7 +3,7 @@ package com.gromozeka.infrastructure.ai.copilot
 import com.github.copilot.generated.rpc.AccountQuotaSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
 import java.time.OffsetDateTime
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

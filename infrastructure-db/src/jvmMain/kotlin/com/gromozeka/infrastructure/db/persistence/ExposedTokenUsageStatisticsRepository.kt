@@ -8,7 +8,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service
@@ -19,7 +19,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
             it[id] = stats.id.value
             it[threadId] = stats.threadId.value
             it[lastMessageId] = stats.lastMessageId.value
-            it[timestamp] = stats.timestamp.toKotlin()
+            it[timestamp] = stats.timestamp
             it[promptTokens] = stats.promptTokens
             it[completionTokens] = stats.completionTokens
             it[cacheCreationTokens] = stats.cacheCreationTokens
@@ -80,7 +80,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
         id = TokenUsageStatistics.Id(this[TokenUsageStatisticsTable.id]),
         threadId = Conversation.Thread.Id(this[TokenUsageStatisticsTable.threadId]),
         lastMessageId = Conversation.Message.Id(this[TokenUsageStatisticsTable.lastMessageId]),
-        timestamp = this[TokenUsageStatisticsTable.timestamp].toKotlinx(),
+        timestamp = this[TokenUsageStatisticsTable.timestamp],
         promptTokens = this[TokenUsageStatisticsTable.promptTokens],
         completionTokens = this[TokenUsageStatisticsTable.completionTokens],
         cacheCreationTokens = this[TokenUsageStatisticsTable.cacheCreationTokens],

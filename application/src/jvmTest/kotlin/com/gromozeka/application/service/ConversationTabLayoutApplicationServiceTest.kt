@@ -8,7 +8,7 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ConversationTabLayoutRepository
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

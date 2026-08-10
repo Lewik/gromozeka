@@ -44,7 +44,7 @@ import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive

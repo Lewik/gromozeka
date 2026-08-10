@@ -16,7 +16,7 @@ import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.PromptAssemblyService
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

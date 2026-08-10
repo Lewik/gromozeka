@@ -58,7 +58,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import java.util.UUID
 
 class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {

@@ -3,7 +3,7 @@ package com.gromozeka.remote.protocol
 import com.gromozeka.domain.model.DeviceObservation
 import com.gromozeka.domain.model.DeviceStateEvent
 import com.gromozeka.domain.model.MobileWorkerAppState
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable

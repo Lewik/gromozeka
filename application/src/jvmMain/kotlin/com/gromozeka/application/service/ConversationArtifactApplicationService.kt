@@ -9,7 +9,7 @@ import com.gromozeka.domain.repository.ArtifactRepository
 import com.gromozeka.domain.service.ArtifactContentStore
 import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.shared.uuid.uuid7
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 import java.util.Base64
@@ -268,7 +268,7 @@ class ConversationArtifactApplicationService(
     }
 
     suspend fun collectGarbage(
-        draftsCreatedBefore: kotlinx.datetime.Instant,
+        draftsCreatedBefore: kotlin.time.Instant,
         batchSize: Int = DEFAULT_GC_BATCH_SIZE,
     ): GarbageCollectionResult {
         require(batchSize > 0) { "Artifact garbage collection batch size must be positive" }

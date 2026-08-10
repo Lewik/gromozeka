@@ -90,8 +90,8 @@ class WorkerEnrollmentService(
         repository.issue(
             tokenHash = tokenHash(token),
             ownerUserId = ownerUserId,
-            createdAt = createdAt.toKotlinx(),
-            expiresAt = expiresAt.toKotlinx(),
+            createdAt = createdAt.toKotlinInstant(),
+            expiresAt = expiresAt.toKotlinInstant(),
         )
         securityAuditRecorder.record(
             SecurityAuditRecord(
@@ -122,7 +122,7 @@ class WorkerEnrollmentService(
             gatewayCredentialHash = tokenHash(gatewayCredential),
             workerId = ConversationRuntimeWorkerId(workerId),
             displayName = workerId,
-            consumedAt = clock.instant().toKotlinx(),
+            consumedAt = clock.instant().toKotlinInstant(),
             kind = kind,
         )
         require(worker != null) { "Worker enrollment token is invalid or expired" }
@@ -147,8 +147,8 @@ class WorkerEnrollmentService(
             .digest(token.encodeToByteArray())
             .joinToString("") { "%02x".format(it) }
 
-    private fun Instant.toKotlinx(): kotlinx.datetime.Instant =
-        kotlinx.datetime.Instant.fromEpochMilliseconds(toEpochMilli())
+    private fun Instant.toKotlinInstant(): kotlin.time.Instant =
+        kotlin.time.Instant.fromEpochMilliseconds(toEpochMilli())
 }
 
 internal val workerIdPattern = Regex("""[A-Za-z0-9][A-Za-z0-9._-]{0,63}""")

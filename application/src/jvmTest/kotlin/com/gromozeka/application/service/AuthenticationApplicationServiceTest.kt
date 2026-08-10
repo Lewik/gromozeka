@@ -11,7 +11,7 @@ import com.gromozeka.domain.repository.IdentityRepository
 import com.gromozeka.domain.repository.ProjectMembershipRepository
 import com.gromozeka.domain.service.FirstUserBootstrapToken
 import com.gromozeka.domain.service.PasswordHasher
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -191,23 +191,23 @@ internal class FakeIdentityRepository : IdentityRepository {
     override suspend fun findSessionByTokenHash(tokenHash: String): UserSession? =
         sessions.singleOrNull { it.tokenHash == tokenHash }
 
-    override suspend fun touchSession(id: UserSession.Id, lastSeenAt: kotlinx.datetime.Instant) {
+    override suspend fun touchSession(id: UserSession.Id, lastSeenAt: kotlin.time.Instant) {
         val index = sessions.indexOfFirst { it.id == id }
         sessions[index] = sessions[index].copy(lastSeenAt = lastSeenAt)
     }
 
-    override suspend fun revokeSession(id: UserSession.Id, revokedAt: kotlinx.datetime.Instant) {
+    override suspend fun revokeSession(id: UserSession.Id, revokedAt: kotlin.time.Instant) {
         val index = sessions.indexOfFirst { it.id == id }
         sessions[index] = sessions[index].copy(revokedAt = revokedAt)
     }
 
-    override suspend fun revokeAllSessions(userId: User.Id, revokedAt: kotlinx.datetime.Instant) {
+    override suspend fun revokeAllSessions(userId: User.Id, revokedAt: kotlin.time.Instant) {
         sessions.indices
             .filter { sessions[it].userId == userId }
             .forEach { index -> sessions[index] = sessions[index].copy(revokedAt = revokedAt) }
     }
 
-    override suspend fun deleteExpiredSessions(expiredBefore: kotlinx.datetime.Instant): Int {
+    override suspend fun deleteExpiredSessions(expiredBefore: kotlin.time.Instant): Int {
         val before = sessions.size
         sessions.removeAll { it.expiresAt < expiredBefore }
         return before - sessions.size
@@ -222,7 +222,7 @@ internal class FakeIdentityRepository : IdentityRepository {
 
     override suspend fun countActivePersonalAccessTokens(
         userId: User.Id,
-        now: kotlinx.datetime.Instant,
+        now: kotlin.time.Instant,
     ): Long =
         personalAccessTokens.count {
             it.userId == userId &&
@@ -235,7 +235,7 @@ internal class FakeIdentityRepository : IdentityRepository {
 
     override suspend fun touchPersonalAccessToken(
         id: PersonalAccessToken.Id,
-        lastUsedAt: kotlinx.datetime.Instant,
+        lastUsedAt: kotlin.time.Instant,
     ) {
         val index = personalAccessTokens.indexOfFirst { it.id == id }
         personalAccessTokens[index] = personalAccessTokens[index].copy(lastUsedAt = lastUsedAt)
@@ -244,7 +244,7 @@ internal class FakeIdentityRepository : IdentityRepository {
     override suspend fun revokePersonalAccessToken(
         userId: User.Id,
         id: PersonalAccessToken.Id,
-        revokedAt: kotlinx.datetime.Instant,
+        revokedAt: kotlin.time.Instant,
     ): Boolean {
         val index = personalAccessTokens.indexOfFirst {
             it.userId == userId && it.id == id && !it.isRevoked
@@ -256,7 +256,7 @@ internal class FakeIdentityRepository : IdentityRepository {
 
     override suspend fun revokeAllPersonalAccessTokens(
         userId: User.Id,
-        revokedAt: kotlinx.datetime.Instant,
+        revokedAt: kotlin.time.Instant,
     ) {
         personalAccessTokens.indices
             .filter { personalAccessTokens[it].userId == userId }
@@ -297,7 +297,7 @@ internal class FakeProjectMembershipRepository : ProjectMembershipRepository {
 
     override suspend fun assignUnownedProjectsToFirstOwner(
         userId: User.Id,
-        createdAt: kotlinx.datetime.Instant,
+        createdAt: kotlin.time.Instant,
     ): Int {
         assignedFirstOwner = userId
         return 0

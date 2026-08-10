@@ -24,7 +24,7 @@ import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.RuntimeMemoryReadService
 import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 class RuntimeMemoryReadPipeline(
     private val store: MemoryStore,

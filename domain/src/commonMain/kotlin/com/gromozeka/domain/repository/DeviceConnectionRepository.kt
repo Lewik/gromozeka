@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.DeviceConnectionConsumption
 import com.gromozeka.domain.model.DeviceConnectionDecision
 import com.gromozeka.domain.model.DeviceConnectionSessionCredential
 import com.gromozeka.domain.model.User
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface DeviceConnectionRepository {
     suspend fun create(connection: DeviceConnection): Boolean

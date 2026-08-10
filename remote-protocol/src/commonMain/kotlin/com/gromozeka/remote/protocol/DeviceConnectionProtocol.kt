@@ -2,7 +2,7 @@ package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.DeviceConnection
 import com.gromozeka.domain.model.WorkerResource
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable

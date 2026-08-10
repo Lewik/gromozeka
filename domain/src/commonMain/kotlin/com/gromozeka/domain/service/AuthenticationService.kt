@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.IssuedUserSession
 import com.gromozeka.domain.model.IssuedPersonalAccessToken
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.User
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 

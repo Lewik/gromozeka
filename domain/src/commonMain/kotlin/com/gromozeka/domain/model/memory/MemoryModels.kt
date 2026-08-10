@@ -3,7 +3,7 @@ package com.gromozeka.domain.model.memory
 import com.gromozeka.domain.model.Conversation as DomainConversation
 import com.gromozeka.domain.model.Project as DomainProject
 import com.gromozeka.domain.model.User as DomainUser
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

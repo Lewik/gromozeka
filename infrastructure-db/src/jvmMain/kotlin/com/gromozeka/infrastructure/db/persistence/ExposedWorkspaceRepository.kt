@@ -24,7 +24,7 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
                 it[projectId] = workspace.projectId.value
                 it[name] = workspace.name
                 it[kind] = workspace.kind.name
-                it[updatedAt] = workspace.updatedAt.toKotlin()
+                it[updatedAt] = workspace.updatedAt
             }
         } else {
             Workspaces.insert {
@@ -32,8 +32,8 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
                 it[projectId] = workspace.projectId.value
                 it[name] = workspace.name
                 it[kind] = workspace.kind.name
-                it[createdAt] = workspace.createdAt.toKotlin()
-                it[updatedAt] = workspace.updatedAt.toKotlin()
+                it[createdAt] = workspace.createdAt
+                it[updatedAt] = workspace.updatedAt
             }
         }
         workspace
@@ -68,7 +68,7 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
                 it[WorkspaceMounts.projectId] = projectId
                 it[workerId] = mount.workerId
                 it[rootPath] = mount.rootPath
-                it[updatedAt] = mount.updatedAt.toKotlin()
+                it[updatedAt] = mount.updatedAt
             }
         } else {
             WorkspaceMounts.insert {
@@ -77,8 +77,8 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
                 it[WorkspaceMounts.projectId] = projectId
                 it[workerId] = mount.workerId
                 it[rootPath] = mount.rootPath
-                it[createdAt] = mount.createdAt.toKotlin()
-                it[updatedAt] = mount.updatedAt.toKotlin()
+                it[createdAt] = mount.createdAt
+                it[updatedAt] = mount.updatedAt
             }
         }
         mount
@@ -138,8 +138,8 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
             projectId = Project.Id(this[Workspaces.projectId]),
             name = this[Workspaces.name],
             kind = Workspace.Kind.valueOf(this[Workspaces.kind]),
-            createdAt = this[Workspaces.createdAt].toKotlinx(),
-            updatedAt = this[Workspaces.updatedAt].toKotlinx(),
+            createdAt = this[Workspaces.createdAt],
+            updatedAt = this[Workspaces.updatedAt],
         )
 
     private fun ResultRow.toWorkspaceMount(): WorkspaceMount =
@@ -148,7 +148,7 @@ class ExposedWorkspaceRepository : WorkspaceRepository {
             workspaceId = Workspace.Id(this[WorkspaceMounts.workspaceId]),
             workerId = this[WorkspaceMounts.workerId],
             rootPath = this[WorkspaceMounts.rootPath],
-            createdAt = this[WorkspaceMounts.createdAt].toKotlinx(),
-            updatedAt = this[WorkspaceMounts.updatedAt].toKotlinx(),
+            createdAt = this[WorkspaceMounts.createdAt],
+            updatedAt = this[WorkspaceMounts.updatedAt],
         )
 }

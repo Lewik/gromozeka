@@ -83,6 +83,19 @@ fun GromozekaTheme(
         surfaceContainerHighest = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 1.0f),
         surfaceContainerLow = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.38f),
         surfaceContainerLowest = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.12f),
+
+        primaryFixed = Color.Unspecified,
+        primaryFixedDim = Color.Unspecified,
+        onPrimaryFixed = Color.Unspecified,
+        onPrimaryFixedVariant = Color.Unspecified,
+        secondaryFixed = Color.Unspecified,
+        secondaryFixedDim = Color.Unspecified,
+        onSecondaryFixed = Color.Unspecified,
+        onSecondaryFixedVariant = Color.Unspecified,
+        tertiaryFixed = Color.Unspecified,
+        tertiaryFixedDim = Color.Unspecified,
+        onTertiaryFixed = Color.Unspecified,
+        onTertiaryFixedVariant = Color.Unspecified,
     )
 
     val baseRadius = CompactButtonDefaults.CornerRadius
@@ -116,7 +129,7 @@ fun OptionalTooltip(
     content: @Composable () -> Unit,
 ) {
     TooltipBox(
-        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
         tooltip = if (tooltip != null) {
             {
                 Surface(

@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool
 
 import com.gromozeka.domain.model.ai.AiModelConfiguration
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable

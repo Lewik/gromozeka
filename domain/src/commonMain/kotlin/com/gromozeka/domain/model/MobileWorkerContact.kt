@@ -1,7 +1,7 @@
 package com.gromozeka.domain.model
 
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 data class MobileWorkerContactObservation(

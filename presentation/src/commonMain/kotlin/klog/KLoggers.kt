@@ -1,6 +1,6 @@
 package klog
 
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 object KLoggers {
     fun logger(name: String): KLogger = KLogger(name)

@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
 import com.gromozeka.domain.service.WorkerWorkspaceStorage
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

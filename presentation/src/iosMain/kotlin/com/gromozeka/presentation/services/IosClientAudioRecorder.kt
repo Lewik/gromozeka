@@ -57,7 +57,7 @@ class IosClientAudioRecorder : ClientAudioRecorder {
         suspendCancellableCoroutine { continuation: CancellableContinuation<Boolean> ->
             AVAudioSession.sharedInstance().requestRecordPermission { granted ->
                 if (continuation.isActive) {
-                    continuation.resume(granted, onCancellation = null)
+                    continuation.resume(granted) { _, _, _ -> }
                 }
             }
         }
@@ -74,7 +74,6 @@ class IosClientAudioRecorder : ClientAudioRecorder {
         )
 
         return AVAudioRecorder(fileUrl, settings, null)
-            ?: error("Failed to create iOS audio recorder")
     }
 
     private fun configureAudioSession() {

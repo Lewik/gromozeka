@@ -21,8 +21,8 @@ import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 

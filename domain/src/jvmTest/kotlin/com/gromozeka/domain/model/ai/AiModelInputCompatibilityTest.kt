@@ -3,7 +3,7 @@ package com.gromozeka.domain.model.ai
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 

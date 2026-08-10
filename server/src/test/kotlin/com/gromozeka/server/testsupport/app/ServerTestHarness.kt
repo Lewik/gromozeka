@@ -11,7 +11,7 @@ import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionCon
 import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionSession
 import com.gromozeka.server.GromozekaServerApplication
 import com.gromozeka.server.testsupport.config.E2eSupportConfig
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.springframework.boot.WebApplicationType

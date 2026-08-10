@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemorySource
 import java.security.MessageDigest
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 class ConversationMessageMemorySourceMapper {
     fun toChatTurn(

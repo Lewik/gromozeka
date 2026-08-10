@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.service.McpServerRevision
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.tool.AiToolDescriptor
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

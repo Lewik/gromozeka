@@ -9,7 +9,7 @@ import com.gromozeka.domain.service.WorkerEnvironmentProfile
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.postgresql.ds.PGSimpleDataSource
 import java.util.UUID
 import javax.sql.DataSource

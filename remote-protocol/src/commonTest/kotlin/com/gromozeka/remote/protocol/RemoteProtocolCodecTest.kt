@@ -31,7 +31,7 @@ import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerEnvironmentProfile
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test

@@ -3,7 +3,7 @@ package com.gromozeka.infrastructure.db.persistence
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.postgresql.ds.PGSimpleDataSource
 import java.util.UUID
 import javax.sql.DataSource

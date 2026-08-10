@@ -8,8 +8,8 @@ import com.gromozeka.domain.service.WorkerExecutableAvailability
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
 import com.gromozeka.domain.service.WorkerWorkspaceStorage
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.time.ZoneId

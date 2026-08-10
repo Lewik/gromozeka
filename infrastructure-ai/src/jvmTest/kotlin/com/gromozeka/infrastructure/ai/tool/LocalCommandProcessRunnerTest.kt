@@ -4,7 +4,7 @@ import com.gromozeka.domain.service.CommandProcessSpec
 import com.gromozeka.domain.service.CommandProcessRecovery
 import com.gromozeka.domain.service.CommandProcessRecoverySpec
 import com.gromozeka.domain.service.CommandOutputGarbageCollectionSpec
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.Test

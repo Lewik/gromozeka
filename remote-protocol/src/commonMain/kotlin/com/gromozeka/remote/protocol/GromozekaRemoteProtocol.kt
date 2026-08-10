@@ -47,7 +47,7 @@ import com.gromozeka.domain.service.WorkerCatalogEntry
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.jvm.JvmInline
 
 @Serializable

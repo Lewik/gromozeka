@@ -17,7 +17,7 @@ import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.contractFingerprint
 import com.gromozeka.shared.utils.sha256
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -299,7 +299,7 @@ class DistributedAiToolCatalog(
     private fun buildEnvironmentTopology(
         project: Project,
         knownRegistrations: List<ConversationRuntimeWorkerRegistration>,
-        staleBefore: kotlinx.datetime.Instant,
+        staleBefore: kotlin.time.Instant,
         projectWorkspaces: Map<Workspace.Id, Workspace>,
         projectMounts: List<WorkspaceMount>,
     ): JsonObject {

@@ -9,7 +9,7 @@ import com.gromozeka.domain.model.memory.MemoryIngestPlanner
 import com.gromozeka.domain.model.memory.MemoryIngestPlanningRequest
 import com.gromozeka.domain.model.memory.MemoryIngestSectionPlan
 import com.gromozeka.domain.service.AiRuntime
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString

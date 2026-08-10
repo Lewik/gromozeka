@@ -3,7 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.service.WorkerEnvironmentProfile
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 fun testWorkerEnvironmentProfile(
     observedAt: Instant = Instant.fromEpochMilliseconds(1),

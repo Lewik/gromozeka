@@ -7,7 +7,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service
@@ -19,8 +19,8 @@ class ExposedThreadRepository : ThreadRepository {
             it[conversationId] = thread.conversationId.value
             it[originalThreadId] = thread.originalThread?.value
             it[lastTurnNumber] = thread.lastTurnNumber
-            it[createdAt] = thread.createdAt.toKotlin()
-            it[updatedAt] = thread.updatedAt.toKotlin()
+            it[createdAt] = thread.createdAt
+            it[updatedAt] = thread.updatedAt
         }
         thread
     }
@@ -45,7 +45,7 @@ class ExposedThreadRepository : ThreadRepository {
 
     override suspend fun updateTimestamp(id: Conversation.Thread.Id, updatedAt: Instant): Unit = dbQuery {
         Threads.update({ Threads.id eq id.value }) {
-            it[Threads.updatedAt] = updatedAt.toKotlin()
+            it[Threads.updatedAt] = updatedAt
         }
     }
 
@@ -54,7 +54,7 @@ class ExposedThreadRepository : ThreadRepository {
         conversationId = Conversation.Id(this[Threads.conversationId]),
         originalThread = this[Threads.originalThreadId]?.let { Conversation.Thread.Id(it) },
         lastTurnNumber = this[Threads.lastTurnNumber],
-        createdAt = this[Threads.createdAt].toKotlinx(),
-        updatedAt = this[Threads.updatedAt].toKotlinx()
+        createdAt = this[Threads.createdAt],
+        updatedAt = this[Threads.updatedAt]
     )
 }

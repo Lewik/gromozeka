@@ -2,7 +2,7 @@ package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface ArtifactRepository {
     suspend fun save(artifact: Artifact): Artifact

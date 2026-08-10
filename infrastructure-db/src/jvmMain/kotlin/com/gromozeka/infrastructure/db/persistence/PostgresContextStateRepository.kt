@@ -10,7 +10,7 @@ import com.gromozeka.domain.repository.ContextStateRepository
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service

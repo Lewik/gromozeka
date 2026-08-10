@@ -8,7 +8,7 @@ import com.gromozeka.domain.model.ai.AiUserCredentialStatus
 import com.gromozeka.domain.repository.AiUserCredentialRepository
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.SecurityAuditRecorder
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.springframework.stereotype.Service
 
 @Service

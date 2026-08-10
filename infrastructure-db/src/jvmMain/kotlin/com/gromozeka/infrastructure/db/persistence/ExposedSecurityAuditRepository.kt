@@ -19,7 +19,7 @@ class ExposedSecurityAuditRepository : SecurityAuditRepository {
     override suspend fun append(event: SecurityAuditEvent): SecurityAuditEvent = dbQuery {
         SecurityAuditEvents.insert {
             it[id] = event.id.value
-            it[occurredAt] = event.occurredAt.toKotlin()
+            it[occurredAt] = event.occurredAt
             it[actorUserId] = event.actorUserId.value
             it[action] = event.action.name
             it[targetType] = event.targetType.name
@@ -43,7 +43,7 @@ class ExposedSecurityAuditRepository : SecurityAuditRepository {
     private fun ResultRow.toSecurityAuditEvent(): SecurityAuditEvent =
         SecurityAuditEvent(
             id = SecurityAuditEvent.Id(this[SecurityAuditEvents.id]),
-            occurredAt = this[SecurityAuditEvents.occurredAt].toKotlinx(),
+            occurredAt = this[SecurityAuditEvents.occurredAt],
             actorUserId = User.Id(this[SecurityAuditEvents.actorUserId]),
             action = SecurityAuditEvent.Action.valueOf(this[SecurityAuditEvents.action]),
             targetType = SecurityAuditEvent.TargetType.valueOf(this[SecurityAuditEvents.targetType]),

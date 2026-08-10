@@ -14,7 +14,7 @@ import com.gromozeka.domain.service.WorkspaceTextFileReader
 import com.gromozeka.shared.uuid.uuid7
 import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -1041,8 +1041,8 @@ internal fun resolveMemoryForceWrite(
 
 internal fun MemoryRun.complete(
     execution: MemoryOperationExecution,
-    startedAt: kotlinx.datetime.Instant,
-    completedAt: kotlinx.datetime.Instant,
+    startedAt: kotlin.time.Instant,
+    completedAt: kotlin.time.Instant,
 ): MemoryRun =
     copy(
         status = execution.status,
