@@ -3,8 +3,8 @@
 
 [versions]
 java = "21"
-kotlin = "2.3.21"
-agp = "8.13.2"
+kotlin = "2.4.10"
+agp = "9.3.0"
 ktor = "3.5.2"
 spring-boot = "3.5.16"
 spring-dependency-management = "1.1.7"
@@ -18,7 +18,7 @@ kotlinx-datetime = "0.8.0-0.6.x-compat"
 kotlinx-browser = "0.5.0"
 batik = "1.19"
 pdfbox = "3.0.8"
-multiplatform-markdown-renderer = "0.41.0"
+multiplatform-markdown-renderer = "0.43.0"
 constraintlayout-compose = "1.1.2"
 mcp-kotlin-sdk = "0.15.0"
 klog = "v2.1.1"
@@ -182,4 +182,4 @@ spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
 jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "jetbrains-compose" }
 android-application = { id = "com.android.application", version.ref = "agp" }
-android-library = { id = "com.android.library", version.ref = "agp" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }

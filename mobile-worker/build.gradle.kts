@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrains.compose)
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
 }
 
 val javaVersion = libs.versions.java.get().toInt()
@@ -16,7 +16,10 @@ kotlin {
     jvmToolchain(javaVersion)
     applyDefaultHierarchyTemplate()
 
-    androidTarget {
+    android {
+        namespace = "com.gromozeka.mobile.worker"
+        compileSdk = 37
+        minSdk = 26
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
@@ -65,27 +68,5 @@ kotlin {
                 implementation(libs.ktor.client.darwin)
             }
         }
-    }
-}
-
-android {
-    namespace = "com.gromozeka.mobile.worker"
-    compileSdk = 36
-
-    defaultConfig {
-        applicationId = "com.gromozeka.mobile.worker"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = rootProject.version.toString()
-    }
-
-    buildFeatures {
-        buildConfig = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
     }
 }

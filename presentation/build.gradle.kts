@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrains.compose)
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
 }
 
 val javaVersion = libs.versions.java.get().toInt()
@@ -179,7 +179,10 @@ kotlin {
             binaryOption("bundleVersion", nativePackageVersion)
         }
     }
-    androidTarget {
+    android {
+        namespace = "com.gromozeka.presentation"
+        compileSdk = 37
+        minSdk = 24
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
@@ -258,42 +261,6 @@ kotlin {
 
 compose.resources {
     packageOfResClass = "com.gromozeka.presentation.resources"
-}
-
-android {
-    namespace = "com.gromozeka.presentation"
-    compileSdk = 36
-
-    defaultConfig {
-        val defaultRemoteUrl = providers.gradleProperty("gromozeka.defaultRemoteUrl")
-            .orElse("")
-            .get()
-
-        applicationId = "com.gromozeka.app"
-        minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = rootProject.version.toString()
-        buildConfigField("String", "DEFAULT_REMOTE_URL", "\"${defaultRemoteUrl.replace("\"", "\\\"")}\"")
-        buildConfigField(
-            "boolean",
-            "ENABLE_LOCATION_TELEMETRY",
-            providers.gradleProperty("gromozeka.android.location")
-                .map { it.toBooleanStrictOrNull() ?: false }
-                .orElse(false)
-                .get()
-                .toString()
-        )
-    }
-
-    buildFeatures {
-        buildConfig = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
 }
 
 java {

@@ -112,12 +112,11 @@ jobs:
         run: >
           ./gradlew
           :presentation:jvmTest
-          :presentation:assembleDebug
-          :presentation:assembleRelease
-          :presentation:testDebugUnitTest
-          :presentation:testReleaseUnitTest
-          :presentation:lint
-          :mobile-worker:assemble
+          :presentation-android:assembleDebug
+          :presentation-android:assembleRelease
+          :presentation-android:test
+          :presentation-android:lint
+          :mobile-worker-android:assemble
           -Pgromozeka.version=${{ needs.metadata.outputs.version }}
           -q
 

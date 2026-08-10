@@ -8,8 +8,15 @@
         android:label="Gromozeka"
         android:usesCleartextTraffic="true"
         android:theme="@style/GromozekaTheme">
+        <meta-data
+            android:name="com.gromozeka.DEFAULT_REMOTE_URL"
+            android:value="${gromozekaDefaultRemoteUrl}" />
+        <meta-data
+            android:name="com.gromozeka.ENABLE_LOCATION_TELEMETRY"
+            android:value="${gromozekaEnableLocationTelemetry}" />
+
         <activity
-            android:name=".MainActivity"
+            android:name="com.gromozeka.presentation.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">

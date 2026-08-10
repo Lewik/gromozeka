@@ -16,6 +16,7 @@ rootProject.name = "gromozeka"
 include(":shared")
 include(":device-telemetry")
 include(":mobile-worker")
+include(":mobile-worker-android")
 include(":domain")
 include(":remote-protocol")
 include(":remote-client")
@@ -27,6 +28,7 @@ include(":infrastructure-ai:tree-sitter-kotlin-grammar")
 include(":server")
 include(":worker")
 include(":presentation")
+include(":presentation-android")
 
 // Настройка репозиториев для всех проектов
 dependencyResolutionManagement {

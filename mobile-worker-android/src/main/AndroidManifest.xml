@@ -29,7 +29,7 @@
         android:theme="@style/GromozekaWorkerTheme"
         android:usesCleartextTraffic="false">
         <activity
-            android:name=".MainActivity"
+            android:name="com.gromozeka.mobile.worker.MainActivity"
             android:exported="true"
             android:launchMode="singleTop">
             <intent-filter>
@@ -43,7 +43,7 @@
         </activity>
 
         <activity
-            android:name=".HealthPermissionsRationaleActivity"
+            android:name="com.gromozeka.mobile.worker.HealthPermissionsRationaleActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
@@ -51,10 +51,10 @@
         </activity>
 
         <activity-alias
-            android:name=".ViewHealthPermissionUsageActivity"
+            android:name="com.gromozeka.mobile.worker.ViewHealthPermissionUsageActivity"
             android:exported="true"
             android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
-            android:targetActivity=".HealthPermissionsRationaleActivity">
+            android:targetActivity="com.gromozeka.mobile.worker.HealthPermissionsRationaleActivity">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
@@ -62,15 +62,15 @@
         </activity-alias>
 
         <receiver
-            android:name=".MobileWorkerLocationReceiver"
+            android:name="com.gromozeka.mobile.worker.MobileWorkerLocationReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".MobileWorkerGeofenceReceiver"
+            android:name="com.gromozeka.mobile.worker.MobileWorkerGeofenceReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".MobileWorkerBootReceiver"
+            android:name="com.gromozeka.mobile.worker.MobileWorkerBootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -79,11 +79,11 @@
         </receiver>
 
         <receiver
-            android:name=".MobileWorkerBleReceiver"
+            android:name="com.gromozeka.mobile.worker.MobileWorkerBleReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".MobileWorkerCarConnectionReceiver"
+            android:name="com.gromozeka.mobile.worker.MobileWorkerCarConnectionReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.connection.action.CAR_CONNECTION_UPDATED" />
@@ -91,7 +91,7 @@
         </receiver>
 
         <service
-            android:name=".MobileWorkerSyncJobService"
+            android:name="com.gromozeka.mobile.worker.MobileWorkerSyncJobService"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>

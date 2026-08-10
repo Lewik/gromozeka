@@ -1,6 +1,7 @@
 package com.gromozeka.mobile.worker
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 
 internal object AndroidMobileWorkerRuntimeFactory {
@@ -10,6 +11,16 @@ internal object AndroidMobileWorkerRuntimeFactory {
             platform = com.gromozeka.domain.model.MobileWorkerPlatform.ANDROID,
             deviceName = "${Build.MANUFACTURER} ${Build.MODEL}".trim(),
             operatingSystemVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
-            appVersion = BuildConfig.VERSION_NAME,
+            appVersion = context.applicationVersion(),
         )
+}
+
+private fun Context.applicationVersion(): String {
+    val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+    } else {
+        @Suppress("DEPRECATION")
+        packageManager.getPackageInfo(packageName, 0)
+    }
+    return packageInfo.versionName ?: "unknown"
 }

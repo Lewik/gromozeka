@@ -21,7 +21,10 @@ Server, and standalone Workers.
 - `:remote-protocol` and `:remote-client` define the client-to-Server boundary.
 - `:server` is the control plane and web endpoint.
 - `:worker` is a trusted standalone executor.
-- `:presentation` contains the Compose clients and presentation state.
+- `:presentation` contains the shared Compose clients and presentation state.
+- `:presentation-android` packages the Android client application.
+- `:mobile-worker` contains the shared mobile Worker runtime.
+- `:mobile-worker-android` packages the Android mobile Worker application.
 
 Dependencies should point toward domain contracts where practical. Framework,
 storage, provider, and transport details stay in their infrastructure modules.
@@ -251,6 +254,9 @@ Layer ownership for focused work:
 | Durable runtime scheduling | `:application` and `:infrastructure-db` |
 | Session-addressed Worker control | `:server`, `:remote-protocol`, and `:worker` |
 | Compose UI and presentation state | `:presentation` |
+| Android client packaging | `:presentation-android` |
+| Mobile Worker runtime | `:mobile-worker` |
+| Android mobile Worker packaging | `:mobile-worker-android` |
 | Server endpoints and composition | `:server` |
 | Worker process and local execution | `:worker` |
 
@@ -334,5 +340,12 @@ Default to the cheapest check that covers the changed boundary:
 Use a full build for cross-cutting, build-system, packaging, or release changes:
 
 ```bash
-./gradlew :presentation:build :server:test -q
+./gradlew build -q
+```
+
+Android application artifacts are owned by the launcher modules:
+
+```bash
+./gradlew :presentation-android:assemble -q
+./gradlew :mobile-worker-android:assemble -q
 ```

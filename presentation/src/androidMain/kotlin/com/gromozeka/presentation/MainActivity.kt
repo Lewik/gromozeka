@@ -1,6 +1,7 @@
 package com.gromozeka.presentation
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -52,12 +53,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val explicitRemoteUrl = intent.getStringExtra(EXTRA_REMOTE_URL)
-        val bundledRemoteUrl = BuildConfig.DEFAULT_REMOTE_URL.takeIf(String::isNotBlank)
+        val metadata = packageManager
+            .getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+            .metaData
+        val bundledRemoteUrl = metadata
+            ?.getString(METADATA_DEFAULT_REMOTE_URL)
+            ?.takeIf(String::isNotBlank)
+        val enableLocationTelemetry = metadata
+            ?.getBoolean(METADATA_ENABLE_LOCATION_TELEMETRY, false)
+            ?: false
 
         setContent {
             GromozekaAndroidApp(
                 explicitRemoteUrl = explicitRemoteUrl,
                 bundledRemoteUrl = bundledRemoteUrl,
+                enableLocationTelemetry = enableLocationTelemetry,
                 onRemoteAppStarted = { remoteApp = it }
             )
         }
@@ -71,6 +81,8 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val EXTRA_REMOTE_URL = "gromozeka.remote.url"
+        const val METADATA_DEFAULT_REMOTE_URL = "com.gromozeka.DEFAULT_REMOTE_URL"
+        const val METADATA_ENABLE_LOCATION_TELEMETRY = "com.gromozeka.ENABLE_LOCATION_TELEMETRY"
     }
 }
 
@@ -78,6 +90,7 @@ class MainActivity : ComponentActivity() {
 private fun GromozekaAndroidApp(
     explicitRemoteUrl: String?,
     bundledRemoteUrl: String?,
+    enableLocationTelemetry: Boolean,
     onRemoteAppStarted: (RemoteAppComponents) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -158,7 +171,7 @@ private fun GromozekaAndroidApp(
                     audioRecorder = NoOpClientAudioRecorder,
                     audioPlayer = audioPlayer,
                     attachmentAcquisitionController = attachmentController,
-                    deviceLocationService = if (BuildConfig.ENABLE_LOCATION_TELEMETRY) {
+                    deviceLocationService = if (enableLocationTelemetry) {
                         AndroidDeviceLocationService(context, locationPermissionRequester)
                     } else {
                         NoOpDeviceLocationService
@@ -223,7 +236,7 @@ private fun GromozekaAndroidApp(
                                     audioRecorder = NoOpClientAudioRecorder,
                                     audioPlayer = audioPlayer,
                                     attachmentAcquisitionController = attachmentController,
-                                    deviceLocationService = if (BuildConfig.ENABLE_LOCATION_TELEMETRY) {
+                                    deviceLocationService = if (enableLocationTelemetry) {
                                         AndroidDeviceLocationService(context, locationPermissionRequester)
                                     } else {
                                         NoOpDeviceLocationService
