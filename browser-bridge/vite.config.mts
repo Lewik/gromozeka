@@ -46,12 +46,12 @@ export default defineConfig({
       ]
     })
   ],
-  root: resolve(__dirname, 'src/ui'),
+  root: resolve(import.meta.dirname, 'src/ui'),
   builder: {},
   environments: {
     client: {
       build: {
-        outDir: resolve(__dirname, 'dist/'),
+        outDir: resolve(import.meta.dirname, 'dist/'),
         emptyOutDir: false,
         minify: true,
         rollupOptions: {
@@ -68,11 +68,11 @@ export default defineConfig({
     sw: {
       consumer: 'client',
       build: {
-        outDir: resolve(__dirname, 'dist/'),
+        outDir: resolve(import.meta.dirname, 'dist/'),
         emptyOutDir: false,
         minify: true,
         lib: {
-          entry: resolve(__dirname, 'src/background.ts'),
+          entry: resolve(import.meta.dirname, 'src/background.ts'),
           fileName: 'lib/background',
           formats: ['es']
         }

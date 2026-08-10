@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64 AS web-assets
+FROM eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2 AS web-assets
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends brotli gzip \
@@ -16,7 +16,7 @@ RUN find /app/web -type f \( \
     -exec brotli --force --quality=11 --no-copy-stat {} \; \
     -exec gzip --force --keep --best --no-name {} \;
 
-FROM eclipse-temurin:21-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64
+FROM eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2
 
 RUN groupadd --gid 10001 gromozeka \
     && useradd --uid 10001 --gid gromozeka --create-home gromozeka

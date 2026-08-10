@@ -21,14 +21,13 @@ export const patchTargets = [
   },
   {
     path: path.join(packageRoot, 'lib/coreBundle.js'),
+    required: [
+      'connectOverCDP(relay.cdpEndpoint(), { isLocal: true, timeout: 0, noDefaults: true })',
+    ],
     replacements: [
       {
         original: `playwrightExtensionId = "${upstreamExtensionId}";`,
         patched: `playwrightExtensionId = process.env.${extensionIdEnvironment} || "${upstreamExtensionId}";`,
-      },
-      {
-        original: 'return await playwright.chromium.connectOverCDP(relay.cdpEndpoint(), { isLocal: true, timeout: 0 });',
-        patched: 'return await playwright.chromium.connectOverCDP(relay.cdpEndpoint(), { isLocal: true, noDefaults: true, timeout: 0 });',
       },
       {
         original: `this._tabSessions = /* @__PURE__ */ new Map();
@@ -75,6 +74,7 @@ export function patchPlaywrightRuntime() {
         );
       }
     }
+    verifyRequiredSource(target, source);
     fs.writeFileSync(target.path, source);
   }
 }
@@ -90,6 +90,7 @@ export function verifyPlaywrightRuntime() {
         throw new Error(`Expected Playwright patch is missing from ${target.path}`);
       }
     }
+    verifyRequiredSource(target, source);
   }
 }
 
@@ -106,4 +107,12 @@ export function runtimeRoot() {
 
 function countOccurrences(source, value) {
   return source.split(value).length - 1;
+}
+
+function verifyRequiredSource(target, source) {
+  for (const required of target.required ?? []) {
+    if (countOccurrences(source, required) !== 1) {
+      throw new Error(`Unexpected Playwright source in ${target.path}: expected one required occurrence`);
+    }
+  }
 }
