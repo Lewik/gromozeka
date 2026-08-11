@@ -21,6 +21,7 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
+import com.gromozeka.domain.service.QuickTextActionService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
@@ -85,6 +86,7 @@ data class AppComponents(
     val workspaceManagementService: WorkspaceManagementService,
     val workerCatalogService: WorkerCatalogService,
     val conversationService: ConversationDomainService,
+    val quickTextActionService: QuickTextActionService,
     val conversationSearchViewModel: ConversationSearchViewModel,
     val loadingViewModel: LoadingViewModel,
     val tabPromptService: TabPromptService,

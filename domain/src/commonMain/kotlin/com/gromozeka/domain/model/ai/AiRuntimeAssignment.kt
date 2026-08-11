@@ -26,6 +26,11 @@ data class AiRuntimeAssignment(
             displayName = "Message squash",
             description = "Model used to summarize or compact chat messages.",
         ),
+        QUICK_TEXT_ACTION(
+            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
+            displayName = "Quick text action",
+            description = "Model used for selected-text correction and translation shortcuts.",
+        ),
         TOOL_CATALOG_SUMMARY(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
             displayName = "Tool capability catalog",

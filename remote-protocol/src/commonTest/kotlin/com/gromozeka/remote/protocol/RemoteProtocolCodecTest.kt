@@ -6,6 +6,8 @@ import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.QuickTextAction
+import com.gromozeka.domain.model.QuickTextActionResult
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
@@ -562,6 +564,49 @@ class RemoteProtocolCodecTest {
         ).payload as CancelQueuedMessageRequest
 
         assertEquals("message-queued-1", decodedCancel.messageId.value)
+    }
+
+    @Test
+    fun cborRoundTripSupportsQuickTextActions() {
+        val runEnvelope = GromozekaClientEnvelope(
+            id = "quick-text-run-1",
+            payload = RunQuickTextActionRequest(
+                actionId = QuickTextAction.FIX_TEXT_ID,
+                text = "helo",
+            ),
+        )
+        val decodedRun = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(runEnvelope)
+        ).payload as RunQuickTextActionRequest
+
+        assertEquals(QuickTextAction.FIX_TEXT_ID, decodedRun.actionId)
+        assertEquals("helo", decodedRun.text)
+
+        val listEnvelope = GromozekaServerEnvelope(
+            id = "quick-text-list-1",
+            payload = QuickTextActionsResponse(QuickTextAction.defaults()),
+        )
+        val decodedList = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(listEnvelope)
+        ).payload as QuickTextActionsResponse
+
+        assertEquals(QuickTextAction.defaults().map { it.id }, decodedList.actions.map { it.id })
+
+        val resultEnvelope = GromozekaServerEnvelope(
+            id = "quick-text-result-1",
+            payload = QuickTextActionResultResponse(
+                QuickTextActionResult(
+                    actionId = QuickTextAction.FIX_TEXT_ID,
+                    text = "hello",
+                )
+            ),
+        )
+        val decodedResult = RemoteProtocolCodec.decodeServerText(
+            RemoteProtocolCodec.encodeServerText(resultEnvelope)
+        ).payload as QuickTextActionResultResponse
+
+        assertEquals(QuickTextAction.FIX_TEXT_ID, decodedResult.result.actionId)
+        assertEquals("hello", decodedResult.result.text)
     }
 
     @Test

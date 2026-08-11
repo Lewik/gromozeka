@@ -717,7 +717,7 @@ fun SettingsPanel(
                                     tint = MaterialTheme.colorScheme.secondary,
                                 )
                                 Text(
-                                    text = "Global hotkeys temporarily disabled - UI PTT button available",
+                                    text = "Quick text hotkeys: macOS Cmd+Ctrl+Option+F/T, Windows Ctrl+Alt+Win+F/T. F fixes clipboard text, T translates clipboard text. The result is copied back to clipboard.",
                                     color = MaterialTheme.colorScheme.secondary,
                                     style = MaterialTheme.typography.bodySmall,
                                 )

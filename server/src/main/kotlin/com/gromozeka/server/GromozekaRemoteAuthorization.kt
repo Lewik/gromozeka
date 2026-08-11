@@ -64,6 +64,8 @@ class GromozekaRemoteAuthorization(
             FindProjectsRequest,
             GetConversationTabLayoutRequest,
             is SearchConversationsRequest,
+            ListQuickTextActionsRequest,
+            is RunQuickTextActionRequest,
             is TranscribeAudioRequest,
             GetSpeechCaptureAvailabilityRequest,
             is StartSpeechCaptureRequest,

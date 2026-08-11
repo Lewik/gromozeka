@@ -17,11 +17,23 @@ class RuntimeCatalogBootstrapService(
 
     @PostConstruct
     fun initialize() {
-        val initialized = runBlocking {
-            bootstrapRepository.initializeIfEmpty(templates.createSeed())
+        val result = runBlocking {
+            val seed = templates.createSeed()
+            BootstrapResult(
+                initialized = bootstrapRepository.initializeIfEmpty(seed),
+                repaired = bootstrapRepository.insertMissingSeedEntries(seed),
+            )
         }
-        if (initialized) {
+        if (result.initialized) {
             log.info { "Initialized runtime configuration catalog from application templates" }
         }
+        if (result.repaired) {
+            log.info { "Inserted missing runtime configuration catalog seed entries" }
+        }
     }
+
+    private data class BootstrapResult(
+        val initialized: Boolean,
+        val repaired: Boolean,
+    )
 }

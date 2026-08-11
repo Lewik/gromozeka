@@ -13,6 +13,8 @@ import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.QuickTextAction
+import com.gromozeka.domain.model.QuickTextActionResult
 import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Settings
@@ -620,6 +622,22 @@ data class SquashMessagesWithAiRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("list_quick_text_actions")
+data object ListQuickTextActionsRequest : ClientRequest
+
+@Serializable
+@SerialName("run_quick_text_action")
+data class RunQuickTextActionRequest(
+    val actionId: QuickTextAction.Id,
+    val text: String,
+) : ClientRequest {
+    init {
+        require(actionId.value.isNotBlank()) { "Quick text action id must not be blank" }
+        require(text.isNotBlank()) { "Quick text action input must not be blank" }
+    }
+}
+
+@Serializable
 @SerialName("search_conversations")
 data class SearchConversationsRequest(
     val query: String,
@@ -1186,6 +1204,18 @@ data class TokenStatsResponse(
 @SerialName("text")
 data class TextResponse(
     val text: String,
+) : ServerResponse
+
+@Serializable
+@SerialName("quick_text_actions")
+data class QuickTextActionsResponse(
+    val actions: List<QuickTextAction>,
+) : ServerResponse
+
+@Serializable
+@SerialName("quick_text_action_result")
+data class QuickTextActionResultResponse(
+    val result: QuickTextActionResult,
 ) : ServerResponse
 
 @Serializable

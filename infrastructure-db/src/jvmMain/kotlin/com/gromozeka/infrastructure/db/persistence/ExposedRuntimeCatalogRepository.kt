@@ -118,6 +118,73 @@ class ExposedRuntimeCatalogRepository(
         true
     }
 
+    override suspend fun insertMissingSeedEntries(seed: RuntimeCatalogSeed): Boolean = dbQuery {
+        val configuration = RuntimeCatalogConfiguration.selectAll()
+            .where { RuntimeCatalogConfiguration.id eq CONFIGURATION_ID }
+            .singleOrNull()
+            ?: return@dbQuery false
+
+        var changed = false
+
+        val existingConnectionIds = AiConnections.selectAll()
+            .mapTo(mutableSetOf()) { it[AiConnections.id] }
+        seed.aiCatalog.connections
+            .filter { it.id.value !in existingConnectionIds }
+            .forEach { connection ->
+                AiConnections.insert {
+                    it[id] = connection.id.value
+                    it[payloadJson] = json.encodeToString<AiConnection>(connection)
+                }
+                changed = true
+            }
+
+        val existingSpecIds = AiModelSpecs.selectAll()
+            .mapTo(mutableSetOf()) { it[AiModelSpecs.provider] to it[AiModelSpecs.modelId] }
+        seed.aiCatalog.modelSpecs
+            .filter { (it.provider.name to it.id) !in existingSpecIds }
+            .forEach { spec ->
+                AiModelSpecs.insert {
+                    it[provider] = spec.provider.name
+                    it[modelId] = spec.id
+                    it[payloadJson] = json.encodeToString(spec)
+                }
+                changed = true
+            }
+
+        val existingConfigurationIds = AiModelConfigurations.selectAll()
+            .mapTo(mutableSetOf()) { it[AiModelConfigurations.id] }
+        seed.aiCatalog.modelConfigurations
+            .filter { it.id.value !in existingConfigurationIds }
+            .forEach { modelConfiguration ->
+                AiModelConfigurations.insert {
+                    it[id] = modelConfiguration.id.value
+                    it[connectionId] = modelConfiguration.connectionId.value
+                    it[payloadJson] = json.encodeToString(modelConfiguration)
+                }
+                changed = true
+            }
+
+        val existingAssignmentPurposes = AiRuntimeAssignments.selectAll()
+            .mapTo(mutableSetOf()) { it[AiRuntimeAssignments.purpose] }
+        seed.aiCatalog.runtimeAssignments
+            .filter { it.purpose.name !in existingAssignmentPurposes }
+            .forEach { assignment ->
+                AiRuntimeAssignments.insert {
+                    it[purpose] = assignment.purpose.name
+                    it[modelConfigurationId] = assignment.selection.modelConfigurationId.value
+                    it[payloadJson] = json.encodeToString(assignment)
+                }
+                changed = true
+            }
+
+        if (changed) {
+            RuntimeCatalogConfiguration.update({ RuntimeCatalogConfiguration.id eq CONFIGURATION_ID }) {
+                it[revision] = configuration[RuntimeCatalogConfiguration.revision] + 1
+            }
+        }
+        changed
+    }
+
     private fun loadSnapshot(): AiCatalogSnapshot? {
         val configuration = RuntimeCatalogConfiguration.selectAll()
             .where { RuntimeCatalogConfiguration.id eq CONFIGURATION_ID }

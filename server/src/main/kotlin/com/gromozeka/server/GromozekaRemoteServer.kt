@@ -30,6 +30,7 @@ import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectAccessService
+import com.gromozeka.domain.service.QuickTextActionService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SecurityAuditService
 import com.gromozeka.domain.service.SettingsService
@@ -92,6 +93,7 @@ class GromozekaRemoteServer(
     private val conversationRuntimeIngressService: ConversationRuntimeIngressService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
+    private val quickTextActionService: QuickTextActionService,
     private val conversationNameSearchService: ConversationNameSearchService,
     private val sttService: SttService,
     private val ttsService: TtsService,
@@ -644,6 +646,14 @@ class GromozekaRemoteServer(
                         request.squashType,
                         request.runtimeSelection,
                     )
+                )
+
+                ListQuickTextActionsRequest -> QuickTextActionsResponse(
+                    quickTextActionService.listActions()
+                )
+
+                is RunQuickTextActionRequest -> QuickTextActionResultResponse(
+                    quickTextActionService.runAction(request.actionId, request.text)
                 )
 
                 is SearchConversationsRequest -> {

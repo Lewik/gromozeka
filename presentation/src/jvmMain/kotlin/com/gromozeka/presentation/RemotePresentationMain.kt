@@ -4,7 +4,10 @@ import com.gromozeka.presentation.services.DesktopClientAudioRecorder
 import com.gromozeka.presentation.services.DesktopClientAudioPlayer
 import com.gromozeka.presentation.services.DesktopSystemAudioMuteService
 import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextService
+import com.gromozeka.presentation.services.DesktopGlobalHotkeyController
+import com.gromozeka.presentation.services.DesktopQuickTextActionExecutor
 import com.gromozeka.presentation.services.LocalWorkerController
+import com.gromozeka.presentation.services.defaultDesktopNotificationService
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
@@ -15,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -29,6 +33,7 @@ internal suspend fun startRemotePresentation(
 ): RemoteStartedApp {
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     val clientHomeDirectory = desktopRemoteClientHomeDirectory().absolutePath
+    val globalHotkeyController = DesktopGlobalHotkeyController()
     val remoteApp = try {
         createRemoteAppComponents(
             remoteUrl = remoteUrl,
@@ -42,6 +47,7 @@ internal suspend fun startRemotePresentation(
             systemAudioMuteService = DesktopSystemAudioMuteService(),
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
             attachmentAcquisitionController = DesktopAttachmentAcquisitionController(),
+            globalHotkeyController = globalHotkeyController,
             localWorkerController = localWorkerController,
             httpClient = httpClient,
         )
@@ -51,6 +57,16 @@ internal suspend fun startRemotePresentation(
     }
     File(remoteApp.components.settingsService.homeDirectory).mkdirs()
     System.setProperty("GROMOZEKA_HOME", remoteApp.components.settingsService.homeDirectory)
+    val quickTextActionExecutor = DesktopQuickTextActionExecutor(
+        quickTextActionService = remoteApp.components.quickTextActionService,
+        uiFeedbackController = remoteApp.components.uiFeedbackController,
+        notificationService = defaultDesktopNotificationService(),
+    )
+    globalHotkeyController.registerQuickTextActionHotkeys { actionId ->
+        scope.launch {
+            quickTextActionExecutor.run(actionId)
+        }
+    }
 
     val windowStateService = WindowStateService(remoteApp.components.settingsService)
     return RemoteStartedApp(remoteApp, windowStateService, scope)

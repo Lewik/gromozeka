@@ -1,6 +1,7 @@
 package com.gromozeka.presentation.services
 
 import com.gromozeka.domain.model.ArtifactUpload
+import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.TtsTask
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +48,7 @@ object NoOpAttachmentAcquisitionController : AttachmentAcquisitionController {
 
 interface GlobalHotkeyController {
     fun initializeService()
+    fun registerQuickTextActionHotkeys(handler: (QuickTextAction.Id) -> Unit) = Unit
     fun cleanup()
     fun isSupported(): Boolean = false
     fun getImplementationType(): String = "none"

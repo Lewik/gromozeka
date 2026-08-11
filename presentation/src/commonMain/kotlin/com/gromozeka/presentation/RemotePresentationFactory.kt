@@ -11,6 +11,7 @@ import com.gromozeka.presentation.services.ClientAudioPlayer
 import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
 import com.gromozeka.presentation.services.ClientFeedbackService
+import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
@@ -64,6 +65,7 @@ suspend fun createRemoteAppComponents(
     },
     deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
     attachmentAcquisitionController: AttachmentAcquisitionController = NoOpAttachmentAcquisitionController,
+    globalHotkeyController: GlobalHotkeyController = NoOpGlobalHotkeyController,
     localWorkerController: LocalWorkerController = UnsupportedLocalWorkerController,
     httpClient: HttpClient? = null,
 ): RemoteAppComponents {
@@ -181,7 +183,7 @@ suspend fun createRemoteAppComponents(
             liveAudioStreamer = RollingClientLiveAudioStreamer(audioRecorder) {
                 remoteServices.settingsService.userProfile.speechSettings.speechToText.localWhisper.liveStreaming
             },
-            globalHotkeyController = NoOpGlobalHotkeyController,
+            globalHotkeyController = globalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,
             uiFeedbackController = uiFeedbackController,
@@ -197,6 +199,7 @@ suspend fun createRemoteAppComponents(
             workspaceManagementService = remoteServices.workspaceManagementService,
             workerCatalogService = remoteServices.workerCatalogService,
             conversationService = remoteServices.conversationService,
+            quickTextActionService = remoteServices.quickTextActionService,
             conversationSearchViewModel = ConversationSearchViewModel(remoteServices.conversationNameSearchService, scope),
             loadingViewModel = LoadingViewModel(),
             tabPromptService = TabPromptService(remoteServices.promptService),

@@ -6,4 +6,12 @@
         <item name="android:statusBarColor">#080D14</item>
         <item name="android:navigationBarColor">#080D14</item>
     </style>
+
+    <style name="GromozekaQuickTextActionTheme" parent="android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoDisplay">false</item>
+    </style>
 </resources>
