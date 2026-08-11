@@ -20,11 +20,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-abstract class QuickTextActionActivity : ComponentActivity() {
+class QuickTextActionActivity : ComponentActivity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    protected abstract val quickTextActionId: QuickTextAction.Id
-    protected abstract val quickTextActionLabel: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,24 +40,28 @@ abstract class QuickTextActionActivity : ComponentActivity() {
     }
 
     private fun runAction(intent: Intent) {
+        val action = resolveQuickTextAction()
         val inputText = intent.quickTextInput()
         if (inputText.isNullOrBlank()) {
-            finishWithMessage("$quickTextActionLabel: no text input")
+            finishWithMessage("${action.title}: no text input")
             return
         }
 
         scope.launch {
             runCatching {
-                executeQuickTextAction(inputText)
+                executeQuickTextAction(action.id, inputText)
             }.onSuccess { result ->
-                finishWithResult(intent, result)
+                finishWithResult(intent, action.title, result)
             }.onFailure { error ->
-                finishWithMessage("$quickTextActionLabel failed: ${error.message ?: error::class.simpleName}")
+                finishWithMessage("${action.title} failed: ${error.message ?: error::class.simpleName}")
             }
         }
     }
 
-    private suspend fun executeQuickTextAction(inputText: String): String {
+    private suspend fun executeQuickTextAction(
+        quickTextActionId: QuickTextAction.Id,
+        inputText: String,
+    ): String {
         val context = applicationContext
         val settingsStore = AndroidRemoteClientSettingsStore(context)
         val remoteUrl = settingsStore.resolveRemoteUrl(fallbackUrl = bundledRemoteUrl())
@@ -90,7 +91,11 @@ abstract class QuickTextActionActivity : ComponentActivity() {
         }
     }
 
-    private fun finishWithResult(intent: Intent, result: String) {
+    private fun finishWithResult(
+        intent: Intent,
+        quickTextActionLabel: String,
+        result: String,
+    ) {
         val readOnly = intent.getBooleanExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, false)
         if (intent.action == Intent.ACTION_PROCESS_TEXT && !readOnly) {
             setResult(
@@ -98,7 +103,7 @@ abstract class QuickTextActionActivity : ComponentActivity() {
                 Intent().putExtra(Intent.EXTRA_PROCESS_TEXT, result),
             )
         } else {
-            copyToClipboard(result)
+            copyToClipboard(quickTextActionLabel, result)
             Toast.makeText(this, "$quickTextActionLabel copied to clipboard", Toast.LENGTH_SHORT).show()
             setResult(RESULT_OK)
         }
@@ -111,7 +116,10 @@ abstract class QuickTextActionActivity : ComponentActivity() {
         finish()
     }
 
-    private fun copyToClipboard(text: String) {
+    private fun copyToClipboard(
+        quickTextActionLabel: String,
+        text: String,
+    ) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText(quickTextActionLabel, text))
     }
@@ -130,17 +138,30 @@ abstract class QuickTextActionActivity : ComponentActivity() {
             ?.getString(METADATA_DEFAULT_REMOTE_URL)
             ?.takeIf(String::isNotBlank)
 
+    private fun resolveQuickTextAction(): QuickTextAction {
+        val actionIdValue = actionIdFromMetadata()
+            ?: actionIdFromComponentName()
+            ?: error("Quick text action id is not configured")
+        return QuickTextAction.defaults().firstOrNull { it.id.value == actionIdValue }
+            ?: error("Unknown quick text action id: $actionIdValue")
+    }
+
+    private fun actionIdFromMetadata(): String? =
+        packageManager
+            .getActivityInfo(componentName, PackageManager.GET_META_DATA)
+            .metaData
+            ?.getString(METADATA_QUICK_TEXT_ACTION_ID)
+            ?.takeIf(String::isNotBlank)
+
+    private fun actionIdFromComponentName(): String? =
+        when {
+            componentName.className.endsWith(".FixTextActionActivity") -> QuickTextAction.FIX_TEXT_ID.value
+            componentName.className.endsWith(".TranslateTextActionActivity") -> QuickTextAction.TRANSLATE_RU_EN_ID.value
+            else -> null
+        }
+
     private companion object {
         const val METADATA_DEFAULT_REMOTE_URL = "com.gromozeka.DEFAULT_REMOTE_URL"
+        const val METADATA_QUICK_TEXT_ACTION_ID = "com.gromozeka.QUICK_TEXT_ACTION_ID"
     }
-}
-
-class FixTextActionActivity : QuickTextActionActivity() {
-    override val quickTextActionId: QuickTextAction.Id = QuickTextAction.FIX_TEXT_ID
-    override val quickTextActionLabel: String = "Fix text"
-}
-
-class TranslateTextActionActivity : QuickTextActionActivity() {
-    override val quickTextActionId: QuickTextAction.Id = QuickTextAction.TRANSLATE_RU_EN_ID
-    override val quickTextActionLabel: String = "Translate"
 }
