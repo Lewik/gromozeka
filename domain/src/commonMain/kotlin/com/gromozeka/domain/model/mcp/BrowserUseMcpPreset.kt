@@ -16,7 +16,6 @@ object BrowserUseMcpPreset {
 
     val arguments: List<String> = listOf(
         "--extension",
-        "--output-mode=stdout",
         "--output-max-size=$OUTPUT_MAX_BYTES",
     )
 

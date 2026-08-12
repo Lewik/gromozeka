@@ -264,7 +264,7 @@ class McpServerManagementServiceTest {
                     displayName = "Updated Browser",
                     transport = McpServerTransport.BundledStdio(
                         runtime = BundledMcpRuntime.BROWSER_USE,
-                        arguments = listOf("--extension", "--output-mode=stdout"),
+                        arguments = listOf("--extension", "--output-max-size=52428800"),
                         environment = mapOf("PLAYWRIGHT_MCP_EXTENSION_ID" to "bridge-id"),
                         ephemeralWorkingDirectory = true,
                     ),
@@ -281,7 +281,7 @@ class McpServerManagementServiceTest {
                 ),
                 transport.environment,
             )
-            assertEquals(listOf("--extension", "--output-mode=stdout"), transport.arguments)
+            assertEquals(listOf("--extension", "--output-max-size=52428800"), transport.arguments)
         } finally {
             fixture.close()
         }
