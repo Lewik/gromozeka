@@ -327,6 +327,13 @@ All artifacts produced by one release carry the same product version. This
 policy applies beginning with `1.7.0`; earlier releases are not retroactively
 reclassified.
 
+The release workflow resolves versions from remote GitHub tags at the first
+metadata step. Manual published releases and generated versions must be greater
+than the latest remote `v*` SemVer tag before any expensive verification or
+packaging job starts. Prefer leaving the manual version field empty and
+selecting `patch`, `minor`, or `major`; the workflow generates the next SemVer
+version from the latest stable remote tag.
+
 ## Verification
 
 Default to the cheapest check that covers the changed boundary:

@@ -7,9 +7,18 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release version without the v prefix
+        description: Optional explicit release version without the v prefix. Leave empty to generate from bump.
+        required: false
+        default: ""
+      bump:
+        description: SemVer bump to generate when version is empty
         required: true
-        default: "0.0.0-dev"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
       publish_release:
         description: Publish GitHub Release and GHCR images
         required: true
@@ -40,43 +49,24 @@ jobs:
       publish: ${{ steps.release.outputs.publish }}
       prerelease: ${{ steps.release.outputs.prerelease }}
       deploy: ${{ steps.release.outputs.deploy }}
+      latest_previous: ${{ steps.release.outputs.latest_previous }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: release
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_BUMP: ${{ inputs.bump }}
+          INPUT_PUBLISH_RELEASE: ${{ inputs.publish_release }}
+          INPUT_DEPLOY_AWS: ${{ inputs.deploy_aws }}
         run: |
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            version="${GITHUB_REF_NAME#v}"
-            tag="$GITHUB_REF_NAME"
-            publish=true
-            deploy=true
-          else
-            version="${{ inputs.version }}"
-            tag="v$version"
-            publish="${{ inputs.publish_release }}"
-            deploy="${{ inputs.deploy_aws }}"
-          fi
-
-          semver_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)))*)?$'
-          if [[ ! "$version" =~ $semver_pattern ]]; then
-            echo "Invalid release version: $version" >&2
-            exit 2
-          fi
-          if [[ "$publish" == "true" && "$version" == "0.0.0-dev" ]]; then
-            echo "0.0.0-dev is reserved for local builds and cannot be published" >&2
-            exit 2
-          fi
-          if [[ "$deploy" == "true" && "$publish" != "true" ]]; then
-            echo "deploy_aws=true requires publish_release=true" >&2
-            exit 2
-          fi
-
-          prerelease=false
-          if [[ "$version" == *-* ]]; then
-            prerelease=true
-          fi
-
-          printf 'version=%s\ntag=%s\npublish=%s\nprerelease=%s\ndeploy=%s\n' \
-            "$version" "$tag" "$publish" "$prerelease" "$deploy" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          gh api \
+            --paginate \
+            "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v" \
+            --jq '.[].ref' |
+            node scripts/resolve-release-version.mjs
 
   verify-runtime:
     needs: metadata
@@ -151,7 +141,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - target: client-device
@@ -187,7 +177,7 @@ jobs:
       - run: echo "All release source checks passed"
 
   browser-bridge:
-    needs: [metadata, verify]
+    needs: metadata
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -242,7 +232,7 @@ jobs:
           retention-days: 1
 
   client-macos:
-    needs: [metadata, verify]
+    needs: metadata
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
@@ -299,7 +289,7 @@ jobs:
           retention-days: 1
 
   client-windows:
-    needs: [metadata, verify]
+    needs: metadata
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -386,7 +376,7 @@ jobs:
           retention-days: 1
 
   worker-launcher-macos:
-    needs: [metadata, verify]
+    needs: metadata
     runs-on: macos-latest
     timeout-minutes: 10
     steps:
@@ -411,7 +401,10 @@ jobs:
           retention-days: 1
 
   standalone:
-    needs: [metadata, verify, worker-launcher-macos]
+    needs:
+      - metadata
+      - verify-web
+      - worker-launcher-macos
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -504,7 +497,9 @@ jobs:
           retention-days: 1
 
   images:
-    needs: [metadata, verify]
+    needs:
+      - metadata
+      - verify-web
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -607,6 +602,7 @@ jobs:
     if: needs.metadata.outputs.publish == 'true'
     needs:
       - metadata
+      - verify
       - client-macos
       - client-windows
       - standalone
