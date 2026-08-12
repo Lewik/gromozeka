@@ -16,11 +16,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.springframework.stereotype.Service
 import java.net.URI
@@ -86,7 +88,6 @@ class OpenAiRealtimeTranscriptionService(
         return OpenAiRealtimeTranscriptionConfiguration(
             apiKey = clientFactory.resolveApiKey(runtime.connection),
             baseUrl = clientFactory.resolveBaseUrl(runtime.connection),
-            sessionModel = REALTIME_SESSION_MODEL,
             transcriptionModel = REALTIME_TRANSCRIPTION_MODEL,
             languageCode = languageCode?.trim()?.takeIf { it.isNotBlank() && !it.equals("auto", ignoreCase = true) }
                 ?: speechToText.mainLanguageCode?.trim()?.takeIf {
@@ -97,8 +98,7 @@ class OpenAiRealtimeTranscriptionService(
     }
 
     private companion object {
-        const val REALTIME_SESSION_MODEL = "gpt-realtime-2.1"
-        const val REALTIME_TRANSCRIPTION_MODEL = "gpt-live-transcribe"
+        const val REALTIME_TRANSCRIPTION_MODEL = "gpt-transcribe"
     }
 }
 
@@ -114,7 +114,7 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
     val events: Flow<OpenAiRealtimeTranscriptionEvent> = eventsChannel.receiveAsFlow()
 
     suspend fun start() {
-        val uri = URI.create("${configuration.websocketBaseUrl()}/realtime?model=${configuration.sessionModel}")
+        val uri = URI.create("${configuration.websocketBaseUrl()}/realtime?intent=transcription")
         val listener = Listener()
         val socket = withContext(Dispatchers.IO) {
             HttpClient.newHttpClient()
@@ -126,7 +126,7 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
         }
         webSocket = socket
         sendJson(sessionUpdateEvent())
-        eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.Status("Provider VAD realtime session started"))
+        eventsChannel.trySend(OpenAiRealtimeTranscriptionEvent.Status("Provider VAD transcription session started"))
     }
 
     suspend fun appendPcm16(
@@ -172,7 +172,7 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
         buildJsonObject {
             put("type", "session.update")
             putJsonObject("session") {
-                put("type", "realtime")
+                put("type", "transcription")
                 putJsonObject("audio") {
                     putJsonObject("input") {
                         putJsonObject("format") {
@@ -182,7 +182,9 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
                         putJsonObject("transcription") {
                             put("model", configuration.transcriptionModel)
                             configuration.languageCode?.let { language ->
-                                put("language", language)
+                                putJsonArray("languages") {
+                                    add(language)
+                                }
                             }
                             configuration.prompt?.let { put("prompt", it) }
                         }
@@ -190,10 +192,8 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
                             put("type", "near_field")
                         }
                         putJsonObject("turn_detection") {
-                            put("type", "server_vad")
-                            put("threshold", 0.5)
-                            put("prefix_padding_ms", 300)
-                            put("silence_duration_ms", 500)
+                            put("type", "semantic_vad")
+                            put("eagerness", "low")
                             put("create_response", false)
                             put("interrupt_response", false)
                         }
@@ -298,7 +298,6 @@ class OpenAiRealtimeTranscriptionSession internal constructor(
 data class OpenAiRealtimeTranscriptionConfiguration(
     val apiKey: String,
     val baseUrl: String,
-    val sessionModel: String,
     val transcriptionModel: String,
     val languageCode: String?,
     val prompt: String?,
