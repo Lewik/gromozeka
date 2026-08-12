@@ -27,12 +27,22 @@ import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptChunkCommand
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadAudioChunkCommand
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadFailedEvent
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadSpeechStartedEvent
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadSpeechStoppedEvent
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadStartedResponse
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadStatusEvent
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadStoppedEvent
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadTranscriptCompletedEvent
+import com.gromozeka.remote.protocol.LiveVoiceProviderVadTranscriptDeltaEvent
 import com.gromozeka.remote.protocol.MessageUpsertedEvent
 import com.gromozeka.remote.protocol.ObserveConversationCommand
 import com.gromozeka.remote.protocol.ObserveConversationTabLayoutCommand
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import com.gromozeka.remote.protocol.RemoteClientPlatform
+import com.gromozeka.remote.protocol.RemotePcmAudioChunk
 import com.gromozeka.remote.protocol.RemoteProtocolCodec
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import com.gromozeka.remote.protocol.RegisterClientSessionCommand
@@ -44,7 +54,9 @@ import com.gromozeka.remote.protocol.SpeechSynthesisCompletedEvent
 import com.gromozeka.remote.protocol.SpeechSynthesisFailedEvent
 import com.gromozeka.remote.protocol.SpeechSynthesisStartedEvent
 import com.gromozeka.remote.protocol.StartLiveInterpreterRequest
+import com.gromozeka.remote.protocol.StartLiveVoiceProviderVadRequest
 import com.gromozeka.remote.protocol.StopLiveInterpreterCommand
+import com.gromozeka.remote.protocol.StopLiveVoiceProviderVadCommand
 import com.gromozeka.remote.protocol.StopObserveConversationCommand
 import com.gromozeka.remote.protocol.StopObserveConversationTabLayoutCommand
 import com.gromozeka.remote.protocol.SynthesizeSpeechStreamCommand
@@ -121,6 +133,7 @@ internal class GromozekaWsClient(
     private val conversationEventSequences = mutableMapOf<Conversation.Id, Long>()
     private val conversationTabLayoutSubscriptions = mutableMapOf<String, Channel<ConversationTabLayout>>()
     private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
+    private val liveVoiceProviderVadSessions = mutableMapOf<String, Channel<ServerPayload>>()
 
     fun reportActivity(kind: ClientActivityKind) {
         scope.launch {
@@ -405,6 +418,36 @@ internal class GromozekaWsClient(
         }
     }
 
+    suspend fun startLiveVoiceProviderVad(
+        request: StartLiveVoiceProviderVadRequest,
+    ): LiveVoiceProviderVadClientSession {
+        val response = requestTyped<StartLiveVoiceProviderVadRequest, LiveVoiceProviderVadStartedResponse>(request)
+        val channel = Channel<ServerPayload>(Channel.UNLIMITED)
+        registryMutex.withLock {
+            liveVoiceProviderVadSessions[response.sessionId] = channel
+        }
+        return LiveVoiceProviderVadClientSession(response.sessionId, channel)
+    }
+
+    suspend fun sendLiveVoiceProviderVadAudioChunk(
+        sessionId: String,
+        chunk: RemotePcmAudioChunk,
+    ) {
+        send(LiveVoiceProviderVadAudioChunkCommand(sessionId, chunk))
+    }
+
+    suspend fun stopLiveVoiceProviderVad(sessionId: String) {
+        send(StopLiveVoiceProviderVadCommand(sessionId))
+    }
+
+    fun closeLiveVoiceProviderVadSession(sessionId: String) {
+        scope.launch {
+            registryMutex.withLock {
+                liveVoiceProviderVadSessions.remove(sessionId)
+            }?.close()
+        }
+    }
+
     private suspend fun send(payload: ClientPayload) {
         sendEnvelope(GromozekaClientEnvelope(uuid7(), payload))
     }
@@ -541,6 +584,24 @@ internal class GromozekaWsClient(
                         routeLiveInterpreterEvent(payload.sessionId, payload)
                         closeLiveInterpreterSession(payload.sessionId)
                     }
+                    is LiveVoiceProviderVadStatusEvent ->
+                        routeLiveVoiceProviderVadEvent(payload.sessionId, payload)
+                    is LiveVoiceProviderVadSpeechStartedEvent ->
+                        routeLiveVoiceProviderVadEvent(payload.sessionId, payload)
+                    is LiveVoiceProviderVadSpeechStoppedEvent ->
+                        routeLiveVoiceProviderVadEvent(payload.sessionId, payload)
+                    is LiveVoiceProviderVadTranscriptDeltaEvent ->
+                        routeLiveVoiceProviderVadEvent(payload.sessionId, payload)
+                    is LiveVoiceProviderVadTranscriptCompletedEvent ->
+                        routeLiveVoiceProviderVadEvent(payload.sessionId, payload)
+                    is LiveVoiceProviderVadStoppedEvent -> {
+                        routeLiveVoiceProviderVadEvent(payload.sessionId, payload)
+                        closeLiveVoiceProviderVadSession(payload.sessionId)
+                    }
+                    is LiveVoiceProviderVadFailedEvent -> {
+                        routeLiveVoiceProviderVadEvent(payload.sessionId, payload)
+                        closeLiveVoiceProviderVadSession(payload.sessionId)
+                    }
                 }
             }
             failure = IllegalStateException("Gromozeka WebSocket closed")
@@ -645,6 +706,7 @@ internal class GromozekaWsClient(
         val pendingRequests: List<CompletableDeferred<ServerResponse>>
         val activeStreams: List<Channel<ServerPayload>>
         val activeInterpreterSessions: List<Channel<ServerPayload>>
+        val activeLiveVoiceProviderVadSessions: List<Channel<ServerPayload>>
         registryMutex.withLock {
             pendingRequests = pending.values.toList()
             pending.clear()
@@ -652,10 +714,13 @@ internal class GromozekaWsClient(
             streams.clear()
             activeInterpreterSessions = liveInterpreterSessions.values.toList()
             liveInterpreterSessions.clear()
+            activeLiveVoiceProviderVadSessions = liveVoiceProviderVadSessions.values.toList()
+            liveVoiceProviderVadSessions.clear()
         }
         pendingRequests.forEach { it.completeExceptionally(error) }
         activeStreams.forEach { it.close(error) }
         activeInterpreterSessions.forEach { it.close(error) }
+        activeLiveVoiceProviderVadSessions.forEach { it.close(error) }
     }
 
     private suspend fun scheduleReconnect() {
@@ -731,6 +796,12 @@ internal class GromozekaWsClient(
         }?.send(payload)
     }
 
+    private suspend fun routeLiveVoiceProviderVadEvent(sessionId: String, payload: ServerPayload) {
+        registryMutex.withLock {
+            liveVoiceProviderVadSessions[sessionId]
+        }?.send(payload)
+    }
+
     fun close() {
         closed = true
         _connectionState.value = RemoteConnectionState(RemoteConnectionState.Status.CLOSED)
@@ -762,6 +833,11 @@ internal class GromozekaWsClient(
 }
 
 internal class LiveInterpreterClientSession(
+    val sessionId: String,
+    internal val channel: Channel<ServerPayload>,
+)
+
+internal class LiveVoiceProviderVadClientSession(
     val sessionId: String,
     internal val channel: Channel<ServerPayload>,
 )

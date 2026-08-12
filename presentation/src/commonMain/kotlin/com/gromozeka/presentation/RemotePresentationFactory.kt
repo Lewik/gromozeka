@@ -12,6 +12,7 @@ import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.ClientSideSpeechToTextService
 import com.gromozeka.presentation.services.ClientFeedbackService
 import com.gromozeka.presentation.services.GlobalHotkeyController
+import com.gromozeka.presentation.services.LiveVoiceInputController
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
@@ -139,6 +140,17 @@ suspend fun createRemoteAppComponents(
         messageInputClientPlatform = messageInputClientPlatform,
         scope = scope
     )
+    val liveVoiceInputController = LiveVoiceInputController(
+        appViewModel = appViewModel,
+        audioRecorder = audioRecorder,
+        audioTranscriptionService = remoteServices.audioTranscriptionService,
+        liveVoiceProviderVadService = remoteServices.liveVoiceProviderVadService,
+        clientSideSpeechToTextService = clientSideSpeechToTextService,
+        ttsQueue = ttsQueue,
+        settingsService = remoteServices.settingsService,
+        messageInputClientPlatform = messageInputClientPlatform,
+        scope = scope,
+    )
     val assistantAudioPresentationService = AssistantAudioPresentationService(
         clientPresentationService = remoteServices.clientPresentationService,
         ttsQueueService = ttsQueue,
@@ -186,6 +198,7 @@ suspend fun createRemoteAppComponents(
             globalHotkeyController = globalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,
+            liveVoiceInputService = liveVoiceInputController,
             uiFeedbackController = uiFeedbackController,
             uiStateService = uiStateService,
             translationService = translationService,
@@ -248,6 +261,7 @@ class RemoteAppComponents(
         runCatching { components.uiStateService.forceSave() }
         runCatching { components.uiStateService.disableAutoSave() }
         runCatching { components.globalHotkeyController.cleanup() }
+        runCatching { components.liveVoiceInputService.shutdown() }
         runCatching { assistantAudioPresentationService.shutdown() }
         runCatching { clientFeedbackService.shutdown() }
         runCatching { components.ttsQueueService.shutdown() }

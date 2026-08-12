@@ -99,6 +99,7 @@ class GromozekaRemoteServer(
     private val ttsService: TtsService,
     private val memoryStore: MemoryStore,
     private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
+    private val liveVoiceProviderVadApplicationService: LiveVoiceProviderVadApplicationService,
     private val speechCaptureApplicationService: SpeechCaptureApplicationService,
     private val clientPresentationRegistry: ClientPresentationRegistry,
     private val authenticationService: AuthenticationService,
@@ -125,6 +126,10 @@ class GromozekaRemoteServer(
         val conversationSubscriptions = mutableMapOf<String, Job>()
         val conversationTabLayoutSubscriptions = mutableMapOf<String, Job>()
         val liveInterpreterOwner = LiveInterpreterSessionOwner(
+            userId = authenticatedSession.principal.user.id,
+            connectionId = connectionId,
+        )
+        val liveVoiceProviderVadOwner = LiveVoiceProviderVadSessionOwner(
             userId = authenticatedSession.principal.user.id,
             connectionId = connectionId,
         )
@@ -189,6 +194,7 @@ class GromozekaRemoteServer(
                                         encoding = encoding,
                                         user = currentUser,
                                         liveInterpreterOwner = liveInterpreterOwner,
+                                        liveVoiceProviderVadOwner = liveVoiceProviderVadOwner,
                                         speechCaptureOwner = speechCaptureOwner,
                                     )
                                 }
@@ -233,6 +239,10 @@ class GromozekaRemoteServer(
                                 liveInterpreterApplicationService.append(liveInterpreterOwner, payload)
                             is StopLiveInterpreterCommand ->
                                 liveInterpreterApplicationService.stop(liveInterpreterOwner, payload)
+                            is LiveVoiceProviderVadAudioChunkCommand ->
+                                liveVoiceProviderVadApplicationService.append(liveVoiceProviderVadOwner, payload)
+                            is StopLiveVoiceProviderVadCommand ->
+                                liveVoiceProviderVadApplicationService.stop(liveVoiceProviderVadOwner, payload)
                         }
                     }
                 }
@@ -250,6 +260,7 @@ class GromozekaRemoteServer(
                 conversationTabLayoutSubscriptions.values.forEach { it.cancel() }
                 conversationTabLayoutSubscriptions.clear()
                 liveInterpreterApplicationService.stopOwnedBy(liveInterpreterOwner)
+                liveVoiceProviderVadApplicationService.stopOwnedBy(liveVoiceProviderVadOwner)
                 speechCaptureApplicationService.stopOwnedBy(speechCaptureOwner)
                 clientPresentationRegistry.disconnect(connectionId)
             }
@@ -260,7 +271,8 @@ class GromozekaRemoteServer(
         this is GetSpeechCaptureAvailabilityRequest ||
             this is StartSpeechCaptureRequest ||
             this is StopSpeechCaptureRequest ||
-            this is CancelSpeechCaptureRequest
+            this is CancelSpeechCaptureRequest ||
+            this is StartLiveVoiceProviderVadRequest
 
     private suspend fun handleRequest(
         sender: RemoteSessionSender,
@@ -269,6 +281,7 @@ class GromozekaRemoteServer(
         encoding: RemoteProtocolEncoding,
         user: User,
         liveInterpreterOwner: LiveInterpreterSessionOwner,
+        liveVoiceProviderVadOwner: LiveVoiceProviderVadSessionOwner,
         speechCaptureOwner: SpeechCaptureSessionOwner,
     ) {
         val response = try {
@@ -716,6 +729,12 @@ class GromozekaRemoteServer(
                 is SynthesizeSpeechRequest -> synthesizeSpeech(request)
                 is StartLiveInterpreterRequest ->
                     liveInterpreterApplicationService.start(liveInterpreterOwner, request) { payload ->
+                        sender.send(uuid7(), payload, encoding)
+                    }
+                GetLiveVoiceProviderVadAvailabilityRequest ->
+                    liveVoiceProviderVadApplicationService.availability()
+                is StartLiveVoiceProviderVadRequest ->
+                    liveVoiceProviderVadApplicationService.start(liveVoiceProviderVadOwner, user, request) { payload ->
                         sender.send(uuid7(), payload, encoding)
                     }
             }

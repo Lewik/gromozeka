@@ -95,7 +95,15 @@ sealed interface UserDeviceSettings {
     @Serializable
     data class VoiceInputSettings(
         val autoSend: Boolean = true,
-    )
+        val liveVoiceInputEnabled: Boolean = false,
+        val liveVoiceVadMode: LiveVoiceVadMode = LiveVoiceVadMode.LOCAL_VAD,
+    ) {
+        @Serializable
+        enum class LiveVoiceVadMode {
+            LOCAL_VAD,
+            PROVIDER_VAD,
+        }
+    }
 
     @Serializable
     data class DesktopInputSettings(

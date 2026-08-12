@@ -93,6 +93,7 @@ class GromozekaRemoteServices(
     val artifactTransferService: ArtifactTransferService = RemoteArtifactTransferService(client)
     val speechSynthesisService: RemoteSpeechSynthesisService = RemoteSpeechSynthesisService(client)
     val liveInterpreterService: RemoteLiveInterpreterService = RemoteLiveInterpreterService(client)
+    val liveVoiceProviderVadService: LiveVoiceProviderVadService = RemoteLiveVoiceProviderVadService(client)
     val memoryActionItemService: RemoteMemoryActionItemService = RemoteMemoryActionItemService(client)
     val clientPresentationService: RemoteClientPresentationService = RemoteClientPresentationService(client)
     val distributionService: RemoteDistributionService = RemoteDistributionService(client)

@@ -696,6 +696,37 @@ fun SettingsPanel(
                             )
 
                             SwitchSettingItem(
+                                label = "Continuous voice input",
+                                description = "Keep this client's microphone open, split speech into complete phrases, and send each transcript like sequential PTT.",
+                                value = voiceInputSettings.liveVoiceInputEnabled,
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateVoiceInputSettings { copy(liveVoiceInputEnabled = it) }
+                                    )
+                                }
+                            )
+
+                            DropdownSettingItem(
+                                label = "Continuous voice VAD mode",
+                                description = "Choose who decides phrase boundaries. Provider VAD is explicit and never falls back to local VAD.",
+                                value = voiceInputSettings.liveVoiceVadMode,
+                                options = UserDeviceSettings.VoiceInputSettings.LiveVoiceVadMode.entries,
+                                optionLabel = {
+                                    when (it) {
+                                        UserDeviceSettings.VoiceInputSettings.LiveVoiceVadMode.LOCAL_VAD ->
+                                            "Local energy VAD"
+                                        UserDeviceSettings.VoiceInputSettings.LiveVoiceVadMode.PROVIDER_VAD ->
+                                            "Provider VAD"
+                                    }
+                                },
+                                onValueChange = { mode ->
+                                    onSettingsChange(
+                                        settings.updateVoiceInputSettings { copy(liveVoiceVadMode = mode) }
+                                    )
+                                }
+                            )
+
+                            SwitchSettingItem(
                                 label = translation.settings.globalPttHotkeyLabel,
                                 description = translation.settings.globalPttDescription,
                                 value = desktopInputSettings.globalPttHotkeyEnabled,

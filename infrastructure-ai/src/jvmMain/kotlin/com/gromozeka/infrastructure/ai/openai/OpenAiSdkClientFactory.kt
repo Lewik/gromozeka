@@ -16,13 +16,8 @@ class OpenAiSdkClientFactory(
             "OpenAI SDK client requires OpenAI API-compatible connection, got ${connection.kind}"
         }
 
-        val apiKey = settingsProvider.resolveSecret((connection as? AiConnection.ApiKeyAiConnection)?.apiKey)
-            ?.takeIf { it.isNotBlank() }
-            ?: System.getenv("OPENAI_API_KEY")?.takeIf { it.isNotBlank() }
-            ?: error("OpenAI API key is not configured for connection ${connection.id.value}")
-
         return OpenAIOkHttpClient.builder()
-            .apiKey(apiKey)
+            .apiKey(resolveApiKey(connection))
             .apply {
                 (connection as? AiConnection.HttpAiConnection)
                     ?.baseUrl
@@ -30,6 +25,24 @@ class OpenAiSdkClientFactory(
                     ?.let(::baseUrl)
             }
             .build()
+    }
+
+    fun resolveApiKey(connection: AiConnection): String =
+        settingsProvider.resolveSecret((connection as? AiConnection.ApiKeyAiConnection)?.apiKey)
+            ?.takeIf { it.isNotBlank() }
+            ?: System.getenv("OPENAI_API_KEY")?.takeIf { it.isNotBlank() }
+            ?: error("OpenAI API key is not configured for connection ${connection.id.value}")
+
+    fun resolveBaseUrl(connection: AiConnection): String =
+        (connection as? AiConnection.HttpAiConnection)
+            ?.baseUrl
+            ?.trim()
+            ?.removeSuffix("/")
+            ?.takeIf { it.isNotBlank() }
+            ?: DEFAULT_OPENAI_BASE_URL
+
+    private companion object {
+        const val DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
     }
 }
 

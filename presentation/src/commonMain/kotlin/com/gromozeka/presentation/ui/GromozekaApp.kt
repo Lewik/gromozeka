@@ -119,6 +119,9 @@ fun GromozekaAppContent(
     val pttState by appComponents.pttService.state.collectAsState()
     val pttStatusMessage by appComponents.pttService.statusMessage.collectAsState()
     val pttUnavailableReason by appComponents.pttService.unavailableReason.collectAsState()
+    val liveVoiceInputState by appComponents.liveVoiceInputService.state.collectAsState()
+    val liveVoiceInputStatusMessage by appComponents.liveVoiceInputService.statusMessage.collectAsState()
+    val liveVoiceInputUnavailableReason by appComponents.liveVoiceInputService.unavailableReason.collectAsState()
     val keyboardPttGestureDetector = remember {
         UnifiedGestureDetector(appComponents.pttEventRouter, coroutineScope)
     }
@@ -431,6 +434,10 @@ fun GromozekaAppContent(
                                                         pttState = pttState,
                                                         pttStatusMessage = pttStatusMessage,
                                                         pttUnavailableReason = pttUnavailableReason,
+                                                        liveVoiceInputService = appComponents.liveVoiceInputService,
+                                                        liveVoiceInputState = liveVoiceInputState,
+                                                        liveVoiceInputStatusMessage = liveVoiceInputStatusMessage,
+                                                        liveVoiceInputUnavailableReason = liveVoiceInputUnavailableReason,
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,

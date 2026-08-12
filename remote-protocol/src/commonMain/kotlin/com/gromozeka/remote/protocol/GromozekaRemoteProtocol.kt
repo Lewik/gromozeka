@@ -723,6 +723,17 @@ data class StartLiveInterpreterRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("start_live_voice_provider_vad")
+data class StartLiveVoiceProviderVadRequest(
+    val languageCode: String? = null,
+    val prompt: String? = null,
+) : ClientRequest
+
+@Serializable
+@SerialName("get_live_voice_provider_vad_availability")
+data object GetLiveVoiceProviderVadAvailabilityRequest : ClientRequest
+
+@Serializable
 data class RemoteAudioRecording(
     val sessionId: String,
     val format: SpeechAudioFormat,
@@ -747,6 +758,32 @@ data class RemoteLiveTranscriptChunk(
     val sequenceNumber: Int,
     val text: String,
 )
+
+@Serializable
+enum class RemotePcmByteOrder {
+    BIG_ENDIAN,
+    LITTLE_ENDIAN,
+}
+
+@Serializable
+data class RemotePcmAudioChunk(
+    val sequenceNumber: Int,
+    val data: ByteArray,
+    val sampleRate: Int = 16_000,
+    val channels: Int = 1,
+    val bitsPerSample: Int = 16,
+    val byteOrder: RemotePcmByteOrder = RemotePcmByteOrder.BIG_ENDIAN,
+) {
+    init {
+        require(sequenceNumber >= 0) { "PCM chunk sequence number must not be negative" }
+        require(sampleRate > 0) { "PCM chunk sample rate must be positive" }
+        require(channels > 0) { "PCM chunk channel count must be positive" }
+        require(bitsPerSample == 16) { "Only PCM16 chunks are supported" }
+        require(data.size % (channels * bitsPerSample / 8) == 0) {
+            "PCM chunk byte size must align with frame size"
+        }
+    }
+}
 
 @Serializable
 data class RemoteLiveInterpreterDraft(
@@ -851,6 +888,19 @@ data class LiveInterpreterTranscriptChunkCommand(
 @Serializable
 @SerialName("stop_live_interpreter")
 data class StopLiveInterpreterCommand(
+    val sessionId: String,
+) : ClientPayload
+
+@Serializable
+@SerialName("live_voice_provider_vad_audio_chunk")
+data class LiveVoiceProviderVadAudioChunkCommand(
+    val sessionId: String,
+    val chunk: RemotePcmAudioChunk,
+) : ClientPayload
+
+@Serializable
+@SerialName("stop_live_voice_provider_vad")
+data class StopLiveVoiceProviderVadCommand(
     val sessionId: String,
 ) : ClientPayload
 
@@ -1282,6 +1332,18 @@ data class LiveInterpreterStartedResponse(
 ) : ServerResponse
 
 @Serializable
+@SerialName("live_voice_provider_vad_started")
+data class LiveVoiceProviderVadStartedResponse(
+    val sessionId: String,
+) : ServerResponse
+
+@Serializable
+@SerialName("live_voice_provider_vad_availability")
+data class LiveVoiceProviderVadAvailabilityResponse(
+    val unavailableReason: String?,
+) : ServerResponse
+
+@Serializable
 @SerialName("error")
 data class ErrorResponse(
     val message: String,
@@ -1447,6 +1509,54 @@ data class LiveInterpreterStoppedEvent(
 @Serializable
 @SerialName("live_interpreter_failed")
 data class LiveInterpreterFailedEvent(
+    val sessionId: String,
+    val message: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_voice_provider_vad_status")
+data class LiveVoiceProviderVadStatusEvent(
+    val sessionId: String,
+    val message: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_voice_provider_vad_speech_started")
+data class LiveVoiceProviderVadSpeechStartedEvent(
+    val sessionId: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_voice_provider_vad_speech_stopped")
+data class LiveVoiceProviderVadSpeechStoppedEvent(
+    val sessionId: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_voice_provider_vad_transcript_delta")
+data class LiveVoiceProviderVadTranscriptDeltaEvent(
+    val sessionId: String,
+    val itemId: String,
+    val delta: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_voice_provider_vad_transcript_completed")
+data class LiveVoiceProviderVadTranscriptCompletedEvent(
+    val sessionId: String,
+    val itemId: String,
+    val text: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_voice_provider_vad_stopped")
+data class LiveVoiceProviderVadStoppedEvent(
+    val sessionId: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_voice_provider_vad_failed")
+data class LiveVoiceProviderVadFailedEvent(
     val sessionId: String,
     val message: String,
 ) : ServerPayload

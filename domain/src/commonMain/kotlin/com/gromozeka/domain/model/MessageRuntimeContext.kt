@@ -20,6 +20,7 @@ data class MessageInputContext(
     enum class Source {
         CHAT_INPUT,
         PUSH_TO_TALK,
+        LIVE_VOICE,
         ACTION_BUTTON,
     }
 

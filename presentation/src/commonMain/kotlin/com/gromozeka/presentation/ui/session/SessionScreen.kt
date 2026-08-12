@@ -23,6 +23,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.presentation.services.LiveVoiceInputService
+import com.gromozeka.presentation.services.LiveVoiceInputState
+import com.gromozeka.presentation.services.NoOpLiveVoiceInputService
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -51,6 +54,10 @@ fun SessionScreen(
     pttState: PttState = PttState.IDLE,
     pttStatusMessage: String? = null,
     pttUnavailableReason: String? = null,
+    liveVoiceInputService: LiveVoiceInputService = NoOpLiveVoiceInputService(),
+    liveVoiceInputState: LiveVoiceInputState = LiveVoiceInputState.IDLE,
+    liveVoiceInputStatusMessage: String? = null,
+    liveVoiceInputUnavailableReason: String? = null,
 
     // Settings - moved to ChatApplication level, but we still need settings for UI
     settings: Settings,
@@ -575,6 +582,11 @@ fun SessionScreen(
                         pttState = pttState,
                         pttStatusMessage = pttStatusMessage,
                         pttUnavailableReason = pttUnavailableReason,
+                        liveVoiceInputService = liveVoiceInputService,
+                        liveVoiceInputState = liveVoiceInputState,
+                        liveVoiceInputStatusMessage = liveVoiceInputStatusMessage,
+                        liveVoiceInputUnavailableReason = liveVoiceInputUnavailableReason,
+                        showLiveVoiceButton = settings.userDeviceSettings.voiceInputSettings.liveVoiceInputEnabled,
                         showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
                         compactVoiceMode = isCompactLayout,
                         clientPlatform = clientPlatform,

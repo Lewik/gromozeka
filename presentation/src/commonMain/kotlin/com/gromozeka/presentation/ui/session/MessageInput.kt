@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttState
+import com.gromozeka.presentation.services.LiveVoiceInputService
+import com.gromozeka.presentation.services.LiveVoiceInputState
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -61,6 +63,11 @@ fun MessageInput(
     pttState: PttState,
     pttStatusMessage: String?,
     pttUnavailableReason: String?,
+    liveVoiceInputService: LiveVoiceInputService,
+    liveVoiceInputState: LiveVoiceInputState,
+    liveVoiceInputStatusMessage: String?,
+    liveVoiceInputUnavailableReason: String?,
+    showLiveVoiceButton: Boolean,
     showPttButton: Boolean,
     compactVoiceMode: Boolean,
     clientPlatform: ClientPlatform,
@@ -122,6 +129,14 @@ fun MessageInput(
                 expandedIdle = compactVoiceMode,
                 pttEventHandler = pttEventHandler,
                 coroutineScope = coroutineScope,
+            )
+        }
+
+        if (showLiveVoiceButton) {
+            LiveVoiceStatus(
+                state = liveVoiceInputState,
+                statusMessage = liveVoiceInputStatusMessage,
+                unavailableReason = liveVoiceInputUnavailableReason,
             )
         }
 
@@ -330,6 +345,58 @@ fun MessageInput(
                         }
                     }
 
+                    if (showLiveVoiceButton) {
+                        val isActive = liveVoiceInputState != LiveVoiceInputState.IDLE
+                        CompactButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    liveVoiceInputService.toggle()
+                                }
+                            },
+                            enabled = liveVoiceInputState != LiveVoiceInputState.STARTING &&
+                                (liveVoiceInputState != LiveVoiceInputState.IDLE ||
+                                    liveVoiceInputUnavailableReason == null),
+                            modifier = Modifier
+                                .size(actionButtonSize)
+                                .testTag(UiTestTag.LiveVoiceButton.value),
+                            colors = if (isActive) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                            } else {
+                                ButtonDefaults.buttonColors()
+                            },
+                            tooltip = when (liveVoiceInputState) {
+                                LiveVoiceInputState.IDLE -> liveVoiceInputUnavailableReason
+                                    ?: "Start continuous voice input"
+                                LiveVoiceInputState.STARTING -> "Starting continuous voice input"
+                                LiveVoiceInputState.LISTENING -> "Stop continuous voice input"
+                                LiveVoiceInputState.SPEECH -> "Listening to phrase"
+                                LiveVoiceInputState.TRANSCRIBING -> "Transcribing phrase"
+                            },
+                        ) {
+                            if (
+                                liveVoiceInputState == LiveVoiceInputState.STARTING ||
+                                liveVoiceInputState == LiveVoiceInputState.TRANSCRIBING
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = if (isActive) Icons.Default.Stop else Icons.Default.Mic,
+                                    contentDescription = if (isActive) {
+                                        "Stop continuous voice input"
+                                    } else {
+                                        "Start continuous voice input"
+                                    },
+                                )
+                            }
+                        }
+                    }
+
                     if (canCaptureScreenshot) {
                         CompactButton(
                             onClick = onCaptureScreenshot,
@@ -367,6 +434,97 @@ fun MessageInput(
                                 modifier = Modifier.size(actionButtonSize),
                             )
                         }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveVoiceStatus(
+    state: LiveVoiceInputState,
+    statusMessage: String?,
+    unavailableReason: String?,
+) {
+    if (state == LiveVoiceInputState.IDLE && statusMessage.isNullOrBlank() && unavailableReason == null) return
+
+    val isActive = state != LiveVoiceInputState.IDLE
+    val isError = state == LiveVoiceInputState.IDLE && !statusMessage.isNullOrBlank()
+    val title = when (state) {
+        LiveVoiceInputState.IDLE -> statusMessage
+            ?.takeIf(String::isNotBlank)
+            ?: unavailableReason
+            ?: "Continuous voice input ready"
+        LiveVoiceInputState.STARTING -> "Starting continuous voice input"
+        LiveVoiceInputState.LISTENING -> statusMessage ?: "Listening continuously"
+        LiveVoiceInputState.SPEECH -> statusMessage ?: "Listening to phrase"
+        LiveVoiceInputState.TRANSCRIBING -> statusMessage ?: "Transcribing phrase"
+    }
+    val hint = when (state) {
+        LiveVoiceInputState.IDLE -> if (unavailableReason == null) "Tap the live microphone to keep listening" else null
+        LiveVoiceInputState.STARTING -> null
+        LiveVoiceInputState.LISTENING -> "Say a phrase; it will be queued after silence"
+        LiveVoiceInputState.SPEECH -> "Finish speaking to send this phrase"
+        LiveVoiceInputState.TRANSCRIBING -> null
+    }
+    val containerColor = when {
+        isError -> MaterialTheme.colorScheme.errorContainer
+        state == LiveVoiceInputState.SPEECH -> MaterialTheme.colorScheme.tertiaryContainer
+        isActive -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
+        unavailableReason != null -> MaterialTheme.colorScheme.surfaceVariant
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+    val contentColor = when {
+        isError -> MaterialTheme.colorScheme.onErrorContainer
+        state == LiveVoiceInputState.SPEECH -> MaterialTheme.colorScheme.onTertiaryContainer
+        isActive -> MaterialTheme.colorScheme.onSecondaryContainer
+        unavailableReason != null -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.onPrimaryContainer
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .testTag(UiTestTag.LiveVoiceStatus.value),
+        color = containerColor,
+        contentColor = contentColor,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when (state) {
+                LiveVoiceInputState.STARTING,
+                LiveVoiceInputState.TRANSCRIBING -> CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = contentColor,
+                    strokeWidth = 2.dp,
+                )
+
+                LiveVoiceInputState.SPEECH -> Icon(
+                    Icons.Default.FiberManualRecord,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+
+                LiveVoiceInputState.IDLE,
+                LiveVoiceInputState.LISTENING -> Icon(
+                    if (unavailableReason == null) Icons.Default.Mic else Icons.Default.MicOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.bodyMedium)
+                hint?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor.copy(alpha = 0.78f),
+                    )
                 }
             }
         }

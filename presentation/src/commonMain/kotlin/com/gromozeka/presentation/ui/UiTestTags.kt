@@ -31,6 +31,8 @@ sealed interface UiTestTag {
     data object RuntimeButton : UiTestTag
     data object PttButton : UiTestTag
     data object VoiceCaptureStatus : UiTestTag
+    data object LiveVoiceButton : UiTestTag
+    data object LiveVoiceStatus : UiTestTag
     data object PromptsPanel : UiTestTag
     data object AgentButton : UiTestTag
     data object MemoryActionItemsButton : UiTestTag

@@ -10,6 +10,9 @@ import kotlin.js.Promise
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.await
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
 
 class BrowserClientAudioRecorder : ClientAudioRecorder {
     private val log = KLoggers.logger(this)
@@ -25,6 +28,8 @@ class BrowserClientAudioRecorder : ClientAudioRecorder {
         session.start()
         return session
     }
+
+    override val supportsStreamingAudioChunks: Boolean = true
 }
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -34,7 +39,9 @@ private class BrowserClientAudioRecordingSession(
     private val log = KLoggers.logger(this)
     private val started = CompletableDeferred<Unit>()
     private val stopped = CompletableDeferred<ClientRecordedAudio>()
+    private val audioChunkChannel = Channel<ByteArray>(Channel.UNLIMITED)
     private var recordingHandle: JsAny? = null
+    override val audioChunks: Flow<ByteArray> = audioChunkChannel.receiveAsFlow()
 
     suspend fun start() {
         log.info { "Browser PCM audio recorder start requested: ${browserAudioDebugInfo()}" }
@@ -47,6 +54,14 @@ private class BrowserClientAudioRecordingSession(
                             "firstSampleLatencyMs=${firstSampleLatencyMillis.toInt()}"
                     }
                     started.complete(Unit)
+                },
+                onChunk = { dataUrl: String, pcmByteSize: Int ->
+                    val base64 = dataUrl.substringAfter("base64,", "")
+                    val pcm = Base64.Default.decode(base64)
+                    check(pcm.size == pcmByteSize) {
+                        "Browser PCM chunk byte count mismatch: reported=$pcmByteSize decoded=${pcm.size}"
+                    }
+                    audioChunkChannel.trySend(pcm)
                 },
                 onStopped = { dataUrl: String, pcmByteSize: Int ->
                     val base64 = dataUrl.substringAfter("base64,", "")
@@ -62,12 +77,14 @@ private class BrowserClientAudioRecordingSession(
                             format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
                         )
                     )
+                    audioChunkChannel.close()
                 },
                 onError = { message: String ->
                     log.warn { "Browser PCM audio recorder error: $message; ${browserAudioDebugInfo()}" }
                     val error = IllegalStateException(message)
                     started.completeExceptionally(error)
                     stopped.completeExceptionally(error)
+                    audioChunkChannel.close(error)
                 }
             ).await()
             started.await()
@@ -90,6 +107,7 @@ private class BrowserClientAudioRecordingSession(
         val error = IllegalStateException("Browser audio recording cancelled")
         started.completeExceptionally(error)
         stopped.completeExceptionally(error)
+        audioChunkChannel.close(error)
     }
 }
 
@@ -262,7 +280,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
 
 @JsFun(
     """
-    (manager, onStarted, onStopped, onError) => {
+    (manager, onStarted, onChunk, onStopped, onError) => {
         const targetSampleRate = 16000;
         const processorName = manager.processorName;
         const requestedAt = performance.now();
@@ -275,6 +293,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
         let finalized = false;
         let startedSignalled = false;
         const chunks = [];
+        let chunkPipeline = Promise.resolve();
 
         const cleanup = async () => {
             try { sourceNode?.disconnect(); } catch (_) {}
@@ -329,6 +348,17 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
             return output;
         };
 
+        const toPcm16BigEndian = samples => {
+            const output = new ArrayBuffer(samples.length * 2);
+            const view = new DataView(output);
+            for (let index = 0; index < samples.length; index++) {
+                const sample = Math.max(-1, Math.min(1, samples[index]));
+                const value = sample < 0 ? Math.round(sample * 32768) : Math.round(sample * 32767);
+                view.setInt16(index * 2, value, false);
+            }
+            return output;
+        };
+
         const toDataUrl = buffer => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(String(reader.result || ""));
@@ -342,6 +372,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
             try {
                 const sourceSampleRate = audioContext.sampleRate;
                 await cleanup();
+                await chunkPipeline;
                 const samples = concatenate(chunks);
                 const resampled = await resample(samples, sourceSampleRate);
                 const pcm = toPcm16LittleEndian(resampled);
@@ -394,6 +425,19 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                         }
                     } else if (event.data?.type === "samples") {
                         chunks.push(event.data.samples);
+                        const samples = event.data.samples;
+                        const sourceSampleRate = audioContext.sampleRate;
+                        chunkPipeline = chunkPipeline
+                            .then(async () => {
+                                const resampled = await resample(samples, sourceSampleRate);
+                                const pcm = toPcm16BigEndian(resampled);
+                                const dataUrl = await toDataUrl(pcm);
+                                onChunk(dataUrl, pcm.byteLength);
+                            })
+                            .catch(error => {
+                                fail(error);
+                                throw error;
+                            });
                     } else if (event.data?.type === "stopped") {
                         finish();
                     }
@@ -430,6 +474,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
 private external fun startBrowserAudioRecording(
     manager: JsAny,
     onStarted: (Double) -> Unit,
+    onChunk: (String, Int) -> Unit,
     onStopped: (String, Int) -> Unit,
     onError: (String) -> Unit,
 ): Promise<JsAny?>
