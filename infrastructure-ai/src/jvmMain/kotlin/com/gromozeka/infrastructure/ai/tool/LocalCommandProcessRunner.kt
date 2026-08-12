@@ -711,6 +711,5 @@ private val WINDOWS_COMMAND_WRAPPER = """
     > "%GROMOZEKA_EXIT_FILE%.tmp" echo %GROMOZEKA_COMMAND_EXIT_CODE%
     move /Y "%GROMOZEKA_EXIT_FILE%.tmp" "%GROMOZEKA_EXIT_FILE%" >NUL || exit /B 125
     del /Q "%GROMOZEKA_COMMAND_FILE%" >NUL 2>&1
-    del /Q "%~f0" >NUL 2>&1
     exit /B %GROMOZEKA_COMMAND_EXIT_CODE%
 """.trimIndent().replace("\n", "\r\n") + "\r\n"

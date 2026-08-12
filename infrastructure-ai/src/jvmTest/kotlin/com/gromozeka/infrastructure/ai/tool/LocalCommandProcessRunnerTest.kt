@@ -308,7 +308,10 @@ class LocalCommandProcessRunnerTest {
             assertEquals(wrapperFile.absolutePath, processBuilder.command().last())
             assertFalse(processBuilder.command().joinToString(" ").contains(command))
             assertEquals(command.toWindowsCommandFile(), commandFile.readText(Charsets.UTF_8))
-            assertContains(wrapperFile.readText(Charsets.UTF_8), "%GROMOZEKA_COMMAND_FILE%")
+            val wrapperText = wrapperFile.readText(Charsets.UTF_8)
+            assertContains(wrapperText, "%GROMOZEKA_COMMAND_FILE%")
+            assertContains(wrapperText, "del /Q \"%GROMOZEKA_COMMAND_FILE%\"")
+            assertFalse(wrapperText.contains("%~f0"))
             assertEquals(commandFile.absolutePath, processBuilder.environment()["GROMOZEKA_COMMAND_FILE"])
             assertEquals(exitCodeFile.absolutePath, processBuilder.environment()["GROMOZEKA_EXIT_FILE"])
         } finally {
