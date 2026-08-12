@@ -48,7 +48,9 @@ class DesktopLocalWhisperSpeechToTextService(
         )
     }
 
-    override fun isEnabled(): Boolean =
+    override fun isEnabled(): Boolean = false
+
+    override fun isAvailable(): Boolean =
         settingsService.userProfile.speechSettings.speechToText.engine ==
             UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER
 
@@ -89,7 +91,7 @@ class DesktopLocalWhisperSpeechToTextService(
         prompt: String?,
         sequenceNumber: Int?,
     ): String = withContext(Dispatchers.IO) {
-        check(isEnabled()) { "Client-side Local Whisper is disabled" }
+        check(isAvailable()) { "Client-side Local Whisper is disabled" }
         format.requireValid(audioData)
 
         val speechToText = settingsService.userProfile.speechSettings.speechToText

@@ -6,6 +6,8 @@ import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 interface ClientSideSpeechToTextService {
     fun isEnabled(): Boolean
 
+    fun isAvailable(): Boolean = isEnabled()
+
     suspend fun transcribe(recording: RemoteAudioRecording): String
 
     suspend fun transcribe(

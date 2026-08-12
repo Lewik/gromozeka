@@ -80,7 +80,7 @@ fun LiveInterpreterScreen(
     var eventsJob by remember { mutableStateOf<Job?>(null) }
     var isRunning by remember { mutableStateOf(false) }
     var isStopping by remember { mutableStateOf(false) }
-    val clientSideSpeechToTextAvailable = clientSideSpeechToTextService.isEnabled()
+    val clientSideSpeechToTextAvailable = clientSideSpeechToTextService.isAvailable()
     var selectedRecognitionBackend by remember {
         mutableStateOf(
             if (clientSideSpeechToTextAvailable) {
