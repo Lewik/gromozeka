@@ -75,6 +75,8 @@ data class UserProfile(
                 val executablePath: String = "whisper-cli",
                 val modelName: String = "base",
                 val modelPath: String = "",
+                val threadCount: Int = 0,
+                val extraArguments: List<String> = emptyList(),
                 val timeoutSeconds: Int = 120,
                 val serverStartupTimeoutSeconds: Int = 300,
                 val audioContext: AudioContext = AudioContext(),
@@ -84,6 +86,10 @@ data class UserProfile(
                 init {
                     require(executablePath.isNotBlank()) { "Local Whisper executable path must not be blank" }
                     require(modelName.isNotBlank()) { "Local Whisper model name must not be blank" }
+                    require(threadCount >= 0) { "Local Whisper thread count must not be negative" }
+                    require(extraArguments.all { it.isNotBlank() }) {
+                        "Local Whisper extra arguments must not contain blank values"
+                    }
                     require(timeoutSeconds > 0) { "Local Whisper timeout must be positive" }
                     require(serverStartupTimeoutSeconds > 0) { "Local Whisper server startup timeout must be positive" }
                 }

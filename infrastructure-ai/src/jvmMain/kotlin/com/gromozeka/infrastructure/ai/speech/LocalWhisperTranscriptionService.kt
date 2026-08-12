@@ -32,24 +32,15 @@ class LocalWhisperTranscriptionService(
             wavFile.writeBytes(audioData)
             val modelFile = resolveModelFile(settings)
             val outputPrefix = File(runDir, "transcript")
-
-            val command = buildList {
-                add(settings.executablePath)
-                add("-m")
-                add(modelFile.absolutePath)
-                add("-l")
-                add(language)
-                add("-otxt")
-                add("-of")
-                add(outputPrefix.absolutePath)
-                add("-nt")
-                add("-np")
-                prompt?.trim()?.takeIf { it.isNotBlank() }?.let {
-                    add("--prompt")
-                    add(it)
-                }
-                add(wavFile.absolutePath)
-            }
+            val command = buildLocalWhisperCliCommand(
+                settings = settings,
+                modelFile = modelFile,
+                outputPrefix = outputPrefix,
+                wavFile = wavFile,
+                language = language,
+                prompt = prompt,
+                audioBytes = audioData.size,
+            )
 
             log.info {
                 "Local Whisper transcription requested: bytes=${audioData.size} " +
@@ -142,3 +133,39 @@ class LocalWhisperTranscriptionService(
         val stderr: String,
     )
 }
+
+internal fun buildLocalWhisperCliCommand(
+    settings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper,
+    modelFile: File,
+    outputPrefix: File,
+    wavFile: File,
+    language: String,
+    prompt: String?,
+    audioBytes: Int,
+): List<String> =
+    buildList {
+        add(settings.executablePath)
+        add("-m")
+        add(modelFile.absolutePath)
+        add("-l")
+        add(language)
+        settings.threadCount.takeIf { it > 0 }?.let {
+            add("-t")
+            add(it.toString())
+        }
+        settings.audioContextFramesForWavBytes(audioBytes)?.let {
+            add("-ac")
+            add(it.toString())
+        }
+        add("-otxt")
+        add("-of")
+        add(outputPrefix.absolutePath)
+        add("-nt")
+        add("-np")
+        addAll(settings.extraArguments)
+        prompt?.trim()?.takeIf { it.isNotBlank() }?.let {
+            add("--prompt")
+            add(it)
+        }
+        add(wavFile.absolutePath)
+    }

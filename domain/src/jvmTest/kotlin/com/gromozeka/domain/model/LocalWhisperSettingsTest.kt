@@ -2,6 +2,7 @@ package com.gromozeka.domain.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class LocalWhisperSettingsTest {
@@ -21,5 +22,24 @@ class LocalWhisperSettingsTest {
         )
 
         assertNull(settings.audioContextFramesForWavBytes(audioBytes = 44 + 16_000))
+    }
+
+    @Test
+    fun threadCountCanUseNativeDefaultOrPositiveOverride() {
+        UserProfile.SpeechSettings.SpeechToText.LocalWhisper(threadCount = 0)
+        UserProfile.SpeechSettings.SpeechToText.LocalWhisper(threadCount = 8)
+
+        assertFailsWith<IllegalArgumentException> {
+            UserProfile.SpeechSettings.SpeechToText.LocalWhisper(threadCount = -1)
+        }
+    }
+
+    @Test
+    fun extraArgumentsMustNotContainBlankValues() {
+        UserProfile.SpeechSettings.SpeechToText.LocalWhisper(extraArguments = listOf("--no-gpu"))
+
+        assertFailsWith<IllegalArgumentException> {
+            UserProfile.SpeechSettings.SpeechToText.LocalWhisper(extraArguments = listOf("--no-gpu", ""))
+        }
     }
 }

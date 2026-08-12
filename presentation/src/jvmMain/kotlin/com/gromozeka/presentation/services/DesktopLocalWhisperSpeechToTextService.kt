@@ -127,14 +127,15 @@ class DesktopLocalWhisperSpeechToTextService(
     private fun ensureServerStarted(settings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper): WhisperServerHandle {
         val modelFile = resolveModelFile(settings)
         val serverExecutable = deriveServerExecutable(settings.executablePath)
+        val serverArguments = buildWhisperServerArguments(settings)
 
         serverHandle
-            ?.takeIf { it.process.isAlive && it.matches(serverExecutable, modelFile) }
+            ?.takeIf { it.process.isAlive && it.matches(serverExecutable, modelFile, serverArguments) }
             ?.let { return it }
 
         return serverLock.withLock {
             serverHandle
-                ?.takeIf { it.process.isAlive && it.matches(serverExecutable, modelFile) }
+                ?.takeIf { it.process.isAlive && it.matches(serverExecutable, modelFile, serverArguments) }
                 ?.let { return it }
 
             stopServerLocked()?.let { stopHandle(it) }
@@ -147,10 +148,12 @@ class DesktopLocalWhisperSpeechToTextService(
                 "127.0.0.1",
                 "--port",
                 port.toString(),
-            )
+            ) + serverArguments
 
             log.info {
-                "Starting client Local Whisper server: executable=$serverExecutable port=$port model=${modelFile.absolutePath}"
+                "Starting client Local Whisper server: executable=$serverExecutable port=$port " +
+                    "model=${modelFile.absolutePath} threads=${settings.threadCount.takeIf { it > 0 } ?: "default"} " +
+                    "extraArgs=${settings.extraArguments.size}"
             }
 
             val process = try {
@@ -167,6 +170,7 @@ class DesktopLocalWhisperSpeechToTextService(
                 port = port,
                 executablePath = serverExecutable,
                 modelPath = modelFile.absolutePath,
+                serverArguments = serverArguments,
             )
             try {
                 waitForReady(handle, settings)
@@ -282,6 +286,17 @@ class DesktopLocalWhisperSpeechToTextService(
             ?: serverName
     }
 
+    private fun buildWhisperServerArguments(
+        settings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper,
+    ): List<String> =
+        buildList {
+            settings.threadCount.takeIf { it > 0 }?.let {
+                add("-t")
+                add(it.toString())
+            }
+            addAll(settings.extraArguments)
+        }
+
     private fun resolveModelFile(settings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper): File {
         val configuredPath = settings.modelPath.trim()
         val modelFile = if (configuredPath.isNotBlank()) {
@@ -374,12 +389,19 @@ class DesktopLocalWhisperSpeechToTextService(
         val port: Int,
         val executablePath: String,
         val modelPath: String,
+        val serverArguments: List<String>,
     ) {
         val rootUrl: URI = URI.create("http://127.0.0.1:$port/")
         val inferenceUrl: URI = URI.create("http://127.0.0.1:$port/inference")
 
-        fun matches(executablePath: String, modelFile: File): Boolean =
-            this.executablePath == executablePath && this.modelPath == modelFile.absolutePath
+        fun matches(
+            executablePath: String,
+            modelFile: File,
+            serverArguments: List<String>,
+        ): Boolean =
+            this.executablePath == executablePath &&
+                this.modelPath == modelFile.absolutePath &&
+                this.serverArguments == serverArguments
     }
 
     private data class MultipartBody(

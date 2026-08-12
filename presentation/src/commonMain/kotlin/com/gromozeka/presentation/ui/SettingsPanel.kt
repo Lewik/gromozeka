@@ -642,6 +642,63 @@ fun SettingsPanel(
                                     }
                                 )
 
+                                TextFieldSettingItem(
+                                    label = "Whisper threads",
+                                    description = "0 keeps whisper.cpp default. Positive values are passed as -t to whisper-cli and whisper-server.",
+                                    value = localWhisper.threadCount.takeIf { it > 0 }?.toString().orEmpty(),
+                                    placeholder = "0",
+                                    onValueChange = { value ->
+                                        value.trim().toIntOrNull()?.takeIf { it >= 0 }?.let { threadCount ->
+                                            onSettingsChange(
+                                                settings.updateUserProfile {
+                                                    copy(
+                                                        speechSettings = speechSettings.copy(
+                                                            speechToText = speechSettings.speechToText.copy(
+                                                                localWhisper = localWhisper.copy(threadCount = threadCount)
+                                                            )
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
+                                        if (value.isBlank()) {
+                                            onSettingsChange(
+                                                settings.updateUserProfile {
+                                                    copy(
+                                                        speechSettings = speechSettings.copy(
+                                                            speechToText = speechSettings.speechToText.copy(
+                                                                localWhisper = localWhisper.copy(threadCount = 0)
+                                                            )
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+                                )
+
+                                TextFieldSettingItem(
+                                    label = "Whisper extra arguments",
+                                    description = "Advanced whisper.cpp args appended after Gromozeka required args. Split by spaces.",
+                                    value = localWhisper.extraArguments.joinToString(" "),
+                                    placeholder = "--no-gpu -bo 1",
+                                    onValueChange = { value ->
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    speechSettings = speechSettings.copy(
+                                                        speechToText = speechSettings.speechToText.copy(
+                                                            localWhisper = localWhisper.copy(
+                                                                extraArguments = value.splitWhisperExtraArguments()
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    }
+                                )
+
                                 DropdownSettingItem(
                                     label = "Whisper live profile",
                                     description = "Controls live chunk size. Slow CPU increases latency but reduces missed audio on weak machines.",
@@ -2285,6 +2342,11 @@ private fun SliderSettingItem(
 
 private fun Settings.updateUserProfile(update: UserProfile.() -> UserProfile): Settings =
     copy(userProfile = userProfile.update())
+
+private fun String.splitWhisperExtraArguments(): List<String> =
+    trim().takeIf { it.isNotBlank() }
+        ?.split(Regex("\\s+"))
+        .orEmpty()
 
 private fun Settings.updateDeviceSettings(update: UserDeviceSettings.() -> UserDeviceSettings): Settings =
     copy(userDeviceSettings = userDeviceSettings.update())
