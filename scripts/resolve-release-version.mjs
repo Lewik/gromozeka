@@ -137,6 +137,11 @@ function resolveReleaseVersion() {
     throw new Error("0.0.0-dev is reserved for local builds and cannot be published");
   }
 
+  const exactRemoteVersionExists = remoteVersions.some((remoteVersion) => remoteVersion.raw === version);
+  if (publish && eventName !== "push" && exactRemoteVersionExists) {
+    throw new Error(`Release version ${version} already exists as a remote release tag`);
+  }
+
   const latestPrevious = maxVersion(remoteVersions.filter((remoteVersion) => remoteVersion.raw !== version));
   if (publish && latestPrevious && compareSemver(parsedVersion, latestPrevious) <= 0) {
     throw new Error(
