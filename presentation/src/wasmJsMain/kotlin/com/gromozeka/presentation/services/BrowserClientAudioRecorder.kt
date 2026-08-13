@@ -6,10 +6,8 @@ import klog.KLoggers
 import kotlin.JsFun
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlin.js.Promise
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.await
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -45,8 +43,9 @@ private class BrowserClientAudioRecordingSession(
 
     suspend fun start() {
         log.info { "Browser PCM audio recorder start requested: ${browserAudioDebugInfo()}" }
-        runCatching {
-            recordingHandle = startBrowserAudioRecording(
+        var handle: JsAny? = null
+        try {
+            handle = startBrowserAudioRecording(
                 manager = manager,
                 onStarted = { firstSampleLatencyMillis: Double ->
                     log.info {
@@ -86,12 +85,16 @@ private class BrowserClientAudioRecordingSession(
                     stopped.completeExceptionally(error)
                     audioChunkChannel.close(error)
                 }
-            ).await()
+            )
+            recordingHandle = handle
             started.await()
-        }.onFailure { error ->
+        } catch (error: Throwable) {
+            runCatching { cancelBrowserAudioRecording(handle) }
             started.completeExceptionally(error)
             stopped.completeExceptionally(error)
-        }.getOrThrow()
+            audioChunkChannel.close(error)
+            throw error
+        }
     }
 
     override suspend fun stop(): ClientRecordedAudio {
@@ -290,24 +293,53 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
         let sourceNode = null;
         let workletNode = null;
         let silentGain = null;
-        let finalized = false;
         let startedSignalled = false;
         const chunks = [];
         let chunkPipeline = Promise.resolve();
+        const handle = {
+            state: "starting",
+            cancelRequested: false,
+            stopRequested: false,
+            finalized: false,
+            stop: () => {
+                if (handle.cancelRequested || handle.finalized || handle.state === "stopping") return;
+                handle.stopRequested = true;
+                if (handle.state !== "recording" || !workletNode) return;
+                handle.state = "stopping";
+                workletNode.port.postMessage("stop");
+            },
+            cancel: () => {
+                if (handle.cancelRequested) return;
+                handle.cancelRequested = true;
+                handle.state = "cancelled";
+                fail(new Error("Browser audio recording cancelled"));
+            }
+        };
 
         const cleanup = async () => {
             try { sourceNode?.disconnect(); } catch (_) {}
             try { workletNode?.disconnect(); } catch (_) {}
             try { silentGain?.disconnect(); } catch (_) {}
             stream?.getTracks().forEach(track => track.stop());
+            sourceNode = null;
+            workletNode = null;
+            silentGain = null;
+            stream = null;
             await manager.release(recordingGeneration);
         };
 
         const fail = async error => {
-            if (finalized) return;
-            finalized = true;
+            if (!handle.finalized) {
+                handle.finalized = true;
+                onError(error?.message || String(error));
+            }
             await cleanup();
-            onError(error?.message || String(error));
+        };
+
+        const cleanupIfCancelled = async () => {
+            if (!handle.cancelRequested) return false;
+            await cleanup();
+            return true;
         };
 
         const concatenate = parts => {
@@ -367,8 +399,8 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
         });
 
         const finish = async () => {
-            if (finalized) return;
-            finalized = true;
+            if (handle.finalized || handle.cancelRequested) return;
+            handle.finalized = true;
             try {
                 const sourceSampleRate = audioContext.sampleRate;
                 await cleanup();
@@ -383,7 +415,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
             }
         };
 
-        return (async () => {
+        (async () => {
             try {
                 if (!navigator.mediaDevices?.getUserMedia) {
                     throw new Error("Browser microphone API is not available");
@@ -394,10 +426,14 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                 if (typeof OfflineAudioContext === "undefined") {
                     throw new Error("Browser offline audio rendering API is not available");
                 }
+                if (await cleanupIfCancelled()) return;
 
                 const contextReady = manager.ensureContext()
                     .then(preparedContext => {
                         audioContext = preparedContext;
+                        if (handle.finalized || handle.cancelRequested) {
+                            manager.release(recordingGeneration).catch(() => {});
+                        }
                     });
                 const streamReady = navigator.mediaDevices.getUserMedia({
                     audio: {
@@ -409,8 +445,13 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                 })
                     .then(capturedStream => {
                         stream = capturedStream;
+                        if (handle.finalized || handle.cancelRequested) {
+                            stream.getTracks().forEach(track => track.stop());
+                            stream = null;
+                        }
                     });
                 await Promise.all([streamReady, contextReady]);
+                if (await cleanupIfCancelled()) return;
 
                 sourceNode = audioContext.createMediaStreamSource(stream);
                 workletNode = new AudioWorkletNode(audioContext, processorName);
@@ -419,11 +460,12 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
 
                 workletNode.port.onmessage = event => {
                     if (event.data?.type === "started") {
-                        if (!finalized && !startedSignalled) {
+                        if (!handle.finalized && !handle.cancelRequested && !startedSignalled) {
                             startedSignalled = true;
                             onStarted(performance.now() - requestedAt);
                         }
                     } else if (event.data?.type === "samples") {
+                        if (handle.finalized || handle.cancelRequested) return;
                         chunks.push(event.data.samples);
                         const samples = event.data.samples;
                         const sourceSampleRate = audioContext.sampleRate;
@@ -439,7 +481,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                                 throw error;
                             });
                     } else if (event.data?.type === "stopped") {
-                        finish();
+                        if (!handle.cancelRequested) finish();
                     }
                 };
                 workletNode.onprocessorerror = () => fail(new Error("Browser PCM audio processor failed"));
@@ -447,27 +489,17 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                 sourceNode.connect(workletNode);
                 workletNode.connect(silentGain);
                 silentGain.connect(audioContext.destination);
+                if (await cleanupIfCancelled()) return;
 
-                const handle = {
-                    state: "recording",
-                    stop: () => {
-                        if (handle.state !== "recording") return;
-                        handle.state = "stopping";
-                        workletNode.port.postMessage("stop");
-                    },
-                    cancel: () => {
-                        if (handle.state === "cancelled") return;
-                        handle.state = "cancelled";
-                        finalized = true;
-                        cleanup();
-                    }
-                };
-                return handle;
+                handle.state = "recording";
+                if (handle.stopRequested) {
+                    handle.stop();
+                }
             } catch (error) {
                 await fail(error);
-                return null;
             }
         })();
+        return handle;
     }
     """
 )
@@ -477,7 +509,7 @@ private external fun startBrowserAudioRecording(
     onChunk: (String, Int) -> Unit,
     onStopped: (String, Int) -> Unit,
     onError: (String) -> Unit,
-): Promise<JsAny?>
+): JsAny?
 
 @JsFun("(handle) => handle?.stop()")
 private external fun stopBrowserAudioRecording(handle: JsAny?)

@@ -9,8 +9,11 @@ import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 class RemotePttController(
     private val appViewModel: AppViewModel,
@@ -167,7 +171,10 @@ class RemotePttController(
                 }
                 is CaptureLifecycle.Preparing -> {
                     current.completionRequest = PreparationCompletion.CANCEL
-                    _statusMessage.value = "Отмена подготовки микрофона"
+                    captureLifecycle = null
+                    current.preparationJob?.cancel(CancellationException("PTT preparation cancelled"))
+                    _statusMessage.value = null
+                    _state.value = PttState.IDLE
                     CancelAction.CancelPreparation(current)
                 }
                 is CaptureLifecycle.Recording -> {
@@ -181,6 +188,8 @@ class RemotePttController(
             CancelAction.None -> return
             is CancelAction.CancelPreparation -> {
                 cancelRemotePreparation(cancellation.preparation)
+                restoreSystemAudioAfterPtt(cancellation.preparation.systemAudioMuted)
+                finishPtt()
                 return
             }
             is CancelAction.CancelRecording -> cancellation.capture
@@ -243,10 +252,21 @@ class RemotePttController(
                 systemAudioMuted = shouldMuteSystemAudioDuringPtt(),
             ).also { captureLifecycle = it }
         }
+        val preparationJob = scope.launch(start = CoroutineStart.LAZY) {
+            prepareRecording(preparation, source)
+        }
+        preparation.preparationJob = preparationJob
         withContext(NonCancellable) {
             ttsQueue.blockAndClear()
         }
-        scope.launch { prepareRecording(preparation, source) }
+        val shouldStart = mutex.withLock {
+            captureLifecycle === preparation && preparation.completionRequest != PreparationCompletion.CANCEL
+        }
+        if (shouldStart) {
+            preparationJob.start()
+        } else {
+            preparationJob.cancel(CancellationException("PTT preparation cancelled before start"))
+        }
     }
 
     private suspend fun prepareRecording(
@@ -259,16 +279,21 @@ class RemotePttController(
                 audioRecorder.unavailableReason?.let { error(it) }
             }
             muteSystemAudioBeforePtt(preparation.systemAudioMuted)
-            session = when (source) {
-                SpeechAudioSource.CurrentClient -> ActiveRecordingSession.Local(
-                    sessionId = preparation.sessionId,
-                    value = audioRecorder.start(scope),
-                )
-                is SpeechAudioSource.WorkerInput -> {
-                    audioTranscriptionService.startCapture(preparation.sessionId)
-                    ActiveRecordingSession.Worker(preparation.sessionId)
+            session = withTimeout(PREPARATION_TIMEOUT_MILLIS) {
+                when (source) {
+                    SpeechAudioSource.CurrentClient -> ActiveRecordingSession.Local(
+                        sessionId = preparation.sessionId,
+                        value = audioRecorder.start(scope),
+                    )
+                    is SpeechAudioSource.WorkerInput -> {
+                        audioTranscriptionService.startCapture(preparation.sessionId)
+                        ActiveRecordingSession.Worker(preparation.sessionId)
+                    }
                 }
             }
+        } catch (error: TimeoutCancellationException) {
+            cleanupPreparation(preparation, session, error)
+            return
         } catch (error: CancellationException) {
             withContext(NonCancellable) {
                 cleanupPreparation(preparation, session, null)
@@ -281,23 +306,26 @@ class RemotePttController(
 
         val preparedSession = requireNotNull(session)
         val preparedAction = mutex.withLock {
-            check(captureLifecycle === preparation) { "PTT preparation changed unexpectedly" }
             val recording = CaptureLifecycle.Recording(
                 session = preparedSession,
                 systemAudioMuted = preparation.systemAudioMuted,
             )
-            when (preparation.completionRequest) {
-                null -> {
-                    captureLifecycle = recording
-                    _state.value = PttState.RECORDING
-                    PreparedAction.Recording
-                }
-                PreparationCompletion.CANCEL -> PreparedAction.Cancel
-                PreparationCompletion.RELEASE -> {
-                    captureLifecycle = null
-                    _state.value = PttState.TRANSCRIBING
-                    _statusMessage.value = null
-                    PreparedAction.Transcribe(recording)
+            if (captureLifecycle !== preparation) {
+                PreparedAction.Cancel
+            } else {
+                when (preparation.completionRequest) {
+                    null -> {
+                        captureLifecycle = recording
+                        _state.value = PttState.RECORDING
+                        PreparedAction.Recording
+                    }
+                    PreparationCompletion.CANCEL -> PreparedAction.Cancel
+                    PreparationCompletion.RELEASE -> {
+                        captureLifecycle = null
+                        _state.value = PttState.TRANSCRIBING
+                        _statusMessage.value = null
+                        PreparedAction.Transcribe(recording)
+                    }
                 }
             }
         }
@@ -449,6 +477,7 @@ class RemotePttController(
             val source: SpeechAudioSource,
             override val systemAudioMuted: Boolean,
             var completionRequest: PreparationCompletion? = null,
+            var preparationJob: Job? = null,
         ) : CaptureLifecycle
 
         data class Recording(
@@ -514,5 +543,6 @@ class RemotePttController(
 
     private companion object {
         const val AVAILABILITY_REFRESH_MILLIS = 5_000L
+        const val PREPARATION_TIMEOUT_MILLIS = 15_000L
     }
 }
