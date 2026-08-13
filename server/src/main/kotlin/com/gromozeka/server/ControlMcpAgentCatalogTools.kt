@@ -327,6 +327,7 @@ internal class ControlMcpAgentCatalogTools(
                 skillService.importPackage(
                     projectId = projectId,
                     source = source,
+                    actorUserId = user.id,
                 )
             )
         },

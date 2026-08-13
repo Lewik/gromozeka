@@ -448,7 +448,8 @@ class WorkerGatewayOperationHandler(
                 }
 
                 WorkerGatewayOperation.COMMAND_RUNTIME_STATE,
-                WorkerGatewayOperation.WORKSPACE_STATE ->
+                WorkerGatewayOperation.WORKSPACE_STATE,
+                WorkerGatewayOperation.AGENT_SKILL_PACKAGE ->
                     error("Server cannot invoke the Worker-owned Server state operation")
             }
             WorkerGatewayMessage.Response(

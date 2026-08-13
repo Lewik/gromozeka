@@ -288,6 +288,14 @@ resource never silently changes an existing runtime entity.
 - Treat Agent Skills as imported project-scoped packages. Update them by
   importing the package from disk again; do not edit package files in the
   runtime catalog UI.
+- Agent Skill import derives a content-versioned workspace materialization
+  plan. Runtime activation exposes instructions and a compact resource index;
+  model-readable resources are fetched only on demand, and binary resources
+  are never copied into model context.
+- `materialize_agent_skill` copies the complete content-versioned package to
+  `<workspace>/.gromozeka/skills/<name>/<content-hash>` on the selected Worker
+  mount. Materialization does not execute files, install dependencies, or grant
+  permissions.
 
 ## Repository Checkouts
 

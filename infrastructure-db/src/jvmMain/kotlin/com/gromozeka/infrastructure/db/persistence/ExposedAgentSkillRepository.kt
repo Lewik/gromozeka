@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillFile
 import com.gromozeka.domain.model.AgentSkillPackage
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.repository.AgentSkillRepository
 import com.gromozeka.infrastructure.db.persistence.tables.AgentSkillFiles
 import com.gromozeka.infrastructure.db.persistence.tables.AgentSkills
@@ -41,6 +42,11 @@ class ExposedAgentSkillRepository(
                 it[compatibility] = skill.compatibility
                 it[metadataJson] = json.encodeToString(skill.metadata)
                 it[allowedTools] = skill.allowedTools
+                it[materializationPolicy] = skill.materializationPlan.policy.name
+                it[materializationReason] = skill.materializationPlan.reason
+                it[materializationModelConfigurationId] =
+                    skill.materializationPlan.analyzedByModelConfigurationId?.value
+                it[materializationAnalyzedAt] = skill.materializationPlan.analyzedAt
                 it[contentHash] = skill.contentHash
                 it[createdAt] = skill.createdAt
                 it[updatedAt] = skill.updatedAt
@@ -57,6 +63,11 @@ class ExposedAgentSkillRepository(
                 it[compatibility] = skill.compatibility
                 it[metadataJson] = json.encodeToString(skill.metadata)
                 it[allowedTools] = skill.allowedTools
+                it[materializationPolicy] = skill.materializationPlan.policy.name
+                it[materializationReason] = skill.materializationPlan.reason
+                it[materializationModelConfigurationId] =
+                    skill.materializationPlan.analyzedByModelConfigurationId?.value
+                it[materializationAnalyzedAt] = skill.materializationPlan.analyzedAt
                 it[contentHash] = skill.contentHash
                 it[updatedAt] = skill.updatedAt
             }
@@ -146,6 +157,15 @@ class ExposedAgentSkillRepository(
             compatibility = this[AgentSkills.compatibility],
             metadata = json.decodeFromString(this[AgentSkills.metadataJson]),
             allowedTools = this[AgentSkills.allowedTools],
+            materializationPlan = AgentSkill.MaterializationPlan(
+                policy = AgentSkill.MaterializationPlan.Policy.valueOf(
+                    this[AgentSkills.materializationPolicy]
+                ),
+                reason = this[AgentSkills.materializationReason],
+                analyzedByModelConfigurationId = this[AgentSkills.materializationModelConfigurationId]
+                    ?.let(AiModelConfiguration::Id),
+                analyzedAt = this[AgentSkills.materializationAnalyzedAt],
+            ),
             contentHash = this[AgentSkills.contentHash],
             createdAt = this[AgentSkills.createdAt],
             updatedAt = this[AgentSkills.updatedAt],

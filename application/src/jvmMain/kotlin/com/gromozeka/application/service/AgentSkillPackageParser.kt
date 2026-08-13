@@ -37,8 +37,20 @@ class AgentSkillPackageParser {
             }
             AgentSkillFile(path, file.content.copyOf())
         }
-        require(files.map(AgentSkillFile::path).distinct().size == files.size) {
+        val filePaths = files.map(AgentSkillFile::path)
+        require(filePaths.distinct().size == files.size) {
             "Agent Skill package contains duplicate paths"
+        }
+        val filePathSet = filePaths.toSet()
+        filePaths.forEach { path ->
+            var separator = path.lastIndexOf('/')
+            while (separator > 0) {
+                val parent = path.substring(0, separator)
+                require(parent !in filePathSet) {
+                    "Agent Skill package path '$path' is nested below file '$parent'"
+                }
+                separator = parent.lastIndexOf('/')
+            }
         }
         require(files.sumOf { it.content.size.toLong() } <= MAX_PACKAGE_BYTES) {
             "Agent Skill package exceeds $MAX_PACKAGE_BYTES bytes"

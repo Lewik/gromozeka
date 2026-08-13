@@ -508,7 +508,7 @@ class GromozekaRemoteServer(
                     agentSkillDomainService.findById(request.skillId)
                 )
                 is ImportAgentSkillRequest -> AgentSkillResponse(
-                    agentSkillDomainService.importPackage(request.projectId, request.source)
+                    agentSkillDomainService.importPackage(request.projectId, request.source, user.id)
                 )
                 is ExportAgentSkillRequest -> AgentSkillPackageResponse(
                     agentSkillDomainService.exportPackage(request.skillId)

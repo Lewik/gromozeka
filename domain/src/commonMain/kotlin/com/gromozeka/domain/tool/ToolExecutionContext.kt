@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool
 
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
@@ -55,6 +56,9 @@ fun ToolExecutionContext?.requiredWorkspaceMountId(): WorkspaceMount.Id =
 
 fun ToolExecutionContext?.requiredWorkspaceRootPath(): String =
     requiredString(TOOL_CONTEXT_WORKSPACE_ROOT_PATH, "Workspace root path")
+
+fun ToolExecutionContext?.requiredAgentDefinitionId(): AgentDefinition.Id =
+    requiredString(TOOL_CONTEXT_AGENT_DEFINITION_ID, "Agent definition id").let(AgentDefinition::Id)
 
 fun ToolExecutionContext?.requiredWorkerId(): ConversationRuntimeWorkerId =
     requiredString(TOOL_CONTEXT_WORKER_ID, "Worker id").let(::ConversationRuntimeWorkerId)

@@ -36,6 +36,11 @@ data class AiRuntimeAssignment(
             displayName = "Tool capability catalog",
             description = "Optional model used to organize deferred tools into a compact capability catalog.",
         ),
+        AGENT_SKILL_ANALYSIS(
+            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
+            displayName = "Agent Skill analysis",
+            description = "Optional model used when importing a skill to decide whether its package needs a workspace filesystem.",
+        ),
         MEMORY_READ(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
             displayName = "Memory read",
@@ -192,7 +197,8 @@ data class AiRuntimeAssignment(
                 MEMORY_MAINTENANCE_REPAIR_PLANNER,
                 MEMORY_MAINTENANCE_ENTITY_PLANNER -> MEMORY_MAINTENANCE
 
-                TOOL_CATALOG_SUMMARY -> DEFAULT_CHAT
+                TOOL_CATALOG_SUMMARY,
+                AGENT_SKILL_ANALYSIS -> DEFAULT_CHAT
 
                 else -> null
             }

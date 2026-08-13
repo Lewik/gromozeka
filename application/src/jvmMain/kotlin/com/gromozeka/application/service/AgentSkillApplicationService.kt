@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillPackage
 import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AgentSkillRepository
 import com.gromozeka.domain.repository.ProjectRepository
@@ -18,22 +19,24 @@ class AgentSkillApplicationService(
     private val skillRepository: AgentSkillRepository,
     private val agentRepository: AgentRepository,
     private val projectRepository: ProjectRepository,
+    private val materializationPlanAnalyzer: AgentSkillMaterializationPlanAnalyzer,
 ) : AgentSkillDomainService {
     private val parser = AgentSkillPackageParser()
 
-    @Transactional
     override suspend fun importPackage(
         projectId: Project.Id,
         source: AgentSkillPackageSource,
+        actorUserId: User.Id?,
     ): AgentSkill {
         require(projectRepository.exists(projectId)) {
             "Project not found: ${projectId.value}"
         }
         val parsed = parser.parse(source)
         val existing = skillRepository.findByName(projectId, parsed.name)
-        if (existing?.contentHash == parsed.contentHash) {
+        if (existing?.contentHash == parsed.contentHash && existing.materializationPlan.analyzedAt != null) {
             return existing
         }
+        val materializationPlan = materializationPlanAnalyzer.analyze(parsed, actorUserId)
         val now = Clock.System.now()
         val skill = AgentSkill(
             id = existing?.id ?: AgentSkill.Id("project:${projectId.value}:skill:${uuid7()}"),
@@ -45,6 +48,7 @@ class AgentSkillApplicationService(
             compatibility = parsed.compatibility,
             metadata = parsed.metadata,
             allowedTools = parsed.allowedTools,
+            materializationPlan = materializationPlan,
             contentHash = parsed.contentHash,
             createdAt = existing?.createdAt ?: now,
             updatedAt = now,

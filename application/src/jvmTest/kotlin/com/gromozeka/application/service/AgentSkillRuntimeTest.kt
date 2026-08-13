@@ -19,6 +19,7 @@ import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.skills.MATERIALIZE_AGENT_SKILL_TOOL_NAME
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Clock
 import kotlinx.serialization.json.Json
@@ -40,6 +41,12 @@ class AgentSkillRuntimeTest {
         name = "release-check",
         description = "Verify a release.",
         instructions = "Follow every release check.",
+        materializationPlan = AgentSkill.MaterializationPlan(
+            policy = AgentSkill.MaterializationPlan.Policy.NOT_REQUIRED,
+            reason = "Only model-readable references are used.",
+            analyzedByModelConfigurationId = AiModelConfiguration.Id("model-1"),
+            analyzedAt = now,
+        ),
         contentHash = "a".repeat(64),
         createdAt = now,
         updatedAt = now,
@@ -272,6 +279,7 @@ class AgentSkillRuntimeTest {
         val skillToolNames = setOf(
             ACTIVATE_AGENT_SKILL_TOOL_NAME,
             READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
+            MATERIALIZE_AGENT_SKILL_TOOL_NAME,
         )
     }
 }

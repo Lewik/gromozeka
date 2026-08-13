@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillPackage
 import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.remote.protocol.AgentSkillPackageResponse
 import com.gromozeka.remote.protocol.AgentSkillResponse
@@ -21,6 +22,7 @@ internal class RemoteAgentSkillService(
     override suspend fun importPackage(
         projectId: Project.Id,
         source: AgentSkillPackageSource,
+        actorUserId: User.Id?,
     ): AgentSkill =
         client.requestTyped<ImportAgentSkillRequest, AgentSkillResponse>(
             ImportAgentSkillRequest(projectId, source)

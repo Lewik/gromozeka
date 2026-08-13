@@ -1,5 +1,6 @@
 package com.gromozeka.domain.model
 
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
@@ -15,6 +16,7 @@ data class AgentSkill(
     val compatibility: String? = null,
     val metadata: Map<String, String> = emptyMap(),
     val allowedTools: String? = null,
+    val materializationPlan: MaterializationPlan,
     val contentHash: String,
     val createdAt: Instant,
     val updatedAt: Instant,
@@ -22,6 +24,27 @@ data class AgentSkill(
     @Serializable
     @JvmInline
     value class Id(val value: String)
+
+    @Serializable
+    data class MaterializationPlan(
+        val policy: Policy,
+        val reason: String,
+        val analyzedByModelConfigurationId: AiModelConfiguration.Id? = null,
+        val analyzedAt: Instant? = null,
+    ) {
+        init {
+            require(reason.isNotBlank()) { "Agent Skill materialization reason must not be blank" }
+            require((analyzedByModelConfigurationId == null) == (analyzedAt == null)) {
+                "Agent Skill materialization analysis provenance must be complete"
+            }
+        }
+
+        @Serializable
+        enum class Policy {
+            REQUIRED,
+            NOT_REQUIRED,
+        }
+    }
 }
 
 @Serializable

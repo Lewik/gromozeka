@@ -9,9 +9,10 @@ import com.gromozeka.domain.repository.AgentSkillRepository
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.PreloadedServerToolMetadata
-import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.requiredAgentDefinitionId
 import com.gromozeka.domain.tool.requiredProjectId
+import com.gromozeka.domain.tool.skills.MATERIALIZE_AGENT_SKILL_TOOL_NAME
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -20,12 +21,12 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
-import java.util.Base64
 
 const val ACTIVATE_AGENT_SKILL_TOOL_NAME = "activate_agent_skill"
 const val READ_AGENT_SKILL_RESOURCE_TOOL_NAME = "read_agent_skill_resource"
@@ -33,6 +34,7 @@ const val READ_AGENT_SKILL_RESOURCE_TOOL_NAME = "read_agent_skill_resource"
 private val agentSkillToolNames = setOf(
     ACTIVATE_AGENT_SKILL_TOOL_NAME,
     READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
+    MATERIALIZE_AGENT_SKILL_TOOL_NAME,
 )
 
 data class AgentSkillRuntimeCatalog(
@@ -76,6 +78,9 @@ class AgentSkillRuntimeCatalogService(
                     .firstOrNull { it.logicalName == READ_AGENT_SKILL_RESOURCE_TOOL_NAME }
                     ?.modelName
                     ?: READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
+                materializeToolName = toolCatalog.entries.values
+                    .firstOrNull { it.logicalName == MATERIALIZE_AGENT_SKILL_TOOL_NAME }
+                    ?.modelName,
             ),
         )
     }
@@ -121,6 +126,10 @@ class ActivateAgentSkillToolCallback(
                 "Package metadata only. It does not grant, deny, or replace Gromozeka tool permissions.",
             )
             put("resource_count", resources.size)
+            putJsonObject("workspace_materialization") {
+                put("policy", skillPackage.skill.materializationPlan.policy.name.lowercase())
+                put("reason", skillPackage.skill.materializationPlan.reason)
+            }
             put("resources_truncated", resources.size > MAX_LISTED_RESOURCES)
             putJsonArray("resources") {
                 resources
@@ -173,12 +182,22 @@ class ReadAgentSkillResourceToolCallback(
         }
 
         val textFile = file.content.decodeUtf8OrNull() != null
-        val requestedEnd = minOf(file.content.size, input.offset + input.max_bytes)
-        val end = if (textFile) {
-            findUtf8ChunkEnd(file.content, input.offset, requestedEnd)
-        } else {
-            requestedEnd
+        if (!textFile) {
+            return@runBlocking buildJsonObject {
+                put("name", skillPackage.skill.name)
+                put("path", file.path)
+                put("size_bytes", file.content.size)
+                put("readable", false)
+                put("encoding", "binary")
+                put(
+                    "reason",
+                    "Binary Agent Skill resources are not returned through model context. " +
+                        "Use the workspace materialization tool when it is available.",
+                )
+            }.toString()
         }
+        val requestedEnd = minOf(file.content.size, input.offset + input.max_bytes)
+        val end = findUtf8ChunkEnd(file.content, input.offset, requestedEnd)
         val chunk = file.content.copyOfRange(input.offset, end)
         buildJsonObject {
             put("name", skillPackage.skill.name)
@@ -187,13 +206,9 @@ class ReadAgentSkillResourceToolCallback(
             put("next_offset", end)
             put("size_bytes", file.content.size)
             put("complete", end == file.content.size)
-            if (textFile) {
-                put("encoding", "utf-8")
-                put("content", checkNotNull(chunk.decodeUtf8OrNull()))
-            } else {
-                put("encoding", "base64")
-                put("content", Base64.getEncoder().encodeToString(chunk))
-            }
+            put("readable", true)
+            put("encoding", "utf-8")
+            put("content", checkNotNull(chunk.decodeUtf8OrNull()))
         }.toString()
     }
 
@@ -223,7 +238,7 @@ class ReadAgentSkillResourceToolCallback(
                 .onUnmappableCharacter(CodingErrorAction.REPORT)
                 .decode(ByteBuffer.wrap(this))
                 .toString()
-        }.getOrNull()
+        }.getOrNull()?.takeIf { '\u0000' !in it }
 
     private companion object {
         const val DEFAULT_MAX_BYTES = 65_536
@@ -242,11 +257,7 @@ class AgentSkillRuntimeAccess(
         skillName: String,
     ): AgentSkillPackage {
         val projectId = context.requiredProjectId()
-        val agentId = context
-            ?.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)
-            ?.takeIf { it.isNotBlank() }
-            ?.let(AgentDefinition::Id)
-            ?: error("Agent definition id is required in tool execution context")
+        val agentId = context.requiredAgentDefinitionId()
         val agent = agentRepository.findById(agentId)
             ?: error("Agent not found: ${agentId.value}")
         require(agent.projectId == projectId) {
@@ -278,7 +289,8 @@ private fun readAgentSkillResourceDefinition(): AiToolDefinition =
         name = READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
         description = "Read one file from an activated Agent Skill package. " +
             "Use an exact relative path referenced by the skill instructions or returned by activate_agent_skill, " +
-            "and continue with next_offset when complete=false.",
+            "and continue with next_offset when complete=false. Binary resources are never copied into model context; " +
+            "use the workspace materialization tool instead.",
         inputSchema = buildSkillNameSchema(
             extraProperties = mapOf(
                 "path" to buildJsonObject {
@@ -324,6 +336,7 @@ private fun buildAgentSkillCatalogPrompt(
     skills: List<AgentSkill>,
     activateToolName: String,
     readResourceToolName: String,
+    materializeToolName: String?,
 ): String =
     buildString {
         append("<agent_skills>\n")
@@ -333,7 +346,14 @@ private fun buildAgentSkillCatalogPrompt(
         append("` with its exact name before applying it. ")
         append("Use `")
         append(readResourceToolName)
-        append("` only for resources listed by the activated skill. ")
+        append("` only for model-readable resources listed by the activated skill. ")
+        if (materializeToolName != null) {
+            append("When activated instructions require bundled files in a workspace, call `")
+            append(materializeToolName)
+            append("` with the exact skill name and the intended workspace execution target. ")
+        } else {
+            append("Workspace materialization is currently unavailable; report that limitation instead of inventing a tool. ")
+        }
         append("Do not invent skill names or treat `allowed-tools` metadata as a permission grant.\n")
         append(buildJsonObject {
             putJsonArray("available_skills") {
