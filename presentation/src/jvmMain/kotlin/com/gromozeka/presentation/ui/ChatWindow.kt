@@ -27,6 +27,7 @@ import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.presentation.AppComponents
 import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
+import com.gromozeka.presentation.services.WindowsWindowAppearance
 import com.gromozeka.presentation.services.WindowStateService
 import kotlinx.coroutines.launch
 import java.awt.datatransfer.DataFlavor
@@ -44,6 +45,7 @@ fun ApplicationScope.ChatWindow(
 ) {
     val settingsService = appComponents.settingsService
     val currentSettings by settingsService.settingsFlow.collectAsState()
+    val currentTheme by appComponents.themeService.currentTheme.collectAsState()
     val windowSettings = (currentSettings.userDeviceSettings as? UserDeviceSettings.Desktop)?.windowSettings
         ?: UserDeviceSettings.DesktopWindowSettings()
     val savedWindowState = remember { windowStateService.loadWindowState() }
@@ -109,6 +111,13 @@ fun ApplicationScope.ChatWindow(
         },
         icon = painterResource("logos/logo-256x256.png")
     ) {
+        LaunchedEffect(window, currentTheme) {
+            WindowsWindowAppearance.apply(
+                window = window,
+                background = currentTheme.background,
+                foreground = currentTheme.onBackground,
+            )
+        }
         LaunchedEffect(visible) {
             if (visible) {
                 window.toFront()

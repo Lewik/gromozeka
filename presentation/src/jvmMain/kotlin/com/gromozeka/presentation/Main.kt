@@ -28,6 +28,8 @@ import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import com.gromozeka.presentation.services.DesktopLocalWorkerController
 import com.gromozeka.presentation.services.LocalWorkerOperation
 import com.gromozeka.presentation.services.LocalWorkerStatus
+import com.gromozeka.presentation.services.WindowsWindowAppearance
+import com.gromozeka.presentation.services.theming.data.DarkTheme
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -275,6 +277,14 @@ fun main(args: Array<String>) {
                 title = "Gromozeka",
                 state = rememberWindowState(size = DpSize(640.dp, 480.dp)),
             ) {
+                LaunchedEffect(window) {
+                    val theme = DarkTheme()
+                    WindowsWindowAppearance.apply(
+                        window = window,
+                        background = theme.background,
+                        foreground = theme.onBackground,
+                    )
+                }
                 LaunchedEffect(windowVisible) {
                     if (windowVisible) {
                         window.toFront()
