@@ -16,6 +16,36 @@ class JvmLogDirectoryResolverTest {
     }
 
     @Test
+    fun standardCommandLinePathSupportsSeparateValue() {
+        val path = resolve(
+            args = listOf("--server.port=9000", "--logging.file.path", "/cli"),
+            properties = mapOf("logging.file.path" to "/property"),
+        )
+
+        assertEquals("/cli", path)
+    }
+
+    @Test
+    fun unrelatedCommandLineArgumentIsIgnored() {
+        val path = resolve(
+            args = listOf("--server.port=9000"),
+            properties = mapOf("logging.file.path" to "/property"),
+        )
+
+        assertEquals("/property", path)
+    }
+
+    @Test
+    fun canonicalCommandLineDirectoryKeepsWorkerLogsSeparate() {
+        val path = resolve(
+            args = listOf("--gromozeka.log.dir=/diagnostics"),
+            component = JvmLogComponent.WORKER,
+        )
+
+        assertEquals("/diagnostics/workers", path)
+    }
+
+    @Test
     fun canonicalDirectoryKeepsWorkerLogsSeparate() {
         val path = resolve(
             component = JvmLogComponent.WORKER,

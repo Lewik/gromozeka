@@ -70,13 +70,19 @@ object JvmLogDirectoryResolver {
     }
 
     private fun argumentValue(args: List<String>, name: String): String? {
-        val prefix = "--$name="
-        args.firstOrNull { it.startsWith(prefix) }
-            ?.removePrefix(prefix)
-            ?.takeIf(String::isNotBlank)
-            ?.let { return it }
-        val index = args.indexOf("--$name")
-        return args.getOrNull(index + 1)?.takeIf(String::isNotBlank)
+        val option = "--$name"
+        args.forEachIndexed { index, argument ->
+            when {
+                argument.startsWith("$option=") ->
+                    return argument.removePrefix("$option=").takeIf(String::isNotBlank)
+
+                argument == option ->
+                    return args.getOrNull(index + 1)
+                        ?.takeUnless { it.startsWith("--") }
+                        ?.takeIf(String::isNotBlank)
+            }
+        }
+        return null
     }
 }
 
