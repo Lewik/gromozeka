@@ -1,7 +1,6 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.InMemoryConversationRuntimeCoordinator
-import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
 import com.gromozeka.application.service.ServerCommandRuntimeStateService
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
@@ -225,7 +224,7 @@ class WorkerCommandRuntimeGatewayHandlerTest {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val state = ServerCommandRuntimeStateService(
             runtimeCoordinator = coordinator,
-            runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
             commandTaskLifecycleEventPublisher = CommandTaskLifecycleEventPublisher { },
             commandMonitorLifecycleEventPublisher = CommandMonitorLifecycleEventPublisher { },
         )

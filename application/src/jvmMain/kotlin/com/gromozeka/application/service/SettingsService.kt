@@ -6,6 +6,9 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +23,9 @@ import java.util.Locale
 import kotlin.io.path.Path
 
 @Service
-class SettingsService : com.gromozeka.domain.service.SettingsService {
+class SettingsService(
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
+) : com.gromozeka.domain.service.SettingsService {
 
     private val log = KLoggers.logger("SettingsService")
 
@@ -163,6 +168,7 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
         validateSettings(settings)
         settingsFile.writeText(json.encodeToString(settings))
         _settingsFlow.value = settings
+        stateChanges.publish(DeclarativeStateKey.settings, DeclarativeStateKey.quickTextActions)
         log.info("Settings saved to: ${settingsFile.absolutePath}")
     }
 
@@ -173,6 +179,7 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
 
     override fun reloadSettings() {
         _settingsFlow.value = loadSettings()
+        stateChanges.publish(DeclarativeStateKey.settings, DeclarativeStateKey.quickTextActions)
         log.info("Settings reloaded from file")
     }
 

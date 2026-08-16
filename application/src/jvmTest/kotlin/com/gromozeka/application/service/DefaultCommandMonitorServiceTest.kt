@@ -387,7 +387,7 @@ class DefaultCommandMonitorServiceTest {
         processRunner = runner,
         runtimeState = ServerCommandRuntimeStateService(
             runtimeCoordinator = coordinator,
-            runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
             commandTaskLifecycleEventPublisher = CommandTaskLifecycleEventPublisher { },
             commandMonitorLifecycleEventPublisher = lifecycleEventPublisher,
         ),

@@ -5,6 +5,8 @@ import com.gromozeka.domain.model.AgentSkillPackage
 import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 interface AgentSkillDomainService {
     suspend fun importPackage(
@@ -16,6 +18,10 @@ interface AgentSkillDomainService {
     suspend fun findById(id: AgentSkill.Id): AgentSkill?
 
     suspend fun findByProject(projectId: Project.Id): List<AgentSkill>
+
+    fun observeByProject(projectId: Project.Id): Flow<List<AgentSkill>> = flow {
+        emit(findByProject(projectId))
+    }
 
     suspend fun exportPackage(id: AgentSkill.Id): AgentSkillPackage?
 

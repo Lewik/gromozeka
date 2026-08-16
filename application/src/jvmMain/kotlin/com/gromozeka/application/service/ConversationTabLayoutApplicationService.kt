@@ -5,25 +5,20 @@ import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ConversationTabLayoutRepository
+import com.gromozeka.domain.service.ConversationTabLayoutStateSyncService
 import com.gromozeka.domain.service.UserConversationTabLayoutService
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
-import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class ConversationTabLayoutApplicationService(
     private val repository: ConversationTabLayoutRepository,
     private val conversationRepository: ConversationRepository,
+    private val stateSyncService: ConversationTabLayoutStateSyncService,
 ) : UserConversationTabLayoutService {
     private val mutex = Mutex()
-    private val updatesByUser = ConcurrentHashMap<User.Id, MutableSharedFlow<ConversationTabLayout>>()
 
     override suspend fun snapshot(userId: User.Id): ConversationTabLayout = repository.load(userId)
 
@@ -56,15 +51,9 @@ class ConversationTabLayoutApplicationService(
                 }
                 val updated = current.next(current.conversationIds - conversationId)
                 repository.save(userId, updated)
-                updates(userId).emit(updated)
+                stateSyncService.invalidate(userId)
             }
         }
-    }
-
-    override fun observe(userId: User.Id): Flow<ConversationTabLayout> = flow {
-        val initial = snapshot(userId)
-        emit(initial)
-        emitAll(updates(userId).filter { it.revision > initial.revision })
     }
 
     private suspend fun mutate(
@@ -76,11 +65,8 @@ class ConversationTabLayoutApplicationService(
         if (updated == current) {
             return@withLock current
         }
-        repository.save(userId, updated).also { updates(userId).emit(it) }
+        repository.save(userId, updated).also { stateSyncService.invalidate(userId) }
     }
-
-    private fun updates(userId: User.Id): MutableSharedFlow<ConversationTabLayout> =
-        updatesByUser.computeIfAbsent(userId) { MutableSharedFlow(replay = 1) }
 
     private fun ConversationTabLayout.next(
         conversationIds: List<Conversation.Id>,

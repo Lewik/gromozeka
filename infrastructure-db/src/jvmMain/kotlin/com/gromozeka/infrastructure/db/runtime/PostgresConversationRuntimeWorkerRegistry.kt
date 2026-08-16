@@ -4,6 +4,9 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,6 +24,7 @@ import javax.sql.DataSource
 @Service
 class PostgresConversationRuntimeWorkerRegistry(
     private val dataSource: DataSource,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : ConversationRuntimeWorkerRegistry {
     private val json = Json {
         encodeDefaults = true
@@ -68,6 +72,8 @@ class PostgresConversationRuntimeWorkerRegistry(
                     statement.executeUpdate() == 1
                 }
             }
+        }.also { accepted ->
+            if (accepted) stateChanges.publish(DeclarativeStateKey.workers)
         }
 
     override suspend fun heartbeat(
@@ -80,6 +86,8 @@ class PostgresConversationRuntimeWorkerRegistry(
             } else {
                 registration.copy(lastHeartbeatAt = at)
             }
+        }.also { accepted ->
+            if (accepted) stateChanges.publish(DeclarativeStateKey.workers)
         }
 
     override suspend fun updateTools(
@@ -96,6 +104,8 @@ class PostgresConversationRuntimeWorkerRegistry(
                     lastHeartbeatAt = at,
                 )
             }
+        }.also { accepted ->
+            if (accepted) stateChanges.publish(DeclarativeStateKey.workers)
         }
 
     override suspend fun unregister(
@@ -111,6 +121,8 @@ class PostgresConversationRuntimeWorkerRegistry(
                     stoppedAt = at,
                 )
             }
+        }.also { accepted ->
+            if (accepted) stateChanges.publish(DeclarativeStateKey.workers)
         }
 
     override suspend fun find(workerId: ConversationRuntimeWorkerId): ConversationRuntimeWorkerRegistration? =

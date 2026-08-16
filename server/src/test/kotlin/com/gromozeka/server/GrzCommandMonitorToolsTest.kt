@@ -1,7 +1,6 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.InMemoryConversationRuntimeCoordinator
-import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
 import com.gromozeka.application.service.ServerCommandRuntimeStateService
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
@@ -238,7 +237,7 @@ class GrzCommandMonitorToolsTest {
     ): CommandRuntimeStateService =
         ServerCommandRuntimeStateService(
             runtimeCoordinator = coordinator,
-            runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
             commandTaskLifecycleEventPublisher = CommandTaskLifecycleEventPublisher { },
             commandMonitorLifecycleEventPublisher = CommandMonitorLifecycleEventPublisher { },
         )

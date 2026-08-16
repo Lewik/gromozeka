@@ -20,6 +20,9 @@ import com.gromozeka.domain.service.AiCatalogManagementService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +37,7 @@ class AiConfigurationApplicationService(
     private val repository: AiCatalogRepository,
     private val agentRepository: AgentRepository,
     private val settingsProvider: SettingsProvider,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : AiConfigurationService, AiCatalogManagementService, AiModelSpecRepository {
     private val mutableSnapshotFlow = MutableStateFlow<AiCatalogSnapshot?>(null)
 
@@ -59,6 +63,7 @@ class AiConfigurationApplicationService(
         validateAgentReferences(resolvedCatalog)
         val updated = repository.replace(expectedRevision, resolvedCatalog).withRuntimeEnvironment()
         mutableSnapshotFlow.value = updated
+        stateChanges.publish(DeclarativeStateKey.aiCatalog)
         return updated
     }
 
@@ -68,6 +73,7 @@ class AiConfigurationApplicationService(
         }.withRuntimeEnvironment()
         validateSecretRequirements(loaded.catalog)
         mutableSnapshotFlow.value = loaded
+        stateChanges.publish(DeclarativeStateKey.aiCatalog)
         return loaded
     }
 

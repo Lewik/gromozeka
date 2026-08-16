@@ -6,6 +6,9 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.UserConversationTabLayoutService
 import klog.KLoggers
@@ -44,6 +47,7 @@ class ConversationApplicationService(
     private val toolCallPairingService: ToolCallPairingService,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
     private val artifactService: ConversationArtifactApplicationService,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
 
@@ -89,7 +93,7 @@ class ConversationApplicationService(
 
         val createdConversation = conversationRepo.create(conversation)
         threadRepo.save(initialThread)
-        return createdConversation
+        return createdConversation.also(::publishConversationList)
     }
 
     /**
@@ -127,8 +131,11 @@ class ConversationApplicationService(
      */
     @Transactional
     override suspend fun delete(id: Conversation.Id) {
+        val conversation = conversationRepo.findById(id)
+            ?: error("Conversation not found: ${id.value}")
         conversationTabLayoutService.removeConversation(id)
         conversationRepo.delete(id)
+        publishConversationList(conversation)
     }
 
     /**
@@ -145,7 +152,7 @@ class ConversationApplicationService(
     ): Conversation? {
         require(displayName.length <= 255) { "Conversation display name must not exceed 255 characters" }
         conversationRepo.updateDisplayName(conversationId, displayName)
-        return conversationRepo.findById(conversationId)
+        return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }
 
     @Transactional
@@ -156,7 +163,7 @@ class ConversationApplicationService(
         val conversation = conversationRepo.findById(conversationId) ?: return null
         requireAgentAvailableToProject(agentDefinitionId, conversation.projectId)
         conversationRepo.updateAgentDefinition(conversationId, agentDefinitionId)
-        return conversationRepo.findById(conversationId)
+        return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }
 
     private suspend fun requireAgentAvailableToProject(
@@ -246,7 +253,7 @@ class ConversationApplicationService(
         
         log.debug("Forked conversation $conversationId to ${newConversation.id}")
         
-        return newConversation
+        return newConversation.also(::publishConversationList)
     }
 
     /**
@@ -298,7 +305,7 @@ class ConversationApplicationService(
 
         log.debug("Appended message ${message.id} to thread ${currentThread.id} at position ${lastPosition + 1}")
 
-        return conversationRepo.findById(conversationId)
+        return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }
 
     private suspend fun saveMessageIfAbsent(message: Conversation.Message) {
@@ -414,7 +421,7 @@ class ConversationApplicationService(
 
         log.debug("Edited message $messageId, created new thread ${newThread.id}")
 
-        return conversationRepo.findById(conversationId)
+        return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }
 
     /**
@@ -509,7 +516,7 @@ class ConversationApplicationService(
 
         log.debug("Deleted ${messageIds.size} message(s) + ${pairedMessageIds.size} paired, created new thread ${newThread.id}")
 
-        return conversationRepo.findById(conversationId)
+        return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }
 
     /**
@@ -605,7 +612,7 @@ class ConversationApplicationService(
 
         log.debug("Squashed ${messageIds.size} messages, created new thread ${newThread.id}")
 
-        return conversationRepo.findById(conversationId)
+        return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }
 
     private fun ensureMessagesAreNotCoveredByCompaction(
@@ -656,4 +663,8 @@ class ConversationApplicationService(
             is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
                 "[context_compaction:${providerScope?.provider ?: "unknown"}]"
         }
+
+    private fun publishConversationList(conversation: Conversation) {
+        stateChanges.publish(DeclarativeStateKey.projectConversations(conversation.projectId))
+    }
 }

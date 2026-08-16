@@ -21,6 +21,8 @@ import com.gromozeka.remote.protocol.SearchConversationsRequest
 import com.gromozeka.remote.protocol.SquashMessagesWithAiRequest
 import com.gromozeka.remote.protocol.TextResponse
 import com.gromozeka.remote.protocol.TokenStatsResponse
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 internal class RemoteConversationNameSearchService(
     private val client: GromozekaWsClient,
@@ -58,6 +60,9 @@ internal class RemoteQuickTextActionService(
         client.requestTyped<ListQuickTextActionsRequest, QuickTextActionsResponse>(
             ListQuickTextActionsRequest
         ).actions
+
+    override fun observeActions(): Flow<List<QuickTextAction>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.QUICK_TEXT_ACTIONS, load = ::listActions)
 
     override suspend fun runAction(
         actionId: QuickTextAction.Id,

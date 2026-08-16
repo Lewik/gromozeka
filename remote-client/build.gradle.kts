@@ -28,6 +28,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation(project(":shared"))
+                implementation(project(":state-sync"))
                 implementation(project(":domain"))
                 api(project(":remote-protocol"))
                 implementation(libs.ktor.client.core)

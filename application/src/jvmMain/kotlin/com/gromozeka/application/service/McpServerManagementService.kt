@@ -16,6 +16,9 @@ import com.gromozeka.domain.service.WorkerControlClient
 import com.gromozeka.domain.service.WorkerControlRequest
 import com.gromozeka.domain.service.WorkerControlResult
 import com.gromozeka.domain.service.WorkerToolExecutionClient
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.domain.tool.TOOL_CONTEXT_TOOL_NAME
 import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -36,6 +39,7 @@ class McpServerManagementService(
     private val workerControlClient: WorkerControlClient,
     private val workerToolExecutionClient: WorkerToolExecutionClient,
     private val capabilityCatalogService: AiToolCapabilityCatalogService,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) {
     private val mutationMutex = Mutex()
 
@@ -50,7 +54,7 @@ class McpServerManagementService(
             config = config,
             expectedRevision = null,
         )
-    }
+    }.also { stateChanges.publish(DeclarativeStateKey.mcpServers) }
 
     suspend fun update(
         config: McpServerConfig,
@@ -77,7 +81,7 @@ class McpServerManagementService(
             ),
             expectedRevision = expectedRevision,
         )
-    }
+    }.also { stateChanges.publish(DeclarativeStateKey.mcpServers) }
 
     suspend fun refresh(
         serverId: McpServerId,
@@ -90,7 +94,7 @@ class McpServerManagementService(
             config = current.config,
             expectedRevision = expectedRevision,
         )
-    }
+    }.also { stateChanges.publish(DeclarativeStateKey.mcpServers) }
 
     suspend fun delete(
         serverId: McpServerId,
@@ -117,6 +121,7 @@ class McpServerManagementService(
                 .onFailure(error::addSuppressed)
             throw error
         }
+        stateChanges.publish(DeclarativeStateKey.mcpServers)
     }
 
     suspend fun testBrowserUse(serverId: McpServerId): BrowserUseProbeResult {

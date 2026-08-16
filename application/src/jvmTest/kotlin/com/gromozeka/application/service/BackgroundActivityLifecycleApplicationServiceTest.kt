@@ -130,6 +130,7 @@ class BackgroundActivityLifecycleApplicationServiceTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
             artifactReferenceValidator = ArtifactReferenceValidator { _, _ -> },
         )
         return BackgroundActivityLifecycleApplicationService(

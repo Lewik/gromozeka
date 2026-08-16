@@ -30,6 +30,7 @@ java {
 
 dependencies {
     implementation(project(":domain"))
+    implementation(project(":state-sync"))
     implementation(project(":remote-protocol"))
     implementation(project(":application"))
     implementation(project(":infrastructure-db"))

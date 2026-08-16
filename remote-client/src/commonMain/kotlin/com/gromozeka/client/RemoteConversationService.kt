@@ -22,6 +22,8 @@ import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SquashMessagesRequest
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
 import com.gromozeka.remote.protocol.UpdateConversationAgentRequest
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 internal class RemoteConversationService(
     private val client: GromozekaWsClient,
@@ -45,6 +47,12 @@ internal class RemoteConversationService(
         client.requestTyped<FindConversationsByProjectRequest, ConversationsResponse>(
             FindConversationsByProjectRequest(projectId)
         ).conversations
+
+    override fun observeByProject(projectId: Project.Id): Flow<List<Conversation>> =
+        client.observeDeclarativeState(
+            RemoteDeclarativeStateResource.PROJECT_CONVERSATIONS,
+            projectId.value,
+        ) { findByProject(projectId) }
 
     override suspend fun delete(id: Conversation.Id) {
         client.requestTyped<DeleteConversationRequest, SavedResponse>(DeleteConversationRequest(id))

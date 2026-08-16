@@ -8,11 +8,14 @@ import com.gromozeka.remote.protocol.GetSettingsRequest
 import com.gromozeka.remote.protocol.SaveSettingsRequest
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SettingsResponse
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
 
 internal class RemoteSettingsService(
     private val client: GromozekaWsClient,
@@ -20,6 +23,7 @@ internal class RemoteSettingsService(
     override val homeDirectory: String,
 ) : SettingsService {
     private val _settingsFlow = MutableStateFlow(Settings())
+    private var syncJob: Job? = null
 
     override val settingsFlow: StateFlow<Settings> = _settingsFlow.asStateFlow()
     override val settings: Settings get() = _settingsFlow.value
@@ -37,6 +41,15 @@ internal class RemoteSettingsService(
         client.requestTyped<GetSettingsRequest, SettingsResponse>(GetSettingsRequest).settings.also {
             _settingsFlow.value = it
         }
+
+    fun startSync() {
+        if (syncJob != null) return
+        syncJob = scope.launch {
+            client.observeDeclarativeState(RemoteDeclarativeStateResource.SETTINGS) {
+                client.requestTyped<GetSettingsRequest, SettingsResponse>(GetSettingsRequest).settings
+            }.collect { _settingsFlow.value = it }
+        }
+    }
 
     override fun saveSettings(settings: Settings) {
         _settingsFlow.value = settings

@@ -58,6 +58,7 @@ import com.gromozeka.remote.protocol.BrowserUseProbeResponse
 import com.gromozeka.remote.protocol.DistributionComponent
 import com.gromozeka.remote.protocol.RemoteMcpServerView
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.catch
 
 @Composable
 internal fun BrowserUseSettings(
@@ -87,13 +88,18 @@ internal fun BrowserUseSettings(
         loadState = if (!canManage) {
             BrowserUseLoadState.Ready(emptyList())
         } else {
-            try {
-                BrowserUseLoadState.Ready(
-                    service.list().filter { BrowserUseMcpPreset.isConnection(it.server) }
-                )
-            } catch (error: Throwable) {
-                BrowserUseLoadState.Failed(error.message ?: "Could not load Browser Use connections")
-            }
+            service.observe()
+                .catch { failure ->
+                    loadState = BrowserUseLoadState.Failed(
+                        failure.message ?: "Could not load Browser Use connections"
+                    )
+                }
+                .collect { servers ->
+                    loadState = BrowserUseLoadState.Ready(
+                        servers.filter { BrowserUseMcpPreset.isConnection(it.server) }
+                    )
+                }
+            loadState
         }
     }
 
@@ -104,7 +110,6 @@ internal fun BrowserUseSettings(
         probeState = null
         scope.launch {
             runCatching { block() }
-                .onSuccess { reloadKey++ }
                 .onFailure { mutationError = it.message ?: "Browser Use configuration failed" }
             mutationInProgress = false
         }

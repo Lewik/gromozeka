@@ -28,6 +28,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":shared"))  // Transitive dependency for all domain consumers
+                api(project(":state-sync"))
                 api(libs.kotlinx.datetime)
                 api(libs.kotlinx.serialization.json)
                 api(libs.kotlinx.coroutines.core)  // For StateFlow, SharedFlow

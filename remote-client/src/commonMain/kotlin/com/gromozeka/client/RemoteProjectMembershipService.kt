@@ -9,6 +9,8 @@ import com.gromozeka.remote.protocol.ProjectMembershipResponse
 import com.gromozeka.remote.protocol.ProjectMembershipsResponse
 import com.gromozeka.remote.protocol.RemoveProjectMembershipRequest
 import com.gromozeka.remote.protocol.SetProjectMembershipRequest
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 class RemoteProjectMembershipService internal constructor(
     private val client: GromozekaWsClient,
@@ -17,6 +19,12 @@ class RemoteProjectMembershipService internal constructor(
         client.requestTyped<ListProjectMembershipsRequest, ProjectMembershipsResponse>(
             ListProjectMembershipsRequest(projectId)
         ).memberships
+
+    fun observe(projectId: Project.Id): Flow<List<ProjectMembership>> =
+        client.observeDeclarativeState(
+            RemoteDeclarativeStateResource.PROJECT_MEMBERSHIPS,
+            projectId.value,
+        ) { list(projectId) }
 
     suspend fun set(
         projectId: Project.Id,

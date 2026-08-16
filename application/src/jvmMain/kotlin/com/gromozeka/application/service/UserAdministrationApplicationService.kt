@@ -13,6 +13,9 @@ import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.domain.service.SoleProjectOwnerException
 import com.gromozeka.domain.service.UserAdministrationDeniedException
 import com.gromozeka.domain.service.UserAdministrationService
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
@@ -25,6 +28,7 @@ class UserAdministrationApplicationService(
     private val projectMembershipRepository: ProjectMembershipRepository,
     private val passwordHasher: PasswordHasher,
     private val securityAuditRecorder: SecurityAuditRecorder,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : UserAdministrationService {
     override suspend fun list(actor: User): List<User> {
         requireOwner(actor)
@@ -76,6 +80,7 @@ class UserAdministrationApplicationService(
                 ),
             )
         )
+        stateChanges.publish(DeclarativeStateKey.users, DeclarativeStateKey.userDirectory)
         return created
     }
 
@@ -142,6 +147,7 @@ class UserAdministrationApplicationService(
                 ),
             )
         )
+        stateChanges.publish(DeclarativeStateKey.users, DeclarativeStateKey.userDirectory)
         return updated
     }
 

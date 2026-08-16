@@ -12,6 +12,7 @@ import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
+import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
@@ -35,6 +36,7 @@ import java.security.MessageDigest
 class ConversationRuntimeDispatcher(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
+    private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val artifactReferenceValidator: ArtifactReferenceValidator,
 ) {
     private val log = KLoggers.logger(this)
@@ -256,12 +258,11 @@ class ConversationRuntimeDispatcher(
                 event.cursorSequence?.let { emittedEventSequence = maxOf(emittedEventSequence, it) }
                 emit(event)
             }
-            emit(runtimeSnapshotEvent(conversationId))
+            emit(ConversationRuntimeEvent.ReplayCompleted(conversationId, emittedEventSequence))
             subscription.events.collect { event ->
                 val cursorSequence = event.cursorSequence
                 if (cursorSequence != null &&
-                    cursorSequence <= emittedEventSequence &&
-                    event !is ConversationRuntimeEvent.SnapshotUpdated
+                    cursorSequence <= emittedEventSequence
                 ) {
                     return@collect
                 }
@@ -290,7 +291,7 @@ class ConversationRuntimeDispatcher(
     }
 
     private suspend fun publishRuntimeSnapshot(conversationId: Conversation.Id) {
-        publishLiveRuntimeEvent(runtimeSnapshotEvent(conversationId))
+        runtimeStateSyncService.invalidate(conversationId)
     }
 
     private suspend fun publishRuntimeEvent(event: ConversationRuntimeEvent) {
@@ -311,12 +312,6 @@ class ConversationRuntimeDispatcher(
             }
             false
         }
-
-    private suspend fun runtimeSnapshotEvent(conversationId: Conversation.Id): ConversationRuntimeEvent.SnapshotUpdated =
-        ConversationRuntimeEvent.SnapshotUpdated(
-            conversationId = conversationId,
-            snapshot = runtimeCoordinator.snapshot(conversationId),
-        )
 
     private suspend fun replayRuntimeEvents(
         conversationId: Conversation.Id,
@@ -346,6 +341,7 @@ class ConversationRuntimeDispatcher(
     private fun ConversationRuntimeEvent.withCursorSequence(sequence: Long): ConversationRuntimeEvent =
         when (this) {
             is ConversationRuntimeEvent.SnapshotUpdated -> copy(cursorSequence = sequence)
+            is ConversationRuntimeEvent.ReplayCompleted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.MessageEmitted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ExecutionCompleted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ExecutionFailed -> copy(cursorSequence = sequence)

@@ -20,6 +20,12 @@ import com.gromozeka.remote.protocol.ListProjectMembershipsRequest
 import com.gromozeka.remote.protocol.ListMcpServersRequest
 import com.gromozeka.remote.protocol.ListSecurityAuditEventsRequest
 import com.gromozeka.remote.protocol.ListUsersRequest
+import com.gromozeka.remote.protocol.ConversationRuntimeStateQuery
+import com.gromozeka.remote.protocol.ConversationTabLayoutStateQuery
+import com.gromozeka.remote.protocol.DeclarativeStateRevisionQuery
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import com.gromozeka.remote.protocol.PullStateSyncRequest
+import com.gromozeka.remote.protocol.RemoteStateSyncCursor
 import com.gromozeka.remote.protocol.RemoveProjectMembershipRequest
 import com.gromozeka.remote.protocol.SetProjectMembershipRequest
 import com.gromozeka.remote.protocol.TestBrowserUseRequest
@@ -97,6 +103,72 @@ class GromozekaRemoteAuthorizationTest {
             projectId,
             ProjectPermission.WRITE,
         )
+    }
+
+    @Test
+    fun `state pulls require read permission for their resource`() = runBlocking {
+        val user = testUser()
+        val projectId = Project.Id("direct-project")
+        val conversation = testConversation()
+        val cursor = RemoteStateSyncCursor("server", streamEpoch = 1, generation = 2)
+        Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation)
+
+        authorization.authorize(
+            user,
+            PullStateSyncRequest(
+                DeclarativeStateRevisionQuery(
+                    RemoteDeclarativeStateResource.PROJECT_CONVERSATIONS,
+                    projectId.value,
+                ),
+                cursor,
+            ),
+        )
+        authorization.authorize(user, PullStateSyncRequest(ConversationRuntimeStateQuery(conversation.id), cursor))
+        authorization.authorize(user, PullStateSyncRequest(ConversationTabLayoutStateQuery, cursor))
+
+        Mockito.verify(projectAccessService).requirePermission(user.id, projectId, ProjectPermission.READ)
+        Mockito.verify(projectAccessService).requirePermission(user.id, conversation.projectId, ProjectPermission.READ)
+    }
+
+    @Test
+    fun `declarative state authorization follows snapshot resource access`() = runBlocking {
+        val member = testUser(User.Role.MEMBER)
+        val owner = testUser(User.Role.OWNER)
+        val projectId = Project.Id("project-state")
+        val cursor = RemoteStateSyncCursor("server", streamEpoch = 1, generation = 2)
+
+        authorization.authorize(
+            member,
+            PullStateSyncRequest(
+                DeclarativeStateRevisionQuery(
+                    RemoteDeclarativeStateResource.PROJECT_CONVERSATIONS,
+                    projectId.value,
+                ),
+                cursor,
+            ),
+        )
+        authorization.authorize(
+            owner,
+            PullStateSyncRequest(
+                DeclarativeStateRevisionQuery(RemoteDeclarativeStateResource.MCP_SERVERS),
+                cursor,
+            ),
+        )
+
+        Mockito.verify(projectAccessService).requirePermission(
+            member.id,
+            projectId,
+            ProjectPermission.READ,
+        )
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(
+                member,
+                PullStateSyncRequest(
+                    DeclarativeStateRevisionQuery(RemoteDeclarativeStateResource.MCP_SERVERS),
+                    cursor,
+                ),
+            )
+        }
     }
 
     @Test

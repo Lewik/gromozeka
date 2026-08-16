@@ -66,7 +66,7 @@ class GromozekaRemoteServices(
         RemoteClientSettingsService(client, clientSettingsStore, initialClientSettings)
     val connectionState: StateFlow<RemoteConnectionState> = client.connectionState
     private val remoteSettingsService = RemoteSettingsService(client, scope, clientHomeDirectory)
-    private val remoteAiConfigurationService = RemoteAiConfigurationService(client)
+    private val remoteAiConfigurationService = RemoteAiConfigurationService(client, scope)
     private val remoteRuntimeCatalogTemplateService = RemoteRuntimeCatalogTemplateService(client)
     private val remoteAgentService = RemoteAgentService(client)
 
@@ -116,6 +116,8 @@ class GromozekaRemoteServices(
         remoteSettingsService.refreshFromServer()
         remoteAiConfigurationService.reload()
         remoteRuntimeCatalogTemplateService.reload()
+        remoteSettingsService.startSync()
+        remoteAiConfigurationService.startSync()
     }
 
     fun close() {

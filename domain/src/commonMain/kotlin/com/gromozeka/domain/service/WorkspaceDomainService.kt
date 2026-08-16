@@ -5,6 +5,8 @@ import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceExecutionContext
 import com.gromozeka.domain.model.WorkspaceMount
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 /**
  * [SPECIFICATION] Lifecycle and resolution boundary for filesystem workspaces.
@@ -66,7 +68,15 @@ interface WorkspaceCatalogService {
 
     suspend fun findByProject(projectId: Project.Id): List<Workspace>
 
+    fun observeByProject(projectId: Project.Id): Flow<List<Workspace>> = flow {
+        emit(findByProject(projectId))
+    }
+
     suspend fun findMounts(workspaceId: Workspace.Id): List<WorkspaceMount>
+
+    fun observeMounts(workspaceId: Workspace.Id): Flow<List<WorkspaceMount>> = flow {
+        emit(findMounts(workspaceId))
+    }
 }
 
 interface WorkspaceManagementService {

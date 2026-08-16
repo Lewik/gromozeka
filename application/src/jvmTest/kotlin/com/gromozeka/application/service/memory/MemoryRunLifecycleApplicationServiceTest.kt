@@ -3,6 +3,7 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
 import com.gromozeka.application.service.InMemoryConversationRuntimeCoordinator
 import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
+import com.gromozeka.application.service.testConversationRuntimeStateSyncService
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
@@ -43,6 +44,7 @@ class MemoryRunLifecycleApplicationServiceTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = runtimeCoordinator,
             runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+            runtimeStateSyncService = testConversationRuntimeStateSyncService(runtimeCoordinator),
             artifactReferenceValidator = ArtifactReferenceValidator { _, _ -> },
         )
         val service = MemoryRunLifecycleApplicationService(

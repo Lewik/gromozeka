@@ -660,6 +660,12 @@ sealed interface ConversationRuntimeEvent {
     ) : ConversationRuntimeEvent
 
     @Serializable
+    data class ReplayCompleted(
+        override val conversationId: Conversation.Id,
+        override val cursorSequence: Long?,
+    ) : ConversationRuntimeEvent
+
+    @Serializable
     data class MessageEmitted(
         override val conversationId: Conversation.Id,
         val taskId: ConversationRuntimeTask.Id?,

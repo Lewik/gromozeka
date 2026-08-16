@@ -29,7 +29,13 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.ConversationDomainService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.catch
 
 private val log = KLoggers.logger("SessionListScreen")
 
@@ -44,6 +50,7 @@ private data class ProjectGroup(
 }
 
 @Composable
+@OptIn(ExperimentalCoroutinesApi::class)
 fun SessionListScreen(
     onConversationSelected: (Conversation, Project) -> Unit,
     coroutineScope: CoroutineScope,
@@ -64,6 +71,7 @@ fun SessionListScreen(
     var conversationToRename by remember { mutableStateOf<Conversation?>(null) }
     var mutatingConversationIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var operationError by remember { mutableStateOf<String?>(null) }
+    var manualRefreshTrigger by remember { mutableIntStateOf(0) }
 
     val searchQuery by searchViewModel.searchQuery.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
@@ -74,43 +82,22 @@ fun SessionListScreen(
         (conversationsById[conversation.id] ?: conversation) to project
     }
 
-    suspend fun loadProjects(showLoading: Boolean = true) {
-        if (showLoading) {
-            isLoading = true
+    fun applyProjects(snapshot: List<Pair<Project, List<Conversation>>>) {
+        val loadedConversations = snapshot.flatMap { it.second }
+        appViewModel.mergeConversationSnapshots(loadedConversations)
+        projectGroups = snapshot.map { (project, conversations) ->
+            val latestConversation = conversations.maxByOrNull { it.updatedAt }
+            ProjectGroup(
+                project = project,
+                conversationIds = conversations.map(Conversation::id),
+                latestConversationId = latestConversation?.id,
+                formattedTime = latestConversation?.let { formatRelativeTime(it.updatedAt) }.orEmpty(),
+            )
+        }.sortedByDescending { group ->
+            group.latestConversationId?.let { appViewModel.conversations.value[it]?.updatedAt }
         }
-        try {
-            val projects = projectService.findRecent(limit = 100)
-
-            val loadedConversations = mutableListOf<Conversation>()
-            val groupedProjects = projects.map { project ->
-                val conversations = conversationTreeService.findByProject(project.id)
-                loadedConversations += conversations
-                val latestConversation = conversations.maxByOrNull { it.updatedAt }
-                val formattedTime = latestConversation?.let { formatRelativeTime(it.updatedAt) } ?: ""
-
-                ProjectGroup(
-                    project = project,
-                    conversationIds = conversations.map(Conversation::id),
-                    latestConversationId = latestConversation?.id,
-                    formattedTime = formattedTime
-                )
-            }
-
-            appViewModel.mergeConversationSnapshots(loadedConversations)
-            projectGroups = groupedProjects.sortedByDescending { group ->
-                group.latestConversationId?.let { appViewModel.conversations.value[it]?.updatedAt }
-            }
-            operationError = null
-
-            log.info("Loaded ${projectGroups.sumOf { it.conversationIds.size }} conversations in ${projectGroups.size} projects")
-        } catch (e: Exception) {
-            log.warn(e) { "Error loading projects: ${e.message}" }
-            operationError = e.message ?: "Failed to load conversations"
-        } finally {
-            if (showLoading) {
-                isLoading = false
-            }
-        }
+        operationError = null
+        isLoading = false
     }
 
     fun refreshSearchResults() {
@@ -137,8 +124,25 @@ fun SessionListScreen(
         }
     }
 
-    LaunchedEffect(refreshTrigger) {
-        loadProjects()
+    LaunchedEffect(refreshTrigger, manualRefreshTrigger) {
+        isLoading = true
+        projectService.observeRecent(limit = 100)
+            .flatMapLatest { projects ->
+                if (projects.isEmpty()) {
+                    flowOf(emptyList())
+                } else {
+                    combine(
+                        projects.map { project ->
+                            conversationTreeService.observeByProject(project.id).map { project to it }
+                        }
+                    ) { it.toList() }
+                }
+            }
+            .catch { failure ->
+                operationError = failure.message ?: "Failed to observe conversations"
+                isLoading = false
+            }
+            .collect(::applyProjects)
     }
 
     LaunchedEffect(searchResults) {
@@ -164,11 +168,7 @@ fun SessionListScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 CompactButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            loadProjects()
-                        }
-                    },
+                    onClick = { manualRefreshTrigger++ },
                     tooltip = LocalTranslation.current.refreshSessionsTooltip
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = LocalTranslation.current.refreshSessionsTooltip)

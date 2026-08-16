@@ -8,12 +8,17 @@ import com.gromozeka.remote.protocol.UpdateUserRequest
 import com.gromozeka.remote.protocol.UserPasswordResetResponse
 import com.gromozeka.remote.protocol.UserResponse
 import com.gromozeka.remote.protocol.UsersResponse
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 class RemoteUserAdministrationService internal constructor(
     private val client: GromozekaWsClient,
 ) {
     suspend fun list(): List<User> =
         client.requestTyped<ListUsersRequest, UsersResponse>(ListUsersRequest).users
+
+    fun observe(): Flow<List<User>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.USERS, load = ::list)
 
     suspend fun create(
         username: String,

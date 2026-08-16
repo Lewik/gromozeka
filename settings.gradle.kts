@@ -14,6 +14,7 @@ pluginManagement {
 rootProject.name = "gromozeka"
 
 include(":shared")
+include(":state-sync")
 include(":device-telemetry")
 include(":mobile-worker")
 include(":mobile-worker-android")

@@ -2,6 +2,8 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 /**
  * Domain service for conversation lifecycle management.
@@ -64,6 +66,10 @@ interface ConversationDomainService {
      * @return conversations in project (empty list if project not found)
      */
     suspend fun findByProject(projectId: Project.Id): List<Conversation>
+
+    fun observeByProject(projectId: Project.Id): Flow<List<Conversation>> = flow {
+        emit(findByProject(projectId))
+    }
 
     /**
      * Deletes conversation permanently.

@@ -8,11 +8,14 @@ import com.gromozeka.remote.protocol.FindRecentProjectsRequest
 import com.gromozeka.remote.protocol.FindProjectsRequest
 import com.gromozeka.remote.protocol.NullableProjectResponse
 import com.gromozeka.remote.protocol.ProjectResponse
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import com.gromozeka.remote.protocol.ProjectsResponse
 import com.gromozeka.remote.protocol.UpdateProjectLastUsedRequest
 import com.gromozeka.remote.protocol.UpdateProjectRequest
 import com.gromozeka.remote.protocol.DeleteProjectRequest
 import com.gromozeka.remote.protocol.SavedResponse
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 internal class RemoteProjectService(
     private val client: GromozekaWsClient,
@@ -30,6 +33,15 @@ internal class RemoteProjectService(
 
     override suspend fun findById(id: Project.Id): Project? =
         client.requestTyped<FindProjectByIdRequest, NullableProjectResponse>(FindProjectByIdRequest(id)).project
+
+    override fun observe(id: Project.Id): Flow<Project?> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.PROJECTS) { findById(id) }
+
+    override fun observeAll(): Flow<List<Project>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.PROJECTS, load = ::findAll)
+
+    override fun observeRecent(limit: Int): Flow<List<Project>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.PROJECTS) { findRecent(limit) }
 
     override suspend fun findRecent(limit: Int): List<Project> =
         client.requestTyped<FindRecentProjectsRequest, ProjectsResponse>(FindRecentProjectsRequest(limit)).projects

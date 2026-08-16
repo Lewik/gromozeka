@@ -9,6 +9,7 @@ import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeSchedulingSignal
+import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
 import com.gromozeka.domain.service.WorkspaceDomainService
@@ -39,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap
 class ConversationRuntimeExecutor(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
+    private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val workspaceService: WorkspaceDomainService,
     private val aiConfigurationService: AiConfigurationService,
     private val taskRunnerProvider: ObjectProvider<ConversationRuntimeTaskRunner>,
@@ -483,12 +485,7 @@ class ConversationRuntimeExecutor(
     }
 
     private suspend fun publishRuntimeSnapshot(conversationId: Conversation.Id) {
-        publishLiveRuntimeEvent(
-            ConversationRuntimeEvent.SnapshotUpdated(
-                conversationId = conversationId,
-                snapshot = runtimeCoordinator.snapshot(conversationId),
-            )
-        )
+        runtimeStateSyncService.invalidate(conversationId)
     }
 
     private suspend fun publishRuntimeEvent(event: ConversationRuntimeEvent) {
@@ -512,6 +509,7 @@ class ConversationRuntimeExecutor(
     private fun ConversationRuntimeEvent.withCursorSequence(sequence: Long): ConversationRuntimeEvent =
         when (this) {
             is ConversationRuntimeEvent.SnapshotUpdated -> copy(cursorSequence = sequence)
+            is ConversationRuntimeEvent.ReplayCompleted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.MessageEmitted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ExecutionCompleted -> copy(cursorSequence = sequence)
             is ConversationRuntimeEvent.ExecutionFailed -> copy(cursorSequence = sequence)

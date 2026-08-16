@@ -10,6 +10,9 @@ import com.gromozeka.domain.repository.WorkspaceRepository
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional
 class WorkspaceApplicationService(
     private val projectRepository: ProjectRepository,
     private val workspaceRepository: WorkspaceRepository,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : WorkspaceDomainService, WorkspaceCatalogService, WorkspaceManagementService {
 
     override suspend fun create(projectId: Project.Id, name: String): Workspace =
@@ -49,7 +53,9 @@ class WorkspaceApplicationService(
                 createdAt = now,
                 updatedAt = now,
             )
-        )
+        ).also {
+            stateChanges.publish(DeclarativeStateKey.projectWorkspaces(projectId))
+        }
     }
 
     @Transactional
@@ -104,7 +110,9 @@ class WorkspaceApplicationService(
                 updatedAt = now,
             )
         )
-        return WorkspaceExecutionContext(project, workspace, mount)
+        return WorkspaceExecutionContext(project, workspace, mount).also {
+            stateChanges.publish(DeclarativeStateKey.workspaceMounts(workspaceId))
+        }
     }
 
     override suspend fun findById(id: Workspace.Id): Workspace? =
@@ -130,23 +138,30 @@ class WorkspaceApplicationService(
         require(normalizedName.isNotEmpty()) { "Workspace name must not be blank" }
         return workspaceRepository.save(
             workspace.copy(name = normalizedName, updatedAt = Clock.System.now())
-        )
+        ).also {
+            stateChanges.publish(DeclarativeStateKey.projectWorkspaces(workspace.projectId))
+        }
     }
 
     @Transactional
     override suspend fun delete(workspaceId: Workspace.Id) {
-        require(workspaceRepository.findById(workspaceId) != null) {
+        val workspace = requireNotNull(workspaceRepository.findById(workspaceId)) {
             "Workspace not found: ${workspaceId.value}"
         }
         workspaceRepository.delete(workspaceId)
+        stateChanges.publish(
+            DeclarativeStateKey.projectWorkspaces(workspace.projectId),
+            DeclarativeStateKey.workspaceMounts(workspaceId),
+        )
     }
 
     @Transactional
     override suspend fun deleteMount(mountId: WorkspaceMount.Id) {
-        require(workspaceRepository.findMount(mountId) != null) {
+        val mount = requireNotNull(workspaceRepository.findMount(mountId)) {
             "Workspace mount not found: ${mountId.value}"
         }
         workspaceRepository.deleteMount(mountId)
+        stateChanges.publish(DeclarativeStateKey.workspaceMounts(mount.workspaceId))
     }
 
     override suspend fun findMountsByWorker(workerId: String): List<WorkspaceMount> =

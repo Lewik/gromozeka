@@ -7,6 +7,9 @@ import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.PromptRepository
 import com.gromozeka.domain.service.PromptAssemblyService
 import com.gromozeka.domain.service.PromptDomainService
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
@@ -16,6 +19,7 @@ class PromptApplicationService(
     private val promptRepository: PromptRepository,
     private val agentRepository: AgentRepository,
     private val systemPromptBuilder: SystemPromptBuilder,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : PromptDomainService, PromptAssemblyService {
     override suspend fun assembleSystemPrompt(
         promptIds: List<Prompt.Id>,
@@ -66,7 +70,7 @@ class PromptApplicationService(
                 createdAt = now,
                 updatedAt = now,
             )
-        )
+        ).also { stateChanges.publish(DeclarativeStateKey.prompts) }
     }
 
     override suspend fun updatePrompt(
@@ -82,7 +86,7 @@ class PromptApplicationService(
                 content = content,
                 updatedAt = Clock.System.now(),
             )
-        )
+        ).also { stateChanges.publish(DeclarativeStateKey.prompts) }
     }
 
     override suspend fun deletePrompt(id: Prompt.Id) {
@@ -91,6 +95,7 @@ class PromptApplicationService(
             "Prompt is used by agents: ${referencingAgents.joinToString { it.name }}"
         }
         promptRepository.delete(id)
+        stateChanges.publish(DeclarativeStateKey.prompts)
     }
 
     private fun validate(name: String, content: String) {

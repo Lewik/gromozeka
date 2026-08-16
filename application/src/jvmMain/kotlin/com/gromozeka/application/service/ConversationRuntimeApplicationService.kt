@@ -14,9 +14,13 @@ import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeIngressService
 import com.gromozeka.domain.service.ConversationRuntimeService
+import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.QueuedMessagePlacement
+import com.gromozeka.statesync.observe
 import klog.KLoggers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
@@ -28,6 +32,7 @@ import org.springframework.stereotype.Service
 )
 class ConversationRuntimeApplicationService(
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
+    private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val conversationService: ConversationDomainService,
 ) : ConversationRuntimeService, ConversationRuntimeIngressService {
@@ -95,8 +100,22 @@ class ConversationRuntimeApplicationService(
     override fun observeConversation(
         conversationId: Conversation.Id,
         afterEventSequence: Long?,
-    ): Flow<ConversationRuntimeEvent> =
-        runtimeDispatcher.observeConversation(conversationId, afterEventSequence)
+    ): Flow<ConversationRuntimeEvent> = channelFlow {
+        launch {
+            runtimeDispatcher.observeConversation(conversationId, afterEventSequence).collect { send(it) }
+        }
+        launch {
+            runtimeStateSyncService.observe(conversationId).collect { state ->
+                send(
+                    ConversationRuntimeEvent.SnapshotUpdated(
+                        conversationId = conversationId,
+                        snapshot = state.value,
+                        cursorSequence = state.value.lastEventSequence,
+                    )
+                )
+            }
+        }
+    }
 
     override suspend fun rememberCurrentThread(conversationId: Conversation.Id) {
         val conversation = conversationService.findById(conversationId)

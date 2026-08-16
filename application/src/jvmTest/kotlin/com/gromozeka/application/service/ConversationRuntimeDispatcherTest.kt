@@ -528,7 +528,7 @@ class ConversationRuntimeDispatcherTest {
 
             assertTrue(replayedEvents[0] is ConversationRuntimeEvent.MessageEmitted)
             assertTrue(replayedEvents[1] is ConversationRuntimeEvent.ExecutionCompleted)
-            assertTrue(replayedEvents[2] is ConversationRuntimeEvent.SnapshotUpdated)
+            assertTrue(replayedEvents[2] is ConversationRuntimeEvent.ReplayCompleted)
             assertEquals(message.id.value, (replayedEvents[0] as ConversationRuntimeEvent.MessageEmitted).taskId?.value)
         } finally {
             harness.close()
@@ -566,6 +566,7 @@ class ConversationRuntimeDispatcherTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = eventBus,
+            runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
             artifactReferenceValidator = acceptingArtifactReferenceValidator,
         )
         val serverExecutor = runtimeExecutor(
@@ -732,6 +733,7 @@ class ConversationRuntimeDispatcherTest {
         val dispatcher = ConversationRuntimeDispatcher(
             runtimeCoordinator = coordinator,
             runtimeEventBus = eventBus,
+            runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
             artifactReferenceValidator = artifactReferenceValidator,
         )
         val executor = runtimeExecutor(
@@ -965,6 +967,7 @@ class ConversationRuntimeDispatcherTest {
             delegate = ConversationRuntimeExecutor(
                 runtimeCoordinator = coordinator,
                 runtimeEventBus = eventBus,
+                runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
                 workspaceService = StaticWorkspaceDomainService(workspaceWorkerId, workspaceMounts),
                 aiConfigurationService = aiConfigurationService,
                 taskRunnerProvider = objectProvider(runner),

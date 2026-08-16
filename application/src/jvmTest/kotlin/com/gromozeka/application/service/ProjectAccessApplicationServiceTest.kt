@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.ProjectAccessDeniedException
+import com.gromozeka.domain.service.DeclarativeStateKey
 import com.gromozeka.domain.service.ProjectDomainService
 import kotlin.time.Clock
 import kotlin.test.Test
@@ -25,11 +26,13 @@ class ProjectAccessApplicationServiceTest {
     private val membershipRepository = FakeProjectMembershipRepository()
     private val projectService = FakeProjectDomainService()
     private val securityAuditRecorder = FakeSecurityAuditRecorder()
+    private val stateChanges = RecordingDeclarativeStateChangePublisher()
     private val service = ProjectAccessApplicationService(
         projectService = projectService,
         membershipRepository = membershipRepository,
         identityRepository = identityRepository,
         securityAuditRecorder = securityAuditRecorder,
+        stateChanges = stateChanges,
     )
 
     @Test
@@ -91,6 +94,28 @@ class ProjectAccessApplicationServiceTest {
         assertEquals(
             setOf(owned.id, shared.id),
             service.findAll(owner.id).mapTo(mutableSetOf(), Project::id),
+        )
+    }
+
+    @Test
+    fun `membership changes invalidate every project-scoped catalog`() = runSuspend {
+        val project = service.create(owner.id, "Shared")
+        stateChanges.publishedKeys.clear()
+
+        service.setMembership(owner.id, project.id, viewer.id, ProjectMembership.Role.VIEWER)
+
+        assertEquals(
+            setOf(
+                DeclarativeStateKey.projects,
+                DeclarativeStateKey.projectConversations(project.id),
+                DeclarativeStateKey.projectWorkspaces(project.id),
+                DeclarativeStateKey.projectAgentSkills(project.id),
+                DeclarativeStateKey.projectMemberships(project.id),
+                DeclarativeStateKey.agents,
+                DeclarativeStateKey.prompts,
+                DeclarativeStateKey.workers,
+            ),
+            stateChanges.publishedKeys.toSet(),
         )
     }
 }

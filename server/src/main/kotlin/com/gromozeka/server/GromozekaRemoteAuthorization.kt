@@ -188,6 +188,8 @@ class GromozekaRemoteAuthorization(
                 projectAccessService.requirePermission(user.id, projectId, ProjectPermission.READ)
             }
 
+            is PullStateSyncRequest -> authorizeStateQuery(user, request.query)
+
             is CreateConversationRequest,
             is FindConversationsByProjectRequest,
             is FindWorkspacesByProjectRequest,
@@ -281,6 +283,55 @@ class GromozekaRemoteAuthorization(
 
     suspend fun readableProjectIds(user: User): Set<Project.Id> =
         projectAccessService.findAll(user.id).mapTo(mutableSetOf(), Project::id)
+
+    suspend fun authorizeStateQuery(
+        user: User,
+        query: RemoteStateSyncQuery,
+    ) {
+        when (query) {
+            ConversationTabLayoutStateQuery -> Unit
+            is ConversationRuntimeStateQuery ->
+                requireConversation(user, query.conversationId, ProjectPermission.READ)
+            is DeclarativeStateRevisionQuery -> authorizeDeclarativeStateQuery(user, query)
+        }
+    }
+
+    private suspend fun authorizeDeclarativeStateQuery(
+        user: User,
+        query: DeclarativeStateRevisionQuery,
+    ) {
+        when (query.resource) {
+            RemoteDeclarativeStateResource.SETTINGS,
+            RemoteDeclarativeStateResource.MCP_SERVERS,
+            RemoteDeclarativeStateResource.USERS,
+            -> requireServerOwner(user)
+
+            RemoteDeclarativeStateResource.PROJECT_CONVERSATIONS,
+            RemoteDeclarativeStateResource.PROJECT_WORKSPACES,
+            RemoteDeclarativeStateResource.PROJECT_AGENT_SKILLS,
+            RemoteDeclarativeStateResource.PROJECT_MEMBERSHIPS,
+            -> projectAccessService.requirePermission(
+                user.id,
+                Project.Id(requireNotNull(query.scopeId)),
+                ProjectPermission.READ,
+            )
+
+            RemoteDeclarativeStateResource.WORKSPACE_MOUNTS -> requireWorkspace(
+                user,
+                Workspace.Id(requireNotNull(query.scopeId)),
+                ProjectPermission.READ,
+            )
+
+            RemoteDeclarativeStateResource.PROJECTS,
+            RemoteDeclarativeStateResource.AGENTS,
+            RemoteDeclarativeStateResource.PROMPTS,
+            RemoteDeclarativeStateResource.AI_CATALOG,
+            RemoteDeclarativeStateResource.WORKERS,
+            RemoteDeclarativeStateResource.USER_DIRECTORY,
+            RemoteDeclarativeStateResource.QUICK_TEXT_ACTIONS,
+            -> Unit
+        }
+    }
 
     private suspend fun requireAgent(
         user: User,

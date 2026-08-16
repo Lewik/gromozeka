@@ -35,7 +35,7 @@ import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeEvent
-import com.gromozeka.domain.service.ConversationRuntimeEventBus
+import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -96,7 +96,7 @@ class ConversationEngineService(
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
-    private val runtimeEventBus: ConversationRuntimeEventBus,
+    private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val distributedToolCatalog: DistributedAiToolCatalog,
     private val agentSkillRuntimeCatalogService: AgentSkillRuntimeCatalogService,
     private val aiToolRuntimeCatalogService: AiToolRuntimeCatalogService,
@@ -1252,7 +1252,7 @@ class ConversationEngineService(
 
     private suspend fun publishRuntimeSnapshot(conversationId: Conversation.Id) {
         try {
-            runtimeEventBus.publish(runtimeSnapshotEvent(conversationId))
+            runtimeStateSyncService.invalidate(conversationId)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -1262,12 +1262,6 @@ class ConversationEngineService(
             }
         }
     }
-
-    private suspend fun runtimeSnapshotEvent(conversationId: Conversation.Id): ConversationRuntimeEvent.SnapshotUpdated =
-        ConversationRuntimeEvent.SnapshotUpdated(
-            conversationId = conversationId,
-            snapshot = runtimeCoordinator.snapshot(conversationId),
-        )
 
     private suspend fun emitQueuedRuntimeMessagesAtSafePoint(
         conversationId: Conversation.Id,

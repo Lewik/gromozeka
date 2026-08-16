@@ -14,6 +14,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(project(":domain"))  // Transitively provides :shared
+                implementation(project(":state-sync"))
                 
                 implementation(libs.spring.boot.starter)
                 implementation(libs.snakeyaml)

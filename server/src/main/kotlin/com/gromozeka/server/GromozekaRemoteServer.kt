@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.AiUserCredentialApplicationService
+import com.gromozeka.application.service.ConversationRuntimeDispatcher
 import com.gromozeka.application.service.McpServerManagementService
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.Conversation
@@ -20,6 +21,8 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
+import com.gromozeka.domain.service.ConversationTabLayoutStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
@@ -27,6 +30,9 @@ import com.gromozeka.domain.service.ConversationRuntimeIngressService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.DeclarativeStateResource
+import com.gromozeka.domain.service.DeclarativeStateSyncService
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectAccessService
@@ -64,6 +70,8 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import com.gromozeka.statesync.StateSyncCursor
+import com.gromozeka.statesync.StateSyncSubscription
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
@@ -90,6 +98,10 @@ class GromozekaRemoteServer(
     private val workerCatalogService: WorkerCatalogService,
     private val workerAccessService: WorkerAccessService,
     private val conversationRuntimeService: ConversationRuntimeService,
+    private val conversationRuntimeDispatcher: ConversationRuntimeDispatcher,
+    private val conversationRuntimeStateSyncService: ConversationRuntimeStateSyncService,
+    private val conversationTabLayoutStateSyncService: ConversationTabLayoutStateSyncService,
+    private val declarativeStateSyncService: DeclarativeStateSyncService,
     private val conversationRuntimeIngressService: ConversationRuntimeIngressService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
@@ -124,7 +136,7 @@ class GromozekaRemoteServer(
         val connectionId = uuid7()
         val sender = RemoteSessionSender(session)
         val conversationSubscriptions = mutableMapOf<String, Job>()
-        val conversationTabLayoutSubscriptions = mutableMapOf<String, Job>()
+        val stateSubscriptions = mutableMapOf<String, Job>()
         val liveInterpreterOwner = LiveInterpreterSessionOwner(
             userId = authenticatedSession.principal.user.id,
             connectionId = connectionId,
@@ -217,19 +229,19 @@ class GromozekaRemoteServer(
                                 }
                             }
                             is StopObserveConversationCommand -> conversationSubscriptions.remove(payload.subscriptionId)?.cancel()
-                            is ObserveConversationTabLayoutCommand -> {
-                                conversationTabLayoutSubscriptions[payload.subscriptionId]?.cancel()
-                                conversationTabLayoutSubscriptions[payload.subscriptionId] = launch {
-                                    observeConversationTabLayout(
-                                        sender,
-                                        payload,
-                                        encoding,
-                                        authenticatedSession,
+                            is ObserveStateSyncCommand -> {
+                                stateSubscriptions[payload.subscriptionId]?.cancel()
+                                stateSubscriptions[payload.subscriptionId] = launch {
+                                    observeStateSync(
+                                        sender = sender,
+                                        command = payload,
+                                        encoding = encoding,
+                                        authenticatedSession = authenticatedSession,
                                     )
                                 }
                             }
-                            is StopObserveConversationTabLayoutCommand ->
-                                conversationTabLayoutSubscriptions.remove(payload.subscriptionId)?.cancel()
+                            is StopObserveStateSyncCommand ->
+                                stateSubscriptions.remove(payload.subscriptionId)?.cancel()
                             is SynthesizeSpeechStreamCommand -> launch {
                                 handleSynthesizeSpeechStream(sender, envelope.id, payload, encoding)
                             }
@@ -257,8 +269,8 @@ class GromozekaRemoteServer(
                 concurrentSpeechRequests.joinAll()
                 conversationSubscriptions.values.forEach { it.cancel() }
                 conversationSubscriptions.clear()
-                conversationTabLayoutSubscriptions.values.forEach { it.cancel() }
-                conversationTabLayoutSubscriptions.clear()
+                stateSubscriptions.values.forEach { it.cancel() }
+                stateSubscriptions.clear()
                 liveInterpreterApplicationService.stopOwnedBy(liveInterpreterOwner)
                 liveVoiceProviderVadApplicationService.stopOwnedBy(liveVoiceProviderVadOwner)
                 speechCaptureApplicationService.stopOwnedBy(speechCaptureOwner)
@@ -558,6 +570,7 @@ class GromozekaRemoteServer(
                 is UpdateProjectLastUsedRequest -> NullableProjectResponse(
                     projectAccessService.updateLastUsed(user.id, request.projectId)
                 )
+                is PullStateSyncRequest -> stateSyncSnapshot(user, request.query)
                 is CreateConversationRequest -> ConversationResponse(
                     conversationDomainService.create(
                         request.projectId,
@@ -757,35 +770,15 @@ class GromozekaRemoteServer(
         try {
             sessionAccessGuard.requireConversationRead(authenticatedSession, command.conversationId)
             var liveEventsStarted = false
-            var lastActivitySignature: RuntimeActivitySignature? = null
-            conversationRuntimeService.observeConversation(command.conversationId, command.afterEventSequence)
+            conversationRuntimeDispatcher.observeConversation(command.conversationId, command.afterEventSequence)
                 .collect { event ->
                     val currentUser = sessionAccessGuard.requireConversationRead(
                         authenticatedSession,
                         command.conversationId,
                     )
                     when (event) {
-                        is ConversationRuntimeEvent.SnapshotUpdated -> {
-                            val activitySignature = event.snapshot.presentationActivitySignature()
-                            val activityChanged = liveEventsStarted && activitySignature != lastActivitySignature
-                            lastActivitySignature = activitySignature
-                            sender.send(
-                                command.subscriptionId,
-                                ConversationRuntimeSnapshotEvent(
-                                    subscriptionId = command.subscriptionId,
-                                    conversationId = event.conversationId,
-                                    snapshot = event.snapshot,
-                                    cursorSequence = event.cursorSequence,
-                                ),
-                                encoding,
-                            )
-                            if (activityChanged && event.snapshot.hasPresentableActivity()) {
-                                clientPresentationRegistry.presentActivity(
-                                    userId = currentUser.id,
-                                    conversationId = event.conversationId,
-                                    eventKey = "${event.conversationId.value}:${event.snapshot.revision}",
-                                )
-                            }
+                        is ConversationRuntimeEvent.SnapshotUpdated -> Unit
+                        is ConversationRuntimeEvent.ReplayCompleted -> {
                             liveEventsStarted = true
                         }
                         is ConversationRuntimeEvent.MessageEmitted -> {
@@ -872,24 +865,149 @@ class GromozekaRemoteServer(
         }
     }
 
-    private suspend fun observeConversationTabLayout(
+    private suspend fun observeStateSync(
         sender: RemoteSessionSender,
-        command: ObserveConversationTabLayoutCommand,
+        command: ObserveStateSyncCommand,
         encoding: RemoteProtocolEncoding,
         authenticatedSession: AuthenticatedRemoteSession,
     ) {
-        conversationTabLayoutService.observe(authenticatedSession.principal.user.id).collect { layout ->
+        try {
             val user = sessionAccessGuard.requireUser(authenticatedSession)
+            remoteAuthorization.authorizeStateQuery(user, command.query)
+            when (val query = command.query) {
+                is ConversationRuntimeStateQuery -> observeConversationStateSyncSubscription(
+                    sender = sender,
+                    command = command,
+                    encoding = encoding,
+                    authenticatedSession = authenticatedSession,
+                    subscription = conversationRuntimeStateSyncService.subscribe(query.conversationId),
+                )
+                ConversationTabLayoutStateQuery -> observeStateSyncSubscription(
+                    sender = sender,
+                    command = command,
+                    encoding = encoding,
+                    authenticatedSession = authenticatedSession,
+                    subscription = conversationTabLayoutStateSyncService.subscribe(user.id),
+                )
+                is DeclarativeStateRevisionQuery -> observeStateSyncSubscription(
+                    sender = sender,
+                    command = command,
+                    encoding = encoding,
+                    authenticatedSession = authenticatedSession,
+                    subscription = declarativeStateSyncService.subscribe(query.toDomainKey()),
+                )
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            log.warn(error) { "Remote state observation failed: query=${command.query} error=${error.message}" }
             sender.send(
                 command.subscriptionId,
-                ConversationTabLayoutSnapshotEvent(
-                    command.subscriptionId,
-                    filterConversationTabLayout(user, layout),
+                StateSyncObservationFailedEvent(
+                    subscriptionId = command.subscriptionId,
+                    query = command.query,
+                    message = error.message ?: "Unknown state observation error",
+                    type = error::class.simpleName,
                 ),
                 encoding,
             )
         }
     }
+
+    private suspend fun observeConversationStateSyncSubscription(
+        sender: RemoteSessionSender,
+        command: ObserveStateSyncCommand,
+        encoding: RemoteProtocolEncoding,
+        authenticatedSession: AuthenticatedRemoteSession,
+        subscription: StateSyncSubscription<Conversation.Id, ConversationRuntimeSnapshot>,
+    ) {
+        var initial = true
+        var lastActivitySignature: RuntimeActivitySignature? = null
+        try {
+            subscription.invalidations.collect { invalidation ->
+                val user = sessionAccessGuard.requireUser(authenticatedSession)
+                remoteAuthorization.authorizeStateQuery(user, command.query)
+                sender.send(
+                    command.subscriptionId,
+                    StateSyncInvalidatedEvent(
+                        subscriptionId = command.subscriptionId,
+                        query = command.query,
+                        cursor = invalidation.cursor.toRemote(),
+                    ),
+                    encoding,
+                )
+                val snapshot = subscription.snapshot().value
+                val activitySignature = snapshot.presentationActivitySignature()
+                if (!initial && activitySignature != lastActivitySignature && snapshot.hasPresentableActivity()) {
+                    clientPresentationRegistry.presentActivity(
+                        userId = user.id,
+                        conversationId = snapshot.conversationId,
+                        eventKey = "${snapshot.conversationId.value}:${snapshot.revision}",
+                    )
+                }
+                initial = false
+                lastActivitySignature = activitySignature
+            }
+        } finally {
+            subscription.close()
+        }
+    }
+
+    private suspend fun <K : Any, V> observeStateSyncSubscription(
+        sender: RemoteSessionSender,
+        command: ObserveStateSyncCommand,
+        encoding: RemoteProtocolEncoding,
+        authenticatedSession: AuthenticatedRemoteSession,
+        subscription: StateSyncSubscription<K, V>,
+    ) {
+        try {
+            subscription.invalidations.collect { invalidation ->
+                val user = sessionAccessGuard.requireUser(authenticatedSession)
+                remoteAuthorization.authorizeStateQuery(user, command.query)
+                sender.send(
+                    command.subscriptionId,
+                    StateSyncInvalidatedEvent(
+                        subscriptionId = command.subscriptionId,
+                        query = command.query,
+                        cursor = invalidation.cursor.toRemote(),
+                    ),
+                    encoding,
+                )
+            }
+        } finally {
+            subscription.close()
+        }
+    }
+
+    private suspend fun stateSyncSnapshot(
+        user: User,
+        query: RemoteStateSyncQuery,
+    ): StateSyncSnapshotResponse =
+        when (query) {
+            is ConversationRuntimeStateQuery -> conversationRuntimeStateSyncService.snapshot(query.conversationId).let {
+                StateSyncSnapshotResponse(
+                    query = query,
+                    cursor = it.cursor.toRemote(),
+                    state = ConversationRuntimeStatePayload(it.value),
+                )
+            }
+            ConversationTabLayoutStateQuery -> conversationTabLayoutStateSyncService.snapshot(user.id).let {
+                StateSyncSnapshotResponse(
+                    query = query,
+                    cursor = it.cursor.toRemote(),
+                    state = ConversationTabLayoutStatePayload(
+                        filterConversationTabLayout(user, it.value),
+                    ),
+                )
+            }
+            is DeclarativeStateRevisionQuery -> declarativeStateSyncService.snapshot(query.toDomainKey()).let {
+                StateSyncSnapshotResponse(
+                    query = query,
+                    cursor = it.cursor.toRemote(),
+                    state = DeclarativeStateRevisionPayload,
+                )
+            }
+        }
 
     private suspend fun filterConversationTabLayout(
         user: User,
@@ -1061,6 +1179,12 @@ class GromozekaRemoteServer(
     }
 }
 
+private fun DeclarativeStateRevisionQuery.toDomainKey(): DeclarativeStateKey =
+    DeclarativeStateKey(
+        resource = DeclarativeStateResource.valueOf(resource.name),
+        scopeId = scopeId,
+    )
+
 private fun McpServer.toRemoteView(): RemoteMcpServerView {
     val environmentVariables = when (val transport = config.transport) {
         is McpServerTransport.Stdio -> transport.environment.keys
@@ -1133,6 +1257,12 @@ private fun timeBucketedPresentationKey(vararg parts: String): String =
     parts.joinToString(":") + ":${Clock.System.now().toEpochMilliseconds() / PRESENTATION_ERROR_BUCKET_MILLIS}"
 
 private const val PRESENTATION_ERROR_BUCKET_MILLIS = 5_000L
+
+private fun StateSyncCursor.toRemote(): RemoteStateSyncCursor = RemoteStateSyncCursor(
+    sourceEpoch = sourceEpoch,
+    streamEpoch = streamEpoch,
+    generation = generation,
+)
 
 private fun com.gromozeka.domain.model.PersonalAccessToken.toPersonalAccessTokenView() =
     PersonalAccessTokenView(

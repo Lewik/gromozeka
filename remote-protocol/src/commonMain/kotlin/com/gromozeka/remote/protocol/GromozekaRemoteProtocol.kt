@@ -793,6 +793,93 @@ data class RemoteLiveInterpreterDraft(
 )
 
 @Serializable
+@JsonClassDiscriminator("stateQueryType")
+sealed interface RemoteStateSyncQuery
+
+@Serializable
+@SerialName("conversation_runtime")
+data class ConversationRuntimeStateQuery(
+    val conversationId: Conversation.Id,
+) : RemoteStateSyncQuery
+
+@Serializable
+@SerialName("conversation_tab_layout")
+data object ConversationTabLayoutStateQuery : RemoteStateSyncQuery
+
+@Serializable
+enum class RemoteDeclarativeStateResource {
+    PROJECTS,
+    PROJECT_CONVERSATIONS,
+    PROJECT_WORKSPACES,
+    WORKSPACE_MOUNTS,
+    AGENTS,
+    PROMPTS,
+    PROJECT_AGENT_SKILLS,
+    AI_CATALOG,
+    MCP_SERVERS,
+    WORKERS,
+    USERS,
+    USER_DIRECTORY,
+    PROJECT_MEMBERSHIPS,
+    SETTINGS,
+    QUICK_TEXT_ACTIONS,
+}
+
+@Serializable
+@SerialName("declarative_revision")
+data class DeclarativeStateRevisionQuery(
+    val resource: RemoteDeclarativeStateResource,
+    val scopeId: String? = null,
+) : RemoteStateSyncQuery
+
+@Serializable
+data class RemoteStateSyncCursor(
+    val sourceEpoch: String,
+    val streamEpoch: Long,
+    val generation: Long,
+)
+
+@Serializable
+@JsonClassDiscriminator("statePayloadType")
+sealed interface RemoteStateSyncPayload
+
+@Serializable
+@SerialName("conversation_runtime")
+data class ConversationRuntimeStatePayload(
+    val snapshot: ConversationRuntimeSnapshot,
+) : RemoteStateSyncPayload
+
+@Serializable
+@SerialName("conversation_tab_layout")
+data class ConversationTabLayoutStatePayload(
+    val layout: ConversationTabLayout,
+) : RemoteStateSyncPayload
+
+@Serializable
+@SerialName("declarative_revision")
+data object DeclarativeStateRevisionPayload : RemoteStateSyncPayload
+
+@Serializable
+@SerialName("observe_state")
+data class ObserveStateSyncCommand(
+    val subscriptionId: String,
+    val query: RemoteStateSyncQuery,
+) : ClientPayload
+
+@Serializable
+@SerialName("stop_observe_state")
+data class StopObserveStateSyncCommand(
+    val subscriptionId: String,
+) : ClientPayload
+
+@Serializable
+@SerialName("pull_state")
+data class PullStateSyncRequest(
+    val query: RemoteStateSyncQuery,
+    val invalidationCursor: RemoteStateSyncCursor,
+) : ClientRequest
+
+@Serializable
 @SerialName("observe_conversation")
 data class ObserveConversationCommand(
     val subscriptionId: String,
@@ -803,18 +890,6 @@ data class ObserveConversationCommand(
 @Serializable
 @SerialName("stop_observe_conversation")
 data class StopObserveConversationCommand(
-    val subscriptionId: String,
-) : ClientPayload
-
-@Serializable
-@SerialName("observe_conversation_tab_layout")
-data class ObserveConversationTabLayoutCommand(
-    val subscriptionId: String,
-) : ClientPayload
-
-@Serializable
-@SerialName("stop_observe_conversation_tab_layout")
-data class StopObserveConversationTabLayoutCommand(
     val subscriptionId: String,
 ) : ClientPayload
 
@@ -1351,12 +1426,28 @@ data class ErrorResponse(
 ) : ServerResponse
 
 @Serializable
-@SerialName("conversation_runtime_snapshot")
-data class ConversationRuntimeSnapshotEvent(
+@SerialName("state_snapshot")
+data class StateSyncSnapshotResponse(
+    val query: RemoteStateSyncQuery,
+    val cursor: RemoteStateSyncCursor,
+    val state: RemoteStateSyncPayload,
+) : ServerResponse
+
+@Serializable
+@SerialName("state_invalidated")
+data class StateSyncInvalidatedEvent(
     val subscriptionId: String,
-    val conversationId: Conversation.Id,
-    val snapshot: ConversationRuntimeSnapshot,
-    val cursorSequence: Long? = snapshot.lastEventSequence,
+    val query: RemoteStateSyncQuery,
+    val cursor: RemoteStateSyncCursor,
+) : ServerPayload
+
+@Serializable
+@SerialName("state_observation_failed")
+data class StateSyncObservationFailedEvent(
+    val subscriptionId: String,
+    val query: RemoteStateSyncQuery,
+    val message: String,
+    val type: String? = null,
 ) : ServerPayload
 
 @Serializable
@@ -1424,13 +1515,6 @@ data class ConversationExecutionFailedEvent(
     val message: String,
     val type: String? = null,
     val cursorSequence: Long? = null,
-) : ServerPayload
-
-@Serializable
-@SerialName("conversation_tab_layout_snapshot")
-data class ConversationTabLayoutSnapshotEvent(
-    val subscriptionId: String,
-    val layout: ConversationTabLayout,
 ) : ServerPayload
 
 @Serializable

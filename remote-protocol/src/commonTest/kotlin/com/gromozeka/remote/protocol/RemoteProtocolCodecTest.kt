@@ -243,22 +243,27 @@ class RemoteProtocolCodecTest {
         assertEquals("mac-worker", decodedWorkers.workers.single().workerId.value)
         assertEquals("arm64", decodedWorkers.workers.single().environmentProfile.architecture)
 
-        val layoutEvent = GromozekaServerEnvelope(
+        val layoutSnapshot = GromozekaServerEnvelope(
             id = "layout-event-1",
-            payload = ConversationTabLayoutSnapshotEvent(
-                subscriptionId = "layout-subscription-1",
-                layout = ConversationTabLayout(
-                    conversationIds = listOf(Conversation.Id("conversation-1")),
-                    revision = 7,
-                    updatedAt = Instant.parse("2026-07-22T00:00:00Z"),
+            payload = StateSyncSnapshotResponse(
+                query = ConversationTabLayoutStateQuery,
+                cursor = RemoteStateSyncCursor("server-1", streamEpoch = 2, generation = 7),
+                state = ConversationTabLayoutStatePayload(
+                    ConversationTabLayout(
+                        conversationIds = listOf(Conversation.Id("conversation-1")),
+                        revision = 7,
+                        updatedAt = Instant.parse("2026-07-22T00:00:00Z"),
+                    ),
                 ),
             ),
         )
         val decodedLayout = RemoteProtocolCodec.decodeServerBinary(
-            RemoteProtocolCodec.encodeServerBinary(layoutEvent)
-        ).payload as ConversationTabLayoutSnapshotEvent
-        assertEquals(7, decodedLayout.layout.revision)
-        assertEquals("conversation-1", decodedLayout.layout.conversationIds.single().value)
+            RemoteProtocolCodec.encodeServerBinary(layoutSnapshot)
+        ).payload as StateSyncSnapshotResponse
+        val decodedLayoutPayload = decodedLayout.state as ConversationTabLayoutStatePayload
+        assertEquals(ConversationTabLayoutStateQuery, decodedLayout.query)
+        assertEquals(7, decodedLayoutPayload.layout.revision)
+        assertEquals("conversation-1", decodedLayoutPayload.layout.conversationIds.single().value)
     }
 
     @Test
@@ -785,26 +790,91 @@ class RemoteProtocolCodecTest {
         )
         val envelope = GromozekaServerEnvelope(
             id = "runtime-command-1",
-            payload = ConversationRuntimeSnapshotEvent(
-                subscriptionId = "subscription-1",
-                conversationId = commandTask.conversationId,
-                snapshot = ConversationRuntimeSnapshot(
-                    revision = 1,
-                    conversationId = commandTask.conversationId,
-                    state = null,
-                    pendingTasks = emptyList(),
-                    commandTasks = listOf(commandTask),
-                    commandMonitors = listOf(monitor),
+            payload = StateSyncSnapshotResponse(
+                query = ConversationRuntimeStateQuery(commandTask.conversationId),
+                cursor = RemoteStateSyncCursor(
+                    sourceEpoch = "server-1",
+                    streamEpoch = 2,
+                    generation = 3,
+                ),
+                state = ConversationRuntimeStatePayload(
+                    ConversationRuntimeSnapshot(
+                        revision = 1,
+                        conversationId = commandTask.conversationId,
+                        state = null,
+                        pendingTasks = emptyList(),
+                        commandTasks = listOf(commandTask),
+                        commandMonitors = listOf(monitor),
+                    ),
                 ),
             )
         )
 
         val decoded = RemoteProtocolCodec.decodeServerBinary(
             RemoteProtocolCodec.encodeServerBinary(envelope)
-        ).payload as ConversationRuntimeSnapshotEvent
+        ).payload as StateSyncSnapshotResponse
+        val snapshot = (decoded.state as ConversationRuntimeStatePayload).snapshot
 
-        assertEquals(commandTask, decoded.snapshot.commandTasks.single())
-        assertEquals(monitor, decoded.snapshot.commandMonitors.single())
+        assertEquals(commandTask, snapshot.commandTasks.single())
+        assertEquals(monitor, snapshot.commandMonitors.single())
+    }
+
+    @Test
+    fun cborRoundTripSupportsStateSyncControlMessages() {
+        val query = DeclarativeStateRevisionQuery(RemoteDeclarativeStateResource.PROJECTS)
+        val cursor = RemoteStateSyncCursor(
+            sourceEpoch = "server-1",
+            streamEpoch = 4,
+            generation = 7,
+        )
+        val observe = GromozekaClientEnvelope(
+            id = "observe-state-1",
+            payload = ObserveStateSyncCommand("subscription-1", query),
+        )
+        val invalidation = GromozekaServerEnvelope(
+            id = "subscription-1",
+            payload = StateSyncInvalidatedEvent("subscription-1", query, cursor),
+        )
+
+        val decodedObserve = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(observe)
+        ).payload as ObserveStateSyncCommand
+        val decodedInvalidation = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(invalidation)
+        ).payload as StateSyncInvalidatedEvent
+
+        assertEquals(query, decodedObserve.query)
+        assertEquals(query, decodedInvalidation.query)
+        assertEquals(cursor, decodedInvalidation.cursor)
+    }
+
+    @Test
+    fun roundTripSupportsDeclarativeRevisionState() {
+        val query = DeclarativeStateRevisionQuery(
+            resource = RemoteDeclarativeStateResource.PROJECT_CONVERSATIONS,
+            scopeId = "project-1",
+        )
+        val cursor = RemoteStateSyncCursor("server-1", streamEpoch = 3, generation = 9)
+        val pull = GromozekaClientEnvelope(
+            id = "pull-declarative-1",
+            payload = PullStateSyncRequest(query, cursor),
+        )
+        val snapshot = GromozekaServerEnvelope(
+            id = "pull-declarative-1",
+            payload = StateSyncSnapshotResponse(query, cursor, DeclarativeStateRevisionPayload),
+        )
+
+        val decodedPull = RemoteProtocolCodec.decodeClientText(
+            RemoteProtocolCodec.encodeClientText(pull)
+        ).payload as PullStateSyncRequest
+        val decodedSnapshot = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(snapshot)
+        ).payload as StateSyncSnapshotResponse
+
+        assertEquals(query, decodedPull.query)
+        assertEquals(cursor, decodedPull.invalidationCursor)
+        assertEquals(query, decodedSnapshot.query)
+        assertEquals(DeclarativeStateRevisionPayload, decodedSnapshot.state)
     }
 
     @Test

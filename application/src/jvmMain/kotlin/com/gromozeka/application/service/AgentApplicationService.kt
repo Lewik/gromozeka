@@ -14,6 +14,9 @@ import com.gromozeka.domain.repository.PromptRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.domain.service.PromptAssemblyService
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
@@ -27,6 +30,7 @@ class AgentApplicationService(
     private val skillRepository: AgentSkillRepository,
     private val promptAssemblyService: PromptAssemblyService,
     private val aiConfigurationProvider: AiConfigurationProvider,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : AgentDomainService, AgentPromptAssemblyService {
     @Transactional
     override suspend fun createAgent(
@@ -62,7 +66,7 @@ class AgentApplicationService(
                 createdAt = now,
                 updatedAt = now,
             )
-        )
+        ).also { stateChanges.publish(DeclarativeStateKey.agents) }
     }
 
     override suspend fun duplicateAgent(
@@ -130,7 +134,9 @@ class AgentApplicationService(
             runtimeSelection = updated.runtimeSelection,
             tools = updated.tools,
         )
-        return agentRepository.save(updated)
+        return agentRepository.save(updated).also {
+            stateChanges.publish(DeclarativeStateKey.agents)
+        }
     }
 
     @Transactional
@@ -139,6 +145,7 @@ class AgentApplicationService(
             "Default agent cannot be deleted"
         }
         agentRepository.delete(id)
+        stateChanges.publish(DeclarativeStateKey.agents)
     }
 
     override suspend fun count(): Int = agentRepository.count()

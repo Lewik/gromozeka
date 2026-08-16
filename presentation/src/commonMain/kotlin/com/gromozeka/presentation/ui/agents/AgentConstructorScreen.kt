@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,17 +56,24 @@ import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.presentation.ui.CompactButton
-import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-
-private val log = KLoggers.logger("AgentConstructorScreen")
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 
 private enum class RuntimeCatalogTab(val title: String) {
     Agents("Agents"),
     Prompts("Prompts"),
     Skills("Skills"),
 }
+
+private data class RuntimeCatalogSnapshot(
+    val projects: List<Project>,
+    val agents: List<AgentDefinition>,
+    val prompts: List<Prompt>,
+    val skills: List<AgentSkill>,
+)
 
 @Composable
 fun AgentConstructorScreen(
@@ -103,6 +111,7 @@ fun AgentConstructorScreen(
     var deletingSkill by remember { mutableStateOf<AgentSkill?>(null) }
     var templateMenuExpanded by remember { mutableStateOf(false) }
     var scopeMenuExpanded by remember { mutableStateOf(false) }
+    var refreshKey by remember { mutableIntStateOf(0) }
 
     val observedAiSnapshot by aiConfigurationService.snapshotFlow.collectAsState()
     val aiSnapshot = observedAiSnapshot ?: aiConfigurationService.snapshot
@@ -125,23 +134,25 @@ fun AgentConstructorScreen(
         )
     }
 
-    suspend fun loadData() {
+    LaunchedEffect(selectedProjectId, refreshKey) {
         isLoading = true
-        error = null
-        runCatching {
-            projects = projectService.findAll()
-            agents = agentService.findAll()
-            prompts = promptService.findAll()
-            skills = selectedProjectId?.let { agentSkillService.findByProject(it) }.orEmpty()
-        }.onFailure {
-            error = it.message ?: "Failed to load runtime catalog"
-            log.error(it) { "Failed to load runtime catalog" }
+        combine(
+            projectService.observeAll(),
+            agentService.observeAll(),
+            promptService.observeAll(),
+            selectedProjectId?.let(agentSkillService::observeByProject) ?: flowOf(emptyList()),
+            ::RuntimeCatalogSnapshot,
+        ).catch { failure ->
+            error = failure.message ?: "Failed to observe runtime catalog"
+            isLoading = false
+        }.collect { snapshot ->
+            projects = snapshot.projects
+            agents = snapshot.agents
+            prompts = snapshot.prompts
+            skills = snapshot.skills
+            error = null
+            isLoading = false
         }
-        isLoading = false
-    }
-
-    LaunchedEffect(selectedProjectId) {
-        loadData()
     }
 
     Column(
@@ -197,7 +208,7 @@ fun AgentConstructorScreen(
                     }
                 }
                 CompactButton(
-                    onClick = { coroutineScope.launch { loadData() } },
+                    onClick = { refreshKey++ },
                     tooltip = "Reload runtime catalog",
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = "Reload")
@@ -310,7 +321,6 @@ fun AgentConstructorScreen(
                                         sourceAgentId = agent.id,
                                         name = "${agent.name} copy",
                                     )
-                                    loadData()
                                 }.onFailure { error = it.message }
                             }
                         },
@@ -407,7 +417,6 @@ fun AgentConstructorScreen(
                         showAgentEditor = false
                         editingAgent = null
                         agentTemplate = null
-                        loadData()
                     }.onFailure { error = it.message }
                 }
             },
@@ -432,7 +441,6 @@ fun AgentConstructorScreen(
                         showPromptEditor = false
                         editingPrompt = null
                         promptTemplate = null
-                        loadData()
                     }.onFailure { error = it.message }
                 }
             },
@@ -458,7 +466,6 @@ fun AgentConstructorScreen(
                     runCatching {
                         agentService.delete(agent.id)
                         deletingAgent = null
-                        loadData()
                     }.onFailure {
                         error = it.message
                         deletingAgent = null
@@ -478,7 +485,6 @@ fun AgentConstructorScreen(
                     runCatching {
                         promptService.deletePrompt(prompt.id)
                         deletingPrompt = null
-                        loadData()
                     }.onFailure {
                         error = it.message
                         deletingPrompt = null
@@ -502,7 +508,6 @@ fun AgentConstructorScreen(
                     runCatching {
                         agentSkillService.delete(skill.id)
                         deletingSkill = null
-                        loadData()
                     }.onFailure {
                         error = it.message
                         deletingSkill = null

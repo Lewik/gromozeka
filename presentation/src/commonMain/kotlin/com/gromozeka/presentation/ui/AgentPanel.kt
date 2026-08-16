@@ -27,6 +27,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.service.AgentDomainService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.catch
 import klog.KLoggers
 
 private val log = KLoggers.logger("AgentPanel")
@@ -52,25 +53,25 @@ fun AgentPanel(
         if (isVisible) {
             isLoading = true
             error = null
-            try {
-                val loadedAgents = agentService.findByProject(projectId)
-
-                agents = loadedAgents.sortedWith(
+            agentService.observeByProject(projectId)
+                .catch { failure ->
+                    error = "Failed to load agents: ${failure.message}"
+                    log.error(failure) { "Error loading agents" }
+                    isLoading = false
+                }
+                .collect { loadedAgents ->
+                    agents = loadedAgents.sortedWith(
                     compareBy<AgentDefinition> { agent ->
                         when (val type = agent.type) {
                             is AgentDefinition.Type.Project -> 0
                             is AgentDefinition.Type.Global -> 1
                         }
                     }.thenBy { it.name }
-                )
-
-                log.info { "Loaded ${agents.size} agents for project ${projectId.value}" }
-            } catch (e: Exception) {
-                error = "Failed to load agents: ${e.message}"
-                log.error(e) { "Error loading agents" }
-            } finally {
-                isLoading = false
-            }
+                    )
+                    error = null
+                    isLoading = false
+                    log.info { "Loaded ${agents.size} agents for project ${projectId.value}" }
+                }
         }
     }
 

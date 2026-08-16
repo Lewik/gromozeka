@@ -16,6 +16,8 @@ import com.gromozeka.remote.protocol.WorkspaceResponse
 import com.gromozeka.remote.protocol.WorkspacesResponse
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.UpdateWorkspaceRequest
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 internal class RemoteWorkspaceCatalogService(
     private val client: GromozekaWsClient,
@@ -30,10 +32,22 @@ internal class RemoteWorkspaceCatalogService(
             FindWorkspacesByProjectRequest(projectId)
         ).workspaces
 
+    override fun observeByProject(projectId: Project.Id): Flow<List<Workspace>> =
+        client.observeDeclarativeState(
+            RemoteDeclarativeStateResource.PROJECT_WORKSPACES,
+            projectId.value,
+        ) { findByProject(projectId) }
+
     override suspend fun findMounts(workspaceId: Workspace.Id): List<WorkspaceMount> =
         client.requestTyped<FindWorkspaceMountsRequest, WorkspaceMountsResponse>(
             FindWorkspaceMountsRequest(workspaceId)
         ).mounts
+
+    override fun observeMounts(workspaceId: Workspace.Id): Flow<List<WorkspaceMount>> =
+        client.observeDeclarativeState(
+            RemoteDeclarativeStateResource.WORKSPACE_MOUNTS,
+            workspaceId.value,
+        ) { findMounts(workspaceId) }
 
     override suspend fun create(
         projectId: Project.Id,

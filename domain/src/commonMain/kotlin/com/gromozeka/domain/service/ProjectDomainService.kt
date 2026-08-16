@@ -1,6 +1,8 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Project
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 /**
  * [SPECIFICATION] Domain service for managing project lifecycle.
@@ -33,6 +35,18 @@ interface ProjectDomainService {
      * @return project if found, null otherwise
      */
     suspend fun findById(id: Project.Id): Project?
+
+    fun observe(id: Project.Id): Flow<Project?> = flow {
+        emit(findById(id))
+    }
+
+    fun observeAll(): Flow<List<Project>> = flow {
+        emit(findAll())
+    }
+
+    fun observeRecent(limit: Int = 10): Flow<List<Project>> = flow {
+        emit(findRecent(limit))
+    }
 
     /**
      * Retrieves recently used projects.

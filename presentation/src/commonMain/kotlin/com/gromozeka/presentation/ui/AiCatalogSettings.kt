@@ -81,6 +81,7 @@ import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerCatalogService
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -161,9 +162,9 @@ fun AiCatalogSettings(
     val templates = remember { runtimeCatalogTemplateService.getTemplates() }
 
     LaunchedEffect(workerCatalogService) {
-        runCatching { workerCatalogService.listWorkers() }
-            .onSuccess { workers = it }
-            .onFailure { error = it.message ?: it::class.simpleName }
+        workerCatalogService.observeWorkers()
+            .catch { failure -> error = failure.message ?: failure::class.simpleName }
+            .collect { workers = it }
     }
 
     LaunchedEffect(snapshot?.revision) {

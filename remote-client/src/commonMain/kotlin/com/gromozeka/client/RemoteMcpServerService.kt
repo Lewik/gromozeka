@@ -13,12 +13,17 @@ import com.gromozeka.remote.protocol.RemoteMcpServerView
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.TestBrowserUseRequest
 import com.gromozeka.remote.protocol.UpdateMcpServerRequest
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 class RemoteMcpServerService internal constructor(
     private val client: GromozekaWsClient,
 ) {
     suspend fun list(): List<RemoteMcpServerView> =
         client.requestTyped<ListMcpServersRequest, McpServersResponse>(ListMcpServersRequest).servers
+
+    fun observe(): Flow<List<RemoteMcpServerView>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.MCP_SERVERS, load = ::list)
 
     suspend fun create(config: McpServerConfig): RemoteMcpServerView =
         client.requestTyped<CreateMcpServerRequest, McpServerResponse>(

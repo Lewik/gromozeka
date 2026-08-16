@@ -75,6 +75,7 @@ import com.gromozeka.presentation.services.translation.data.Translation
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.catch
 
 private val log = KLoggers.logger("SettingsPanel")
 
@@ -185,12 +186,16 @@ fun SettingsPanel(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             themeService.refreshThemes()
-            runCatching { workerCatalogService.listWorkers() }
-                .onSuccess { workers = it }
-                .onFailure { log.warn(it) { "Failed to load Workers for settings: ${it.message}" } }
-            if (localWorkerController.status.value.supported) {
-                localWorkerController.refresh(workerCatalogService)
-            }
+            workerCatalogService.observeWorkers()
+                .catch { failure ->
+                    log.warn(failure) { "Failed to load Workers for settings: ${failure.message}" }
+                }
+                .collect { observedWorkers ->
+                    workers = observedWorkers
+                    if (localWorkerController.status.value.supported) {
+                        localWorkerController.refresh(workerCatalogService)
+                    }
+                }
         }
     }
 

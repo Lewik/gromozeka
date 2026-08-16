@@ -5,9 +5,12 @@ import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.remote.protocol.CloseConversationTabRequest
 import com.gromozeka.remote.protocol.ConversationTabLayoutResponse
+import com.gromozeka.remote.protocol.ConversationTabLayoutStatePayload
+import com.gromozeka.remote.protocol.ConversationTabLayoutStateQuery
 import com.gromozeka.remote.protocol.GetConversationTabLayoutRequest
 import com.gromozeka.remote.protocol.OpenConversationTabRequest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 internal class RemoteConversationTabLayoutService(
     private val client: GromozekaWsClient,
@@ -27,5 +30,10 @@ internal class RemoteConversationTabLayoutService(
             CloseConversationTabRequest(conversationId),
         ).layout
 
-    override fun observe(): Flow<ConversationTabLayout> = client.observeConversationTabLayout()
+    override fun observe(): Flow<ConversationTabLayout> =
+        client.observeState(ConversationTabLayoutStateQuery).map { snapshot ->
+            val payload = snapshot.value as? ConversationTabLayoutStatePayload
+                ?: error("Unexpected conversation tab layout state payload: ${snapshot.value::class.simpleName}")
+            payload.layout
+        }
 }

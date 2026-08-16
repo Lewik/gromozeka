@@ -20,6 +20,8 @@ import com.gromozeka.remote.protocol.FindAgentsRequest
 import com.gromozeka.remote.protocol.GetDefaultAgentRequest
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.UpdateAgentRequest
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 internal class RemoteAgentService(
     private val client: GromozekaWsClient,
@@ -33,8 +35,16 @@ internal class RemoteAgentService(
     override suspend fun findAll(): List<AgentDefinition> =
         client.requestTyped<FindAgentsRequest, AgentsResponse>(FindAgentsRequest()).agents
 
+    override fun observeAll(): Flow<List<AgentDefinition>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.AGENTS, load = ::findAll)
+
     override suspend fun findByProject(projectId: com.gromozeka.domain.model.Project.Id): List<AgentDefinition> =
         client.requestTyped<FindAgentsRequest, AgentsResponse>(FindAgentsRequest(projectId)).agents
+
+    override fun observeByProject(
+        projectId: com.gromozeka.domain.model.Project.Id,
+    ): Flow<List<AgentDefinition>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.AGENTS) { findByProject(projectId) }
 
     override suspend fun createAgent(
         projectId: com.gromozeka.domain.model.Project.Id?,

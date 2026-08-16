@@ -1433,7 +1433,7 @@ class MemoryRealModelE2eTest {
             var liveEvents = false
             conversationEngineService.observeConversation(conversation.id).collect { event ->
                 if (!liveEvents) {
-                    if (event is ConversationRuntimeEvent.SnapshotUpdated) {
+                    if (event is ConversationRuntimeEvent.ReplayCompleted) {
                         liveEvents = true
                         observerReady.complete(Unit)
                     }
@@ -1442,6 +1442,7 @@ class MemoryRealModelE2eTest {
 
                 when (event) {
                     is ConversationRuntimeEvent.SnapshotUpdated -> Unit
+                    is ConversationRuntimeEvent.ReplayCompleted -> Unit
                     is ConversationRuntimeEvent.MessageEmitted -> emittedMessages.add(event.message)
                     is ConversationRuntimeEvent.ExecutionCompleted -> completed.complete(Unit)
                     is ConversationRuntimeEvent.ExecutionFailed -> completed.completeExceptionally(

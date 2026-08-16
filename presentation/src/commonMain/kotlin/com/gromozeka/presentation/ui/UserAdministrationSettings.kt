@@ -19,6 +19,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,6 +31,7 @@ import com.gromozeka.client.RemoteUserAdministrationService
 import com.gromozeka.domain.model.User
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.catch
 
 @Composable
 fun UserAdministrationSettings(
@@ -43,20 +45,20 @@ fun UserAdministrationSettings(
     var editingUser by remember { mutableStateOf<User?>(null) }
     var passwordUser by remember { mutableStateOf<User?>(null) }
     var submitting by remember { mutableStateOf(false) }
+    var refreshKey by remember { mutableIntStateOf(0) }
 
-    fun reload() {
-        coroutineScope.launch {
-            loading = true
-            error = null
-            runCatching { service.list() }
-                .onSuccess { users = it }
-                .onFailure { error = it.message ?: it.toString() }
-            loading = false
-        }
-    }
-
-    LaunchedEffect(service) {
-        reload()
+    LaunchedEffect(service, refreshKey) {
+        loading = true
+        service.observe()
+            .catch { failure ->
+                error = failure.message ?: failure.toString()
+                loading = false
+            }
+            .collect { observedUsers ->
+                users = observedUsers
+                error = null
+                loading = false
+            }
     }
 
     Column(
@@ -85,7 +87,7 @@ fun UserAdministrationSettings(
             }
             TextButton(
                 enabled = !loading,
-                onClick = ::reload,
+                onClick = { refreshKey++ },
             ) {
                 Text("Refresh")
             }
@@ -123,7 +125,6 @@ fun UserAdministrationSettings(
                     try {
                         service.create(username, displayName, password, role)
                         showCreateDialog = false
-                        users = service.list()
                     } catch (failure: Throwable) {
                         error = failure.message ?: failure.toString()
                     } finally {
@@ -146,7 +147,6 @@ fun UserAdministrationSettings(
                     try {
                         service.update(user.id, displayName, status, role)
                         editingUser = null
-                        users = service.list()
                     } catch (failure: Throwable) {
                         error = failure.message ?: failure.toString()
                     } finally {

@@ -7,6 +7,14 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ConversationTabLayoutRepository
+import com.gromozeka.statesync.observe
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Instant
 import kotlin.test.Test
@@ -23,9 +31,11 @@ class ConversationTabLayoutApplicationServiceTest {
         val first = conversation("conversation-1")
         val second = conversation("conversation-2")
         val repository = TestConversationTabLayoutRepository()
+        val stateSyncService = ConversationTabLayoutStateSyncApplicationService(repository, this)
         val service = ConversationTabLayoutApplicationService(
             repository = repository,
             conversationRepository = TestConversationRepository(first, second),
+            stateSyncService = stateSyncService,
         )
 
         val opened = service.open(userId, first.id)
@@ -43,9 +53,11 @@ class ConversationTabLayoutApplicationServiceTest {
 
     @Test
     fun `cannot open a missing conversation`() = runBlocking {
+        val repository = TestConversationTabLayoutRepository()
         val service = ConversationTabLayoutApplicationService(
-            repository = TestConversationTabLayoutRepository(),
+            repository = repository,
             conversationRepository = TestConversationRepository(),
+            stateSyncService = ConversationTabLayoutStateSyncApplicationService(repository, this),
         )
 
         assertFailsWith<IllegalArgumentException> {
@@ -57,9 +69,11 @@ class ConversationTabLayoutApplicationServiceTest {
     @Test
     fun `layouts are isolated by user and conversation removal updates all owners`() = runBlocking {
         val conversation = conversation("conversation-1")
+        val repository = TestConversationTabLayoutRepository()
         val service = ConversationTabLayoutApplicationService(
-            repository = TestConversationTabLayoutRepository(),
+            repository = repository,
             conversationRepository = TestConversationRepository(conversation),
+            stateSyncService = ConversationTabLayoutStateSyncApplicationService(repository, this),
         )
         val secondUserId = User.Id("user-2")
 
@@ -73,6 +87,31 @@ class ConversationTabLayoutApplicationServiceTest {
         service.removeConversation(conversation.id)
 
         assertEquals(emptyList(), service.snapshot(secondUserId).conversationIds)
+    }
+
+    @Test
+    fun `state sync emits initial and updated layouts`() = runBlocking {
+        val conversation = conversation("conversation-1")
+        val repository = TestConversationTabLayoutRepository()
+        val stateSyncService = ConversationTabLayoutStateSyncApplicationService(repository, this)
+        val service = ConversationTabLayoutApplicationService(
+            repository = repository,
+            conversationRepository = TestConversationRepository(conversation),
+            stateSyncService = stateSyncService,
+        )
+        val initialSnapshotReceived = CompletableDeferred<Unit>()
+        val revisions = async(start = CoroutineStart.UNDISPATCHED) {
+            stateSyncService.observe(userId)
+                .map { it.value.revision }
+                .onEach { initialSnapshotReceived.complete(Unit) }
+                .take(2)
+                .toList()
+        }
+
+        initialSnapshotReceived.await()
+        service.open(userId, conversation.id)
+
+        assertEquals(listOf(0L, 1L), revisions.await())
     }
 
     private fun conversation(id: String): Conversation = Conversation(

@@ -18,6 +18,8 @@ Server, and standalone Workers.
 - `:infrastructure-db` implements PostgreSQL persistence.
 - `:infrastructure-ai` contains provider integrations, MCP, memory, embeddings,
   and tool implementations.
+- `:state-sync` provides storage- and transport-neutral invalidation, snapshot
+  coalescing, shared loads, and stale-replica protection.
 - `:remote-protocol` and `:remote-client` define the client-to-Server boundary.
 - `:server` is the control plane and web endpoint.
 - `:worker` is a trusted standalone executor.
@@ -30,6 +32,14 @@ Dependencies should point toward domain contracts where practical. Framework,
 storage, provider, and transport details stay in their infrastructure modules.
 Presentation bootstrap may wire infrastructure, but ordinary UI code should use
 domain and application abstractions.
+
+Declarative client state is synchronized by revisions rather than transported
+as mutation deltas. Application services publish affected resource keys after
+their transaction commits. Clients conflate invalidations, pull the latest
+revision, and then reuse the existing typed read request for the current
+snapshot. Reconnect starts from a fresh snapshot; it does not replay missed
+declarative mutations. Conversation messages and other ordered event streams
+remain separate because they cannot be safely conflated.
 
 The main dogfood chat path is `OPEN_AI_SUBSCRIPTION`, implemented by
 `:infrastructure-ai:openai-subscription`. Spring AI adapters remain responsible

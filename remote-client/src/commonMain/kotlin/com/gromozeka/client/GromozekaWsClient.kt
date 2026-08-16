@@ -3,7 +3,6 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.ArtifactUpload
-import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.remote.protocol.ClientActivityKind
 import com.gromozeka.remote.protocol.ClientInstanceId
@@ -13,8 +12,8 @@ import com.gromozeka.remote.protocol.ClientRequest
 import com.gromozeka.remote.protocol.ClientSessionId
 import com.gromozeka.remote.protocol.ConversationExecutionCompletedEvent
 import com.gromozeka.remote.protocol.ConversationExecutionFailedEvent
-import com.gromozeka.remote.protocol.ConversationRuntimeSnapshotEvent
-import com.gromozeka.remote.protocol.ConversationTabLayoutSnapshotEvent
+import com.gromozeka.remote.protocol.ConversationRuntimeStatePayload
+import com.gromozeka.remote.protocol.ConversationRuntimeStateQuery
 import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
@@ -38,13 +37,17 @@ import com.gromozeka.remote.protocol.LiveVoiceProviderVadTranscriptCompletedEven
 import com.gromozeka.remote.protocol.LiveVoiceProviderVadTranscriptDeltaEvent
 import com.gromozeka.remote.protocol.MessageUpsertedEvent
 import com.gromozeka.remote.protocol.ObserveConversationCommand
-import com.gromozeka.remote.protocol.ObserveConversationTabLayoutCommand
+import com.gromozeka.remote.protocol.ObserveStateSyncCommand
+import com.gromozeka.remote.protocol.PullStateSyncRequest
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import com.gromozeka.remote.protocol.RemoteClientPlatform
 import com.gromozeka.remote.protocol.RemotePcmAudioChunk
 import com.gromozeka.remote.protocol.RemoteProtocolCodec
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
+import com.gromozeka.remote.protocol.RemoteStateSyncCursor
+import com.gromozeka.remote.protocol.RemoteStateSyncPayload
+import com.gromozeka.remote.protocol.RemoteStateSyncQuery
 import com.gromozeka.remote.protocol.RegisterClientSessionCommand
 import com.gromozeka.remote.protocol.ReportClientActivityCommand
 import com.gromozeka.remote.protocol.ServerPayload
@@ -58,9 +61,16 @@ import com.gromozeka.remote.protocol.StartLiveVoiceProviderVadRequest
 import com.gromozeka.remote.protocol.StopLiveInterpreterCommand
 import com.gromozeka.remote.protocol.StopLiveVoiceProviderVadCommand
 import com.gromozeka.remote.protocol.StopObserveConversationCommand
-import com.gromozeka.remote.protocol.StopObserveConversationTabLayoutCommand
+import com.gromozeka.remote.protocol.StopObserveStateSyncCommand
+import com.gromozeka.remote.protocol.StateSyncInvalidatedEvent
+import com.gromozeka.remote.protocol.StateSyncObservationFailedEvent
+import com.gromozeka.remote.protocol.StateSyncSnapshotResponse
 import com.gromozeka.remote.protocol.SynthesizeSpeechStreamCommand
 import com.gromozeka.shared.uuid.uuid7
+import com.gromozeka.statesync.StateSyncCursor
+import com.gromozeka.statesync.StateSyncInvalidation
+import com.gromozeka.statesync.StateSyncSnapshot
+import com.gromozeka.statesync.observeStateSync
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.delete
@@ -93,7 +103,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -131,7 +143,7 @@ internal class GromozekaWsClient(
     private val streams = mutableMapOf<String, Channel<ServerPayload>>()
     private val conversationSubscriptions = mutableMapOf<String, ConversationSubscription>()
     private val conversationEventSequences = mutableMapOf<Conversation.Id, Long>()
-    private val conversationTabLayoutSubscriptions = mutableMapOf<String, Channel<ConversationTabLayout>>()
+    private val stateSubscriptions = mutableMapOf<String, RemoteStateSubscription>()
     private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
     private val liveVoiceProviderVadSessions = mutableMapOf<String, Channel<ServerPayload>>()
 
@@ -224,6 +236,28 @@ internal class GromozekaWsClient(
     fun observeConversation(
         conversationId: Conversation.Id,
         afterEventSequence: Long? = null,
+    ): Flow<ConversationRuntimeEvent> = channelFlow {
+        launch {
+            observeConversationEvents(conversationId, afterEventSequence).collect { send(it) }
+        }
+        launch {
+            observeState(ConversationRuntimeStateQuery(conversationId)).collect { snapshot ->
+                val payload = snapshot.value as? ConversationRuntimeStatePayload
+                    ?: error("Unexpected conversation runtime state payload: ${snapshot.value::class.simpleName}")
+                send(
+                    ConversationRuntimeEvent.SnapshotUpdated(
+                        conversationId = conversationId,
+                        snapshot = payload.snapshot,
+                        cursorSequence = payload.snapshot.lastEventSequence,
+                    )
+                )
+            }
+        }
+    }
+
+    private fun observeConversationEvents(
+        conversationId: Conversation.Id,
+        afterEventSequence: Long?,
     ): Flow<ConversationRuntimeEvent> = flow {
         val subscriptionId = uuid7()
         val channel = Channel<ServerPayload>(Channel.UNLIMITED)
@@ -260,7 +294,7 @@ internal class GromozekaWsClient(
                     val previousSequence = registryMutex.withLock {
                         conversationEventSequences[conversationId] ?: 0L
                     }
-                    if (cursorSequence <= previousSequence && event !is ConversationRuntimeSnapshotEvent) {
+                    if (cursorSequence <= previousSequence) {
                         continue
                     }
                     registryMutex.withLock {
@@ -268,13 +302,6 @@ internal class GromozekaWsClient(
                     }
                 }
                 when (event) {
-                    is ConversationRuntimeSnapshotEvent -> emit(
-                        ConversationRuntimeEvent.SnapshotUpdated(
-                            conversationId = event.conversationId,
-                            snapshot = event.snapshot,
-                            cursorSequence = event.cursorSequence,
-                        )
-                    )
                     is MessageUpsertedEvent -> emit(
                         ConversationRuntimeEvent.MessageEmitted(
                             conversationId = event.conversationId,
@@ -309,23 +336,28 @@ internal class GromozekaWsClient(
         }
     }
 
-    fun observeConversationTabLayout(): Flow<ConversationTabLayout> = flow {
+    private fun ServerPayload.cursorSequenceOrNull(): Long? =
+        when (this) {
+            is MessageUpsertedEvent -> cursorSequence
+            is ConversationExecutionCompletedEvent -> cursorSequence
+            is ConversationExecutionFailedEvent -> cursorSequence
+            else -> null
+        }
+
+    internal fun observeState(
+        query: RemoteStateSyncQuery,
+    ): Flow<StateSyncSnapshot<RemoteStateSyncQuery, RemoteStateSyncPayload>> = flow {
         val subscriptionId = uuid7()
-        val channel = Channel<ConversationTabLayout>(Channel.CONFLATED)
+        val channel = Channel<ServerPayload>(Channel.CONFLATED)
+        val subscription = RemoteStateSubscription(subscriptionId, query, channel)
         registryMutex.withLock {
-            conversationTabLayoutSubscriptions[subscriptionId] = channel
+            stateSubscriptions[subscriptionId] = subscription
         }
 
         runCatching {
             val connection = ensureConnected()
             if (!connection.newlyConnected) {
-                sendEnvelope(
-                    connection.session,
-                    GromozekaClientEnvelope(
-                        id = uuid7(),
-                        payload = ObserveConversationTabLayoutCommand(subscriptionId),
-                    ),
-                )
+                sendObserveState(connection.session, subscription)
             }
         }.onFailure { error ->
             if (error is CancellationException) throw error
@@ -333,26 +365,74 @@ internal class GromozekaWsClient(
         }
 
         try {
-            for (layout in channel) {
-                emit(layout)
+            val invalidations = flow {
+                for (payload in channel) {
+                    when (payload) {
+                        is StateSyncInvalidatedEvent -> {
+                            check(payload.query == query) {
+                                "State sync invalidation query ${payload.query} does not match $query"
+                            }
+                            emit(StateSyncInvalidation(query, payload.cursor.toStateSyncCursor()))
+                        }
+
+                        is StateSyncObservationFailedEvent -> error(
+                            "State sync observation failed for $query: ${payload.message}"
+                        )
+
+                        else -> Unit
+                    }
+                }
             }
+            observeStateSync(
+                key = query,
+                invalidations = invalidations,
+                pull = { invalidation -> pullState(query, invalidation.cursor) },
+            ).collect { emit(it) }
         } finally {
             registryMutex.withLock {
-                conversationTabLayoutSubscriptions.remove(subscriptionId)
+                stateSubscriptions.remove(subscriptionId)
             }
-            runCatching { sendIfConnected(StopObserveConversationTabLayoutCommand(subscriptionId)) }
+            runCatching { sendIfConnected(StopObserveStateSyncCommand(subscriptionId)) }
             channel.close()
         }
     }
 
-    private fun ServerPayload.cursorSequenceOrNull(): Long? =
-        when (this) {
-            is ConversationRuntimeSnapshotEvent -> cursorSequence
-            is MessageUpsertedEvent -> cursorSequence
-            is ConversationExecutionCompletedEvent -> cursorSequence
-            is ConversationExecutionFailedEvent -> cursorSequence
-            else -> null
+    private suspend fun pullState(
+        query: RemoteStateSyncQuery,
+        invalidationCursor: StateSyncCursor,
+    ): StateSyncSnapshot<RemoteStateSyncQuery, RemoteStateSyncPayload> {
+        while (true) {
+            try {
+                return pullStateOnce(query, invalidationCursor)
+            } catch (error: RemoteConnectionLostException) {
+                scheduleReconnect()
+                val state = connectionState.first {
+                    it.status == RemoteConnectionState.Status.CONNECTED ||
+                        it.status == RemoteConnectionState.Status.CLOSED
+                }
+                if (state.status == RemoteConnectionState.Status.CLOSED) {
+                    throw error
+                }
+            }
         }
+    }
+
+    private suspend fun pullStateOnce(
+        query: RemoteStateSyncQuery,
+        invalidationCursor: StateSyncCursor,
+    ): StateSyncSnapshot<RemoteStateSyncQuery, RemoteStateSyncPayload> {
+        val response = requestTyped<PullStateSyncRequest, StateSyncSnapshotResponse>(
+            PullStateSyncRequest(query, invalidationCursor.toRemoteStateSyncCursor())
+        )
+        check(response.query == query) {
+            "State sync response query ${response.query} does not match $query"
+        }
+        return StateSyncSnapshot(
+            key = query,
+            cursor = response.cursor.toStateSyncCursor(),
+            value = response.state,
+        )
+    }
 
     fun synthesizeSpeech(
         text: String,
@@ -562,11 +642,11 @@ internal class GromozekaWsClient(
                 println("Gromozeka WS incoming id=${envelope.id} type=${envelope.payload::class.simpleName}")
                 when (val payload = envelope.payload) {
                     is ServerResponse -> registryMutex.withLock { pending.remove(envelope.id) }?.complete(payload)
-                    is ConversationRuntimeSnapshotEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is MessageUpsertedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionCompletedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionFailedEvent -> routeConversationEvent(payload.subscriptionId, payload)
-                    is ConversationTabLayoutSnapshotEvent -> routeConversationTabLayoutEvent(payload)
+                    is StateSyncInvalidatedEvent -> routeStateEvent(payload.subscriptionId, payload)
+                    is StateSyncObservationFailedEvent -> routeStateEvent(payload.subscriptionId, payload)
                     is ClientPresentationDirective -> _presentationDirectives.emit(payload)
                     is SpeechSynthesisStartedEvent -> routeStreamEvent(payload.streamId, payload)
                     is SpeechSynthesisChunkEvent -> routeStreamEvent(payload.streamId, payload)
@@ -621,20 +701,17 @@ internal class GromozekaWsClient(
     }
 
     private suspend fun resubscribe(activeSession: DefaultClientWebSocketSession) {
-        val (conversationSubscriptionsSnapshot, tabLayoutSubscriptionIds) = registryMutex.withLock {
-            conversationSubscriptions.values.toList() to conversationTabLayoutSubscriptions.keys.toList()
+        val subscriptions = registryMutex.withLock {
+            ResumableSubscriptions(
+                conversations = conversationSubscriptions.values.toList(),
+                states = stateSubscriptions.values.toList(),
+            )
         }
-        conversationSubscriptionsSnapshot.forEach { subscription ->
+        subscriptions.conversations.forEach { subscription ->
             sendObserveConversationRaw(activeSession, subscription)
         }
-        tabLayoutSubscriptionIds.forEach { subscriptionId ->
-            sendEnvelopeRaw(
-                activeSession,
-                GromozekaClientEnvelope(
-                    id = uuid7(),
-                    payload = ObserveConversationTabLayoutCommand(subscriptionId),
-                ),
-            )
+        subscriptions.states.forEach { subscription ->
+            sendObserveStateRaw(activeSession, subscription)
         }
     }
 
@@ -657,6 +734,36 @@ internal class GromozekaWsClient(
             observeConversationEnvelope(subscription),
         )
     }
+
+    private suspend fun sendObserveState(
+        activeSession: DefaultClientWebSocketSession,
+        subscription: RemoteStateSubscription,
+    ) {
+        sendEnvelope(
+            activeSession,
+            observeStateEnvelope(subscription),
+        )
+    }
+
+    private suspend fun sendObserveStateRaw(
+        activeSession: DefaultClientWebSocketSession,
+        subscription: RemoteStateSubscription,
+    ) {
+        sendEnvelopeRaw(
+            activeSession,
+            observeStateEnvelope(subscription),
+        )
+    }
+
+    private fun observeStateEnvelope(
+        subscription: RemoteStateSubscription,
+    ): GromozekaClientEnvelope = GromozekaClientEnvelope(
+        id = uuid7(),
+        payload = ObserveStateSyncCommand(
+            subscriptionId = subscription.subscriptionId,
+            query = subscription.query,
+        ),
+    )
 
     private suspend fun observeConversationEnvelope(
         subscription: ConversationSubscription,
@@ -717,7 +824,8 @@ internal class GromozekaWsClient(
             activeLiveVoiceProviderVadSessions = liveVoiceProviderVadSessions.values.toList()
             liveVoiceProviderVadSessions.clear()
         }
-        pendingRequests.forEach { it.completeExceptionally(error) }
+        val connectionError = RemoteConnectionLostException(error)
+        pendingRequests.forEach { it.completeExceptionally(connectionError) }
         activeStreams.forEach { it.close(error) }
         activeInterpreterSessions.forEach { it.close(error) }
         activeLiveVoiceProviderVadSessions.forEach { it.close(error) }
@@ -769,7 +877,8 @@ internal class GromozekaWsClient(
 
     private suspend fun hasResumableSubscriptions(): Boolean =
         registryMutex.withLock {
-            conversationSubscriptions.isNotEmpty() || conversationTabLayoutSubscriptions.isNotEmpty()
+            conversationSubscriptions.isNotEmpty() ||
+                stateSubscriptions.isNotEmpty()
         }
 
     private suspend fun routeConversationEvent(subscriptionId: String, payload: ServerPayload) {
@@ -778,10 +887,10 @@ internal class GromozekaWsClient(
         }?.send(payload)
     }
 
-    private suspend fun routeConversationTabLayoutEvent(event: ConversationTabLayoutSnapshotEvent) {
+    private suspend fun routeStateEvent(subscriptionId: String, payload: ServerPayload) {
         registryMutex.withLock {
-            conversationTabLayoutSubscriptions[event.subscriptionId]
-        }?.send(event.layout)
+            stateSubscriptions[subscriptionId]?.channel
+        }?.send(payload)
     }
 
     private suspend fun routeStreamEvent(streamId: String, payload: ServerPayload) {
@@ -826,11 +935,38 @@ internal class GromozekaWsClient(
         val channel: Channel<ServerPayload>,
     )
 
+    private data class RemoteStateSubscription(
+        val subscriptionId: String,
+        val query: RemoteStateSyncQuery,
+        val channel: Channel<ServerPayload>,
+    )
+
+    private data class ResumableSubscriptions(
+        val conversations: List<ConversationSubscription>,
+        val states: List<RemoteStateSubscription>,
+    )
+
     private companion object {
         const val RECONNECT_INITIAL_DELAY_MILLIS = 500L
         const val RECONNECT_MAX_DELAY_MILLIS = 10_000L
     }
 }
+
+private class RemoteConnectionLostException(
+    cause: Throwable,
+) : Exception("Gromozeka remote connection was lost", cause)
+
+private fun RemoteStateSyncCursor.toStateSyncCursor(): StateSyncCursor = StateSyncCursor(
+    sourceEpoch = sourceEpoch,
+    streamEpoch = streamEpoch,
+    generation = generation,
+)
+
+private fun StateSyncCursor.toRemoteStateSyncCursor(): RemoteStateSyncCursor = RemoteStateSyncCursor(
+    sourceEpoch = sourceEpoch,
+    streamEpoch = streamEpoch,
+    generation = generation,
+)
 
 internal class LiveInterpreterClientSession(
     val sessionId: String,

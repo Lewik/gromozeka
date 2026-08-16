@@ -556,7 +556,7 @@ class DefaultCommandTaskServiceTest {
         lifecycleEventPublisher: CommandTaskLifecycleEventPublisher = noOpLifecycleEventPublisher(),
     ) = ServerCommandRuntimeStateService(
         runtimeCoordinator = coordinator,
-        runtimeEventBus = InMemoryConversationRuntimeEventBus(),
+        runtimeStateSyncService = testConversationRuntimeStateSyncService(coordinator),
         commandTaskLifecycleEventPublisher = lifecycleEventPublisher,
         commandMonitorLifecycleEventPublisher = CommandMonitorLifecycleEventPublisher { },
     )

@@ -12,8 +12,7 @@ import com.gromozeka.domain.service.CommandTaskLifecycleEvent
 import com.gromozeka.domain.service.CommandTaskLifecycleEventPublisher
 import com.gromozeka.domain.service.CommandTaskUpsertResult
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.ConversationRuntimeEvent
-import com.gromozeka.domain.service.ConversationRuntimeEventBus
+import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
@@ -25,7 +24,7 @@ import org.springframework.stereotype.Service
 )
 class ServerCommandRuntimeStateService(
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
-    private val runtimeEventBus: ConversationRuntimeEventBus,
+    private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val commandTaskLifecycleEventPublisher: CommandTaskLifecycleEventPublisher,
     private val commandMonitorLifecycleEventPublisher: CommandMonitorLifecycleEventPublisher,
 ) : CommandRuntimeStateService {
@@ -102,11 +101,6 @@ class ServerCommandRuntimeStateService(
         runtimeCoordinator.findCommandMonitorEvents(conversationId, monitorId)
 
     override suspend fun publishSnapshot(conversationId: Conversation.Id) {
-        runtimeEventBus.publish(
-            ConversationRuntimeEvent.SnapshotUpdated(
-                conversationId = conversationId,
-                snapshot = runtimeCoordinator.snapshot(conversationId),
-            )
-        )
+        runtimeStateSyncService.invalidate(conversationId)
     }
 }

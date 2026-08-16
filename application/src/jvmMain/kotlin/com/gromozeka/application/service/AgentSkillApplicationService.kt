@@ -9,6 +9,9 @@ import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AgentSkillRepository
 import com.gromozeka.domain.repository.ProjectRepository
 import com.gromozeka.domain.service.AgentSkillDomainService
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
@@ -20,6 +23,7 @@ class AgentSkillApplicationService(
     private val agentRepository: AgentRepository,
     private val projectRepository: ProjectRepository,
     private val materializationPlanAnalyzer: AgentSkillMaterializationPlanAnalyzer,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : AgentSkillDomainService {
     private val parser = AgentSkillPackageParser()
 
@@ -61,7 +65,9 @@ class AgentSkillApplicationService(
                 skill = skill,
                 files = parsed.files,
             )
-        ).skill
+        ).skill.also {
+            stateChanges.publish(DeclarativeStateKey.projectAgentSkills(projectId))
+        }
     }
 
     override suspend fun findById(id: AgentSkill.Id): AgentSkill? =
@@ -83,6 +89,7 @@ class AgentSkillApplicationService(
             "Agent Skill '${skill.name}' is assigned to: ${assignedAgents.joinToString { it.name }}"
         }
         skillRepository.delete(id)
+        stateChanges.publish(DeclarativeStateKey.projectAgentSkills(skill.projectId))
     }
 
     private companion object {

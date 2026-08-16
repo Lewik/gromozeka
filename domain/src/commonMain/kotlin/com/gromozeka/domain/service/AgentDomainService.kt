@@ -5,6 +5,8 @@ import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 
 /**
@@ -65,7 +67,15 @@ interface AgentDomainService {
      */
     suspend fun findAll(): List<AgentDefinition>
 
+    fun observeAll(): Flow<List<AgentDefinition>> = flow {
+        emit(findAll())
+    }
+
     suspend fun findByProject(projectId: Project.Id): List<AgentDefinition>
+
+    fun observeByProject(projectId: Project.Id): Flow<List<AgentDefinition>> = flow {
+        emit(findByProject(projectId))
+    }
 
     /**
      * Replaces the mutable fields of an existing agent.

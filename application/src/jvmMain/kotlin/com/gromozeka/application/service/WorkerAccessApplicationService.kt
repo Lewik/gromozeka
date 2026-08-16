@@ -18,6 +18,9 @@ import com.gromozeka.domain.service.SecurityAuditRecorder
 import com.gromozeka.domain.service.WorkerAccessDeniedException
 import com.gromozeka.domain.service.WorkerAccessService
 import com.gromozeka.domain.service.WorkerConnectionRevocationService
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -30,6 +33,7 @@ class WorkerAccessApplicationService(
     private val projectAccessService: ProjectAccessService,
     private val workerConnectionRevocationService: WorkerConnectionRevocationService,
     private val securityAuditRecorder: SecurityAuditRecorder,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : WorkerAccessService {
     override suspend fun findAccessible(
         actor: User,
@@ -127,6 +131,7 @@ class WorkerAccessApplicationService(
                 attributes = mapOf("workerId" to workerId.value),
             )
         )
+        stateChanges.publish(DeclarativeStateKey.workers)
         return grant
     }
 
@@ -148,6 +153,7 @@ class WorkerAccessApplicationService(
                     attributes = mapOf("workerId" to workerId.value),
                 )
             )
+            stateChanges.publish(DeclarativeStateKey.workers)
         }
         return removed
     }
@@ -187,6 +193,7 @@ class WorkerAccessApplicationService(
                 attributes = mapOf("workerId" to workerId.value),
             )
         )
+        stateChanges.publish(DeclarativeStateKey.workers)
         return grant
     }
 
@@ -209,6 +216,7 @@ class WorkerAccessApplicationService(
                     attributes = mapOf("workerId" to workerId.value),
                 )
             )
+            stateChanges.publish(DeclarativeStateKey.workers)
         }
         return removed
     }
@@ -238,6 +246,7 @@ class WorkerAccessApplicationService(
                 attributes = mapOf("enabled" to enabled.toString()),
             )
         )
+        stateChanges.publish(DeclarativeStateKey.workers)
         return updated
     }
 
@@ -262,6 +271,7 @@ class WorkerAccessApplicationService(
                 targetId = workerId.value,
             )
         )
+        stateChanges.publish(DeclarativeStateKey.workers)
         return revoked
     }
 

@@ -4,6 +4,9 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ProjectRepository
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.domain.service.UserConversationTabLayoutService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
@@ -24,6 +27,7 @@ class ProjectApplicationService(
     private val projectRepository: ProjectRepository,
     private val conversationRepository: ConversationRepository,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : ProjectDomainService {
     private val log = KLoggers.logger(this)
 
@@ -40,7 +44,7 @@ class ProjectApplicationService(
             "Project already exists: ${projectId.value}"
         }
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
-        return projectRepository.save(
+        val project = projectRepository.save(
             Project(
                 id = projectId,
                 name = normalizedName,
@@ -49,6 +53,8 @@ class ProjectApplicationService(
                 lastUsedAt = now,
             )
         )
+        stateChanges.publish(DeclarativeStateKey.projects)
+        return project
     }
 
     /**
@@ -80,12 +86,14 @@ class ProjectApplicationService(
         val project = projectRepository.findById(id) ?: error("Project not found: ${id.value}")
         val normalizedName = name.trim()
         require(normalizedName.isNotEmpty()) { "Project name must not be blank" }
-        return projectRepository.save(
+        val updated = projectRepository.save(
             project.copy(
                 name = normalizedName,
                 description = description?.trim()?.takeIf(String::isNotEmpty),
             )
         )
+        stateChanges.publish(DeclarativeStateKey.projects)
+        return updated
     }
 
     @Transactional
@@ -95,6 +103,16 @@ class ProjectApplicationService(
             conversationTabLayoutService.removeConversation(conversation.id)
         }
         projectRepository.delete(id)
+        stateChanges.publish(
+            DeclarativeStateKey.projects,
+            DeclarativeStateKey.projectConversations(id),
+            DeclarativeStateKey.projectWorkspaces(id),
+            DeclarativeStateKey.projectAgentSkills(id),
+            DeclarativeStateKey.projectMemberships(id),
+            DeclarativeStateKey.agents,
+            DeclarativeStateKey.prompts,
+            DeclarativeStateKey.workers,
+        )
     }
 
     /**
@@ -109,7 +127,9 @@ class ProjectApplicationService(
     override suspend fun updateLastUsed(id: Project.Id): Project? {
         val project = projectRepository.findById(id) ?: return null
         val updated = project.copy(lastUsedAt = Instant.fromEpochMilliseconds(System.currentTimeMillis()))
-        return projectRepository.save(updated)
+        val saved = projectRepository.save(updated)
+        stateChanges.publish(DeclarativeStateKey.projects)
+        return saved
     }
 
 }

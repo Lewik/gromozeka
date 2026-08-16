@@ -38,7 +38,6 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,7 +61,13 @@ import com.gromozeka.domain.service.WorkspaceCatalogService
 import com.gromozeka.domain.service.WorkspaceManagementService
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerCatalogService
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun ProjectManagerScreen(
@@ -83,23 +88,23 @@ fun ProjectManagerScreen(
     var membersProject by remember { mutableStateOf<Project?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var reloadKey by remember { mutableIntStateOf(0) }
 
-    suspend fun reload() {
+    LaunchedEffect(projectService) {
         loading = true
-        runCatching { projectService.findAll() }
-            .onSuccess { loaded ->
+        projectService.observeAll()
+            .catch { failure ->
+                error = failure.message ?: strings.operationFailed
+                loading = false
+            }
+            .collect { loaded ->
                 projects = loaded
                 selectedProjectId = selectedProjectId
                     ?.takeIf { selected -> loaded.any { it.id == selected } }
                     ?: loaded.firstOrNull()?.id
                 error = null
+                loading = false
             }
-            .onFailure { error = it.message ?: strings.operationFailed }
-        loading = false
     }
-
-    LaunchedEffect(reloadKey) { reload() }
 
     val selectedProject = projects.firstOrNull { it.id == selectedProjectId }
     ManagerScaffold(
@@ -203,7 +208,6 @@ fun ProjectManagerScreen(
                         selectedProjectId = project.id
                         showCreateEditor = false
                         editorProject = null
-                        reloadKey++
                         onChanged()
                     }.onFailure { error = it.message ?: strings.operationFailed }
                 }
@@ -222,7 +226,6 @@ fun ProjectManagerScreen(
                     runCatching { projectService.delete(project.id) }
                         .onSuccess {
                             projectToDelete = null
-                            reloadKey++
                             onChanged()
                         }
                         .onFailure { error = it.message ?: strings.operationFailed }
@@ -243,6 +246,7 @@ fun ProjectManagerScreen(
 }
 
 @Composable
+@OptIn(ExperimentalCoroutinesApi::class)
 fun WorkspaceManagerScreen(
     initialProjectId: Project.Id?,
     projectService: ProjectDomainService,
@@ -266,30 +270,40 @@ fun WorkspaceManagerScreen(
     var mountToDelete by remember { mutableStateOf<WorkspaceMount?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var reloadKey by remember { mutableIntStateOf(0) }
-
-    suspend fun reload() {
+    LaunchedEffect(selectedProjectId, selectedWorkspaceId) {
         loading = true
-        runCatching {
-            val loadedProjects = projectService.findAll()
+        projectService.observeAll().flatMapLatest { loadedProjects ->
             val projectId = selectedProjectId
                 ?.takeIf { selected -> loadedProjects.any { it.id == selected } }
                 ?: loadedProjects.firstOrNull()?.id
-            val loadedWorkspaces = projectId?.let { workspaceCatalogService.findByProject(it) }.orEmpty()
-            val workspaceId = selectedWorkspaceId
-                ?.takeIf { selected -> loadedWorkspaces.any { it.id == selected } }
-                ?: loadedWorkspaces.firstOrNull()?.id
-            val loadedMounts = workspaceId?.let { workspaceCatalogService.findMounts(it) }.orEmpty()
-            val loadedWorkers = workerCatalogService.listWorkers()
-            WorkspaceManagerSnapshot(
-                loadedProjects,
-                projectId,
-                loadedWorkspaces,
-                workspaceId,
-                loadedMounts,
-                loadedWorkers,
-            )
-        }.onSuccess { snapshot ->
+            val workspacesFlow = projectId
+                ?.let(workspaceCatalogService::observeByProject)
+                ?: flowOf(emptyList())
+            combine(workspacesFlow, workerCatalogService.observeWorkers()) { loadedWorkspaces, loadedWorkers ->
+                Triple(loadedProjects, projectId, loadedWorkspaces to loadedWorkers)
+            }.flatMapLatest { (projectsSnapshot, projectIdSnapshot, workspaceAndWorkers) ->
+                val (loadedWorkspaces, loadedWorkers) = workspaceAndWorkers
+                val workspaceId = selectedWorkspaceId
+                    ?.takeIf { selected -> loadedWorkspaces.any { it.id == selected } }
+                    ?: loadedWorkspaces.firstOrNull()?.id
+                val mountsFlow = workspaceId
+                    ?.let(workspaceCatalogService::observeMounts)
+                    ?: flowOf(emptyList())
+                mountsFlow.map { loadedMounts ->
+                    WorkspaceManagerSnapshot(
+                        projectsSnapshot,
+                        projectIdSnapshot,
+                        loadedWorkspaces,
+                        workspaceId,
+                        loadedMounts,
+                        loadedWorkers,
+                    )
+                }
+            }
+        }.catch { failure ->
+            error = failure.message ?: strings.operationFailed
+            loading = false
+        }.collect { snapshot ->
             projects = snapshot.projects
             selectedProjectId = snapshot.projectId
             workspaces = snapshot.workspaces
@@ -297,11 +311,9 @@ fun WorkspaceManagerScreen(
             mounts = snapshot.mounts
             workers = snapshot.workers
             error = null
-        }.onFailure { error = it.message ?: strings.operationFailed }
-        loading = false
+            loading = false
+        }
     }
-
-    LaunchedEffect(reloadKey, selectedProjectId) { reload() }
 
     val selectedWorkspace = workspaces.firstOrNull { it.id == selectedWorkspaceId }
     ManagerScaffold(
@@ -349,7 +361,6 @@ fun WorkspaceManagerScreen(
                                     selected = workspace.id == selectedWorkspaceId,
                                     onClick = {
                                         selectedWorkspaceId = workspace.id
-                                        reloadKey++
                                     },
                                 )
                             }
@@ -465,7 +476,6 @@ fun WorkspaceManagerScreen(
                         selectedWorkspaceId = workspace.id
                         showCreateEditor = false
                         editorWorkspace = null
-                        reloadKey++
                     }.onFailure { error = it.message ?: strings.operationFailed }
                 }
             },
@@ -483,7 +493,6 @@ fun WorkspaceManagerScreen(
                     runCatching { workspaceManagementService.delete(workspace.id) }
                         .onSuccess {
                             workspaceToDelete = null
-                            reloadKey++
                         }
                         .onFailure { error = it.message ?: strings.operationFailed }
                 }
@@ -502,7 +511,6 @@ fun WorkspaceManagerScreen(
                     runCatching { workspaceManagementService.deleteMount(mount.id) }
                         .onSuccess {
                             mountToDelete = null
-                            reloadKey++
                         }
                         .onFailure { error = it.message ?: strings.operationFailed }
                 }
@@ -704,27 +712,27 @@ private fun ProjectMembersDialog(
     var loading by remember(project.id) { mutableStateOf(true) }
     var error by remember(project.id) { mutableStateOf<String?>(null) }
 
-    fun reload() {
-        scope.launch {
-            loading = true
-            error = null
-            runCatching {
-                projectMembershipService.list(project.id) to userDirectoryService.list()
-            }.onSuccess { (loadedMemberships, loadedUsers) ->
+    LaunchedEffect(project.id) {
+        loading = true
+        combine(
+            projectMembershipService.observe(project.id),
+            userDirectoryService.observe(),
+        ) { loadedMemberships, loadedUsers -> loadedMemberships to loadedUsers }
+            .catch { failure ->
+                error = failure.message ?: strings.operationFailed
+                loading = false
+            }
+            .collect { (loadedMemberships, loadedUsers) ->
                 memberships = loadedMemberships
                 users = loadedUsers
                 selectedUserId = selectedUserId?.takeIf { selected ->
                     loadedUsers.any { it.id == selected } &&
                         loadedMemberships.none { it.userId == selected }
                 }
-            }.onFailure { failure ->
-                error = failure.message ?: strings.operationFailed
+                error = null
+                loading = false
             }
-            loading = false
-        }
     }
-
-    LaunchedEffect(project.id) { reload() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -781,7 +789,7 @@ private fun ProjectMembersDialog(
                                                             project.id,
                                                             membership.userId,
                                                         )
-                                                    }.onSuccess { reload() }
+                                                    }.onSuccess { loading = false }
                                                         .onFailure {
                                                             error = it.message ?: strings.operationFailed
                                                             loading = false
@@ -799,13 +807,13 @@ private fun ProjectMembersDialog(
                                         onRoleChange = { role ->
                                             scope.launch {
                                                 loading = true
-                                                runCatching {
-                                                    projectMembershipService.set(
-                                                        project.id,
-                                                        membership.userId,
-                                                        role,
-                                                    )
-                                                }.onSuccess { reload() }
+                                                    runCatching {
+                                                        projectMembershipService.set(
+                                                            project.id,
+                                                            membership.userId,
+                                                            role,
+                                                        )
+                                                    }.onSuccess { loading = false }
                                                     .onFailure {
                                                         error = it.message ?: strings.operationFailed
                                                         loading = false
@@ -853,7 +861,7 @@ private fun ProjectMembersDialog(
                                         )
                                     }.onSuccess {
                                         selectedUserId = null
-                                        reload()
+                                        loading = false
                                     }.onFailure {
                                         error = it.message ?: strings.operationFailed
                                         loading = false

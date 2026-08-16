@@ -10,6 +10,8 @@ import com.gromozeka.remote.protocol.PromptResponse
 import com.gromozeka.remote.protocol.PromptsResponse
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.UpdatePromptRequest
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 internal class RemotePromptService(
     private val client: GromozekaWsClient,
@@ -20,8 +22,16 @@ internal class RemotePromptService(
     override suspend fun findAll(): List<Prompt> =
         client.requestTyped<FindPromptsRequest, PromptsResponse>(FindPromptsRequest()).prompts
 
+    override fun observeAll(): Flow<List<Prompt>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.PROMPTS, load = ::findAll)
+
     override suspend fun findByProject(projectId: com.gromozeka.domain.model.Project.Id): List<Prompt> =
         client.requestTyped<FindPromptsRequest, PromptsResponse>(FindPromptsRequest(projectId)).prompts
+
+    override fun observeByProject(
+        projectId: com.gromozeka.domain.model.Project.Id,
+    ): Flow<List<Prompt>> =
+        client.observeDeclarativeState(RemoteDeclarativeStateResource.PROMPTS) { findByProject(projectId) }
 
     override suspend fun createPrompt(
         projectId: com.gromozeka.domain.model.Project.Id?,

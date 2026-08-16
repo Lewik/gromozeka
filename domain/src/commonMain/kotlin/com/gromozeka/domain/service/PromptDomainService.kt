@@ -2,6 +2,8 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Project
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 /**
  * Domain service for managing prompt templates.
@@ -28,7 +30,15 @@ interface PromptDomainService {
      */
     suspend fun findAll(): List<Prompt>
 
+    fun observeAll(): Flow<List<Prompt>> = flow {
+        emit(findAll())
+    }
+
     suspend fun findByProject(projectId: Project.Id): List<Prompt>
+
+    fun observeByProject(projectId: Project.Id): Flow<List<Prompt>> = flow {
+        emit(findByProject(projectId))
+    }
 
     suspend fun createPrompt(
         projectId: Project.Id?,

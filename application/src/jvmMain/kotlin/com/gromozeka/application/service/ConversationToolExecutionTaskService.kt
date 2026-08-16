@@ -7,13 +7,12 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.ConversationRuntimeEvent
-import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
+import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.WorkspaceDomainService
@@ -42,7 +41,7 @@ class ConversationToolExecutionTaskService(
     private val conversationService: ConversationDomainService,
     private val workspaceService: WorkspaceDomainService,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
-    private val runtimeEventBus: ConversationRuntimeEventBus,
+    private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
     private val parallelToolExecutor: ParallelToolExecutor,
     private val workerAccessService: WorkerAccessService,
     private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
@@ -370,12 +369,7 @@ class ConversationToolExecutionTaskService(
 
     private suspend fun publishRuntimeSnapshot(conversationId: Conversation.Id) {
         try {
-            runtimeEventBus.publish(
-                ConversationRuntimeEvent.SnapshotUpdated(
-                    conversationId = conversationId,
-                    snapshot = runtimeCoordinator.snapshot(conversationId),
-                )
-            )
+            runtimeStateSyncService.invalidate(conversationId)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {

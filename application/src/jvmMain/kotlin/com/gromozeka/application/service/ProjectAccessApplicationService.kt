@@ -12,6 +12,9 @@ import com.gromozeka.domain.service.ProjectAccessDeniedException
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.SecurityAuditRecorder
+import com.gromozeka.domain.service.DeclarativeStateChangePublisher
+import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
@@ -23,6 +26,7 @@ class ProjectAccessApplicationService(
     private val membershipRepository: ProjectMembershipRepository,
     private val identityRepository: IdentityRepository,
     private val securityAuditRecorder: SecurityAuditRecorder,
+    private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : ProjectAccessService {
     @Transactional
     override suspend fun create(
@@ -192,6 +196,16 @@ class ProjectAccessApplicationService(
                 },
             )
         )
+        stateChanges.publish(
+            DeclarativeStateKey.projects,
+            DeclarativeStateKey.projectConversations(projectId),
+            DeclarativeStateKey.projectWorkspaces(projectId),
+            DeclarativeStateKey.projectAgentSkills(projectId),
+            DeclarativeStateKey.projectMemberships(projectId),
+            DeclarativeStateKey.agents,
+            DeclarativeStateKey.prompts,
+            DeclarativeStateKey.workers,
+        )
         return membership
     }
 
@@ -220,6 +234,16 @@ class ProjectAccessApplicationService(
                     projectId = projectId,
                     attributes = mapOf("previousRole" to existing.role.name),
                 )
+            )
+            stateChanges.publish(
+                DeclarativeStateKey.projects,
+                DeclarativeStateKey.projectConversations(projectId),
+                DeclarativeStateKey.projectWorkspaces(projectId),
+                DeclarativeStateKey.projectAgentSkills(projectId),
+                DeclarativeStateKey.projectMemberships(projectId),
+                DeclarativeStateKey.agents,
+                DeclarativeStateKey.prompts,
+                DeclarativeStateKey.workers,
             )
         }
         return removed

@@ -15,6 +15,8 @@ import com.gromozeka.remote.protocol.FindAgentSkillsRequest
 import com.gromozeka.remote.protocol.FindAgentSkillRequest
 import com.gromozeka.remote.protocol.ImportAgentSkillRequest
 import com.gromozeka.remote.protocol.SavedResponse
+import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
+import kotlinx.coroutines.flow.Flow
 
 internal class RemoteAgentSkillService(
     private val client: GromozekaWsClient,
@@ -37,6 +39,12 @@ internal class RemoteAgentSkillService(
         client.requestTyped<FindAgentSkillsRequest, AgentSkillsResponse>(
             FindAgentSkillsRequest(projectId)
         ).skills
+
+    override fun observeByProject(projectId: Project.Id): Flow<List<AgentSkill>> =
+        client.observeDeclarativeState(
+            RemoteDeclarativeStateResource.PROJECT_AGENT_SKILLS,
+            projectId.value,
+        ) { findByProject(projectId) }
 
     override suspend fun exportPackage(id: AgentSkill.Id): AgentSkillPackage? =
         client.requestTyped<ExportAgentSkillRequest, AgentSkillPackageResponse>(

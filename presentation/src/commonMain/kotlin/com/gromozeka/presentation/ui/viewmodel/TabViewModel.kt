@@ -187,6 +187,7 @@ class TabViewModel(
     private suspend fun handleRuntimeEvent(event: ConversationRuntimeEvent) {
         when (event) {
             is ConversationRuntimeEvent.SnapshotUpdated -> applyRuntimeSnapshot(event.snapshot)
+            is ConversationRuntimeEvent.ReplayCompleted -> Unit
             is ConversationRuntimeEvent.MessageEmitted -> {
                 _isWaitingForResponse.value = true
                 _uiState.update { it.copy(isWaitingForResponse = true) }

@@ -26,8 +26,8 @@ import com.gromozeka.client.RemoteUserDirectoryService
 import com.gromozeka.domain.model.SecurityAuditEvent
 import com.gromozeka.domain.model.User
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.catch
 
 @Composable
 fun SecurityAuditSettings(
@@ -44,15 +44,8 @@ fun SecurityAuditSettings(
         coroutineScope.launch {
             loading = true
             error = null
-            runCatching {
-                val eventsRequest = async { service.listRecent() }
-                val usersRequest = async {
-                    runCatching { userDirectoryService.list() }.getOrDefault(emptyList())
-                }
-                eventsRequest.await() to usersRequest.await()
-            }.onSuccess { (loadedEvents, loadedUsers) ->
+            runCatching { service.listRecent() }.onSuccess { loadedEvents ->
                 events = loadedEvents
-                users = loadedUsers.associate { it.id to it.displayName }
             }.onFailure {
                 error = it.message ?: it.toString()
             }
@@ -60,8 +53,16 @@ fun SecurityAuditSettings(
         }
     }
 
-    LaunchedEffect(service, userDirectoryService) {
+    LaunchedEffect(service) {
         reload()
+    }
+
+    LaunchedEffect(userDirectoryService) {
+        userDirectoryService.observe()
+            .catch { failure -> error = failure.message ?: failure.toString() }
+            .collect { loadedUsers ->
+                users = loadedUsers.associate { it.id to it.displayName }
+            }
     }
 
     Column(
