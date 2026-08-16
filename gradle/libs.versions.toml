@@ -80,6 +80,7 @@ spring-security-crypto = { module = "org.springframework.security:spring-securit
 bouncycastle-provider = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 pty4j = { module = "org.jetbrains.pty4j:pty4j", version.ref = "pty4j" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 

@@ -1,11 +1,12 @@
 package com.gromozeka.presentation.services
 
 import com.gromozeka.domain.model.QuickTextAction
-import com.sun.jna.Library
 import com.sun.jna.Native
-import com.sun.jna.NativeLong
-import com.sun.jna.Pointer
-import com.sun.jna.Structure
+import com.sun.jna.platform.win32.Kernel32
+import com.sun.jna.platform.win32.User32
+import com.sun.jna.platform.win32.WinDef.LPARAM
+import com.sun.jna.platform.win32.WinDef.WPARAM
+import com.sun.jna.platform.win32.WinUser.MSG
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -19,7 +20,6 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
     private val running = AtomicBoolean(false)
     private val hotkeyActions = mutableMapOf<Int, QuickTextAction.Id>()
     private var user32: User32? = null
-    private var kernel32: Kernel32? = null
 
     @Volatile
     private var initialized = false
@@ -45,12 +45,11 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
             name = "gromozeka-windows-hotkeys",
         ) {
             runCatching {
-                val user32 = user32()
-                val kernel32 = kernel32()
+                val user32 = User32.INSTANCE
+                val kernel32 = Kernel32.INSTANCE
                 this.user32 = user32
-                this.kernel32 = kernel32
                 messageThreadId = kernel32.GetCurrentThreadId()
-                user32.PeekMessageW(MSG(), null, WM_USER, WM_USER, PM_NOREMOVE)
+                user32.PeekMessage(MSG(), null, WM_USER, WM_USER, PM_NOREMOVE)
                 initialized = true
                 started.set(true)
                 ready.countDown()
@@ -108,7 +107,7 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
     private fun runMessageLoop(user32: User32) {
         val message = MSG()
         while (running.get()) {
-            when (val result = user32.GetMessageW(message, null, 0, 0)) {
+            when (val result = user32.GetMessage(message, null, 0, 0)) {
                 -1 -> {
                     log.warn("Windows hotkey message loop failed lastError=${Native.getLastError()}")
                     return
@@ -161,7 +160,7 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
     private fun postThreadMessage(message: Int) {
         val threadId = messageThreadId
         if (threadId == 0) return
-        user32?.PostThreadMessageW(threadId, message, NativeLong(0), NativeLong(0))
+        user32?.PostThreadMessage(threadId, message, WPARAM(0), LPARAM(0))
     }
 
     private fun drainCommands() {
@@ -169,82 +168,6 @@ internal class WindowsGlobalHotkeyController : GlobalHotkeyController {
             val command = commands.poll() ?: return
             command()
         }
-    }
-
-    private fun user32(): User32 =
-        Native.load("user32", User32::class.java)
-
-    private fun kernel32(): Kernel32 =
-        Native.load("kernel32", Kernel32::class.java)
-
-    private interface User32 : Library {
-        fun RegisterHotKey(
-            hWnd: Pointer?,
-            id: Int,
-            fsModifiers: Int,
-            vk: Int,
-        ): Boolean
-
-        fun UnregisterHotKey(
-            hWnd: Pointer?,
-            id: Int,
-        ): Boolean
-
-        fun GetMessageW(
-            lpMsg: MSG,
-            hWnd: Pointer?,
-            wMsgFilterMin: Int,
-            wMsgFilterMax: Int,
-        ): Int
-
-        fun PeekMessageW(
-            lpMsg: MSG,
-            hWnd: Pointer?,
-            wMsgFilterMin: Int,
-            wMsgFilterMax: Int,
-            wRemoveMsg: Int,
-        ): Boolean
-
-        fun PostThreadMessageW(
-            idThread: Int,
-            msg: Int,
-            wParam: NativeLong,
-            lParam: NativeLong,
-        ): Boolean
-    }
-
-    private interface Kernel32 : Library {
-        fun GetCurrentThreadId(): Int
-    }
-
-    @Structure.FieldOrder("hwnd", "message", "wParam", "lParam", "time", "pt")
-    open class MSG : Structure() {
-        @JvmField
-        var hwnd: Pointer? = null
-
-        @JvmField
-        var message: Int = 0
-
-        @JvmField
-        var wParam: NativeLong = NativeLong(0)
-
-        @JvmField
-        var lParam: NativeLong = NativeLong(0)
-
-        @JvmField
-        var time: Int = 0
-
-        @JvmField
-        var pt: POINT = POINT()
-    }
-
-    @Structure.FieldOrder("x", "y")
-    open class POINT : Structure() {
-        @JvmField
-        var x: Int = 0
-
-        @JvmField
-        var y: Int = 0
     }
 
     private companion object {
