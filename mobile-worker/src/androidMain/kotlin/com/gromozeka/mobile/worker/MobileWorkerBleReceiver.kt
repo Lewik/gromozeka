@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
@@ -21,7 +20,7 @@ class MobileWorkerBleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val errorCode = intent.getIntExtra(BluetoothLeScanner.EXTRA_ERROR_CODE, 0)
         if (errorCode != 0) {
-            Log.w(LOG_TAG, "BLE scan callback failed with code $errorCode")
+            androidMobileWorkerLog.warn("BLE scan callback failed with code $errorCode")
             return
         }
         val callbackType = intent.getIntExtra(
@@ -45,7 +44,7 @@ class MobileWorkerBleReceiver : BroadcastReceiver() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                Log.w(LOG_TAG, "Failed to store BLE presence event", error)
+                androidMobileWorkerLog.warn(error, "Failed to store BLE presence event")
             } finally {
                 runtime.close()
                 pendingResult.finish()
@@ -75,9 +74,5 @@ class MobileWorkerBleReceiver : BroadcastReceiver() {
             result.scanRecord?.serviceUuids?.any { it.uuid.toString().equals(expected, ignoreCase = true) } == true
         } ?: false
         return addressMatches || serviceMatches
-    }
-
-    companion object {
-        private const val LOG_TAG = "GromozekaMobileWorker"
     }
 }

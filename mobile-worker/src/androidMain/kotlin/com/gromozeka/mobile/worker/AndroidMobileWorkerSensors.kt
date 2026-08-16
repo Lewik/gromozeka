@@ -18,7 +18,6 @@ import android.os.Build
 import android.os.ParcelUuid
 import android.provider.Settings
 import android.net.wifi.WifiManager
-import android.util.Log
 import com.gromozeka.domain.model.LocationCause
 
 internal class AndroidMobileWorkerSensors(private val context: Context) {
@@ -104,7 +103,7 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
             )
             synchronizeGeofences()
         }.onFailure { error ->
-            Log.w(LOG_TAG, "Failed to enable background location signals", error)
+            androidMobileWorkerLog.warn(error, "Failed to enable background location signals")
         }.getOrDefault(false)
     }
 
@@ -134,7 +133,7 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
                 )
                 geofence.id
             }.onFailure { error ->
-                Log.w(LOG_TAG, "Failed to register geofence ${geofence.id}", error)
+                androidMobileWorkerLog.warn(error) { "Failed to register geofence ${geofence.id}" }
             }.getOrNull()
         }
         writeRegisteredGeofenceIds(registered)
@@ -290,7 +289,6 @@ internal class AndroidMobileWorkerSensors(private val context: Context) {
         private const val GEOFENCE_ACTION = "com.gromozeka.mobile.worker.GEOFENCE_TRANSITION"
         private const val GEOFENCE_URI_SCHEME = "gromozeka-worker"
         private const val GEOFENCE_URI_AUTHORITY = "geofence"
-        private const val LOG_TAG = "GromozekaMobileWorker"
     }
 }
 

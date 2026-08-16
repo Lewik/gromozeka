@@ -11,6 +11,8 @@ import com.gromozeka.domain.service.AuthenticationService
 import com.gromozeka.domain.service.FirstUserBootstrapToken
 import com.gromozeka.domain.service.PersonalAccessTokenService
 import com.gromozeka.domain.service.WorkerAccessService
+import com.gromozeka.shared.logging.JvmLogComponent
+import com.gromozeka.shared.logging.JvmLogDirectoryResolver
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.install
 import io.ktor.server.application.createRouteScopedPlugin
@@ -39,8 +41,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 private val log = KLoggers.logger("GromozekaServer")
 
-fun main() {
-    applyServerSystemProperties()
+fun main(args: Array<String>) {
+    applyServerSystemProperties(args)
 
     val host = System.getProperty("gromozeka.remote.host")
         ?: System.getenv("GROMOZEKA_REMOTE_HOST")
@@ -55,7 +57,7 @@ fun main() {
         .web(WebApplicationType.NONE)
         .profiles(resolveSpringProfile())
         .listeners(ApplicationListener<ApplicationReadyEvent> { springReady.set(true) })
-        .run()
+        .run(*args)
 
     check(springReady.get()) { "Spring application did not publish ApplicationReadyEvent" }
 
@@ -221,12 +223,12 @@ private fun resolveWebRoot(): File {
     return File(projectRoot, "presentation/build/dist/wasmJs/developmentExecutable")
 }
 
-private fun applyServerSystemProperties() {
+private fun applyServerSystemProperties(args: Array<String>) {
     val mode = System.getProperty("GROMOZEKA_MODE")
         ?: System.getenv("GROMOZEKA_MODE")
 
     mode?.let { System.setProperty("GROMOZEKA_MODE", it) }
-    System.setProperty("logging.file.path", determineLogPath(mode))
+    JvmLogDirectoryResolver.configure(args, mode, JvmLogComponent.SERVER)
 }
 
 private fun resolveSpringProfile(): String =
@@ -249,25 +251,6 @@ private fun resolveSecureCookie(host: String): Boolean {
 
 private fun String.isLoopbackBinding(): Boolean =
     this == "127.0.0.1" || this == "::1" || equals("localhost", ignoreCase = true)
-
-private fun determineLogPath(mode: String?): String {
-    val customHome = System.getProperty("GROMOZEKA_HOME")
-        ?: System.getenv("GROMOZEKA_HOME")
-
-    return when (mode?.lowercase()) {
-        "dev", "development" -> "logs"
-        "test", "e2e" -> customHome?.let { "$it/logs" } ?: "build/test-data/logs"
-        null, "prod", "production" -> {
-            val userHome = System.getProperty("user.home")
-            when {
-                System.getProperty("os.name").lowercase().contains("mac") -> "$userHome/Library/Logs/Gromozeka"
-                System.getProperty("os.name").lowercase().contains("windows") -> "$userHome/AppData/Local/Gromozeka/logs"
-                else -> "$userHome/.local/share/Gromozeka/logs"
-            }
-        }
-        else -> error("Unsupported GROMOZEKA_MODE=$mode")
-    }
-}
 
 @SpringBootApplication(
     excludeName = [

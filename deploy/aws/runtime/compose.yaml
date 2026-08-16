@@ -8,6 +8,7 @@ x-json-logging: &json-logging
 
 x-app-environment: &app-environment
   GROMOZEKA_MODE: prod
+  GROMOZEKA_LOG_DIR: /var/lib/gromozeka/logs
   GROMOZEKA_POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/gromozeka
   GROMOZEKA_POSTGRES_USERNAME: gromozeka
   GROMOZEKA_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

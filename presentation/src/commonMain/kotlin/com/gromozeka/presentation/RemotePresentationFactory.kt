@@ -13,7 +13,6 @@ import com.gromozeka.presentation.services.ClientSideSpeechToTextService
 import com.gromozeka.presentation.services.ClientFeedbackService
 import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.LiveVoiceInputController
-import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
 import com.gromozeka.presentation.services.NoOpClientAudioPlayer
@@ -204,7 +203,6 @@ suspend fun createRemoteAppComponents(
             translationService = translationService,
             themeService = themeService,
             aiThemeGenerator = AIThemeGenerator(),
-            logEncryptor = LogEncryptor(),
             localWorkerController = localWorkerController,
             ollamaModelService = OllamaModelService(),
             projectService = remoteServices.projectService,

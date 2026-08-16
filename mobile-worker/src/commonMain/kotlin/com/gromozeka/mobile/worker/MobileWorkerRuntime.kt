@@ -16,6 +16,7 @@ import com.gromozeka.remote.protocol.MobileWorkerEventInput
 import com.gromozeka.remote.protocol.MobileWorkerContactMetadata
 import com.gromozeka.remote.protocol.MobileWorkerHeartbeatRequest
 import com.gromozeka.remote.protocol.MobileWorkerHeartbeatResponse
+import com.gromozeka.shared.logging.GromozekaLogging
 import com.gromozeka.remote.protocol.WorkerEnrollmentBootstrap
 import com.gromozeka.remote.protocol.WorkerEnrollmentConsumeRequest
 import com.gromozeka.remote.protocol.DeviceConnectionChallenge
@@ -55,6 +56,8 @@ internal class MobileWorkerRuntime(
     private val appVersion: String,
     private val httpClient: HttpClient = createMobileWorkerHttpClient(),
 ) {
+    private val log = GromozekaLogging.logger("MobileWorkerRuntime")
+
     init {
         require(deviceName.isNotBlank()) { "Device name must not be blank" }
         require(operatingSystemVersion.isNotBlank()) { "Operating system version must not be blank" }
@@ -87,7 +90,9 @@ internal class MobileWorkerRuntime(
         require(bootstrap.kind == WorkerResource.Kind.MOBILE_DEVICE) {
             "Server enrolled an unexpected Worker kind"
         }
-        persistEnrollment(baseUrl, bootstrap)
+        persistEnrollment(baseUrl, bootstrap).also {
+            log.info { "Enrollment completed platform=${platform.name}" }
+        }
     }
 
     suspend fun startDeviceConnection(
@@ -240,7 +245,14 @@ internal class MobileWorkerRuntime(
         appState: MobileWorkerAppState = MobileWorkerAppState.UNKNOWN,
         heartbeatWhenIdle: Boolean = false,
     ): MobileWorkerStatus = mobileWorkerStorageMutex.withLock {
-        synchronizeLocked(readState(), appState, heartbeatWhenIdle)
+        val state = readState()
+        runCatching { synchronizeLocked(state, appState, heartbeatWhenIdle) }
+            .onFailure { error ->
+                log.warn(error) {
+                    "Synchronization failed appState=${appState.name} pendingEvents=${state.pendingEvents.size}"
+                }
+            }
+            .getOrThrow()
     }
 
     suspend fun reset() = mobileWorkerStorageMutex.withLock {
@@ -381,6 +393,7 @@ internal class MobileWorkerRuntime(
                     ?: state.lastRecordedValues,
             )
         )
+        log.debug { "Queued event type=${payload::class.simpleName}" }
     }
 
     private suspend fun synchronizeLocked(
@@ -393,6 +406,7 @@ internal class MobileWorkerRuntime(
         val credential = storage.readCredential()
             ?: error("Mobile Worker credential is missing; enroll the device again")
         var sentEventBatch = false
+        var sentEventCount = 0
         while (state.pendingEvents.isNotEmpty()) {
             val batch = state.pendingEvents.take(MAX_SYNC_BATCH_SIZE)
             val response = httpClient.post("${state.serverUrl}/api/mobile-worker/events") {
@@ -424,6 +438,7 @@ internal class MobileWorkerRuntime(
             )
             writeState(state)
             sentEventBatch = true
+            sentEventCount += batch.size
         }
         if (heartbeatWhenIdle && !sentEventBatch) {
             val response = httpClient.post("${state.serverUrl}/api/mobile-worker/heartbeat") {
@@ -445,6 +460,10 @@ internal class MobileWorkerRuntime(
             val acknowledgement = response.body<MobileWorkerHeartbeatResponse>()
             state = state.copy(lastSynchronizedAt = acknowledgement.serverReceivedAt)
             writeState(state)
+            log.info { "Heartbeat acknowledged appState=${appState.name}" }
+        }
+        if (sentEventCount > 0) {
+            log.info { "Synchronization acknowledged events=$sentEventCount appState=${appState.name}" }
         }
         return state.toStatus(hasCredential = true)
     }

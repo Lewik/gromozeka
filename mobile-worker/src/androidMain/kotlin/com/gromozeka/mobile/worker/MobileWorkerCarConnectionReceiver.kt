@@ -3,7 +3,6 @@ package com.gromozeka.mobile.worker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import androidx.car.app.connection.CarConnection
 import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CancellationException
@@ -25,15 +24,11 @@ class MobileWorkerCarConnectionReceiver : BroadcastReceiver() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                Log.w(LOG_TAG, "Failed to store Android Auto connection event", error)
+                androidMobileWorkerLog.warn(error, "Failed to store Android Auto connection event")
             } finally {
                 runtime.close()
                 pendingResult.finish()
             }
         }
-    }
-
-    companion object {
-        private const val LOG_TAG = "GromozekaMobileWorker"
     }
 }

@@ -38,7 +38,9 @@ final class SecureMobileWorkerStorage: NSObject, MobileWorkerStorage {
                 options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
             )
         } catch {
-            NSLog("Gromozeka Worker failed to save its state: %@", error.localizedDescription)
+            IosMobileWorkerLoggingKt.logIosMobileWorkerError(
+                message: "Failed to save Worker state: \(error.localizedDescription)"
+            )
         }
     }
 
@@ -72,10 +74,14 @@ final class SecureMobileWorkerStorage: NSObject, MobileWorkerStorage {
                 kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
             ] as CFDictionary, nil)
             if addStatus != errSecSuccess {
-                NSLog("Gromozeka Worker failed to save its credential: %d", addStatus)
+                IosMobileWorkerLoggingKt.logIosMobileWorkerError(
+                    message: "Failed to save Worker credential: \(addStatus)"
+                )
             }
         } else if updateStatus != errSecSuccess {
-            NSLog("Gromozeka Worker failed to update its credential: %d", updateStatus)
+            IosMobileWorkerLoggingKt.logIosMobileWorkerError(
+                message: "Failed to update Worker credential: \(updateStatus)"
+            )
         }
     }
 

@@ -22,8 +22,6 @@ internal class WindowsLocalWorkerRuntime(
     private val pidFile = stateDirectory.resolve("worker.pid")
     private val lockFile = stateDirectory.resolve("lifecycle.lock")
     private val logDirectory = workerHome.resolve("logs")
-    private val standardOutput = logDirectory.resolve("worker-client.stdout.log")
-    private val standardError = logDirectory.resolve("worker-client.stderr.log")
 
     override suspend fun isEnabled(): Boolean = Files.isRegularFile(enabledMarker)
 
@@ -97,10 +95,11 @@ internal class WindowsLocalWorkerRuntime(
         val command = workerCommand(emptyList(), includeConfig = true)
         val processBuilder = ProcessBuilder(command)
             .directory(userHome.toFile())
-            .redirectOutput(ProcessBuilder.Redirect.appendTo(standardOutput.toFile()))
-            .redirectError(ProcessBuilder.Redirect.appendTo(standardError.toFile()))
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
         processBuilder.environment()[GROMOZEKA_HOME_ENVIRONMENT_VARIABLE] = workerHome.toString()
         processBuilder.environment()[GROMOZEKA_WORKER_CONFIG_ENVIRONMENT_VARIABLE] = workerConfig.toString()
+        processBuilder.environment()["GROMOZEKA_LOG_DIR"] = logDirectory.toString()
         processBuilder.environment().putAll(workerEnvironment())
         val process = processBuilder.start()
         try {
@@ -118,7 +117,7 @@ internal class WindowsLocalWorkerRuntime(
             Files.deleteIfExists(pidFile)
             error(
                 "Local Worker exited during startup with code ${process.exitValue()}. " +
-                    "See $standardError"
+                    "See ${logDirectory.resolve("workers")}"
             )
         } catch (error: Throwable) {
             if (process.isAlive) process.destroyForcibly()

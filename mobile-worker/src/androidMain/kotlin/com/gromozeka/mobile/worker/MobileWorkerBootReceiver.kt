@@ -3,7 +3,6 @@ package com.gromozeka.mobile.worker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,15 +26,11 @@ class MobileWorkerBootReceiver : BroadcastReceiver() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                Log.w(LOG_TAG, "Failed to restore Mobile Worker signals", error)
+                androidMobileWorkerLog.warn(error, "Failed to restore Mobile Worker signals")
             } finally {
                 runtime.close()
                 pendingResult.finish()
             }
         }
-    }
-
-    companion object {
-        private const val LOG_TAG = "GromozekaMobileWorker"
     }
 }

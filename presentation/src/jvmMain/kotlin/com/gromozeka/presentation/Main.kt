@@ -1,5 +1,6 @@
 package com.gromozeka.presentation
 
+import com.gromozeka.shared.logging.JvmClientDiagnosticLogging
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,7 +37,8 @@ import java.awt.Desktop
 import java.awt.desktop.AppReopenedListener
 import java.awt.desktop.QuitHandler
 
-fun main() {
+fun main(args: Array<String>) {
+    JvmClientDiagnosticLogging.install(args)
     val log = KLoggers.logger("ChatApplication")
     System.setProperty("java.awt.headless", "false")
 

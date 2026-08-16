@@ -8,6 +8,8 @@ import com.gromozeka.application.service.DirectAiRequestResponseExecutionHandler
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
+import com.gromozeka.shared.logging.JvmLogComponent
+import com.gromozeka.shared.logging.JvmLogDirectoryResolver
 import kotlinx.coroutines.runBlocking
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -56,7 +58,7 @@ fun main(args: Array<String>) {
         return
     }
 
-    applyWorkerSystemProperties()
+    applyWorkerSystemProperties(args)
 
     val context = SpringApplicationBuilder(GromozekaWorkerApplication::class.java)
         .web(WebApplicationType.NONE)
@@ -73,7 +75,7 @@ fun main(args: Array<String>) {
     }
 }
 
-private fun applyWorkerSystemProperties() {
+private fun applyWorkerSystemProperties(args: Array<String>) {
     val mode = System.getProperty("GROMOZEKA_MODE")
         ?: System.getenv("GROMOZEKA_MODE")
 
@@ -83,7 +85,7 @@ private fun applyWorkerSystemProperties() {
     ) {
         System.setProperty("gromozeka.runtime.worker.version", currentWorkerVersion())
     }
-    System.setProperty("logging.file.path", determineLogPath(mode))
+    JvmLogDirectoryResolver.configure(args, mode, JvmLogComponent.WORKER)
 }
 
 internal fun currentWorkerVersion(): String =
@@ -98,27 +100,6 @@ private fun resolveSpringProfile(): String =
         null, "prod", "production" -> "prod"
         else -> error("Unsupported GROMOZEKA_MODE=${System.getProperty("GROMOZEKA_MODE")}")
     }
-
-private fun determineLogPath(mode: String?): String {
-    val customHome = System.getProperty("GROMOZEKA_HOME")
-        ?: System.getenv("GROMOZEKA_HOME")
-
-    return when (mode?.lowercase()) {
-        "dev", "development" -> "logs/workers"
-        "test", "e2e" -> customHome?.let { "$it/logs/workers" } ?: "build/test-data/logs/workers"
-        null, "prod", "production" -> {
-            val userHome = System.getProperty("user.home")
-            when {
-                System.getProperty("os.name").lowercase().contains("mac") ->
-                    "$userHome/Library/Logs/Gromozeka/workers"
-                System.getProperty("os.name").lowercase().contains("windows") ->
-                    "$userHome/AppData/Local/Gromozeka/logs/workers"
-                else -> "$userHome/.local/share/Gromozeka/logs/workers"
-            }
-        }
-        else -> error("Unsupported GROMOZEKA_MODE=$mode")
-    }
-}
 
 @SpringBootApplication
 @ComponentScan(

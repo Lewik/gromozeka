@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
+        android:name="com.gromozeka.presentation.GromozekaAndroidApplication"
         android:allowBackup="true"
         android:label="Gromozeka"
         android:usesCleartextTraffic="true"

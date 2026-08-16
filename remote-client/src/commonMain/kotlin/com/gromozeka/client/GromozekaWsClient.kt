@@ -67,6 +67,7 @@ import com.gromozeka.remote.protocol.StateSyncObservationFailedEvent
 import com.gromozeka.remote.protocol.StateSyncSnapshotResponse
 import com.gromozeka.remote.protocol.SynthesizeSpeechStreamCommand
 import com.gromozeka.shared.uuid.uuid7
+import com.gromozeka.shared.logging.GromozekaLogging
 import com.gromozeka.statesync.StateSyncCursor
 import com.gromozeka.statesync.StateSyncInvalidation
 import com.gromozeka.statesync.StateSyncSnapshot
@@ -121,6 +122,7 @@ internal class GromozekaWsClient(
     private val clientInstanceId: ClientInstanceId,
     private val clientPlatform: RemoteClientPlatform,
 ) {
+    private val log = GromozekaLogging.logger("GromozekaWsClient")
     internal val serverHttpBaseUrl = url
         .replaceFirst("wss://", "https://")
         .replaceFirst("ws://", "http://")
@@ -153,7 +155,7 @@ internal class GromozekaWsClient(
                 send(ReportClientActivityCommand(kind))
             }.onFailure { error ->
                 if (error !is CancellationException) {
-                    println("Gromozeka WS client activity report failed: kind=$kind error=${error.message}")
+                    log.warn(error) { "Client activity report failed: kind=$kind" }
                 }
             }
         }
@@ -167,10 +169,10 @@ internal class GromozekaWsClient(
         }
 
         try {
-            println("Gromozeka WS request id=$id type=${payload::class.simpleName}")
+            log.debug { "Request id=$id type=${payload::class.simpleName}" }
             sendEnvelope(GromozekaClientEnvelope(id, payload))
             return deferred.await().also { response ->
-                println("Gromozeka WS response id=$id type=${response::class.simpleName}")
+                log.debug { "Response id=$id type=${response::class.simpleName}" }
             }
         } finally {
             registryMutex.withLock {
@@ -280,7 +282,7 @@ internal class GromozekaWsClient(
             if (error is CancellationException) {
                 throw error
             }
-            println(
+            log.info(
                 "Gromozeka WS initial conversation observation deferred until reconnect: " +
                     "conversation=${conversationId.value} error=${error.message}"
             )
@@ -571,7 +573,7 @@ internal class GromozekaWsClient(
 
     fun setEncoding(encoding: RemoteProtocolEncoding) {
         encodingState.value = encoding
-        println("Gromozeka WS protocol encoding=${encoding.name}")
+        log.info { "Protocol encoding=${encoding.name}" }
     }
 
     private suspend fun ensureConnected(reconnectAttempt: Int = 0): ActiveConnection =
@@ -595,7 +597,7 @@ internal class GromozekaWsClient(
 
             try {
                 val newSession = httpClient.webSocketSession(url)
-                println("Gromozeka WS connected url=$url")
+                log.info("Connected")
                 sendEnvelopeRaw(
                     newSession,
                     GromozekaClientEnvelope(
@@ -639,7 +641,7 @@ internal class GromozekaWsClient(
                     is Frame.Text -> RemoteProtocolCodec.decodeServerText(frame.readText())
                     else -> continue
                 }
-                println("Gromozeka WS incoming id=${envelope.id} type=${envelope.payload::class.simpleName}")
+                log.debug { "Incoming id=${envelope.id} type=${envelope.payload::class.simpleName}" }
                 when (val payload = envelope.payload) {
                     is ServerResponse -> registryMutex.withLock { pending.remove(envelope.id) }?.complete(payload)
                     is MessageUpsertedEvent -> routeConversationEvent(payload.subscriptionId, payload)
@@ -689,7 +691,7 @@ internal class GromozekaWsClient(
             throw error
         } catch (error: Throwable) {
             failure = error
-            println("Gromozeka WS read loop failed: ${error.message ?: error.toString()}")
+            log.warn(error, "Read loop failed")
         } finally {
             if (!closed) {
                 handleConnectionLoss(

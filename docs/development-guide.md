@@ -78,6 +78,23 @@ runtime or download executable code during first launch. Docker images follow
 the same runtime boundary. Claude Code, GitHub Copilot CLI, and browser binaries
 are never bundled.
 
+## Diagnostic Logging
+
+Persistent runtime logs are size-bounded and rotated. Set `GROMOZEKA_LOG_DIR`
+to redirect the complete installation to one base directory; Worker logs stay
+under its `workers` child directory. JVM launches can use
+`-Dgromozeka.log.dir=/path` or `--gromozeka.log.dir=/path` instead. Standard
+Spring Boot `LOGGING_FILE_PATH`, `-Dlogging.file.path=/path`, and
+`--logging.file.path=/path` remain exact per-process directory overrides.
+Desktop client verbosity can be changed with `GROMOZEKA_LOG_LEVEL` or
+`-Dgromozeka.log.level`; production defaults to `INFO` and development to
+`DEBUG`.
+
+Android and iOS clients and Mobile Workers keep approximately 3 MB of
+diagnostic logs inside their application sandbox. Browser clients log only to
+the browser console. Diagnostic logs must not include conversation text,
+credentials, raw authorization headers, or exact device locations.
+
 ## Runtime Language
 
 - A **Project** is a logical working context.

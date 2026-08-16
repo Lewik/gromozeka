@@ -318,7 +318,7 @@ open class AppViewModel(
     private suspend fun TabViewModel.sendInitialMessage(message: Conversation.Message) {
         val messageContent = message.content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
             .firstOrNull()?.text ?: "Ready to work on this project"
-        log.debug("Initial message preview: ${messageContent.take(100)}...")
+        log.debug("Sending initial message with ${messageContent.length} characters")
         try {
             sendMessageToSession(messageContent, message.instructions)
             log.info("Initial message sent successfully")

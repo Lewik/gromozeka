@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.location.LocationManager
-import android.util.Log
 import com.gromozeka.domain.model.GeofenceTransition
 import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CancellationException
@@ -30,15 +29,11 @@ class MobileWorkerGeofenceReceiver : BroadcastReceiver() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                Log.w(LOG_TAG, "Failed to store geofence transition", error)
+                androidMobileWorkerLog.warn(error, "Failed to store geofence transition")
             } finally {
                 runtime.close()
                 pendingResult.finish()
             }
         }
-    }
-
-    companion object {
-        private const val LOG_TAG = "GromozekaMobileWorker"
     }
 }

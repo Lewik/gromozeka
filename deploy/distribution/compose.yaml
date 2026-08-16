@@ -1,5 +1,11 @@
 name: gromozeka
 
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: 20m
+    max-file: "3"
+
 services:
   postgres:
     image: pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
@@ -15,6 +21,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+    logging: *json-logging
 
   server:
     image: ghcr.io/lewik/gromozeka-server:${GROMOZEKA_VERSION:-latest}
@@ -22,6 +29,7 @@ services:
     init: true
     environment:
       GROMOZEKA_MODE: prod
+      GROMOZEKA_LOG_DIR: /var/lib/gromozeka/logs
       GROMOZEKA_POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/gromozeka
       GROMOZEKA_POSTGRES_USERNAME: gromozeka
       GROMOZEKA_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -35,6 +43,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    logging: *json-logging
 
   caddy:
     image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
@@ -63,6 +72,7 @@ services:
     depends_on:
       server:
         condition: service_healthy
+    logging: *json-logging
 
   worker:
     profiles: ["worker"]
@@ -71,6 +81,7 @@ services:
     init: true
     environment:
       GROMOZEKA_MODE: prod
+      GROMOZEKA_LOG_DIR: /var/lib/gromozeka/logs
       GROMOZEKA_SERVER_URL: ${GROMOZEKA_WORKER_GATEWAY_SERVER_URL:?GROMOZEKA_WORKER_GATEWAY_SERVER_URL is required}
       GROMOZEKA_WORKER_GATEWAY_CREDENTIAL: ${GROMOZEKA_WORKER_GATEWAY_CREDENTIAL:?GROMOZEKA_WORKER_GATEWAY_CREDENTIAL is required}
       GROMOZEKA_SERVER_CA_CERTIFICATE_PATH: ${GROMOZEKA_SERVER_CA_CERTIFICATE_PATH:-}
@@ -80,6 +91,7 @@ services:
     volumes:
       - gromozeka-worker-home:/var/lib/gromozeka
       - ./certs:/certs:ro
+    logging: *json-logging
 
 volumes:
   postgres18-data:

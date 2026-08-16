@@ -35,6 +35,7 @@ import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.RemoteServerSetupScreen
 import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import com.gromozeka.remote.protocol.AuthenticationStatusResponse
+import com.gromozeka.shared.logging.IosDiagnosticLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -44,14 +45,16 @@ import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
 import platform.UIKit.UIViewController
 
-fun GromozekaMainViewController(): UIViewController =
-    ComposeUIViewController(
+fun GromozekaMainViewController(): UIViewController {
+    IosDiagnosticLogging.install("client.log")
+    return ComposeUIViewController(
         configure = {
             onFocusBehavior = OnFocusBehavior.DoNothing
         }
     ) {
         GromozekaIosApp()
     }
+}
 
 @Composable
 private fun GromozekaIosApp() {

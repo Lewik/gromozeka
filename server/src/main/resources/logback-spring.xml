@@ -20,9 +20,9 @@
             </encoder>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
                 <fileNamePattern>${LOG_PATH}/dev.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-                <maxFileSize>50MB</maxFileSize>
+                <maxFileSize>20MB</maxFileSize>
                 <maxHistory>7</maxHistory>
-                <totalSizeCap>500MB</totalSizeCap>
+                <totalSizeCap>100MB</totalSizeCap>
             </rollingPolicy>
         </appender>
         
@@ -32,21 +32,21 @@
         </root>
         
         <!-- Debug level for our components in dev -->
-        <logger name="com.gromozeka.bot" level="DEBUG"/>
+        <logger name="com.gromozeka" level="DEBUG"/>
     </springProfile>
     
     <!-- Production profile - logs to programmatically determined directory -->
     <springProfile name="prod">
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${LOG_PATH}/gromozeka.log</file>
+            <file>${LOG_PATH}/server.log</file>
             <encoder>
                 <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
             </encoder>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-                <fileNamePattern>${LOG_PATH}/gromozeka.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-                <maxFileSize>100MB</maxFileSize>
-                <maxHistory>30</maxHistory>
-                <totalSizeCap>3GB</totalSizeCap>
+                <fileNamePattern>${LOG_PATH}/server.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>20MB</maxFileSize>
+                <maxHistory>14</maxHistory>
+                <totalSizeCap>300MB</totalSizeCap>
             </rollingPolicy>
         </appender>
         
@@ -56,8 +56,7 @@
         </root>
         
         <!-- Production logging levels -->
-        <logger name="com.gromozeka.bot" level="INFO"/>
-        <logger name="com.gromozeka.bot.services.StreamLogger" level="WARN"/>
+        <logger name="com.gromozeka" level="INFO"/>
         <logger name="org.springframework" level="WARN"/>
         <logger name="org.apache" level="WARN"/>
     </springProfile>

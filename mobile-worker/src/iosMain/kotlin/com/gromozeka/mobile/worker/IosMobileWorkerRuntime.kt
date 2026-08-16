@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.LocationCause
 import com.gromozeka.domain.model.MobileWorkerAppState
 import com.gromozeka.domain.model.MobileWorkerPlatform
 import com.gromozeka.domain.model.SleepState
+import com.gromozeka.shared.logging.IosDiagnosticLogging
 import kotlin.time.Instant
 
 class IosMobileWorkerRuntime(
@@ -13,6 +14,10 @@ class IosMobileWorkerRuntime(
     operatingSystemVersion: String,
     appVersion: String,
 ) {
+    init {
+        IosDiagnosticLogging.install("mobile-worker.log")
+    }
+
     private val runtime = MobileWorkerRuntime(
         storage = storage,
         platform = MobileWorkerPlatform.IOS,

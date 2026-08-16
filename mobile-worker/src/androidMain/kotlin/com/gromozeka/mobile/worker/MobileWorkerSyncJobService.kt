@@ -6,7 +6,6 @@ import android.app.job.JobScheduler
 import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
-import android.util.Log
 import com.gromozeka.domain.model.MobileWorkerAppState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
@@ -43,7 +42,7 @@ class MobileWorkerSyncJobService : JobService() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                Log.w(LOG_TAG, "Scheduled Mobile Worker synchronization failed", error)
+                androidMobileWorkerLog.warn(error, "Scheduled Mobile Worker synchronization failed")
             } finally {
                 runtime.close()
             }
@@ -80,6 +79,5 @@ class MobileWorkerSyncJobService : JobService() {
         }
 
         private const val JOB_ID = 27_042
-        private const val LOG_TAG = "GromozekaMobileWorker"
     }
 }

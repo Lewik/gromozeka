@@ -47,7 +47,6 @@ import com.gromozeka.domain.model.ai.AiCatalogSecretSlot
 import com.gromozeka.domain.model.ai.AiCatalogSecretState
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.LocalWorkerOperation
 import com.gromozeka.presentation.services.LocalWorkerPermissionState
@@ -106,7 +105,6 @@ fun SettingsPanel(
     translationService: TranslationService,
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
-    logEncryptor: LogEncryptor,
     settingsService: SettingsService,
     aiConfigurationService: AiConfigurationService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
@@ -1351,49 +1349,10 @@ fun SettingsPanel(
                     }
                     // Logs & Diagnostics
                     SettingsGroup(title = translation.settings.logsAndDiagnosticsTitle) {
-                        ButtonSettingItem(
-                            label = "View Application Logs",
-                            description = "Open the folder containing application logs to review activity and troubleshoot issues",
-                            buttonText = "Open Folder",
-                            onClick = {
-                                log.info("Opening logs folder is disabled in the remote UI client")
-                            }
-                        )
-
-                        ButtonSettingItem(
-                            label = "Encrypt Logs",
-                            description = "Encrypt logs for secure transmission to developer. Personal information is not logged.",
-                            buttonText = "Encrypt Logs",
-                            onClick = {
-                                coroutineScope.launch {
-                                    try {
-                                        log.info("Starting log encryption...")
-                                        val result = logEncryptor.encryptLogs()
-
-                                        if (result.success && result.encryptedFile != null) {
-                                            log.info("Log encryption successful: ${result.encryptedFile}")
-
-                                            // Open folder with encrypted file
-                                            log.info("Encrypted logs folder opening is disabled in the remote UI client")
-                                        } else {
-                                            log.error { "Log encryption failed: ${result.error}" }
-                                            // TODO: Show error notification
-                                        }
-                                    } catch (e: Exception) {
-                                        log.error(e) { "Unexpected error during log encryption" }
-                                        // TODO: Show error notification
-                                    }
-                                }
-                            }
-                        )
-
-                        ButtonSettingItem(
-                            label = "Clear Application Logs",
-                            description = "Delete all log files to immediately free up disk space and start fresh logging.",
-                            buttonText = "Clear All",
-                            onClick = {
-                                log.info("Clearing logs is disabled in the remote UI client")
-                            }
+                        InfoSettingItem(
+                            label = "Automatic retention",
+                            message = "Native application logs are size-bounded and rotated automatically. " +
+                                "Browser diagnostics stay in the browser console.",
                         )
                     }
 

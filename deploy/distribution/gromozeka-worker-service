@@ -107,6 +107,8 @@ install_launch_agent() {
     <string>$(xml_escape "${GROMOZEKA_HOME:-$HOME/.gromozeka}")</string>
     <key>GROMOZEKA_MODE</key>
     <string>$(xml_escape "${GROMOZEKA_MODE:-prod}")</string>
+    <key>GROMOZEKA_LOG_DIR</key>
+    <string>$(xml_escape "${GROMOZEKA_LOG_DIR:-$log_directory}")</string>
     <key>PATH</key>
     <string>$(xml_escape "${PATH:-/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin}")</string>
 $(environment_entry GROMOZEKA_WORKER_CONFIG)
@@ -122,9 +124,9 @@ $(environment_entry GROMOZEKA_WORKER_CONFIG)
   <key>ThrottleInterval</key>
   <integer>10</integer>
   <key>StandardOutPath</key>
-  <string>$(xml_escape "$log_directory/worker-launchd.stdout.log")</string>
+  <string>/dev/null</string>
   <key>StandardErrorPath</key>
-  <string>$(xml_escape "$log_directory/worker-launchd.stderr.log")</string>
+  <string>/dev/null</string>
 </dict>
 </plist>
 PLIST
