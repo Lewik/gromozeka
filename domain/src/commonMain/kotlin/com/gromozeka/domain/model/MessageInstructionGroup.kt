@@ -25,9 +25,16 @@ data class MessageInstructionGroup(
         val data: Conversation.Message.Instruction.UserInstruction,
         val shortLabel: String,
         val includeInMessage: Boolean = true,
+        val textShortcutAliases: List<String> = defaultTextShortcutAliases(data.id),
     ) {
         init {
             require(shortLabel.isNotBlank()) { "Message instruction short label must not be blank" }
+            require(textShortcutAliases.all { alias -> alias.isNotBlank() && alias.none(Char::isWhitespace) }) {
+                "Message instruction text shortcut aliases must not be blank or contain whitespace"
+            }
+            require(textShortcutAliases.distinctBy(String::lowercase).size == textShortcutAliases.size) {
+                "Message instruction text shortcut aliases must be unique ignoring case"
+            }
         }
     }
 
@@ -59,4 +66,10 @@ data class MessageInstructionGroup(
             )
         )
     }
+}
+
+private fun defaultTextShortcutAliases(instructionId: String): List<String> = when (instructionId) {
+    "mode_readonly" -> listOf("r", "к")
+    "mode_writable" -> listOf("w", "ц")
+    else -> emptyList()
 }

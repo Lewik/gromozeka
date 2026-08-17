@@ -11,6 +11,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.MessageInstructionTextShortcut
 import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
@@ -344,25 +345,7 @@ class TabViewModel(
             )
 
     fun selectMessageInstruction(group: MessageInstructionGroup, controlIndex: Int) {
-        _uiState.update { currentState ->
-            if (controlIndex >= 0 && controlIndex < group.controls.size) {
-                val selectedId = group.controls[controlIndex].data.id
-
-                val allIdsInGroup = group.controls.map { it.data.id }.toSet()
-
-                val isAlreadyActive = selectedId in currentState.activeMessageInstructionIds
-
-                if (isAlreadyActive) {
-                    currentState
-                } else {
-                    val cleanedInstructions = currentState.activeMessageInstructionIds - allIdsInGroup
-                    val newInstructions = cleanedInstructions + selectedId
-                    currentState.copy(activeMessageInstructionIds = newInstructions)
-                }
-            } else {
-                currentState
-            }
-        }
+        _uiState.update { currentState -> currentState.withSelectedMessageInstruction(group, controlIndex) }
     }
 
     fun updateUserInput(input: String) {
@@ -373,10 +356,21 @@ class TabViewModel(
             }
             claimedUserInput = null
         }
+        val profile = settingsFlow.value.userProfile
+        val shortcut = MessageInstructionTextShortcut.consume(
+            input = input,
+            settings = profile.messageInstructionTextShortcuts,
+            groups = profile.messageInstructionGroups,
+        )
         _uiState.update { currentState ->
-            currentState.copy(
-                userInput = input,
-                composerMessageInputContext = currentState.composerMessageInputContext.takeUnless { input.isBlank() },
+            val selectedState = shortcut?.let { match ->
+                currentState.withSelectedMessageInstruction(match.group, match.controlIndex)
+            } ?: currentState
+            val updatedInput = shortcut?.remainingInput ?: input
+            selectedState.copy(
+                userInput = updatedInput,
+                composerMessageInputContext = selectedState.composerMessageInputContext
+                    .takeUnless { updatedInput.isBlank() },
             )
         }
     }
@@ -1311,6 +1305,18 @@ class TabViewModel(
             log.error(e) { "Failed to delete messages" }
         }
     }
+}
+
+private fun UIState.Tab.withSelectedMessageInstruction(
+    group: MessageInstructionGroup,
+    controlIndex: Int,
+): UIState.Tab {
+    val selectedControl = group.controls.getOrNull(controlIndex) ?: return this
+    val selectedId = selectedControl.data.id
+    if (selectedId in activeMessageInstructionIds) return this
+
+    val groupInstructionIds = group.controls.mapTo(mutableSetOf()) { control -> control.data.id }
+    return copy(activeMessageInstructionIds = activeMessageInstructionIds - groupInstructionIds + selectedId)
 }
 
 data class PendingUserMessage(

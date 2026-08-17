@@ -980,6 +980,23 @@ fun SettingsPanel(
                             )
                     ) {
                     SettingsGroup(title = "Composer shortcuts") {
+                        TextFieldSettingItem(
+                            label = "Instruction shortcut separators",
+                            description = "Comma-separated prefixes. Type a prefix, an instruction alias, then two spaces.",
+                            value = userProfile.messageInstructionTextShortcuts.separators.joinToString(", "),
+                            placeholder = "/, =",
+                            onValueChange = { value ->
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(
+                                            messageInstructionTextShortcuts = messageInstructionTextShortcuts.copy(
+                                                separators = value.splitShortcutValues(),
+                                            )
+                                        )
+                                    }
+                                )
+                            },
+                        )
                         userProfile.messageInstructionGroups.forEach { group ->
                             SwitchSettingItem(
                                 label = group.title,
@@ -1003,6 +1020,38 @@ fun SettingsPanel(
                                     )
                                 },
                             )
+                            group.controls.forEach { control ->
+                                TextFieldSettingItem(
+                                    label = "${group.title}: ${control.data.title} aliases",
+                                    description = "Comma-separated, case-insensitive aliases. Ambiguous aliases are ignored.",
+                                    value = control.textShortcutAliases.joinToString(", "),
+                                    onValueChange = { value ->
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    messageInstructionGroups = messageInstructionGroups.map { existingGroup ->
+                                                        if (existingGroup.id == group.id) {
+                                                            existingGroup.copy(
+                                                                controls = existingGroup.controls.map { existingControl ->
+                                                                    if (existingControl.data.id == control.data.id) {
+                                                                        existingControl.copy(
+                                                                            textShortcutAliases = value.splitShortcutValues(),
+                                                                        )
+                                                                    } else {
+                                                                        existingControl
+                                                                    }
+                                                                }
+                                                            )
+                                                        } else {
+                                                            existingGroup
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                        )
+                                    },
+                                )
+                            }
                         }
                     }
 
@@ -2311,6 +2360,12 @@ private fun String.splitWhisperExtraArguments(): List<String> =
     trim().takeIf { it.isNotBlank() }
         ?.split(Regex("\\s+"))
         .orEmpty()
+
+private fun String.splitShortcutValues(): List<String> =
+    split(',')
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .distinctBy(String::lowercase)
 
 private fun Settings.updateDeviceSettings(update: UserDeviceSettings.() -> UserDeviceSettings): Settings =
     copy(userDeviceSettings = userDeviceSettings.update())

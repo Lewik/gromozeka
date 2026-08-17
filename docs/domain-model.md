@@ -143,6 +143,7 @@ MessageInstructionGroup binds a settings-defined composer control to domain Inst
 - Controls in one group are mutually exclusive
 - `showInComposer` decides whether the group has a quick button near the input
 - `includeInMessage` allows a control to change UI state without modifying the message
+- Configurable text shortcuts activate the same controls when the input ends with a separator, alias, and two spaces
 
 **Example**: "Response Expected" button
 - Creates Instruction.ResponseExpected(targetTabId)

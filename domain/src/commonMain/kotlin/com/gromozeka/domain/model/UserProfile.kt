@@ -20,6 +20,8 @@ data class UserProfile(
     val agentSettings: AgentSettings = AgentSettings(),
     val memorySettings: MemorySettings = MemorySettings(),
     val messageInstructionGroups: List<MessageInstructionGroup> = MessageInstructionGroup.defaults(),
+    val messageInstructionTextShortcuts: MessageInstructionTextShortcutSettings =
+        MessageInstructionTextShortcutSettings(),
     val quickTextActions: List<QuickTextAction> = QuickTextAction.defaults(),
 ) {
     init {
