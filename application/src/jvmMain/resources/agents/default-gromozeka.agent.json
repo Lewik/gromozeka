@@ -2,7 +2,6 @@
   "id": "default-gromozeka",
   "name": "Gromozeka",
   "promptTemplateIds": [
-    "common-prompt-prefix.md",
     "common.identity.md",
     "common.knowledge.md",
     "common.multi-agent.knowledge.md",

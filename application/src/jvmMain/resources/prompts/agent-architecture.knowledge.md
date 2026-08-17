@@ -7,7 +7,6 @@ Reference document for how agent prompts and agent definitions are structured in
 Gromozeka agents are assembled from ordered prompt layers.
 
 Common builtin layers:
-- `common-prompt-prefix.md` for rare reserved prefix behavior
 - `common.identity.md` for shared identity and communication style
 - `common.knowledge.md` for shared operational rules
 - `common.multi-agent.knowledge.md` for delegation and coordination rules
@@ -24,7 +23,6 @@ Typical code-writing specialist:
 
 ```json
 [
-  "builtin:common-prompt-prefix.md",
   "builtin:common.identity.md",
   "builtin:common.knowledge.md",
   "builtin:memory.knowledge.md",
@@ -39,7 +37,6 @@ Coordinator or agent-constructor:
 
 ```json
 [
-  "builtin:common-prompt-prefix.md",
   "builtin:common.identity.md",
   "builtin:common.knowledge.md",
   "builtin:common.multi-agent.knowledge.md",
@@ -61,7 +58,6 @@ Rules:
 | `.identity.md` | Shared identity | `common.identity.md` |
 | `.role.md` | Role and responsibility | `developer.role.md` |
 | `.knowledge.md` | Reference knowledge | `architecture.knowledge.md` |
-| `.md` | Reserved prompt | `common-prompt-prefix.md` |
 
 ## Storage Layout
 

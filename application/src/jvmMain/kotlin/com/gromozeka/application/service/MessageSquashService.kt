@@ -1,13 +1,11 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.MessageSquashService as MessageSquashServiceSpec
@@ -19,13 +17,9 @@ import org.springframework.stereotype.Service
 class MessageSquashService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val conversationService: ConversationDomainService,
-    private val promptDomainService: PromptDomainService,
     private val aiConfigurationProvider: AiConfigurationProvider,
     private val toolCallPairingService: ToolCallPairingService,
 ) : MessageSquashServiceSpec, MessageSquashGenerationService {
-    companion object {
-        private val COMMON_PROMPT_PREFIX_ID = Prompt.Id("global:common-prompt-prefix.md")
-    }
     private val log = KLoggers.logger(this)
 
     /**
@@ -143,11 +137,6 @@ class MessageSquashService(
             SquashType.CONCATENATE -> throw IllegalStateException("Should not reach here")
         }
 
-        val systemPrompts = loadCommonPromptPrefix(conversationId)
-            .takeIf { it.isNotBlank() }
-            ?.let(::listOf)
-            ?: emptyList()
-
         val commandMessage = Conversation.Message(
             id = Conversation.Message.Id("squash-command"),
             conversationId = conversationId,
@@ -157,13 +146,13 @@ class MessageSquashService(
         )
 
         log.debug {
-            "Calling AI with ${markedMessages.size + 1} messages (${systemPrompts.size} system + ${markedMessages.size} history + 1 command)"
+            "Calling AI with ${markedMessages.size + 1} messages (${markedMessages.size} history + 1 command)"
         }
 
         val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null)
         val response = runtime.call(
             AiRuntimeRequest(
-                systemPrompts = systemPrompts,
+                systemPrompts = emptyList(),
                 messages = markedMessages + commandMessage,
                 options = com.gromozeka.domain.model.ai.AiRuntimeOptions(
                     toolContext = mapOf("conversationId" to conversationId.value)
@@ -253,11 +242,6 @@ class MessageSquashService(
                 }.replace("</selection", "< /selection", ignoreCase = true)
             )
         }
-    }
-
-    private suspend fun loadCommonPromptPrefix(conversationId: Conversation.Id): String {
-        conversationService.findById(conversationId) ?: return ""
-        return promptDomainService.findById(COMMON_PROMPT_PREFIX_ID)?.content.orEmpty()
     }
 
     private fun buildDistillPrompt(): String {
