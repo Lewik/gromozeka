@@ -23,6 +23,7 @@ import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
 import com.gromozeka.domain.service.CommandMonitor
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
@@ -43,6 +44,43 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RemoteProtocolCodecTest {
+    @Test
+    fun roundTripSupportsActiveGenerationState() {
+        val conversationId = Conversation.Id("conversation-1")
+        val query = ActiveGenerationStateQuery(conversationId)
+        val cursor = RemoteStateSyncCursor("server-1", streamEpoch = 4, generation = 9)
+        val activeGeneration = ActiveGenerationSnapshot(
+            generationId = "generation-1",
+            conversationId = conversationId,
+            taskId = ConversationRuntimeTask.Id("task-1"),
+            provider = "OPENAI_SUBSCRIPTION",
+            modelName = "gpt-5.6-sol",
+            iteration = 2,
+            phase = ActiveGenerationSnapshot.Phase.WAITING_FOR_MODEL,
+            startedAt = Instant.parse("2026-08-17T12:00:00Z"),
+            updatedAt = Instant.parse("2026-08-17T12:00:01Z"),
+            inputMessageCount = 7,
+            inputContentItemCount = 9,
+            systemPromptCount = 3,
+            availableToolCount = 11,
+        )
+        val encoded = GromozekaServerEnvelope(
+            id = "active-generation-1",
+            payload = StateSyncSnapshotResponse(
+                query = query,
+                cursor = cursor,
+                state = ActiveGenerationStatePayload(activeGeneration),
+            ),
+        )
+
+        val decoded = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(encoded)
+        ).payload as StateSyncSnapshotResponse
+
+        assertEquals(query, decoded.query)
+        assertEquals(activeGeneration, (decoded.state as ActiveGenerationStatePayload).snapshot)
+    }
+
     @Test
     fun roundTripSupportsRemoteSpeechCaptureLifecycle() {
         val start = GromozekaClientEnvelope(

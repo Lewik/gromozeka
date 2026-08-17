@@ -40,6 +40,9 @@ revision, and then reuse the existing typed read request for the current
 snapshot. Reconnect starts from a fresh snapshot; it does not replay missed
 declarative mutations. Conversation messages and other ordered event streams
 remain separate because they cannot be safely conflated.
+Active model-call presentation is a separate cumulative state-sync snapshot.
+It is intentionally transient: losing it must not affect model execution,
+conversation history, cancellation, or terminal runtime events.
 
 The main dogfood chat path is `OPEN_AI_SUBSCRIPTION`, implemented by
 `:infrastructure-ai:openai-subscription`. Spring AI adapters remain responsible

@@ -46,6 +46,7 @@ import com.gromozeka.domain.model.ai.AiSubscriptionConnection
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
@@ -61,6 +62,8 @@ import com.gromozeka.presentation.ui.RemoteConnectionStatus
 import com.gromozeka.presentation.ui.TokenStatisticsTable
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
+import kotlinx.coroutines.delay
+import kotlin.time.Clock
 
 @Composable
 fun ConversationRuntimePanel(
@@ -74,6 +77,7 @@ fun ConversationRuntimePanel(
     pttStatusMessage: String?,
     pendingMessages: List<PendingUserMessage>,
     runtimeSnapshot: ConversationRuntimeSnapshot?,
+    activeGeneration: ActiveGenerationSnapshot?,
     remoteConnectionState: RemoteConnectionState,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -163,6 +167,7 @@ fun ConversationRuntimePanel(
                     pttStatusMessage = pttStatusMessage,
                     pendingMessages = pendingMessages,
                     runtimeSnapshot = runtimeSnapshot,
+                    activeGeneration = activeGeneration,
                     remoteConnectionState = remoteConnectionState,
                     onPause = onPause,
                     onResume = onResume,
@@ -682,6 +687,7 @@ private fun RuntimeStatusFooter(
     pttStatusMessage: String?,
     pendingMessages: List<PendingUserMessage>,
     runtimeSnapshot: ConversationRuntimeSnapshot?,
+    activeGeneration: ActiveGenerationSnapshot?,
     remoteConnectionState: RemoteConnectionState,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -696,8 +702,18 @@ private fun RuntimeStatusFooter(
         .map { it.toolName }
         .distinct()
     val activeTask = runtimeSnapshot?.activeTask
+    val activeGenerationElapsedSeconds by produceState(
+        initialValue = activeGeneration?.elapsedSeconds() ?: 0L,
+        key1 = activeGeneration?.generationId,
+    ) {
+        val generation = activeGeneration ?: return@produceState
+        while (true) {
+            value = generation.elapsedSeconds()
+            delay(1_000)
+        }
+    }
     val controlState = runtimeSnapshot?.state?.controlState
-    val controllableRuntimeHasWork = runtimeSnapshot?.state != null || activeTask != null ||
+    val controllableRuntimeHasWork = runtimeSnapshot?.state != null || activeTask != null || activeGeneration != null ||
         runtimeSnapshot?.pendingTasks.orEmpty().isNotEmpty() || activeCommands.isNotEmpty() || runningTools.isNotEmpty()
     val runtimeHasWork = controllableRuntimeHasWork || activeMonitors.isNotEmpty()
     val isPaused = executionPauseRequested ||
@@ -728,7 +744,8 @@ private fun RuntimeStatusFooter(
         pendingMessages.isNotEmpty() -> "${translation.queuedStatus} ${pendingMessages.size}"
         else -> translation.readyStatus
     }
-    val detailText = runtimeSnapshot?.runtimeDetailsText(translation)
+    val detailText = activeGeneration?.detailsText(activeGenerationElapsedSeconds)
+        ?: runtimeSnapshot?.runtimeDetailsText(translation)
         ?.takeIf { it.isNotBlank() }
         ?: runtimeSnapshot?.trace?.lastOrNull()?.runtimeTraceText()
     val containerColor = when {
@@ -807,6 +824,19 @@ private fun RuntimeStatusFooter(
         }
     }
 }
+
+private fun ActiveGenerationSnapshot.elapsedSeconds(): Long =
+    (Clock.System.now() - startedAt).inWholeSeconds.coerceAtLeast(0)
+
+private fun ActiveGenerationSnapshot.detailsText(elapsedSeconds: Long): String = buildList {
+    add("${elapsedSeconds}s")
+    add("#$iteration")
+    add(modelName)
+    add("$inputMessageCount msg / $inputContentItemCount blocks")
+    add("$systemPromptCount prompts")
+    add("$availableToolCount tools")
+    add(provider.lowercase().replace('_', ' '))
+}.joinToString(" · ")
 
 private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translation.RuntimeTranslation): String =
     when (this) {

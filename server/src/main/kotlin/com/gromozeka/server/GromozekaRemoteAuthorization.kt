@@ -292,6 +292,8 @@ class GromozekaRemoteAuthorization(
             ConversationTabLayoutStateQuery -> Unit
             is ConversationRuntimeStateQuery ->
                 requireConversation(user, query.conversationId, ProjectPermission.READ)
+            is ActiveGenerationStateQuery ->
+                requireConversation(user, query.conversationId, ProjectPermission.READ)
             is DeclarativeStateRevisionQuery -> authorizeDeclarativeStateQuery(user, query)
         }
     }

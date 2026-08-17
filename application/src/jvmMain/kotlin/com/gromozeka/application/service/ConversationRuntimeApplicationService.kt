@@ -9,6 +9,8 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
+import com.gromozeka.domain.service.ActiveGenerationStateSyncService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -20,6 +22,7 @@ import com.gromozeka.statesync.observe
 import klog.KLoggers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
@@ -33,6 +36,7 @@ import org.springframework.stereotype.Service
 class ConversationRuntimeApplicationService(
     private val runtimeDispatcher: ConversationRuntimeDispatcher,
     private val runtimeStateSyncService: ConversationRuntimeStateSyncService,
+    private val activeGenerationStateSyncService: ActiveGenerationStateSyncService,
     private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val conversationService: ConversationDomainService,
 ) : ConversationRuntimeService, ConversationRuntimeIngressService {
@@ -116,6 +120,11 @@ class ConversationRuntimeApplicationService(
             }
         }
     }
+
+    override fun observeActiveGeneration(
+        conversationId: Conversation.Id,
+    ): Flow<ActiveGenerationSnapshot?> =
+        activeGenerationStateSyncService.observe(conversationId).map { it.value }
 
     override suspend fun rememberCurrentThread(conversationId: Conversation.Id) {
         val conversation = conversationService.findById(conversationId)

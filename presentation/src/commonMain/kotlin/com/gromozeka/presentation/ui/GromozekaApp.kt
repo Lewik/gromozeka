@@ -615,6 +615,7 @@ fun GromozekaAppContent(
                                             val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
                                             val pendingMessages by tabViewModel.pendingMessages.collectAsState()
                                             val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
+                                            val activeGeneration by tabViewModel.activeGeneration.collectAsState()
 
                                             Box(modifier = Modifier.testTag(UiTestTag.RuntimePanel.value)) {
                                                 ConversationRuntimePanel(
@@ -628,6 +629,7 @@ fun GromozekaAppContent(
                                                     pttStatusMessage = pttStatusMessage,
                                                     pendingMessages = pendingMessages,
                                                     runtimeSnapshot = runtimeSnapshot,
+                                                    activeGeneration = activeGeneration,
                                                     remoteConnectionState = remoteConnectionState,
                                                     onPause = tabViewModel::pauseExecution,
                                                     onResume = tabViewModel::resumeExecution,
@@ -718,6 +720,7 @@ fun GromozekaAppContent(
                                 val executionPauseRequested by tabViewModel.executionPauseRequested.collectAsState()
                                 val pendingMessages by tabViewModel.pendingMessages.collectAsState()
                                 val runtimeSnapshot by tabViewModel.runtimeSnapshot.collectAsState()
+                                val activeGeneration by tabViewModel.activeGeneration.collectAsState()
 
                                 Box(
                                     modifier = Modifier
@@ -736,6 +739,7 @@ fun GromozekaAppContent(
                                         pttStatusMessage = pttStatusMessage,
                                         pendingMessages = pendingMessages,
                                         runtimeSnapshot = runtimeSnapshot,
+                                        activeGeneration = activeGeneration,
                                         remoteConnectionState = remoteConnectionState,
                                         onPause = tabViewModel::pauseExecution,
                                         onResume = tabViewModel::resumeExecution,

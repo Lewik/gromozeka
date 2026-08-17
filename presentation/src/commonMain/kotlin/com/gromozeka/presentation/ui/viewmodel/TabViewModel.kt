@@ -25,6 +25,7 @@ import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeService
@@ -124,6 +125,8 @@ class TabViewModel(
     val runtimeTrace: StateFlow<List<ConversationRuntimeTraceEntry>> = _runtimeTrace.asStateFlow()
     private val _runtimeSnapshot = MutableStateFlow<ConversationRuntimeSnapshot?>(null)
     val runtimeSnapshot: StateFlow<ConversationRuntimeSnapshot?> = _runtimeSnapshot.asStateFlow()
+    private val _activeGeneration = MutableStateFlow<ActiveGenerationSnapshot?>(null)
+    val activeGeneration: StateFlow<ActiveGenerationSnapshot?> = _activeGeneration.asStateFlow()
     val pendingMessagesCount: StateFlow<Int> = pendingMessages
         .map { it.size }
         .stateIn(scope, SharingStarted.Eagerly, 0)
@@ -140,6 +143,10 @@ class TabViewModel(
 
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             observeRuntimeEvents()
+        }
+
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            observeActiveGeneration()
         }
 
         scope.launch {
@@ -186,6 +193,19 @@ class TabViewModel(
             _isWaitingForResponse.value = false
             _executionPauseRequested.value = false
             _uiState.update { it.copy(isWaitingForResponse = false) }
+        }
+    }
+
+    private suspend fun observeActiveGeneration() {
+        try {
+            conversationRuntimeService.observeActiveGeneration(conversationId).collect {
+                _activeGeneration.value = it
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            _activeGeneration.value = null
+            log.warn(error) { "Active generation observation failed for $conversationId" }
         }
     }
 

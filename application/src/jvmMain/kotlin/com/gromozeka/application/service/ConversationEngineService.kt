@@ -25,6 +25,8 @@ import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.model.ai.requireSupportsInputs
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
+import com.gromozeka.domain.service.ActiveGenerationPublisher
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
@@ -51,6 +53,8 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
@@ -103,6 +107,7 @@ class ConversationEngineService(
     private val aiToolCapabilityCatalogService: AiToolCapabilityCatalogService,
     private val toolRoutingService: ConversationRuntimeToolRoutingService,
     private val artifactService: ConversationArtifactApplicationService,
+    private val activeGenerationPublisher: ActiveGenerationPublisher,
 ) : ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
 
@@ -243,37 +248,58 @@ class ConversationEngineService(
             )
         )
 
+        val generationStartedAt = Clock.System.now()
+        val activeGeneration = ActiveGenerationSnapshot(
+            generationId = uuid7(),
+            conversationId = conversationId,
+            taskId = task.id,
+            provider = context.provider.name,
+            modelName = context.modelName,
+            iteration = payload.iteration,
+            phase = ActiveGenerationSnapshot.Phase.WAITING_FOR_MODEL,
+            startedAt = generationStartedAt,
+            updatedAt = generationStartedAt,
+            inputMessageCount = runtimeMessages.size,
+            inputContentItemCount = runtimeMessages.sumOf { it.content.size },
+            systemPromptCount = runtimeRequest.systemPrompts.size,
+            availableToolCount = runtimeRequest.tools.size,
+        )
         val runtimeResponse = try {
-            log.info { "Calling LLM runtime: model=${context.modelName}, provider=${context.provider}, iteration=${payload.iteration}" }
-            ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            context.runtime.call(runtimeRequest)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            log.error(e) { "Chat call error" }
-            if (java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast")) {
+            publishActiveGeneration(activeGeneration)
+            try {
+                log.info { "Calling LLM runtime: model=${context.modelName}, provider=${context.provider}, iteration=${payload.iteration}" }
+                ensureRuntimeTaskOwner(conversationId, task.id, executor)
+                context.runtime.call(runtimeRequest)
+            } catch (e: CancellationException) {
                 throw e
+            } catch (e: Exception) {
+                log.error(e) { "Chat call error" }
+                if (java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast")) {
+                    throw e
+                }
+                ensureRuntimeTaskOwner(conversationId, task.id, executor)
+                val errorMessage = AiConversationMessageMapper
+                    .createErrorMessage(conversationId, e.message ?: "Unknown error")
+                    .copy(id = runtimeMessageId(task.id, "llm-error"))
+                val added = addRuntimeMessageIfMissing(conversationId, errorMessage)
+                if (added) {
+                    emitMessage(errorMessage)
+                }
+                if (added && context.automaticMemoryRememberEnabled) {
+                    routeMessageThroughMemoryRouter(
+                        conversationId,
+                        conversation.currentThread,
+                        errorMessage,
+                        context.agent,
+                        context.runtimeContext,
+                        context.memorySystemPrompts,
+                        context.memoryPipelineTools,
+                    )
+                }
+                return ConversationRuntimeTaskOutcome.CompleteTurn
             }
-            ensureRuntimeTaskOwner(conversationId, task.id, executor)
-            val errorMessage = AiConversationMessageMapper
-                .createErrorMessage(conversationId, e.message ?: "Unknown error")
-                .copy(id = runtimeMessageId(task.id, "llm-error"))
-            val added = addRuntimeMessageIfMissing(conversationId, errorMessage)
-            if (added) {
-                emitMessage(errorMessage)
-            }
-            if (added && context.automaticMemoryRememberEnabled) {
-                routeMessageThroughMemoryRouter(
-                    conversationId,
-                    conversation.currentThread,
-                    errorMessage,
-                    context.agent,
-                    context.runtimeContext,
-                    context.memorySystemPrompts,
-                    context.memoryPipelineTools,
-                )
-            }
-            return ConversationRuntimeTaskOutcome.CompleteTurn
+        } finally {
+            clearActiveGeneration(activeGeneration)
         }
 
         log.info {
@@ -388,6 +414,32 @@ class ConversationEngineService(
         return memoryRecallTask
             ?.let { ConversationRuntimeTaskOutcome.Continue(it) }
             ?: ConversationRuntimeTaskOutcome.CompleteTurn
+    }
+
+    private suspend fun publishActiveGeneration(snapshot: ActiveGenerationSnapshot) {
+        try {
+            activeGenerationPublisher.publish(snapshot)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            log.warn(error) {
+                "Active generation publication failed: conversation=${snapshot.conversationId.value} " +
+                    "generation=${snapshot.generationId}"
+            }
+        }
+    }
+
+    private suspend fun clearActiveGeneration(snapshot: ActiveGenerationSnapshot) {
+        withContext(NonCancellable) {
+            try {
+                activeGenerationPublisher.clear(snapshot.conversationId, snapshot.generationId)
+            } catch (error: Throwable) {
+                log.warn(error) {
+                    "Active generation cleanup failed: conversation=${snapshot.conversationId.value} " +
+                        "generation=${snapshot.generationId}"
+                }
+            }
+        }
     }
 
     private suspend fun runToolResultProcessingStep(

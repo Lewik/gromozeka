@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
@@ -37,6 +38,10 @@ internal class RemoteConversationRuntimeService(
         afterEventSequence: Long?,
     ): Flow<ConversationRuntimeEvent> =
         client.observeConversation(conversationId, afterEventSequence)
+
+    override fun observeActiveGeneration(
+        conversationId: Conversation.Id,
+    ): Flow<ActiveGenerationSnapshot?> = client.observeActiveGeneration(conversationId)
 
     override suspend fun enqueueMessage(
         conversationId: Conversation.Id,

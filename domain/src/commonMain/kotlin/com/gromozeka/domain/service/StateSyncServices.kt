@@ -9,6 +9,9 @@ import com.gromozeka.statesync.StateSyncService
 interface ConversationRuntimeStateSyncService :
     StateSyncService<Conversation.Id, ConversationRuntimeSnapshot>
 
+interface ActiveGenerationStateSyncService :
+    StateSyncService<Conversation.Id, ActiveGenerationSnapshot?>
+
 interface ConversationTabLayoutStateSyncService :
     StateSyncService<User.Id, ConversationTabLayout>
 

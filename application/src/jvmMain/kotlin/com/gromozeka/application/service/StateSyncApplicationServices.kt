@@ -6,6 +6,9 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ConversationTabLayoutRepository
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
+import com.gromozeka.domain.service.ActiveGenerationPublisher
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
+import com.gromozeka.domain.service.ActiveGenerationStateSyncService
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
 import com.gromozeka.domain.service.ConversationTabLayoutStateSyncService
@@ -19,6 +22,8 @@ import com.gromozeka.statesync.StateSyncSource
 import com.gromozeka.statesync.StateSyncSubscription
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -44,6 +49,70 @@ class ConversationRuntimeStateSyncApplicationService(
 
     override suspend fun invalidate(key: Conversation.Id) {
         source.invalidate(key)
+    }
+}
+
+@Service
+class ActiveGenerationStateSyncApplicationService(
+    @param:Qualifier("applicationScope") scope: CoroutineScope,
+) : ActiveGenerationStateSyncService, ActiveGenerationPublisher {
+    private val mutex = Mutex()
+    private val snapshots = mutableMapOf<Conversation.Id, ActiveGenerationSnapshot>()
+    private val source = StateSyncSource<Conversation.Id, ActiveGenerationSnapshot?>(
+        scope = scope,
+        sourceEpoch = uuid7(),
+        loader = { key -> mutex.withLock { snapshots[key] } },
+    )
+
+    override suspend fun subscribe(
+        key: Conversation.Id,
+    ): StateSyncSubscription<Conversation.Id, ActiveGenerationSnapshot?> = source.subscribe(key)
+
+    override suspend fun snapshot(
+        key: Conversation.Id,
+    ): StateSyncSnapshot<Conversation.Id, ActiveGenerationSnapshot?> = source.snapshot(key)
+
+    override suspend fun invalidate(key: Conversation.Id) {
+        source.invalidate(key)
+    }
+
+    override suspend fun publish(snapshot: ActiveGenerationSnapshot) {
+        val accepted = mutex.withLock {
+            val current = snapshots[snapshot.conversationId]
+            val staleGeneration = current != null &&
+                current.generationId != snapshot.generationId &&
+                current.startedAt > snapshot.startedAt
+            val staleUpdate = current != null &&
+                current.generationId == snapshot.generationId &&
+                current.updatedAt > snapshot.updatedAt
+            if (staleGeneration || staleUpdate) {
+                false
+            } else {
+                snapshots[snapshot.conversationId] = snapshot
+                true
+            }
+        }
+        if (accepted) {
+            source.invalidate(snapshot.conversationId)
+        }
+    }
+
+    override suspend fun clear(
+        conversationId: Conversation.Id,
+        generationId: String,
+    ) {
+        val removed = mutex.withLock {
+            snapshots[conversationId]
+                ?.takeIf { it.generationId == generationId }
+                ?.let {
+                    snapshots.remove(conversationId)
+                    true
+                }
+                ?: false
+        }
+        if (removed) {
+            source.invalidate(conversationId)
+        }
     }
 }
 

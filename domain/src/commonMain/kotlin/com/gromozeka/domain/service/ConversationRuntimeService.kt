@@ -18,6 +18,10 @@ interface ConversationRuntimeService {
         afterEventSequence: Long? = null,
     ): Flow<ConversationRuntimeEvent>
 
+    fun observeActiveGeneration(
+        conversationId: Conversation.Id,
+    ): Flow<ActiveGenerationSnapshot?>
+
     suspend fun enqueueMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,

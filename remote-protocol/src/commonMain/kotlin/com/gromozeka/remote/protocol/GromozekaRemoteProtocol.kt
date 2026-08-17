@@ -41,6 +41,7 @@ import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
@@ -803,6 +804,12 @@ data class ConversationRuntimeStateQuery(
 ) : RemoteStateSyncQuery
 
 @Serializable
+@SerialName("active_generation")
+data class ActiveGenerationStateQuery(
+    val conversationId: Conversation.Id,
+) : RemoteStateSyncQuery
+
+@Serializable
 @SerialName("conversation_tab_layout")
 data object ConversationTabLayoutStateQuery : RemoteStateSyncQuery
 
@@ -847,6 +854,12 @@ sealed interface RemoteStateSyncPayload
 @SerialName("conversation_runtime")
 data class ConversationRuntimeStatePayload(
     val snapshot: ConversationRuntimeSnapshot,
+) : RemoteStateSyncPayload
+
+@Serializable
+@SerialName("active_generation")
+data class ActiveGenerationStatePayload(
+    val snapshot: ActiveGenerationSnapshot?,
 ) : RemoteStateSyncPayload
 
 @Serializable

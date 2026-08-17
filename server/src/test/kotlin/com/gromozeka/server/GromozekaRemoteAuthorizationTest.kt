@@ -21,6 +21,7 @@ import com.gromozeka.remote.protocol.ListMcpServersRequest
 import com.gromozeka.remote.protocol.ListSecurityAuditEventsRequest
 import com.gromozeka.remote.protocol.ListUsersRequest
 import com.gromozeka.remote.protocol.ConversationRuntimeStateQuery
+import com.gromozeka.remote.protocol.ActiveGenerationStateQuery
 import com.gromozeka.remote.protocol.ConversationTabLayoutStateQuery
 import com.gromozeka.remote.protocol.DeclarativeStateRevisionQuery
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
@@ -124,10 +125,12 @@ class GromozekaRemoteAuthorizationTest {
             ),
         )
         authorization.authorize(user, PullStateSyncRequest(ConversationRuntimeStateQuery(conversation.id), cursor))
+        authorization.authorize(user, PullStateSyncRequest(ActiveGenerationStateQuery(conversation.id), cursor))
         authorization.authorize(user, PullStateSyncRequest(ConversationTabLayoutStateQuery, cursor))
 
         Mockito.verify(projectAccessService).requirePermission(user.id, projectId, ProjectPermission.READ)
-        Mockito.verify(projectAccessService).requirePermission(user.id, conversation.projectId, ProjectPermission.READ)
+        Mockito.verify(projectAccessService, Mockito.times(2))
+            .requirePermission(user.id, conversation.projectId, ProjectPermission.READ)
     }
 
     @Test

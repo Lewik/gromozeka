@@ -3,6 +3,7 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.ArtifactUpload
+import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.remote.protocol.ClientActivityKind
 import com.gromozeka.remote.protocol.ClientInstanceId
@@ -14,6 +15,8 @@ import com.gromozeka.remote.protocol.ConversationExecutionCompletedEvent
 import com.gromozeka.remote.protocol.ConversationExecutionFailedEvent
 import com.gromozeka.remote.protocol.ConversationRuntimeStatePayload
 import com.gromozeka.remote.protocol.ConversationRuntimeStateQuery
+import com.gromozeka.remote.protocol.ActiveGenerationStatePayload
+import com.gromozeka.remote.protocol.ActiveGenerationStateQuery
 import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
@@ -254,6 +257,16 @@ internal class GromozekaWsClient(
                     )
                 )
             }
+        }
+    }
+
+    fun observeActiveGeneration(
+        conversationId: Conversation.Id,
+    ): Flow<ActiveGenerationSnapshot?> = flow {
+        observeState(ActiveGenerationStateQuery(conversationId)).collect { state ->
+            val payload = state.value as? ActiveGenerationStatePayload
+                ?: error("Unexpected active generation state payload: ${state.value::class.simpleName}")
+            emit(payload.snapshot)
         }
     }
 
