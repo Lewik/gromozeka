@@ -36,6 +36,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -920,7 +921,25 @@ private class ClaudeCodeToolProtocol(
             "additionalProperties" to JsonPrimitive(false),
             "properties" to JsonObject(
                 mapOf(
-                    "kind" to kindSchema("tool_call"),
+                    "kind" to kindSchema("tool_calls"),
+                    "tool_calls" to JsonObject(
+                        mapOf(
+                            "type" to JsonPrimitive("array"),
+                            "minItems" to JsonPrimitive(1),
+                            "items" to externalActionSchema(),
+                        )
+                    ),
+                )
+            ),
+            "required" to JsonArray(listOf("kind", "tool_calls").map(::JsonPrimitive)),
+        ))
+
+    private fun externalActionSchema(): JsonObject =
+        JsonObject(mapOf(
+            "type" to JsonPrimitive("object"),
+            "additionalProperties" to JsonPrimitive(false),
+            "properties" to JsonObject(
+                mapOf(
                     "action_name" to actionNameSchema(),
                     "arguments" to JsonObject(
                         mapOf(
@@ -930,7 +949,7 @@ private class ClaudeCodeToolProtocol(
                     ),
                 )
             ),
-            "required" to JsonArray(listOf("kind", "action_name", "arguments").map(::JsonPrimitive)),
+            "required" to JsonArray(listOf("action_name", "arguments").map(::JsonPrimitive)),
         ))
 
     private fun kindSchema(kind: String): JsonObject =
@@ -964,9 +983,12 @@ private class ClaudeCodeToolProtocol(
             appendLine("Claude Code native tools are disabled. Gromozeka owns external action execution.")
             appendLine("Submit exactly one object through the structured-output mechanism matching the provided JSON schema.")
             appendLine("The object has one required response field. Put the selected response branch inside it.")
-            appendLine("When an external action is needed, do not execute or wait for it in this invocation.")
-            appendLine("Instead, immediately submit response.kind=\"tool_call\", the action name in response.action_name, and its input in response.arguments.")
-            appendLine("Gromozeka will execute the action and resume this Claude Code session with its result.")
+            appendLine("When external actions are needed, do not execute or wait for them in this invocation.")
+            appendLine("Instead, immediately submit response.kind=\"tool_calls\" and put every action request in response.tool_calls.")
+            appendLine("Each entry must contain the action name in action_name and its input in arguments.")
+            appendLine("Group every independent external action that can run now into the same response.")
+            appendLine("Do not group an action that depends on another action's result into the same response.")
+            appendLine("Gromozeka will execute the batch concurrently and resume this Claude Code session with all results.")
             appendLine("Submit response.kind=\"final_answer\" only when no external action is needed.")
             appendLine("For final_answer, return the exact assistant payload required by the normal Gromozeka response contract.")
             appendLine(toolChoiceInstruction())
@@ -985,7 +1007,7 @@ private class ClaudeCodeToolProtocol(
         """
         <gromozeka_external_action_reminder>
         External action names are not Claude Code tools. Never invoke them through native tool use.
-        Submit exactly one object through structured output now. Inside its response field, use kind="tool_call" to request an external action, otherwise kind="final_answer".
+        Submit exactly one object through structured output now. Inside its response field, use kind="tool_calls" with every currently independent external action, otherwise kind="final_answer".
         </gromozeka_external_action_reminder>
         """.trimIndent()
 
@@ -1011,25 +1033,32 @@ private class ClaudeCodeToolProtocol(
                 )
             }
 
-            "tool_call" -> {
-                val name = root["action_name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-                    ?: error("Claude Code tool_call wrapper missed action_name")
-                require(name in actionNames) { "Claude Code requested unavailable external action: $name" }
-                if (toolChoice is AiToolChoice.RequiredTool) {
-                    require(name == toolChoice.name) {
-                        "Claude Code requested external action $name while runtime required ${toolChoice.name}"
+            "tool_calls" -> {
+                val calls = root["tool_calls"]?.jsonArray
+                    ?: error("Claude Code tool_calls wrapper missed tool_calls")
+                require(calls.isNotEmpty()) { "Claude Code tool_calls wrapper must contain at least one action" }
+                val toolCalls = calls.mapIndexed { index, callElement ->
+                    val call = callElement.jsonObject
+                    val name = call["action_name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                        ?: error("Claude Code tool_calls wrapper missed action_name at index $index")
+                    require(name in actionNames) { "Claude Code requested unavailable external action: $name" }
+                    if (toolChoice is AiToolChoice.RequiredTool) {
+                        require(name == toolChoice.name) {
+                            "Claude Code requested external action $name while runtime required ${toolChoice.name}"
+                        }
                     }
-                }
-                val arguments = parseArguments(root["arguments"] ?: JsonObject(emptyMap()))
-                AiAssistantMessage(
-                    content = thinking + Conversation.Message.ContentItem.ToolCall(
+                    val arguments = parseArguments(call["arguments"] ?: JsonObject(emptyMap()))
+                    Conversation.Message.ContentItem.ToolCall(
                         id = Conversation.Message.ContentItem.ToolCall.Id("claude-code:${uuid7()}"),
                         call = Conversation.Message.ContentItem.ToolCall.Data(
                             name = name,
                             input = arguments,
                         ),
                         state = Conversation.Message.BlockState.COMPLETE,
-                    ),
+                    )
+                }
+                AiAssistantMessage(
+                    content = thinking + toolCalls,
                     metadata = metadata + ("wrapperKind" to kind),
                 )
             }
@@ -1067,8 +1096,8 @@ private class ClaudeCodeToolProtocol(
         when (toolChoice) {
             AiToolChoice.Auto -> "External action choice: auto. Request an external action only when useful."
             AiToolChoice.None -> "External action choice: none. Do not request external actions."
-            AiToolChoice.RequiredAny -> "External action choice: required. You must request one external action."
-            is AiToolChoice.RequiredTool -> "External action choice: required. You must request external action ${toolChoice.name}."
+            AiToolChoice.RequiredAny -> "External action choice: required. You must request at least one external action."
+            is AiToolChoice.RequiredTool -> "External action choice: required. You must request at least one ${toolChoice.name} external action."
         }
 
     private fun xmlEscape(value: String): String =

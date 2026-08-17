@@ -36,13 +36,23 @@ class ClaudeCodeCliRuntimeTest {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @Test
-    fun parsesWrapperToolCallFromFakeExecutor() = runBlocking {
+    fun parsesWrapperToolCallsFromFakeExecutor() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(
             response(
                 structuredOutput = jsonObject(
-                    "kind" to JsonPrimitive("tool_call"),
-                    "action_name" to JsonPrimitive("read_file"),
-                    "arguments" to jsonObject("path" to JsonPrimitive("README.md")),
+                    "kind" to JsonPrimitive("tool_calls"),
+                    "tool_calls" to kotlinx.serialization.json.JsonArray(
+                        listOf(
+                            jsonObject(
+                                "action_name" to JsonPrimitive("read_file"),
+                                "arguments" to jsonObject("path" to JsonPrimitive("README.md")),
+                            ),
+                            jsonObject(
+                                "action_name" to JsonPrimitive("read_file"),
+                                "arguments" to jsonObject("path" to JsonPrimitive("LICENSE")),
+                            ),
+                        )
+                    ),
                 )
             )
         )
@@ -55,13 +65,17 @@ class ClaudeCodeCliRuntimeTest {
             )
         )
 
-        val toolCall = response.toolCalls.single()
-        assertEquals("read_file", toolCall.call.name)
-        assertEquals("README.md", toolCall.call.input.jsonObject["path"]?.jsonPrimitive?.contentOrNull)
+        assertEquals(listOf("read_file", "read_file"), response.toolCalls.map { it.call.name })
+        assertEquals(
+            listOf("README.md", "LICENSE"),
+            response.toolCalls.map { it.call.input.jsonObject["path"]?.jsonPrimitive?.contentOrNull },
+        )
+        assertEquals(2, response.toolCalls.map { it.id }.toSet().size)
         val systemPrompt = executor.commands.single().systemPrompt
         assertTrue(systemPrompt.contains("<gromozeka_external_action_protocol>"))
         assertTrue(systemPrompt.contains("external Gromozeka actions, not Claude Code tools"))
         assertTrue(systemPrompt.contains("Never invoke an external action name through Claude Code native tool use"))
+        assertTrue(systemPrompt.contains("Group every independent external action"))
         assertTrue(systemPrompt.contains("<action name=\"read_file\">"))
         assertTrue(executor.commands.single().userPrompt.endsWith("</gromozeka_external_action_reminder>"))
         val command = executor.commands.single()
@@ -87,9 +101,31 @@ class ClaudeCodeCliRuntimeTest {
         assertEquals(
             setOf(
                 setOf("kind", "final_answer"),
-                setOf("kind", "action_name", "arguments"),
+                setOf("kind", "tool_calls"),
             ),
             requiredPropertiesByBranch,
+        )
+        val toolCallsSchema = responseSchema["anyOf"]
+            ?.jsonArray
+            ?.map { it.jsonObject }
+            ?.single { branch ->
+                branch["required"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet() ==
+                    setOf("kind", "tool_calls")
+            }
+            ?.get("properties")
+            ?.jsonObject
+            ?.get("tool_calls")
+            ?.jsonObject
+            ?: error("Expected Claude Code tool_calls schema")
+        assertEquals(1, toolCallsSchema["minItems"]?.jsonPrimitive?.content?.toInt())
+        assertEquals(
+            setOf("action_name", "arguments"),
+            toolCallsSchema["items"]
+                ?.jsonObject
+                ?.get("required")
+                ?.jsonArray
+                ?.map { it.jsonPrimitive.content }
+                ?.toSet(),
         )
         assertFalse(command.noSessionPersistence)
     }
@@ -99,9 +135,19 @@ class ClaudeCodeCliRuntimeTest {
         val executor = FakeClaudeCodeCliExecutor(
             response(
                 structuredOutput = jsonObject(
-                    "kind" to JsonPrimitive("tool_call"),
-                    "action_name" to JsonPrimitive("read_file"),
-                    "arguments" to jsonObject("path" to JsonPrimitive("README.md")),
+                    "kind" to JsonPrimitive("tool_calls"),
+                    "tool_calls" to kotlinx.serialization.json.JsonArray(
+                        listOf(
+                            jsonObject(
+                                "action_name" to JsonPrimitive("read_file"),
+                                "arguments" to jsonObject("path" to JsonPrimitive("README.md")),
+                            ),
+                            jsonObject(
+                                "action_name" to JsonPrimitive("read_file"),
+                                "arguments" to jsonObject("path" to JsonPrimitive("LICENSE")),
+                            ),
+                        )
+                    ),
                 )
             ),
             response(
@@ -114,25 +160,29 @@ class ClaudeCodeCliRuntimeTest {
         val runtime = runtime(executor)
         val firstUser = userMessage("Read README.md")
         val firstResponse = runtime.call(request(messages = listOf(firstUser), tools = listOf(readFileTool())))
-        val toolCall = firstResponse.toolCalls.single()
+        val toolCalls = firstResponse.toolCalls
         val assistantToolCall = Conversation.Message(
             id = Conversation.Message.Id("msg-${messageCounter++}"),
             conversationId = firstUser.conversationId,
             role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(toolCall),
+            content = toolCalls,
             createdAt = Clock.System.now(),
         )
         val toolResult = Conversation.Message(
             id = Conversation.Message.Id("msg-${messageCounter++}"),
             conversationId = firstUser.conversationId,
             role = Conversation.Message.Role.USER,
-            content = listOf(
+            content = toolCalls.mapIndexed { index, toolCall ->
                 Conversation.Message.ContentItem.ToolResult(
                     toolUseId = toolCall.id,
                     toolName = toolCall.call.name,
-                    result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("# Gromozeka")),
+                    result = listOf(
+                        Conversation.Message.ContentItem.ToolResult.Data.Text(
+                            if (index == 0) "# Gromozeka" else "Gromozeka License"
+                        )
+                    ),
                 )
-            ),
+            },
             createdAt = Clock.System.now(),
         )
 
@@ -147,6 +197,7 @@ class ClaudeCodeCliRuntimeTest {
         assertEquals("session-1", executor.commands[1].resumeSessionId)
         assertTrue(executor.commands[1].userPrompt.contains("<tool_result"))
         assertTrue(executor.commands[1].userPrompt.contains("# Gromozeka"))
+        assertTrue(executor.commands[1].userPrompt.contains("Gromozeka License"))
     }
 
     @Test
@@ -551,6 +602,37 @@ class ClaudeCodeCliRuntimeTest {
         val toolCall = response.toolCalls.single()
         assertEquals("read_file", toolCall.call.name)
         assertEquals("README.md", toolCall.call.input.jsonObject["path"]?.jsonPrimitive?.contentOrNull)
+    }
+
+    @Test
+    fun realClaudeCodeReturnsParallelWrapperToolCallsWhenEnabled() = runBlocking {
+        if (!realClaudeCodeEnabled()) return@runBlocking
+
+        val runtime = runtime(ProcessClaudeCodeCliExecutor(realClaudeExecutable()))
+        val response = runtime.call(
+            request(
+                messages = listOf(
+                    userMessage(
+                        "Request two independent external actions in one batch: read_file for README.md and " +
+                            "read_file for LICENSE. Do not answer directly."
+                    )
+                ),
+                tools = listOf(readFileTool()),
+                options = AiRuntimeOptions(
+                    assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                    toolContext = testToolContext("real-claude-parallel-tool-call-test"),
+                ),
+            )
+        )
+
+        assertEquals(2, response.toolCalls.size)
+        assertTrue(response.toolCalls.all { it.call.name == "read_file" })
+        assertEquals(
+            setOf("README.md", "LICENSE"),
+            response.toolCalls.map {
+                it.call.input.jsonObject["path"]?.jsonPrimitive?.contentOrNull
+            }.toSet(),
+        )
     }
 
     @Test

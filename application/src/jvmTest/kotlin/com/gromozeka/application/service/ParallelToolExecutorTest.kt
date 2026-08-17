@@ -14,8 +14,13 @@ import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolExecutionContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -108,10 +113,45 @@ class ParallelToolExecutorTest {
         assertTrue(bytes.contentEquals(Base64.getDecoder().decode(binary.data)))
     }
 
-    private fun executor(tool: AiToolCallback): ParallelToolExecutor =
+    @Test
+    fun `blocking tools execute concurrently and preserve result order`() = runBlocking {
+        val started = CountDownLatch(2)
+        val release = CountDownLatch(1)
+        val executor = executor(
+            BlockingTestTool("first", started, release),
+            BlockingTestTool("second", started, release),
+        )
+
+        val execution = async {
+            executor.executeParallel(
+                toolCalls = listOf(toolCall("first"), toolCall("second")),
+                toolContext = ToolExecutionContext(),
+                runtimeTaskId = null,
+                executor = server,
+                expectedTarget = ConversationRuntimeTaskTarget.Server,
+            )
+        }
+        val startedConcurrently = withContext(Dispatchers.IO) {
+            started.await(2, TimeUnit.SECONDS)
+        }
+        release.countDown()
+        val result = execution.await()
+
+        assertTrue(startedConcurrently)
+        assertEquals(
+            listOf("first", "second"),
+            result.results.map { toolResult ->
+                assertIs<Conversation.Message.ContentItem.ToolResult.Data.Text>(
+                    toolResult.result.single()
+                ).content
+            },
+        )
+    }
+
+    private fun executor(vararg tools: AiToolCallback): ParallelToolExecutor =
         ParallelToolExecutor(
             aiToolProvider = object : AiToolProvider {
-                override fun getTools(): List<AiToolCallback> = listOf(tool)
+                override fun getTools(): List<AiToolCallback> = tools.toList()
             },
             toolApprovalService = AutoApproveToolApprovalService(),
         )
@@ -154,4 +194,23 @@ private class TestTool(
     override val metadata = AiToolMetadata(executionScope = executionScope)
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = "ok"
+}
+
+private class BlockingTestTool(
+    name: String,
+    private val started: CountDownLatch,
+    private val release: CountDownLatch,
+) : AiToolCallback {
+    override val definition = AiToolDefinition(
+        name = name,
+        description = name,
+        inputSchema = """{"type":"object"}""",
+    )
+    override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER)
+
+    override fun call(toolInput: String, context: ToolExecutionContext?): String {
+        started.countDown()
+        check(release.await(5, TimeUnit.SECONDS)) { "Timed out waiting to release tool ${definition.name}" }
+        return definition.name
+    }
 }
