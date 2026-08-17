@@ -64,4 +64,36 @@ class ToolCallPairingService {
         return pairingMap
     }
 
+    fun includePairedToolMessages(
+        messages: List<Conversation.Message>,
+        messageIds: Collection<Conversation.Message.Id>,
+    ): Set<Conversation.Message.Id> {
+        val pairingMap = buildPairingMap(messages)
+        val selectedToolCallIds = messages
+            .filter { it.id in messageIds }
+            .flatMap(Conversation.Message::content)
+            .mapNotNull { content ->
+                when (content) {
+                    is Conversation.Message.ContentItem.ToolCall ->
+                        content.id.takeIf { pairingMap[it]?.toolResult != null }
+                    is Conversation.Message.ContentItem.ToolResult ->
+                        content.toolUseId.takeIf { pairingMap[it]?.toolCall != null }
+                    else -> null
+                }
+            }
+            .toSet()
+
+        return messageIds.toSet() + messages
+            .filter { message ->
+                message.content.any { content ->
+                    when (content) {
+                        is Conversation.Message.ContentItem.ToolCall -> content.id in selectedToolCallIds
+                        is Conversation.Message.ContentItem.ToolResult -> content.toolUseId in selectedToolCallIds
+                        else -> false
+                    }
+                }
+            }
+            .map(Conversation.Message::id)
+    }
+
 }

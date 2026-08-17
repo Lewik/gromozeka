@@ -729,11 +729,18 @@ private class StreamingClaudeCodeCliProcess(
 internal class ClaudeCodeResultStreamParser {
     private var latestMessageId: String? = null
     private val latestThinking = linkedMapOf<String, ClaudeCodeThinkingBlock>()
+    private val compactionBoundaries = mutableListOf<JsonObject>()
 
     fun accept(root: JsonObject): ClaudeCodeCliResponse? =
         when (root["type"]?.jsonPrimitive?.contentOrNull) {
             "assistant" -> {
                 acceptAssistant(root)
+                null
+            }
+            "system" -> {
+                if (root["subtype"]?.jsonPrimitive?.contentOrNull == "compact_boundary") {
+                    compactionBoundaries += root
+                }
                 null
             }
             "result" -> parseResult(root)
@@ -790,6 +797,7 @@ internal class ClaudeCodeResultStreamParser {
             finishReason = root["subtype"]?.jsonPrimitive?.contentOrNull,
             raw = root,
             thinking = latestThinking.values.toList(),
+            compactionBoundaries = compactionBoundaries.toList(),
         )
     }
 }

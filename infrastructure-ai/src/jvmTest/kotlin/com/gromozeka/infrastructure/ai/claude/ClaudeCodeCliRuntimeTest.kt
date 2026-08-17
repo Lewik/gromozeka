@@ -176,6 +176,64 @@ class ClaudeCodeCliRuntimeTest {
     }
 
     @Test
+    fun exposesProviderCompactionAndResumesPastPersistedBoundary() = runBlocking {
+        val boundary = jsonObject(
+            "type" to JsonPrimitive("system"),
+            "subtype" to JsonPrimitive("compact_boundary"),
+            "compact_metadata" to jsonObject(
+                "trigger" to JsonPrimitive("auto"),
+                "pre_tokens" to JsonPrimitive(180_000),
+            ),
+        )
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                sessionId = "session-1",
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("First"),
+                ),
+                compactionBoundaries = listOf(boundary),
+            ),
+            response(
+                sessionId = "session-1",
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("Second"),
+                ),
+            ),
+        )
+        val runtime = runtime(executor)
+        val firstUser = userMessage("First prompt")
+        val firstResponse = runtime.call(request(messages = listOf(firstUser), tools = listOf(readFileTool())))
+
+        val compaction = firstResponse.messages.first().content.single() as
+            Conversation.Message.ContentItem.ContextCompactionResult
+        assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO, compaction.origin)
+        assertEquals("CLAUDE_CODE", compaction.providerScope?.provider)
+        assertTrue(runtime.capabilities.providerManagedAutoCompaction)
+
+        val persistedResponses = firstResponse.messages.mapIndexed { index, message ->
+            Conversation.Message(
+                id = Conversation.Message.Id("persisted-$index"),
+                conversationId = firstUser.conversationId,
+                role = Conversation.Message.Role.ASSISTANT,
+                content = message.content,
+                createdAt = Clock.System.now(),
+            )
+        }
+        runtime.call(
+            request(
+                messages = listOf(firstUser) + persistedResponses + userMessage("Second prompt"),
+                tools = listOf(readFileTool()),
+            )
+        )
+
+        assertEquals("session-1", executor.commands[1].resumeSessionId)
+        assertTrue(executor.commands[1].userPrompt.contains("Second prompt"))
+        assertFalse(executor.commands[1].userPrompt.contains("First prompt"))
+    }
+
+    @Test
     fun fallsBackToFullTranscriptWhenHistoryChangedBeforeResumePoint() = runBlocking {
         val executor = FakeClaudeCodeCliExecutor(
             response(
@@ -682,6 +740,7 @@ class ClaudeCodeCliRuntimeTest {
         sessionId: String = "session-1",
         structuredOutput: JsonElement,
         thinking: List<ClaudeCodeThinkingBlock> = emptyList(),
+        compactionBoundaries: List<JsonObject> = emptyList(),
     ): ClaudeCodeCliResponse {
         val envelope = jsonObject("response" to structuredOutput)
         return ClaudeCodeCliResponse(
@@ -697,6 +756,7 @@ class ClaudeCodeCliRuntimeTest {
             finishReason = "success",
             raw = jsonObject("type" to JsonPrimitive("result")),
             thinking = thinking,
+            compactionBoundaries = compactionBoundaries,
         )
     }
 

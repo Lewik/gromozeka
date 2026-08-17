@@ -55,6 +55,7 @@ sealed class AiResponseFormat {
 
 data class AiRuntimeCapabilities(
     val supportsAutoCompaction: Boolean = false,
+    val providerManagedAutoCompaction: Boolean = false,
 )
 
 data class AiRuntimeResponse(

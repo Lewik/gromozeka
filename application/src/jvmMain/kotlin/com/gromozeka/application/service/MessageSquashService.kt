@@ -21,6 +21,7 @@ class MessageSquashService(
     private val conversationService: ConversationDomainService,
     private val promptDomainService: PromptDomainService,
     private val aiConfigurationProvider: AiConfigurationProvider,
+    private val toolCallPairingService: ToolCallPairingService,
 ) : MessageSquashServiceSpec, MessageSquashGenerationService {
     companion object {
         private val COMMON_PROMPT_PREFIX_ID = Prompt.Id("global:common-prompt-prefix.md")
@@ -117,15 +118,20 @@ class MessageSquashService(
         require(squashType != SquashType.CONCATENATE) {
             "Use simple concatenation for CONCATENATE type, not AI"
         }
+        require(selectedIds.size >= 2) { "At least 2 messages required for AI squash" }
 
         log.info { "Starting AI squash: type=$squashType, selectedCount=${selectedIds.size}" }
 
         val allMessages = conversationService.loadCurrentMessages(conversationId)
         log.debug { "Loaded ${allMessages.size} messages from conversation" }
+        require(allMessages.count { it.id in selectedIds } == selectedIds.size) {
+            "Some selected messages are not in the current conversation thread"
+        }
+        val allSelectedIds = toolCallPairingService.includePairedToolMessages(allMessages, selectedIds)
 
         val markedMessages = allMessages.map { message ->
-            if (message.id in selectedIds) {
-                wrapWithSelectionMarker(message)
+            if (message.id in allSelectedIds) {
+                message.asSquashSelection()
             } else {
                 message
             }
@@ -184,30 +190,69 @@ class MessageSquashService(
             runtimeSelection = runtimeSelection,
         )
 
-    private fun wrapWithSelectionMarker(message: Conversation.Message): Conversation.Message {
-        val wrappedContent = message.content.map { contentItem ->
-            when (contentItem) {
-                is Conversation.Message.ContentItem.UserMessage -> {
-                    Conversation.Message.ContentItem.UserMessage(
-                        text = "<selection>${contentItem.text}</selection>"
-                    )
-                }
-                is Conversation.Message.ContentItem.AssistantMessage -> {
-                    val wrappedText = contentItem.structured.fullText?.let {
-                        "<selection>$it</selection>"
-                    } ?: ""
-
-                    Conversation.Message.ContentItem.AssistantMessage(
-                        structured = Conversation.Message.StructuredText(
-                            fullText = wrappedText
-                        )
-                    )
-                }
-                else -> contentItem
-            }
+    private fun Conversation.Message.asSquashSelection(): Conversation.Message {
+        val selection = "<selection>\n${toSquashSelectionText()}\n</selection>"
+        val selectedContent = when (role) {
+            Conversation.Message.Role.USER -> listOf(Conversation.Message.ContentItem.UserMessage(selection))
+            Conversation.Message.Role.ASSISTANT -> listOf(
+                Conversation.Message.ContentItem.AssistantMessage(
+                    Conversation.Message.StructuredText(fullText = selection)
+                )
+            )
+            Conversation.Message.Role.SYSTEM -> listOf(
+                Conversation.Message.ContentItem.System(
+                    level = Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                    content = selection,
+                )
+            )
         }
+        return copy(content = selectedContent)
+    }
 
-        return message.copy(content = wrappedContent)
+    private fun Conversation.Message.toSquashSelectionText(): String = buildString {
+        append("role=")
+        append(role.name.lowercase())
+        content.forEach { item ->
+            append('\n')
+            append(
+                when (item) {
+                    is Conversation.Message.ContentItem.UserMessage -> item.text
+                    is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                    is Conversation.Message.ContentItem.Thinking -> "[thinking] ${item.thinking}"
+                    is Conversation.Message.ContentItem.System -> "[system:${item.level.name.lowercase()}] ${item.content}"
+                    is Conversation.Message.ContentItem.ToolCall -> "[tool_call:${item.call.name}] ${item.call.input}"
+                    is Conversation.Message.ContentItem.ToolResult -> buildString {
+                        append("[tool_result:${item.toolName} error=${item.isError}]")
+                        item.result.forEach { result ->
+                            append('\n')
+                            append(
+                                when (result) {
+                                    is Conversation.Message.ContentItem.ToolResult.Data.Text -> result.content
+                                    is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
+                                        "[binary:${result.fileName ?: result.mediaType.value} media_type=${result.mediaType.value}]"
+                                    is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url:${result.url}]"
+                                    is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                                        "[attachment:${result.artifact.fileName} media_type=${result.artifact.mediaType}]"
+                                }
+                            )
+                        }
+                    }
+                    is Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
+                    is Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
+                        is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                            "[document:${source.fileName} media_type=${source.mediaType}]"
+                    }
+                    is Conversation.Message.ContentItem.ArtifactItem ->
+                        "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
+                    is Conversation.Message.ContentItem.ContextCompactionResult -> when (val payload = item.payload) {
+                        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
+                        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+                            "[context_compaction:${item.providerScope?.provider ?: "unknown"}]"
+                    }
+                    is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
+                }.replace("</selection", "< /selection", ignoreCase = true)
+            )
+        }
     }
 
     private suspend fun loadCommonPromptPrefix(conversationId: Conversation.Id): String {

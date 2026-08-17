@@ -64,6 +64,10 @@ import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.rememberMarkdownState
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import org.intellij.markdown.ast.ASTNode
 
 internal data class MessageListEntry(
@@ -792,7 +796,7 @@ private fun ContextCompactionResultItem(
     val details = when (val payload = content.payload) {
         is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text.trim()
         is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
-            "Opaque provider state: ${content.providerScope?.provider ?: "unknown provider"}"
+            providerCompactionDetails(content.providerScope?.provider, payload.state)
     }
 
     Surface(
@@ -821,6 +825,20 @@ private fun ContextCompactionResultItem(
             }
         }
     }
+}
+
+private fun providerCompactionDetails(provider: String?, state: JsonObject): String {
+    val metadata = state["compact_metadata"] as? JsonObject
+    val trigger = metadata?.get("trigger")?.jsonPrimitive?.contentOrNull
+        ?: state["trigger"]?.jsonPrimitive?.contentOrNull
+    val preTokens = metadata?.get("pre_tokens")?.jsonPrimitive?.longOrNull
+        ?: metadata?.get("preTokens")?.jsonPrimitive?.longOrNull
+    return buildList {
+        add(provider ?: "unknown provider")
+        add("provider-managed compaction")
+        trigger?.let(::add)
+        preTokens?.let { add("before ${it.toString().reversed().chunked(3).joinToString(",").reversed()} tokens") }
+    }.joinToString(" · ")
 }
 
 @Composable

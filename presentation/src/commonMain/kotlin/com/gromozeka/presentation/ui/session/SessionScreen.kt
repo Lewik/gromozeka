@@ -34,6 +34,7 @@ import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.format
+import com.gromozeka.presentation.ui.viewmodel.MessageSquashUiState
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -96,9 +97,11 @@ fun SessionScreen(
 
     // All data comes from ViewModel
     val filteredHistory by viewModel.filteredMessages.collectAsState()
+    val allMessages by viewModel.allMessages.collectAsState()
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
+    val messageSquashState by viewModel.messageSquashState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
@@ -389,9 +392,10 @@ fun SessionScreen(
                             )
                         }
 
-                        val selectedIndices = remember(filteredHistory, uiState.selectedMessageIds) {
+                        val selectedIndices = remember(allMessages, filteredHistory, uiState.selectedMessageIds) {
                             buildSet {
-                                if (uiState.selectedMessageIds.size == filteredHistory.size && filteredHistory.isNotEmpty()) {
+                                val allMessageIds = allMessages.mapTo(mutableSetOf()) { it.id }
+                                if (allMessageIds.isNotEmpty() && allMessageIds.all { it in uiState.selectedMessageIds }) {
                                     add(0)
                                 }
 
@@ -439,7 +443,7 @@ fun SessionScreen(
                             selectedIndices = selectedIndices,
                             onToggle = { index ->
                                 when (index) {
-                                    0 -> viewModel.toggleSelectAll(filteredHistory.map { it.id }.toSet())
+                                    0 -> viewModel.toggleSelectAll(allMessages.map { it.id }.toSet())
                                     1 -> viewModel.toggleSelectUserMessages()
                                     2 -> viewModel.toggleSelectAssistantMessages()
                                     3 -> viewModel.toggleSelectThinkingMessages()
@@ -452,6 +456,7 @@ fun SessionScreen(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         // Action buttons
+                        val messageSquashRunning = messageSquashState is MessageSquashUiState.Running
                         // Concat - disabled when 0 or 1 message selected
                         CompactButton(
                             onClick = {
@@ -459,7 +464,7 @@ fun SessionScreen(
                                     viewModel.squashSelectedMessages()
                                 }
                             },
-                            enabled = uiState.selectedMessageIds.size >= 2,
+                            enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
                             tooltip = "Concatenate messages (instant, no AI)"
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -478,7 +483,7 @@ fun SessionScreen(
                                     viewModel.distillSelectedMessages()
                                 }
                             },
-                            enabled = uiState.selectedMessageIds.isNotEmpty(),
+                            enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
                             tooltip = "Distill messages (AI context transfer)"
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -497,7 +502,7 @@ fun SessionScreen(
                                     viewModel.summarizeSelectedMessages()
                                 }
                             },
-                            enabled = uiState.selectedMessageIds.isNotEmpty(),
+                            enabled = uiState.selectedMessageIds.size >= 2 && !messageSquashRunning,
                             tooltip = "Summarize messages (AI history compression)"
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -516,7 +521,7 @@ fun SessionScreen(
                                     viewModel.deleteSelectedMessages()
                                 }
                             },
-                            enabled = uiState.selectedMessageIds.isNotEmpty(),
+                            enabled = uiState.selectedMessageIds.isNotEmpty() && !messageSquashRunning,
                             tooltip = "Delete selected message(s)"
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -532,6 +537,7 @@ fun SessionScreen(
                             Spacer(modifier = Modifier.weight(1f))
                         }
 
+                        MessageSquashStatus(messageSquashState)
                         // Selected count (right side)
                         Text("Selected: ${uiState.selectedMessageIds.size}")
 
@@ -641,4 +647,42 @@ fun SessionScreen(
         }
 
     }
+}
+
+@Composable
+private fun MessageSquashStatus(state: MessageSquashUiState) {
+    val text = when (state) {
+        MessageSquashUiState.Idle -> return
+        is MessageSquashUiState.Running -> "${state.squashType.actionTitle()} running"
+        is MessageSquashUiState.Succeeded -> "${state.squashType.actionTitle()} complete"
+        is MessageSquashUiState.Failed -> "${state.squashType.actionTitle()} failed: ${state.message}"
+    }
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .testTag(UiTestTag.MessageSquashStatus.value),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (state is MessageSquashUiState.Running) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+        }
+        Text(
+            text = text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = if (state is MessageSquashUiState.Failed) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
+}
+
+private fun com.gromozeka.domain.model.SquashType.actionTitle(): String = when (this) {
+    com.gromozeka.domain.model.SquashType.CONCATENATE -> "Concat"
+    com.gromozeka.domain.model.SquashType.DISTILL -> "Distill"
+    com.gromozeka.domain.model.SquashType.SUMMARIZE -> "Summarize"
 }

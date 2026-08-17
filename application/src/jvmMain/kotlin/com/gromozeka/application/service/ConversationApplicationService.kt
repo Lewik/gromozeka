@@ -558,9 +558,16 @@ class ConversationApplicationService(
         if (targetMessages.size != messageIds.size) {
             throw IllegalArgumentException("Some messages not found in thread $currentThreadId")
         }
-        ensureMessagesAreNotCoveredByCompaction(messages, messageIds.toSet(), "squash")
+        val allIdsToSquash = toolCallPairingService.includePairedToolMessages(messages, messageIds)
+        ensureMessagesAreNotCoveredByCompaction(
+            messages = messages,
+            targetMessageIds = allIdsToSquash,
+            operation = "squash",
+            allowLatestReadableCompaction = true,
+        )
 
-        val lastMessageId = links.last { it.messageId in messageIds }.messageId
+        val lastMessageId = links.last { it.messageId in allIdsToSquash }.messageId
+        val orderedSourceMessageIds = links.map { it.messageId }.filter { it in allIdsToSquash }
 
         val compactionMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
@@ -572,7 +579,7 @@ class ConversationApplicationService(
                         text = squashedContent.toReadableCompactionText(),
                     ),
                     origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
-                    sourceMessageIds = messageIds,
+                    sourceMessageIds = orderedSourceMessageIds,
                 )
             ),
             instructions = emptyList(),
@@ -597,7 +604,7 @@ class ConversationApplicationService(
                 link.messageId == lastMessageId -> {
                     link.copy(threadId = newThread.id, messageId = compactionMessage.id, position = positionCounter++)
                 }
-                link.messageId in messageIds -> {
+                link.messageId in allIdsToSquash -> {
                     null
                 }
                 else -> {
@@ -610,7 +617,7 @@ class ConversationApplicationService(
 
         conversationRepo.updateCurrentThread(conversationId, newThread.id)
 
-        log.debug("Squashed ${messageIds.size} messages, created new thread ${newThread.id}")
+        log.debug("Squashed ${allIdsToSquash.size} messages, created new thread ${newThread.id}")
 
         return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }
@@ -619,6 +626,7 @@ class ConversationApplicationService(
         messages: List<Conversation.Message>,
         targetMessageIds: Set<Conversation.Message.Id>,
         operation: String,
+        allowLatestReadableCompaction: Boolean = false,
     ) {
         val compactionIndex = messages.indexOfLast { message ->
             message.content.any { it is Conversation.Message.ContentItem.ContextCompactionResult }
@@ -626,6 +634,16 @@ class ConversationApplicationService(
         if (compactionIndex < 0) return
 
         val lockedMessageIds = messages.take(compactionIndex + 1).mapTo(mutableSetOf()) { it.id }
+        val latestCompactionMessage = messages[compactionIndex]
+        val latestCompactionResults = latestCompactionMessage.content
+            .filterIsInstance<Conversation.Message.ContentItem.ContextCompactionResult>()
+        val latestCompactionIsReadable = latestCompactionResults.isNotEmpty() &&
+            latestCompactionResults.all { result ->
+                result.payload is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary
+            }
+        if (allowLatestReadableCompaction && latestCompactionIsReadable) {
+            lockedMessageIds.remove(latestCompactionMessage.id)
+        }
         val lockedTargets = targetMessageIds.intersect(lockedMessageIds)
         require(lockedTargets.isEmpty()) {
             "Cannot $operation message(s) covered by context compaction: ${lockedTargets.joinToString { it.value }}"

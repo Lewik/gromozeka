@@ -2,6 +2,7 @@ package com.gromozeka.presentation.ui.session
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -10,6 +11,22 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ConversationRuntimePanelTest {
+    @Test
+    fun `runtime panel distinguishes configured and provider managed compaction`() {
+        assertEquals(
+            "auto compact=provider-managed",
+            runtimeAutoCompactionLabel(AiConnection.Kind.CLAUDE_CODE, 180_000),
+        )
+        assertEquals(
+            "auto compact=180,000",
+            runtimeAutoCompactionLabel(AiConnection.Kind.OPENAI_SUBSCRIPTION, 180_000),
+        )
+        assertEquals(
+            "auto compact=unsupported",
+            runtimeAutoCompactionLabel(AiConnection.Kind.ANTHROPIC_API, 180_000),
+        )
+    }
+
     @Test
     fun `runtime panel keeps active monitors ordered by useful activity`() {
         val older = monitor("older", updatedAt = 1_000)

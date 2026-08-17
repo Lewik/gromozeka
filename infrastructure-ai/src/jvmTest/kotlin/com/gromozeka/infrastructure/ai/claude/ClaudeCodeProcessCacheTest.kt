@@ -170,6 +170,41 @@ class ClaudeCodeProcessCacheTest {
     }
 
     @Test
+    fun resultParserKeepsCompactionBoundaries() {
+        val parser = ClaudeCodeResultStreamParser()
+        val boundary = JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("system"),
+                "subtype" to JsonPrimitive("compact_boundary"),
+                "compact_metadata" to JsonObject(
+                    mapOf(
+                        "trigger" to JsonPrimitive("auto"),
+                        "pre_tokens" to JsonPrimitive(180_000),
+                    )
+                ),
+            )
+        )
+
+        assertEquals(null, parser.accept(boundary))
+        val response = requireNotNull(
+            parser.accept(
+                JsonObject(
+                    mapOf(
+                        "type" to JsonPrimitive("result"),
+                        "subtype" to JsonPrimitive("success"),
+                        "result" to JsonPrimitive("done"),
+                        "session_id" to JsonPrimitive("session-1"),
+                        "usage" to JsonObject(emptyMap()),
+                        "is_error" to JsonPrimitive(false),
+                    )
+                )
+            )
+        )
+
+        assertEquals(listOf(boundary), response.compactionBoundaries)
+    }
+
+    @Test
     fun evictsLeastRecentlyUsedIdleProcessAtConfiguredLimit() = runBlocking {
         var now = 0L
         val factory = FakeProcessFactory()

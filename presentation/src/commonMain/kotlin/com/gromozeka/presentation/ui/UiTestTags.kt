@@ -26,6 +26,7 @@ sealed interface UiTestTag {
     data object SendButton : UiTestTag
     data object ConnectionStatus : UiTestTag
     data object ConversationProgressStrip : UiTestTag
+    data object MessageSquashStatus : UiTestTag
     data object PendingMessagesPanel : UiTestTag
     data object RuntimePanel : UiTestTag
     data object RuntimeButton : UiTestTag

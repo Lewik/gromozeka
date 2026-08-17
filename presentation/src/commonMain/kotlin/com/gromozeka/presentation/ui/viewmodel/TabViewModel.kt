@@ -39,6 +39,7 @@ import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -64,6 +65,7 @@ class TabViewModel(
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
     private val artifactUploadMutex = Mutex()
     private val artifactContentCacheMutex = Mutex()
+    private val messageSquashMutex = Mutex()
     private val artifactContentCache = linkedMapOf<com.gromozeka.domain.model.Artifact.Id, ByteArray>()
     private var artifactContentCacheBytes = 0
 
@@ -127,6 +129,8 @@ class TabViewModel(
         .stateIn(scope, SharingStarted.Eagerly, 0)
     private val _tokenStats = MutableStateFlow<TokenUsageStatistics.ThreadTotals?>(null)
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?> = _tokenStats.asStateFlow()
+    private val _messageSquashState = MutableStateFlow<MessageSquashUiState>(MessageSquashUiState.Idle)
+    val messageSquashState: StateFlow<MessageSquashUiState> = _messageSquashState.asStateFlow()
 
     private val _memoryActionItemsRefreshKey = MutableStateFlow(0)
     val memoryActionItemsRefreshKey: StateFlow<Int> = _memoryActionItemsRefreshKey.asStateFlow()
@@ -278,6 +282,7 @@ class TabViewModel(
     }
 
     private suspend fun finishRuntimeExecution() {
+        loadMessages()
         loadTokenStats()
         notifyMemoryActionItemsMayHaveChanged()
         log.debug { "Conversation runtime completed" }
@@ -1096,9 +1101,13 @@ class TabViewModel(
     }
 
     fun toggleSelectToolMessages() {
-        val filteredHistory = filteredMessages.value
-        val toolMessageIds = filteredHistory
-            .filter { message -> message.content.any { it is Conversation.Message.ContentItem.ToolCall } }
+        val toolMessageIds = allMessages.value
+            .filter { message ->
+                message.content.any {
+                    it is Conversation.Message.ContentItem.ToolCall ||
+                        it is Conversation.Message.ContentItem.ToolResult
+                }
+            }
             .map { it.id }
             .toSet()
         
@@ -1198,41 +1207,16 @@ class TabViewModel(
     }
 
     suspend fun squashSelectedMessages() {
-        val selectedIds = _uiState.value.selectedMessageIds
-        if (selectedIds.size < 2) {
-            log.warn { "Need at least 2 messages to squash, got ${selectedIds.size}" }
-            return
-        }
-
-        try {
+        runSelectedMessageSquash(SquashType.CONCATENATE) { selectedIds ->
             val selectedMessages = _allMessages.value.filter { it.id in selectedIds }
-
-            val combinedText = selectedMessages.joinToString("\n\n") { message ->
-                message.content
-                    .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-                    .firstOrNull()?.text
-                    ?: message.content
-                        .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-                        .firstOrNull()?.structured?.fullText
-                    ?: ""
-            }
-
-            val squashedContent = listOf(
-                Conversation.Message.ContentItem.UserMessage(combinedText)
-            )
+            require(selectedMessages.size == selectedIds.size) { "Some selected messages are no longer available" }
+            val combinedText = selectedMessages.toConcatenatedCompactionText()
 
             conversationService.squashMessages(
                 conversationId,
                 selectedIds.toList(),
-                squashedContent
+                listOf(Conversation.Message.ContentItem.UserMessage(combinedText)),
             )
-
-            clearMessageSelection()
-            loadMessages()
-
-            log.debug { "Squashed ${selectedIds.size} messages successfully" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to squash messages" }
         }
     }
 
@@ -1245,13 +1229,7 @@ class TabViewModel(
     }
 
     private suspend fun squashWithAI(squashType: SquashType) {
-        val selectedIds = _uiState.value.selectedMessageIds
-        if (selectedIds.size < 2) {
-            log.warn { "Need at least 2 messages to squash, got ${selectedIds.size}" }
-            return
-        }
-
-        try {
+        runSelectedMessageSquash(squashType) { selectedIds ->
             val runtimeSelection = aiConfigurationProvider.runtimeSelectionFor(
                 AiRuntimeAssignment.Purpose.MESSAGE_SQUASH
             )
@@ -1274,13 +1252,44 @@ class TabViewModel(
                 selectedIds.toList(),
                 squashedContent
             )
+        }
+    }
 
+    private suspend fun runSelectedMessageSquash(
+        squashType: SquashType,
+        action: suspend (Set<Conversation.Message.Id>) -> Unit,
+    ) {
+        val selectedIds = _uiState.value.selectedMessageIds
+        if (selectedIds.size < 2) {
+            _messageSquashState.value = MessageSquashUiState.Failed(
+                squashType,
+                "Select at least two messages",
+            )
+            return
+        }
+        if (!messageSquashMutex.tryLock()) return
+
+        _messageSquashState.value = MessageSquashUiState.Running(squashType)
+        try {
+            action(selectedIds)
             clearMessageSelection()
             loadMessages()
-
-            log.debug { "AI squash completed: type=$squashType, result length=${result.length}" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to squash messages with AI: $squashType" }
+            val succeededState = MessageSquashUiState.Succeeded(squashType)
+            _messageSquashState.value = succeededState
+            scope.launch {
+                delay(3_000)
+                _messageSquashState.compareAndSet(succeededState, MessageSquashUiState.Idle)
+            }
+            log.info { "Message squash completed: type=$squashType selectedCount=${selectedIds.size}" }
+        } catch (error: CancellationException) {
+            _messageSquashState.value = MessageSquashUiState.Idle
+            throw error
+        } catch (error: Exception) {
+            val message = error.message?.takeIf { it.isNotBlank() } ?: "Unknown error"
+            _messageSquashState.value = MessageSquashUiState.Failed(squashType, message)
+            log.error(error) { "Message squash failed: type=$squashType" }
+        } finally {
+            messageSquashMutex.unlock()
         }
     }
 
@@ -1306,6 +1315,60 @@ class TabViewModel(
         }
     }
 }
+
+sealed interface MessageSquashUiState {
+    data object Idle : MessageSquashUiState
+    data class Running(val squashType: SquashType) : MessageSquashUiState
+    data class Succeeded(val squashType: SquashType) : MessageSquashUiState
+    data class Failed(val squashType: SquashType, val message: String) : MessageSquashUiState
+}
+
+internal fun List<Conversation.Message>.toConcatenatedCompactionText(): String =
+    joinToString("\n\n") { message ->
+        val content = message.content.mapNotNull { item ->
+            when (item) {
+                is Conversation.Message.ContentItem.UserMessage -> item.text
+                is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                is Conversation.Message.ContentItem.Thinking -> item.thinking.takeIf(String::isNotBlank)
+                is Conversation.Message.ContentItem.System -> item.content
+                is Conversation.Message.ContentItem.ToolCall -> "[tool_call:${item.call.name}] ${item.call.input}"
+                is Conversation.Message.ContentItem.ToolResult -> buildString {
+                    append("[tool_result:${item.toolName}]")
+                    item.result.forEach { result ->
+                        append('\n')
+                        append(
+                            when (result) {
+                                is Conversation.Message.ContentItem.ToolResult.Data.Text -> result.content
+                                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
+                                    "[binary:${result.fileName ?: result.mediaType.value} media_type=${result.mediaType.value}]"
+                                is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url:${result.url}]"
+                                is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                                    "[attachment:${result.artifact.fileName} media_type=${result.artifact.mediaType}]"
+                            }
+                        )
+                    }
+                }
+                is Conversation.Message.ContentItem.ImageItem -> when (val source = item.source) {
+                    is Conversation.Message.ImageSource.Base64ImageSource -> "[image:${source.mediaType}]"
+                    is Conversation.Message.ImageSource.UrlImageSource -> "[image:${source.url}]"
+                    is Conversation.Message.ImageSource.FileImageSource -> "[image:${source.fileId}]"
+                }
+                is Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
+                    is Conversation.Message.DocumentSource.Base64DocumentSource ->
+                        "[document:${source.fileName} media_type=${source.mediaType}]"
+                }
+                is Conversation.Message.ContentItem.ArtifactItem ->
+                    "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
+                is Conversation.Message.ContentItem.ContextCompactionResult -> when (val payload = item.payload) {
+                    is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
+                    is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
+                        "[context_compaction:${item.providerScope?.provider ?: "unknown"}]"
+                }
+                is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
+            }
+        }.filter(String::isNotBlank).joinToString("\n")
+        "[${message.role.name.lowercase()}]\n$content"
+    }.trim().also { require(it.isNotBlank()) { "Selected messages contain no readable content" } }
 
 private fun UIState.Tab.withSelectedMessageInstruction(
     group: MessageInstructionGroup,

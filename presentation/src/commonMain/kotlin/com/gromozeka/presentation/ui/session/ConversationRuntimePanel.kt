@@ -259,6 +259,7 @@ private fun RuntimeConfigurationCard(
         it.id == agent.runtimeSelection.modelConfigurationId
     }
     val connection = configuration?.let(aiCatalog::connectionFor)
+    val modelSpec = configuration?.let(aiCatalog::modelSpecFor)
     val reasoning = agent.runtimeOverrides.reasoning ?: configuration?.defaultParameters?.reasoning
     val maxOutputTokens = agent.runtimeOverrides.maxOutputTokens ?: configuration?.defaultParameters?.maxOutputTokens
     val parameters = buildList {
@@ -270,6 +271,7 @@ private fun RuntimeConfigurationCard(
         configuration?.defaultParameters?.temperature?.let { add("temperature=$it") }
         configuration?.defaultParameters?.timeoutSeconds?.let { add("timeout=${it}s") }
         configuration?.assistantResponseFormat?.let { add("format=${it.name.lowercase()}") }
+        runtimeAutoCompactionLabel(connection?.kind, modelSpec?.autoCompactionThresholdTokens)?.let(::add)
     }
     val backgroundQuotaPolicies = AiRuntimeAssignment.Purpose.entries
         .filter { purpose ->
@@ -382,6 +384,17 @@ private fun RuntimeConfigurationCard(
             }
         }
     }
+}
+
+internal fun runtimeAutoCompactionLabel(
+    connectionKind: AiConnection.Kind?,
+    thresholdTokens: Int?,
+): String? = when {
+    connectionKind == AiConnection.Kind.CLAUDE_CODE -> "auto compact=provider-managed"
+    connectionKind == AiConnection.Kind.OPENAI_SUBSCRIPTION && thresholdTokens != null ->
+        "auto compact=${thresholdTokens.formatWithCommas()}"
+    thresholdTokens != null -> "auto compact=unsupported"
+    else -> null
 }
 
 private fun Double.runtimePercent(): String =

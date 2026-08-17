@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.ai.AiReasoningDisplay
 import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -55,6 +56,11 @@ internal class ClaudeCodeCliRuntimeBackend(
     override fun supports(connectionKind: AiConnection.Kind): Boolean =
         connectionKind == AiConnection.Kind.CLAUDE_CODE
 
+    override fun capabilities(
+        connection: AiConnection,
+        modelConfiguration: AiModelConfiguration,
+    ): AiRuntimeCapabilities = AiRuntimeCapabilities(providerManagedAutoCompaction = true)
+
     override fun createRuntime(
         connection: AiConnection,
         modelConfiguration: AiModelConfiguration,
@@ -99,6 +105,9 @@ internal class ClaudeCodeCliRuntime(
     private val sessionLocks: ConcurrentHashMap<String, Mutex>,
 ) : AiRuntime {
     private val log = KLoggers.logger(this)
+    override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
+        providerManagedAutoCompaction = true,
+    )
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         require(request.messages.isNotEmpty()) { "Claude Code CLI request must contain at least one message" }
@@ -363,8 +372,28 @@ internal class ClaudeCodeCliRuntime(
             )
         }
 
+        val compactionMessages = cliResponse.compactionBoundaries.map { boundary ->
+            AiAssistantMessage(
+                content = listOf(
+                    Conversation.Message.ContentItem.ContextCompactionResult(
+                        payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                            state = boundary,
+                        ),
+                        origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                        providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                            provider = AiConnection.Kind.CLAUDE_CODE.name,
+                            connectionId = connectionId,
+                            modelConfigurationId = modelConfigurationId,
+                            modelName = modelName,
+                        ),
+                    )
+                ),
+                metadata = assistantMetadata(cliResponse, wrapper = false, resumed = resumed),
+            )
+        }
+
         return AiRuntimeResponse(
-            messages = listOf(assistantMessage),
+            messages = compactionMessages + assistantMessage,
             usage = cliResponse.usage?.toAiUsage(),
             finishReason = cliResponse.finishReason,
             providerMetadata = mapOf(
@@ -829,6 +858,7 @@ internal data class ClaudeCodeCliResponse(
     val finishReason: String?,
     val raw: JsonObject,
     val thinking: List<ClaudeCodeThinkingBlock> = emptyList(),
+    val compactionBoundaries: List<JsonObject> = emptyList(),
 )
 
 private class ClaudeCodeToolProtocol(
