@@ -7,7 +7,13 @@ import com.gromozeka.domain.service.SettingsService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -44,6 +50,41 @@ class ResourceSoundNotificationPlayerTest {
         assertTrue(audioPlayer.playbacks.isEmpty())
     }
 
+    @Test
+    fun queuesConcurrentActivitySoundsInsteadOfDroppingThem() = runBlocking {
+        val audioPlayer = BlockingAudioPlayer()
+        val player = ResourceSoundNotificationPlayer(audioPlayer, TestSettingsService(Settings())) { false }
+
+        coroutineScope {
+            val first = async { player.playActivitySound() }
+            audioPlayer.firstPlaybackStarted.await()
+            val second = async { player.playActivitySound() }
+            audioPlayer.releaseFirstPlayback.complete(Unit)
+            first.await()
+            second.await()
+        }
+
+        assertEquals(2, audioPlayer.playbackCount)
+    }
+
+    @Test
+    fun cancelledQueuedActivitySoundDoesNotPlayLater() = runBlocking {
+        val audioPlayer = BlockingAudioPlayer()
+        val player = ResourceSoundNotificationPlayer(audioPlayer, TestSettingsService(Settings())) { false }
+
+        coroutineScope {
+            val first = async { player.playActivitySound() }
+            audioPlayer.firstPlaybackStarted.await()
+            val queued = launch { player.playActivitySound() }
+            yield()
+            queued.cancelAndJoin()
+            audioPlayer.releaseFirstPlayback.complete(Unit)
+            first.await()
+        }
+
+        assertEquals(1, audioPlayer.playbackCount)
+    }
+
     private data class Playback(val data: ByteArray, val volume: Float)
 
     private class RecordingAudioPlayer : ClientAudioPlayer {
@@ -51,6 +92,29 @@ class ResourceSoundNotificationPlayerTest {
 
         override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String, volume: Float) {
             playbacks += Playback(data, volume)
+        }
+
+        override suspend fun playPcmStream(
+            chunks: Flow<ByteArray>,
+            sampleRate: Int,
+            channels: Int,
+            bitsPerSample: Int,
+        ) = Unit
+
+        override fun stop() = Unit
+    }
+
+    private class BlockingAudioPlayer : ClientAudioPlayer {
+        val firstPlaybackStarted = CompletableDeferred<Unit>()
+        val releaseFirstPlayback = CompletableDeferred<Unit>()
+        var playbackCount = 0
+
+        override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String, volume: Float) {
+            playbackCount += 1
+            if (playbackCount == 1) {
+                firstPlaybackStarted.complete(Unit)
+                releaseFirstPlayback.await()
+            }
         }
 
         override suspend fun playPcmStream(

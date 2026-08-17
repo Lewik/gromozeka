@@ -28,12 +28,10 @@ class ResourceSoundNotificationPlayer(
 
     override suspend fun playActivitySound() {
         val settings = settingsService.userDeviceSettings.soundSettings
-        if (!settings.activitySoundsEnabled || isTtsPlaying()) return
-        if (!playbackMutex.tryLock()) return
-        try {
+        if (!settings.activitySoundsEnabled) return
+        playbackMutex.withLock {
+            if (isTtsPlaying()) return
             playUnlocked(NotificationSound.ACTIVITY, settings)
-        } finally {
-            playbackMutex.unlock()
         }
     }
 
