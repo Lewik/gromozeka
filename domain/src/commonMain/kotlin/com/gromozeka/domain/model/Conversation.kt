@@ -609,6 +609,17 @@ data class Conversation(
             }
 
             @Serializable
+            @SerialName("message_temporal_context")
+            data class MessageTemporalRuntimeContext(
+                val context: MessageTemporalContext,
+            ) : Instruction() {
+                override val title = "Message time"
+                override val description = "When this user message was sent"
+                override fun serializeContent() = context.toXml()
+                override fun toXmlLine() = serializeContent()
+            }
+
+            @Serializable
             @SerialName("user_situation_context")
             data class UserSituationRuntimeContext(
                 val context: UserSituationContext,

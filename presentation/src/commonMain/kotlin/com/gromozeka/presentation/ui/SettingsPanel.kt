@@ -864,6 +864,42 @@ fun SettingsPanel(
                         )
 
                         SwitchSettingItem(
+                            label = translation.settings.includeMessageTemporalContextLabel,
+                            description = translation.settings.includeMessageTemporalContextDescription,
+                            value = agentSettings.includeMessageTemporalContext,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(
+                                            agentSettings = agentSettings.copy(
+                                                includeMessageTemporalContext = it
+                                            )
+                                        )
+                                    }
+                                )
+                            }
+                        )
+
+                        if (agentSettings.includeCurrentTime && agentSettings.includeMessageTemporalContext) {
+                            Row(
+                                modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                )
+                                Text(
+                                    text = translation.settings.duplicateTemporalContextWarning,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+
+                        SwitchSettingItem(
                             label = "Auto-approve all tool requests",
                             description = "Automatically allow all tool executions without showing permission dialogs (affects new sessions only)",
                             value = agentSettings.autoApproveAllTools,

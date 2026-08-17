@@ -103,6 +103,7 @@ data class EnglishTranslation(
         override val globalPttHotkeyLabel: String = "Global PTT Hotkey",
         override val muteAudioDuringPttLabel: String = "Mute system audio during PTT",
         override val includeCurrentTimeLabel: String = "Include current time",
+        override val includeMessageTemporalContextLabel: String = "Include time with user messages",
         override val openaiApiKeyLabel: String = "OpenAI API Key",
         override val enableBraveSearchLabel: String = "Enable Brave Search",
         override val braveApiKeyLabel: String = "Brave API Key",
@@ -133,7 +134,11 @@ data class EnglishTranslation(
         override val autoSendDescription: String = "Send messages immediately after voice input",
         override val globalPttDescription: String = "Enable push-to-talk from anywhere (Cmd+Shift+Space)",
         override val muteAudioDescription: String = "Prevent audio feedback when recording",
-        override val includeTimeDescription: String = "Add current date/time once at conversation start",
+        override val includeTimeDescription: String = "Add current time to the general model context",
+        override val includeMessageTemporalContextDescription: String =
+            "Add a UTC timestamp and elapsed time since the previous user message to every user message",
+        override val duplicateTemporalContextWarning: String =
+            "Both time modes are enabled. Duplicate temporal context may confuse the model.",
         override val openaiKeyDescription: String = "Required for TTS and STT services",
         override val braveSearchDescription: String = "Enable built-in Brave Search tool for web and local searches",
         override val braveApiKeyDescription: String = "Brave Search API key (get from https://brave.com/search/api/)",

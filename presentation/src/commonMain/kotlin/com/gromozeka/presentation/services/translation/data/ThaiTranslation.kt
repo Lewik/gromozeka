@@ -102,6 +102,7 @@ data class ThaiTranslation(
         override val globalPttHotkeyLabel: String = "ปุ่มลัด PTT ทั่วระบบ",
         override val muteAudioDuringPttLabel: String = "ปิดเสียงระบบระหว่าง PTT",
         override val includeCurrentTimeLabel: String = "รวมเวลาปัจจุบัน",
+        override val includeMessageTemporalContextLabel: String = "รวมเวลาในข้อความผู้ใช้",
         override val openaiApiKeyLabel: String = "OpenAI API Key",
         override val enableBraveSearchLabel: String = "Enable Brave Search",
         override val braveApiKeyLabel: String = "Brave API Key",
@@ -131,7 +132,11 @@ data class ThaiTranslation(
         override val autoSendDescription: String = "ส่งข้อความทันทีหลังจากป้อนเสียง",
         override val globalPttDescription: String = "เปิดการกดเพื่อพูดจากทุกที่ (Cmd+Shift+Space)",
         override val muteAudioDescription: String = "ป้องกันเสียงย้อนกลับขณะบันทึก",
-        override val includeTimeDescription: String = "เพิ่มวันที่/เวลาปัจจุบันครั้งเดียวเมื่อเริ่มบทสนทนา",
+        override val includeTimeDescription: String = "เพิ่มเวลาปัจจุบันในบริบททั่วไปของโมเดล",
+        override val includeMessageTemporalContextDescription: String =
+            "เพิ่มเวลา UTC และช่วงเวลาจากข้อความผู้ใช้ก่อนหน้าให้กับทุกข้อความผู้ใช้",
+        override val duplicateTemporalContextWarning: String =
+            "เปิดใช้โหมดเวลาทั้งสองอยู่ บริบทเวลาที่ซ้ำกันอาจทำให้โมเดลสับสน",
         override val openaiKeyDescription: String = "จำเป็นสำหรับบริการ TTS และ STT",
         override val braveSearchDescription: String = "Enable built-in Brave Search tool for web and local searches",
         override val braveApiKeyDescription: String = "Brave Search API key (get from https://brave.com/search/api/)",

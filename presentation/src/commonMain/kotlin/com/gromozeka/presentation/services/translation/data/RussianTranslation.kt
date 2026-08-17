@@ -103,6 +103,7 @@ data class RussianTranslation(
         override val globalPttHotkeyLabel: String = "Глобальная горячая клавиша PTT",
         override val muteAudioDuringPttLabel: String = "Отключать звук системы во время PTT",
         override val includeCurrentTimeLabel: String = "Включать текущее время",
+        override val includeMessageTemporalContextLabel: String = "Добавлять время к сообщениям пользователя",
         override val openaiApiKeyLabel: String = "API ключ OpenAI",
         override val enableBraveSearchLabel: String = "Включить Brave Search",
         override val braveApiKeyLabel: String = "API ключ Brave",
@@ -133,7 +134,11 @@ data class RussianTranslation(
         override val autoSendDescription: String = "Отправлять сообщения сразу после голосового ввода",
         override val globalPttDescription: String = "Включить push-to-talk из любого места (Cmd+Shift+Space)",
         override val muteAudioDescription: String = "Предотвращать звуковую обратную связь при записи",
-        override val includeTimeDescription: String = "Добавлять текущую дату/время один раз в начале беседы",
+        override val includeTimeDescription: String = "Добавлять текущее время в общий контекст модели",
+        override val includeMessageTemporalContextDescription: String =
+            "Добавлять к каждому сообщению UTC timestamp и интервал от предыдущего сообщения пользователя",
+        override val duplicateTemporalContextWarning: String =
+            "Включены оба режима времени. Дублирующий temporal context может запутать модель.",
         override val openaiKeyDescription: String = "Требуется для TTS и STT сервисов",
         override val braveSearchDescription: String = "Включить встроенный инструмент Brave Search для веб-поиска и локального поиска",
         override val braveApiKeyDescription: String = "API ключ Brave Search (получить на https://brave.com/search/api/)",

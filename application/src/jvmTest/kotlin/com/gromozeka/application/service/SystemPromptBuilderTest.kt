@@ -18,7 +18,8 @@ class SystemPromptBuilderTest {
         val prompt = builder.buildEnvironmentInfo(
             RuntimeEnvironmentContext.Standalone(
                 RuntimeEnvironmentExecutor.Worker("cloud-worker")
-            )
+            ),
+            includeCurrentTime = false,
         )
 
         assertContains(prompt, "Runtime executor: Worker cloud-worker")
@@ -26,6 +27,7 @@ class SystemPromptBuilderTest {
         assertFalse(prompt.contains("Workspace root path"))
         assertFalse(prompt.contains("Platform:"))
         assertFalse(prompt.contains("OS Version:"))
+        assertFalse(prompt.contains("Current time:"))
     }
 
     @Test
@@ -51,12 +53,24 @@ class SystemPromptBuilderTest {
                 workspace = workspace,
                 workerId = "cloud-worker",
                 localMount = null,
-            )
+            ),
+            includeCurrentTime = false,
         )
 
         assertContains(prompt, "Project: Project (project-1)")
         assertContains(prompt, "Filesystem workspace: Mac checkout (workspace-1)")
         assertContains(prompt, "Workspace mounted on runtime worker: No")
         assertFalse(prompt.contains("Workspace root path"))
+    }
+
+    @Test
+    fun `current time is explicit utc when enabled`() {
+        val prompt = builder.buildEnvironmentInfo(
+            RuntimeEnvironmentContext.Standalone(RuntimeEnvironmentExecutor.Server),
+            includeCurrentTime = true,
+        )
+
+        assertContains(prompt, "Current time:")
+        assertContains(prompt, "(timezone: UTC)")
     }
 }

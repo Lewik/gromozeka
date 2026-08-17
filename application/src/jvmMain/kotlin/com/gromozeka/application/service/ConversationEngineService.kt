@@ -108,6 +108,7 @@ class ConversationEngineService(
     private val toolRoutingService: ConversationRuntimeToolRoutingService,
     private val artifactService: ConversationArtifactApplicationService,
     private val activeGenerationPublisher: ActiveGenerationPublisher,
+    private val messageTemporalContextService: MessageTemporalContextService,
 ) : ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
 
@@ -213,7 +214,10 @@ class ConversationEngineService(
 
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
         context.modelSpec.requireSupportsInputs(currentMessages)
-        val runtimeMessages = artifactService.materialize(conversationId, currentMessages)
+        val runtimeMessages = messageTemporalContextService.enrich(
+            messages = artifactService.materialize(conversationId, currentMessages),
+            enabled = context.includeMessageTemporalContext,
+        )
         val toolSelection = aiToolRuntimeCatalogService.selectTools(
             agent = context.agent,
             catalog = context.toolCatalog,
@@ -843,6 +847,7 @@ class ConversationEngineService(
         val autoCompactionThresholdTokens: Int?,
         val automaticMemoryRememberEnabled: Boolean,
         val automaticMemoryRecallEnabled: Boolean,
+        val includeMessageTemporalContext: Boolean,
     ) {
         val project get() = runtimeContext.project
     }
@@ -937,6 +942,8 @@ class ConversationEngineService(
             autoCompactionThresholdTokens = autoCompactionThresholdTokens,
             automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
             automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
+            includeMessageTemporalContext =
+                settingsProvider.userProfile.agentSettings.includeMessageTemporalContext,
         )
     }
 

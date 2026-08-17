@@ -176,6 +176,7 @@ data class UserProfile(
     @Serializable
     data class AgentSettings(
         val includeCurrentTime: Boolean = true,
+        val includeMessageTemporalContext: Boolean = true,
         val autoApproveAllTools: Boolean = true,
     )
 

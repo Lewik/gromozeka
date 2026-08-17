@@ -34,6 +34,7 @@ sealed class Translation {
         abstract val globalPttHotkeyLabel: String
         abstract val muteAudioDuringPttLabel: String
         abstract val includeCurrentTimeLabel: String
+        abstract val includeMessageTemporalContextLabel: String
         abstract val openaiApiKeyLabel: String
         abstract val enableBraveSearchLabel: String
         abstract val braveApiKeyLabel: String
@@ -65,6 +66,8 @@ sealed class Translation {
         abstract val globalPttDescription: String
         abstract val muteAudioDescription: String
         abstract val includeTimeDescription: String
+        abstract val includeMessageTemporalContextDescription: String
+        abstract val duplicateTemporalContextWarning: String
         abstract val openaiKeyDescription: String
         abstract val braveSearchDescription: String
         abstract val braveApiKeyDescription: String

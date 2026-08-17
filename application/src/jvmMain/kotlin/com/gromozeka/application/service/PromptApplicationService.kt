@@ -10,6 +10,7 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.DeclarativeStateChangePublisher
 import com.gromozeka.domain.service.DeclarativeStateKey
 import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
@@ -19,6 +20,7 @@ class PromptApplicationService(
     private val promptRepository: PromptRepository,
     private val agentRepository: AgentRepository,
     private val systemPromptBuilder: SystemPromptBuilder,
+    private val settingsProvider: SettingsProvider,
     private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : PromptDomainService, PromptAssemblyService {
     override suspend fun assembleSystemPrompt(
@@ -27,7 +29,10 @@ class PromptApplicationService(
     ): List<String> =
         promptIds.map { id ->
             if (id.value == ENV_PROMPT_ID) {
-                systemPromptBuilder.buildEnvironmentInfo(runtimeContext)
+                systemPromptBuilder.buildEnvironmentInfo(
+                    runtimeContext = runtimeContext,
+                    includeCurrentTime = settingsProvider.userProfile.agentSettings.includeCurrentTime,
+                )
             } else {
                 val prompt = promptRepository.findById(id)
                     ?: error("Required prompt '${id.value}' is unavailable")

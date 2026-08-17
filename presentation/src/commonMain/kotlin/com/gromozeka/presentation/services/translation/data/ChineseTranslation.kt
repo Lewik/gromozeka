@@ -102,6 +102,7 @@ data class ChineseTranslation(
         override val globalPttHotkeyLabel: String = "全局PTT热键",
         override val muteAudioDuringPttLabel: String = "PTT期间静音系统音频",
         override val includeCurrentTimeLabel: String = "包含当前时间",
+        override val includeMessageTemporalContextLabel: String = "在用户消息中包含时间",
         override val openaiApiKeyLabel: String = "OpenAI API密钥",
         override val enableBraveSearchLabel: String = "Enable Brave Search",
         override val braveApiKeyLabel: String = "Brave API Key",
@@ -131,7 +132,11 @@ data class ChineseTranslation(
         override val autoSendDescription: String = "语音输入后立即发送消息",
         override val globalPttDescription: String = "从任何地方启用按下通话（Cmd+Shift+Space）",
         override val muteAudioDescription: String = "录音时防止音频反馈",
-        override val includeTimeDescription: String = "在对话开始时添加一次当前日期/时间",
+        override val includeTimeDescription: String = "将当前时间添加到模型的通用上下文中",
+        override val includeMessageTemporalContextDescription: String =
+            "为每条用户消息添加 UTC 时间戳以及距上一条用户消息的间隔",
+        override val duplicateTemporalContextWarning: String =
+            "两种时间模式均已启用。重复的时间上下文可能会使模型混淆。",
         override val openaiKeyDescription: String = "TTS和STT服务必需",
         override val braveSearchDescription: String = "Enable built-in Brave Search tool for web and local searches",
         override val braveApiKeyDescription: String = "Brave Search API key (get from https://brave.com/search/api/)",

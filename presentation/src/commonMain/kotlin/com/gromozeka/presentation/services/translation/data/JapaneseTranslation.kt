@@ -102,6 +102,7 @@ data class JapaneseTranslation(
         override val globalPttHotkeyLabel: String = "グローバルPTTホットキー",
         override val muteAudioDuringPttLabel: String = "PTT中システム音声をミュート",
         override val includeCurrentTimeLabel: String = "現在時刻を含める",
+        override val includeMessageTemporalContextLabel: String = "ユーザーメッセージに時刻を含める",
         override val openaiApiKeyLabel: String = "OpenAI APIキー",
         override val enableBraveSearchLabel: String = "Enable Brave Search",
         override val braveApiKeyLabel: String = "Brave API Key",
@@ -131,7 +132,11 @@ data class JapaneseTranslation(
         override val autoSendDescription: String = "音声入力後すぐにメッセージを送信",
         override val globalPttDescription: String = "どこからでもプッシュ・トゥ・トークを有効化（Cmd+Shift+Space）",
         override val muteAudioDescription: String = "録音時の音声フィードバックを防止",
-        override val includeTimeDescription: String = "会話開始時に現在の日時を一度追加",
+        override val includeTimeDescription: String = "現在時刻をモデルの共通コンテキストに追加",
+        override val includeMessageTemporalContextDescription: String =
+            "各ユーザーメッセージに UTC タイムスタンプと前のユーザーメッセージからの経過時間を追加",
+        override val duplicateTemporalContextWarning: String =
+            "両方の時刻モードが有効です。重複する時間コンテキストはモデルを混乱させる可能性があります。",
         override val openaiKeyDescription: String = "TTSとSTTサービスに必要",
         override val braveSearchDescription: String = "Enable built-in Brave Search tool for web and local searches",
         override val braveApiKeyDescription: String = "Brave Search API key (get from https://brave.com/search/api/)",

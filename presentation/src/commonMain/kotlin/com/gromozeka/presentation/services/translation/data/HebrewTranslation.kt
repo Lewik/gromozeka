@@ -103,6 +103,7 @@ data class HebrewTranslation(
         override val globalPttHotkeyLabel: String = "מקש קיצור גלובלי PTT",
         override val muteAudioDuringPttLabel: String = "השתק קול מערכת במהלך PTT",
         override val includeCurrentTimeLabel: String = "כלול זמן נוכחי",
+        override val includeMessageTemporalContextLabel: String = "כלול זמן בהודעות משתמש",
         override val openaiApiKeyLabel: String = "מפתח API של OpenAI",
         override val enableBraveSearchLabel: String = "Enable Brave Search",
         override val braveApiKeyLabel: String = "Brave API Key",
@@ -133,7 +134,11 @@ data class HebrewTranslation(
         override val autoSendDescription: String = "שלח הודעות מיידית לאחר קלט קולי",
         override val globalPttDescription: String = "הפעל push-to-talk מכל מקום (Cmd+Shift+Space)",
         override val muteAudioDescription: String = "מנע משוב קולי בעת הקלטה",
-        override val includeTimeDescription: String = "הוסף תאריך/שעה נוכחיים פעם אחת בתחילת השיחה",
+        override val includeTimeDescription: String = "הוסף את הזמן הנוכחי להקשר הכללי של המודל",
+        override val includeMessageTemporalContextDescription: String =
+            "הוסף לכל הודעת משתמש חותמת זמן UTC ואת הזמן שחלף מאז הודעת המשתמש הקודמת",
+        override val duplicateTemporalContextWarning: String =
+            "שני מצבי הזמן מופעלים. הקשר זמן כפול עלול לבלבל את המודל.",
         override val openaiKeyDescription: String = "נדרש עבור שירותי TTS ו-STT",
         override val braveSearchDescription: String = "Enable built-in Brave Search tool for web and local searches",
         override val braveApiKeyDescription: String = "Brave Search API key (get from https://brave.com/search/api/)",

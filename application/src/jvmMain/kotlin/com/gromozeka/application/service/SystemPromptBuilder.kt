@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.RuntimeEnvironmentExecutor
 import org.springframework.stereotype.Service
 import java.io.File
-import java.time.LocalDate
+import kotlin.time.Clock
 
 /**
  * Builds environment information for Dynamic prompts.
@@ -20,9 +20,10 @@ class SystemPromptBuilder {
      * @param runtimeContext environment visible to the executing runtime
      * @return Environment info block wrapped in <env> tag
      */
-    fun buildEnvironmentInfo(runtimeContext: RuntimeEnvironmentContext): String {
-        val todayDate = LocalDate.now()
-
+    fun buildEnvironmentInfo(
+        runtimeContext: RuntimeEnvironmentContext,
+        includeCurrentTime: Boolean,
+    ): String {
         return buildString {
             appendLine("<env>")
             appendLine(
@@ -62,7 +63,9 @@ class SystemPromptBuilder {
                     } ?: appendLine("Workspace mounted on runtime worker: No")
                 }
             }
-            appendLine("Today's date: $todayDate")
+            if (includeCurrentTime) {
+                appendLine("Current time: ${Clock.System.now()} (timezone: UTC)")
+            }
             append("</env>")
         }
     }

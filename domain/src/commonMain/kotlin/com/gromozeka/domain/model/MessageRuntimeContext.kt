@@ -52,6 +52,31 @@ data class MessageInputContext(
 }
 
 @Serializable
+data class MessageTemporalContext(
+    val sentAt: Instant,
+    val elapsedSincePreviousUserMessageSeconds: Long? = null,
+) {
+    init {
+        require(elapsedSincePreviousUserMessageSeconds == null || elapsedSincePreviousUserMessageSeconds >= 0) {
+            "Elapsed time since the previous user message must not be negative"
+        }
+    }
+
+    fun toXml(): String =
+        buildString {
+            append("<message_time sent_at=\"")
+            append(sentAt)
+            append("\" timezone=\"UTC\"")
+            elapsedSincePreviousUserMessageSeconds?.let { seconds ->
+                append(" elapsed_since_previous_user_message_seconds=\"")
+                append(seconds)
+                append('"')
+            }
+            append(" />")
+        }
+}
+
+@Serializable
 data class UserSituationContext(
     val observedAt: Instant? = null,
     val timezone: String? = null,
