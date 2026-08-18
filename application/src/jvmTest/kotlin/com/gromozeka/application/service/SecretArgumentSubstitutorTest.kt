@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.RevealedSecretRuntimeContext
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -25,6 +26,38 @@ class SecretArgumentSubstitutorTest {
         assertEquals("actual-token", parsed.getValue("token").jsonPrimitive.content)
         assertEquals("echo secret://github-pat", parsed.getValue("command").jsonPrimitive.content)
         assertEquals("actual-token", parsed.getValue("nested").jsonArray.single().jsonPrimitive.content)
+    }
+
+    @Test
+    fun `command secrets use collision-free generated environment names`() {
+        val generatedNames = ArrayDeque(
+            listOf(
+                "GROMOZEKA_SECRET_IN_COMMAND",
+                "GROMOZEKA_SECRET_IN_ENVIRONMENT",
+                "GROMOZEKA_SECRET_SAFE",
+            )
+        )
+        val substitutor = SecretArgumentSubstitutor(
+            environmentNameGenerator = { generatedNames.removeFirst() },
+            inheritedEnvironmentNames = { setOf("GROMOZEKA_SECRET_IN_ENVIRONMENT") },
+        )
+        val prepared = substitutor.prepare(
+            toolName = GRZ_EXECUTE_COMMAND_TOOL_NAME,
+            arguments = """{"command":"echo GROMOZEKA_SECRET_IN_COMMAND secret://github-pat secret://github-pat"}""",
+            values = mapOf("github-pat" to "actual-token"),
+            isWindows = false,
+        )
+        val command = Json.parseToJsonElement(prepared.arguments)
+            .jsonObject
+            .getValue("command")
+            .jsonPrimitive
+            .content
+
+        assertEquals(
+            "echo GROMOZEKA_SECRET_IN_COMMAND \${GROMOZEKA_SECRET_SAFE} \${GROMOZEKA_SECRET_SAFE}",
+            command,
+        )
+        assertEquals(mapOf("GROMOZEKA_SECRET_SAFE" to "actual-token"), prepared.secretEnvironment)
     }
 
     @Test

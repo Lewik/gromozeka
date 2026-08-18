@@ -20,6 +20,7 @@ const val TOOL_CONTEXT_USER_ID = "userId"
 const val TOOL_CONTEXT_TOOL_NAME = "toolName"
 const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY = "memoryResultDelivery"
 const val TOOL_CONTEXT_MEMORY_NAMESPACE = "memoryNamespace"
+const val TOOL_CONTEXT_SECRET_ENVIRONMENT = "secretEnvironment"
 
 const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC = "conversation_runtime"
 

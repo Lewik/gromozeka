@@ -15,6 +15,7 @@ import com.gromozeka.domain.service.CommandTaskService
 import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.service.RunningCommandProcess
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.requiredWorkspaceMountId
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
@@ -104,7 +105,7 @@ class DefaultCommandTaskService(
                     executionId = taskId.value,
                     command = request.command,
                     workingDirectory = workingDirectory,
-                    environment = request.secret_environment,
+                    environment = context.secretEnvironment(),
                 )
             )
             val now = Clock.System.now()
@@ -163,6 +164,17 @@ class DefaultCommandTaskService(
         }
         return output(resultTask, 0)
     }
+
+    private fun ToolExecutionContext.secretEnvironment(): Map<String, String> =
+        (get(TOOL_CONTEXT_SECRET_ENVIRONMENT) as? Map<*, *>)
+            ?.entries
+            ?.associate { (name, value) ->
+                require(name is String && value is String) {
+                    "Secret command environment must contain string keys and values"
+                }
+                name to value
+            }
+            .orEmpty()
 
     override suspend fun get(
         conversationId: Conversation.Id,

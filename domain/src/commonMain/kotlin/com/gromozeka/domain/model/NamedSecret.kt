@@ -37,6 +37,7 @@ data class NamedSecret(
         const val REFERENCE_PREFIX = "secret://"
         const val MAX_DESCRIPTION_LENGTH = 512
         val NAME_PATTERN = Regex("[a-z0-9][a-z0-9._-]{0,63}")
+        val REFERENCE_PATTERN = Regex("secret://([a-z0-9][a-z0-9._-]{0,63})")
 
         fun normalizeName(value: String): String = value.trim().lowercase()
 
@@ -44,6 +45,11 @@ data class NamedSecret(
             .takeIf { it.startsWith(REFERENCE_PREFIX) }
             ?.removePrefix(REFERENCE_PREFIX)
             ?.takeIf(NAME_PATTERN::matches)
+
+        fun namesInText(value: String): Set<String> = REFERENCE_PATTERN
+            .findAll(value)
+            .map { it.groupValues[1] }
+            .toSet()
     }
 }
 

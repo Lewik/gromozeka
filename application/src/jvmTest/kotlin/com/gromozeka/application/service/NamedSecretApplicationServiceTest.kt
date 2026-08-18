@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.StoredNamedSecret
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.NamedSecretRepository
+import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
@@ -39,15 +40,20 @@ class NamedSecretApplicationServiceTest {
         val call = Conversation.Message.ContentItem.ToolCall(
             id = Conversation.Message.ContentItem.ToolCall.Id("call"),
             call = Conversation.Message.ContentItem.ToolCall.Data(
-                name = "tool",
-                input = JsonObject(mapOf("token" to JsonPrimitive("secret://github-pat"))),
+                name = GRZ_EXECUTE_COMMAND_TOOL_NAME,
+                input = JsonObject(
+                    mapOf("command" to JsonPrimitive("curl -H \"token: secret://github-pat\""))
+                ),
             ),
         )
 
         val resolved = ToolSecretResolutionService(service).resolve(userId, listOf(call))
 
         assertEquals(mapOf("github-pat" to "actual-token"), resolved.getValue("call"))
-        assertEquals("secret://github-pat", call.call.input.jsonObject.getValue("token").jsonPrimitive.content)
+        assertEquals(
+            "curl -H \"token: secret://github-pat\"",
+            call.call.input.jsonObject.getValue("command").jsonPrimitive.content,
+        )
     }
 }
 

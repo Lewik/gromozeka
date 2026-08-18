@@ -14,6 +14,8 @@ import com.gromozeka.domain.tool.AiToolExecutionScope
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.TOOL_CONTEXT_SECRET_ENVIRONMENT
+import com.gromozeka.domain.tool.filesystem.GRZ_EXECUTE_COMMAND_TOOL_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -24,6 +26,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -142,6 +145,35 @@ class ParallelToolExecutorTest {
     }
 
     @Test
+    fun `command secret is delivered through generated environment`() = runBlocking {
+        val tool = CommandCapturingTestTool()
+        val executor = executor(tool)
+        val toolCall = Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("call-command"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = GRZ_EXECUTE_COMMAND_TOOL_NAME,
+                input = JsonObject(mapOf("command" to JsonPrimitive("echo secret://github-pat"))),
+            ),
+        )
+
+        executor.executeParallel(
+            toolCalls = listOf(toolCall),
+            toolContext = ToolExecutionContext(),
+            runtimeTaskId = null,
+            executor = server,
+            expectedTarget = ConversationRuntimeTaskTarget.Server,
+            resolvedSecretsByToolCallId = mapOf(
+                toolCall.id.value to mapOf("github-pat" to "actual-token")
+            ),
+        )
+
+        assertFalse(tool.receivedInput.orEmpty().contains("secret://github-pat"))
+        assertFalse(tool.receivedInput.orEmpty().contains("actual-token"))
+        assertEquals(listOf("actual-token"), tool.receivedEnvironment.values.toList())
+        assertTrue(toolCall.call.input.toString().contains("secret://github-pat"))
+    }
+
+    @Test
     fun `blocking tools execute concurrently and preserve result order`() = runBlocking {
         val started = CountDownLatch(2)
         val release = CountDownLatch(1)
@@ -235,6 +267,25 @@ private class CapturingTestTool : AiToolCallback {
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String {
         receivedInput = toolInput
+        return "ok"
+    }
+}
+
+private class CommandCapturingTestTool : AiToolCallback {
+    var receivedInput: String? = null
+    var receivedEnvironment: Map<String, String> = emptyMap()
+    override val definition = AiToolDefinition(
+        name = GRZ_EXECUTE_COMMAND_TOOL_NAME,
+        description = GRZ_EXECUTE_COMMAND_TOOL_NAME,
+        inputSchema = """{"type":"object"}""",
+    )
+    override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER)
+
+    override fun call(toolInput: String, context: ToolExecutionContext?): String {
+        receivedInput = toolInput
+        @Suppress("UNCHECKED_CAST")
+        receivedEnvironment = context?.get(TOOL_CONTEXT_SECRET_ENVIRONMENT) as? Map<String, String>
+            ?: emptyMap()
         return "ok"
     }
 }

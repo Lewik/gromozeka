@@ -60,7 +60,7 @@ class ListNamedSecretsToolCallback(
     override val metadata = PreloadedServerToolMetadata
     override val definition = AiToolDefinition(
         name = "grz_list_secrets",
-        description = "List the current user's durable named secrets without revealing their values. Use returned secret:// references in tool arguments or grz_execute_command.secret_environment.",
+        description = "List the current user's durable named secrets without revealing their values. Use returned secret:// references as exact tool argument values or directly inside grz_execute_command.command.",
         inputSchema = """{"type":"object","additionalProperties":false,"properties":{}}""",
     )
 
