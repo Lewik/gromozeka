@@ -103,6 +103,8 @@ class GromozekaRemoteServices(
         RemotePersonalAccessTokenService(client)
     val aiUserCredentialService: CurrentUserAiCredentialService =
         RemoteAiUserCredentialService(client)
+    val namedSecretService: com.gromozeka.domain.service.CurrentUserNamedSecretService =
+        RemoteNamedSecretService(client)
     val userAdministrationService: RemoteUserAdministrationService =
         RemoteUserAdministrationService(client)
     val securityAuditService: RemoteSecurityAuditService =

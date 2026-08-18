@@ -104,6 +104,7 @@ class DefaultCommandTaskService(
                     executionId = taskId.value,
                     command = request.command,
                     workingDirectory = workingDirectory,
+                    environment = request.secret_environment,
                 )
             )
             val now = Clock.System.now()

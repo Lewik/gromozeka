@@ -68,6 +68,27 @@ class LocalCommandProcessRunnerTest {
     }
 
     @Test
+    fun `runner injects command environment without changing command text`() {
+        withTemporaryGromozekaHome { home ->
+            val process = runner.start(
+                CommandProcessSpec(
+                    executionId = "secret-environment-task",
+                    command = platformCommand(
+                        posix = "printf '%s' \"${'$'}GH_TOKEN\"",
+                        windows = "set /p \"=%GH_TOKEN%\" <nul",
+                    ),
+                    workingDirectory = home.absolutePath,
+                    environment = mapOf("GH_TOKEN" to "actual-token"),
+                )
+            )
+
+            assertTrue(process.waitFor(5_000))
+            assertEquals(0, process.exitCode())
+            assertEquals("actual-token", File(process.outputFile).readText())
+        }
+    }
+
+    @Test
     fun `runner terminates root and child processes`() {
         withTemporaryGromozekaHome { home ->
             val childPidFile = File(home, "child.pid")
@@ -300,6 +321,7 @@ class LocalCommandProcessRunnerTest {
                 workingDirectory = directory,
                 outputFile = outputFile,
                 exitCodeFile = exitCodeFile,
+                injectedEnvironment = mapOf("GH_TOKEN" to "actual-token"),
             )
 
             val commandFile = File("${outputFile.absolutePath}.command.cmd")
@@ -314,6 +336,7 @@ class LocalCommandProcessRunnerTest {
             assertFalse(wrapperText.contains("%~f0"))
             assertEquals(commandFile.absolutePath, processBuilder.environment()["GROMOZEKA_COMMAND_FILE"])
             assertEquals(exitCodeFile.absolutePath, processBuilder.environment()["GROMOZEKA_EXIT_FILE"])
+            assertEquals("actual-token", processBuilder.environment()["GH_TOKEN"])
         } finally {
             assertTrue(directory.deleteRecursively())
         }

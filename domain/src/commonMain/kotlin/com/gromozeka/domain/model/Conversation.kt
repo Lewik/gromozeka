@@ -620,6 +620,17 @@ data class Conversation(
             }
 
             @Serializable
+            @SerialName("revealed_secret_context")
+            data class RevealedSecretRuntimeContext(
+                val context: com.gromozeka.domain.model.RevealedSecretRuntimeContext,
+            ) : Instruction() {
+                override val title = "Revealed secrets"
+                override val description = "Secrets explicitly approved by the user for this model request"
+                override fun serializeContent() = context.toXml()
+                override fun toXmlLine() = serializeContent()
+            }
+
+            @Serializable
             @SerialName("user_situation_context")
             data class UserSituationRuntimeContext(
                 val context: UserSituationContext,

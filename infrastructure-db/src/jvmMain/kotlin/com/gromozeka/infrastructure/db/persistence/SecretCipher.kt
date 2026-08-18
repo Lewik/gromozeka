@@ -16,7 +16,7 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 @Service
-internal class AiUserCredentialCipher(
+internal class SecretCipher(
     private val settingsProvider: SettingsProvider,
 ) {
     private val secureRandom = SecureRandom()
@@ -25,13 +25,13 @@ internal class AiUserCredentialCipher(
     @Volatile
     private var cachedKey: SecretKeySpec? = null
 
-    fun encrypt(secret: String, associatedData: String): EncryptedAiUserCredential {
+    fun encrypt(secret: String, associatedData: String): EncryptedSecret {
         val nonce = ByteArray(NONCE_BYTES).also(secureRandom::nextBytes)
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key(), GCMParameterSpec(TAG_BITS, nonce))
         cipher.updateAAD(associatedData.toByteArray(StandardCharsets.UTF_8))
         val ciphertext = cipher.doFinal(secret.toByteArray(StandardCharsets.UTF_8))
-        return EncryptedAiUserCredential(
+        return EncryptedSecret(
             ciphertext = Base64.getEncoder().encodeToString(ciphertext),
             nonce = Base64.getEncoder().encodeToString(nonce),
             version = VERSION,
@@ -39,11 +39,11 @@ internal class AiUserCredentialCipher(
     }
 
     fun decrypt(
-        encrypted: EncryptedAiUserCredential,
+        encrypted: EncryptedSecret,
         associatedData: String,
     ): String {
         require(encrypted.version == VERSION) {
-            "Unsupported AI user credential encryption version ${encrypted.version}"
+            "Unsupported secret encryption version ${encrypted.version}"
         }
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(
@@ -69,7 +69,7 @@ internal class AiUserCredentialCipher(
         } else {
             createKey(path)
         }
-        require(bytes.size == KEY_BYTES) { "AI user credential key must contain exactly $KEY_BYTES bytes" }
+        require(bytes.size == KEY_BYTES) { "Secret encryption key must contain exactly $KEY_BYTES bytes" }
         restrictToOwner(path)
         return bytes
     }
@@ -113,7 +113,7 @@ internal class AiUserCredentialCipher(
     }
 }
 
-internal data class EncryptedAiUserCredential(
+internal data class EncryptedSecret(
     val ciphertext: String,
     val nonce: String,
     val version: Int,

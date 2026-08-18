@@ -494,6 +494,7 @@ class McpServerManagementServiceTest {
                 executionTarget: ConversationRuntimeTaskTarget.Worker,
                 toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
                 toolContext: ToolExecutionContext,
+                resolvedSecretsByToolCallId: Map<String, Map<String, String>>,
             ): WorkerToolExecutionResult {
                 toolExecutionIdentity = target
                 toolExecutionTarget = executionTarget

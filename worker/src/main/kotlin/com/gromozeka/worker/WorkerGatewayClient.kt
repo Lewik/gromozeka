@@ -438,6 +438,7 @@ class WorkerGatewayOperationHandler(
                         runtimeTaskId = null,
                         executor = ConversationRuntimeExecutorIdentity.Worker(identity),
                         expectedTarget = toolRequest.executionTarget,
+                        resolvedSecretsByToolCallId = toolRequest.resolvedSecretsByToolCallId,
                     )
                     json.encodeToString(
                         WorkerToolExecutionResponse(

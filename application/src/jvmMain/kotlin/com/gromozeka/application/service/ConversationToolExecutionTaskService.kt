@@ -47,6 +47,7 @@ class ConversationToolExecutionTaskService(
     private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
     private val workerToolExecutionClient: WorkerToolExecutionClient,
     private val artifactService: ConversationArtifactApplicationService,
+    private val toolSecretResolutionService: ToolSecretResolutionService,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -89,6 +90,10 @@ class ConversationToolExecutionTaskService(
             val executionToolCalls = payload.toolCalls.withExecutionToolNames(
                 payload.executionToolNamesByCallId
             )
+            val resolvedSecretsByToolCallId = toolSecretResolutionService.resolve(
+                userId = task.actorUserId,
+                toolCalls = executionToolCalls,
+            )
             val toolContext = ToolExecutionContext(
                 buildMap {
                     put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
@@ -120,6 +125,7 @@ class ConversationToolExecutionTaskService(
                         runtimeTaskId = task.id,
                         executor = executor,
                         expectedTarget = target,
+                        resolvedSecretsByToolCallId = resolvedSecretsByToolCallId,
                         onToolExecutionChanged = { execution ->
                             upsertRuntimeToolExecution(
                                 conversationId,
@@ -145,6 +151,7 @@ class ConversationToolExecutionTaskService(
                             executionTarget = target,
                             toolCalls = executionToolCalls,
                             toolContext = toolContext,
+                            resolvedSecretsByToolCallId = resolvedSecretsByToolCallId,
                         ).also { result ->
                             markRemoteToolExecutionsCompleted(
                                 conversationId = conversationId,

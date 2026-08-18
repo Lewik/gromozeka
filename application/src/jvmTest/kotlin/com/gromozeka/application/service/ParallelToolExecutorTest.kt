@@ -19,6 +19,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
@@ -114,6 +115,33 @@ class ParallelToolExecutorTest {
     }
 
     @Test
+    fun `resolved secret reaches callback without mutating tool call`() = runBlocking {
+        val tool = CapturingTestTool()
+        val executor = executor(tool)
+        val toolCall = Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("call-capture"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = "capture",
+                input = JsonObject(mapOf("token" to JsonPrimitive("secret://github-pat"))),
+            ),
+        )
+
+        executor.executeParallel(
+            toolCalls = listOf(toolCall),
+            toolContext = ToolExecutionContext(),
+            runtimeTaskId = null,
+            executor = server,
+            expectedTarget = ConversationRuntimeTaskTarget.Server,
+            resolvedSecretsByToolCallId = mapOf(
+                toolCall.id.value to mapOf("github-pat" to "actual-token")
+            ),
+        )
+
+        assertTrue(tool.receivedInput.orEmpty().contains("actual-token"))
+        assertTrue(toolCall.call.input.toString().contains("secret://github-pat"))
+    }
+
+    @Test
     fun `blocking tools execute concurrently and preserve result order`() = runBlocking {
         val started = CountDownLatch(2)
         val release = CountDownLatch(1)
@@ -194,6 +222,21 @@ private class TestTool(
     override val metadata = AiToolMetadata(executionScope = executionScope)
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = "ok"
+}
+
+private class CapturingTestTool : AiToolCallback {
+    var receivedInput: String? = null
+    override val definition = AiToolDefinition(
+        name = "capture",
+        description = "capture",
+        inputSchema = """{"type":"object"}""",
+    )
+    override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER)
+
+    override fun call(toolInput: String, context: ToolExecutionContext?): String {
+        receivedInput = toolInput
+        return "ok"
+    }
 }
 
 private class BlockingTestTool(

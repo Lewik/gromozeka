@@ -41,6 +41,7 @@ class ParallelToolExecutor(
     private val toolApprovalService: ToolApprovalService,
 ) {
     private val log = KLoggers.logger(this)
+    private val secretArgumentSubstitutor = SecretArgumentSubstitutor()
 
     /**
      * Execute multiple tool calls in parallel.
@@ -55,6 +56,7 @@ class ParallelToolExecutor(
         runtimeTaskId: ConversationRuntimeTask.Id?,
         executor: ConversationRuntimeExecutorIdentity,
         expectedTarget: ConversationRuntimeTaskTarget,
+        resolvedSecretsByToolCallId: Map<String, Map<String, String>> = emptyMap(),
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit = {},
     ): ToolExecutionResult {
         if (toolCalls.isEmpty()) return ToolExecutionResult(emptyList(), false)
@@ -113,6 +115,7 @@ class ParallelToolExecutor(
                         runtimeTaskId = runtimeTaskId,
                         executor = executor,
                         onToolExecutionChanged = onToolExecutionChanged,
+                        resolvedSecrets = resolvedSecretsByToolCallId[toolCall.id.value].orEmpty(),
                     )
                 }
             }
@@ -134,6 +137,7 @@ class ParallelToolExecutor(
         runtimeTaskId: ConversationRuntimeTask.Id?,
         executor: ConversationRuntimeExecutorIdentity,
         onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit,
+        resolvedSecrets: Map<String, String>,
     ): ContentItem.ToolResult {
         return try {
             val started = ConversationRuntimeToolExecution(
@@ -145,7 +149,7 @@ class ParallelToolExecutor(
                 startedAt = Clock.System.now(),
             )
             onToolExecutionChanged(started)
-            val result = executeSingleTool(toolCall, callbackMap, toolContext)
+            val result = executeSingleTool(toolCall, callbackMap, toolContext, resolvedSecrets)
             onToolExecutionChanged(
                 started.copy(
                     status = if (result.isError) {
@@ -195,6 +199,7 @@ class ParallelToolExecutor(
         toolCall: ContentItem.ToolCall,
         callbackMap: Map<String, AiToolCallback>,
         toolContext: ToolExecutionContext,
+        resolvedSecrets: Map<String, String>,
     ): ContentItem.ToolResult {
         val toolId = toolCall.id
         val toolName = toolCall.call.name
@@ -260,7 +265,10 @@ class ParallelToolExecutor(
 
             // Execute on IO dispatcher (blocking call)
             val result = withContext(Dispatchers.IO) {
-                callback.callResult(arguments, cancellableToolContext)
+                callback.callResult(
+                    secretArgumentSubstitutor.substitute(arguments, resolvedSecrets),
+                    cancellableToolContext,
+                )
             }
 
             log.debug { "Tool $toolName completed successfully" }

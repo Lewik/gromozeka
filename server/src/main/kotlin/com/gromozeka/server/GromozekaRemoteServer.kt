@@ -3,6 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.application.service.AiUserCredentialApplicationService
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
 import com.gromozeka.application.service.McpServerManagementService
+import com.gromozeka.application.service.NamedSecretApplicationService
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
@@ -119,6 +120,7 @@ class GromozekaRemoteServer(
     private val authenticationService: AuthenticationService,
     private val personalAccessTokenService: PersonalAccessTokenService,
     private val aiUserCredentialService: AiUserCredentialApplicationService,
+    private val namedSecretService: NamedSecretApplicationService,
     private val userAdministrationService: UserAdministrationService,
     private val securityAuditService: SecurityAuditService,
     private val userDirectoryService: UserDirectoryService,
@@ -393,6 +395,13 @@ class GromozekaRemoteServer(
                 )
                 is RemoveAiUserCredentialRequest -> AiUserCredentialStatusResponse(
                     aiUserCredentialService.remove(user.id, request.connectionId)
+                )
+                ListNamedSecretsRequest -> NamedSecretsResponse(namedSecretService.list(user.id))
+                is SaveNamedSecretRequest -> NamedSecretResponse(
+                    namedSecretService.save(user.id, request.name, request.description, request.value)
+                )
+                is DeleteNamedSecretRequest -> NamedSecretDeletedResponse(
+                    namedSecretService.delete(user.id, request.secretId)
                 )
                 ListUsersRequest -> UsersResponse(
                     userAdministrationService.list(user)

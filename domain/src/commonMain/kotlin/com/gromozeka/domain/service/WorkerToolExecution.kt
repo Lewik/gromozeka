@@ -15,6 +15,7 @@ interface WorkerToolExecutionClient {
         executionTarget: ConversationRuntimeTaskTarget.Worker,
         toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
         toolContext: ToolExecutionContext,
+        resolvedSecretsByToolCallId: Map<String, Map<String, String>> = emptyMap(),
     ): WorkerToolExecutionResult
 }
 

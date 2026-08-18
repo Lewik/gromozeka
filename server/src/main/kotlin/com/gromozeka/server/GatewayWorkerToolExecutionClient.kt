@@ -37,6 +37,7 @@ class GatewayWorkerToolExecutionClient(
         executionTarget: ConversationRuntimeTaskTarget.Worker,
         toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
         toolContext: ToolExecutionContext,
+        resolvedSecretsByToolCallId: Map<String, Map<String, String>>,
     ): WorkerToolExecutionResult {
         val request = WorkerToolExecutionRequest(
             executionTarget = executionTarget,
@@ -47,6 +48,7 @@ class GatewayWorkerToolExecutionClient(
                 }
                 value
             },
+            resolvedSecretsByToolCallId = resolvedSecretsByToolCallId,
         )
         val response = sessionRegistry.execute(
             target = target,

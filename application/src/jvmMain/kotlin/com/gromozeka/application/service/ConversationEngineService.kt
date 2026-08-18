@@ -109,6 +109,7 @@ class ConversationEngineService(
     private val artifactService: ConversationArtifactApplicationService,
     private val activeGenerationPublisher: ActiveGenerationPublisher,
     private val messageTemporalContextService: MessageTemporalContextService,
+    private val pendingSecretRevealService: PendingSecretRevealService,
 ) : ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
 
@@ -214,8 +215,13 @@ class ConversationEngineService(
 
         val currentMessages = conversationService.loadCurrentMessages(conversationId)
         context.modelSpec.requireSupportsInputs(currentMessages)
+        val materializedMessages = artifactService.materialize(conversationId, currentMessages)
         val runtimeMessages = messageTemporalContextService.enrich(
-            messages = artifactService.materialize(conversationId, currentMessages),
+            messages = pendingSecretRevealService.consume(
+                conversationId = conversationId,
+                userId = task.actorUserId,
+                messages = materializedMessages,
+            ),
             enabled = context.includeMessageTemporalContext,
         )
         val toolSelection = aiToolRuntimeCatalogService.selectTools(

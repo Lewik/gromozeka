@@ -42,6 +42,8 @@ data class SecurityAuditEvent(
         PERSONAL_ACCESS_TOKEN_REVOKED,
         AI_USER_CREDENTIAL_CONFIGURED,
         AI_USER_CREDENTIAL_REMOVED,
+        NAMED_SECRET_SAVED,
+        NAMED_SECRET_DELETED,
         DEVICE_CONNECTION_APPROVED,
         DEVICE_CONNECTION_DENIED,
         DEVICE_CONNECTED,
@@ -62,6 +64,7 @@ data class SecurityAuditEvent(
         PROJECT,
         PERSONAL_ACCESS_TOKEN,
         AI_CONNECTION,
+        NAMED_SECRET,
         DEVICE_CONNECTION,
         WORKER,
     }

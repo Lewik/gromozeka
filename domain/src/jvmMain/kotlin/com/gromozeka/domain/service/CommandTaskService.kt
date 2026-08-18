@@ -30,11 +30,19 @@ data class CommandProcessSpec(
     val executionId: String,
     val command: String,
     val workingDirectory: String,
+    val environment: Map<String, String> = emptyMap(),
     val captureStandardErrorSeparately: Boolean = false,
 ) {
     init {
         require(executionId.isNotBlank()) { "Command process execution id must not be blank" }
         require(command.isNotBlank()) { "Command process command must not be blank" }
+        require(environment.keys.all(ENVIRONMENT_NAME_PATTERN::matches)) {
+            "Command environment contains an invalid variable name"
+        }
+    }
+
+    private companion object {
+        val ENVIRONMENT_NAME_PATTERN = Regex("[A-Za-z_][A-Za-z0-9_]*")
     }
 }
 

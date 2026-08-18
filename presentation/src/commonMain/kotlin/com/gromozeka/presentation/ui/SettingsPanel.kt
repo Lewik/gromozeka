@@ -115,6 +115,7 @@ fun SettingsPanel(
     localWorkerController: LocalWorkerController,
     personalAccessTokenService: RemotePersonalAccessTokenService,
     aiUserCredentialService: CurrentUserAiCredentialService,
+    namedSecretService: com.gromozeka.domain.service.CurrentUserNamedSecretService,
     userAdministrationService: RemoteUserAdministrationService,
     securityAuditService: RemoteSecurityAuditService,
     userDirectoryService: RemoteUserDirectoryService,
@@ -988,6 +989,11 @@ fun SettingsPanel(
                         selectedSection == SettingsSection.Security
                     ) {
                         DeviceConnectionApprovalSettings(deviceConnectionService)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        NamedSecretSettings(
+                            service = namedSecretService,
+                            coroutineScope = coroutineScope,
+                        )
                         Spacer(modifier = Modifier.height(24.dp))
                         PersonalAccessTokenSettings(
                             service = personalAccessTokenService,

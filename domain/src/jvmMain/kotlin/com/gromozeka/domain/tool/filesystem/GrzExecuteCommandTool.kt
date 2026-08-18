@@ -20,6 +20,10 @@ data class ExecuteCommandRequest(
     val command: String,
     val working_directory: String? = null,
     @property:ToolParameter(
+        description = "Environment variables whose values are named secret references such as secret://github-pat. Use the variables in the command as \$NAME on macOS/Linux or %NAME% on Windows.",
+    )
+    val secret_environment: Map<String, String> = emptyMap(),
+    @property:ToolParameter(
         description = "Initial wait before returning a WORKING task. This is not the command timeout.",
         minimum = 0,
         maximum = MAX_COMMAND_INITIAL_YIELD_MILLIS,
@@ -168,6 +172,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
             Inside a Gromozeka conversation, a WORKING task automatically reports its terminal result later; do not poll merely to discover completion.
             Use grz_get_command_task only when intermediate output is needed. External MCP callers without conversation delivery must poll explicitly.
             Use grz_cancel_command_task to terminate the process tree.
+            To use durable secrets without exposing them to the model, pass environment variable names mapped to exact secret://name references in secret_environment, then reference those variables anywhere in the command. Values are injected only when the process starts.
             Do not create unmanaged background processes with '&' on macOS/Linux or 'start' without '/WAIT' on Windows. Full merged stdout/stderr is saved to output_file.
             Use with caution - has full system access.
             

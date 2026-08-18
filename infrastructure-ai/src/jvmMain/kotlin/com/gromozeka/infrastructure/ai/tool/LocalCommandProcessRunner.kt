@@ -405,6 +405,7 @@ internal class PosixLocalCommandHost private constructor(
         .directory(workingDirectory)
         .redirectOutput(outputFile)
         .apply {
+            environment().putAll(spec.environment)
             redirectErrorStream(errorFile == null)
             errorFile?.let(::redirectError)
         }
@@ -446,10 +447,11 @@ internal class WindowsLocalCommandHost(
         exitCodeFile: File,
     ): Process = prepareProcessBuilder(
         command = spec.command,
-            workingDirectory = workingDirectory,
-            outputFile = outputFile,
-            errorFile = errorFile,
-            exitCodeFile = exitCodeFile,
+        workingDirectory = workingDirectory,
+        outputFile = outputFile,
+        errorFile = errorFile,
+        exitCodeFile = exitCodeFile,
+        injectedEnvironment = spec.environment,
     ).start()
 
     internal fun prepareProcessBuilder(
@@ -458,6 +460,7 @@ internal class WindowsLocalCommandHost(
         outputFile: File,
         errorFile: File? = null,
         exitCodeFile: File,
+        injectedEnvironment: Map<String, String> = emptyMap(),
     ): ProcessBuilder {
         val commandFile = windowsCommandFile(outputFile)
         val wrapperFile = windowsWrapperFile(outputFile)
@@ -478,6 +481,7 @@ internal class WindowsLocalCommandHost(
                 errorFile?.let(::redirectError)
                 environment()[WINDOWS_COMMAND_FILE_ENV] = commandFile.absolutePath
                 environment()[WINDOWS_EXIT_FILE_ENV] = exitCodeFile.absolutePath
+                environment().putAll(injectedEnvironment)
             }
     }
 

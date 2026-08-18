@@ -63,6 +63,7 @@ data class AppComponents(
     val mcpServerService: RemoteMcpServerService,
     val personalAccessTokenService: RemotePersonalAccessTokenService,
     val aiUserCredentialService: CurrentUserAiCredentialService,
+    val namedSecretService: com.gromozeka.domain.service.CurrentUserNamedSecretService,
     val userAdministrationService: RemoteUserAdministrationService,
     val securityAuditService: RemoteSecurityAuditService,
     val userDirectoryService: RemoteUserDirectoryService,

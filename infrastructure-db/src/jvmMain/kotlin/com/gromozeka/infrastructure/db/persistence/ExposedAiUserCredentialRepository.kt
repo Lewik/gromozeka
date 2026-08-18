@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service
 
 @Service
 internal class ExposedAiUserCredentialRepository(
-    private val cipher: AiUserCredentialCipher,
+    private val cipher: SecretCipher,
 ) : AiUserCredentialRepository {
     override suspend fun find(
         userId: User.Id,
@@ -87,7 +87,7 @@ internal class ExposedAiUserCredentialRepository(
         userId: User.Id,
         connectionId: AiConnection.Id,
     ): AiUserCredential {
-        val encrypted = EncryptedAiUserCredential(
+        val encrypted = EncryptedSecret(
             ciphertext = this[AiUserCredentials.ciphertext],
             nonce = this[AiUserCredentials.nonce],
             version = this[AiUserCredentials.encryptionVersion],

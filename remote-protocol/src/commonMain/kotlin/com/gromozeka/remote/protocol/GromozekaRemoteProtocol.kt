@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.MemoryAction
+import com.gromozeka.domain.model.NamedSecret
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
@@ -220,6 +221,27 @@ data class ConfigureAiUserCredentialRequest(
 @SerialName("remove_ai_user_credential")
 data class RemoveAiUserCredentialRequest(
     val connectionId: AiConnection.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("list_named_secrets")
+data object ListNamedSecretsRequest : ClientRequest
+
+@Serializable
+@SerialName("save_named_secret")
+data class SaveNamedSecretRequest(
+    val name: String,
+    val description: String,
+    val value: String,
+) : ClientRequest {
+    override fun toString(): String =
+        "SaveNamedSecretRequest(name=$name, description=$description, value=[REDACTED])"
+}
+
+@Serializable
+@SerialName("delete_named_secret")
+data class DeleteNamedSecretRequest(
+    val secretId: NamedSecret.Id,
 ) : ClientRequest
 
 @Serializable
@@ -1126,6 +1148,24 @@ data class PersonalAccessTokenRevokedResponse(
 @SerialName("ai_user_credential_status")
 data class AiUserCredentialStatusResponse(
     val status: AiUserCredentialStatus,
+) : ServerResponse
+
+@Serializable
+@SerialName("named_secrets")
+data class NamedSecretsResponse(
+    val secrets: List<NamedSecret>,
+) : ServerResponse
+
+@Serializable
+@SerialName("named_secret")
+data class NamedSecretResponse(
+    val secret: NamedSecret,
+) : ServerResponse
+
+@Serializable
+@SerialName("named_secret_deleted")
+data class NamedSecretDeletedResponse(
+    val deleted: Boolean,
 ) : ServerResponse
 
 @Serializable
