@@ -269,6 +269,8 @@ data class JapaneseTranslation(
         reconnectingStatus = "再接続中",
         offlineStatus = "オフライン",
         closedStatus = "閉じました",
+        newMessagesLabel = "件の新着メッセージ",
+        newActivityLabel = "新しいアクティビティ",
     )
 
     companion object {

@@ -29,6 +29,7 @@ sealed interface UiTestTag {
     data object SettingsButton : UiTestTag
     data object SessionScreen : UiTestTag
     data object MessageList : UiTestTag
+    data object UnreadMessagesButton : UiTestTag
     data object MessageInput : UiTestTag
     data object SendButton : UiTestTag
     data object ConnectionStatus : UiTestTag

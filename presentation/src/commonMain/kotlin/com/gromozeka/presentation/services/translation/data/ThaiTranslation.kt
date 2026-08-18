@@ -269,6 +269,8 @@ data class ThaiTranslation(
         reconnectingStatus = "กำลังเชื่อมต่อใหม่",
         offlineStatus = "ออฟไลน์",
         closedStatus = "ปิดแล้ว",
+        newMessagesLabel = "ข้อความใหม่",
+        newActivityLabel = "กิจกรรมใหม่",
     )
 
     companion object {

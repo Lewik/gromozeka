@@ -1,11 +1,7 @@
 package com.gromozeka.presentation.ui.session
 
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -91,10 +87,6 @@ fun SessionScreen(
     isCompactLayout: Boolean = false,
     clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
-    // UI state management - LazyColumn state instead of scroll state
-    val lazyListState = rememberLazyListState()
-    var stickyToBottom by remember { mutableStateOf(true) }
-
     // All data comes from ViewModel
     val filteredHistory by viewModel.filteredMessages.collectAsState()
     val allMessages by viewModel.allMessages.collectAsState()
@@ -112,41 +104,7 @@ fun SessionScreen(
         messages = filteredHistory,
         collapsedContentItems = uiState.collapsedContentItems,
     )
-
-    // LazyColumn sticky to bottom logic
-    val isAtBottom by remember {
-        derivedStateOf {
-            lazyListState.layoutInfo.totalItemsCount == 0 || !lazyListState.canScrollForward
-        }
-    }
-
-    LaunchedEffect(lazyListState) {
-        snapshotFlow {
-            isAtBottom to lazyListState.isScrollInProgress
-        }
-            .collect { (atBottom, isScrolling) ->
-                if (atBottom) {
-                    stickyToBottom = true
-                } else if (isScrolling) {
-                    stickyToBottom = false
-                }
-            }
-    }
-
-    LaunchedEffect(messageEntries.size, filteredHistory.lastOrNull()) {
-        if (stickyToBottom && messageEntries.isNotEmpty()) {
-            val lastIndex = messageEntries.lastIndex
-            lazyListState.scrollToItem(lastIndex)
-            val layoutInfo = lazyListState.layoutInfo
-            val lastItem = layoutInfo.visibleItemsInfo.firstOrNull { it.index == lastIndex }
-            val remainingDistance = lastItem?.let {
-                (it.offset + it.size - layoutInfo.viewportEndOffset).coerceAtLeast(0)
-            } ?: 0
-            if (remainingDistance > 0) {
-                lazyListState.scrollBy(remainingDistance.toFloat())
-            }
-        }
-    }
+    val runtimeStrings = LocalTranslation.current.runtime
 
     Row(
         modifier = Modifier
@@ -546,16 +504,20 @@ fun SessionScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag(UiTestTag.MessageList.value),
-                    state = lazyListState,
-                ) {
-                    items(
+                key(viewModel.conversationId) {
+                    FollowLatestLazyColumn(
                         items = messageEntries,
-                        key = MessageListEntry::key,
-                        contentType = { entry -> entry.segment::class },
+                        itemKey = MessageListEntry::key,
+                        unreadKey = { it.message.id },
+                        contentRevision = messageEntries,
+                        unreadLabel = { count ->
+                            if (count > 0) {
+                                runtimeStrings.newMessagesLabel
+                            } else {
+                                runtimeStrings.newActivityLabel
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
                     ) { entry ->
                         MessageItem(
                             entry = entry,

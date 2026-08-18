@@ -276,6 +276,8 @@ data class HebrewTranslation(
         reconnectingStatus = "מתחבר מחדש",
         offlineStatus = "לא מקוון",
         closedStatus = "סגור",
+        newMessagesLabel = "הודעות חדשות",
+        newActivityLabel = "פעילות חדשה",
     )
 
     companion object {

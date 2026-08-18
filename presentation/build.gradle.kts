@@ -165,6 +165,7 @@ kotlin {
         optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
         optIn.add("androidx.compose.ui.ExperimentalComposeUiApi")
         optIn.add("androidx.compose.foundation.ExperimentalFoundationApi")
+        optIn.add("androidx.compose.ui.test.ExperimentalTestApi")
     }
 
     jvm {}
@@ -249,6 +250,13 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.jna)
                 implementation(libs.jna.platform)
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.compose.ui.test)
             }
         }
 

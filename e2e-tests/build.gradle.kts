@@ -36,7 +36,7 @@ dependencies {
 }
 
 tasks.test {
-    dependsOn(":server:bootJar")
+    dependsOn(":server:bootJar", ":presentation:jvmTest")
     inputs.file(serverJar)
     outputs.upToDateWhen { false }
 

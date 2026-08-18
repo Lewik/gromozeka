@@ -269,6 +269,8 @@ data class ChineseTranslation(
         reconnectingStatus = "正在重新连接",
         offlineStatus = "离线",
         closedStatus = "已关闭",
+        newMessagesLabel = "条新消息",
+        newActivityLabel = "新活动",
     )
 
     companion object {

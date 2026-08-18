@@ -225,6 +225,8 @@ sealed class Translation {
         val reconnectingStatus: String = "Reconnecting",
         val offlineStatus: String = "Offline",
         val closedStatus: String = "Closed",
+        val newMessagesLabel: String = "new messages",
+        val newActivityLabel: String = "New activity",
     )
 
     abstract val languageCode: String

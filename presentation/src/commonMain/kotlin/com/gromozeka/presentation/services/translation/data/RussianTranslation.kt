@@ -295,6 +295,8 @@ data class RussianTranslation(
         reconnectingStatus = "Переподключение",
         offlineStatus = "Нет связи",
         closedStatus = "Закрыто",
+        newMessagesLabel = "новых сообщений",
+        newActivityLabel = "Новая активность",
     )
 
     companion object {
