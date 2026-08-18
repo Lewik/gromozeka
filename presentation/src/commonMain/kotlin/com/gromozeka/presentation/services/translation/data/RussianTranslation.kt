@@ -312,6 +312,7 @@ data class RussianTranslation(
         usingSkillActivity = "Загружаю skill",
         accessingMemoryActivity = "Обращаюсь к памяти",
         usingToolActivity = "Использую инструмент",
+        toolActivityGroupLabel = "Инструменты",
     )
 
     companion object {

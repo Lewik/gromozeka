@@ -242,6 +242,7 @@ sealed class Translation {
         val usingSkillActivity: String = "Loading skill",
         val accessingMemoryActivity: String = "Accessing memory",
         val usingToolActivity: String = "Using tool",
+        val toolActivityGroupLabel: String = "Tools",
     )
 
     abstract val languageCode: String

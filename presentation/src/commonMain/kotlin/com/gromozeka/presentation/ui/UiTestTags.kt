@@ -68,6 +68,14 @@ sealed interface UiTestTag {
         override val suffixParts: List<Any?> = listOf(monitorId)
     }
 
+    data class ToolActivityGroup(val firstToolCallId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(firstToolCallId)
+    }
+
+    data class ToolActivityGroupContent(val firstToolCallId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(firstToolCallId)
+    }
+
     val suffixParts: List<Any?>
         get() = emptyList()
 

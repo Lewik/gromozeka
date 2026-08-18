@@ -120,6 +120,16 @@ internal sealed interface MessageSegment {
         override val key: String = "$contentIndex:content"
     }
 
+    data class ToolActivityGroup(
+        val calls: List<ToolCallReference>,
+    ) : MessageSegment {
+        init {
+            require(calls.size >= 2) { "A tool activity group must contain at least two calls" }
+        }
+
+        override val key: String = "tool-group:${calls.first().content.id.value}"
+    }
+
     data class Instructions(
         val contentIndex: Int,
     ) : MessageSegment {
@@ -136,6 +146,12 @@ internal enum class MarkdownKind {
     THINKING,
     ASSISTANT,
 }
+
+internal data class ToolCallReference(
+    val messageId: Conversation.Message.Id,
+    val contentIndex: Int,
+    val content: Conversation.Message.ContentItem.ToolCall,
+)
 
 @Composable
 internal fun rememberMessageListEntries(
@@ -210,8 +226,69 @@ internal fun rememberMessageListEntries(
         }
     }
 
-    return entries
+    return groupToolCallEntries(entries)
 }
+
+internal fun groupToolCallEntries(entries: List<MessageListEntry>): List<MessageListEntry> {
+    val visibleEntryCountByMessage = entries.groupingBy { it.message.id }.eachCount()
+    val toolEntryCountByMessage = entries
+        .filter { it.toolCallOrNull() != null }
+        .groupingBy { it.message.id }
+        .eachCount()
+    val toolOnlyMessageIds = visibleEntryCountByMessage
+        .filter { (messageId, count) -> toolEntryCountByMessage[messageId] == count }
+        .keys
+    val result = mutableListOf<MessageListEntry>()
+    val pending = mutableListOf<MessageListEntry>()
+
+    fun flushPending() {
+        when (pending.size) {
+            0 -> Unit
+            1 -> result += pending.single()
+            else -> {
+                val first = pending.first()
+                val last = pending.last()
+                result += MessageListEntry(
+                    message = first.message,
+                    segment = MessageSegment.ToolActivityGroup(
+                        calls = pending.map { entry ->
+                            val segment = entry.segment as MessageSegment.Content
+                            ToolCallReference(
+                                messageId = entry.message.id,
+                                contentIndex = segment.contentIndex,
+                                content = segment.content as Conversation.Message.ContentItem.ToolCall,
+                            )
+                        },
+                    ),
+                    isFirstInMessage = first.isFirstInMessage,
+                    isLastInMessage = last.isLastInMessage,
+                )
+            }
+        }
+        pending.clear()
+    }
+
+    entries.forEach { entry ->
+        if (entry.toolCallOrNull() == null) {
+            flushPending()
+            result += entry
+            return@forEach
+        }
+
+        val previous = pending.lastOrNull()
+        val crossesJoinableMessageBoundary = previous != null && previous.message.id != entry.message.id &&
+            previous.message.id in toolOnlyMessageIds && entry.message.id in toolOnlyMessageIds
+        if (previous != null && previous.message.id != entry.message.id && !crossesJoinableMessageBoundary) {
+            flushPending()
+        }
+        pending += entry
+    }
+    flushPending()
+    return result
+}
+
+private fun MessageListEntry.toolCallOrNull(): Conversation.Message.ContentItem.ToolCall? =
+    ((segment as? MessageSegment.Content)?.content as? Conversation.Message.ContentItem.ToolCall)
 
 @Composable
 private fun rememberMarkdownSegments(
@@ -450,6 +527,13 @@ private fun MessageSegmentContent(
 
         is MessageSegment.Content -> GenericContentItem(
             content = segment.content,
+            toolResultsMap = toolResultsMap,
+            workspaceRootPath = workspaceRootPath,
+            loadArtifactContent = loadArtifactContent,
+        )
+
+        is MessageSegment.ToolActivityGroup -> ToolActivityGroupItem(
+            group = segment,
             toolResultsMap = toolResultsMap,
             workspaceRootPath = workspaceRootPath,
             loadArtifactContent = loadArtifactContent,
