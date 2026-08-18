@@ -243,6 +243,8 @@ sealed class Translation {
         val accessingMemoryActivity: String = "Accessing memory",
         val usingToolActivity: String = "Using tool",
         val toolActivityGroupLabel: String = "Tools",
+        val copyText: String = "Copy",
+        val copiedText: String = "Copied",
     )
 
     abstract val languageCode: String

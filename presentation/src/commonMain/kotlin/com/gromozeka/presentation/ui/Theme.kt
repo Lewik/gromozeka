@@ -18,9 +18,6 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.presentation.services.theming.data.DarkTheme
 import com.gromozeka.presentation.services.theming.data.Theme
 import com.mikepenz.markdown.compose.MarkdownElement
-import com.mikepenz.markdown.compose.components.markdownComponents
-import com.mikepenz.markdown.compose.elements.highlightedCodeBlock
-import com.mikepenz.markdown.compose.elements.highlightedCodeFence
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.State
@@ -235,7 +232,8 @@ fun GromozekaMarkdown(
         ),
         padding = markdownPadding(
             block = 0.dp
-        )
+        ),
+        components = GromozekaMarkdownComponents,
     )
 }
 
@@ -270,6 +268,7 @@ fun GromozekaMarkdownNode(
             ),
         ),
         padding = markdownPadding(block = 0.dp),
+        components = GromozekaMarkdownComponents,
         success = { parsedState, components, contentModifier ->
             Column(contentModifier) {
                 MarkdownElement(

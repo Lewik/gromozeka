@@ -23,8 +23,8 @@ internal object AssistantResponseFormatContract {
             AiModelConfiguration.AssistantResponseFormat.TEXT -> AiResponseFormat.Text
         }
 
-    fun instruction(format: AiModelConfiguration.AssistantResponseFormat): String? =
-        when (format) {
+    fun instruction(format: AiModelConfiguration.AssistantResponseFormat): String? {
+        val responseInstruction = when (format) {
             AiModelConfiguration.AssistantResponseFormat.JSON_SCHEMA -> """
                 Return the assistant answer as the configured structured response.
                 fullText: complete visible answer, markdown is allowed.
@@ -54,6 +54,11 @@ internal object AssistantResponseFormatContract {
                 Add <attention/> anywhere when the user should look now to answer, decide, act, or notice an important result or failure. Omit it for ordinary progress, background work, monitor setup, and routine completion. The marker is removed before display.
             """.trimIndent()
         }
+        val copyableBlockInstruction = """
+            When a short block should be directly copyable, use a fenced code block whose info string starts with `gromozeka-copy`. Optional quoted attributes are `label`, `icon` (`terminal`, `code`, `document`, or `link`), and `language`. Example: ```gromozeka-copy label="Run command" icon="terminal" language="bash". Use ordinary Markdown for everything else.
+        """.trimIndent()
+        return "$responseInstruction\n$copyableBlockInstruction"
+    }
 
     private val jsonSchema = buildJsonObject {
         put("type", "object")

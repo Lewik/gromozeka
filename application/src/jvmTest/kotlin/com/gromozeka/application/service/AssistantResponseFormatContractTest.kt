@@ -34,4 +34,12 @@ class AssistantResponseFormatContractTest {
             assertContains(instruction.lowercase(), "attention")
         }
     }
+
+    @Test
+    fun everyTextFormatExplainsCopyableMarkdownBlocks() {
+        AiModelConfiguration.AssistantResponseFormat.entries.forEach { format ->
+            val instruction = requireNotNull(AssistantResponseFormatContract.instruction(format))
+            assertContains(instruction, "gromozeka-copy")
+        }
+    }
 }
