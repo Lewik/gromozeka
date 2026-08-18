@@ -96,6 +96,11 @@ fun SessionScreen(
     val messageSquashState by viewModel.messageSquashState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
+    val suggestedReplies = if (isWaitingForResponse) {
+        null
+    } else {
+        latestSuggestedReplies(filteredHistory)
+    }
     val jsonToShow = viewModel.jsonToShow
     val topToolbarScrollState = rememberScrollState()
     val editToolbarScrollState = rememberScrollState()
@@ -544,6 +549,8 @@ fun SessionScreen(
                         onUserInputChange = { viewModel.updateUserInput(it) },
                         isWaitingForResponse = isWaitingForResponse,
                         pendingMessagesCount = pendingMessagesCount,
+                        suggestedReplies = suggestedReplies,
+                        onSuggestedReplySelected = viewModel::appendUserInput,
                         onSendMessage = viewModel::submitUserInputToSession,
                         coroutineScope = coroutineScope,
                         pttEventHandler = pttEventHandler,

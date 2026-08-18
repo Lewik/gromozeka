@@ -52,11 +52,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun MessageInput(
+internal fun MessageInput(
     userInput: String,
     onUserInputChange: (String) -> Unit,
     isWaitingForResponse: Boolean,
     pendingMessagesCount: Int,
+    suggestedReplies: SuggestedReplyOptions?,
+    onSuggestedReplySelected: (String) -> Unit,
     onSendMessage: suspend () -> Unit,
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
@@ -185,6 +187,11 @@ fun MessageInput(
                 }
             }
         }
+
+        SuggestedReplyChips(
+            options = suggestedReplies,
+            onSuggestionSelected = onSuggestedReplySelected,
+        )
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val actionAreaMaxWidth = maxWidth * 0.64f

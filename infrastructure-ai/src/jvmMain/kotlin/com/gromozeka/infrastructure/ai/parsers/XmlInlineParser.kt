@@ -13,7 +13,8 @@ class XmlInlineParser : ResponseParser {
     private val attentionPattern = Regex("""<attention\s*/>""", RegexOption.IGNORE_CASE)
 
     override fun parse(text: String): Conversation.Message.StructuredText {
-        val trimmedText = text.trim()
+        val suggestedReplies = extractSuggestedReplies(text)
+        val trimmedText = suggestedReplies.visibleText
         val attentionRequested = attentionPattern.containsMatchIn(trimmedText)
         val textWithoutAttention = trimmedText.replace(attentionPattern, "")
 
@@ -46,6 +47,7 @@ class XmlInlineParser : ResponseParser {
             ttsText = ttsTexts.joinToString(" ").takeIf { it.isNotEmpty() },
             voiceTone = lastTone,
             attentionRequested = attentionRequested,
+            suggestedReplies = suggestedReplies.suggestedReplies,
         )
     }
 }

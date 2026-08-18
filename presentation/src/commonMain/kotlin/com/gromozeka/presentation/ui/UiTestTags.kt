@@ -49,6 +49,7 @@ sealed interface UiTestTag {
     data object MemoryMenuButton : UiTestTag
     data object CopyableMarkdownBlock : UiTestTag
     data object CopyableMarkdownButton : UiTestTag
+    data object SuggestedReplies : UiTestTag
 
     data class SessionTab(val index: Int) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)
@@ -76,6 +77,10 @@ sealed interface UiTestTag {
 
     data class ToolActivityGroupContent(val firstToolCallId: String) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(firstToolCallId)
+    }
+
+    data class SuggestedReply(val index: Int) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(index)
     }
 
     val suffixParts: List<Any?>

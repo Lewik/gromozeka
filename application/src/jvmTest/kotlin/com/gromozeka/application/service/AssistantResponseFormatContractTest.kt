@@ -20,10 +20,16 @@ class AssistantResponseFormatContractTest {
         )
 
         assertTrue("attentionRequested" in responseFormat.schema.getValue("properties").jsonObject)
+        assertTrue("suggestedReplies" in responseFormat.schema.getValue("properties").jsonObject)
         assertTrue(
             responseFormat.schema.getValue("required").jsonArray
                 .map { it.jsonPrimitive.content }
                 .contains("attentionRequested")
+        )
+        assertTrue(
+            responseFormat.schema.getValue("required").jsonArray
+                .map { it.jsonPrimitive.content }
+                .contains("suggestedReplies")
         )
     }
 
@@ -40,6 +46,14 @@ class AssistantResponseFormatContractTest {
         AiModelConfiguration.AssistantResponseFormat.entries.forEach { format ->
             val instruction = requireNotNull(AssistantResponseFormatContract.instruction(format))
             assertContains(instruction, "gromozeka-copy")
+        }
+    }
+
+    @Test
+    fun everyTextFormatExplainsSuggestedReplies() {
+        AiModelConfiguration.AssistantResponseFormat.entries.forEach { format ->
+            val instruction = requireNotNull(AssistantResponseFormatContract.instruction(format))
+            assertContains(instruction, "suggested")
         }
     }
 }

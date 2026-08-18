@@ -10,12 +10,14 @@ import com.gromozeka.domain.model.Conversation
 class PlainTextParser : ResponseParser {
 
     override fun parse(text: String): Conversation.Message.StructuredText {
-        val attentionRequested = ATTENTION_MARKER.containsMatchIn(text)
+        val suggestedReplies = extractSuggestedReplies(text)
+        val attentionRequested = ATTENTION_MARKER.containsMatchIn(suggestedReplies.visibleText)
         return Conversation.Message.StructuredText(
-            fullText = text.replace(ATTENTION_MARKER, "").trim(),
+            fullText = suggestedReplies.visibleText.replace(ATTENTION_MARKER, "").trim(),
             ttsText = null,
             voiceTone = null,
             attentionRequested = attentionRequested,
+            suggestedReplies = suggestedReplies.suggestedReplies,
             failedToParse = false,
         )
     }

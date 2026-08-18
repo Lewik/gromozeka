@@ -13,5 +13,10 @@ class JsonResponseParser : ResponseParser {
         isLenient = true
     }
 
-    override fun parse(text: String) = json.decodeFromString<Conversation.Message.StructuredText>(text)
+    override fun parse(text: String): Conversation.Message.StructuredText {
+        val structured = json.decodeFromString<Conversation.Message.StructuredText>(text)
+        return structured.copy(
+            suggestedReplies = sanitizeSuggestedReplies(structured.suggestedReplies),
+        )
+    }
 }

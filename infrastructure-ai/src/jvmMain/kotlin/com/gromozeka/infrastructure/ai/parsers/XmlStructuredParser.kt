@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.parsers
 
 import com.gromozeka.domain.model.Conversation
+import org.w3c.dom.Element
 import org.xml.sax.InputSource
 import java.io.StringReader
 import javax.xml.parsers.DocumentBuilderFactory
@@ -54,11 +55,21 @@ class XmlStructuredParser : ResponseParser {
             false
         }
 
+        val suggestedReplies = (root.getElementsByTagName("suggested_replies").item(0) as? Element)
+            ?.getElementsByTagName("reply")
+            ?.let { nodes ->
+                sanitizeSuggestedReplies(
+                    List(nodes.length) { index -> nodes.item(index).textContent.orEmpty() }
+                )
+            }
+            .orEmpty()
+
         return Conversation.Message.StructuredText(
             fullText = fullText,
             ttsText = ttsText,
             voiceTone = voiceTone,
             attentionRequested = attentionRequested,
+            suggestedReplies = suggestedReplies,
         )
     }
 }

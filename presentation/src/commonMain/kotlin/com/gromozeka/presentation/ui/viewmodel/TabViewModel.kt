@@ -411,10 +411,8 @@ class TabViewModel(
 
         claimedUserInput = null
         _uiState.update { currentState ->
-            val currentInput = currentState.userInput
-            val separator = if (currentInput.isBlank() || currentInput.last().isWhitespace()) "" else " "
             currentState.copy(
-                userInput = "$currentInput$separator$appendedText",
+                userInput = appendComposerText(currentState.userInput, appendedText),
                 composerMessageInputContext = messageInputContext ?: currentState.composerMessageInputContext,
             )
         }
@@ -1336,6 +1334,13 @@ class TabViewModel(
             log.error(e) { "Failed to delete messages" }
         }
     }
+}
+
+internal fun appendComposerText(currentInput: String, appendedText: String): String {
+    val normalizedAppend = appendedText.trim()
+    if (normalizedAppend.isEmpty()) return currentInput
+    val separator = if (currentInput.isBlank() || currentInput.last().isWhitespace()) "" else " "
+    return "$currentInput$separator$normalizedAppend"
 }
 
 sealed interface MessageSquashUiState {
