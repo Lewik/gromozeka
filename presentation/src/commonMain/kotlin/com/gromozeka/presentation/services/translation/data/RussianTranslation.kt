@@ -297,6 +297,21 @@ data class RussianTranslation(
         closedStatus = "Закрыто",
         newMessagesLabel = "новых сообщений",
         newActivityLabel = "Новая активность",
+        readingFileActivity = "Читаю файл",
+        editingFileActivity = "Редактирую файл",
+        searchingFilesActivity = "Ищу в файлах",
+        runningTestsActivity = "Запускаю тесты",
+        runningCommandActivity = "Выполняю команду",
+        searchingWebActivity = "Ищу в интернете",
+        readingWebActivity = "Читаю веб-страницу",
+        usingBrowserActivity = "Работаю в браузере",
+        capturingScreenActivity = "Делаю снимок экрана",
+        observingScreenActivity = "Смотрю на экран",
+        usingComputerActivity = "Управляю компьютером",
+        coordinatingAgentsActivity = "Координирую агентов",
+        usingSkillActivity = "Загружаю skill",
+        accessingMemoryActivity = "Обращаюсь к памяти",
+        usingToolActivity = "Использую инструмент",
     )
 
     companion object {

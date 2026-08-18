@@ -227,6 +227,21 @@ sealed class Translation {
         val closedStatus: String = "Closed",
         val newMessagesLabel: String = "new messages",
         val newActivityLabel: String = "New activity",
+        val readingFileActivity: String = "Reading file",
+        val editingFileActivity: String = "Editing file",
+        val searchingFilesActivity: String = "Searching files",
+        val runningTestsActivity: String = "Running tests",
+        val runningCommandActivity: String = "Running command",
+        val searchingWebActivity: String = "Searching the web",
+        val readingWebActivity: String = "Reading web page",
+        val usingBrowserActivity: String = "Using browser",
+        val capturingScreenActivity: String = "Capturing screen",
+        val observingScreenActivity: String = "Observing screen",
+        val usingComputerActivity: String = "Using computer",
+        val coordinatingAgentsActivity: String = "Coordinating agents",
+        val usingSkillActivity: String = "Loading skill",
+        val accessingMemoryActivity: String = "Accessing memory",
+        val usingToolActivity: String = "Using tool",
     )
 
     abstract val languageCode: String

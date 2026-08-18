@@ -52,7 +52,6 @@ import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
 import com.gromozeka.domain.service.ConversationRuntimeTask
-import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.presentation.services.PttState
@@ -415,8 +414,7 @@ private fun RuntimeTasksSection(
     val translation = appTranslation.runtime
     val activeTask = runtimeSnapshot?.activeTask
     val pendingTasks = runtimeSnapshot?.pendingTasks.orEmpty()
-    val runningTools = runtimeSnapshot?.toolExecutions.orEmpty()
-        .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
+    val runningTools = runtimeSnapshot?.runningToolActivities(translation).orEmpty()
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
     val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
     val incidents = runtimeSnapshot?.incidents.orEmpty()
@@ -460,7 +458,7 @@ private fun RuntimeTasksSection(
                 pendingTasks.forEach { task ->
                     RuntimeTaskRow(translation.pendingTaskLabel, task.payload.runtimeLabel(translation))
                 }
-                runningTools.forEach { tool -> RuntimeTaskRow(translation.toolTaskLabel, tool.toolName) }
+                runningTools.forEach { caption -> RuntimeTaskRow(translation.toolTaskLabel, caption) }
                 activeCommands.forEach { commandTask ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -697,10 +695,7 @@ private fun RuntimeStatusFooter(
     val voiceError = pttStatusMessage?.takeIf { it.isNotBlank() }
     val activeCommands = runtimeSnapshot?.commandTasks.orEmpty().filter { it.status == CommandTask.Status.WORKING }
     val activeMonitors = runtimeSnapshot?.commandMonitors.orEmpty().activeForRuntimePanel()
-    val runningTools = runtimeSnapshot?.toolExecutions.orEmpty()
-        .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
-        .map { it.toolName }
-        .distinct()
+    val runningTools = runtimeSnapshot?.runningToolActivities(translation).orEmpty().distinct()
     val activeTask = runtimeSnapshot?.activeTask
     val activeGenerationElapsedSeconds by produceState(
         initialValue = activeGeneration?.elapsedSeconds() ?: 0L,
@@ -734,7 +729,8 @@ private fun RuntimeStatusFooter(
         controlState == ConversationExecutionState.ControlState.STOPPING -> translation.stoppingStatus
         controlState == ConversationExecutionState.ControlState.INTERRUPTING -> translation.interruptingStatus
         executionPauseRequested -> translation.pauseRequestedStatus
-        runningTools.isNotEmpty() -> "${translation.toolsRunningStatus}: ${runningTools.joinToString(", ")}"
+        runningTools.size == 1 -> runningTools.single()
+        runningTools.size > 1 -> runningTools.joinToString(" · ")
         activeTask != null -> activeTask.payload.runtimeStatusLabel(agentName, translation)
         isWaitingForResponse -> "$agentName ${translation.agentWorkingStatus}"
         activeCommands.size == 1 -> translation.commandRunningStatus
