@@ -1,0 +1,12 @@
+.git/
+.gradle/
+.idea/
+.sources/
+**/.terraform/
+**/build/
+**/node_modules/
+dev-data/
+logs/
+server/src/test/
+*.log
+local.properties

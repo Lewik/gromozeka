@@ -1,0 +1,37 @@
+name: gromozeka-e2e
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
+    shm_size: 1g
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: gromozeka
+      POSTGRES_PASSWORD: gromozeka
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gromozeka -d postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql
+
+  tests:
+    build:
+      context: ..
+      dockerfile: e2e-tests/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GROMOZEKA_E2E_POSTGRES_URL: jdbc:postgresql://postgres:5432/postgres
+      GROMOZEKA_E2E_POSTGRES_USERNAME: gromozeka
+      GROMOZEKA_E2E_POSTGRES_PASSWORD: gromozeka
+      GROMOZEKA_E2E_FORKS: ${GROMOZEKA_E2E_FORKS:-1}
+      GROMOZEKA_E2E_ARTIFACTS_DIR: /artifacts/runtime
+    volumes:
+      - ./build/e2e-artifacts:/artifacts
+      - gradle-cache:/root/.gradle
+
+volumes:
+  gradle-cache:

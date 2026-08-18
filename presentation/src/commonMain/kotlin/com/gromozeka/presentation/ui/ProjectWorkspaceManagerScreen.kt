@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,6 +109,7 @@ fun ProjectManagerScreen(
 
     val selectedProject = projects.firstOrNull { it.id == selectedProjectId }
     ManagerScaffold(
+        modifier = Modifier.testTag(UiTestTag.ProjectManager.value),
         title = strings.projects,
         onBack = onBack,
         actions = {
@@ -115,7 +117,10 @@ fun ProjectManagerScreen(
                 Text(strings.workspaces)
             }
             Spacer(Modifier.width(8.dp))
-            CompactButton(onClick = { showCreateEditor = true }) {
+            CompactButton(
+                onClick = { showCreateEditor = true },
+                modifier = Modifier.testTag(UiTestTag.NewProjectButton.value),
+            ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
                 Text(strings.newProject)
@@ -136,6 +141,7 @@ fun ProjectManagerScreen(
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             items(projects, key = { it.id.value }) { project ->
                                 ManagerListItem(
+                                    modifier = Modifier.testTag(UiTestTag.ProjectItem(project.id.value).value),
                                     title = project.name,
                                     subtitle = project.description,
                                     selected = project.id == selectedProjectId,
@@ -521,13 +527,14 @@ fun WorkspaceManagerScreen(
 
 @Composable
 private fun ManagerScaffold(
+    modifier: Modifier = Modifier,
     title: String,
     onBack: () -> Unit,
     actions: @Composable RowScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
     ) {
@@ -573,13 +580,14 @@ private fun ManagerMasterDetail(
 
 @Composable
 private fun ManagerListItem(
+    modifier: Modifier = Modifier,
     title: String,
     subtitle: String?,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.small,
     ) {
@@ -638,21 +646,33 @@ private fun ProjectEditorDialog(
     var name by remember(project?.id) { mutableStateOf(project?.name.orEmpty()) }
     var description by remember(project?.id) { mutableStateOf(project?.description.orEmpty()) }
     AlertDialog(
+        modifier = Modifier.testTag(UiTestTag.ProjectEditorDialog.value),
         onDismissRequest = onDismiss,
         title = { Text(if (project == null) strings.newProject else strings.editProject) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text(strings.name) }, singleLine = true)
+                OutlinedTextField(
+                    name,
+                    { name = it },
+                    modifier = Modifier.testTag(UiTestTag.ProjectNameInput.value),
+                    label = { Text(strings.name) },
+                    singleLine = true,
+                )
                 OutlinedTextField(
                     description,
                     { description = it },
+                    modifier = Modifier.testTag(UiTestTag.ProjectDescriptionInput.value),
                     label = { Text(strings.description) },
                     minLines = 3,
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(name, description.takeIf(String::isNotBlank)) }, enabled = name.isNotBlank()) {
+            TextButton(
+                onClick = { onSave(name, description.takeIf(String::isNotBlank)) },
+                modifier = Modifier.testTag(UiTestTag.ProjectSaveButton.value),
+                enabled = name.isNotBlank(),
+            ) {
                 Text(strings.save)
             }
         },

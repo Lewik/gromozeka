@@ -323,6 +323,8 @@ class TabViewModel(
             val stats = tokenStatsService.getTokenStats(conversationId)
             _tokenStats.value = stats
             log.debug { "Loaded token stats for conversation $conversationId: $stats" }
+        } catch (error: CancellationException) {
+            throw error
         } catch (e: Exception) {
             log.error(e) { "Failed to load token stats for conversation $conversationId" }
         }

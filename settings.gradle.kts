@@ -30,6 +30,7 @@ include(":server")
 include(":worker")
 include(":presentation")
 include(":presentation-android")
+include(":e2e-tests")
 
 // Настройка репозиториев для всех проектов
 dependencyResolutionManagement {

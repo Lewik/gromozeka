@@ -15,6 +15,13 @@ sealed interface UiTestTag {
     data object AppRoot : UiTestTag
     data object TabRow : UiTestTag
     data object ProjectsTab : UiTestTag
+    data object ManageProjectsButton : UiTestTag
+    data object ProjectManager : UiTestTag
+    data object NewProjectButton : UiTestTag
+    data object ProjectEditorDialog : UiTestTag
+    data object ProjectNameInput : UiTestTag
+    data object ProjectDescriptionInput : UiTestTag
+    data object ProjectSaveButton : UiTestTag
     data object AgentsTab : UiTestTag
     data object SettingsTab : UiTestTag
     data object LiveTab : UiTestTag
@@ -42,6 +49,14 @@ sealed interface UiTestTag {
 
     data class SessionTab(val index: Int) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)
+    }
+
+    data class ProjectItem(val projectId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(projectId)
+    }
+
+    data class NewSessionButton(val projectId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(projectId)
     }
 
     data class MessageItem(val messageId: String) : UiTestTag {

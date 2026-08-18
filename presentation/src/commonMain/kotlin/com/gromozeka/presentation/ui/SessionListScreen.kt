@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.service.ProjectDomainService
@@ -155,7 +156,10 @@ fun SessionListScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CompactButton(onClick = onManageProjects) {
+                CompactButton(
+                    onClick = onManageProjects,
+                    modifier = Modifier.testTag(UiTestTag.ManageProjectsButton.value),
+                ) {
                     Text("Projects")
                 }
 
@@ -390,7 +394,10 @@ private fun ProjectGroupHeader(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                CompactButton(onClick = onNewSessionClick) {
+                CompactButton(
+                    onClick = onNewSessionClick,
+                    modifier = Modifier.testTag(UiTestTag.NewSessionButton(group.projectId.value).value),
+                ) {
                     Text(LocalTranslation.current.newButton)
                 }
 
