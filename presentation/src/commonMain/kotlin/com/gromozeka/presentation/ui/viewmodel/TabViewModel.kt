@@ -307,15 +307,7 @@ class TabViewModel(
         notifyMemoryActionItemsMayHaveChanged()
         log.debug { "Conversation runtime completed" }
         currentRequestJob = null
-        _isWaitingForResponse.value = false
-        _executionPauseRequested.value = false
         _activeToolExecutions.value = emptyList()
-        _runtimeSnapshot.update { snapshot ->
-            snapshot?.takeIf { current ->
-                current.commandTasks.any { it.status == CommandTask.Status.WORKING }
-            }
-        }
-        _uiState.update { it.copy(isWaitingForResponse = false) }
     }
 
     private suspend fun loadTokenStats() {
@@ -773,10 +765,8 @@ class TabViewModel(
 
     fun interrupt() {
         log.debug { "Interrupting current request for conversation $conversationId" }
-        _pendingMessages.value = emptyList()
         _activeToolExecutions.value = emptyList()
         _runtimeTrace.value = emptyList()
-        _executionPauseRequested.value = false
         scope.launch {
             runCatching {
                 conversationRuntimeService.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT)
@@ -844,10 +834,8 @@ class TabViewModel(
                 log.warn(error) { "Runtime stop request failed for conversation $conversationId: ${error.message}" }
             }.getOrDefault(false)
             if (accepted) {
-                _pendingMessages.value = emptyList()
                 _activeToolExecutions.value = emptyList()
                 _runtimeTrace.value = emptyList()
-                _executionPauseRequested.value = false
             }
         }
     }

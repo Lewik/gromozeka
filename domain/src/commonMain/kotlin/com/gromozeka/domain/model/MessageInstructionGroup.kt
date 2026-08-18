@@ -9,6 +9,7 @@ data class MessageInstructionGroup(
     val controls: List<Control>,
     val selectedByDefault: Int = 0,
     val showInComposer: Boolean = false,
+    val retentionMode: RetentionMode = RetentionMode.KEEP_HISTORY,
 ) {
     init {
         require(id.isNotBlank()) { "Message instruction group id must not be blank" }
@@ -18,6 +19,15 @@ data class MessageInstructionGroup(
         require(controls.map { it.data.id }.distinct().size == controls.size) {
             "Message instruction ids must be unique within a group"
         }
+        require(retentionMode != RetentionMode.STICKY_LATEST || controls.all(Control::includeInMessage)) {
+            "Sticky message instruction groups cannot contain controls excluded from messages"
+        }
+    }
+
+    @Serializable
+    enum class RetentionMode {
+        KEEP_HISTORY,
+        STICKY_LATEST,
     }
 
     @Serializable

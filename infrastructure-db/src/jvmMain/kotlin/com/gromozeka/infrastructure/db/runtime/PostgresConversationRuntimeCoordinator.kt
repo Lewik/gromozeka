@@ -655,7 +655,7 @@ class PostgresConversationRuntimeCoordinator(
 
     override suspend fun abort(conversationId: Conversation.Id) {
         mutateRecord(conversationId, createIfMissing = false) { record ->
-            record.scheduling = record.scheduling.abort().state
+            record.scheduling = record.scheduling.abort(Clock.System.now()).state
             record.toolExecutions = emptyList()
             record.bumpRevision()
             Unit

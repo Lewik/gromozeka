@@ -682,7 +682,7 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
         mutex.withLock {
             val current = schedulingByConversation[conversationId]
                 ?: ConversationRuntimeSchedulingState(conversationId)
-            schedulingByConversation[conversationId] = current.abort().state
+            schedulingByConversation[conversationId] = current.abort(Clock.System.now()).state
             toolExecutionsByConversation.remove(conversationId)
             readyWorkByConversation.remove(conversationId)
             bumpRevision(conversationId)

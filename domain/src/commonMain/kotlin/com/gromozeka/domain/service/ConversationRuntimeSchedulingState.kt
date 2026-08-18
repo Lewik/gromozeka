@@ -98,16 +98,10 @@ data class ConversationRuntimeSchedulingState(
             return unchanged(false)
         }
 
-        val submittedTask = task.withTurnTerminationInstructions(pendingTurnTerminationInstructions)
         return changed(
             copy(
                 executionState = executionState ?: idleRunningState(now),
-                pendingTasks = pendingTasks + submittedTask,
-                pendingTurnTerminationInstructions = if (task.payload is ConversationRuntimeTask.Payload.UserTurn) {
-                    emptyList()
-                } else {
-                    pendingTurnTerminationInstructions
-                },
+                pendingTasks = pendingTasks + task,
             ),
             true,
         )
@@ -185,25 +179,32 @@ data class ConversationRuntimeSchedulingState(
         if (!task.requirements.isSatisfiedBy(executor, executorCapabilities, workerWorkspaceMountIds)) {
             return unchanged(null)
         }
+        val claimedTask = task.withTurnTerminationInstructions(pendingTurnTerminationInstructions)
+        val consumesTurnTerminationInstructions = claimedTask.payload is ConversationRuntimeTask.Payload.UserTurn
 
         return changed(
             copy(
                 executionState = (currentState ?: idleRunningState(now)).copy(
                     controlState = ConversationExecutionState.ControlState.RUNNING,
-                    activeTaskId = task.id,
+                    activeTaskId = claimedTask.id,
                     activeExecutor = executor,
                     activeTaskStartedAt = null,
                     updatedAt = now,
                 ),
-                activeTask = task,
-                continuationTask = continuationTask?.takeUnless { it.id == task.id },
-                pendingTasks = if (continuationTask?.id == task.id) {
+                activeTask = claimedTask,
+                continuationTask = continuationTask?.takeUnless { it.id == claimedTask.id },
+                pendingTasks = if (continuationTask?.id == claimedTask.id) {
                     pendingTasks
                 } else {
                     pendingTasks.toMutableList().apply { removeAt(pendingIndex) }
                 },
+                pendingTurnTerminationInstructions = if (consumesTurnTerminationInstructions) {
+                    emptyList()
+                } else {
+                    pendingTurnTerminationInstructions
+                },
             ),
-            task,
+            claimedTask,
         )
     }
 
@@ -271,7 +272,7 @@ data class ConversationRuntimeSchedulingState(
         }
         val terminal = completedControlState == ConversationExecutionState.ControlState.STOPPING ||
             completedControlState == ConversationExecutionState.ControlState.INTERRUPTING
-        val promotedPendingTasks = if (outcome is ConversationRuntimeTaskOutcome.CompleteTurn && !terminal) {
+        val promotedPendingTasks = if (outcome is ConversationRuntimeTaskOutcome.CompleteTurn || terminal) {
             pendingTasks
                 .filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
                 .map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) } +
@@ -279,11 +280,16 @@ data class ConversationRuntimeSchedulingState(
         } else {
             pendingTasks
         }
+        val settledControlState = if (terminal && promotedPendingTasks.isNotEmpty()) {
+            ConversationExecutionState.ControlState.PAUSED
+        } else {
+            completedControlState
+        }
 
         return changed(
             copy(
                 executionState = currentState.copy(
-                    controlState = completedControlState,
+                    controlState = settledControlState,
                     activeTaskId = null,
                     activeExecutor = null,
                     activeTaskStartedAt = null,
@@ -333,8 +339,28 @@ data class ConversationRuntimeSchedulingState(
         val terminal = currentState.controlState == ConversationExecutionState.ControlState.STOPPING ||
             currentState.controlState == ConversationExecutionState.ControlState.INTERRUPTING
         if (terminal) {
+            val preservedPendingTasks = (
+                activeInsertions.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) } +
+                    pendingTasks.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) }
+                ).distinctBy { it.id }
+            val pausedExecutionState = if (preservedPendingTasks.isEmpty()) {
+                null
+            } else {
+                currentState.copy(
+                    controlState = ConversationExecutionState.ControlState.PAUSED,
+                    activeTaskId = null,
+                    activeExecutor = null,
+                    activeTaskStartedAt = null,
+                    updatedAt = occurredAt,
+                )
+            }
             return changed(
-                clearOperationalState().copy(
+                copy(
+                    executionState = pausedExecutionState,
+                    activeTask = null,
+                    activeInsertions = emptyList(),
+                    continuationTask = null,
+                    pendingTasks = preservedPendingTasks,
                     incidents = incidents + incident,
                     completedIdempotencyKeys = completedIdempotencyKeys + currentTask.idempotencyKey,
                 ),
@@ -524,12 +550,32 @@ data class ConversationRuntimeSchedulingState(
         }
         val nextPendingTurnTerminationInstructions = mergeTurnTerminationInstructions(
             pendingTurnTerminationInstructions +
+                activeInsertions.flatMap { it.turnTerminationInstructions() } +
                 pendingTasks.flatMap { it.turnTerminationInstructions() } +
                 listOfNotNull(currentTurnInstruction)
         )
         if (activeTask == null) {
+            val preservedPendingTasks = pendingTasks.map {
+                it.copy(placement = QueuedMessagePlacement.END_OF_TURN)
+            }
+            val pausedExecutionState = if (preservedPendingTasks.isEmpty()) {
+                null
+            } else {
+                (currentState ?: idleRunningState(now)).copy(
+                    controlState = ConversationExecutionState.ControlState.PAUSED,
+                    activeTaskId = null,
+                    activeExecutor = null,
+                    activeTaskStartedAt = null,
+                    updatedAt = now,
+                )
+            }
             return changed(
-                clearOperationalState().copy(
+                copy(
+                    executionState = pausedExecutionState,
+                    activeTask = null,
+                    activeInsertions = emptyList(),
+                    continuationTask = null,
+                    pendingTasks = preservedPendingTasks,
                     pendingTurnTerminationInstructions = nextPendingTurnTerminationInstructions,
                 ),
                 true,
@@ -542,15 +588,48 @@ data class ConversationRuntimeSchedulingState(
                     updatedAt = now,
                 ),
                 continuationTask = null,
-                pendingTasks = emptyList(),
                 pendingTurnTerminationInstructions = nextPendingTurnTerminationInstructions,
             ),
             true,
         )
     }
 
-    fun abort(): ConversationRuntimeStateTransition<Unit> =
-        changed(clearOperationalState(), Unit)
+    fun abort(now: Instant): ConversationRuntimeStateTransition<Unit> {
+        val interruptedTask = activeTask
+        val preservedPendingTasks = (
+            activeInsertions.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) } +
+                pendingTasks.map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) }
+            ).distinctBy { it.id }
+        val pausedExecutionState = if (preservedPendingTasks.isEmpty()) {
+            null
+        } else {
+            executionState?.copy(
+                controlState = ConversationExecutionState.ControlState.PAUSED,
+                activeTaskId = null,
+                activeExecutor = null,
+                activeTaskStartedAt = null,
+                updatedAt = now,
+            ) ?: ConversationExecutionState(
+                conversationId = conversationId,
+                controlState = ConversationExecutionState.ControlState.PAUSED,
+                activeTaskId = null,
+                updatedAt = now,
+            )
+        }
+        return changed(
+            copy(
+                executionState = pausedExecutionState,
+                activeTask = null,
+                activeInsertions = emptyList(),
+                continuationTask = null,
+                pendingTasks = preservedPendingTasks,
+                completedIdempotencyKeys = interruptedTask?.let {
+                    completedIdempotencyKeys + it.idempotencyKey
+                } ?: completedIdempotencyKeys,
+            ),
+            Unit,
+        )
+    }
 
     fun cancelByMessageId(messageId: Conversation.Message.Id): ConversationRuntimeStateTransition<Boolean> {
         val removedTask = pendingTasks.firstOrNull { it.userMessageIdOrNull() == messageId }

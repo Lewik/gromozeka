@@ -80,6 +80,30 @@ class MessageInstructionTextShortcutTest {
         assertEquals(listOf("r", "к"), control.textShortcutAliases)
     }
 
+    @Test
+    fun keepsInstructionHistoryWhenReadingAnOlderGroup() {
+        val group = Json.decodeFromString<MessageInstructionGroup>(
+            """
+            {
+              "id": "mode",
+              "title": "Mode",
+              "controls": [
+                {
+                  "data": {
+                    "id": "mode_readonly",
+                    "title": "Readonly",
+                    "description": "Inspect only"
+                  },
+                  "shortLabel": "R"
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(MessageInstructionGroup.RetentionMode.KEEP_HISTORY, group.retentionMode)
+    }
+
     private fun instructionGroup(id: String, alias: String) = MessageInstructionGroup(
         id = id,
         title = id,

@@ -35,6 +35,7 @@ import com.gromozeka.client.RemoteSecurityAuditService
 import com.gromozeka.client.RemoteUserDirectoryService
 import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.client.WorkerConnectionInstructions
+import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SpeechAudioSource
@@ -1062,6 +1063,41 @@ fun SettingsPanel(
                                     )
                                 },
                             )
+                            SwitchSettingItem(
+                                label = "${group.title}: Sticky reminder",
+                                description = "Keep only the latest instruction from this group in each model request.",
+                                value = group.retentionMode == MessageInstructionGroup.RetentionMode.STICKY_LATEST,
+                                enabled = group.controls.all { it.includeInMessage },
+                                onValueChange = { sticky ->
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                messageInstructionGroups = messageInstructionGroups.map { existingGroup ->
+                                                    if (existingGroup.id == group.id) {
+                                                        existingGroup.copy(
+                                                            retentionMode = if (sticky) {
+                                                                MessageInstructionGroup.RetentionMode.STICKY_LATEST
+                                                            } else {
+                                                                MessageInstructionGroup.RetentionMode.KEEP_HISTORY
+                                                            }
+                                                        )
+                                                    } else {
+                                                        existingGroup
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    )
+                                },
+                            )
+                            if (group.retentionMode == MessageInstructionGroup.RetentionMode.STICKY_LATEST) {
+                                Text(
+                                    text = "Warning: sticky reminders rewrite the prompt prefix and can invalidate " +
+                                        "almost all prompt-cache reuse.",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                             group.controls.forEach { control ->
                                 TextFieldSettingItem(
                                     label = "${group.title}: ${control.data.title} aliases",

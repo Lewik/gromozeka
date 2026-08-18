@@ -327,6 +327,55 @@ class InMemoryConversationRuntimeStoresTest {
     }
 
     @Test
+    fun `interrupted task incident preserves queued messages in paused state`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val queued = task("queued-message", QueuedMessagePlacement.END_OF_TURN)
+        val worker = worker("worker-1")
+
+        assertTrue(coordinator.submit(active))
+        assertEquals(active, coordinator.claimAsEligibleWorker(active, worker))
+        assertTrue(coordinator.submit(steering))
+        assertTrue(coordinator.submit(queued))
+        assertEquals(
+            listOf(steering),
+            coordinator.claimActiveInsertions(
+                conversationId,
+                active.id,
+                executor(worker),
+                QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            ),
+        )
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                active.id,
+                executor(worker),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(coordinator.requestInterrupt(conversationId))
+
+        assertNotNull(
+            coordinator.markActiveTaskInDoubt(
+                conversationId = conversationId,
+                taskId = active.id,
+                executor = executor(worker),
+                message = "Worker connection was lost during interruption",
+            )
+        )
+
+        val snapshot = coordinator.snapshot(conversationId)
+        assertEquals(ConversationExecutionState.ControlState.PAUSED, snapshot.state?.controlState)
+        assertNull(snapshot.activeTask)
+        assertTrue(snapshot.activeInsertions.isEmpty())
+        assertEquals(listOf(steering.id, queued.id), snapshot.pendingTasks.map { it.id })
+        assertTrue(snapshot.pendingTasks.all { it.placement == QueuedMessagePlacement.END_OF_TURN })
+        assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
+    }
+
+    @Test
     fun `started task cannot be claimed for execution again`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
@@ -712,6 +761,115 @@ class InMemoryConversationRuntimeStoresTest {
 
         assertEquals(first.turnId.value, stopInstruction.turnId)
         assertEquals(Conversation.TurnTerminationReason.STOPPED, stopInstruction.reason)
+    }
+
+    @Test
+    fun `stopping active work pauses and preserves queued messages in fifo order`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val queued = task("queued-message", QueuedMessagePlacement.END_OF_TURN)
+        val activeWorker = worker("active-worker")
+
+        assertTrue(coordinator.submit(active))
+        assertEquals(active, coordinator.claimAsEligibleWorker(active, activeWorker))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                active.id,
+                executor(activeWorker),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(coordinator.submit(steering))
+        assertTrue(coordinator.submit(queued))
+        assertTrue(coordinator.requestStop(conversationId))
+        assertTrue(
+            coordinator.completeActiveTask(
+                conversationId,
+                active.id,
+                executor(activeWorker),
+                ConversationRuntimeTaskOutcome.CompleteTurn,
+            )
+        )
+
+        assertEquals(ConversationExecutionState.ControlState.PAUSED, coordinator.find(conversationId)?.controlState)
+        assertEquals(
+            listOf(steering.id, queued.id),
+            coordinator.listPending(conversationId).map { it.id },
+        )
+        assertTrue(
+            coordinator.listPending(conversationId).all {
+                it.placement == QueuedMessagePlacement.END_OF_TURN
+            }
+        )
+        assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
+
+        assertTrue(coordinator.requestResume(conversationId))
+        val claimedSteering = assertNotNull(
+            coordinator.claimAsEligibleWorker(steering, worker("resumed-worker"))
+        )
+        val stopInstruction = claimedSteering.requireUserTurn().userMessage.instructions
+            .filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
+            .single()
+        assertEquals(active.turnId.value, stopInstruction.turnId)
+        assertEquals(Conversation.TurnTerminationReason.STOPPED, stopInstruction.reason)
+    }
+
+    @Test
+    fun `interrupting active work pauses and restores claimed insertions`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val queued = task("queued-message", QueuedMessagePlacement.END_OF_TURN)
+        val activeWorker = worker("active-worker")
+
+        assertTrue(coordinator.submit(active))
+        assertEquals(active, coordinator.claimAsEligibleWorker(active, activeWorker))
+        assertTrue(
+            coordinator.markActiveTaskStarted(
+                conversationId,
+                active.id,
+                executor(activeWorker),
+                Clock.System.now(),
+            )
+        )
+        assertTrue(coordinator.submit(steering))
+        assertTrue(coordinator.submit(queued))
+        assertEquals(
+            listOf(steering.id),
+            coordinator.claimActiveInsertions(
+                conversationId,
+                active.id,
+                executor(activeWorker),
+                QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            ).map { it.id },
+        )
+        assertTrue(coordinator.requestInterrupt(conversationId))
+
+        coordinator.abort(conversationId)
+
+        assertEquals(ConversationExecutionState.ControlState.PAUSED, coordinator.find(conversationId)?.controlState)
+        assertEquals(
+            listOf(steering.id, queued.id),
+            coordinator.listPending(conversationId).map { it.id },
+        )
+        assertTrue(
+            coordinator.listPending(conversationId).all {
+                it.placement == QueuedMessagePlacement.END_OF_TURN
+            }
+        )
+        assertTrue(coordinator.listReadyWorkItems(10).isEmpty())
+
+        assertTrue(coordinator.requestResume(conversationId))
+        val claimedSteering = assertNotNull(
+            coordinator.claimAsEligibleWorker(steering, worker("resumed-worker"))
+        )
+        val interruptInstruction = claimedSteering.requireUserTurn().userMessage.instructions
+            .filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
+            .single()
+        assertEquals(active.turnId.value, interruptInstruction.turnId)
+        assertEquals(Conversation.TurnTerminationReason.INTERRUPTED, interruptInstruction.reason)
     }
 
     @Test
