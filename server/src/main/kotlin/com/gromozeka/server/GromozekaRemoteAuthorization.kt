@@ -124,6 +124,12 @@ class GromozekaRemoteAuthorization(
             is ExportAgentSkillRequest ->
                 requireSkill(user, request.skillId, ProjectPermission.READ)
 
+            is ReanalyzeAgentSkillMaterializationRequest ->
+                requireSkill(user, request.skillId, ProjectPermission.WRITE)
+
+            is SetAgentSkillMaterializationPlanRequest ->
+                requireSkill(user, request.skillId, ProjectPermission.WRITE)
+
             is DeleteAgentSkillRequest ->
                 requireSkill(user, request.skillId, ProjectPermission.WRITE)
 

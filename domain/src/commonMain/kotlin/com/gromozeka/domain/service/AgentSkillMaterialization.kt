@@ -12,10 +12,17 @@ data class AgentSkillPackageRequest(
     val projectId: Project.Id,
     val agentDefinitionId: AgentDefinition.Id,
     val workspaceMountId: WorkspaceMount.Id,
-    val skillName: String,
+    val skillId: AgentSkill.Id,
+    val contentHash: String,
 ) {
     init {
-        require(skillName.isNotBlank()) { "Agent Skill name must not be blank" }
+        require(contentHash.matches(CONTENT_HASH_PATTERN)) {
+            "Agent Skill content hash must be a lowercase SHA-256 value"
+        }
+    }
+
+    private companion object {
+        val CONTENT_HASH_PATTERN = Regex("[0-9a-f]{64}")
     }
 }
 

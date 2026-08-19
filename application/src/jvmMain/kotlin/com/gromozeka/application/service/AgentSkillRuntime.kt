@@ -28,11 +28,11 @@ import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
-const val ACTIVATE_AGENT_SKILL_TOOL_NAME = "activate_agent_skill"
+const val OPEN_AGENT_SKILL_TOOL_NAME = "open_agent_skill"
 const val READ_AGENT_SKILL_RESOURCE_TOOL_NAME = "read_agent_skill_resource"
 
 private val agentSkillToolNames = setOf(
-    ACTIVATE_AGENT_SKILL_TOOL_NAME,
+    OPEN_AGENT_SKILL_TOOL_NAME,
     READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
     MATERIALIZE_AGENT_SKILL_TOOL_NAME,
 )
@@ -70,17 +70,16 @@ class AgentSkillRuntimeCatalogService(
             toolCatalog = toolCatalog,
             systemPrompt = buildAgentSkillCatalogPrompt(
                 skills = skills,
-                activateToolName = toolCatalog.entries.values
-                    .firstOrNull { it.logicalName == ACTIVATE_AGENT_SKILL_TOOL_NAME }
+                openToolName = toolCatalog.entries.values
+                    .firstOrNull { it.logicalName == OPEN_AGENT_SKILL_TOOL_NAME }
                     ?.modelName
-                    ?: ACTIVATE_AGENT_SKILL_TOOL_NAME,
+                    ?: OPEN_AGENT_SKILL_TOOL_NAME,
                 readResourceToolName = toolCatalog.entries.values
                     .firstOrNull { it.logicalName == READ_AGENT_SKILL_RESOURCE_TOOL_NAME }
                     ?.modelName
                     ?: READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
-                materializeToolName = toolCatalog.entries.values
-                    .firstOrNull { it.logicalName == MATERIALIZE_AGENT_SKILL_TOOL_NAME }
-                    ?.modelName,
+                materializeTool = toolCatalog.entries.values
+                    .firstOrNull { it.logicalName == MATERIALIZE_AGENT_SKILL_TOOL_NAME },
             ),
         )
     }
@@ -96,7 +95,7 @@ class AgentSkillRuntimeCatalogService(
 }
 
 @Component
-class ActivateAgentSkillToolCallback(
+class OpenAgentSkillToolCallback(
     private val access: AgentSkillRuntimeAccess,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true }
@@ -106,16 +105,18 @@ class ActivateAgentSkillToolCallback(
         val name: String,
     )
 
-    override val definition: AiToolDefinition = activateAgentSkillDefinition()
+    override val definition: AiToolDefinition = openAgentSkillDefinition()
 
     override val metadata = PreloadedServerToolMetadata
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
         val input = json.decodeFromString<Input>(toolInput)
-        val skillPackage = access.resolve(context, input.name)
+        val skillPackage = access.open(context, input.name)
         val resources = skillPackage.files.filterNot { it.path == "SKILL.md" }
         buildJsonObject {
             put("name", skillPackage.skill.name)
+            put("skill_id", skillPackage.skill.id.value)
+            put("content_hash", skillPackage.skill.contentHash)
             put("description", skillPackage.skill.description)
             put("instructions", skillPackage.skill.instructions)
             skillPackage.skill.license?.let { put("license", it) }
@@ -129,6 +130,12 @@ class ActivateAgentSkillToolCallback(
             putJsonObject("workspace_materialization") {
                 put("policy", skillPackage.skill.materializationPlan.policy.name.lowercase())
                 put("reason", skillPackage.skill.materializationPlan.reason)
+                put("logical_tool_name", MATERIALIZE_AGENT_SKILL_TOOL_NAME)
+                put(
+                    "availability",
+                    "Use the exact materialization tool exposed in the current tool set. " +
+                        "If it is absent, the current Worker/workspace route is unavailable.",
+                )
             }
             put("resources_truncated", resources.size > MAX_LISTED_RESOURCES)
             putJsonArray("resources") {
@@ -157,7 +164,8 @@ class ReadAgentSkillResourceToolCallback(
 
     @Serializable
     private data class Input(
-        val name: String,
+        val skill_id: String,
+        val content_hash: String,
         val path: String,
         val offset: Int = 0,
         val max_bytes: Int = DEFAULT_MAX_BYTES,
@@ -174,9 +182,13 @@ class ReadAgentSkillResourceToolCallback(
             "Agent Skill resource max_bytes must be between 1 and $MAX_BYTES"
         }
         val path = normalizeAgentSkillPath(input.path)
-        val skillPackage = access.resolve(context, input.name)
+        val skillPackage = access.resolve(
+            context = context,
+            skillId = AgentSkill.Id(input.skill_id),
+            contentHash = input.content_hash,
+        )
         val file = skillPackage.files.singleOrNull { it.path == path }
-            ?: error("Agent Skill '${input.name}' has no resource '$path'")
+            ?: error("Agent Skill '${skillPackage.skill.name}' has no resource '$path'")
         require(input.offset <= file.content.size) {
             "Agent Skill resource offset ${input.offset} exceeds ${file.content.size} bytes"
         }
@@ -185,6 +197,8 @@ class ReadAgentSkillResourceToolCallback(
         if (!textFile) {
             return@runBlocking buildJsonObject {
                 put("name", skillPackage.skill.name)
+                put("skill_id", skillPackage.skill.id.value)
+                put("content_hash", skillPackage.skill.contentHash)
                 put("path", file.path)
                 put("size_bytes", file.content.size)
                 put("readable", false)
@@ -201,6 +215,8 @@ class ReadAgentSkillResourceToolCallback(
         val chunk = file.content.copyOfRange(input.offset, end)
         buildJsonObject {
             put("name", skillPackage.skill.name)
+            put("skill_id", skillPackage.skill.id.value)
+            put("content_hash", skillPackage.skill.contentHash)
             put("path", file.path)
             put("offset", input.offset)
             put("next_offset", end)
@@ -254,7 +270,8 @@ class AgentSkillRuntimeAccess(
 ) {
     suspend fun resolve(
         context: ToolExecutionContext?,
-        skillName: String,
+        skillId: AgentSkill.Id,
+        contentHash: String,
     ): AgentSkillPackage {
         val projectId = context.requiredProjectId()
         val agentId = context.requiredAgentDefinitionId()
@@ -263,21 +280,39 @@ class AgentSkillRuntimeAccess(
         require(agent.projectId == projectId) {
             "Agent ${agent.id.value} does not belong to project ${projectId.value}"
         }
+        require(skillId in agent.skills) {
+            "Agent Skill '${skillId.value}' is not assigned to agent ${agent.id.value}"
+        }
+        val skillPackage = skillRepository.findPackage(skillId)
+            ?: error("Agent Skill package not found: ${skillId.value}")
+        require(skillPackage.skill.projectId == projectId) {
+            "Agent Skill '${skillId.value}' belongs to another project"
+        }
+        require(skillPackage.skill.contentHash == contentHash) {
+            "Agent Skill handle is stale: expected $contentHash but current package is " +
+                skillPackage.skill.contentHash + ". Call $OPEN_AGENT_SKILL_TOOL_NAME again."
+        }
+        return skillPackage
+    }
+
+    suspend fun open(
+        context: ToolExecutionContext?,
+        skillName: String,
+    ): AgentSkillPackage {
+        val projectId = context.requiredProjectId()
         val skill = skillRepository.findByName(projectId, skillName)
             ?: error("Agent Skill not found: $skillName")
-        require(skill.id in agent.skills) {
-            "Agent Skill '$skillName' is not assigned to agent ${agent.id.value}"
-        }
-        return skillRepository.findPackage(skill.id)
-            ?: error("Agent Skill package not found: ${skill.id.value}")
+        return resolve(context, skill.id, skill.contentHash)
     }
 }
 
-private fun activateAgentSkillDefinition(): AiToolDefinition =
+private fun openAgentSkillDefinition(): AiToolDefinition =
     AiToolDefinition(
-        name = ACTIVATE_AGENT_SKILL_TOOL_NAME,
-        description = "Load the complete instructions and resource index for one Agent Skill assigned to this agent. " +
-            "Activate a relevant skill before following it. Do not call this tool when the compact skill catalog is empty.",
+        name = OPEN_AGENT_SKILL_TOOL_NAME,
+        description = "Open the current immutable package for one Agent Skill assigned to this agent. " +
+            "The result contains complete instructions, a resource index, and a skill_id plus content_hash handle. " +
+            "Pass that exact handle to resource reading and workspace materialization. " +
+            "Do not call this tool when the compact skill catalog is empty.",
         inputSchema = buildSkillNameSchema(
             extraProperties = emptyMap(),
             required = listOf("name"),
@@ -287,15 +322,15 @@ private fun activateAgentSkillDefinition(): AiToolDefinition =
 private fun readAgentSkillResourceDefinition(): AiToolDefinition =
     AiToolDefinition(
         name = READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
-        description = "Read one file from an activated Agent Skill package. " +
-            "Use an exact relative path referenced by the skill instructions or returned by activate_agent_skill, " +
+        description = "Read one text file from the exact immutable Agent Skill package opened earlier. " +
+            "Use the skill_id and content_hash returned by open_agent_skill plus an exact listed relative path, " +
             "and continue with next_offset when complete=false. Binary resources are never copied into model context; " +
             "use the workspace materialization tool instead.",
-        inputSchema = buildSkillNameSchema(
+        inputSchema = buildSkillHandleSchema(
             extraProperties = mapOf(
                 "path" to buildJsonObject {
                     put("type", "string")
-                    put("description", "Exact relative resource path returned by activate_agent_skill.")
+                    put("description", "Exact relative resource path returned by open_agent_skill.")
                 },
                 "offset" to buildJsonObject {
                     put("type", "integer")
@@ -309,7 +344,7 @@ private fun readAgentSkillResourceDefinition(): AiToolDefinition =
                     put("description", "Maximum bytes to return. Defaults to 65536.")
                 },
             ),
-            required = listOf("name", "path"),
+            required = listOf("skill_id", "content_hash", "path"),
         ),
     )
 
@@ -332,35 +367,79 @@ private fun buildSkillNameSchema(
         })
     }.toString()
 
+private fun buildSkillHandleSchema(
+    extraProperties: Map<String, kotlinx.serialization.json.JsonObject>,
+    required: List<String>,
+): String =
+    buildJsonObject {
+        put("type", "object")
+        put("additionalProperties", false)
+        put("properties", buildJsonObject {
+            put("skill_id", buildJsonObject {
+                put("type", "string")
+                put("description", "Immutable Agent Skill id returned by open_agent_skill.")
+            })
+            put("content_hash", buildJsonObject {
+                put("type", "string")
+                put("pattern", "^[0-9a-f]{64}$")
+                put("description", "Exact package content hash returned by the same open_agent_skill call.")
+            })
+            extraProperties.forEach { (name, schema) -> put(name, schema) }
+        })
+        put("required", buildJsonArray {
+            required.forEach { add(JsonPrimitive(it)) }
+        })
+    }.toString()
+
 private fun buildAgentSkillCatalogPrompt(
     skills: List<AgentSkill>,
-    activateToolName: String,
+    openToolName: String,
     readResourceToolName: String,
-    materializeToolName: String?,
+    materializeTool: DistributedAiTool?,
 ): String =
     buildString {
         append("<agent_skills>\n")
         append("Agent Skills provide specialized instructions through progressive disclosure. ")
         append("When a listed skill is relevant, call `")
-        append(activateToolName)
-        append("` with its exact name before applying it. ")
+        append(openToolName)
+        append("` with its exact name before applying it. Preserve the returned skill_id and content_hash as one immutable package handle. ")
         append("Use `")
         append(readResourceToolName)
-        append("` only for model-readable resources listed by the activated skill. ")
-        if (materializeToolName != null) {
-            append("When activated instructions require bundled files in a workspace, call `")
-            append(materializeToolName)
-            append("` with the exact skill name and the intended workspace execution target. ")
+        append("` only for model-readable resources listed by the opened package, using that exact handle. ")
+        if (materializeTool != null) {
+            append("When opened instructions require bundled files in a workspace, call `")
+            append(materializeTool.modelName)
+            append("` with the exact skill handle and intended workspace execution target. ")
         } else {
             append("Workspace materialization is currently unavailable; report that limitation instead of inventing a tool. ")
         }
         append("Do not invent skill names or treat `allowed-tools` metadata as a permission grant.\n")
         append(buildJsonObject {
+            putJsonObject("workspace_materialization") {
+                put("available", materializeTool != null)
+                materializeTool?.let { tool ->
+                    put("tool_name", tool.modelName)
+                    putJsonArray("targets") {
+                        tool.workers.forEach { worker ->
+                            add(buildJsonObject {
+                                put("worker_id", worker.workerId.value)
+                                putJsonArray("workspace_mount_ids") {
+                                    worker.workspaceMounts.forEach { mount ->
+                                        add(JsonPrimitive(mount.id.value))
+                                    }
+                                }
+                            })
+                        }
+                    }
+                }
+            }
             putJsonArray("available_skills") {
                 skills.forEach { skill ->
                     add(buildJsonObject {
                         put("name", skill.name)
                         put("description", skill.description)
+                        put("skill_id", skill.id.value)
+                        put("content_hash", skill.contentHash)
                     })
                 }
             }

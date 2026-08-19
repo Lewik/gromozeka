@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.config
 
 import com.gromozeka.domain.tool.AiToolCallbackContributor
+import com.gromozeka.infrastructure.ai.tool.GrzListCommandsAndMonitorsToolImpl
 import com.gromozeka.infrastructure.ai.tool.web.BraveLocalSearchTool
 import com.gromozeka.infrastructure.ai.tool.web.BraveWebSearchTool
 import com.gromozeka.infrastructure.ai.tool.web.JinaReadUrlTool
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Import
     matchIfMissing = true,
 )
 @Import(
+    GrzListCommandsAndMonitorsToolImpl::class,
     BraveLocalSearchTool::class,
     BraveWebSearchTool::class,
     JinaReadUrlTool::class,
@@ -26,12 +28,14 @@ class ServerToolsRegistrationConfig {
         braveLocalSearchTool: BraveLocalSearchTool,
         braveWebSearchTool: BraveWebSearchTool,
         jinaReadUrlTool: JinaReadUrlTool,
+        grzListCommandsAndMonitorsTool: GrzListCommandsAndMonitorsToolImpl,
         adapter: TypedToolCallbackAdapter,
     ): AiToolCallbackContributor = ToolCallbacksRegistrar(
         listOf(
             adapter.adapt(braveLocalSearchTool),
             adapter.adapt(braveWebSearchTool),
             adapter.adapt(jinaReadUrlTool),
+            adapter.adapt(grzListCommandsAndMonitorsTool),
         )
     )
 }

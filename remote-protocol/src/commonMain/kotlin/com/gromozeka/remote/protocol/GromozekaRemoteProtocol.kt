@@ -396,6 +396,20 @@ data class ExportAgentSkillRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("reanalyze_agent_skill_materialization")
+data class ReanalyzeAgentSkillMaterializationRequest(
+    val skillId: AgentSkill.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("set_agent_skill_materialization_plan")
+data class SetAgentSkillMaterializationPlanRequest(
+    val skillId: AgentSkill.Id,
+    val policy: AgentSkill.MaterializationPlan.Policy,
+    val reason: String,
+) : ClientRequest
+
+@Serializable
 @SerialName("delete_agent_skill")
 data class DeleteAgentSkillRequest(
     val skillId: AgentSkill.Id,

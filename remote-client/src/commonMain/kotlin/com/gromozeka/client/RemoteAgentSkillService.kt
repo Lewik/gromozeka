@@ -14,7 +14,9 @@ import com.gromozeka.remote.protocol.ExportAgentSkillRequest
 import com.gromozeka.remote.protocol.FindAgentSkillsRequest
 import com.gromozeka.remote.protocol.FindAgentSkillRequest
 import com.gromozeka.remote.protocol.ImportAgentSkillRequest
+import com.gromozeka.remote.protocol.ReanalyzeAgentSkillMaterializationRequest
 import com.gromozeka.remote.protocol.SavedResponse
+import com.gromozeka.remote.protocol.SetAgentSkillMaterializationPlanRequest
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import kotlinx.coroutines.flow.Flow
 
@@ -50,6 +52,23 @@ internal class RemoteAgentSkillService(
         client.requestTyped<ExportAgentSkillRequest, AgentSkillPackageResponse>(
             ExportAgentSkillRequest(id)
         ).skillPackage
+
+    override suspend fun reanalyzeMaterialization(
+        id: AgentSkill.Id,
+        actorUserId: User.Id?,
+    ): AgentSkill =
+        client.requestTyped<ReanalyzeAgentSkillMaterializationRequest, AgentSkillResponse>(
+            ReanalyzeAgentSkillMaterializationRequest(id)
+        ).skill ?: error("Server returned null Agent Skill after materialization analysis")
+
+    override suspend fun setMaterializationPlan(
+        id: AgentSkill.Id,
+        policy: AgentSkill.MaterializationPlan.Policy,
+        reason: String,
+    ): AgentSkill =
+        client.requestTyped<SetAgentSkillMaterializationPlanRequest, AgentSkillResponse>(
+            SetAgentSkillMaterializationPlanRequest(id, policy, reason)
+        ).skill ?: error("Server returned null Agent Skill after materialization override")
 
     override suspend fun delete(id: AgentSkill.Id) {
         client.requestTyped<DeleteAgentSkillRequest, SavedResponse>(DeleteAgentSkillRequest(id))

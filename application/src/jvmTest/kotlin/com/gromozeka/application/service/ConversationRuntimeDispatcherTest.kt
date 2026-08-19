@@ -17,6 +17,7 @@ import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ArtifactReferenceValidator
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeExecutorDescriptor
@@ -119,7 +120,7 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `dispatcher stop clears queued turns and finishes after active task completes`() = runBlocking {
+    fun `dispatcher stop preserves queued turns in paused state after active task completes`() = runBlocking {
         val harness = dispatcherHarness()
         try {
             val firstMessage = userMessage("message-1")
@@ -139,13 +140,18 @@ class ConversationRuntimeDispatcherTest {
             assertEquals(listOf(secondMessage.id.value), harness.coordinator.listPending(conversationId).map { it.id.value })
 
             assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.STOP))
-            assertEquals(emptyList(), harness.coordinator.listPending(conversationId))
+            assertEquals(listOf(secondMessage.id.value), harness.coordinator.listPending(conversationId).map { it.id.value })
 
             harness.runner.releaseCurrentTask()
-            waitUntil { harness.coordinator.find(conversationId) == null }
+            waitUntil {
+                harness.coordinator.find(conversationId)?.controlState ==
+                    ConversationExecutionState.ControlState.PAUSED
+            }
 
-            assertNull(harness.coordinator.find(conversationId))
-            assertEquals(emptyList(), harness.coordinator.listPending(conversationId))
+            assertEquals(
+                listOf(secondMessage.id.value),
+                harness.coordinator.listPending(conversationId).map { it.id.value },
+            )
         } finally {
             harness.close()
         }
@@ -185,7 +191,7 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `dispatcher interrupt cancels active task and drops queued turns`() = runBlocking {
+    fun `dispatcher interrupt cancels active task and preserves queued turns`() = runBlocking {
         val harness = dispatcherHarness()
         try {
             val firstMessage = userMessage("message-1")
@@ -204,8 +210,14 @@ class ConversationRuntimeDispatcherTest {
 
             assertTrue(harness.dispatcher.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT))
 
-            waitUntil { harness.coordinator.find(conversationId) == null }
-            assertEquals(emptyList(), harness.coordinator.listPending(conversationId))
+            waitUntil {
+                harness.coordinator.find(conversationId)?.controlState ==
+                    ConversationExecutionState.ControlState.PAUSED
+            }
+            assertEquals(
+                listOf(secondMessage.id.value),
+                harness.coordinator.listPending(conversationId).map { it.id.value },
+            )
             assertNull(withTimeoutOrNull(350) { harness.runner.awaitStarted() })
         } finally {
             harness.close()
@@ -278,8 +290,14 @@ class ConversationRuntimeDispatcherTest {
 
             assertTrue(harness.coordinator.requestInterrupt(conversationId))
 
-            waitUntil { harness.coordinator.find(conversationId) == null }
-            assertEquals(emptyList(), harness.coordinator.listPending(conversationId))
+            waitUntil {
+                harness.coordinator.find(conversationId)?.controlState ==
+                    ConversationExecutionState.ControlState.PAUSED
+            }
+            assertEquals(
+                listOf(secondMessage.id.value),
+                harness.coordinator.listPending(conversationId).map { it.id.value },
+            )
             assertNull(withTimeoutOrNull(350) { harness.runner.awaitStarted() })
         } finally {
             harness.close()

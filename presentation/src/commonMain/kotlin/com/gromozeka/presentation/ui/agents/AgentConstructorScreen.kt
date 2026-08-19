@@ -108,6 +108,7 @@ fun AgentConstructorScreen(
     var deletingPrompt by remember { mutableStateOf<Prompt?>(null) }
 
     var viewingSkill by remember { mutableStateOf<AgentSkill?>(null) }
+    var updatingSkillId by remember { mutableStateOf<AgentSkill.Id?>(null) }
     var deletingSkill by remember { mutableStateOf<AgentSkill?>(null) }
     var templateMenuExpanded by remember { mutableStateOf(false) }
     var scopeMenuExpanded by remember { mutableStateOf(false) }
@@ -495,7 +496,41 @@ fun AgentConstructorScreen(
     }
 
     viewingSkill?.let { skill ->
-        AgentSkillDetailsDialog(skill = skill, onDismiss = { viewingSkill = null })
+        AgentSkillDetailsDialog(
+            skill = skill,
+            updating = updatingSkillId == skill.id,
+            onDismiss = { viewingSkill = null },
+            onReanalyze = {
+                updatingSkillId = skill.id
+                coroutineScope.launch {
+                    runCatching {
+                        agentSkillService.reanalyzeMaterialization(skill.id)
+                    }.onSuccess { updated ->
+                        viewingSkill = updated
+                    }.onFailure { failure ->
+                        error = failure.message
+                    }
+                    updatingSkillId = null
+                }
+            },
+            onSetMaterializationPolicy = { policy ->
+                updatingSkillId = skill.id
+                coroutineScope.launch {
+                    runCatching {
+                        agentSkillService.setMaterializationPlan(
+                            id = skill.id,
+                            policy = policy,
+                            reason = "Materialization policy was explicitly set by the user.",
+                        )
+                    }.onSuccess { updated ->
+                        viewingSkill = updated
+                    }.onFailure { failure ->
+                        error = failure.message
+                    }
+                    updatingSkillId = null
+                }
+            },
+        )
     }
 
     deletingSkill?.let { skill ->

@@ -114,11 +114,22 @@ internal object ControlMcpSchemas {
             put("items", buildJsonObject { put("type", "string") })
         }
 
-    fun objectArray(description: String): JsonObject =
+    fun objectArray(
+        description: String,
+        properties: Map<String, JsonElement>,
+        required: List<String> = emptyList(),
+    ): JsonObject =
         buildJsonObject {
             put("type", "array")
             put("description", description)
-            put("items", buildJsonObject { put("type", "object") })
+            put("items", buildJsonObject {
+                put("type", "object")
+                put("additionalProperties", false)
+                put("properties", JsonObject(properties))
+                if (required.isNotEmpty()) {
+                    put("required", JsonArray(required.map(::JsonPrimitive)))
+                }
+            })
         }
 }
 

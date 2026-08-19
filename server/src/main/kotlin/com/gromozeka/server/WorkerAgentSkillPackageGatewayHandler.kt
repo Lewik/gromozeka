@@ -43,7 +43,8 @@ class WorkerAgentSkillPackageGatewayHandler(
                     TOOL_CONTEXT_AGENT_DEFINITION_ID to skillRequest.agentDefinitionId.value,
                 )
             ),
-            skillName = skillRequest.skillName,
+            skillId = skillRequest.skillId,
+            contentHash = skillRequest.contentHash,
         )
         return WorkerAgentSkillPackageGatewayCodec.encodeResult(skillPackage)
     }

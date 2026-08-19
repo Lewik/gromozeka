@@ -20,6 +20,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
@@ -271,21 +272,43 @@ internal class ControlMcpAgentCatalogTools(
         },
         controlMcpTool(
             name = "grz_skill_list",
-            description = "List imported Agent Skills owned by one project.",
-            inputSchema = idSchema("projectId", "Project id."),
+            description = "List compact summaries of imported Agent Skills owned by one project. Instructions and files are omitted. Pass nextCursor as cursor to continue.",
+            inputSchema = ControlMcpSchemas.objectSchema(
+                properties = mapOf(
+                    "projectId" to ControlMcpSchemas.string("Project id."),
+                    "limit" to ControlMcpSchemas.integer(
+                        description = "Maximum skill summaries in this page.",
+                        minimum = 1,
+                        maximum = SKILL_LIST_MAX_LIMIT,
+                    ),
+                    "cursor" to ControlMcpSchemas.string("Opaque nextCursor from the previous page."),
+                ),
+                required = listOf("projectId"),
+            ),
             readOnly = true,
         ) { input ->
             val projectId = Project.Id(input.requiredString("projectId"))
             projectAccessService.requirePermission(user.id, projectId, ProjectPermission.READ)
-            listResult(
-                "skills",
-                AgentSkill.serializer(),
-                skillService.findByProject(projectId),
-            )
+            val limit = input.optionalInt("limit", SKILL_LIST_DEFAULT_LIMIT, 1..SKILL_LIST_MAX_LIMIT)
+            val cursor = input.optionalString("cursor")?.decodeSkillListCursor()
+            val candidates = skillService.findByProject(projectId)
+                .sortedWith(compareBy<AgentSkill>({ it.name.lowercase() }, { it.id.value }))
+                .filter { skill -> cursor == null || skill.listKey() > cursor }
+                .take(limit + 1)
+            val page = candidates.take(limit)
+            buildJsonObject {
+                put("skills", buildJsonArray {
+                    page.forEach { add(it.toControlSummaryJson()) }
+                })
+                if (candidates.size > limit) {
+                    put("nextCursor", page.last().listKey().encodeSkillListCursor())
+                }
+                put("hasMore", candidates.size > limit)
+            }
         },
         controlMcpTool(
             name = "grz_skill_get",
-            description = "Read one imported Agent Skill's metadata and instructions.",
+            description = "Read one imported Agent Skill's metadata, instructions, materialization analysis, and file manifest. File contents are omitted.",
             inputSchema = idSchema("skillId", "Agent Skill id."),
             readOnly = true,
         ) { input ->
@@ -296,21 +319,31 @@ internal class ControlMcpAgentCatalogTools(
                 skill.projectId,
                 ProjectPermission.READ,
             )
-            entityResult(
-                "skill",
-                AgentSkill.serializer(),
-                skill,
-            )
+            val packageValue = skillService.exportPackage(skill.id)
+                ?: notFound("Agent Skill", id)
+            buildJsonObject {
+                put("skill", controlMcpJson.encodeToJsonElement(AgentSkill.serializer(), skill))
+                put("files", packageValue.toManifestJson())
+            }
         },
         controlMcpTool(
             name = "grz_skill_import_inline",
-            description = "Import or update one Agent Skill package from explicit inline files. Each file must provide exactly one of text or base64. The complete MCP request must fit the 4 MiB transport limit.",
+            description = "Import one complete Agent Skill package snapshot from explicit inline files. Importing the same package name replaces the entire previous package; omitted files are deleted. The complete MCP request must fit the 4 MiB transport limit.",
             inputSchema = ControlMcpSchemas.objectSchema(
                 properties = mapOf(
                     "projectId" to ControlMcpSchemas.string("Owning project id."),
                     "directoryName" to ControlMcpSchemas.string("Skill package directory name."),
                     "files" to ControlMcpSchemas.objectArray(
-                        "Skill files: [{path, text}] for UTF-8 text or [{path, base64}] for binary content."
+                        description = "Complete package files. Use utf-8 for exact text or base64 for binary bytes.",
+                        properties = mapOf(
+                            "path" to ControlMcpSchemas.string("Normalized relative package path."),
+                            "encoding" to ControlMcpSchemas.string(
+                                description = "How content is encoded.",
+                                enum = listOf("utf-8", "base64"),
+                            ),
+                            "content" to ControlMcpSchemas.string("Complete file content in the selected encoding."),
+                        ),
+                        required = listOf("path", "encoding", "content"),
                     ),
                 ),
                 required = listOf("projectId", "directoryName", "files"),
@@ -333,7 +366,7 @@ internal class ControlMcpAgentCatalogTools(
         },
         controlMcpTool(
             name = "grz_skill_export",
-            description = "Export one Agent Skill package. UTF-8 files are returned as text and other files as base64.",
+            description = "Export one canonical Agent Skill package snapshot. Package metadata is compact; SKILL.md is the authoritative copy of instructions. Files use explicit utf-8 or base64 encoding.",
             inputSchema = idSchema("skillId", "Agent Skill id."),
             readOnly = true,
         ) { input ->
@@ -483,19 +516,28 @@ private fun JsonObject.toInlineSkillPackage(): AgentSkillPackageSource {
         val file = value as? JsonObject
             ?: throw ControlMcpToolException("invalid_argument", "'files[$index]' must be an object")
         val path = file.requiredString("path")
-        val text = (file["text"] as? JsonPrimitive)?.takeIf(JsonPrimitive::isString)?.content
-        val base64 = (file["base64"] as? JsonPrimitive)?.takeIf(JsonPrimitive::isString)?.content
-        require((text == null) != (base64 == null)) {
-            "Agent Skill file '$path' must provide exactly one of text or base64"
-        }
-        val content = text?.toByteArray(StandardCharsets.UTF_8)
-            ?: runCatching { Base64.getDecoder().decode(base64) }
+        val encoding = file.requiredString("encoding")
+        val encodedContent = (file["content"] as? JsonPrimitive)
+            ?.takeIf(JsonPrimitive::isString)
+            ?.content
+            ?: throw ControlMcpToolException(
+                "invalid_argument",
+                "Agent Skill file '$path' content must be a string",
+            )
+        val content = when (encoding) {
+            "utf-8" -> encodedContent.toByteArray(StandardCharsets.UTF_8)
+            "base64" -> runCatching { Base64.getDecoder().decode(encodedContent) }
                 .getOrElse {
                     throw ControlMcpToolException(
                         "invalid_argument",
                         "Agent Skill file '$path' contains invalid base64",
                     )
                 }
+            else -> throw ControlMcpToolException(
+                "invalid_argument",
+                "Agent Skill file '$path' encoding must be utf-8 or base64",
+            )
+        }
         AgentSkillFile(path = path, content = content)
     }
     return AgentSkillPackageSource(
@@ -506,21 +548,76 @@ private fun JsonObject.toInlineSkillPackage(): AgentSkillPackageSource {
 
 private fun AgentSkillPackage.toControlJson(): JsonObject =
     buildJsonObject {
-        put("skill", controlMcpJson.encodeToJsonElement(AgentSkill.serializer(), skill))
+        put("skill", skill.toControlSummaryJson())
         put(
             "files",
             JsonArray(
                 files.map { file ->
                     buildJsonObject {
                         put("path", file.path)
-                        file.content.decodeUtf8OrNull()?.let { text ->
-                            put("text", text)
-                        } ?: put("base64", Base64.getEncoder().encodeToString(file.content))
+                        val text = file.content.decodeUtf8OrNull()
+                        if (text != null) {
+                            put("encoding", "utf-8")
+                            put("content", text)
+                        } else {
+                            put("encoding", "base64")
+                            put("content", Base64.getEncoder().encodeToString(file.content))
+                        }
                     }
                 }
             )
         )
     }
+
+private fun AgentSkillPackage.toManifestJson(): JsonArray =
+    JsonArray(
+        files.map { file ->
+            buildJsonObject {
+                put("path", file.path)
+                put("sizeBytes", file.content.size)
+                put("encoding", if (file.content.decodeUtf8OrNull() != null) "utf-8" else "binary")
+            }
+        }
+    )
+
+private fun AgentSkill.toControlSummaryJson(): JsonObject =
+    buildJsonObject {
+        put("id", id.value)
+        put("projectId", projectId.value)
+        put("name", name)
+        put("description", description)
+        put("materializationPolicy", materializationPlan.policy.name)
+        put("materializationReason", materializationPlan.reason)
+        put("contentHash", contentHash)
+        put("updatedAt", updatedAt.toString())
+    }
+
+private data class SkillListKey(
+    val normalizedName: String,
+    val id: String,
+) : Comparable<SkillListKey> {
+    override fun compareTo(other: SkillListKey): Int =
+        compareValuesBy(this, other, SkillListKey::normalizedName, SkillListKey::id)
+}
+
+private fun AgentSkill.listKey(): SkillListKey = SkillListKey(name.lowercase(), id.value)
+
+private fun SkillListKey.encodeSkillListCursor(): String =
+    Base64.getUrlEncoder().withoutPadding()
+        .encodeToString("$normalizedName\u0000$id".toByteArray(StandardCharsets.UTF_8))
+
+private fun String.decodeSkillListCursor(): SkillListKey {
+    val decoded = runCatching {
+        Base64.getUrlDecoder().decode(this).toString(StandardCharsets.UTF_8)
+    }.getOrElse {
+        throw ControlMcpToolException("invalid_argument", "Invalid skill list cursor")
+    }
+    val separator = decoded.indexOf('\u0000')
+    if (separator <= 0 || separator == decoded.lastIndex) {
+        throw ControlMcpToolException("invalid_argument", "Invalid skill list cursor")
+    }
+    return SkillListKey(decoded.substring(0, separator), decoded.substring(separator + 1))
+}
 
 private fun ByteArray.decodeUtf8OrNull(): String? =
     runCatching {
@@ -529,4 +626,7 @@ private fun ByteArray.decodeUtf8OrNull(): String? =
             .onUnmappableCharacter(CodingErrorAction.REPORT)
             .decode(ByteBuffer.wrap(this))
             .toString()
-    }.getOrNull()
+    }.getOrNull()?.takeIf { '\u0000' !in it }
+
+private const val SKILL_LIST_DEFAULT_LIMIT = 50
+private const val SKILL_LIST_MAX_LIMIT = 200

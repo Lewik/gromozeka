@@ -1,6 +1,7 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillFile
 import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Conversation
@@ -299,6 +300,34 @@ class RemoteProtocolCodecTest {
         assertEquals("release-check", jsonDecoded.source.directoryName)
         assertContentEquals(skillFile.content, jsonDecoded.source.files.last().content)
         assertContentEquals(skillFile.content, cborDecoded.source.files.last().content)
+    }
+
+    @Test
+    fun roundTripSupportsAgentSkillMaterializationManagement() {
+        val skillId = AgentSkill.Id("skill-1")
+        val reanalyze = GromozekaClientEnvelope(
+            id = "reanalyze-skill-1",
+            payload = ReanalyzeAgentSkillMaterializationRequest(skillId),
+        )
+        val override = GromozekaClientEnvelope(
+            id = "override-skill-1",
+            payload = SetAgentSkillMaterializationPlanRequest(
+                skillId = skillId,
+                policy = AgentSkill.MaterializationPlan.Policy.REQUIRED,
+                reason = "Package files are required by the operator.",
+            ),
+        )
+
+        val decodedReanalyze = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(reanalyze)
+        ).payload as ReanalyzeAgentSkillMaterializationRequest
+        val decodedOverride = RemoteProtocolCodec.decodeClientText(
+            RemoteProtocolCodec.encodeClientText(override)
+        ).payload as SetAgentSkillMaterializationPlanRequest
+
+        assertEquals(skillId, decodedReanalyze.skillId)
+        assertEquals(AgentSkill.MaterializationPlan.Policy.REQUIRED, decodedOverride.policy)
+        assertEquals("Package files are required by the operator.", decodedOverride.reason)
     }
 
     @Test

@@ -25,5 +25,16 @@ interface AgentSkillDomainService {
 
     suspend fun exportPackage(id: AgentSkill.Id): AgentSkillPackage?
 
+    suspend fun reanalyzeMaterialization(
+        id: AgentSkill.Id,
+        actorUserId: User.Id? = null,
+    ): AgentSkill
+
+    suspend fun setMaterializationPlan(
+        id: AgentSkill.Id,
+        policy: AgentSkill.MaterializationPlan.Policy,
+        reason: String,
+    ): AgentSkill
+
     suspend fun delete(id: AgentSkill.Id)
 }

@@ -536,6 +536,16 @@ class GromozekaRemoteServer(
                 is ExportAgentSkillRequest -> AgentSkillPackageResponse(
                     agentSkillDomainService.exportPackage(request.skillId)
                 )
+                is ReanalyzeAgentSkillMaterializationRequest -> AgentSkillResponse(
+                    agentSkillDomainService.reanalyzeMaterialization(request.skillId, user.id)
+                )
+                is SetAgentSkillMaterializationPlanRequest -> AgentSkillResponse(
+                    agentSkillDomainService.setMaterializationPlan(
+                        request.skillId,
+                        request.policy,
+                        request.reason,
+                    )
+                )
                 is DeleteAgentSkillRequest -> {
                     agentSkillDomainService.delete(request.skillId)
                     SavedResponse

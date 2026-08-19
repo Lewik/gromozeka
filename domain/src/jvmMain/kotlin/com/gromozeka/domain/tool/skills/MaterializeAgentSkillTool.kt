@@ -9,12 +9,23 @@ const val MATERIALIZE_AGENT_SKILL_TOOL_NAME = "materialize_agent_skill"
 
 data class MaterializeAgentSkillRequest(
     @property:ToolParameter(
-        description = "Exact Agent Skill name from the compact catalog.",
+        description = "Immutable Agent Skill id returned by open_agent_skill.",
     )
-    val name: String,
+    val skill_id: String,
+    @property:ToolParameter(
+        description = "Exact package content hash returned by the same open_agent_skill call.",
+    )
+    val content_hash: String,
 ) {
     init {
-        require(name.isNotBlank()) { "Agent Skill name must not be blank" }
+        require(skill_id.isNotBlank()) { "Agent Skill id must not be blank" }
+        require(content_hash.matches(CONTENT_HASH_PATTERN)) {
+            "Agent Skill content hash must be a lowercase SHA-256 value"
+        }
+    }
+
+    private companion object {
+        val CONTENT_HASH_PATTERN = Regex("[0-9a-f]{64}")
     }
 }
 
@@ -26,8 +37,8 @@ interface MaterializeAgentSkillTool : Tool<MaterializeAgentSkillRequest, Map<Str
         get() = PreloadedWorkspaceToolMetadata
 
     override val description: String
-        get() = "Materialize the complete package of one Agent Skill assigned to this agent in the selected workspace. " +
-            "Use this when activated instructions need scripts, templates, binaries, or ordinary filesystem paths. " +
+        get() = "Materialize the exact immutable package opened by open_agent_skill in the selected workspace. " +
+            "Use this when opened instructions need scripts, templates, binaries, or ordinary filesystem paths. " +
             "The result returns a stable versioned directory; it does not execute files or install dependencies."
 
     override val requestType: Class<MaterializeAgentSkillRequest>

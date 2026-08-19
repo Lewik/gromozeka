@@ -46,8 +46,11 @@ class LocalAgentSkillMaterializationService(
         require(skillPackage.skill.projectId == request.projectId) {
             "Agent Skill '${skillPackage.skill.name}' belongs to another project"
         }
-        require(skillPackage.skill.name == request.skillName) {
-            "Server returned Agent Skill '${skillPackage.skill.name}' instead of '${request.skillName}'"
+        require(skillPackage.skill.id == request.skillId) {
+            "Server returned Agent Skill '${skillPackage.skill.id.value}' instead of '${request.skillId.value}'"
+        }
+        require(skillPackage.skill.contentHash == request.contentHash) {
+            "Server returned stale Agent Skill package '${skillPackage.skill.contentHash}' instead of '${request.contentHash}'"
         }
         val target = workspaceRoot
             .resolve(SKILL_ROOT_DIRECTORY)
@@ -188,7 +191,8 @@ class MaterializeAgentSkillToolImpl(
                 projectId = context.requiredProjectId(),
                 agentDefinitionId = context.requiredAgentDefinitionId(),
                 workspaceMountId = context.requiredWorkspaceMountId(),
-                skillName = request.name,
+                skillId = com.gromozeka.domain.model.AgentSkill.Id(request.skill_id),
+                contentHash = request.content_hash,
             ),
             workspaceRootPath = context.requiredWorkspaceRootPath(),
         )

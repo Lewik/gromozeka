@@ -37,7 +37,7 @@ class AgentSkillApplicationService(
         }
         val parsed = parser.parse(source)
         val existing = skillRepository.findByName(projectId, parsed.name)
-        if (existing?.contentHash == parsed.contentHash && existing.materializationPlan.analyzedAt != null) {
+        if (existing?.contentHash == parsed.contentHash) {
             return existing
         }
         val materializationPlan = materializationPlanAnalyzer.analyze(parsed, actorUserId)
@@ -79,6 +79,39 @@ class AgentSkillApplicationService(
     override suspend fun exportPackage(id: AgentSkill.Id): AgentSkillPackage? =
         skillRepository.findPackage(id)
 
+    override suspend fun reanalyzeMaterialization(
+        id: AgentSkill.Id,
+        actorUserId: User.Id?,
+    ): AgentSkill {
+        val current = skillRepository.findPackage(id)
+            ?: throw IllegalArgumentException("Agent skill not found: ${id.value}")
+        val parsed = parser.parse(
+            AgentSkillPackageSource(
+                directoryName = current.skill.name,
+                files = current.files,
+            )
+        )
+        val plan = materializationPlanAnalyzer.analyze(parsed, actorUserId)
+        return saveMaterializationPlan(current, plan)
+    }
+
+    override suspend fun setMaterializationPlan(
+        id: AgentSkill.Id,
+        policy: AgentSkill.MaterializationPlan.Policy,
+        reason: String,
+    ): AgentSkill {
+        require(reason.isNotBlank()) { "Agent Skill materialization reason must not be blank" }
+        val current = skillRepository.findPackage(id)
+            ?: throw IllegalArgumentException("Agent skill not found: ${id.value}")
+        return saveMaterializationPlan(
+            current,
+            AgentSkill.MaterializationPlan(
+                policy = policy,
+                reason = reason.trim(),
+            ),
+        )
+    }
+
     @Transactional
     override suspend fun delete(id: AgentSkill.Id) {
         val skill = skillRepository.findById(id)
@@ -90,6 +123,20 @@ class AgentSkillApplicationService(
         }
         skillRepository.delete(id)
         stateChanges.publish(DeclarativeStateKey.projectAgentSkills(skill.projectId))
+    }
+
+    private suspend fun saveMaterializationPlan(
+        current: AgentSkillPackage,
+        plan: AgentSkill.MaterializationPlan,
+    ): AgentSkill = skillRepository.savePackage(
+        current.copy(
+            skill = current.skill.copy(
+                materializationPlan = plan,
+                updatedAt = Clock.System.now(),
+            )
+        )
+    ).skill.also {
+        stateChanges.publish(DeclarativeStateKey.projectAgentSkills(it.projectId))
     }
 
     private companion object {

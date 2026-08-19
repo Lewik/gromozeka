@@ -42,7 +42,7 @@ class AiToolSearchServiceTest {
             tool("mcp__gmail__search_email", "Search email messages and threads."),
             tool("mcp__github__create_issue", "Create a GitHub issue in a repository."),
             tool("mcp__github__search_code", "Search source code hosted on GitHub."),
-            tool("activate_agent_skill", "Load the instructions for an Agent Skill."),
+            tool("open_agent_skill", "Open the instructions for an Agent Skill package."),
             tool("read_agent_skill_resource", "Read a resource bundled with an Agent Skill."),
             tool("grz_find_definition", "Find the definition of a code symbol."),
             tool("grz_find_references", "Find references to a code symbol."),
@@ -101,6 +101,17 @@ class AiToolSearchServiceTest {
         )
 
         assertTrue(service.search(tools, "xylophone nebula quasar").isEmpty())
+    }
+
+    @Test
+    fun `does not return management tools for missing materialization capability`() {
+        val tools = listOf(
+            tool("grz_skill_list", "List imported Agent Skills owned by one project."),
+            tool("grz_skill_get", "Read one imported Agent Skill package."),
+            tool("grz_skill_import_inline", "Import one Agent Skill package."),
+        )
+
+        assertTrue(service.search(tools, "materialize skill").isEmpty())
     }
 
     @Test

@@ -46,6 +46,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
+import kotlin.math.ceil
 import kotlin.math.ln
 
 const val SEARCH_TOOLS_TOOL_NAME = "search_tools"
@@ -102,12 +103,18 @@ class AiToolSearchService {
             .toSortedMap()
         val index = indexFor(searchableTools.values.map(AiToolCallback::definition))
         val exactName = normalizeToolName(query)
+        val queryTerms = tokenize(query).toSet()
 
         return index.search(query, searchableTools.size)
             .mapNotNull { result ->
-                searchableTools[result.id]?.let { tool ->
-                    AiToolSearchMatch(tool = tool, score = result.score)
-                }
+                searchableTools[result.id]
+                    ?.takeIf { tool ->
+                        normalizeToolName(tool.definition.name) == exactName ||
+                            hasConfidentTokenCoverage(queryTerms, tool.definition)
+                    }
+                    ?.let { tool ->
+                        AiToolSearchMatch(tool = tool, score = result.score)
+                    }
             }
             .sortedWith(
                 compareByDescending<AiToolSearchMatch> {
@@ -151,6 +158,20 @@ class AiToolSearchService {
             ?.let { schema -> appendSchemaSearchText(schema) }
     }.joinToString(" ")
 
+    private fun hasConfidentTokenCoverage(
+        queryTerms: Set<String>,
+        definition: AiToolDefinition,
+    ): Boolean {
+        if (queryTerms.isEmpty()) return false
+        val documentTerms = tokenize(definition.toSearchText()).toSet()
+        val matchedTerms = queryTerms.count(documentTerms::contains)
+        val requiredTerms = when (queryTerms.size) {
+            1 -> 1
+            else -> maxOf(2, ceil(queryTerms.size * MINIMUM_QUERY_COVERAGE).toInt())
+        }
+        return matchedTerms >= requiredTerms
+    }
+
     private fun MutableList<String>.appendSchemaSearchText(element: JsonElement) {
         when (element) {
             is JsonObject -> {
@@ -177,6 +198,7 @@ class AiToolSearchService {
 
     private companion object {
         const val MAX_CACHED_INDEXES = 16
+        const val MINIMUM_QUERY_COVERAGE = 0.6
     }
 }
 
@@ -220,7 +242,7 @@ class AiToolRuntimeCatalogService {
         }
         if (agent.skills.isNotEmpty()) {
             addConfiguredToolNames(
-                setOf(ACTIVATE_AGENT_SKILL_TOOL_NAME, READ_AGENT_SKILL_RESOURCE_TOOL_NAME),
+                setOf(OPEN_AGENT_SKILL_TOOL_NAME, READ_AGENT_SKILL_RESOURCE_TOOL_NAME),
                 catalog,
             )
         }

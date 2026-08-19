@@ -73,9 +73,9 @@ class AgentSkillRuntimeTest {
         assertTrue(prepared.systemPrompt!!.contains("\"name\":\"release-check\""))
         assertFalse(prepared.systemPrompt.contains(skill.instructions))
         val activation = prepared.toolCatalog.tools
-            .single { it.definition.name == ACTIVATE_AGENT_SKILL_TOOL_NAME }
+            .single { it.definition.name == OPEN_AGENT_SKILL_TOOL_NAME }
         assertEquals(
-            originalCatalog.tools.single { it.definition.name == ACTIVATE_AGENT_SKILL_TOOL_NAME }.definition,
+            originalCatalog.tools.single { it.definition.name == OPEN_AGENT_SKILL_TOOL_NAME }.definition,
             activation.definition,
         )
     }
@@ -115,7 +115,7 @@ class AgentSkillRuntimeTest {
             agentRepository = TestAgentRepository(assignedAgent),
             skillRepository = repository,
         )
-        val callback = ActivateAgentSkillToolCallback(access)
+        val callback = OpenAgentSkillToolCallback(access)
         val result = callback.call(
             """{"name":"release-check"}""",
             toolContext(assignedAgent),
@@ -125,7 +125,7 @@ class AgentSkillRuntimeTest {
         assertTrue(result.contains("\"path\":\"references/checklist.md\""))
 
         val unassignedAgent = agent(emptyList())
-        val forbidden = ActivateAgentSkillToolCallback(
+        val forbidden = OpenAgentSkillToolCallback(
             AgentSkillRuntimeAccess(
                 agentRepository = TestAgentRepository(unassignedAgent),
                 skillRepository = repository,
@@ -155,13 +155,13 @@ class AgentSkillRuntimeTest {
 
         val first = Json.parseToJsonElement(
             callback.call(
-                """{"name":"release-check","path":"references/unicode.txt","max_bytes":5}""",
+                """{"skill_id":"${skill.id.value}","content_hash":"${skill.contentHash}","path":"references/unicode.txt","max_bytes":5}""",
                 toolContext(assignedAgent),
             )
         ).jsonObject
         val second = Json.parseToJsonElement(
             callback.call(
-                """{"name":"release-check","path":"references/unicode.txt","offset":3,"max_bytes":7}""",
+                """{"skill_id":"${skill.id.value}","content_hash":"${skill.contentHash}","path":"references/unicode.txt","offset":3,"max_bytes":7}""",
                 toolContext(assignedAgent),
             )
         ).jsonObject
@@ -170,6 +170,29 @@ class AgentSkillRuntimeTest {
         assertEquals("abc", first.getValue("content").jsonPrimitive.content)
         assertEquals(3, first.getValue("next_offset").jsonPrimitive.content.toInt())
         assertEquals("\uD83D\uDE80def", second.getValue("content").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `resource reader rejects a stale package handle`() {
+        val assignedAgent = agent(listOf(skill.id))
+        val updatedSkill = skill.copy(contentHash = "b".repeat(64), updatedAt = now)
+        val callback = ReadAgentSkillResourceToolCallback(
+            AgentSkillRuntimeAccess(
+                agentRepository = TestAgentRepository(assignedAgent),
+                skillRepository = TestAgentSkillRepository(
+                    listOf(skillPackage.copy(skill = updatedSkill))
+                ),
+            )
+        )
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            callback.call(
+                """{"skill_id":"${skill.id.value}","content_hash":"${skill.contentHash}","path":"references/checklist.md"}""",
+                toolContext(assignedAgent),
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("handle is stale"))
     }
 
     private fun agent(skills: List<AgentSkill.Id>): AgentDefinition =
@@ -277,7 +300,7 @@ class AgentSkillRuntimeTest {
 
     private companion object {
         val skillToolNames = setOf(
-            ACTIVATE_AGENT_SKILL_TOOL_NAME,
+            OPEN_AGENT_SKILL_TOOL_NAME,
             READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
             MATERIALIZE_AGENT_SKILL_TOOL_NAME,
         )

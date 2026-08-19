@@ -91,7 +91,11 @@ class GrzCancelCommandMonitorToolImpl(
 }
 
 @Service
-@ConditionalOnProperty(name = ["gromozeka.runtime.worker.enabled"], havingValue = "true")
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.worker.enabled"],
+    havingValue = "false",
+    matchIfMissing = true,
+)
 class GrzListCommandsAndMonitorsToolImpl(
     private val runtimeState: CommandRuntimeStateService,
 ) : GrzListCommandsAndMonitorsTool {
