@@ -3,6 +3,7 @@ package com.gromozeka.client
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationSearchService
@@ -72,6 +73,7 @@ class GromozekaRemoteServices(
 
     val settingsService: SettingsService = remoteSettingsService
     val aiConfigurationService: AiConfigurationService = remoteAiConfigurationService
+    val aiSubscriptionQuotaService: AiSubscriptionQuotaService = RemoteAiSubscriptionQuotaService(client)
     val runtimeCatalogTemplateService: RuntimeCatalogTemplateService = remoteRuntimeCatalogTemplateService
     val defaultAgentProvider: DefaultAgentProvider = remoteAgentService
     val agentService: AgentDomainService = remoteAgentService

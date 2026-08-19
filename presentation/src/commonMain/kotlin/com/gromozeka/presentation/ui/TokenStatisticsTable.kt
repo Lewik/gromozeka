@@ -63,26 +63,6 @@ fun TokenStatisticsTable(
             if (isExpanded) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-            // Context Window
-            val contextWindow = tokenStats.contextWindowTokens
-            val currentContext = tokenStats.currentContextSize
-
-            if (currentContext != null && contextWindow != null) {
-                val percentage = (currentContext.toFloat() / contextWindow * 100).toInt()
-                Text(
-                    "${translation.contextWindowLabel}: $percentage% " +
-                        "(${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()})",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            } else if (currentContext != null) {
-                Text(
-                    "${translation.contextWindowLabel}: ${currentContext.formatWithCommas()} ${translation.tokensLabel}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
             if (tokenStats.recentCalls.isNotEmpty()) {
                 Text(
                     "${translation.recentTurnsLabel}: ${tokenStats.recentCalls.size}",

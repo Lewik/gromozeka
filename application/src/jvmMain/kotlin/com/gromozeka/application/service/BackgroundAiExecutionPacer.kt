@@ -9,7 +9,6 @@ import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaWindow
 import com.gromozeka.domain.service.AiRuntime
-import com.gromozeka.domain.service.AiSubscriptionQuotaProvider
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import java.util.concurrent.ConcurrentHashMap
@@ -51,7 +50,7 @@ internal fun AiRuntimeAssignment.Purpose.backgroundWorkloadOrNull(): BackgroundA
     matchIfMissing = true,
 )
 class BackgroundAiExecutionPacer(
-    private val quotaProvider: AiSubscriptionQuotaProvider,
+    private val quotaSnapshotService: AiSubscriptionQuotaSnapshotService,
 ) {
     private val log = KLoggers.logger(this)
     private val states = ConcurrentHashMap<QuotaKey, QuotaState>()
@@ -128,12 +127,13 @@ class BackgroundAiExecutionPacer(
                 )
             }
             try {
-                state.snapshot = quotaProvider.read(
+                state.snapshot = quotaSnapshotService.read(
                     AiSubscriptionQuotaRequest(
                         connection = runtime.connection,
                         modelId = modelId,
                         userId = userId,
-                    )
+                    ),
+                    forceRefresh = true,
                 )
                 state.snapshotModelId = modelId
                 state.refreshRequired = false

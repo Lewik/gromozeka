@@ -30,6 +30,8 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 import com.gromozeka.domain.model.ai.AiCatalog
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaObservation
 import com.gromozeka.domain.model.ai.AiUserCredentialStatus
 import com.gromozeka.domain.model.ai.AiCatalogSecretMutation
 import com.gromozeka.domain.model.ai.AiCatalogSecretState
@@ -137,6 +139,13 @@ data class SaveSettingsRequest(
 @Serializable
 @SerialName("get_ai_catalog")
 data object GetAiCatalogRequest : ClientRequest
+
+@Serializable
+@SerialName("get_ai_subscription_quota")
+data class GetAiSubscriptionQuotaRequest(
+    val modelConfigurationId: AiModelConfiguration.Id,
+    val forceRefresh: Boolean = false,
+) : ClientRequest
 
 @Serializable
 @SerialName("save_ai_catalog")
@@ -1047,6 +1056,12 @@ data class SettingsResponse(
 @SerialName("ai_catalog")
 data class AiCatalogResponse(
     val snapshot: RemoteAiCatalogSnapshot,
+) : ServerResponse
+
+@Serializable
+@SerialName("ai_subscription_quota")
+data class AiSubscriptionQuotaResponse(
+    val observation: AiSubscriptionQuotaObservation,
 ) : ServerResponse
 
 @Serializable

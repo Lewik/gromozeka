@@ -5,6 +5,7 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,8 +14,11 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
@@ -41,13 +45,16 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiSubscriptionConnection
+import com.gromozeka.domain.model.ai.AiSubscriptionQuotaObservation
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeMemoryOperation
@@ -61,14 +68,21 @@ import com.gromozeka.presentation.ui.RemoteConnectionStatus
 import com.gromozeka.presentation.ui.TokenStatisticsTable
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.ZERO
 
 @Composable
 fun ConversationRuntimePanel(
     isVisible: Boolean,
     currentAgent: AgentDefinition,
     aiConfigurationProvider: AiConfigurationProvider,
+    aiSubscriptionQuotaService: AiSubscriptionQuotaService,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     isWaitingForResponse: Boolean,
     executionPauseRequested: Boolean,
@@ -134,7 +148,13 @@ fun ConversationRuntimePanel(
                     RuntimeConfigurationCard(
                         agent = currentAgent,
                         aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
+                    )
+                    RuntimeUsageCard(
+                        isVisible = isVisible,
+                        agent = currentAgent,
+                        aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
                         tokenStats = tokenStats,
+                        quotaService = aiSubscriptionQuotaService,
                     )
                     TokenStatisticsTable(
                         tokenStats = tokenStats,
@@ -256,9 +276,7 @@ private fun RuntimeMemorySection(runtimeSnapshot: ConversationRuntimeSnapshot?) 
 private fun RuntimeConfigurationCard(
     agent: AgentDefinition,
     aiCatalog: AiCatalog,
-    tokenStats: TokenUsageStatistics.ThreadTotals?,
 ) {
-    val translation = LocalTranslation.current.runtime
     val configuration = aiCatalog.modelConfigurations.firstOrNull {
         it.id == agent.runtimeSelection.modelConfigurationId
     }
@@ -277,24 +295,6 @@ private fun RuntimeConfigurationCard(
         configuration?.assistantResponseFormat?.let { add("format=${it.name.lowercase()}") }
         runtimeAutoCompactionLabel(connection?.kind, modelSpec?.autoCompactionThresholdTokens)?.let(::add)
     }
-    val backgroundQuotaPolicies = AiRuntimeAssignment.Purpose.entries
-        .filter { purpose ->
-            purpose == AiRuntimeAssignment.Purpose.MEMORY_WRITE ||
-                purpose == AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE ||
-                purpose.fallbackPurpose == AiRuntimeAssignment.Purpose.MEMORY_WRITE ||
-                purpose.fallbackPurpose == AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE
-        }
-        .mapNotNull(aiCatalog::runtimeSelectionFor)
-        .mapNotNull { selection ->
-            aiCatalog.modelConfigurations.firstOrNull { it.id == selection.modelConfigurationId }
-        }
-        .mapNotNull { modelConfiguration ->
-            val subscription = aiCatalog.connectionFor(modelConfiguration) as? AiSubscriptionConnection
-                ?: return@mapNotNull null
-            (subscription as AiConnection) to subscription.quotaPacing
-        }
-        .distinctBy { (backgroundConnection, _) -> backgroundConnection.id }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
@@ -326,67 +326,333 @@ private fun RuntimeConfigurationCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            backgroundQuotaPolicies.forEach { (backgroundConnection, policy) ->
+        }
+    }
+}
+
+@Composable
+private fun RuntimeUsageCard(
+    isVisible: Boolean,
+    agent: AgentDefinition,
+    aiCatalog: AiCatalog,
+    tokenStats: TokenUsageStatistics.ThreadTotals?,
+    quotaService: AiSubscriptionQuotaService,
+) {
+    val translation = LocalTranslation.current.runtime
+    val targets = remember(agent.runtimeSelection, aiCatalog) {
+        runtimeQuotaModelConfigurations(agent, aiCatalog)
+    }
+    val targetIds = targets.map(AiModelConfiguration::id)
+    val latestCallId = tokenStats?.recentCalls?.maxByOrNull { it.timestamp }?.id?.value
+    var observations by remember(targetIds) {
+        mutableStateOf<Map<AiModelConfiguration.Id, AiSubscriptionQuotaObservation>>(emptyMap())
+    }
+    var isLoading by remember(targetIds) { mutableStateOf(false) }
+    var refreshGeneration by remember(targetIds) { mutableIntStateOf(0) }
+    var handledRefreshGeneration by remember(targetIds) { mutableIntStateOf(0) }
+    var previousCallId by remember(targetIds) { mutableStateOf<String?>(null) }
+    var hasObservedCallId by remember(targetIds) { mutableStateOf(false) }
+    var refreshFailed by remember(targetIds) { mutableStateOf(false) }
+
+    LaunchedEffect(isVisible, targetIds, latestCallId, refreshGeneration) {
+        if (!isVisible || targets.isEmpty()) return@LaunchedEffect
+        val callChanged = hasObservedCallId && previousCallId != latestCallId
+        val manuallyRefreshed = refreshGeneration != handledRefreshGeneration
+        isLoading = true
+        refreshFailed = false
+        try {
+            val reads = coroutineScope {
+                targets.map { target ->
+                    async {
+                        val result = runCatching {
+                            quotaService.read(
+                                modelConfigurationId = target.id,
+                                forceRefresh = callChanged || manuallyRefreshed,
+                            )
+                        }
+                        result.exceptionOrNull()?.let { error ->
+                            if (error is CancellationException) throw error
+                        }
+                        target.id to result
+                    }
+                }.awaitAll()
+            }
+            val updated = observations.toMutableMap()
+            reads.forEach { (targetId, result) ->
+                result.onSuccess { updated[targetId] = it }
+                if (result.isFailure) refreshFailed = true
+            }
+            observations = updated
+        } finally {
+            previousCallId = latestCallId
+            hasObservedCallId = true
+            handledRefreshGeneration = refreshGeneration
+            isLoading = false
+        }
+    }
+
+    val backgroundPolicies = remember(aiCatalog) { runtimeBackgroundQuotaPolicies(aiCatalog) }
+    var showPolicies by remember { mutableStateOf(false) }
+    if (tokenStats == null && targets.isEmpty() && backgroundPolicies.isEmpty()) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = if (policy.enabled) {
-                        "Background quota · ${backgroundConnection.displayName} · " +
-                            "reserve=${policy.reservePercent.runtimePercent()}% · " +
-                            "headroom=${policy.minimumHeadroomPercent.runtimePercent()}% · " +
-                            "refresh=${policy.refreshIntervalSeconds}s"
+                    translation.usageTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (targets.isNotEmpty()) {
+                    IconButton(
+                        onClick = { refreshGeneration++ },
+                        enabled = !isLoading,
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = translation.refreshUsageDescription)
+                        }
+                    }
+                }
+            }
+
+            RuntimeContextUsage(tokenStats)
+            RuntimeTokenUsageSummary(tokenStats)
+
+            observations.values.forEach { observation ->
+                RuntimeQuotaObservation(observation)
+            }
+            if (refreshFailed) {
+                Text(
+                    if (observations.isEmpty()) {
+                        translation.quotaUnavailableLabel
                     } else {
-                        "Background quota · ${backgroundConnection.displayName} · disabled"
+                        translation.quotaStaleLabel
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (observations.isEmpty()) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.tertiary
+                    },
                 )
             }
 
-            val currentContext = tokenStats?.currentContextSize
-            val contextWindow = tokenStats?.contextWindowTokens
-            if (currentContext != null && contextWindow != null) {
-                val progress = (currentContext.toFloat() / contextWindow).coerceIn(0f, 1f)
-                val percentage = (progress * 100).toInt()
-                Spacer(modifier = Modifier.height(2.dp))
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = when {
-                        percentage >= 90 -> MaterialTheme.colorScheme.error
-                        percentage >= 75 -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.primary
-                    },
-                )
-                Text(
-                    text = "${translation.contextLabel} $percentage% · " +
-                        "${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()}",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-
-            tokenStats?.let { stats ->
-                Text(
-                    text = buildList {
-                        stats.lastCallTokens?.let {
-                            add("${translation.lastUsageLabel} ${it.formatWithCommas()}")
-                        }
-                        add("${translation.threadUsageLabel} ${stats.totalTokens.formatWithCommas()}")
-                        if (stats.totalCacheReadTokens > 0) {
-                            add("${translation.cacheReadUsageLabel} ${stats.totalCacheReadTokens.formatWithCommas()}")
-                        }
-                    }.joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                val observedRuntime = listOfNotNull(stats.provider, stats.modelId).joinToString(" · ")
-                if (observedRuntime.isNotBlank() && observedRuntime != configuredRuntime) {
+            if (backgroundPolicies.isNotEmpty()) {
+                HorizontalDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPolicies = !showPolicies },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
-                        text = "${translation.lastCallLabel}: $observedRuntime",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        translation.backgroundQuotaPolicyLabel,
+                        style = MaterialTheme.typography.labelLarge,
                     )
+                    Icon(
+                        if (showPolicies) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (showPolicies) {
+                            translation.collapseDescription
+                        } else {
+                            translation.expandDescription
+                        },
+                    )
+                }
+                if (showPolicies) {
+                    backgroundPolicies.forEach { (connection, policy) ->
+                        Text(
+                            text = if (policy.enabled) {
+                                "${connection.displayName} · reserve=${policy.reservePercent.runtimePercent()}% · " +
+                                    "headroom=${policy.minimumHeadroomPercent.runtimePercent()}% · " +
+                                    "refresh=${policy.refreshIntervalSeconds}s"
+                            } else {
+                                "${connection.displayName} · disabled"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RuntimeContextUsage(tokenStats: TokenUsageStatistics.ThreadTotals?) {
+    val translation = LocalTranslation.current.runtime
+    val currentContext = tokenStats?.currentContextSize ?: return
+    val contextWindow = tokenStats.contextWindowTokens
+    if (contextWindow == null) {
+        Text(
+            "${translation.contextLabel} · ${currentContext.formatWithCommas()} ${translation.tokensLabel}",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        return
+    }
+    val progress = (currentContext.toFloat() / contextWindow).coerceIn(0f, 1f)
+    val percentage = (progress * 100).toInt()
+    LinearProgressIndicator(
+        progress = { progress },
+        modifier = Modifier.fillMaxWidth(),
+        color = when {
+            percentage >= 90 -> MaterialTheme.colorScheme.error
+            percentage >= 75 -> MaterialTheme.colorScheme.tertiary
+            else -> MaterialTheme.colorScheme.primary
+        },
+    )
+    Text(
+        text = "${translation.contextLabel} $percentage% · " +
+            "${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()}",
+        style = MaterialTheme.typography.bodySmall,
+    )
+}
+
+@Composable
+private fun RuntimeTokenUsageSummary(tokenStats: TokenUsageStatistics.ThreadTotals?) {
+    val stats = tokenStats ?: return
+    val translation = LocalTranslation.current.runtime
+    Text(
+        text = buildList {
+            stats.lastCallTokens?.let { add("${translation.lastUsageLabel} ${it.formatWithCommas()}") }
+            add("${translation.threadUsageLabel} ${stats.totalTokens.formatWithCommas()}")
+            if (stats.totalCacheReadTokens > 0) {
+                add("${translation.cacheReadUsageLabel} ${stats.totalCacheReadTokens.formatWithCommas()}")
+            }
+        }.joinToString(" · "),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    val observedRuntime = listOfNotNull(stats.provider, stats.modelId).joinToString(" · ")
+    if (observedRuntime.isNotBlank()) {
+        Text(
+            text = "${translation.lastCallLabel}: $observedRuntime",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun RuntimeQuotaObservation(observation: AiSubscriptionQuotaObservation) {
+    val translation = LocalTranslation.current.runtime
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "${observation.connectionKind.provider.name} · " +
+                "${observation.connectionDisplayName} · ${observation.providerModelId}",
+            style = MaterialTheme.typography.labelLarge,
+        )
+        when (observation.status) {
+            AiSubscriptionQuotaObservation.Status.UNAVAILABLE,
+            AiSubscriptionQuotaObservation.Status.NOT_SUPPORTED -> Text(
+                translation.quotaUnavailableLabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            AiSubscriptionQuotaObservation.Status.FRESH,
+            AiSubscriptionQuotaObservation.Status.STALE -> {
+                if (observation.status == AiSubscriptionQuotaObservation.Status.STALE) {
+                    Text(
+                        translation.quotaStaleLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+                val snapshot = requireNotNull(observation.snapshot)
+                Text(
+                    "${translation.quotaObservedLabel} " +
+                        "${runtimeDurationLabel(Clock.System.now() - snapshot.observedAt)} " +
+                        translation.quotaAgoLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                when {
+                    snapshot.unlimited -> Text(translation.quotaUnlimitedLabel)
+                    snapshot.usageBlocked -> Text(
+                        translation.quotaBlockedLabel,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    else -> snapshot.windows.forEach { window ->
+                        val usedProgress = (window.usedPercent / 100.0).toFloat().coerceIn(0f, 1f)
+                        LinearProgressIndicator(
+                            progress = { usedProgress },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = when {
+                                window.usedPercent >= 90.0 -> MaterialTheme.colorScheme.error
+                                window.usedPercent >= 75.0 -> MaterialTheme.colorScheme.tertiary
+                                else -> MaterialTheme.colorScheme.primary
+                            },
+                        )
+                        Text(
+                            "${window.displayName} · ${window.usedPercent.runtimePercent()}% · " +
+                                "${translation.quotaResetLabel} " +
+                                runtimeDurationLabel(window.resetsAt - Clock.System.now()),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+internal fun runtimeQuotaModelConfigurations(
+    agent: AgentDefinition,
+    aiCatalog: AiCatalog,
+): List<AiModelConfiguration> = buildList {
+    add(agent.runtimeSelection)
+    aiCatalog.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE)?.let(::add)
+    aiCatalog.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE)?.let(::add)
+}.mapNotNull { selection ->
+    aiCatalog.modelConfigurations.firstOrNull { it.id == selection.modelConfigurationId }
+}.filter { configuration ->
+    configuration.enabled && aiCatalog.connectionFor(configuration) is AiSubscriptionConnection
+}.distinctBy { configuration ->
+    configuration.connectionId to configuration.providerModelId
+}
+
+private fun runtimeBackgroundQuotaPolicies(aiCatalog: AiCatalog) = listOf(
+    AiRuntimeAssignment.Purpose.MEMORY_WRITE,
+    AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE,
+).mapNotNull(aiCatalog::runtimeSelectionFor)
+    .mapNotNull { selection ->
+        aiCatalog.modelConfigurations.firstOrNull { it.id == selection.modelConfigurationId }
+    }
+    .mapNotNull { modelConfiguration ->
+        val subscription = aiCatalog.connectionFor(modelConfiguration) as? AiSubscriptionConnection
+            ?: return@mapNotNull null
+        (subscription as AiConnection) to subscription.quotaPacing
+    }
+    .distinctBy { (connection, _) -> connection.id }
+
+internal fun runtimeDurationLabel(duration: Duration): String {
+    if (duration <= ZERO) return "0m"
+    val totalMinutes = duration.inWholeMinutes
+    if (totalMinutes == 0L) return "<1m"
+    val days = totalMinutes / (24 * 60)
+    val hours = totalMinutes % (24 * 60) / 60
+    val minutes = totalMinutes % 60
+    return when {
+        days > 0 -> "${days}d ${hours}h"
+        hours > 0 -> "${hours}h ${minutes}m"
+        else -> "${minutes}m"
     }
 }
 

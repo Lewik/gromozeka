@@ -17,6 +17,7 @@ import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ProjectDomainService
@@ -53,6 +54,7 @@ data class AppComponents(
     val ttsQueueService: TtsQueue,
     val settingsService: com.gromozeka.domain.service.SettingsService,
     val aiConfigurationService: AiConfigurationService,
+    val aiSubscriptionQuotaService: AiSubscriptionQuotaService,
     val runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     val remoteClientSettingsService: RemoteClientSettingsService,
     val remoteConnectionState: StateFlow<RemoteConnectionState>,

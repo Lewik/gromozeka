@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectMembership
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.mcp.McpServerId
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
@@ -16,6 +17,7 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.GetAiCatalogRequest
+import com.gromozeka.remote.protocol.GetAiSubscriptionQuotaRequest
 import com.gromozeka.remote.protocol.ListProjectMembershipsRequest
 import com.gromozeka.remote.protocol.ListMcpServersRequest
 import com.gromozeka.remote.protocol.ListSecurityAuditEventsRequest
@@ -54,6 +56,10 @@ class GromozekaRemoteAuthorizationTest {
     fun `AI catalog reads are available to members`() = runBlocking {
         authorization.authorize(testUser(User.Role.MEMBER), GetAiCatalogRequest)
         authorization.authorize(testUser(User.Role.OWNER), GetAiCatalogRequest)
+        authorization.authorize(
+            testUser(User.Role.MEMBER),
+            GetAiSubscriptionQuotaRequest(AiModelConfiguration.Id("model")),
+        )
     }
 
     @Test

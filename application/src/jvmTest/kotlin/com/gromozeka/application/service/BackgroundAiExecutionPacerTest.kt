@@ -155,7 +155,7 @@ class BackgroundAiExecutionPacerTest {
 
             override fun stream(request: AiRuntimeRequest) = flowOf(AiRuntimeResponse(messages = emptyList()))
         }
-        val paced = BackgroundAiExecutionPacer(quotaProvider).wrap(
+        val paced = BackgroundAiExecutionPacer(AiSubscriptionQuotaSnapshotService(quotaProvider)).wrap(
             delegate = delegate,
             runtime = runtime,
             workload = BackgroundAiWorkload.MEMORY_WRITE,

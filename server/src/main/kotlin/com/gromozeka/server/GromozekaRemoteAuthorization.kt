@@ -59,6 +59,7 @@ class GromozekaRemoteAuthorization(
             is SaveNamedSecretRequest,
             is DeleteNamedSecretRequest,
             GetAiCatalogRequest,
+            is GetAiSubscriptionQuotaRequest,
             ListUserDirectoryRequest,
             GetRuntimeCatalogTemplatesRequest,
             GetDefaultAgentRequest,

@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.AiUserCredentialApplicationService
+import com.gromozeka.application.service.AiSubscriptionQuotaApplicationService
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
 import com.gromozeka.application.service.McpServerManagementService
 import com.gromozeka.application.service.NamedSecretApplicationService
@@ -86,6 +87,7 @@ import kotlin.time.Duration.Companion.days
 class GromozekaRemoteServer(
     private val settingsService: SettingsService,
     private val aiConfigurationService: AiConfigurationService,
+    private val aiSubscriptionQuotaApplicationService: AiSubscriptionQuotaApplicationService,
     private val mcpServerManagementService: McpServerManagementService,
     private val runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     private val defaultAgentProvider: DefaultAgentProvider,
@@ -310,6 +312,13 @@ class GromozekaRemoteServer(
                 }
                 GetAiCatalogRequest -> AiCatalogResponse(
                     RemoteAiCatalogSnapshot.from(aiConfigurationService.snapshot)
+                )
+                is GetAiSubscriptionQuotaRequest -> AiSubscriptionQuotaResponse(
+                    aiSubscriptionQuotaApplicationService.read(
+                        userId = user.id,
+                        modelConfigurationId = request.modelConfigurationId,
+                        forceRefresh = request.forceRefresh,
+                    )
                 )
                 is SaveAiCatalogRequest -> AiCatalogResponse(
                     RemoteAiCatalogSnapshot.from(

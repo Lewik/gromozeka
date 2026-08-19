@@ -7,6 +7,9 @@ import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlin.time.Instant
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -25,6 +28,13 @@ class ConversationRuntimePanelTest {
             "auto compact=unsupported",
             runtimeAutoCompactionLabel(AiConnection.Kind.ANTHROPIC_API, 180_000),
         )
+    }
+
+    @Test
+    fun `quota reset duration remains compact`() {
+        assertEquals("2d 3h", runtimeDurationLabel(2.days + 3.hours + 15.minutes))
+        assertEquals("3h 15m", runtimeDurationLabel(3.hours + 15.minutes))
+        assertEquals("15m", runtimeDurationLabel(15.minutes))
     }
 
     @Test

@@ -66,6 +66,36 @@ data class AiSubscriptionQuotaSnapshot(
 }
 
 @Serializable
+data class AiSubscriptionQuotaObservation(
+    val modelConfigurationId: AiModelConfiguration.Id,
+    val connectionId: AiConnection.Id,
+    val connectionDisplayName: String,
+    val connectionKind: AiConnection.Kind,
+    val providerModelId: String,
+    val status: Status,
+    val snapshot: AiSubscriptionQuotaSnapshot? = null,
+) {
+    init {
+        require(connectionDisplayName.isNotBlank()) { "Subscription quota connection name must not be blank" }
+        require(providerModelId.isNotBlank()) { "Subscription quota provider model id must not be blank" }
+        require((status == Status.FRESH || status == Status.STALE) == (snapshot != null)) {
+            "Fresh and stale subscription quota observations must contain a snapshot"
+        }
+        require(snapshot == null || snapshot.connectionId == connectionId) {
+            "Subscription quota snapshot must belong to the observed connection"
+        }
+    }
+
+    @Serializable
+    enum class Status {
+        FRESH,
+        STALE,
+        UNAVAILABLE,
+        NOT_SUPPORTED,
+    }
+}
+
+@Serializable
 data class AiSubscriptionQuotaWindow(
     val id: String,
     val displayName: String,
