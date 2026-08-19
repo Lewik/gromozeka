@@ -114,6 +114,11 @@ class TabViewModel(
 
     private val _isWaitingForResponse = MutableStateFlow(false)
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
+    private val _suggestedRepliesOverride = MutableStateFlow<SuggestedRepliesOverride?>(null)
+    val suggestedRepliesOverride: StateFlow<SuggestedRepliesOverride?> = _suggestedRepliesOverride.asStateFlow()
+    private val _suggestedRepliesRegeneratingFor = MutableStateFlow<Conversation.Message.Id?>(null)
+    val suggestedRepliesRegeneratingFor: StateFlow<Conversation.Message.Id?> =
+        _suggestedRepliesRegeneratingFor.asStateFlow()
     private val _executionPauseRequested = MutableStateFlow(false)
     val executionPauseRequested: StateFlow<Boolean> = _executionPauseRequested.asStateFlow()
 
@@ -130,6 +135,33 @@ class TabViewModel(
     val pendingMessagesCount: StateFlow<Int> = pendingMessages
         .map { it.size }
         .stateIn(scope, SharingStarted.Eagerly, 0)
+
+    data class SuggestedRepliesOverride(
+        val sourceMessageId: Conversation.Message.Id,
+        val values: List<String>,
+    )
+
+    fun regenerateSuggestedReplies(sourceMessageId: Conversation.Message.Id) {
+        if (_suggestedRepliesRegeneratingFor.value != null) return
+        scope.launch {
+            _suggestedRepliesRegeneratingFor.value = sourceMessageId
+            try {
+                val replies = conversationService.regenerateSuggestedReplies(
+                    conversationId = conversationId,
+                    sourceMessageId = sourceMessageId,
+                )
+                _suggestedRepliesOverride.value = SuggestedRepliesOverride(sourceMessageId, replies)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                log.error(error) {
+                    "Failed to regenerate suggested replies: conversation=${conversationId.value} source=${sourceMessageId.value}"
+                }
+            } finally {
+                _suggestedRepliesRegeneratingFor.value = null
+            }
+        }
+    }
     private val _tokenStats = MutableStateFlow<TokenUsageStatistics.ThreadTotals?>(null)
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?> = _tokenStats.asStateFlow()
     private val _messageSquashState = MutableStateFlow<MessageSquashUiState>(MessageSquashUiState.Idle)

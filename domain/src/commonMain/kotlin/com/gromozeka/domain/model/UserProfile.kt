@@ -19,6 +19,7 @@ data class UserProfile(
     val speechSettings: SpeechSettings = SpeechSettings(),
     val agentSettings: AgentSettings = AgentSettings(),
     val memorySettings: MemorySettings = MemorySettings(),
+    val suggestedRepliesSettings: SuggestedRepliesSettings = SuggestedRepliesSettings(),
     val messageInstructionGroups: List<MessageInstructionGroup> = MessageInstructionGroup.defaults(),
     val messageInstructionTextShortcuts: MessageInstructionTextShortcutSettings =
         MessageInstructionTextShortcutSettings(),
@@ -186,5 +187,17 @@ data class UserProfile(
         val autoRecall: Boolean = false,
         val forceWriteForDocumentIngest: Boolean = true,
     )
+
+    @Serializable
+    data class SuggestedRepliesSettings(
+        val mode: Mode = Mode.INLINE,
+    ) {
+        @Serializable
+        enum class Mode {
+            DISABLED,
+            INLINE,
+            SEPARATE_RUNTIME,
+        }
+    }
 
 }

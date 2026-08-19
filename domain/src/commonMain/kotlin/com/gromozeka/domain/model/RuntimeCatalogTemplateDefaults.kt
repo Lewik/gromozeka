@@ -26,6 +26,7 @@ object RuntimeCatalogTemplateDefaults {
         assignment(AiRuntimeAssignment.Purpose.DEFAULT_CHAT, "openai-subscription-gpt-5.6-luna"),
         assignment(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.QUICK_TEXT_ACTION, "openai-subscription-gpt-5.5"),
+        assignment(AiRuntimeAssignment.Purpose.SUGGESTED_REPLIES, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_READ, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_WRITE, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE, "openai-subscription-gpt-5.5"),

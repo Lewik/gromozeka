@@ -4,15 +4,20 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,7 +37,7 @@ internal fun latestSuggestedReplies(messages: List<Conversation.Message>): Sugge
                     return SuggestedReplyOptions(
                         sourceMessageId = message.id,
                         values = content.structured.suggestedReplies,
-                    ).takeIf { it.values.isNotEmpty() }
+                    )
 
                 is Conversation.Message.ContentItem.UserMessage -> return null
                 else -> Unit
@@ -46,10 +51,11 @@ internal fun latestSuggestedReplies(messages: List<Conversation.Message>): Sugge
 internal fun SuggestedReplyChips(
     options: SuggestedReplyOptions?,
     onSuggestionSelected: (String) -> Unit,
+    onRegenerate: (Conversation.Message.Id) -> Unit,
+    isRegenerating: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    var consumed by remember(options?.sourceMessageId) { mutableStateOf(false) }
-    if (options == null || consumed) return
+    if (options == null) return
 
     Row(
         modifier = modifier
@@ -62,17 +68,44 @@ internal fun SuggestedReplyChips(
             SuggestionChip(
                 onClick = {
                     onSuggestionSelected(suggestion)
-                    consumed = true
                 },
                 label = {
-                    Text(
-                        text = suggestion,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = suggestion,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 },
-                modifier = Modifier.testTag(UiTestTag.SuggestedReply(index).value),
+                modifier = Modifier
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .testTag(UiTestTag.SuggestedReply(index).value),
             )
+        }
+        IconButton(
+            onClick = { onRegenerate(options.sourceMessageId) },
+            enabled = !isRegenerating,
+            modifier = Modifier
+                .pointerHoverIcon(PointerIcon.Hand)
+                .testTag(UiTestTag.SuggestedRepliesRefresh.value),
+        ) {
+            if (isRegenerating) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Regenerate suggested replies",
+                )
+            }
         }
     }
 }

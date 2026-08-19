@@ -18,7 +18,9 @@ import com.gromozeka.remote.protocol.GetProjectRequest
 import com.gromozeka.remote.protocol.LoadCurrentMessagesRequest
 import com.gromozeka.remote.protocol.MessagesResponse
 import com.gromozeka.remote.protocol.ProjectResponse
+import com.gromozeka.remote.protocol.RegenerateSuggestedRepliesRequest
 import com.gromozeka.remote.protocol.SavedResponse
+import com.gromozeka.remote.protocol.SuggestedRepliesResponse
 import com.gromozeka.remote.protocol.SquashMessagesRequest
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
 import com.gromozeka.remote.protocol.UpdateConversationAgentRequest
@@ -85,6 +87,15 @@ internal class RemoteConversationService(
     override suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> =
         client.requestTyped<LoadCurrentMessagesRequest, MessagesResponse>(LoadCurrentMessagesRequest(conversationId))
             .messages
+
+    override suspend fun regenerateSuggestedReplies(
+        conversationId: Conversation.Id,
+        sourceMessageId: Conversation.Message.Id,
+        actorUserId: com.gromozeka.domain.model.User.Id?,
+    ): List<String> =
+        client.requestTyped<RegenerateSuggestedRepliesRequest, SuggestedRepliesResponse>(
+            RegenerateSuggestedRepliesRequest(conversationId, sourceMessageId)
+        ).replies
 
     override suspend fun editMessage(
         conversationId: Conversation.Id,

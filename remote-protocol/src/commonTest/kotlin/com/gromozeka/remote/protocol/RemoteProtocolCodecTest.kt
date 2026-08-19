@@ -45,6 +45,31 @@ import kotlin.test.assertTrue
 
 class RemoteProtocolCodecTest {
     @Test
+    fun roundTripSupportsSuggestedRepliesRegeneration() {
+        val request = RegenerateSuggestedRepliesRequest(
+            conversationId = Conversation.Id("conversation-1"),
+            sourceMessageId = Conversation.Message.Id("assistant-1"),
+        )
+        val decodedRequest = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(
+                GromozekaClientEnvelope("suggested-replies-request", request)
+            )
+        ).payload as RegenerateSuggestedRepliesRequest
+        assertEquals(request, decodedRequest)
+
+        val response = SuggestedRepliesResponse(
+            sourceMessageId = request.sourceMessageId,
+            replies = listOf("Yes", "Show details"),
+        )
+        val decodedResponse = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(
+                GromozekaServerEnvelope("suggested-replies-response", response)
+            )
+        ).payload as SuggestedRepliesResponse
+        assertEquals(response, decodedResponse)
+    }
+
+    @Test
     fun roundTripSupportsActiveGenerationState() {
         val conversationId = Conversation.Id("conversation-1")
         val query = ActiveGenerationStateQuery(conversationId)

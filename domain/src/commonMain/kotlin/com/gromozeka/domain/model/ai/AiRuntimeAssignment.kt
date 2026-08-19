@@ -31,6 +31,11 @@ data class AiRuntimeAssignment(
             displayName = "Quick text action",
             description = "Model used for selected-text correction and translation shortcuts.",
         ),
+        SUGGESTED_REPLIES(
+            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
+            displayName = "Suggested replies",
+            description = "Model used to generate optional replies shown under the latest assistant message.",
+        ),
         TOOL_CATALOG_SUMMARY(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
             displayName = "Tool capability catalog",

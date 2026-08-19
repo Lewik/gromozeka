@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.RuntimeEnvironmentExecutor
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
@@ -111,6 +112,7 @@ class ConversationEngineService(
     private val messageTemporalContextService: MessageTemporalContextService,
     private val stickyMessageInstructionService: StickyMessageInstructionService,
     private val pendingSecretRevealService: PendingSecretRevealService,
+    private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
 ) : ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
 
@@ -247,7 +249,11 @@ class ConversationEngineService(
                 reasoning = context.agent.runtimeOverrides.reasoning,
                 autoCompactionThresholdTokens = context.autoCompactionThresholdTokens,
                 toolChoice = AiToolChoice.Auto,
-                responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(context.assistantResponseFormat),
+                responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(
+                    context.assistantResponseFormat,
+                    includeSuggestedReplies = context.suggestedRepliesMode ==
+                        UserProfile.SuggestedRepliesSettings.Mode.INLINE,
+                ),
                 assistantResponseFormat = context.assistantResponseFormat,
                 toolContext = buildMap {
                     put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
@@ -328,9 +334,23 @@ class ConversationEngineService(
         }
 
         val allToolCalls = runtimeResponse.toolCalls
-        val assistantMessages = AiConversationMessageMapper
+        val mappedAssistantMessages = AiConversationMessageMapper
             .toConversationMessages(conversationId, runtimeResponse)
             .withRuntimeMessageIds(task.id, "assistant")
+        val assistantMessages = when {
+            allToolCalls.isNotEmpty() -> mappedAssistantMessages.withSuggestedReplies(emptyList())
+            context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.DISABLED ->
+                mappedAssistantMessages.withSuggestedReplies(emptyList())
+            context.suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE ->
+                mappedAssistantMessages
+            else -> generateSeparateSuggestedReplies(
+                task = task,
+                conversation = conversation,
+                currentMessages = currentMessages,
+                assistantMessages = mappedAssistantMessages,
+                actorUserId = task.actorUserId,
+            )
+        }
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
 
         assistantMessages.forEach { message ->
@@ -858,6 +878,7 @@ class ConversationEngineService(
         val automaticMemoryRememberEnabled: Boolean,
         val automaticMemoryRecallEnabled: Boolean,
         val includeMessageTemporalContext: Boolean,
+        val suggestedRepliesMode: UserProfile.SuggestedRepliesSettings.Mode,
     ) {
         val project get() = runtimeContext.project
     }
@@ -924,6 +945,7 @@ class ConversationEngineService(
         val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
         val memorySettings = settingsProvider.userProfile.memorySettings
+        val suggestedRepliesMode = settingsProvider.userProfile.suggestedRepliesSettings.mode
         val automaticMemoryRememberEnabled = memorySettings.autoRemember &&
             aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null
         val automaticMemoryRecallEnabled = memorySettings.autoRecall &&
@@ -934,7 +956,10 @@ class ConversationEngineService(
             toolCapabilityCatalogPrompt?.let(::add)
             add(toolCatalog.environmentPrompt)
             agentSkillRuntime.systemPrompt?.let(::add)
-            AssistantResponseFormatContract.instruction(assistantResponseFormat)?.let(::add)
+            AssistantResponseFormatContract.instruction(
+                assistantResponseFormat,
+                includeSuggestedReplies = suggestedRepliesMode == UserProfile.SuggestedRepliesSettings.Mode.INLINE,
+            )?.let(::add)
         }
 
         return ConversationRuntimeStepContext(
@@ -954,7 +979,40 @@ class ConversationEngineService(
             automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
             includeMessageTemporalContext =
                 settingsProvider.userProfile.agentSettings.includeMessageTemporalContext,
+            suggestedRepliesMode = suggestedRepliesMode,
         )
+    }
+
+    private suspend fun generateSeparateSuggestedReplies(
+        task: ConversationRuntimeTask,
+        conversation: Conversation,
+        currentMessages: List<Conversation.Message>,
+        assistantMessages: List<Conversation.Message>,
+        actorUserId: User.Id?,
+    ): List<Conversation.Message> {
+        val sourceMessage = assistantMessages.lastOrNull { message ->
+            message.content.any { content ->
+                content is ContentItem.AssistantMessage && content.structured.fullText.isNotBlank()
+            }
+        } ?: return assistantMessages.withSuggestedReplies(emptyList())
+        return try {
+            val suggestions = suggestedRepliesGenerationService.generate(
+                conversation = conversation,
+                messages = currentMessages + assistantMessages,
+                sourceMessage = sourceMessage,
+                runtimeSelection = suggestedRepliesGenerationService.requireConfiguredRuntimeSelection(),
+                actorUserId = actorUserId,
+                usageId = "suggested-replies:${sourceMessage.id.value}:initial",
+            )
+            assistantMessages.withSuggestedReplies(suggestions)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            log.warn(error) {
+                "Separate suggested replies generation failed: conversation=${conversation.id.value} task=${task.id.value}"
+            }
+            assistantMessages.withSuggestedReplies(emptyList())
+        }
     }
 
     private fun currentAgentRuntimePrompt(agent: AgentDefinition): String {
@@ -1497,6 +1555,34 @@ class ConversationEngineService(
         mapIndexed { index, message ->
             message.copy(id = runtimeMessageId(taskId, "$prefix:$index"))
         }
+
+    private fun List<Conversation.Message>.withSuggestedReplies(
+        suggestions: List<String>,
+    ): List<Conversation.Message> {
+        val targetMessageIndex = indexOfLast { message ->
+            message.content.any { it is ContentItem.AssistantMessage }
+        }
+        return mapIndexed { messageIndex, message ->
+            val targetContentIndex = if (messageIndex == targetMessageIndex) {
+                message.content.indexOfLast { it is ContentItem.AssistantMessage }
+            } else {
+                -1
+            }
+            message.copy(
+                content = message.content.mapIndexed { contentIndex, content ->
+                    if (content is ContentItem.AssistantMessage) {
+                        content.copy(
+                            structured = content.structured.copy(
+                                suggestedReplies = if (contentIndex == targetContentIndex) suggestions else emptyList(),
+                            )
+                        )
+                    } else {
+                        content
+                    }
+                }
+            )
+        }
+    }
 
     private fun buildSyntheticMemoryToolPair(
         conversationId: Conversation.Id,

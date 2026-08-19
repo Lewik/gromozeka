@@ -661,6 +661,14 @@ class GromozekaRemoteServer(
                     conversationDomainService.addMessage(request.conversationId, request.message)
                 )
                 is LoadCurrentMessagesRequest -> MessagesResponse(conversationDomainService.loadCurrentMessages(request.conversationId))
+                is RegenerateSuggestedRepliesRequest -> SuggestedRepliesResponse(
+                    sourceMessageId = request.sourceMessageId,
+                    replies = conversationDomainService.regenerateSuggestedReplies(
+                        conversationId = request.conversationId,
+                        sourceMessageId = request.sourceMessageId,
+                        actorUserId = user.id,
+                    ),
+                )
                 is GetTokenStatsRequest -> TokenStatsResponse(conversationTokenStatsService.getTokenStats(request.conversationId))
                 is EditMessageRequest -> ConversationResponse(
                     conversationDomainService.editMessage(request.conversationId, request.messageId, request.newContent)

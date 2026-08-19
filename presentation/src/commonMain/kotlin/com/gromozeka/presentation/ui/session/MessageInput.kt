@@ -34,6 +34,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.gromozeka.presentation.services.PttEventHandler
@@ -41,6 +43,7 @@ import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.LiveVoiceInputService
 import com.gromozeka.presentation.services.LiveVoiceInputState
 import com.gromozeka.domain.model.Artifact
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
@@ -58,7 +61,8 @@ internal fun MessageInput(
     isWaitingForResponse: Boolean,
     pendingMessagesCount: Int,
     suggestedReplies: SuggestedReplyOptions?,
-    onSuggestedReplySelected: (String) -> Unit,
+    suggestedRepliesRegenerating: Boolean,
+    onRegenerateSuggestedReplies: (Conversation.Message.Id) -> Unit,
     onSendMessage: suspend () -> Unit,
     coroutineScope: CoroutineScope,
     pttEventHandler: PttEventHandler,
@@ -91,6 +95,15 @@ internal fun MessageInput(
     val hapticFeedback = LocalHapticFeedback.current
     var inputFocused by remember { mutableStateOf(false) }
     var previousPttState by remember { mutableStateOf(pttState) }
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(userInput, selection = TextRange(userInput.length)))
+    }
+
+    LaunchedEffect(userInput) {
+        if (textFieldValue.text != userInput) {
+            textFieldValue = TextFieldValue(userInput, selection = TextRange(userInput.length))
+        }
+    }
 
     LaunchedEffect(pttState) {
         when {
@@ -190,7 +203,12 @@ internal fun MessageInput(
 
         SuggestedReplyChips(
             options = suggestedReplies,
-            onSuggestionSelected = onSuggestedReplySelected,
+            onSuggestionSelected = { suggestion ->
+                textFieldValue = insertSuggestedReply(textFieldValue, suggestion)
+                onUserInputChange(textFieldValue.text)
+            },
+            onRegenerate = onRegenerateSuggestedReplies,
+            isRegenerating = suggestedRepliesRegenerating,
         )
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -201,8 +219,11 @@ internal fun MessageInput(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 OutlinedTextField(
-                    value = userInput,
-                    onValueChange = onUserInputChange,
+                    value = textFieldValue,
+                    onValueChange = { value ->
+                        textFieldValue = value
+                        onUserInputChange(value.text)
+                    },
                     modifier = Modifier
                         .onFocusChanged { inputFocused = it.isFocused }
                         .onPreviewKeyEvent { event ->
@@ -445,6 +466,25 @@ internal fun MessageInput(
             }
         }
     }
+}
+
+internal fun insertSuggestedReply(
+    input: TextFieldValue,
+    suggestion: String,
+): TextFieldValue {
+    val start = input.selection.min.coerceIn(0, input.text.length)
+    val end = input.selection.max.coerceIn(start, input.text.length)
+    val normalizedSuggestion = suggestion.trim()
+    if (normalizedSuggestion.isEmpty()) return input
+
+    val leadingSpace = if (start > 0 && !input.text[start - 1].isWhitespace()) " " else ""
+    val trailingSpace = if (end < input.text.length && !input.text[end].isWhitespace()) " " else ""
+    val insertion = leadingSpace + normalizedSuggestion + trailingSpace
+    val updatedText = input.text.replaceRange(start, end, insertion)
+    return TextFieldValue(
+        text = updatedText,
+        selection = TextRange(start + insertion.length),
+    )
 }
 
 @Composable

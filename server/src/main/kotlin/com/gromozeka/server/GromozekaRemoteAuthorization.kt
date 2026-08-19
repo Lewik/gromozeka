@@ -236,6 +236,7 @@ class GromozekaRemoteAuthorization(
             is UpdateConversationAgentRequest,
             is ForkConversationRequest,
             is AddMessageRequest,
+            is RegenerateSuggestedRepliesRequest,
             is EditMessageRequest,
             is DeleteMessagesRequest,
             is SquashMessagesRequest,
@@ -415,6 +416,7 @@ private fun ClientRequest.conversationId(): Conversation.Id = when (this) {
     is ForkConversationRequest -> conversationId
     is AddMessageRequest -> conversationId
     is LoadCurrentMessagesRequest -> conversationId
+    is RegenerateSuggestedRepliesRequest -> conversationId
     is GetTokenStatsRequest -> conversationId
     is EditMessageRequest -> conversationId
     is DeleteMessagesRequest -> conversationId

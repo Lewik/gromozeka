@@ -8,10 +8,11 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.UiTestTag
-import com.gromozeka.presentation.ui.viewmodel.appendComposerText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Clock
@@ -29,21 +30,26 @@ class SuggestedRepliesTest {
     }
 
     @Test
-    fun identicalSuggestionsReturnForANewAssistantMessage() = runDesktopComposeUiTest {
+    fun suggestionsRemainAfterSelectionAndRefreshCanBeRequested() = runDesktopComposeUiTest {
         var options by mutableStateOf(replyOptions("first"))
+        var regeneratedSource: Conversation.Message.Id? = null
         setContent {
             MaterialTheme {
                 SuggestedReplyChips(
                     options = options,
                     onSuggestionSelected = {},
+                    onRegenerate = { regeneratedSource = it },
+                    isRegenerating = false,
                 )
             }
         }
 
         onNodeWithTag(UiTestTag.SuggestedReply(0).value).performClick()
-        onNodeWithTag(UiTestTag.SuggestedReplies.value).assertDoesNotExist()
+        onNodeWithTag(UiTestTag.SuggestedReplies.value).assertIsDisplayed()
+        onNodeWithTag(UiTestTag.SuggestedRepliesRefresh.value).performClick()
 
         runOnIdle {
+            assertEquals(Conversation.Message.Id("first"), regeneratedSource)
             options = replyOptions("second")
         }
         onNodeWithTag(UiTestTag.SuggestedReplies.value).assertIsDisplayed()
@@ -78,9 +84,21 @@ class SuggestedRepliesTest {
     }
 
     @Test
-    fun selectedSuggestionPreservesExistingDraft() {
-        assertEquals("Draft Continue", appendComposerText("Draft", "Continue"))
-        assertEquals("Draft\nContinue", appendComposerText("Draft\n", " Continue "))
+    fun selectedSuggestionIsInsertedAtCaretOrReplacesSelection() {
+        assertEquals(
+            TextFieldValue("Before Continue after", TextRange(16)),
+            insertSuggestedReply(
+                TextFieldValue("Before after", TextRange(7)),
+                "Continue",
+            ),
+        )
+        assertEquals(
+            TextFieldValue("Before Continue after", TextRange(15)),
+            insertSuggestedReply(
+                TextFieldValue("Before old after", TextRange(7, 10)),
+                "Continue",
+            ),
+        )
     }
 
     private fun verifySuggestionSelection(width: Int, height: Int) = runDesktopComposeUiTest(
@@ -93,6 +111,8 @@ class SuggestedRepliesTest {
                 SuggestedReplyChips(
                     options = replyOptions("assistant"),
                     onSuggestionSelected = { selected = it },
+                    onRegenerate = {},
+                    isRegenerating = false,
                 )
             }
         }
@@ -103,7 +123,7 @@ class SuggestedRepliesTest {
         runOnIdle {
             assertEquals("No", selected)
         }
-        onNodeWithTag(UiTestTag.SuggestedReplies.value).assertDoesNotExist()
+        onNodeWithTag(UiTestTag.SuggestedReplies.value).assertIsDisplayed()
     }
 
     private fun replyOptions(messageId: String) = SuggestedReplyOptions(

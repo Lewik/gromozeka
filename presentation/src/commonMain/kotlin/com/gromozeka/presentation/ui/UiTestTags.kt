@@ -50,6 +50,7 @@ sealed interface UiTestTag {
     data object CopyableMarkdownBlock : UiTestTag
     data object CopyableMarkdownButton : UiTestTag
     data object SuggestedReplies : UiTestTag
+    data object SuggestedRepliesRefresh : UiTestTag
 
     data class SessionTab(val index: Int) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)

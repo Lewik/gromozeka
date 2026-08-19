@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.presentation.services.LiveVoiceInputService
 import com.gromozeka.presentation.services.LiveVoiceInputState
 import com.gromozeka.presentation.services.NoOpLiveVoiceInputService
@@ -94,12 +95,20 @@ fun SessionScreen(
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
     val messageSquashState by viewModel.messageSquashState.collectAsState()
+    val suggestedRepliesOverride by viewModel.suggestedRepliesOverride.collectAsState()
+    val suggestedRepliesRegeneratingFor by viewModel.suggestedRepliesRegeneratingFor.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
-    val suggestedReplies = if (isWaitingForResponse) {
-        null
-    } else {
-        latestSuggestedReplies(filteredHistory)
+    val suggestedReplies = when {
+        isWaitingForResponse -> null
+        settings.userProfile.suggestedRepliesSettings.mode ==
+            UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> null
+        else -> latestSuggestedReplies(filteredHistory)?.let { persisted ->
+            suggestedRepliesOverride
+                ?.takeIf { it.sourceMessageId == persisted.sourceMessageId }
+                ?.let { SuggestedReplyOptions(it.sourceMessageId, it.values) }
+                ?: persisted
+        }
     }
     val jsonToShow = viewModel.jsonToShow
     val topToolbarScrollState = rememberScrollState()
@@ -550,7 +559,9 @@ fun SessionScreen(
                         isWaitingForResponse = isWaitingForResponse,
                         pendingMessagesCount = pendingMessagesCount,
                         suggestedReplies = suggestedReplies,
-                        onSuggestedReplySelected = viewModel::appendUserInput,
+                        suggestedRepliesRegenerating = suggestedRepliesRegeneratingFor ==
+                            suggestedReplies?.sourceMessageId,
+                        onRegenerateSuggestedReplies = viewModel::regenerateSuggestedReplies,
                         onSendMessage = viewModel::submitUserInputToSession,
                         coroutineScope = coroutineScope,
                         pttEventHandler = pttEventHandler,

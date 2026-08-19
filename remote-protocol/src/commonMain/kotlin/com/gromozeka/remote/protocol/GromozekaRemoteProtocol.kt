@@ -607,6 +607,13 @@ data class LoadCurrentMessagesRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("regenerate_suggested_replies")
+data class RegenerateSuggestedRepliesRequest(
+    val conversationId: Conversation.Id,
+    val sourceMessageId: Conversation.Message.Id,
+) : ClientRequest
+
+@Serializable
 @SerialName("get_token_stats")
 data class GetTokenStatsRequest(
     val conversationId: Conversation.Id,
@@ -1370,6 +1377,13 @@ data class ConversationProjectItem(
 @SerialName("messages")
 data class MessagesResponse(
     val messages: List<Conversation.Message>,
+) : ServerResponse
+
+@Serializable
+@SerialName("suggested_replies")
+data class SuggestedRepliesResponse(
+    val sourceMessageId: Conversation.Message.Id,
+    val replies: List<String>,
 ) : ServerResponse
 
 @Serializable

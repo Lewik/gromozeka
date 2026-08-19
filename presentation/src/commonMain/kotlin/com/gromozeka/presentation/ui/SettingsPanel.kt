@@ -138,6 +138,7 @@ fun SettingsPanel(
     val speechToText = speechSettings.speechToText
     val agentSettings = userProfile.agentSettings
     val memorySettings = userProfile.memorySettings
+    val suggestedRepliesSettings = userProfile.suggestedRepliesSettings
     val deviceSettings = settings.userDeviceSettings
     val uiSettings = deviceSettings.uiSettings
     val themeSettings = uiSettings.theme
@@ -912,6 +913,29 @@ fun SettingsPanel(
                                     }
                                 )
                             }
+                        )
+
+                        DropdownSettingItem(
+                            label = "Suggested replies",
+                            description = "Generate reply chips inline with the answer or through the Suggested replies runtime configured under AI.",
+                            value = suggestedRepliesSettings.mode,
+                            options = UserProfile.SuggestedRepliesSettings.Mode.entries,
+                            optionLabel = { mode ->
+                                when (mode) {
+                                    UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> "Off"
+                                    UserProfile.SuggestedRepliesSettings.Mode.INLINE -> "Inline with the answer"
+                                    UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME -> "Separate AI runtime"
+                                }
+                            },
+                            onValueChange = { mode ->
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(
+                                            suggestedRepliesSettings = suggestedRepliesSettings.copy(mode = mode)
+                                        )
+                                    }
+                                )
+                            },
                         )
 
                         SwitchSettingItem(

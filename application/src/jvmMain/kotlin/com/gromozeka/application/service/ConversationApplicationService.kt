@@ -3,6 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
@@ -10,6 +12,7 @@ import com.gromozeka.domain.service.DeclarativeStateChangePublisher
 import com.gromozeka.domain.service.DeclarativeStateKey
 import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.service.UserConversationTabLayoutService
 import klog.KLoggers
 import com.gromozeka.domain.repository.MessageRepository
@@ -47,6 +50,8 @@ class ConversationApplicationService(
     private val toolCallPairingService: ToolCallPairingService,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
     private val artifactService: ConversationArtifactApplicationService,
+    private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
+    private val settingsProvider: SettingsProvider,
     private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
@@ -104,6 +109,45 @@ class ConversationApplicationService(
      */
     override suspend fun findById(id: Conversation.Id): Conversation? =
         conversationRepo.findById(id)
+
+    override suspend fun regenerateSuggestedReplies(
+        conversationId: Conversation.Id,
+        sourceMessageId: Conversation.Message.Id,
+        actorUserId: User.Id?,
+    ): List<String> {
+        val conversation = findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+        val messages = loadCurrentMessages(conversationId)
+        val sourceMessage = messages.firstOrNull { it.id == sourceMessageId }
+            ?: error("Suggested reply source message not found: ${sourceMessageId.value}")
+        require(sourceMessage.role == Conversation.Message.Role.ASSISTANT) {
+            "Suggested replies require an assistant source message"
+        }
+        val mode = settingsProvider.userProfile.suggestedRepliesSettings.mode
+        require(mode != UserProfile.SuggestedRepliesSettings.Mode.DISABLED) {
+            "Suggested replies are disabled"
+        }
+        val runtimeSelection = when (mode) {
+            UserProfile.SuggestedRepliesSettings.Mode.INLINE -> {
+                val agent = agentService.findById(conversation.agentDefinitionId)
+                    ?: error("Agent not found: ${conversation.agentDefinitionId.value}")
+                agent.runtimeSelection
+            }
+
+            UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME ->
+                suggestedRepliesGenerationService.requireConfiguredRuntimeSelection()
+
+            UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> error("Unreachable")
+        }
+        return suggestedRepliesGenerationService.generate(
+            conversation = conversation,
+            messages = messages.takeWhile { it.id != sourceMessageId } + sourceMessage,
+            sourceMessage = sourceMessage,
+            runtimeSelection = runtimeSelection,
+            actorUserId = actorUserId,
+            usageId = "suggested-replies:${sourceMessageId.value}:${uuid7()}",
+        )
+    }
 
     override suspend fun getProject(conversationId: Conversation.Id): Project {
         val conversation = findById(conversationId)

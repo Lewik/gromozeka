@@ -2,6 +2,7 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -152,6 +153,12 @@ interface ConversationDomainService {
      * @throws IllegalStateException if conversation not found
      */
     suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message>
+
+    suspend fun regenerateSuggestedReplies(
+        conversationId: Conversation.Id,
+        sourceMessageId: Conversation.Message.Id,
+        actorUserId: User.Id? = null,
+    ): List<String>
 
     /**
      * Creates new thread with edited message.
