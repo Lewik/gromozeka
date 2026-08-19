@@ -66,6 +66,8 @@ data class ThaiTranslation(
     override val enterSearchQuery: String = "ใส่คำค้นหา",
     override val nothingFoundForText: String = "ไม่พบอะไรสำหรับ \"%s\"",
     override val foundSessionsText: String = "พบ %d เซสชัน:",
+    override val foundSearchResultsText: String = "พบ %d ผลลัพธ์:",
+    override val loadMoreSearchResults: String = "โหลดเพิ่มเติม",
     override val noSavedProjectsText: String = "ไม่มีโปรเจกต์ที่บันทึกไว้\nคลิก \"เซสชันใหม่\" เพื่อเริ่มทำงาน",
     override val expandCollapseText: String = "ขยาย/ย่อ",
     override val sessionsCountText: String = "%d เซสชัน",

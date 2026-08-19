@@ -27,6 +27,7 @@ class ExposedMessageRepository(
             it[squashOperationId] = message.squashOperationId?.value
             it[role] = message.role.name
             it[createdAt] = message.createdAt
+            it[searchText] = message.searchText()
             it[messageJson] = json.encodeToString(message)
         }
         message
@@ -62,3 +63,11 @@ class ExposedMessageRepository(
             .map { json.decodeFromString<Conversation.Message>(it[Messages.messageJson]) }
     }
 }
+
+internal fun Conversation.Message.searchText(): String = content.mapNotNull { item ->
+    when (item) {
+        is Conversation.Message.ContentItem.UserMessage -> item.text
+        is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+        else -> null
+    }
+}.joinToString("\n").trim()

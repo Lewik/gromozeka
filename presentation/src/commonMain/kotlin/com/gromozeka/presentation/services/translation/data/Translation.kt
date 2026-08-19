@@ -310,6 +310,8 @@ sealed class Translation {
     abstract val enterSearchQuery: String
     abstract val nothingFoundForText: String
     abstract val foundSessionsText: String
+    abstract val foundSearchResultsText: String
+    abstract val loadMoreSearchResults: String
     abstract val noSavedProjectsText: String
     abstract val expandCollapseText: String
     abstract val sessionsCountText: String

@@ -87,11 +87,12 @@ internal object ControlMcpSchemas {
             put("description", description)
         }
 
-    fun integer(description: String, minimum: Int? = null): JsonObject =
+    fun integer(description: String, minimum: Int? = null, maximum: Int? = null): JsonObject =
         buildJsonObject {
             put("type", "integer")
             put("description", description)
             minimum?.let { put("minimum", it) }
+            maximum?.let { put("maximum", it) }
         }
 
     fun number(description: String): JsonObject =
@@ -229,6 +230,26 @@ internal fun JsonObject.requiredLong(name: String): Long =
         ?.content
         ?.toLongOrNull()
         ?: throw ControlMcpToolException("invalid_argument", "'$name' must be an integer")
+
+internal fun JsonObject.optionalInt(
+    name: String,
+    default: Int,
+    range: IntRange,
+): Int {
+    val value = this[name] ?: return default
+    val parsed = (value as? JsonPrimitive)
+        ?.takeUnless(JsonPrimitive::isString)
+        ?.content
+        ?.toIntOrNull()
+        ?: throw ControlMcpToolException("invalid_argument", "'$name' must be an integer")
+    if (parsed !in range) {
+        throw ControlMcpToolException(
+            "invalid_argument",
+            "'$name' must be between ${range.first} and ${range.last}",
+        )
+    }
+    return parsed
+}
 
 internal fun JsonObject.optionalBoolean(name: String, default: Boolean): Boolean {
     val value = this[name] ?: return default

@@ -7,6 +7,8 @@ import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillPackage
 import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationSearchPage
+import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.NamedSecret
@@ -670,7 +672,7 @@ data class RunQuickTextActionRequest(
 @Serializable
 @SerialName("search_conversations")
 data class SearchConversationsRequest(
-    val query: String,
+    val search: ConversationSearchRequest,
 ) : ClientRequest
 
 @Serializable
@@ -1362,16 +1364,10 @@ data class ConversationTabLayoutResponse(
 ) : ServerResponse
 
 @Serializable
-@SerialName("conversation_project_items")
-data class ConversationProjectItemsResponse(
-    val items: List<ConversationProjectItem>,
+@SerialName("conversation_search_page")
+data class ConversationSearchPageResponse(
+    val page: ConversationSearchPage,
 ) : ServerResponse
-
-@Serializable
-data class ConversationProjectItem(
-    val conversation: Conversation,
-    val project: Project,
-)
 
 @Serializable
 @SerialName("messages")

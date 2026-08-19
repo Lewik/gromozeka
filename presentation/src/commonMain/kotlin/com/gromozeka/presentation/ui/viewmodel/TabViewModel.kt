@@ -73,7 +73,18 @@ class TabViewModel(
     private val _uiState = MutableStateFlow(initialTabUiState)
     val uiState: StateFlow<UIState.Tab> = _uiState.asStateFlow()
 
+    private val _messageFocusRequest = MutableStateFlow<Conversation.Message.Id?>(null)
+    val messageFocusRequest: StateFlow<Conversation.Message.Id?> = _messageFocusRequest.asStateFlow()
+
     var jsonToShow by mutableStateOf<String?>(null)
+
+    fun requestMessageFocus(messageId: Conversation.Message.Id) {
+        _messageFocusRequest.value = messageId
+    }
+
+    fun consumeMessageFocus(messageId: Conversation.Message.Id) {
+        _messageFocusRequest.compareAndSet(messageId, null)
+    }
 
     private var currentRequestJob: kotlinx.coroutines.Job? = null
     private var lastRuntimeSnapshotRevision = -1L

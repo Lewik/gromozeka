@@ -20,7 +20,7 @@ import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.ActiveGenerationStateSyncService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.ConversationNameSearchService
+import com.gromozeka.application.service.ConversationSearchApplicationService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
@@ -109,7 +109,7 @@ class GromozekaRemoteServer(
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
     private val quickTextActionService: QuickTextActionService,
-    private val conversationNameSearchService: ConversationNameSearchService,
+    private val conversationSearchService: ConversationSearchApplicationService,
     private val sttService: SttService,
     private val ttsService: TtsService,
     private val memoryStore: MemoryStore,
@@ -702,13 +702,8 @@ class GromozekaRemoteServer(
                 )
 
                 is SearchConversationsRequest -> {
-                    val readableProjectIds = remoteAuthorization.readableProjectIds(user)
-                    ConversationProjectItemsResponse(
-                        conversationNameSearchService.searchConversations(request.query)
-                            .filter { (_, project) -> project.id in readableProjectIds }
-                            .map { (conversation, project) ->
-                                ConversationProjectItem(conversation, project)
-                            }
+                    ConversationSearchPageResponse(
+                        conversationSearchService.search(user.id, request.search)
                     )
                 }
 

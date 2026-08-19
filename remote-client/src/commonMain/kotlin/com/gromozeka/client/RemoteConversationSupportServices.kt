@@ -1,17 +1,18 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ConversationSearchPage
+import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.QuickTextActionResult
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
-import com.gromozeka.domain.service.ConversationNameSearchService
+import com.gromozeka.domain.service.ConversationSearchService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.QuickTextActionService
-import com.gromozeka.remote.protocol.ConversationProjectItemsResponse
+import com.gromozeka.remote.protocol.ConversationSearchPageResponse
 import com.gromozeka.remote.protocol.GetTokenStatsRequest
 import com.gromozeka.remote.protocol.ListQuickTextActionsRequest
 import com.gromozeka.remote.protocol.QuickTextActionResultResponse
@@ -24,13 +25,13 @@ import com.gromozeka.remote.protocol.TokenStatsResponse
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import kotlinx.coroutines.flow.Flow
 
-internal class RemoteConversationNameSearchService(
+internal class RemoteConversationSearchService(
     private val client: GromozekaWsClient,
-) : ConversationNameSearchService {
-    override suspend fun searchConversations(query: String): List<Pair<Conversation, Project>> =
-        client.requestTyped<SearchConversationsRequest, ConversationProjectItemsResponse>(SearchConversationsRequest(query))
-            .items
-            .map { it.conversation to it.project }
+) : ConversationSearchService {
+    override suspend fun search(request: ConversationSearchRequest): ConversationSearchPage =
+        client.requestTyped<SearchConversationsRequest, ConversationSearchPageResponse>(
+            SearchConversationsRequest(request)
+        ).page
 }
 
 internal class RemoteConversationTokenStatsService(

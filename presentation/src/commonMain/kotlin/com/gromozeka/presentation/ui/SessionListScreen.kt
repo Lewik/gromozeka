@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
@@ -27,6 +28,7 @@ import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationSearchHit
 import com.gromozeka.domain.service.ConversationDomainService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -76,11 +78,13 @@ fun SessionListScreen(
 
     val searchQuery by searchViewModel.searchQuery.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
+    val isLoadingMore by searchViewModel.isLoadingMore.collectAsState()
+    val hasMoreResults by searchViewModel.hasMoreResults.collectAsState()
     val searchResults by searchViewModel.searchResults.collectAsState()
     val showSearchResults by searchViewModel.showSearchResults.collectAsState()
     val conversationsById by appViewModel.conversations.collectAsState()
-    val currentSearchResults = searchResults.map { (conversation, project) ->
-        (conversationsById[conversation.id] ?: conversation) to project
+    val currentSearchResults = searchResults.map { hit ->
+        hit.copy(conversation = conversationsById[hit.conversation.id] ?: hit.conversation)
     }
 
     fun applyProjects(snapshot: List<Pair<Project, List<Conversation>>>) {
@@ -147,7 +151,7 @@ fun SessionListScreen(
     }
 
     LaunchedEffect(searchResults) {
-        appViewModel.mergeConversationSnapshots(searchResults.map { it.first })
+        appViewModel.mergeConversationSnapshots(searchResults.map { it.conversation })
     }
 
     Row(modifier = Modifier.fillMaxSize()) {
@@ -248,26 +252,44 @@ fun SessionListScreen(
                             }
                         } else {
                             Text(
-                                text = LocalTranslation.current.foundSessionsText.format(searchResults.size),
+                                text = LocalTranslation.current.foundSearchResultsText.format(searchResults.size),
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
-                            currentSearchResults.forEach { (conversation, project) ->
+                            currentSearchResults.forEach { hit ->
                                 ConversationItem(
-                                    conversation = conversation,
-                                    project = project,
+                                    conversation = hit.conversation,
+                                    project = hit.project,
                                     onConversationClick = { clickedConversation, clickedProject ->
                                         coroutineScope.handleConversationClick(
                                             clickedConversation,
                                             clickedProject,
                                             onConversationSelected,
-                                            appViewModel
+                                            appViewModel,
+                                            hit.messageId,
                                         )
                                     },
                                     onRename = { conversationToRename = it },
-                                    isMutating = conversation.id.value in mutatingConversationIds,
+                                    isMutating = hit.conversation.id.value in mutatingConversationIds,
                                     isGrouped = false,
+                                    searchHit = hit,
                                     modifier = Modifier.padding(vertical = 2.dp)
                                 )
+                            }
+                            if (hasMoreResults) {
+                                CompactButton(
+                                    onClick = searchViewModel::loadMore,
+                                    enabled = !isLoadingMore,
+                                    modifier = Modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally),
+                                ) {
+                                    if (isLoadingMore) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    } else {
+                                        Text(LocalTranslation.current.loadMoreSearchResults)
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -457,6 +479,7 @@ private fun ConversationItem(
     onRename: (Conversation) -> Unit,
     isMutating: Boolean,
     isGrouped: Boolean = false,
+    searchHit: ConversationSearchHit? = null,
     modifier: Modifier = Modifier,
 ) {
     CompactCard(
@@ -490,6 +513,18 @@ private fun ConversationItem(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+
+                searchHit?.takeIf { it.matchKind == ConversationSearchHit.MatchKind.MESSAGE }?.let { hit ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = listOfNotNull(hit.role?.name?.lowercase(), hit.excerpt.takeIf(String::isNotBlank))
+                            .joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
 
@@ -528,6 +563,7 @@ private fun CoroutineScope.handleConversationClick(
     project: Project,
     onConversationSelected: (Conversation, Project) -> Unit,
     appViewModel: AppViewModel,
+    messageId: Conversation.Message.Id? = null,
 ) {
     launch {
         try {
@@ -537,6 +573,7 @@ private fun CoroutineScope.handleConversationClick(
                 initiator = ConversationInitiator.System
             )
             appViewModel.selectTab(tabIndex)
+            messageId?.let { appViewModel.focusMessage(clickedConversation.id, it) }
 
             log.info("Created tab at index $tabIndex, resume conversation: ${clickedConversation.id}")
 

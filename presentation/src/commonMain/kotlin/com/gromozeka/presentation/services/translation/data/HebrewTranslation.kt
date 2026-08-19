@@ -67,6 +67,8 @@ data class HebrewTranslation(
     override val enterSearchQuery: String = "הכנס שאילתת חיפוש",
     override val nothingFoundForText: String = "לא נמצא דבר עבור \"%s\"",
     override val foundSessionsText: String = "נמצאו %d סשנים:",
+    override val foundSearchResultsText: String = "נמצאו %d תוצאות:",
+    override val loadMoreSearchResults: String = "טען עוד",
     override val noSavedProjectsText: String = "אין פרויקטים שמורים\nלחץ על \"סשן חדש\" כדי להתחיל לעבוד",
     override val expandCollapseText: String = "הרחב/כווץ",
     override val sessionsCountText: String = "%d סשנים",

@@ -5,7 +5,7 @@ import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.ConversationNameSearchService
+import com.gromozeka.domain.service.ConversationSearchService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
@@ -85,7 +85,7 @@ class GromozekaRemoteServices(
     val conversationService: ConversationDomainService = RemoteConversationService(client)
     val conversationTabLayoutService: ConversationTabLayoutService = RemoteConversationTabLayoutService(client)
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)
-    val conversationNameSearchService: ConversationNameSearchService = RemoteConversationNameSearchService(client)
+    val conversationSearchService: ConversationSearchService = RemoteConversationSearchService(client)
     val conversationTokenStatsService: ConversationTokenStatsService = RemoteConversationTokenStatsService(client)
     val messageSquashGenerationService: MessageSquashGenerationService = RemoteMessageSquashGenerationService(client)
     val quickTextActionService: QuickTextActionService = RemoteQuickTextActionService(client)

@@ -98,6 +98,7 @@ fun SessionScreen(
     val suggestedRepliesOverride by viewModel.suggestedRepliesOverride.collectAsState()
     val suggestedRepliesRegeneratingFor by viewModel.suggestedRepliesRegeneratingFor.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val messageFocusRequest by viewModel.messageFocusRequest.collectAsState()
     val userInput = uiState.userInput
     val suggestedReplies = when {
         isWaitingForResponse -> null
@@ -530,6 +531,11 @@ fun SessionScreen(
                             } else {
                                 runtimeStrings.newActivityLabel
                             }
+                        },
+                        focusKey = messageFocusRequest?.value,
+                        focusItemKey = { it.message.id.value },
+                        onFocusConsumed = {
+                            messageFocusRequest?.let(viewModel::consumeMessageFocus)
                         },
                         modifier = Modifier.weight(1f),
                     ) { entry ->

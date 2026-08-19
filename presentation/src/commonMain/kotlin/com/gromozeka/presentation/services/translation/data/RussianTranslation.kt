@@ -67,6 +67,8 @@ data class RussianTranslation(
     override val enterSearchQuery: String = "Введите поисковый запрос",
     override val nothingFoundForText: String = "Ничего не найдено для \"%s\"",
     override val foundSessionsText: String = "Найдено сессий: %d",
+    override val foundSearchResultsText: String = "Найдено результатов: %d",
+    override val loadMoreSearchResults: String = "Показать ещё",
     override val noSavedProjectsText: String = "Нет сохраненных проектов\nНажмите \"Новая сессия\" чтобы начать работу",
     override val expandCollapseText: String = "Развернуть/Свернуть",
     override val sessionsCountText: String = "сессий: %d",

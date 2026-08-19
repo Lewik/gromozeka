@@ -66,6 +66,8 @@ data class JapaneseTranslation(
     override val enterSearchQuery: String = "検索クエリを入力",
     override val nothingFoundForText: String = "\"%s\"の検索結果なし",
     override val foundSessionsText: String = "%d個のセッションが見つかりました：",
+    override val foundSearchResultsText: String = "%d件の結果が見つかりました：",
+    override val loadMoreSearchResults: String = "さらに読み込む",
     override val noSavedProjectsText: String = "保存されたプロジェクトなし\n「新しいセッション」をクリックして開始",
     override val expandCollapseText: String = "展開/折りたたみ",
     override val sessionsCountText: String = "%d個のセッション",

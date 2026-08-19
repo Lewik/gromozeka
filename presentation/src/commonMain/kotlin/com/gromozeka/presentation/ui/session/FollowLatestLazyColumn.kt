@@ -44,6 +44,9 @@ internal fun <T> FollowLatestLazyColumn(
     unreadKey: (T) -> Any = itemKey,
     contentRevision: Any?,
     unreadLabel: (Int) -> String,
+    focusKey: Any? = null,
+    focusItemKey: (T) -> Any? = itemKey,
+    onFocusConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     itemContent: @Composable LazyItemScope.(T) -> Unit,
@@ -109,6 +112,18 @@ internal fun <T> FollowLatestLazyColumn(
                 unreadKeys = unreadKeys + addedUnreadKeys
             }
         }
+    }
+
+    LaunchedEffect(focusKey, itemKeys) {
+        if (focusKey == null) return@LaunchedEffect
+        val targetIndex = items.indexOfFirst { focusItemKey(it) == focusKey }
+        if (targetIndex < 0) return@LaunchedEffect
+
+        followingLatest = false
+        hasUnreadContent = false
+        unreadKeys = emptySet()
+        listState.scrollToItem(targetIndex)
+        onFocusConsumed()
     }
 
     LaunchedEffect(listState) {

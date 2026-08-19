@@ -67,6 +67,8 @@ data class EnglishTranslation(
     override val enterSearchQuery: String = "Enter search query",
     override val nothingFoundForText: String = "Nothing found for \"%s\"",
     override val foundSessionsText: String = "Found %d sessions:",
+    override val foundSearchResultsText: String = "Found %d results:",
+    override val loadMoreSearchResults: String = "Load more",
     override val noSavedProjectsText: String = "No saved projects\nClick \"New Session\" to start working",
     override val expandCollapseText: String = "Expand/Collapse",
     override val sessionsCountText: String = "%d sessions",

@@ -408,6 +408,7 @@ internal object Messages : Table("messages") {
     val squashOperationId = varchar("squash_operation_id", 255).nullable()
     val role = varchar("role", 50)
     val createdAt = timestamp("created_at")
+    val searchText = text("search_text")
     val messageJson = text("message_json")
 
     override val primaryKey = PrimaryKey(id)

@@ -66,6 +66,8 @@ data class ChineseTranslation(
     override val enterSearchQuery: String = "输入搜索查询",
     override val nothingFoundForText: String = "未找到\"%s\"的结果",
     override val foundSessionsText: String = "找到%d个会话：",
+    override val foundSearchResultsText: String = "找到%d个结果：",
+    override val loadMoreSearchResults: String = "加载更多",
     override val noSavedProjectsText: String = "没有保存的项目\n点击\"新建会话\"开始工作",
     override val expandCollapseText: String = "展开/折叠",
     override val sessionsCountText: String = "%d个会话",

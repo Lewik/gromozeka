@@ -4,6 +4,9 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AgentSkillFile
 import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationSearchHit
+import com.gromozeka.domain.model.ConversationSearchPage
+import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.QuickTextAction
@@ -44,6 +47,67 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RemoteProtocolCodecTest {
+    @Test
+    fun roundTripSupportsPaginatedConversationSearch() {
+        val timestamp = Instant.parse("2026-08-19T10:00:00Z")
+        val project = Project(
+            id = Project.Id("project-1"),
+            name = "Project",
+            createdAt = timestamp,
+            lastUsedAt = timestamp,
+        )
+        val conversation = Conversation(
+            id = Conversation.Id("conversation-1"),
+            projectId = project.id,
+            agentDefinitionId = AgentDefinition.Id("agent-1"),
+            displayName = "Conversation",
+            currentThread = Conversation.Thread.Id("thread-1"),
+            createdAt = timestamp,
+            updatedAt = timestamp,
+        )
+        val request = SearchConversationsRequest(
+            ConversationSearchRequest(
+                query = "needle",
+                projectId = project.id,
+                threadScope = ConversationSearchRequest.ThreadScope.ALL,
+                limit = 7,
+                cursor = "opaque-cursor",
+            )
+        )
+
+        val decodedRequest = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(
+                GromozekaClientEnvelope("conversation-search-request", request)
+            )
+        ).payload as SearchConversationsRequest
+        assertEquals(request, decodedRequest)
+
+        val response = ConversationSearchPageResponse(
+            ConversationSearchPage(
+                hits = listOf(
+                    ConversationSearchHit(
+                        project = project,
+                        conversation = conversation,
+                        matchKind = ConversationSearchHit.MatchKind.MESSAGE,
+                        threadId = conversation.currentThread,
+                        messageId = Conversation.Message.Id("message-1"),
+                        role = Conversation.Message.Role.ASSISTANT,
+                        matchedAt = timestamp,
+                        excerpt = "A bounded matching excerpt",
+                    )
+                ),
+                nextCursor = "next-cursor",
+            )
+        )
+        val decodedResponse = RemoteProtocolCodec.decodeServerText(
+            RemoteProtocolCodec.encodeServerText(
+                GromozekaServerEnvelope("conversation-search-response", response)
+            )
+        ).payload as ConversationSearchPageResponse
+
+        assertEquals(response, decodedResponse)
+    }
+
     @Test
     fun roundTripSupportsSuggestedRepliesRegeneration() {
         val request = RegenerateSuggestedRepliesRequest(

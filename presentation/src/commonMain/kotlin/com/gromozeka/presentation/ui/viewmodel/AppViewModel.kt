@@ -349,6 +349,13 @@ open class AppViewModel(
         _conversations.update { current -> current + updates }
     }
 
+    fun focusMessage(
+        conversationId: Conversation.Id,
+        messageId: Conversation.Message.Id,
+    ) {
+        _tabs.value.firstOrNull { it.conversationId == conversationId }?.requestMessageFocus(messageId)
+    }
+
     suspend fun renameConversation(
         conversationId: Conversation.Id,
         displayName: String,
