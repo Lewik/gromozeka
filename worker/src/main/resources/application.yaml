@@ -1,6 +1,8 @@
 spring:
   main:
     web-application-type: none
+  banner:
+    location: classpath:banner.txt
 
 logging:
   file:
