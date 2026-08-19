@@ -176,6 +176,7 @@ suspend fun createRemoteAppComponents(
             settingsService = remoteServices.settingsService,
             aiConfigurationService = remoteServices.aiConfigurationService,
             aiSubscriptionQuotaService = remoteServices.aiSubscriptionQuotaService,
+            aiUsageReportService = remoteServices.aiUsageReportService,
             runtimeCatalogTemplateService = remoteServices.runtimeCatalogTemplateService,
             remoteClientSettingsService = remoteServices.clientSettingsService,
             remoteConnectionState = remoteServices.connectionState,

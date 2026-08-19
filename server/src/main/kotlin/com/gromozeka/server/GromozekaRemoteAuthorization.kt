@@ -36,6 +36,7 @@ class GromozekaRemoteAuthorization(
             GetSettingsRequest,
             is SaveSettingsRequest,
             is SaveAiCatalogRequest,
+            is GetAiUsageReportRequest,
             ListMcpServersRequest,
             is CreateMcpServerRequest,
             is UpdateMcpServerRequest,

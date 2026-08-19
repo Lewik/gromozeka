@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.claude
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -396,6 +397,7 @@ internal class ClaudeCodeCliRuntime(
         return AiRuntimeResponse(
             messages = compactionMessages + assistantMessage,
             usage = cliResponse.usage?.toAiUsage(),
+            contextUsage = cliResponse.contextUsage?.toAiUsage()?.let { AiContextUsage(it.totalInputTokens) },
             finishReason = cliResponse.finishReason,
             providerMetadata = mapOf(
                 "provider" to AiConnection.Kind.CLAUDE_CODE.name,
@@ -860,6 +862,7 @@ internal data class ClaudeCodeCliResponse(
     val raw: JsonObject,
     val thinking: List<ClaudeCodeThinkingBlock> = emptyList(),
     val compactionBoundaries: List<JsonObject> = emptyList(),
+    val contextUsage: JsonObject? = null,
 )
 
 private class ClaudeCodeToolProtocol(

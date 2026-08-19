@@ -36,6 +36,7 @@ import com.gromozeka.domain.model.ai.AiReasoningDisplay
 import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -290,9 +291,11 @@ internal class AnthropicSdkMessageMapper(
             )
         }
 
+        val usage = toAiUsage(message.usage())
         return AiRuntimeResponse(
             messages = assistantMessages,
-            usage = toAiUsage(message.usage()),
+            usage = usage,
+            contextUsage = AiContextUsage(usage.totalInputTokens),
             finishReason = message.stopReason().getOrNull()?.asString(),
             providerMetadata = mapOf(
                 "provider" to connectionKind.name,

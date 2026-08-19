@@ -45,4 +45,6 @@ interface TokenUsageStatisticsRepository {
      * @return recent statistics up to specified limit
      */
     suspend fun getRecentCalls(threadId: Conversation.Thread.Id, limit: Int = 10): List<TokenUsageStatistics>
+
+    suspend fun getReport(query: TokenUsageStatistics.ReportQuery): TokenUsageStatistics.Report
 }

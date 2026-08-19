@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
@@ -47,9 +48,11 @@ class OpenAiSubscriptionResponseMapper {
             .filter { it["type"]?.jsonPrimitive?.contentOrNull == "web_search_call" }
             .flatMap { it.webSearchSourceUrls() }
 
+        val usage = completed?.usage?.toAiUsage()
         return AiRuntimeResponse(
             messages = appendWebSearchSources(messages, webSearchSourceUrls),
-            usage = completed?.usage?.toAiUsage(),
+            usage = usage,
+            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
             finishReason = completed?.status,
             providerMetadata = buildMap {
                 put("conversationKey", conversationKey)

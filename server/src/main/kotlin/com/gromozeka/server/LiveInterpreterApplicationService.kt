@@ -464,6 +464,7 @@ class LiveInterpreterApplicationService(
                         maxOutputTokens = maxOutputTokens,
                         toolChoice = AiToolChoice.None,
                         assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+                        usagePurpose = "LIVE_INTERPRETER",
                     ),
                 )
             )

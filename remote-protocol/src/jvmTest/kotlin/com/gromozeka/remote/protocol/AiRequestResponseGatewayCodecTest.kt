@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -11,6 +12,8 @@ import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaWindow
@@ -214,10 +217,13 @@ class AiRequestResponseGatewayCodecTest {
         val runtimeRequest = AiRuntimeRequest(
             systemPrompts = listOf("system"),
             messages = emptyList(),
+            options = AiRuntimeOptions(usagePurpose = "TEST_PURPOSE"),
         )
         val runtimeResponse = AiRuntimeResponse(
             messages = emptyList(),
             finishReason = "test",
+            usage = AiUsage(promptTokens = 10, completionTokens = 3),
+            contextUsage = AiContextUsage(inputTokens = 10),
         )
         val embeddingRequest = AiEmbeddingRequest(
             selection = selection,

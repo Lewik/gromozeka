@@ -15,6 +15,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.service.DirectAiRuntimeProvider
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
@@ -31,6 +32,7 @@ class TargetedAiRuntimeProvider(
     private val configurationProvider: AiConfigurationProvider,
     private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
     private val remoteClients: List<AiRequestResponseExecutionClient>,
+    private val usageRecorder: AiUsageRecorder,
 ) : AiRuntimeProvider {
     override fun capabilities(selection: AiRuntimeSelection): AiRuntimeCapabilities =
         directProvider.capabilities(configurationProvider.resolveAiRuntime(selection))
@@ -40,7 +42,7 @@ class TargetedAiRuntimeProvider(
         workspaceRootPath: String?,
     ): AiRuntime {
         val runtime = configurationProvider.resolveAiRuntime(selection)
-        return when (val target = runtime.connection.executionTarget) {
+        val delegate = when (val target = runtime.connection.executionTarget) {
             AiExecutionTarget.Server -> directProvider.getRuntime(runtime, workspaceRootPath)
             is AiExecutionTarget.Worker -> {
                 require(workspaceRootPath == null) {
@@ -52,6 +54,27 @@ class TargetedAiRuntimeProvider(
                     capabilities = directProvider.capabilities(runtime),
                 )
             }
+        }
+        return UsageRecordingAiRuntime(delegate, runtime)
+    }
+
+    private inner class UsageRecordingAiRuntime(
+        private val delegate: AiRuntime,
+        private val runtime: com.gromozeka.domain.service.ResolvedAiRuntime,
+    ) : AiRuntime {
+        override val capabilities: AiRuntimeCapabilities
+            get() = delegate.capabilities
+
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse =
+            delegate.call(request).also { response -> usageRecorder.record(runtime, request, response) }
+
+        override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {
+            var finalResponse: AiRuntimeResponse? = null
+            delegate.stream(request).collect { response ->
+                finalResponse = response
+                emit(response)
+            }
+            finalResponse?.let { usageRecorder.record(runtime, request, it) }
         }
     }
 

@@ -7,7 +7,6 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
 import com.gromozeka.domain.model.RuntimeEnvironmentExecutor
-import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
@@ -22,7 +21,6 @@ import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
-import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.model.ai.requireSupportsInputs
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentPromptAssemblyService
@@ -44,7 +42,6 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeExecutorIdentity
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
-import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
@@ -92,7 +89,6 @@ class ConversationEngineService(
     private val toolApprovalService: ToolApprovalService,
     private val toolExecutionTaskService: ConversationToolExecutionTaskService,
     private val conversationService: ConversationDomainService,
-    private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryToolApplicationService: MemoryToolApplicationService,
     private val backgroundActivityCompletionApplicationService: BackgroundActivityCompletionApplicationService,
@@ -264,7 +260,8 @@ class ConversationEngineService(
                     task.actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
                     put("aiProvider", context.provider.name)
                     put("modelName", context.modelName)
-                }
+                },
+                usagePurpose = "CONVERSATION",
             )
         )
 
@@ -371,8 +368,6 @@ class ConversationEngineService(
                 )
             }
         }
-        saveTokenUsage(conversation, context, assistantMessages.lastOrNull(), runtimeResponse.usage)
-
         if (allToolCalls.isNotEmpty()) {
             when (
                 val routing = toolRoutingService.route(
@@ -1106,54 +1101,6 @@ class ConversationEngineService(
                 "systemPrompts=${memorySystemPrompts.size} rememberTriggered=$automaticMemoryRememberEnabled recallQueued=$automaticMemoryRecallEnabled"
         }
         return emittedMessages
-    }
-
-    private suspend fun saveTokenUsage(
-        conversation: Conversation,
-        context: ConversationRuntimeStepContext,
-        lastAssistantMessage: Conversation.Message?,
-        usage: AiUsage?,
-    ) {
-        if (lastAssistantMessage == null || usage == null) {
-            return
-        }
-        runCatching {
-            val totalInputTokens = usage.totalInputTokens
-            val totalOutputTokens = usage.totalOutputTokens
-            log.info {
-                "Tokens: prompt=${usage.promptTokens} (new), cache_creation=${usage.cacheCreationTokens}, cache_read=${usage.cacheReadTokens}, " +
-                    "total_input=$totalInputTokens, completion=${usage.completionTokens}, thinking=${usage.thinkingTokens}, " +
-                    "total_output=$totalOutputTokens, total=${totalInputTokens + totalOutputTokens}"
-            }
-            if (usage.thinkingTokens > 0) {
-                log.info { "Extended thinking was used: ${usage.thinkingTokens} thinking tokens generated" }
-            }
-            val statisticsId = TokenUsageStatistics.Id("runtime:${lastAssistantMessage.id.value}:usage")
-            if (tokenUsageStatisticsRepository.getRecentCalls(conversation.currentThread, limit = 100).any { it.id == statisticsId }) {
-                log.info {
-                    "Runtime token usage side effect already applied: " +
-                        "thread=${conversation.currentThread.value} message=${lastAssistantMessage.id.value}"
-                }
-                return@runCatching
-            }
-            tokenUsageStatisticsRepository.save(
-                TokenUsageStatistics(
-                    id = statisticsId,
-                    threadId = conversation.currentThread,
-                    lastMessageId = lastAssistantMessage.id,
-                    timestamp = Clock.System.now(),
-                    promptTokens = usage.promptTokens,
-                    completionTokens = usage.completionTokens,
-                    cacheCreationTokens = usage.cacheCreationTokens,
-                    cacheReadTokens = usage.cacheReadTokens,
-                    thinkingTokens = usage.thinkingTokens,
-                    provider = context.provider.name,
-                    modelId = context.modelName,
-                )
-            )
-        }.onFailure { error ->
-            log.error(error) { "Failed to save token usage statistics" }
-        }
     }
 
     private suspend fun pendingMemoryRecallTaskIfNeeded(

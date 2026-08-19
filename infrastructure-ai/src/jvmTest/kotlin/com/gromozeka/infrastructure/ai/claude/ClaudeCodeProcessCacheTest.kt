@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -202,6 +203,60 @@ class ClaudeCodeProcessCacheTest {
         )
 
         assertEquals(listOf(boundary), response.compactionBoundaries)
+    }
+
+    @Test
+    fun resultParserUsesLatestMainMessageIterationForContextUsage() {
+        val parser = ClaudeCodeResultStreamParser()
+        val response = requireNotNull(
+            parser.accept(
+                JsonObject(
+                    mapOf(
+                        "type" to JsonPrimitive("result"),
+                        "subtype" to JsonPrimitive("success"),
+                        "result" to JsonPrimitive("done"),
+                        "session_id" to JsonPrimitive("session-1"),
+                        "usage" to usage(
+                            inputTokens = 1_030_000,
+                            iterations = JsonArray(
+                                listOf(
+                                    usage(400_000, type = "message"),
+                                    usage(112_000, type = "tool"),
+                                    usage(518_000, type = "message"),
+                                )
+                            ),
+                        ),
+                        "is_error" to JsonPrimitive(false),
+                    )
+                )
+            )
+        )
+
+        assertEquals(1_030_000, response.usage?.get("input_tokens")?.jsonPrimitive?.content?.toInt())
+        assertEquals(518_000, response.contextUsage?.get("input_tokens")?.jsonPrimitive?.content?.toInt())
+    }
+
+    @Test
+    fun resultParserDoesNotTreatIterationRollupAsContextWithoutMainMessageUsage() {
+        val response = requireNotNull(
+            ClaudeCodeResultStreamParser().accept(
+                JsonObject(
+                    mapOf(
+                        "type" to JsonPrimitive("result"),
+                        "subtype" to JsonPrimitive("success"),
+                        "result" to JsonPrimitive("done"),
+                        "session_id" to JsonPrimitive("session-1"),
+                        "usage" to usage(
+                            inputTokens = 1_030_000,
+                            iterations = JsonArray(listOf(usage(1_030_000, type = "tool"))),
+                        ),
+                        "is_error" to JsonPrimitive(false),
+                    )
+                )
+            )
+        )
+
+        assertEquals(null, response.contextUsage)
     }
 
     @Test
@@ -428,6 +483,22 @@ class ClaudeCodeProcessCacheTest {
                 "type" to JsonPrimitive("text"),
                 "text" to JsonPrimitive(value),
             )
+        )
+
+    private fun usage(
+        inputTokens: Int,
+        type: String? = null,
+        iterations: JsonArray? = null,
+    ): JsonObject =
+        JsonObject(
+            buildMap {
+                type?.let { put("type", JsonPrimitive(it)) }
+                put("input_tokens", JsonPrimitive(inputTokens))
+                put("output_tokens", JsonPrimitive(0))
+                put("cache_creation_input_tokens", JsonPrimitive(0))
+                put("cache_read_input_tokens", JsonPrimitive(0))
+                iterations?.let { put("iterations", it) }
+            }
         )
 
     private class FakeProcessFactory(

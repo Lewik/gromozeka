@@ -82,6 +82,7 @@ class LlmAgentSkillMaterializationPlanAnalyzer(
                             put("promptCacheKey", "gromozeka:agent-skill-analysis")
                             actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
                         },
+                        usagePurpose = "AGENT_SKILL_ANALYSIS",
                     ),
                 )
             )

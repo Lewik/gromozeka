@@ -645,6 +645,12 @@ data class GetTokenStatsRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("get_ai_usage_report")
+data class GetAiUsageReportRequest(
+    val query: TokenUsageStatistics.ReportQuery,
+) : ClientRequest
+
+@Serializable
 @SerialName("edit_message")
 data class EditMessageRequest(
     val conversationId: Conversation.Id,
@@ -1415,6 +1421,12 @@ data class SuggestedRepliesResponse(
 @SerialName("token_stats")
 data class TokenStatsResponse(
     val tokenStats: TokenUsageStatistics.ThreadTotals?,
+) : ServerResponse
+
+@Serializable
+@SerialName("ai_usage_report")
+data class AiUsageReportResponse(
+    val report: TokenUsageStatistics.Report,
 ) : ServerResponse
 
 @Serializable

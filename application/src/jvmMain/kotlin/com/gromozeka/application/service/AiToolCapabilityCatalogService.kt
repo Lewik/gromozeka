@@ -149,6 +149,7 @@ class LlmAiToolCapabilityCatalogGenerator(
                             "conversationId" to "tool-capability-source:${source.id}:$fingerprint",
                             "promptCacheKey" to "gromozeka:tool-capability-source",
                         ),
+                        usagePurpose = "TOOL_CAPABILITY_CATALOG",
                     ),
                 )
             )

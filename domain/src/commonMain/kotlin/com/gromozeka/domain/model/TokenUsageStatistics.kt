@@ -31,8 +31,8 @@ import kotlin.jvm.JvmInline
 @Serializable
 data class TokenUsageStatistics(
     val id: Id,
-    val threadId: Conversation.Thread.Id,
-    val lastMessageId: Conversation.Message.Id,
+    val threadId: Conversation.Thread.Id? = null,
+    val lastMessageId: Conversation.Message.Id? = null,
     val timestamp: Instant,
     val promptTokens: Int,
     val completionTokens: Int,
@@ -40,7 +40,18 @@ data class TokenUsageStatistics(
     val cacheReadTokens: Int = 0,
     val thinkingTokens: Int = 0,
     val provider: String,
-    val modelId: String
+    val modelId: String,
+    val userId: User.Id? = null,
+    val projectId: Project.Id? = null,
+    val agentDefinitionId: AgentDefinition.Id? = null,
+    val conversationId: Conversation.Id? = null,
+    val runtimePurpose: String = "UNSPECIFIED",
+    val executionTarget: String = "SERVER",
+    val connectionKind: String = provider,
+    val connectionId: String = "unknown",
+    val modelConfigurationId: String = modelId,
+    val contextInputTokens: Int? = null,
+    val price: PriceSnapshot? = null,
 ) {
     /**
      * Unique statistics record identifier (UUIDv7).
@@ -49,6 +60,17 @@ data class TokenUsageStatistics(
     @JvmInline
     value class Id(val value: String)
 
+    @Serializable
+    data class PriceSnapshot(
+        val catalogVersion: String,
+        val effectiveAt: Instant,
+        val inputNanoUsdPerMillion: Long,
+        val cacheCreationNanoUsdPerMillion: Long,
+        val cacheReadNanoUsdPerMillion: Long,
+        val outputNanoUsdPerMillion: Long,
+        val estimatedCostNanoUsd: Long,
+    )
+
     val totalInputTokens: Int
         get() = promptTokens + cacheCreationTokens + cacheReadTokens
 
@@ -56,10 +78,10 @@ data class TokenUsageStatistics(
         get() = completionTokens + thinkingTokens
 
     /**
-     * Total tokens consumed (prompt + completion, excluding cache operations).
+     * Total tokens consumed by the provider call.
      */
     val totalTokens: Int
-        get() = promptTokens + completionTokens
+        get() = totalInputTokens + totalOutputTokens
 
     /**
      * Aggregated token statistics for entire thread.
@@ -88,14 +110,74 @@ data class TokenUsageStatistics(
         val lastCallTokens: Int?,
         val recentCalls: List<TokenUsageStatistics>,
         val currentContextSize: Int? = null,
+        val reportedContextSize: Int? = null,
+        val contextStatus: ContextStatus = ContextStatus.UNAVAILABLE,
         val contextWindowTokens: Int? = null,
         val provider: String? = null,
         val modelId: String? = null
     ) {
         /**
-         * Total tokens consumed across all turns (prompt + completion).
+         * Total tokens consumed across all turns.
          */
         val totalTokens: Int
-            get() = totalPromptTokens + totalCompletionTokens
+            get() = totalPromptTokens + totalCompletionTokens +
+                totalCacheCreationTokens + totalCacheReadTokens + totalThinkingTokens
     }
+
+    @Serializable
+    enum class ContextStatus {
+        AVAILABLE,
+        UNAVAILABLE,
+        OUT_OF_RANGE,
+    }
+
+    @Serializable
+    data class ReportQuery(
+        val from: Instant? = null,
+        val to: Instant? = null,
+        val provider: String? = null,
+        val modelId: String? = null,
+        val projectId: Project.Id? = null,
+        val agentDefinitionId: AgentDefinition.Id? = null,
+        val conversationId: Conversation.Id? = null,
+        val runtimePurpose: String? = null,
+        val recentCallLimit: Int = 50,
+    )
+
+    @Serializable
+    data class Totals(
+        val callCount: Int = 0,
+        val promptTokens: Long = 0,
+        val completionTokens: Long = 0,
+        val cacheCreationTokens: Long = 0,
+        val cacheReadTokens: Long = 0,
+        val thinkingTokens: Long = 0,
+        val estimatedCostNanoUsd: Long = 0,
+        val pricedCallCount: Int = 0,
+        val unpricedCallCount: Int = 0,
+    ) {
+        val totalInputTokens: Long
+            get() = promptTokens + cacheCreationTokens + cacheReadTokens
+
+        val totalOutputTokens: Long
+            get() = completionTokens + thinkingTokens
+    }
+
+    @Serializable
+    data class Breakdown(
+        val key: String,
+        val totals: Totals,
+    )
+
+    @Serializable
+    data class Report(
+        val query: ReportQuery,
+        val totals: Totals,
+        val byProviderAndModel: List<Breakdown>,
+        val byProject: List<Breakdown>,
+        val byAgent: List<Breakdown>,
+        val byConversation: List<Breakdown>,
+        val byRuntimePurpose: List<Breakdown>,
+        val recentCalls: List<TokenUsageStatistics>,
+    )
 }

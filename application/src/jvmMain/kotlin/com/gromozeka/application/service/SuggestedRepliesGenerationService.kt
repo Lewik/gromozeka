@@ -1,7 +1,6 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -9,10 +8,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiToolChoice
-import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntimeProvider
-import klog.KLoggers
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
 
@@ -20,10 +17,7 @@ import org.springframework.stereotype.Service
 class SuggestedRepliesGenerationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
-    private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
 ) {
-    private val log = KLoggers.logger(this)
-
     fun requireConfiguredRuntimeSelection(): AiRuntimeSelection =
         aiConfigurationProvider.requireAvailableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.SUGGESTED_REPLIES)
 
@@ -35,7 +29,6 @@ class SuggestedRepliesGenerationService(
         actorUserId: User.Id?,
         usageId: String,
     ): List<String> {
-        val resolvedRuntime = aiConfigurationProvider.resolveAiRuntime(runtimeSelection)
         val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null)
         val requestMessage = Conversation.Message(
             id = Conversation.Message.Id("$usageId:request"),
@@ -58,9 +51,14 @@ class SuggestedRepliesGenerationService(
                     assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
                     toolContext = buildMap {
                         put("conversationId", conversation.id.value)
+                        put("threadId", conversation.currentThread.value)
+                        put("projectId", conversation.projectId.value)
+                        put("agentDefinitionId", conversation.agentDefinitionId.value)
+                        put("targetMessageId", sourceMessage.id.value)
                         put("suggestedRepliesSourceMessageId", sourceMessage.id.value)
                         actorUserId?.let { put("userId", it.value) }
                     },
+                    usagePurpose = "SUGGESTED_REPLIES",
                 ),
             )
         )
@@ -71,27 +69,6 @@ class SuggestedRepliesGenerationService(
             .sanitizeSuggestedReplies()
         require(suggestions.isNotEmpty()) { "Suggested replies model returned no valid replies" }
 
-        response.usage?.let { usage ->
-            runCatching {
-                tokenUsageStatisticsRepository.save(
-                    TokenUsageStatistics(
-                        id = TokenUsageStatistics.Id(usageId),
-                        threadId = conversation.currentThread,
-                        lastMessageId = sourceMessage.id,
-                        timestamp = Clock.System.now(),
-                        promptTokens = usage.promptTokens,
-                        completionTokens = usage.completionTokens,
-                        cacheCreationTokens = usage.cacheCreationTokens,
-                        cacheReadTokens = usage.cacheReadTokens,
-                        thinkingTokens = usage.thinkingTokens,
-                        provider = resolvedRuntime.connection.kind.provider.name,
-                        modelId = resolvedRuntime.modelConfiguration.providerModelId,
-                    )
-                )
-            }.onFailure { error ->
-                log.error(error) { "Failed to save suggested replies token usage" }
-            }
-        }
         return suggestions
     }
 

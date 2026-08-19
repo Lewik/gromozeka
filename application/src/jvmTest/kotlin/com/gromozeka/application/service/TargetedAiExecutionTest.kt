@@ -4,9 +4,12 @@ import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -18,6 +21,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaRequest
 import com.gromozeka.domain.model.ai.AiSubscriptionQuotaSnapshot
+import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.AiEmbeddingResponse
@@ -39,6 +43,7 @@ import com.gromozeka.domain.service.DirectAiSpeechToTextProvider
 import com.gromozeka.domain.service.DirectAiSubscriptionQuotaProvider
 import com.gromozeka.domain.service.DirectAiTextToSpeechProvider
 import com.gromozeka.domain.service.ResolvedAiRuntime
+import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
@@ -127,6 +132,7 @@ class TargetedAiExecutionTest {
             ),
             workerTargetResolver = RecordingWorkerTargetResolver(workerIdentity),
             remoteClients = emptyList(),
+            usageRecorder = usageRecorder,
         )
 
         val error = assertFailsWith<IllegalStateException> {
@@ -135,6 +141,37 @@ class TargetedAiExecutionTest {
 
         assertTrue(error.message.orEmpty().contains("Worker Gateway transport"))
         assertTrue(directProvider.runtimeRequests.isEmpty())
+    }
+
+    @Test
+    fun `Server and Worker calls are recorded exactly once with their execution target`() = runBlocking {
+        val usage = AiUsage(promptTokens = 10, completionTokens = 2, cacheReadTokens = 4)
+        val response = AiRuntimeResponse(
+            messages = emptyList(),
+            finishReason = "done",
+            usage = usage,
+            contextUsage = AiContextUsage(14),
+        )
+        val repository = RecordingUsageRepository()
+        val recorder = AiUsageRecorder(repository)
+
+        runtimeProvider(
+            target = AiExecutionTarget.Server,
+            directProvider = RecordingDirectRuntimeProvider(response),
+            usageRecorder = recorder,
+        ).getRuntime(selection, null).call(request)
+        runtimeProvider(
+            target = AiExecutionTarget.Worker(workerIdentity.workerId.value),
+            remoteClient = RecordingRemoteClient(response),
+            usageRecorder = recorder,
+        ).getRuntime(selection, null).call(request)
+
+        assertEquals(2, repository.saved.size)
+        assertEquals(
+            listOf("SERVER", "WORKER:${workerIdentity.workerId.value}"),
+            repository.saved.map { it.executionTarget },
+        )
+        assertTrue(repository.saved.all { it.contextInputTokens == 14 })
     }
 
     @Test
@@ -274,11 +311,30 @@ class TargetedAiExecutionTest {
         directProvider: RecordingDirectRuntimeProvider = RecordingDirectRuntimeProvider(),
         remoteClient: RecordingRemoteClient = RecordingRemoteClient(),
         resolver: ConversationRuntimeWorkerTargetResolver = RecordingWorkerTargetResolver(workerIdentity),
+        usageRecorder: AiUsageRecorder = this.usageRecorder,
     ) = TargetedAiRuntimeProvider(
         directProvider = directProvider,
         configurationProvider = FixedAiConfigurationProvider(target),
         workerTargetResolver = resolver,
         remoteClients = listOf(remoteClient),
+        usageRecorder = usageRecorder,
+    )
+
+    private val usageRecorder = AiUsageRecorder(
+        object : TokenUsageStatisticsRepository {
+            override suspend fun save(stats: TokenUsageStatistics) = Unit
+
+            override suspend fun getThreadTotals(threadId: Conversation.Thread.Id) =
+                error("Not used")
+
+            override suspend fun getRecentCalls(
+                threadId: Conversation.Thread.Id,
+                limit: Int,
+            ): List<TokenUsageStatistics> = error("Not used")
+
+            override suspend fun getReport(query: TokenUsageStatistics.ReportQuery) =
+                error("Not used")
+        }
     )
 
     private inner class FixedAiConfigurationProvider(
@@ -304,8 +360,9 @@ class TargetedAiExecutionTest {
         }
     }
 
-    private class RecordingDirectRuntimeProvider : DirectAiRuntimeProvider {
-        val response = AiRuntimeResponse(messages = emptyList(), finishReason = "local")
+    private class RecordingDirectRuntimeProvider(
+        val response: AiRuntimeResponse = AiRuntimeResponse(messages = emptyList(), finishReason = "local"),
+    ) : DirectAiRuntimeProvider {
         val runtimeRequests = mutableListOf<Pair<ResolvedAiRuntime, String?>>()
         private val runtimeCapabilities = AiRuntimeCapabilities(supportsAutoCompaction = true)
 
@@ -395,8 +452,9 @@ class TargetedAiExecutionTest {
         }
     }
 
-    private class RecordingRemoteClient : AiRequestResponseExecutionClient {
-        val callResponse = AiRuntimeResponse(messages = emptyList(), finishReason = "remote")
+    private class RecordingRemoteClient(
+        val callResponse: AiRuntimeResponse = AiRuntimeResponse(messages = emptyList(), finishReason = "remote"),
+    ) : AiRequestResponseExecutionClient {
         val embeddingResponse = AiEmbeddingResponse(
             modelId = "remote-embedding-model",
             dimensions = 2,
@@ -447,6 +505,23 @@ class TargetedAiExecutionTest {
             quotaRequest = request
             return quotaSnapshot(request.connection.id)
         }
+    }
+
+    private class RecordingUsageRepository : TokenUsageStatisticsRepository {
+        val saved = mutableListOf<TokenUsageStatistics>()
+
+        override suspend fun save(stats: TokenUsageStatistics) {
+            saved += stats
+        }
+
+        override suspend fun getThreadTotals(threadId: Conversation.Thread.Id) = error("Not used")
+
+        override suspend fun getRecentCalls(
+            threadId: Conversation.Thread.Id,
+            limit: Int,
+        ): List<TokenUsageStatistics> = error("Not used")
+
+        override suspend fun getReport(query: TokenUsageStatistics.ReportQuery) = error("Not used")
     }
 
     private fun subscriptionQuotaRequest(target: AiExecutionTarget) = AiSubscriptionQuotaRequest(

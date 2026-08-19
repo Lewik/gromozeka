@@ -54,6 +54,7 @@ import com.gromozeka.presentation.services.LocalWorkerPermissionState
 import com.gromozeka.presentation.services.LocalWorkerStatus
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.AiConfigurationService
+import com.gromozeka.domain.service.AiUsageReportService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
@@ -88,6 +89,7 @@ private enum class SettingsSection(val title: String) {
     Interface("Interface"),
     Voice("Voice"),
     AiRuntime("AI"),
+    Usage("Usage"),
     Behavior("Behavior"),
     Tools("Tools"),
     Security("Security"),
@@ -108,6 +110,7 @@ fun SettingsPanel(
     aiThemeGenerator: AIThemeGenerator,
     settingsService: SettingsService,
     aiConfigurationService: AiConfigurationService,
+    aiUsageReportService: AiUsageReportService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
     workerCatalogService: WorkerCatalogService,
     mcpServerService: RemoteMcpServerService,
@@ -156,6 +159,9 @@ fun SettingsPanel(
     var workers by remember { mutableStateOf(emptyList<WorkerCatalogEntry>()) }
     var selectedSection by remember(contentMode) {
         mutableStateOf(SettingsSection.AiRuntime)
+    }
+    val availableSections = SettingsSection.entries.filter {
+        it != SettingsSection.Usage || canAdministerUsers
     }
 
     LaunchedEffect(
@@ -248,10 +254,10 @@ fun SettingsPanel(
 
                 if (contentMode == SettingsPanelContentMode.Full) {
                     PrimaryScrollableTabRow(
-                        selectedTabIndex = SettingsSection.entries.indexOf(selectedSection),
+                        selectedTabIndex = availableSections.indexOf(selectedSection),
                         edgePadding = 0.dp,
                     ) {
-                        SettingsSection.entries.forEach { section ->
+                        availableSections.forEach { section ->
                             Tab(
                                 selected = selectedSection == section,
                                 onClick = { selectedSection = section },
@@ -844,6 +850,14 @@ fun SettingsPanel(
                             canManageCatalog = canAdministerUsers,
                             coroutineScope = coroutineScope,
                         )
+                    }
+
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Usage &&
+                        canAdministerUsers
+                    ) {
+                        AiUsageSettings(aiUsageReportService)
                     }
 
                     if (

@@ -80,6 +80,7 @@ class OpenAiSubscriptionResponseMapperTest {
         assertEquals(300, response.usage?.cacheCreationTokens)
         assertEquals(500, response.usage?.cacheReadTokens)
         assertEquals(2_300, response.usage?.totalTokens)
+        assertEquals(1_500, response.contextUsage?.inputTokens)
     }
 
     @Test

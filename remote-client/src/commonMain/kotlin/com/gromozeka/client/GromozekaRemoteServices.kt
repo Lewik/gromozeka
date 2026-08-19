@@ -4,6 +4,7 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AgentSkillDomainService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.AiSubscriptionQuotaService
+import com.gromozeka.domain.service.AiUsageReportService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationSearchService
@@ -89,6 +90,7 @@ class GromozekaRemoteServices(
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)
     val conversationSearchService: ConversationSearchService = RemoteConversationSearchService(client)
     val conversationTokenStatsService: ConversationTokenStatsService = RemoteConversationTokenStatsService(client)
+    val aiUsageReportService: AiUsageReportService = RemoteAiUsageReportService(client)
     val messageSquashGenerationService: MessageSquashGenerationService = RemoteMessageSquashGenerationService(client)
     val quickTextActionService: QuickTextActionService = RemoteQuickTextActionService(client)
     val audioTranscriptionService: RemoteAudioTranscriptionService = RemoteAudioTranscriptionService(client)

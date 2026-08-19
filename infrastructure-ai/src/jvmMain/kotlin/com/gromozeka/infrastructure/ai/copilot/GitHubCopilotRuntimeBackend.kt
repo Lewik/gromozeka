@@ -18,6 +18,7 @@ import com.github.copilot.rpc.ToolResultObject
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
@@ -394,6 +395,7 @@ internal class GitHubCopilotRuntime(
         return AiRuntimeResponse(
             messages = listOf(assistantMessage),
             usage = usageEvents.toUsage(),
+            contextUsage = usageEvents.toContextUsage(),
             finishReason = usageEvents.mapNotNull { it.finishReason() }.lastOrNull(),
             providerMetadata = metadata,
         )
@@ -457,6 +459,13 @@ internal class GitHubCopilotRuntime(
         )
     }
 
+    private fun List<AssistantUsageEvent.AssistantUsageEventData>.toContextUsage(): AiContextUsage? {
+        val event = lastOrNull { usage ->
+            usage.initiator() == null && usage.interactionType() !in NON_PRIMARY_INTERACTION_TYPES
+        } ?: return null
+        return AiContextUsage((event.inputTokens() ?: 0L).toIntTokens())
+    }
+
     private fun Long.toIntTokens(): Int = coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
 
     private suspend fun cleanupSession(
@@ -479,6 +488,12 @@ internal class GitHubCopilotRuntime(
 
     private companion object {
         const val FINAL_ANSWER_TOOL = "gromozeka_final_answer"
+        val NON_PRIMARY_INTERACTION_TYPES = setOf(
+            "conversation-subagent",
+            "conversation-sampling",
+            "conversation-background",
+            "conversation-compaction",
+        )
         val JSON = Json { isLenient = true; ignoreUnknownKeys = true }
         val MAP_TYPE = object : TypeReference<Map<String, Any>>() {}
     }

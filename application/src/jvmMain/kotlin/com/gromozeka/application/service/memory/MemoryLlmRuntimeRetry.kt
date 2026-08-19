@@ -42,6 +42,9 @@ internal suspend fun AiRuntime.callMemoryStageWithRetry(
     maxAttempts: Int = memoryLlmMaxAttempts(),
     timeoutMs: Long = memoryLlmTimeoutMs(),
 ): AiRuntimeResponse {
+    val attributedRequest = request.copy(
+        options = request.options.copy(usagePurpose = "MEMORY:$stageName"),
+    )
     var attempt = 1
     var delayMs = 750L
 
@@ -60,7 +63,7 @@ internal suspend fun AiRuntime.callMemoryStageWithRetry(
                 "Memory LLM stage start: stage=$stageName attempt=$attempt timeoutMs=$timeoutMs $logContext"
             }
             val response = withTimeout(timeoutMs) {
-                call(request)
+                call(attributedRequest)
             }
             val elapsedMs = attemptStartedAt.elapsedMs()
             val completedAt = Clock.System.now()

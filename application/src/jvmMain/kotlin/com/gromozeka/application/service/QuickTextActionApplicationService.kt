@@ -73,6 +73,7 @@ class QuickTextActionApplicationService(
                     toolContext = mapOf(
                         "quickTextActionId" to action.id.value,
                     ),
+                    usagePurpose = "QUICK_TEXT_ACTION",
                 ),
             )
         )

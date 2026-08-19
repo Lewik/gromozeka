@@ -497,6 +497,15 @@ private fun RuntimeUsageCard(
 @Composable
 private fun RuntimeContextUsage(tokenStats: TokenUsageStatistics.ThreadTotals?) {
     val translation = LocalTranslation.current.runtime
+    if (tokenStats?.contextStatus == TokenUsageStatistics.ContextStatus.OUT_OF_RANGE) {
+        Text(
+            text = "${translation.contextLabel} unavailable · provider reported " +
+                "${tokenStats.reportedContextSize?.formatWithCommas() ?: "unknown"} tokens",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+        return
+    }
     val currentContext = tokenStats?.currentContextSize ?: return
     val contextWindow = tokenStats.contextWindowTokens
     if (contextWindow == null) {

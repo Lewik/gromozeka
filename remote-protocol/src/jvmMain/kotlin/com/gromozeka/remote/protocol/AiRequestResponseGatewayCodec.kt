@@ -253,6 +253,7 @@ private data class AiRuntimeOptionsWire(
     val responseFormat: ResponseFormatWire,
     val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     val toolContext: JsonObject,
+    val usagePurpose: String? = null,
 )
 
 @Serializable
@@ -288,6 +289,7 @@ private data class ResponseFormatWire(
 private data class AiRuntimeResponseWire(
     val messages: List<AiAssistantMessageWire>,
     val usage: AiUsage?,
+    val contextUsage: com.gromozeka.domain.model.ai.AiContextUsage? = null,
     val finishReason: String?,
     val providerMetadata: JsonObject,
 )
@@ -370,6 +372,7 @@ private fun AiRuntimeOptions.toWire(): AiRuntimeOptionsWire =
         responseFormat = responseFormat.toWire(),
         assistantResponseFormat = assistantResponseFormat,
         toolContext = toolContext.toJsonObject(),
+        usagePurpose = usagePurpose,
     )
 
 private fun AiRuntimeOptionsWire.toRuntime(): AiRuntimeOptions =
@@ -381,6 +384,7 @@ private fun AiRuntimeOptionsWire.toRuntime(): AiRuntimeOptions =
         responseFormat = responseFormat.toRuntime(),
         assistantResponseFormat = assistantResponseFormat,
         toolContext = toolContext.mapValues { (_, value) -> value.toRuntimeValue() },
+        usagePurpose = usagePurpose,
     )
 
 private fun AiToolChoice.toWire(): ToolChoiceWire =
@@ -428,6 +432,7 @@ private fun AiRuntimeResponse.toWire(): AiRuntimeResponseWire =
     AiRuntimeResponseWire(
         messages = messages.map { AiAssistantMessageWire(it.content, it.metadata.toJsonObject()) },
         usage = usage,
+        contextUsage = contextUsage,
         finishReason = finishReason,
         providerMetadata = providerMetadata.toJsonObject(),
     )
@@ -441,6 +446,7 @@ private fun AiRuntimeResponseWire.toRuntime(): AiRuntimeResponse =
             )
         },
         usage = usage,
+        contextUsage = contextUsage,
         finishReason = finishReason,
         providerMetadata = providerMetadata.mapValues { (_, value) -> value.toRuntimeValue() },
     )

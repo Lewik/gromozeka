@@ -31,6 +31,20 @@ class ConversationTokenStatsApplicationService(
             null
         }
 
-        return copy(contextWindowTokens = contextWindow)
+        val reportedContextSize = this.reportedContextSize
+        val contextStatus = when {
+            reportedContextSize == null -> TokenUsageStatistics.ContextStatus.UNAVAILABLE
+            contextWindow != null && reportedContextSize > contextWindow ->
+                TokenUsageStatistics.ContextStatus.OUT_OF_RANGE
+            else -> TokenUsageStatistics.ContextStatus.AVAILABLE
+        }
+        return copy(
+            currentContextSize = reportedContextSize.takeIf {
+                contextStatus == TokenUsageStatistics.ContextStatus.AVAILABLE
+            },
+            reportedContextSize = reportedContextSize,
+            contextStatus = contextStatus,
+            contextWindowTokens = contextWindow,
+        )
     }
 }

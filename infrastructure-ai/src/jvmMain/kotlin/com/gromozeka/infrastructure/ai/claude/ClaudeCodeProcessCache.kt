@@ -728,6 +728,7 @@ private class StreamingClaudeCodeCliProcess(
 
 internal class ClaudeCodeResultStreamParser {
     private var latestMessageId: String? = null
+    private var latestAssistantUsage: JsonObject? = null
     private val latestThinking = linkedMapOf<String, ClaudeCodeThinkingBlock>()
     private val compactionBoundaries = mutableListOf<JsonObject>()
 
@@ -752,6 +753,7 @@ internal class ClaudeCodeResultStreamParser {
         if (parentToolUseId != null && parentToolUseId !is JsonNull) return
 
         val message = root["message"] as? JsonObject ?: return
+        latestAssistantUsage = message["usage"] as? JsonObject ?: latestAssistantUsage
         val content = message["content"] as? JsonArray ?: return
         val messageId = message["id"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank)
         if (messageId != null && messageId != latestMessageId) {
@@ -789,17 +791,28 @@ internal class ClaudeCodeResultStreamParser {
             error("Claude Code CLI returned an error: $message")
         }
 
+        val usage = root["usage"] as? JsonObject
         return ClaudeCodeCliResponse(
             result = root["result"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             structuredOutput = root["structured_output"],
             sessionId = root["session_id"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank),
-            usage = root["usage"] as? JsonObject,
+            usage = usage,
+            contextUsage = usage.latestMessageIteration()
+                ?: latestAssistantUsage
+                ?: usage?.takeUnless { "iterations" in it },
             finishReason = root["subtype"]?.jsonPrimitive?.contentOrNull,
             raw = root,
             thinking = latestThinking.values.toList(),
             compactionBoundaries = compactionBoundaries.toList(),
         )
     }
+
+    private fun JsonObject?.latestMessageIteration(): JsonObject? =
+        (this?.get("iterations") as? JsonArray)
+            ?.mapNotNull { it as? JsonObject }
+            ?.lastOrNull { iteration ->
+                iteration["type"]?.jsonPrimitive?.contentOrNull == "message"
+            }
 }
 
 internal class ClaudeCodeNativeToolStreamParser(

@@ -109,6 +109,7 @@ class GromozekaRemoteServer(
     private val declarativeStateSyncService: DeclarativeStateSyncService,
     private val conversationRuntimeIngressService: ConversationRuntimeIngressService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
+    private val aiUsageReportService: com.gromozeka.domain.service.AiUsageReportService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
     private val quickTextActionService: QuickTextActionService,
     private val conversationSearchService: ConversationSearchApplicationService,
@@ -689,6 +690,10 @@ class GromozekaRemoteServer(
                     ),
                 )
                 is GetTokenStatsRequest -> TokenStatsResponse(conversationTokenStatsService.getTokenStats(request.conversationId))
+                is GetAiUsageReportRequest -> {
+                    require(user.role == User.Role.OWNER) { "Only Runtime Owners can inspect installation AI usage" }
+                    AiUsageReportResponse(aiUsageReportService.getReport(request.query))
+                }
                 is EditMessageRequest -> ConversationResponse(
                     conversationDomainService.editMessage(request.conversationId, request.messageId, request.newContent)
                 )

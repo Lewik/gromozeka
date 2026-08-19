@@ -10,6 +10,9 @@ import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationSearchService
 import com.gromozeka.domain.service.ConversationTokenStatsService
+import com.gromozeka.domain.service.AiUsageReportService
+import com.gromozeka.remote.protocol.AiUsageReportResponse
+import com.gromozeka.remote.protocol.GetAiUsageReportRequest
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.QuickTextActionService
 import com.gromozeka.remote.protocol.ConversationSearchPageResponse
@@ -39,6 +42,15 @@ internal class RemoteConversationTokenStatsService(
 ) : ConversationTokenStatsService {
     override suspend fun getTokenStats(conversationId: Conversation.Id): TokenUsageStatistics.ThreadTotals? =
         client.requestTyped<GetTokenStatsRequest, TokenStatsResponse>(GetTokenStatsRequest(conversationId)).tokenStats
+}
+
+internal class RemoteAiUsageReportService(
+    private val client: GromozekaWsClient,
+) : AiUsageReportService {
+    override suspend fun getReport(query: TokenUsageStatistics.ReportQuery): TokenUsageStatistics.Report =
+        client.requestTyped<GetAiUsageReportRequest, AiUsageReportResponse>(
+            GetAiUsageReportRequest(query)
+        ).report
 }
 
 internal class RemoteMessageSquashGenerationService(

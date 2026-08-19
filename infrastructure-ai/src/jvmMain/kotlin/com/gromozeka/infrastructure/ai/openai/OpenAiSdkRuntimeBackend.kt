@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningEffort
@@ -153,10 +154,12 @@ private class OpenAiSdkMessageMapper(
         completion: ChatCompletion,
         assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): AiRuntimeResponse {
+        val usage = completion.usage().getOrNull()?.toAiUsage()
         val choice = completion.choices().firstOrNull()
             ?: return AiRuntimeResponse(
                 messages = emptyList(),
-                usage = completion.usage().getOrNull()?.toAiUsage(),
+                usage = usage,
+                contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
                 providerMetadata = mapOf("provider" to connectionKind.name, "model" to completion.model()),
             )
         val message = choice.message()
@@ -187,7 +190,8 @@ private class OpenAiSdkMessageMapper(
 
         return AiRuntimeResponse(
             messages = assistantMessages,
-            usage = completion.usage().getOrNull()?.toAiUsage(),
+            usage = usage,
+            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
             finishReason = choice.finishReason().asString(),
             providerMetadata = mapOf(
                 "provider" to connectionKind.name,

@@ -26,6 +26,7 @@ data class AiRuntimeOptions(
     val responseFormat: AiResponseFormat = AiResponseFormat.Text,
     val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
     val toolContext: Map<String, Any?> = emptyMap(),
+    val usagePurpose: String? = null,
 ) {
     init {
         require(maxOutputTokens == null || maxOutputTokens > 0) { "AI runtime max output tokens must be positive" }
@@ -61,6 +62,7 @@ data class AiRuntimeCapabilities(
 data class AiRuntimeResponse(
     val messages: List<AiAssistantMessage>,
     val usage: AiUsage? = null,
+    val contextUsage: AiContextUsage? = null,
     val finishReason: String? = null,
     val providerMetadata: Map<String, Any?> = emptyMap(),
 ) {
@@ -74,6 +76,15 @@ data class AiAssistantMessage(
     val content: List<Conversation.Message.ContentItem>,
     val metadata: Map<String, Any?> = emptyMap()
 )
+
+@Serializable
+data class AiContextUsage(
+    val inputTokens: Int,
+) {
+    init {
+        require(inputTokens >= 0) { "AI context input tokens must not be negative" }
+    }
+}
 
 @Serializable
 data class AiUsage(

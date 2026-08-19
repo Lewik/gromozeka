@@ -116,6 +116,9 @@ class MessageSquashService(
 
         log.info { "Starting AI squash: type=$squashType, selectedCount=${selectedIds.size}" }
 
+        val conversation = requireNotNull(conversationService.findById(conversationId)) {
+            "Conversation not found: ${conversationId.value}"
+        }
         val allMessages = conversationService.loadCurrentMessages(conversationId)
         log.debug { "Loaded ${allMessages.size} messages from conversation" }
         require(allMessages.count { it.id in selectedIds } == selectedIds.size) {
@@ -155,7 +158,13 @@ class MessageSquashService(
                 systemPrompts = emptyList(),
                 messages = markedMessages + commandMessage,
                 options = com.gromozeka.domain.model.ai.AiRuntimeOptions(
-                    toolContext = mapOf("conversationId" to conversationId.value)
+                    toolContext = mapOf(
+                        "conversationId" to conversationId.value,
+                        "threadId" to conversation.currentThread.value,
+                        "projectId" to conversation.projectId.value,
+                        "agentDefinitionId" to conversation.agentDefinitionId.value,
+                    ),
+                    usagePurpose = "MESSAGE_SQUASH",
                 )
             )
         )

@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiContextUsage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
 import com.gromozeka.domain.model.ai.AiReasoningEffort
@@ -187,9 +188,11 @@ internal class OpenAiResponsesMessageMapper(
             .filter { it.isWebSearchCall() }
             .flatMap { it.asWebSearchCall().sourceUrls() }
 
+        val usage = response.usage().getOrNull()?.toAiUsage()
         return AiRuntimeResponse(
             messages = appendWebSources(messages, sourceUrls),
-            usage = response.usage().getOrNull()?.toAiUsage(),
+            usage = usage,
+            contextUsage = usage?.let { AiContextUsage(it.totalInputTokens) },
             finishReason = response.status().getOrNull()?.asString(),
             providerMetadata = mapOf(
                 "provider" to "OPENAI_API",
