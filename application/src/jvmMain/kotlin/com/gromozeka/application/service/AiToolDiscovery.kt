@@ -240,12 +240,6 @@ class AiToolRuntimeCatalogService {
         if (memoryEnabled) {
             addConfiguredToolNames(memoryPreloadedToolNames, catalog)
         }
-        if (agent.skills.isNotEmpty()) {
-            addConfiguredToolNames(
-                setOf(OPEN_AGENT_SKILL_TOOL_NAME, READ_AGENT_SKILL_RESOURCE_TOOL_NAME),
-                catalog,
-            )
-        }
         catalog.tools
             .filter { tool -> tool.metadata.loadingPolicy.shouldPreload(memoryEnabled) }
             .mapTo(this) { it.definition.name }

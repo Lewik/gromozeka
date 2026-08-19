@@ -73,25 +73,26 @@ class AgentSkillRuntimeTest {
         assertTrue(prepared.systemPrompt!!.contains("\"name\":\"release-check\""))
         assertFalse(prepared.systemPrompt.contains(skill.instructions))
         val activation = prepared.toolCatalog.tools
-            .single { it.definition.name == OPEN_AGENT_SKILL_TOOL_NAME }
+            .single { it.definition.name == ACTIVATE_AGENT_SKILL_TOOL_NAME }
         assertEquals(
-            originalCatalog.tools.single { it.definition.name == OPEN_AGENT_SKILL_TOOL_NAME }.definition,
+            originalCatalog.tools.single { it.definition.name == ACTIVATE_AGENT_SKILL_TOOL_NAME }.definition,
             activation.definition,
         )
     }
 
     @Test
-    fun `runtime hides skill tools when agent has no skills`() = runBlocking {
+    fun `runtime keeps stable skill tools when agent has no skills`() = runBlocking {
         val service = AgentSkillRuntimeCatalogService(TestAgentSkillRepository(listOf(skillPackage)))
+        val originalCatalog = toolCatalog()
         val prepared = service.prepare(
             agent = agent(emptyList()),
             projectId = projectId,
-            toolCatalog = toolCatalog(),
+            toolCatalog = originalCatalog,
         )
 
-        assertEquals(null, prepared.systemPrompt)
-        assertTrue(prepared.toolCatalog.tools.none { it.definition.name in skillToolNames })
-        assertTrue(prepared.toolCatalog.entries.keys.none { it in skillToolNames })
+        assertTrue(prepared.systemPrompt!!.contains("\"available_skills\":[]"))
+        assertTrue(prepared.systemPrompt.contains("do not activate a Skill"))
+        assertTrue(prepared.toolCatalog === originalCatalog)
     }
 
     @Test
@@ -115,7 +116,7 @@ class AgentSkillRuntimeTest {
             agentRepository = TestAgentRepository(assignedAgent),
             skillRepository = repository,
         )
-        val callback = OpenAgentSkillToolCallback(access)
+        val callback = ActivateAgentSkillToolCallback(access)
         val result = callback.call(
             """{"name":"release-check"}""",
             toolContext(assignedAgent),
@@ -125,7 +126,7 @@ class AgentSkillRuntimeTest {
         assertTrue(result.contains("\"path\":\"references/checklist.md\""))
 
         val unassignedAgent = agent(emptyList())
-        val forbidden = OpenAgentSkillToolCallback(
+        val forbidden = ActivateAgentSkillToolCallback(
             AgentSkillRuntimeAccess(
                 agentRepository = TestAgentRepository(unassignedAgent),
                 skillRepository = repository,
@@ -300,7 +301,7 @@ class AgentSkillRuntimeTest {
 
     private companion object {
         val skillToolNames = setOf(
-            OPEN_AGENT_SKILL_TOOL_NAME,
+            ACTIVATE_AGENT_SKILL_TOOL_NAME,
             READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
             MATERIALIZE_AGENT_SKILL_TOOL_NAME,
         )

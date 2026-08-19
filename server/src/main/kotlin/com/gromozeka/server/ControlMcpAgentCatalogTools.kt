@@ -272,7 +272,7 @@ internal class ControlMcpAgentCatalogTools(
         },
         controlMcpTool(
             name = "grz_skill_list",
-            description = "List compact summaries of imported Agent Skills owned by one project. Instructions and files are omitted. Pass nextCursor as cursor to continue.",
+            description = "List paginated Skill summaries for a project. Instructions and files are omitted.",
             inputSchema = ControlMcpSchemas.objectSchema(
                 properties = mapOf(
                     "projectId" to ControlMcpSchemas.string("Project id."),
@@ -308,7 +308,7 @@ internal class ControlMcpAgentCatalogTools(
         },
         controlMcpTool(
             name = "grz_skill_get",
-            description = "Read one imported Agent Skill's metadata, instructions, materialization analysis, and file manifest. File contents are omitted.",
+            description = "Read Skill metadata, instructions, materialization analysis, and file manifest without file contents.",
             inputSchema = idSchema("skillId", "Agent Skill id."),
             readOnly = true,
         ) { input ->
@@ -328,7 +328,8 @@ internal class ControlMcpAgentCatalogTools(
         },
         controlMcpTool(
             name = "grz_skill_import_inline",
-            description = "Import one complete Agent Skill package snapshot from explicit inline files. Importing the same package name replaces the entire previous package; omitted files are deleted. The complete MCP request must fit the 4 MiB transport limit.",
+            description = "Import a complete Skill package inline, replacing every file under the same name. " +
+                "Text and base64 binaries enter model context; prefer directory import for editing. Limit: 4 MiB.",
             inputSchema = ControlMcpSchemas.objectSchema(
                 properties = mapOf(
                     "projectId" to ControlMcpSchemas.string("Owning project id."),
@@ -365,8 +366,9 @@ internal class ControlMcpAgentCatalogTools(
             )
         },
         controlMcpTool(
-            name = "grz_skill_export",
-            description = "Export one canonical Agent Skill package snapshot. Package metadata is compact; SKILL.md is the authoritative copy of instructions. Files use explicit utf-8 or base64 encoding.",
+            name = "grz_skill_export_inline",
+            description = "Export a complete Skill package inline as text and base64. All files enter model context; " +
+                "prefer directory export for editing.",
             inputSchema = idSchema("skillId", "Agent Skill id."),
             readOnly = true,
         ) { input ->

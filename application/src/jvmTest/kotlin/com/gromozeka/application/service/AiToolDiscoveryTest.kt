@@ -42,8 +42,8 @@ class AiToolSearchServiceTest {
             tool("mcp__gmail__search_email", "Search email messages and threads."),
             tool("mcp__github__create_issue", "Create a GitHub issue in a repository."),
             tool("mcp__github__search_code", "Search source code hosted on GitHub."),
-            tool("open_agent_skill", "Open the instructions for an Agent Skill package."),
-            tool("read_agent_skill_resource", "Read a resource bundled with an Agent Skill."),
+            tool("grz_skill_activate", "Activate an Agent Skill package."),
+            tool("grz_skill_read_resource", "Read a resource bundled with an Agent Skill."),
             tool("grz_find_definition", "Find the definition of a code symbol."),
             tool("grz_find_references", "Find references to a code symbol."),
             tool("grz_get_diagnostics", "Get compiler diagnostics for source code."),
@@ -72,7 +72,7 @@ class AiToolSearchServiceTest {
     fun `exact tool name is ranked first`() {
         val tools = listOf(
             tool("grz_read_file", "Read file contents."),
-            tool("read_agent_skill_resource", "Read a resource file from an Agent Skill."),
+            tool("grz_skill_read_resource", "Read a resource file from an Agent Skill."),
             tool("mcp__drive__read_file", "Read a Google Drive file."),
         )
 

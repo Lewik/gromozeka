@@ -11,6 +11,12 @@ val PreloadedWorkspaceToolMetadata = LocalAgentToolMetadata.copy(
     loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
 )
 
+val PreloadedWorkerToolMetadata = AiToolMetadata(
+    requiredRuntimeCapabilities = setOf(ConversationRuntimeCapability.LOCAL_AGENT_TOOL),
+    executionScope = AiToolExecutionScope.WORKER,
+    loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
+)
+
 val CommandTaskOwnerToolMetadata = AiToolMetadata(
     requiredRuntimeCapabilities = setOf(ConversationRuntimeCapability.LOCAL_AGENT_TOOL),
     executionScope = AiToolExecutionScope.COMMAND_TASK_OWNER,

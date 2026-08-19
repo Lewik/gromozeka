@@ -6,12 +6,14 @@ import com.gromozeka.domain.model.AgentSkillFile
 import com.gromozeka.domain.model.AgentSkillPackage
 import com.gromozeka.domain.model.AgentSkillPackageSource
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AgentSkillRepository
 import com.gromozeka.domain.repository.ProjectRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertFailsWith
 import kotlin.time.Instant
 import kotlinx.coroutines.runBlocking
 
@@ -61,6 +63,58 @@ class AgentSkillApplicationServiceTest {
         assertEquals(MODEL_ID, reanalyzed.materializationPlan.analyzedByModelConfigurationId)
     }
 
+    @Test
+    fun `directory import requires the current hash when updating`() = runBlocking {
+        val service = service(
+            analyzer = AgentSkillMaterializationPlanAnalyzer {
+                _, _ -> analyzedPlan(AgentSkill.MaterializationPlan.Policy.NOT_REQUIRED)
+            },
+        )
+        val created = service.importDirectoryPackage(
+            projectId = PROJECT_ID,
+            source = skillSource(),
+            expectedContentHash = null,
+            actorUserId = USER_ID,
+        )
+        val changedSource = skillSource("Follow the updated release checklist.")
+
+        assertFailsWith<IllegalArgumentException> {
+            service.importDirectoryPackage(PROJECT_ID, changedSource, null, USER_ID)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            service.importDirectoryPackage(PROJECT_ID, changedSource, "b".repeat(64), USER_ID)
+        }
+
+        val updated = service.importDirectoryPackage(
+            PROJECT_ID,
+            changedSource,
+            created.contentHash,
+            USER_ID,
+        )
+
+        assertEquals(created.id, updated.id)
+        assertEquals("Follow the updated release checklist.", updated.instructions)
+    }
+
+    @Test
+    fun `directory import rejects an expected hash for a new skill`() = runBlocking {
+        val service = service(
+            analyzer = AgentSkillMaterializationPlanAnalyzer {
+                _, _ -> analyzedPlan(AgentSkill.MaterializationPlan.Policy.NOT_REQUIRED)
+            },
+        )
+
+        assertFailsWith<IllegalArgumentException> {
+            service.importDirectoryPackage(
+                PROJECT_ID,
+                skillSource(),
+                "a".repeat(64),
+                USER_ID,
+            )
+        }
+        Unit
+    }
+
     private fun service(
         analyzer: AgentSkillMaterializationPlanAnalyzer,
     ) = AgentSkillApplicationService(
@@ -70,7 +124,9 @@ class AgentSkillApplicationServiceTest {
         materializationPlanAnalyzer = analyzer,
     )
 
-    private fun skillSource() = AgentSkillPackageSource(
+    private fun skillSource(
+        instructions: String = "Follow the release checklist.",
+    ) = AgentSkillPackageSource(
         directoryName = "release-check",
         files = listOf(
             AgentSkillFile(
@@ -80,7 +136,7 @@ class AgentSkillApplicationServiceTest {
                     name: release-check
                     description: Verify releases.
                     ---
-                    Follow the release checklist.
+                    $instructions
                 """.trimIndent().encodeToByteArray(),
             ),
         ),
@@ -138,6 +194,7 @@ class AgentSkillApplicationServiceTest {
 
     private companion object {
         val PROJECT_ID = Project.Id("project-1")
+        val USER_ID = User.Id("user-1")
         val MODEL_ID = com.gromozeka.domain.model.ai.AiModelConfiguration.Id("analysis-model")
         val ANALYZED_AT = Instant.parse("2026-08-19T10:00:00Z")
     }

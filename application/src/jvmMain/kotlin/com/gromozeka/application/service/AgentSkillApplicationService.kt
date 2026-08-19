@@ -13,7 +13,10 @@ import com.gromozeka.domain.service.DeclarativeStateChangePublisher
 import com.gromozeka.domain.service.DeclarativeStateKey
 import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.shared.uuid.uuid7
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Clock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -26,6 +29,7 @@ class AgentSkillApplicationService(
     private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
 ) : AgentSkillDomainService {
     private val parser = AgentSkillPackageParser()
+    private val directoryImportLocks = ConcurrentHashMap<Pair<Project.Id, String>, Mutex>()
 
     override suspend fun importPackage(
         projectId: Project.Id,
@@ -36,7 +40,46 @@ class AgentSkillApplicationService(
             "Project not found: ${projectId.value}"
         }
         val parsed = parser.parse(source)
-        val existing = skillRepository.findByName(projectId, parsed.name)
+        return saveParsedPackage(projectId, parsed, actorUserId)
+    }
+
+    suspend fun importDirectoryPackage(
+        projectId: Project.Id,
+        source: AgentSkillPackageSource,
+        expectedContentHash: String?,
+        actorUserId: User.Id,
+    ): AgentSkill {
+        require(projectRepository.exists(projectId)) {
+            "Project not found: ${projectId.value}"
+        }
+        val parsed = parser.parse(source)
+        val lock = directoryImportLocks.computeIfAbsent(projectId to parsed.name) { Mutex() }
+        return lock.withLock {
+            val existing = skillRepository.findByName(projectId, parsed.name)
+            if (existing == null) {
+                require(expectedContentHash == null) {
+                    "Agent Skill '${parsed.name}' does not exist; omit expected_content_hash to create it"
+                }
+            } else {
+                require(expectedContentHash != null) {
+                    "Agent Skill '${parsed.name}' already exists; expected_content_hash is required to update it"
+                }
+                require(existing.contentHash == expectedContentHash) {
+                    "Agent Skill '${parsed.name}' changed: expected $expectedContentHash but current package is " +
+                        existing.contentHash
+                }
+            }
+            saveParsedPackage(projectId, parsed, actorUserId, existing)
+        }
+    }
+
+    private suspend fun saveParsedPackage(
+        projectId: Project.Id,
+        parsed: ParsedAgentSkillPackage,
+        actorUserId: User.Id?,
+        knownExisting: AgentSkill? = null,
+    ): AgentSkill {
+        val existing = knownExisting ?: skillRepository.findByName(projectId, parsed.name)
         if (existing?.contentHash == parsed.contentHash) {
             return existing
         }

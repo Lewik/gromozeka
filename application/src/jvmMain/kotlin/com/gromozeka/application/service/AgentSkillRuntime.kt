@@ -28,14 +28,8 @@ import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
-const val OPEN_AGENT_SKILL_TOOL_NAME = "open_agent_skill"
-const val READ_AGENT_SKILL_RESOURCE_TOOL_NAME = "read_agent_skill_resource"
-
-private val agentSkillToolNames = setOf(
-    OPEN_AGENT_SKILL_TOOL_NAME,
-    READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
-    MATERIALIZE_AGENT_SKILL_TOOL_NAME,
-)
+const val ACTIVATE_AGENT_SKILL_TOOL_NAME = "grz_skill_activate"
+const val READ_AGENT_SKILL_RESOURCE_TOOL_NAME = "grz_skill_read_resource"
 
 data class AgentSkillRuntimeCatalog(
     val toolCatalog: DistributedAiToolCatalogSnapshot,
@@ -59,21 +53,14 @@ class AgentSkillRuntimeCatalogService(
             "Agent ${agent.id.value} references an Agent Skill from another project"
         }
 
-        if (skills.isEmpty()) {
-            return AgentSkillRuntimeCatalog(
-                toolCatalog = toolCatalog.withoutAgentSkillTools(),
-                systemPrompt = null,
-            )
-        }
-
         return AgentSkillRuntimeCatalog(
             toolCatalog = toolCatalog,
             systemPrompt = buildAgentSkillCatalogPrompt(
                 skills = skills,
                 openToolName = toolCatalog.entries.values
-                    .firstOrNull { it.logicalName == OPEN_AGENT_SKILL_TOOL_NAME }
+                    .firstOrNull { it.logicalName == ACTIVATE_AGENT_SKILL_TOOL_NAME }
                     ?.modelName
-                    ?: OPEN_AGENT_SKILL_TOOL_NAME,
+                    ?: ACTIVATE_AGENT_SKILL_TOOL_NAME,
                 readResourceToolName = toolCatalog.entries.values
                     .firstOrNull { it.logicalName == READ_AGENT_SKILL_RESOURCE_TOOL_NAME }
                     ?.modelName
@@ -83,19 +70,10 @@ class AgentSkillRuntimeCatalogService(
             ),
         )
     }
-
-    private fun DistributedAiToolCatalogSnapshot.withoutAgentSkillTools(): DistributedAiToolCatalogSnapshot =
-        copy(
-            tools = tools.filterNot { callback ->
-                entries[callback.definition.name]?.logicalName in agentSkillToolNames
-            },
-            entries = entries.filterValues { it.logicalName !in agentSkillToolNames },
-        )
-
 }
 
 @Component
-class OpenAgentSkillToolCallback(
+class ActivateAgentSkillToolCallback(
     private val access: AgentSkillRuntimeAccess,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true }
@@ -105,7 +83,7 @@ class OpenAgentSkillToolCallback(
         val name: String,
     )
 
-    override val definition: AiToolDefinition = openAgentSkillDefinition()
+    override val definition: AiToolDefinition = activateAgentSkillDefinition()
 
     override val metadata = PreloadedServerToolMetadata
 
@@ -290,7 +268,7 @@ class AgentSkillRuntimeAccess(
         }
         require(skillPackage.skill.contentHash == contentHash) {
             "Agent Skill handle is stale: expected $contentHash but current package is " +
-                skillPackage.skill.contentHash + ". Call $OPEN_AGENT_SKILL_TOOL_NAME again."
+                skillPackage.skill.contentHash + ". Call $ACTIVATE_AGENT_SKILL_TOOL_NAME again."
         }
         return skillPackage
     }
@@ -306,13 +284,11 @@ class AgentSkillRuntimeAccess(
     }
 }
 
-private fun openAgentSkillDefinition(): AiToolDefinition =
+private fun activateAgentSkillDefinition(): AiToolDefinition =
     AiToolDefinition(
-        name = OPEN_AGENT_SKILL_TOOL_NAME,
-        description = "Open the current immutable package for one Agent Skill assigned to this agent. " +
-            "The result contains complete instructions, a resource index, and a skill_id plus content_hash handle. " +
-            "Pass that exact handle to resource reading and workspace materialization. " +
-            "Do not call this tool when the compact skill catalog is empty.",
+        name = ACTIVATE_AGENT_SKILL_TOOL_NAME,
+        description = "Activate an assigned Skill. Returns its instructions, resource manifest, and immutable handle. " +
+            "Do not call when available_skills is empty.",
         inputSchema = buildSkillNameSchema(
             extraProperties = emptyMap(),
             required = listOf("name"),
@@ -322,15 +298,13 @@ private fun openAgentSkillDefinition(): AiToolDefinition =
 private fun readAgentSkillResourceDefinition(): AiToolDefinition =
     AiToolDefinition(
         name = READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
-        description = "Read one text file from the exact immutable Agent Skill package opened earlier. " +
-            "Use the skill_id and content_hash returned by open_agent_skill plus an exact listed relative path, " +
-            "and continue with next_offset when complete=false. Binary resources are never copied into model context; " +
-            "use the workspace materialization tool instead.",
+        description = "Read a text resource from an activated Skill by immutable handle. Continue from next_offset " +
+            "when incomplete. Materialize binary resources instead.",
         inputSchema = buildSkillHandleSchema(
             extraProperties = mapOf(
                 "path" to buildJsonObject {
                     put("type", "string")
-                    put("description", "Exact relative resource path returned by open_agent_skill.")
+                    put("description", "Exact path from the activated Skill manifest.")
                 },
                 "offset" to buildJsonObject {
                     put("type", "integer")
@@ -377,12 +351,12 @@ private fun buildSkillHandleSchema(
         put("properties", buildJsonObject {
             put("skill_id", buildJsonObject {
                 put("type", "string")
-                put("description", "Immutable Agent Skill id returned by open_agent_skill.")
+                put("description", "Skill id returned by grz_skill_activate.")
             })
             put("content_hash", buildJsonObject {
                 put("type", "string")
                 put("pattern", "^[0-9a-f]{64}$")
-                put("description", "Exact package content hash returned by the same open_agent_skill call.")
+                put("description", "Content hash returned by the same activation.")
             })
             extraProperties.forEach { (name, schema) -> put(name, schema) }
         })
@@ -399,21 +373,20 @@ private fun buildAgentSkillCatalogPrompt(
 ): String =
     buildString {
         append("<agent_skills>\n")
-        append("Agent Skills provide specialized instructions through progressive disclosure. ")
-        append("When a listed skill is relevant, call `")
+        append("Activate a relevant listed Skill through `")
         append(openToolName)
-        append("` with its exact name before applying it. Preserve the returned skill_id and content_hash as one immutable package handle. ")
+        append("` before applying it. Keep skill_id and content_hash together as its immutable handle. ")
         append("Use `")
         append(readResourceToolName)
-        append("` only for model-readable resources listed by the opened package, using that exact handle. ")
+        append("` for listed text resources. ")
         if (materializeTool != null) {
-            append("When opened instructions require bundled files in a workspace, call `")
+            append("For workspace files, call `")
             append(materializeTool.modelName)
             append("` with the exact skill handle and intended workspace execution target. ")
         } else {
             append("Workspace materialization is currently unavailable; report that limitation instead of inventing a tool. ")
         }
-        append("Do not invent skill names or treat `allowed-tools` metadata as a permission grant.\n")
+        append("Do not invent Skill names or treat `allowed-tools` as permissions. If available_skills is empty, do not activate a Skill.\n")
         append(buildJsonObject {
             putJsonObject("workspace_materialization") {
                 put("available", materializeTool != null)

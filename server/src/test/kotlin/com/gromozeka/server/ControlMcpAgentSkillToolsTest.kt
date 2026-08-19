@@ -92,7 +92,8 @@ class ControlMcpAgentSkillToolsTest {
             .jsonObject
         val items = files.getValue("items").jsonObject
 
-        assertTrue(tool.definition.description.orEmpty().contains("replaces the entire previous package"))
+        assertTrue(tool.definition.description.orEmpty().contains("base64 binaries enter model context"))
+        assertTrue(tool.definition.description.orEmpty().contains("prefer directory import"))
         assertEquals(
             setOf("path", "encoding", "content"),
             items.getValue("properties").jsonObject.keys,
@@ -117,7 +118,7 @@ class ControlMcpAgentSkillToolsTest {
         val service = mock<AgentSkillDomainService>()
         Mockito.`when`(service.findById(skill.id)).thenReturn(skill)
         Mockito.`when`(service.exportPackage(skill.id)).thenReturn(packageValue)
-        val tool = provider(service).tools.single { it.definition.name == "grz_skill_export" }
+        val tool = provider(service).tools.single { it.definition.name == "grz_skill_export_inline" }
 
         val result = tool.invokeStructured(
             testControlMcpContext(),
@@ -125,6 +126,8 @@ class ControlMcpAgentSkillToolsTest {
         ).getValue("result").jsonObject
         val files = result.getValue("files").jsonArray.map { it.jsonObject }
 
+        assertTrue(tool.definition.description.orEmpty().contains("All files enter model context"))
+        assertTrue(tool.definition.description.orEmpty().contains("prefer directory export"))
         assertFalse(result.getValue("skill").jsonObject.containsKey("instructions"))
         assertEquals("utf-8", files[0].getValue("encoding").jsonPrimitive.content)
         assertEquals("Follow checks.", files[0].getValue("content").jsonPrimitive.content)

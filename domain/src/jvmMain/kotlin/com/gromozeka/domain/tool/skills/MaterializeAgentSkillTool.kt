@@ -5,15 +5,15 @@ import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.ToolParameter
 
-const val MATERIALIZE_AGENT_SKILL_TOOL_NAME = "materialize_agent_skill"
+const val MATERIALIZE_AGENT_SKILL_TOOL_NAME = "grz_skill_materialize"
 
 data class MaterializeAgentSkillRequest(
     @property:ToolParameter(
-        description = "Immutable Agent Skill id returned by open_agent_skill.",
+        description = "Skill id returned by grz_skill_activate.",
     )
     val skill_id: String,
     @property:ToolParameter(
-        description = "Exact package content hash returned by the same open_agent_skill call.",
+        description = "Content hash returned by the same activation.",
     )
     val content_hash: String,
 ) {
@@ -37,9 +37,9 @@ interface MaterializeAgentSkillTool : Tool<MaterializeAgentSkillRequest, Map<Str
         get() = PreloadedWorkspaceToolMetadata
 
     override val description: String
-        get() = "Materialize the exact immutable package opened by open_agent_skill in the selected workspace. " +
-            "Use this when opened instructions need scripts, templates, binaries, or ordinary filesystem paths. " +
-            "The result returns a stable versioned directory; it does not execute files or install dependencies."
+        get() = "Materialize an activated immutable Skill in the selected workspace for runtime use. " +
+            "It returns a versioned path and does not execute files. To edit the Skill itself, use " +
+            "grz_skill_export_to_directory and grz_skill_import_from_directory instead."
 
     override val requestType: Class<MaterializeAgentSkillRequest>
         get() = MaterializeAgentSkillRequest::class.java

@@ -315,19 +315,21 @@ resource never silently changes an existing runtime entity.
   not in static prompt definitions.
 - Change prompts in response to observed behavior and validate the assembled
   stack rather than only checking individual fragments.
-- Treat Agent Skills as imported project-scoped packages. Update them by
-  importing the package from disk again; do not edit package files in the
-  runtime catalog UI.
+- Treat Agent Skills as imported project-scoped packages. Prefer
+  `grz_skill_export_to_directory` and `grz_skill_import_from_directory` for
+  model-driven editing so package bytes stay outside model context. Inline
+  import/export is for small integrations and carries text and base64 binaries
+  through model context.
 - Agent Skill import derives a content-versioned workspace materialization
   plan. Runtime opening exposes instructions, a compact resource index, and an
   immutable `skill_id` plus `content_hash` handle. Model-readable resources are
   fetched only on demand through that exact handle, and binary resources are
   never copied into model context.
-- `materialize_agent_skill` copies the complete content-versioned package to
+- `grz_skill_materialize` copies the complete content-versioned package to
   `<workspace>/.gromozeka/skills/<name>/<content-hash>` on the selected Worker
-  mount. It accepts the same immutable handle returned by `open_agent_skill`;
+  mount. It accepts the same immutable handle returned by `grz_skill_activate`;
   materialization does not execute files, install dependencies, or grant
-  permissions.
+  permissions. It is for runtime use, not editing.
 
 ## Repository Checkouts
 

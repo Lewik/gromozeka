@@ -1,8 +1,11 @@
 package com.gromozeka.worker
 
 import com.gromozeka.domain.model.AgentSkillPackage
+import com.gromozeka.domain.service.AgentSkillDirectoryImportClient
+import com.gromozeka.domain.service.AgentSkillDirectoryImportRequest
 import com.gromozeka.domain.service.AgentSkillPackageClient
 import com.gromozeka.domain.service.AgentSkillPackageRequest
+import com.gromozeka.remote.protocol.WorkerAgentSkillImportGatewayCodec
 import com.gromozeka.remote.protocol.WorkerAgentSkillPackageGatewayCodec
 import com.gromozeka.remote.protocol.WorkerGatewayOperation
 import kotlin.time.Duration.Companion.minutes
@@ -17,6 +20,20 @@ class WorkerGatewayAgentSkillPackageClient(
             outbound.execute(
                 operation = WorkerGatewayOperation.AGENT_SKILL_PACKAGE,
                 payload = WorkerAgentSkillPackageGatewayCodec.encodeRequest(request),
+                timeout = 2.minutes,
+            )
+        )
+}
+
+@Service
+class WorkerGatewayAgentSkillDirectoryImportClient(
+    private val outbound: WorkerGatewayOutbound,
+) : AgentSkillDirectoryImportClient {
+    override suspend fun importPackage(request: AgentSkillDirectoryImportRequest) =
+        WorkerAgentSkillImportGatewayCodec.decodeResult(
+            outbound.execute(
+                operation = WorkerGatewayOperation.AGENT_SKILL_IMPORT,
+                payload = WorkerAgentSkillImportGatewayCodec.encodeRequest(request),
                 timeout = 2.minutes,
             )
         )

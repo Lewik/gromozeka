@@ -91,7 +91,7 @@ class GromozekaControlMcpSurfaceTest {
                 "grz_skill_list",
                 "grz_skill_get",
                 "grz_skill_import_inline",
-                "grz_skill_export",
+                "grz_skill_export_inline",
                 "grz_skill_delete",
                 "grz_ai_catalog_get",
                 "grz_ai_connection_upsert",
