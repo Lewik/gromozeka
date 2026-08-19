@@ -6,8 +6,8 @@ import com.gromozeka.presentation.services.DesktopSystemAudioMuteService
 import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextService
 import com.gromozeka.presentation.services.DesktopGlobalHotkeyController
 import com.gromozeka.presentation.services.DesktopQuickTextActionExecutor
+import com.gromozeka.presentation.services.DesktopNotificationService
 import com.gromozeka.presentation.services.LocalWorkerController
-import com.gromozeka.presentation.services.defaultDesktopNotificationService
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
@@ -29,6 +29,7 @@ internal suspend fun startRemotePresentation(
     authenticatedUser: AuthenticatedUserView,
     remoteClientSettingsStore: DesktopRemoteClientSettingsStore,
     localWorkerController: LocalWorkerController,
+    desktopNotificationService: DesktopNotificationService,
     httpClient: HttpClient? = null,
 ): RemoteStartedApp {
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -60,7 +61,7 @@ internal suspend fun startRemotePresentation(
     val quickTextActionExecutor = DesktopQuickTextActionExecutor(
         quickTextActionService = remoteApp.components.quickTextActionService,
         uiFeedbackController = remoteApp.components.uiFeedbackController,
-        notificationService = defaultDesktopNotificationService(),
+        notificationService = desktopNotificationService,
     )
     globalHotkeyController.registerQuickTextActionHotkeys { actionId ->
         scope.launch {

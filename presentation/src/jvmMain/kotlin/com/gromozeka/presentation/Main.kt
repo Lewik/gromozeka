@@ -14,9 +14,11 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Tray
+import androidx.compose.ui.window.Notification
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.isTraySupported
+import androidx.compose.ui.window.rememberTrayState
 import androidx.compose.ui.window.rememberWindowState
 import com.gromozeka.client.resolveRemoteUrl
 import com.gromozeka.client.saveRemoteUrl
@@ -26,9 +28,11 @@ import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.RemoteServerSetupScreen
 import com.gromozeka.presentation.ui.RemoteAuthenticationScreen
 import com.gromozeka.presentation.services.DesktopLocalWorkerController
+import com.gromozeka.presentation.services.DesktopNotificationPublisher
 import com.gromozeka.presentation.services.LocalWorkerOperation
 import com.gromozeka.presentation.services.LocalWorkerStatus
 import com.gromozeka.presentation.services.WindowsWindowAppearance
+import com.gromozeka.presentation.services.defaultDesktopNotificationService
 import com.gromozeka.presentation.services.theming.data.DarkTheme
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
@@ -73,6 +77,14 @@ fun main(args: Array<String>) {
         val localWorkerController = remember { DesktopLocalWorkerController() }
         val localWorkerStatus by localWorkerController.status.collectAsState()
         val traySupported = isTraySupported
+        val trayState = rememberTrayState()
+        val desktopNotificationService = remember(trayState) {
+            defaultDesktopNotificationService(
+                windowsPublisher = DesktopNotificationPublisher { title, message ->
+                    trayState.sendNotification(Notification(title, message))
+                },
+            )
+        }
         val scope = rememberCoroutineScope()
 
         suspend fun startAuthenticatedRemoteApp(
@@ -86,6 +98,7 @@ fun main(args: Array<String>) {
                 authenticatedUser = requireNotNull(authenticatedStatus.authenticatedUser),
                 remoteClientSettingsStore = settingsStore,
                 localWorkerController = localWorkerController,
+                desktopNotificationService = desktopNotificationService,
                 httpClient = connection.httpClient,
             )
             try {
@@ -169,6 +182,7 @@ fun main(args: Array<String>) {
                         authenticatedUser = requireNotNull(status.authenticatedUser),
                         remoteClientSettingsStore = settingsStore,
                         localWorkerController = localWorkerController,
+                        desktopNotificationService = desktopNotificationService,
                         httpClient = connection.httpClient,
                     )
                 }
@@ -193,6 +207,7 @@ fun main(args: Array<String>) {
         if (traySupported) {
             Tray(
                 icon = painterResource("logos/logo-32x32.png"),
+                state = trayState,
                 tooltip = "Gromozeka",
                 onAction = ::showWindow,
             ) {
