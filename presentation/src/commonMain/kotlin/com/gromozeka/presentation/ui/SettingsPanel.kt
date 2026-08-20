@@ -1449,6 +1449,21 @@ fun SettingsPanel(
 
                     // Notifications Settings
                     SettingsGroup(title = translation.settings.notificationsTitle) {
+                        (deviceSettings as? UserDeviceSettings.Desktop)?.let { desktopSettings ->
+                            SwitchSettingItem(
+                                label = translation.settings.turnCompletionNotificationsLabel,
+                                description = translation.settings.turnCompletionNotificationsDescription,
+                                value = desktopSettings.turnCompletionNotificationsEnabled,
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateDesktopSettings {
+                                            copy(turnCompletionNotificationsEnabled = it)
+                                        }
+                                    )
+                                }
+                            )
+                        }
+
                         SwitchSettingItem(
                             label = translation.settings.attentionSoundsLabel,
                             description = translation.settings.attentionSoundsDescription,
@@ -2505,6 +2520,16 @@ private fun Settings.updateDesktopInputSettings(
     updateDeviceSettings {
         when (this) {
             is UserDeviceSettings.Desktop -> copy(inputSettings = inputSettings.update())
+            else -> this
+        }
+    }
+
+private fun Settings.updateDesktopSettings(
+    update: UserDeviceSettings.Desktop.() -> UserDeviceSettings.Desktop,
+): Settings =
+    updateDeviceSettings {
+        when (this) {
+            is UserDeviceSettings.Desktop -> update()
             else -> this
         }
     }

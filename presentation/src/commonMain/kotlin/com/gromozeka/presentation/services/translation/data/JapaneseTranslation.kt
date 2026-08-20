@@ -116,6 +116,7 @@ data class JapaneseTranslation(
         override val errorSoundsLabel: String = "エラー音",
         override val activitySoundsLabel: String = "動作音",
         override val attentionSoundsLabel: String = "注意音",
+        override val turnCompletionNotificationsLabel: String = "ターン完了通知",
         override val soundVolumeLabel: String = "音量",
         override val showOriginalJsonLabel: String = "元のJSONを表示",
         override val localizationModeLabel: String = "文字列ソース",
@@ -150,6 +151,8 @@ data class JapaneseTranslation(
         override val errorSoundsDescription: String = "エラーメッセージの音声通知を再生",
         override val activitySoundsDescription: String = "エージェントに実際の進捗があるとき静かな音を再生",
         override val attentionSoundsDescription: String = "エージェントが注意を明示的に求めたとき音を再生",
+        override val turnCompletionNotificationsDescription: String =
+            "Gromozeka がフォーカスされていないとき、ターン完了時にシステム通知を表示します",
         override val soundVolumeDescription: String = "すべての通知音の音量レベル",
         override val showJsonDescription: String = "チャットに生のAPI応答を表示",
 

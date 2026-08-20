@@ -38,6 +38,7 @@ import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.PttRecordingService
 import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.TtsQueue
+import com.gromozeka.presentation.services.TurnCompletionNotificationService
 import com.gromozeka.presentation.services.UIStateService
 import com.gromozeka.presentation.services.UiFeedbackController
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
@@ -99,4 +100,5 @@ data class AppComponents(
     val agentSkillService: AgentSkillDomainService,
     val promptService: PromptDomainService,
     val deviceLocationService: DeviceLocationService,
+    val turnCompletionNotificationService: TurnCompletionNotificationService,
 )

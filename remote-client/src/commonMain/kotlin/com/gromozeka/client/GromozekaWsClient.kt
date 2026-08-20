@@ -13,6 +13,7 @@ import com.gromozeka.remote.protocol.ClientRequest
 import com.gromozeka.remote.protocol.ClientSessionId
 import com.gromozeka.remote.protocol.ConversationExecutionCompletedEvent
 import com.gromozeka.remote.protocol.ConversationExecutionFailedEvent
+import com.gromozeka.remote.protocol.ConversationReplayCompletedEvent
 import com.gromozeka.remote.protocol.ConversationRuntimeStatePayload
 import com.gromozeka.remote.protocol.ConversationRuntimeStateQuery
 import com.gromozeka.remote.protocol.ActiveGenerationStatePayload
@@ -327,6 +328,12 @@ internal class GromozekaWsClient(
                     )
                     is ConversationExecutionCompletedEvent -> emit(
                         ConversationRuntimeEvent.ExecutionCompleted(
+                            conversationId = event.conversationId,
+                            cursorSequence = event.cursorSequence,
+                        )
+                    )
+                    is ConversationReplayCompletedEvent -> emit(
+                        ConversationRuntimeEvent.ReplayCompleted(
                             conversationId = event.conversationId,
                             cursorSequence = event.cursorSequence,
                         )
@@ -659,6 +666,7 @@ internal class GromozekaWsClient(
                     is ServerResponse -> registryMutex.withLock { pending.remove(envelope.id) }?.complete(payload)
                     is MessageUpsertedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionCompletedEvent -> routeConversationEvent(payload.subscriptionId, payload)
+                    is ConversationReplayCompletedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is ConversationExecutionFailedEvent -> routeConversationEvent(payload.subscriptionId, payload)
                     is StateSyncInvalidatedEvent -> routeStateEvent(payload.subscriptionId, payload)
                     is StateSyncObservationFailedEvent -> routeStateEvent(payload.subscriptionId, payload)

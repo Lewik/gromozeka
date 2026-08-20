@@ -21,6 +21,7 @@ sealed interface UserDeviceSettings {
         override val showOriginalJson: Boolean = false,
         val inputSettings: DesktopInputSettings = DesktopInputSettings(),
         val windowSettings: DesktopWindowSettings = DesktopWindowSettings(),
+        val turnCompletionNotificationsEnabled: Boolean = false,
     ) : UserDeviceSettings
 
     @Serializable

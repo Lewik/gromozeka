@@ -13,6 +13,7 @@ import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
+import com.gromozeka.presentation.services.TurnCompletionNotificationService
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -35,6 +36,7 @@ open class AppViewModel(
     private val tokenStatsService: ConversationTokenStatsService,
     private val conversationTabLayoutService: ConversationTabLayoutService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
+    private val turnCompletionNotificationService: TurnCompletionNotificationService,
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -313,6 +315,7 @@ open class AppViewModel(
         artifactTransferService = artifactTransferService,
         tokenStatsService = tokenStatsService,
         messageInputClientPlatform = messageInputClientPlatform,
+        turnCompletionNotificationService = turnCompletionNotificationService,
     )
 
     private suspend fun TabViewModel.sendInitialMessage(message: Conversation.Message) {

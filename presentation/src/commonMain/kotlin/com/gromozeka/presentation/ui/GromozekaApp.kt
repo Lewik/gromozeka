@@ -147,6 +147,7 @@ fun GromozekaAppContent(
     }
 
     LaunchedEffect(isWindowFocused, reportsComposeWindowFocus) {
+        appComponents.turnCompletionNotificationService.reportWindowFocus(isWindowFocused)
         if (reportsComposeWindowFocus && isWindowFocused) {
             appComponents.clientPresentationService.reportWindowFocused()
         }

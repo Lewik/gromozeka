@@ -117,6 +117,7 @@ data class HebrewTranslation(
         override val errorSoundsLabel: String = "צלילי שגיאה",
         override val activitySoundsLabel: String = "צליל פעילות",
         override val attentionSoundsLabel: String = "צלילי תשומת לב",
+        override val turnCompletionNotificationsLabel: String = "התראות על סיום תור",
         override val soundVolumeLabel: String = "עוצמת קול",
         override val showOriginalJsonLabel: String = "הצג JSON מקורי",
         override val localizationModeLabel: String = "מקור מחרוזות",
@@ -152,6 +153,8 @@ data class HebrewTranslation(
         override val errorSoundsDescription: String = "השמע התראה קולית עבור הודעות שגיאה",
         override val activitySoundsDescription: String = "השמע תקתוק שקט כאשר הסוכן מתקדם בפועל",
         override val attentionSoundsDescription: String = "השמע צליל כאשר הסוכן מבקש במפורש את תשומת לבך",
+        override val turnCompletionNotificationsDescription: String =
+            "הצג התראת מערכת כאשר תור מסתיים ו-Gromozeka אינה במוקד",
         override val soundVolumeDescription: String = "רמת עוצמה עבור כל ההתראות הקוליות",
         override val showJsonDescription: String = "הצג תגובות API גולמיות בצ'אט",
 

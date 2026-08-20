@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
+import com.gromozeka.presentation.services.TurnCompletionNotificationService
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.domain.model.AgentDefinition
@@ -61,6 +62,7 @@ class TabViewModel(
     private val artifactTransferService: ArtifactTransferService,
     private val tokenStatsService: ConversationTokenStatsService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
+    private val turnCompletionNotificationService: TurnCompletionNotificationService,
 ) {
     private val log = KLoggers.logger(this)
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
@@ -88,6 +90,7 @@ class TabViewModel(
 
     private var currentRequestJob: kotlinx.coroutines.Job? = null
     private var lastRuntimeSnapshotRevision = -1L
+    private var runtimeReplayCompleted = false
     private var claimedUserInput: String? = null
     private val textMessageInputContext = MessageInputContext(
         modality = MessageInputContext.Modality.TEXT,
@@ -255,13 +258,18 @@ class TabViewModel(
     private suspend fun handleRuntimeEvent(event: ConversationRuntimeEvent) {
         when (event) {
             is ConversationRuntimeEvent.SnapshotUpdated -> applyRuntimeSnapshot(event.snapshot)
-            is ConversationRuntimeEvent.ReplayCompleted -> Unit
+            is ConversationRuntimeEvent.ReplayCompleted -> runtimeReplayCompleted = true
             is ConversationRuntimeEvent.MessageEmitted -> {
                 _isWaitingForResponse.value = true
                 _uiState.update { it.copy(isWaitingForResponse = true) }
                 upsertRuntimeMessage(event.message)
             }
-            is ConversationRuntimeEvent.ExecutionCompleted -> finishRuntimeExecution()
+            is ConversationRuntimeEvent.ExecutionCompleted -> {
+                finishRuntimeExecution()
+                if (runtimeReplayCompleted) {
+                    turnCompletionNotificationService.notifyTurnCompleted()
+                }
+            }
             is ConversationRuntimeEvent.ExecutionFailed -> {
                 log.error { "Conversation runtime failed: ${event.failureType ?: "unknown"} ${event.message}" }
                 finishRuntimeExecution()

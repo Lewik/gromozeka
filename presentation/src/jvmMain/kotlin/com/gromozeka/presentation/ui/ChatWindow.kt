@@ -53,6 +53,12 @@ fun ApplicationScope.ChatWindow(
     val attachmentController = remember(appComponents.appViewModel) {
         appComponents.appViewModel.attachmentAcquisitionController as? DesktopAttachmentAcquisitionController
     }
+
+    LaunchedEffect(visible) {
+        if (!visible) {
+            appComponents.turnCompletionNotificationService.reportWindowFocus(false)
+        }
+    }
     val fileDropTarget = remember(attachmentController) {
         object : DragAndDropTarget {
             override fun onDrop(event: DragAndDropEvent): Boolean {

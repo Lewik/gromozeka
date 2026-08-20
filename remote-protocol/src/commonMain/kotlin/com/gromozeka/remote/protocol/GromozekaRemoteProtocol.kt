@@ -1612,6 +1612,14 @@ data class ConversationExecutionCompletedEvent(
 ) : ServerPayload
 
 @Serializable
+@SerialName("conversation_replay_completed")
+data class ConversationReplayCompletedEvent(
+    val subscriptionId: String,
+    val conversationId: Conversation.Id,
+    val cursorSequence: Long? = null,
+) : ServerPayload
+
+@Serializable
 @SerialName("conversation_execution_failed")
 data class ConversationExecutionFailedEvent(
     val subscriptionId: String,

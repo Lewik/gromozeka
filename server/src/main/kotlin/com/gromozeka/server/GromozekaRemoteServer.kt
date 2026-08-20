@@ -818,6 +818,15 @@ class GromozekaRemoteServer(
                         is ConversationRuntimeEvent.SnapshotUpdated -> Unit
                         is ConversationRuntimeEvent.ReplayCompleted -> {
                             liveEventsStarted = true
+                            sender.send(
+                                command.subscriptionId,
+                                ConversationReplayCompletedEvent(
+                                    subscriptionId = command.subscriptionId,
+                                    conversationId = event.conversationId,
+                                    cursorSequence = event.cursorSequence,
+                                ),
+                                encoding,
+                            )
                         }
                         is ConversationRuntimeEvent.MessageEmitted -> {
                             sender.send(

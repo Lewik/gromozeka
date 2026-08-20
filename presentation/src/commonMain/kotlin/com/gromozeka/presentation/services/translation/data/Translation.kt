@@ -46,6 +46,7 @@ sealed class Translation {
         abstract val errorSoundsLabel: String
         abstract val activitySoundsLabel: String
         abstract val attentionSoundsLabel: String
+        abstract val turnCompletionNotificationsLabel: String
         abstract val soundVolumeLabel: String
         abstract val showOriginalJsonLabel: String
         abstract val localizationModeLabel: String
@@ -79,6 +80,7 @@ sealed class Translation {
         abstract val errorSoundsDescription: String
         abstract val activitySoundsDescription: String
         abstract val attentionSoundsDescription: String
+        abstract val turnCompletionNotificationsDescription: String
         abstract val soundVolumeDescription: String
         abstract val showJsonDescription: String
 

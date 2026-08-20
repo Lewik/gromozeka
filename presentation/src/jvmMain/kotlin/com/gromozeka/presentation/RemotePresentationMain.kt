@@ -12,6 +12,7 @@ import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
 import com.gromozeka.presentation.services.DesktopAttachmentAcquisitionController
 import com.gromozeka.presentation.services.WindowStateService
+import com.gromozeka.presentation.services.TurnCompletionNotificationSink
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.AuthenticatedUserView
 import kotlinx.coroutines.CoroutineScope
@@ -50,6 +51,9 @@ internal suspend fun startRemotePresentation(
             attachmentAcquisitionController = DesktopAttachmentAcquisitionController(),
             globalHotkeyController = globalHotkeyController,
             localWorkerController = localWorkerController,
+            turnCompletionNotificationSink = TurnCompletionNotificationSink {
+                desktopNotificationService.show("Gromozeka", "Turn completed")
+            },
             httpClient = httpClient,
         )
     } catch (error: Throwable) {

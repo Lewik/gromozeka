@@ -116,6 +116,7 @@ data class ChineseTranslation(
         override val errorSoundsLabel: String = "错误提示音",
         override val activitySoundsLabel: String = "活动提示音",
         override val attentionSoundsLabel: String = "注意提示音",
+        override val turnCompletionNotificationsLabel: String = "回合完成通知",
         override val soundVolumeLabel: String = "音量",
         override val showOriginalJsonLabel: String = "显示原始JSON",
         override val localizationModeLabel: String = "字符串源",
@@ -150,6 +151,8 @@ data class ChineseTranslation(
         override val errorSoundsDescription: String = "为错误消息播放声音通知",
         override val activitySoundsDescription: String = "智能体取得可见进展时播放轻微提示音",
         override val attentionSoundsDescription: String = "智能体明确需要注意时播放提示音",
+        override val turnCompletionNotificationsDescription: String =
+            "当 Gromozeka 未聚焦时，在回合结束后显示系统通知",
         override val soundVolumeDescription: String = "所有通知声音的音量级别",
         override val showJsonDescription: String = "在聊天中显示原始API响应",
 

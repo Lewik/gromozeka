@@ -117,6 +117,7 @@ data class RussianTranslation(
         override val errorSoundsLabel: String = "Звуки ошибок",
         override val activitySoundsLabel: String = "Звук активности",
         override val attentionSoundsLabel: String = "Запрос внимания",
+        override val turnCompletionNotificationsLabel: String = "Уведомления о завершении терна",
         override val soundVolumeLabel: String = "Громкость звука",
         override val showOriginalJsonLabel: String = "Показывать оригинальный JSON",
         override val localizationModeLabel: String = "Источник строк",
@@ -152,6 +153,8 @@ data class RussianTranslation(
         override val errorSoundsDescription: String = "Воспроизводить звуковое уведомление при ошибках",
         override val activitySoundsDescription: String = "Тихо отмечать реальный прогресс агента",
         override val attentionSoundsDescription: String = "Воспроизводить звук, когда агент явно просит вашего внимания",
+        override val turnCompletionNotificationsDescription: String =
+            "Показывать системное уведомление, когда терн завершился, а Gromozeka не в фокусе",
         override val soundVolumeDescription: String = "Уровень громкости для всех звуковых уведомлений",
         override val showJsonDescription: String = "Отображать необработанные ответы API в чате",
 

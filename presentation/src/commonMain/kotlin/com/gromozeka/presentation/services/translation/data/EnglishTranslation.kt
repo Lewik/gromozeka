@@ -117,6 +117,7 @@ data class EnglishTranslation(
         override val errorSoundsLabel: String = "Error sounds",
         override val activitySoundsLabel: String = "Activity sound",
         override val attentionSoundsLabel: String = "Attention sounds",
+        override val turnCompletionNotificationsLabel: String = "Turn completion notifications",
         override val soundVolumeLabel: String = "Sound Volume",
         override val showOriginalJsonLabel: String = "Show original JSON",
         override val localizationModeLabel: String = "String Source",
@@ -152,6 +153,8 @@ data class EnglishTranslation(
         override val errorSoundsDescription: String = "Play sound notification for error messages",
         override val activitySoundsDescription: String = "Play a quiet tick when the agent makes observable progress",
         override val attentionSoundsDescription: String = "Play a sound when the agent explicitly needs your attention",
+        override val turnCompletionNotificationsDescription: String =
+            "Show a system notification when a turn finishes while Gromozeka is not focused",
         override val soundVolumeDescription: String = "Volume level for all notification sounds",
         override val showJsonDescription: String = "Display raw API responses in chat",
 

@@ -847,6 +847,22 @@ class RemoteProtocolCodecTest {
         assertEquals("subscription-1", decodedCompleted.subscriptionId)
         assertEquals("conversation-submit-1", decodedCompleted.conversationId.value)
         assertEquals(43, decodedCompleted.cursorSequence)
+
+        val replayCompletedEnvelope = GromozekaServerEnvelope(
+            id = "subscription-1",
+            payload = ConversationReplayCompletedEvent(
+                subscriptionId = "subscription-1",
+                conversationId = Conversation.Id("conversation-submit-1"),
+                cursorSequence = 43,
+            )
+        )
+        val decodedReplayCompleted = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(replayCompletedEnvelope)
+        ).payload as ConversationReplayCompletedEvent
+
+        assertEquals("subscription-1", decodedReplayCompleted.subscriptionId)
+        assertEquals("conversation-submit-1", decodedReplayCompleted.conversationId.value)
+        assertEquals(43, decodedReplayCompleted.cursorSequence)
     }
 
     @Test

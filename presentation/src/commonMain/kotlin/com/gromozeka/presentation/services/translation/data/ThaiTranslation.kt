@@ -116,6 +116,7 @@ data class ThaiTranslation(
         override val errorSoundsLabel: String = "เสียงแจ้งข้อผิดพลาด",
         override val activitySoundsLabel: String = "เสียงกิจกรรม",
         override val attentionSoundsLabel: String = "เสียงเรียกความสนใจ",
+        override val turnCompletionNotificationsLabel: String = "การแจ้งเตือนเมื่อจบรอบ",
         override val soundVolumeLabel: String = "ระดับเสียง",
         override val showOriginalJsonLabel: String = "แสดง JSON ต้นฉบับ",
         override val localizationModeLabel: String = "แหล่งข้อความ",
@@ -150,6 +151,8 @@ data class ThaiTranslation(
         override val errorSoundsDescription: String = "เล่นเสียงแจ้งเตือนสำหรับข้อความผิดพลาด",
         override val activitySoundsDescription: String = "เล่นเสียงเบาเมื่อเอเจนต์มีความคืบหน้าจริง",
         override val attentionSoundsDescription: String = "เล่นเสียงเมื่อเอเจนต์ร้องขอความสนใจอย่างชัดเจน",
+        override val turnCompletionNotificationsDescription: String =
+            "แสดงการแจ้งเตือนของระบบเมื่อรอบเสร็จสิ้นและ Gromozeka ไม่ได้อยู่ในโฟกัส",
         override val soundVolumeDescription: String = "ระดับความดังสำหรับเสียงแจ้งเตือนทั้งหมด",
         override val showJsonDescription: String = "แสดงการตอบสนอง API ดิบในแชท",
 

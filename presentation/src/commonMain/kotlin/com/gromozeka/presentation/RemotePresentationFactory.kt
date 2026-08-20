@@ -34,6 +34,9 @@ import com.gromozeka.presentation.services.UIStateStore
 import com.gromozeka.presentation.services.UiFeedbackController
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.SystemAudioMuteService
+import com.gromozeka.presentation.services.NoOpTurnCompletionNotificationSink
+import com.gromozeka.presentation.services.TurnCompletionNotificationService
+import com.gromozeka.presentation.services.TurnCompletionNotificationSink
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.translation.TranslationService
@@ -67,6 +70,7 @@ suspend fun createRemoteAppComponents(
     attachmentAcquisitionController: AttachmentAcquisitionController = NoOpAttachmentAcquisitionController,
     globalHotkeyController: GlobalHotkeyController = NoOpGlobalHotkeyController,
     localWorkerController: LocalWorkerController = UnsupportedLocalWorkerController,
+    turnCompletionNotificationSink: TurnCompletionNotificationSink = NoOpTurnCompletionNotificationSink,
     httpClient: HttpClient? = null,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
@@ -93,6 +97,10 @@ suspend fun createRemoteAppComponents(
         isTtsPlaying = { ttsQueue.isPlaying.value },
     )
     val messageInputClientPlatform = clientPlatform.toMessageInputClientPlatform()
+    val turnCompletionNotificationService = TurnCompletionNotificationService(
+        settingsService = remoteServices.settingsService,
+        sink = turnCompletionNotificationSink,
+    )
 
     val appViewModel = AppViewModel(
         conversationRuntimeService = remoteServices.conversationRuntimeService,
@@ -108,6 +116,7 @@ suspend fun createRemoteAppComponents(
         tokenStatsService = remoteServices.conversationTokenStatsService,
         conversationTabLayoutService = remoteServices.conversationTabLayoutService,
         messageInputClientPlatform = messageInputClientPlatform,
+        turnCompletionNotificationService = turnCompletionNotificationService,
     )
     val externalAttachmentJob = scope.launch {
         attachmentAcquisitionController.externalEvents.collect { event ->
@@ -221,6 +230,7 @@ suspend fun createRemoteAppComponents(
             agentSkillService = remoteServices.agentSkillService,
             promptService = remoteServices.promptService,
             deviceLocationService = deviceLocationService,
+            turnCompletionNotificationService = turnCompletionNotificationService,
         ),
         remoteServices = remoteServices,
         assistantAudioPresentationService = assistantAudioPresentationService,
