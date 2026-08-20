@@ -31,6 +31,7 @@ import com.gromozeka.presentation.services.DesktopLocalWorkerController
 import com.gromozeka.presentation.services.DesktopNotificationPublisher
 import com.gromozeka.presentation.services.LocalWorkerOperation
 import com.gromozeka.presentation.services.LocalWorkerStatus
+import com.gromozeka.presentation.services.PttState
 import com.gromozeka.presentation.services.WindowsWindowAppearance
 import com.gromozeka.presentation.services.defaultDesktopNotificationService
 import com.gromozeka.presentation.services.theming.data.DarkTheme
@@ -72,6 +73,7 @@ fun main(args: Array<String>) {
         var authenticationConnection by remember { mutableStateOf<RemoteAuthenticationConnection?>(null) }
         var remoteApp by remember { mutableStateOf<RemoteStartedApp?>(null) }
         var trayRemoteConnectionStatus by remember { mutableStateOf<RemoteConnectionState.Status?>(null) }
+        var trayPttState by remember { mutableStateOf(PttState.IDLE) }
         var windowVisible by remember { mutableStateOf(true) }
         var quitting by remember { mutableStateOf(false) }
         val localWorkerController = remember { DesktopLocalWorkerController() }
@@ -142,6 +144,13 @@ fun main(args: Array<String>) {
             }
         }
 
+        LaunchedEffect(remoteApp) {
+            trayPttState = PttState.IDLE
+            remoteApp?.components?.pttService?.state?.collect { state ->
+                trayPttState = state
+            }
+        }
+
         DisposableEffect(scope) {
             val desktop = runCatching { Desktop.getDesktop() }.getOrNull()
             val reopenListener = AppReopenedListener { scope.launch { showWindow() } }
@@ -208,7 +217,12 @@ fun main(args: Array<String>) {
             Tray(
                 icon = painterResource("logos/logo-32x32.png"),
                 state = trayState,
-                tooltip = "Gromozeka",
+                tooltip = when (trayPttState) {
+                    PttState.IDLE -> "Gromozeka"
+                    PttState.PREPARING -> "Gromozeka - preparing microphone"
+                    PttState.RECORDING -> "Gromozeka - recording"
+                    PttState.TRANSCRIBING -> "Gromozeka - transcribing"
+                },
                 onAction = ::showWindow,
             ) {
                 Item("Open Gromozeka", onClick = ::showWindow)
@@ -227,6 +241,18 @@ fun main(args: Array<String>) {
                     enabled = false,
                     onClick = {},
                 )
+                if (trayPttState != PttState.IDLE) {
+                    Item(
+                        text = when (trayPttState) {
+                            PttState.PREPARING -> "Voice: preparing microphone"
+                            PttState.RECORDING -> "Voice: recording"
+                            PttState.TRANSCRIBING -> "Voice: transcribing"
+                            PttState.IDLE -> "Voice: idle"
+                        },
+                        enabled = false,
+                        onClick = {},
+                    )
+                }
                 if (localWorkerStatus.supported) {
                     Item(
                         text = localWorkerStatus.trayLabel(),

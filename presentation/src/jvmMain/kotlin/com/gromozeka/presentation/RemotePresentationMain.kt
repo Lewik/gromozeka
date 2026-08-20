@@ -7,6 +7,8 @@ import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextServic
 import com.gromozeka.presentation.services.DesktopGlobalHotkeyController
 import com.gromozeka.presentation.services.DesktopQuickTextActionExecutor
 import com.gromozeka.presentation.services.DesktopNotificationService
+import com.gromozeka.presentation.services.GlobalHotkeyEventPhase
+import com.gromozeka.presentation.services.HoldToTalkShortcutController
 import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.DesktopRemoteSessionCredentialStore
@@ -15,6 +17,9 @@ import com.gromozeka.presentation.services.WindowStateService
 import com.gromozeka.presentation.services.TurnCompletionNotificationSink
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.remote.protocol.AuthenticatedUserView
+import com.gromozeka.domain.model.KeyboardShortcutAction
+import com.gromozeka.domain.model.QuickTextAction
+import com.gromozeka.domain.model.UserDeviceSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -67,9 +72,40 @@ internal suspend fun startRemotePresentation(
         uiFeedbackController = remoteApp.components.uiFeedbackController,
         notificationService = desktopNotificationService,
     )
-    globalHotkeyController.registerQuickTextActionHotkeys { actionId ->
-        scope.launch {
-            quickTextActionExecutor.run(actionId)
+    val globalHoldToTalkController = HoldToTalkShortcutController(
+        pttEventHandler = remoteApp.components.pttEventRouter,
+        coroutineScope = scope,
+    )
+    scope.launch {
+        remoteApp.components.settingsService.settingsFlow.collect { settings ->
+            val shortcuts = (settings.userDeviceSettings as? UserDeviceSettings.Desktop)
+                ?.inputSettings
+                ?.keyboardShortcuts
+                ?: return@collect
+            globalHotkeyController.applySettings(shortcuts) { event ->
+                when (event.phase) {
+                    GlobalHotkeyEventPhase.PRESSED -> if (event.action == KeyboardShortcutAction.PUSH_TO_TALK) {
+                        globalHoldToTalkController.onPressed()
+                    }
+                    GlobalHotkeyEventPhase.RELEASED -> if (event.action == KeyboardShortcutAction.PUSH_TO_TALK) {
+                        globalHoldToTalkController.onReleased()
+                    }
+                    GlobalHotkeyEventPhase.CANCELLED -> if (event.action == KeyboardShortcutAction.PUSH_TO_TALK) {
+                        globalHoldToTalkController.cancel()
+                    }
+                    GlobalHotkeyEventPhase.TRIGGERED -> scope.launch {
+                        when (event.action) {
+                            KeyboardShortcutAction.TOGGLE_LIVE_VOICE ->
+                                remoteApp.components.liveVoiceInputService.toggle()
+                            KeyboardShortcutAction.FIX_CLIPBOARD_TEXT ->
+                                quickTextActionExecutor.run(QuickTextAction.FIX_TEXT_ID)
+                            KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT ->
+                                quickTextActionExecutor.run(QuickTextAction.TRANSLATE_RU_EN_ID)
+                            else -> Unit
+                        }
+                    }
+                }
+            }
         }
     }
 

@@ -1216,6 +1216,14 @@ class TabViewModel(
         }
     }
 
+    fun startEditLatestUserMessage(): Boolean {
+        val message = _allMessages.value.lastOrNull { candidate ->
+            candidate.role == Conversation.Message.Role.USER && candidate.editableText() != null
+        } ?: return false
+        startEditMessage(message.id)
+        return true
+    }
+
     fun updateEditingMessageText(text: String) {
         _uiState.update { it.copy(editingMessageText = text) }
     }

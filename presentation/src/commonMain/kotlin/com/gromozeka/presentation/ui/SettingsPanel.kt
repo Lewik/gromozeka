@@ -22,7 +22,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteClientSettings
@@ -36,6 +42,13 @@ import com.gromozeka.client.RemoteUserDirectoryService
 import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.client.WorkerConnectionInstructions
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.KeyboardShortcutAction
+import com.gromozeka.domain.model.KeyboardShortcutBinding
+import com.gromozeka.domain.model.KeyboardShortcutKey
+import com.gromozeka.domain.model.KeyboardShortcutModifier
+import com.gromozeka.domain.model.KeyboardShortcutScope
+import com.gromozeka.domain.model.KeyboardShortcutValidationSeverity
+import com.gromozeka.domain.model.KeyboardShortcutValidator
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SpeechAudioSource
@@ -52,6 +65,7 @@ import com.gromozeka.presentation.services.LocalWorkerController
 import com.gromozeka.presentation.services.LocalWorkerOperation
 import com.gromozeka.presentation.services.LocalWorkerPermissionState
 import com.gromozeka.presentation.services.LocalWorkerStatus
+import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.AiUsageReportService
@@ -88,6 +102,7 @@ enum class SettingsPanelContentMode {
 private enum class SettingsSection(val title: String) {
     Interface("Interface"),
     Voice("Voice"),
+    Keyboard("Keyboard"),
     AiRuntime("AI"),
     Usage("Usage"),
     Behavior("Behavior"),
@@ -109,6 +124,7 @@ fun SettingsPanel(
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
     settingsService: SettingsService,
+    globalHotkeyController: GlobalHotkeyController,
     aiConfigurationService: AiConfigurationService,
     aiUsageReportService: AiUsageReportService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
@@ -161,7 +177,8 @@ fun SettingsPanel(
         mutableStateOf(SettingsSection.AiRuntime)
     }
     val availableSections = SettingsSection.entries.filter {
-        it != SettingsSection.Usage || canAdministerUsers
+        (it != SettingsSection.Usage || canAdministerUsers) &&
+            (it != SettingsSection.Keyboard || deviceSettings is UserDeviceSettings.Desktop)
     }
 
     LaunchedEffect(
@@ -262,6 +279,7 @@ fun SettingsPanel(
                                 selected = selectedSection == section,
                                 onClick = { selectedSection = section },
                                 text = { Text(section.title) },
+                                modifier = Modifier.testTag(UiTestTag.SettingsSectionTab(section.title).value),
                             )
                         }
                     }
@@ -795,34 +813,6 @@ fun SettingsPanel(
                                 }
                             )
 
-                            SwitchSettingItem(
-                                label = translation.settings.globalPttHotkeyLabel,
-                                description = translation.settings.globalPttDescription,
-                                value = desktopInputSettings.globalPttHotkeyEnabled,
-                                onValueChange = {
-                                    onSettingsChange(
-                                        settings.updateDesktopInputSettings { copy(globalPttHotkeyEnabled = it) }
-                                    )
-                                }
-                            )
-
-                            Row(
-                                modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.secondary,
-                                )
-                                Text(
-                                    text = "Quick text hotkeys: macOS Cmd+Ctrl+Option+F/T, Windows Ctrl+Alt+Win+F/T. F fixes clipboard text, T translates clipboard text. The result is copied back to clipboard.",
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-
                             // Applies to both global hotkey and UI PTT button.
                             SwitchSettingItem(
                                 label = translation.settings.muteAudioDuringPttLabel,
@@ -836,6 +826,17 @@ fun SettingsPanel(
                             )
                         }
                     }
+                    }
+
+                    if (
+                        contentMode == SettingsPanelContentMode.Full &&
+                        selectedSection == SettingsSection.Keyboard
+                    ) {
+                        KeyboardShortcutSettingsGroup(
+                            settings = settings,
+                            globalHotkeyController = globalHotkeyController,
+                            onSettingsChange = onSettingsChange,
+                        )
                     }
 
                     if (
@@ -2389,6 +2390,169 @@ internal fun SettingsGroup(
 }
 
 @Composable
+private fun KeyboardShortcutSettingsGroup(
+    settings: Settings,
+    globalHotkeyController: GlobalHotkeyController,
+    onSettingsChange: (Settings) -> Unit,
+) {
+    val shortcuts = settings.desktopInputSettings.keyboardShortcuts.normalized()
+    val validationIssues = remember(shortcuts) { KeyboardShortcutValidator.validate(shortcuts) }
+    val globalState by globalHotkeyController.state.collectAsState()
+
+    Box(modifier = Modifier.testTag(UiTestTag.KeyboardShortcuts.value)) {
+        SettingsGroup(title = "Keyboard shortcuts") {
+            Text(
+                text = "Focused shortcuts work only inside Gromozeka. Global shortcuts stay active without raising the window.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!globalState.available || globalState.message != null) {
+                Text(
+                    text = globalState.message ?: "Global shortcuts are unavailable",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else {
+                Text(
+                    text = "Global backend: ${globalState.implementationType}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            shortcuts.bindings.forEach { binding ->
+                KeyboardShortcutBindingEditor(
+                    binding = binding,
+                    validationIssues = validationIssues.filter { it.action == binding.action },
+                    runtimeError = globalState.bindingErrors[binding.action],
+                    onChange = { updated ->
+                        onSettingsChange(settings.withKeyboardShortcut(updated))
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeyboardShortcutBindingEditor(
+    binding: KeyboardShortcutBinding,
+    validationIssues: List<com.gromozeka.domain.model.KeyboardShortcutValidationIssue>,
+    runtimeError: String?,
+    onChange: (KeyboardShortcutBinding) -> Unit,
+) {
+    var recording by remember(binding.action) { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(recording) {
+        if (recording) focusRequester.requestFocus()
+    }
+
+    Surface(
+        modifier = Modifier.testTag(UiTestTag.KeyboardShortcutBinding(binding.action.name).value),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(binding.action.displayName(), fontWeight = FontWeight.Medium)
+                    Text(
+                        binding.action.description(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = binding.enabled, onCheckedChange = { onChange(binding.copy(enabled = it)) })
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DropdownSettingItem(
+                    label = "Scope",
+                    description = "",
+                    value = binding.scope,
+                    options = KeyboardShortcutScope.entries.filter { it in binding.action.supportedScopes },
+                    optionLabel = { it.name.lowercase().replaceFirstChar(Char::uppercase) },
+                    onValueChange = { onChange(binding.copy(scope = it)) },
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedButton(
+                    onClick = { recording = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag(UiTestTag.KeyboardShortcutCapture(binding.action.name).value)
+                        .focusRequester(focusRequester)
+                        .onPreviewKeyEvent { event ->
+                            if (!recording) return@onPreviewKeyEvent false
+                            val key = event.toKeyboardShortcutKey()
+                            if (event.type == KeyEventType.KeyDown && key != null) {
+                                onChange(
+                                    binding.copy(
+                                        key = key,
+                                        modifiers = event.keyboardShortcutModifiers(),
+                                    )
+                                )
+                                recording = false
+                            }
+                            true
+                        },
+                ) {
+                    Text(if (recording) "Press keys..." else binding.displayLabel())
+                }
+            }
+
+            if (recording) {
+                TextButton(onClick = { recording = false }) {
+                    Text("Cancel recording")
+                }
+            }
+
+            if (
+                binding.enabled &&
+                binding.action == KeyboardShortcutAction.PUSH_TO_TALK &&
+                binding.scope == KeyboardShortcutScope.GLOBAL
+            ) {
+                SwitchSettingItem(
+                    label = "Swallow key",
+                    description = "When enabled, the foreground application does not receive this key while push-to-talk is active.",
+                    value = binding.consumeEvent,
+                    onValueChange = { onChange(binding.copy(consumeEvent = it)) },
+                )
+            }
+
+            validationIssues.forEach { issue ->
+                Text(
+                    text = issue.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (issue.severity) {
+                        KeyboardShortcutValidationSeverity.ERROR -> MaterialTheme.colorScheme.error
+                        KeyboardShortcutValidationSeverity.WARNING -> MaterialTheme.colorScheme.tertiary
+                    },
+                )
+            }
+            runtimeError?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SwitchSettingItem(
     label: String,
     description: String,
@@ -2523,6 +2687,55 @@ private fun Settings.updateDesktopInputSettings(
             else -> this
         }
     }
+
+private fun Settings.withKeyboardShortcut(binding: KeyboardShortcutBinding): Settings =
+    updateDesktopInputSettings {
+        copy(
+            keyboardShortcuts = keyboardShortcuts.normalized().copy(
+                bindings = keyboardShortcuts.normalized().bindings.map { current ->
+                    if (current.action == binding.action) binding else current
+                }
+            )
+        )
+    }
+
+private fun KeyboardShortcutBinding.displayLabel(): String =
+    (modifiers.sortedBy(KeyboardShortcutModifier::ordinal).map(KeyboardShortcutModifier::displayName) +
+        key.displayName()).joinToString(" + ")
+
+private fun KeyboardShortcutModifier.displayName(): String = when (this) {
+    KeyboardShortcutModifier.CONTROL -> "Ctrl"
+    KeyboardShortcutModifier.ALT -> "Alt"
+    KeyboardShortcutModifier.SHIFT -> "Shift"
+    KeyboardShortcutModifier.META -> "Meta"
+}
+
+private fun KeyboardShortcutKey.displayName(): String = when (this) {
+    in KeyboardShortcutKey.DIGIT_0..KeyboardShortcutKey.DIGIT_9 -> name.removePrefix("DIGIT_")
+    in KeyboardShortcutKey.ARROW_UP..KeyboardShortcutKey.ARROW_RIGHT ->
+        name.removePrefix("ARROW_").lowercase().replaceFirstChar(Char::uppercase)
+    KeyboardShortcutKey.PAGE_UP -> "Page Up"
+    KeyboardShortcutKey.PAGE_DOWN -> "Page Down"
+    else -> name.lowercase().replace('_', ' ').replaceFirstChar(Char::uppercase)
+}
+
+private fun KeyboardShortcutAction.displayName(): String = when (this) {
+    KeyboardShortcutAction.PUSH_TO_TALK -> "Push to talk"
+    KeyboardShortcutAction.TOGGLE_LIVE_VOICE -> "Toggle continuous voice"
+    KeyboardShortcutAction.FIX_CLIPBOARD_TEXT -> "Fix clipboard text"
+    KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT -> "Translate clipboard text"
+    KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE -> "Edit previous message"
+    KeyboardShortcutAction.NEW_CONVERSATION -> "New conversation"
+}
+
+private fun KeyboardShortcutAction.description(): String = when (this) {
+    KeyboardShortcutAction.PUSH_TO_TALK -> "Hold to record; release to transcribe and send. A quick tap is discarded."
+    KeyboardShortcutAction.TOGGLE_LIVE_VOICE -> "Starts or stops continuous voice input."
+    KeyboardShortcutAction.FIX_CLIPBOARD_TEXT -> "Fixes the text currently stored in the clipboard."
+    KeyboardShortcutAction.TRANSLATE_CLIPBOARD_TEXT -> "Translates the text currently stored in the clipboard."
+    KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE -> "With an empty composer, opens the latest editable user message."
+    KeyboardShortcutAction.NEW_CONVERSATION -> "Creates a conversation in the current project."
+}
 
 private fun Settings.updateDesktopSettings(
     update: UserDeviceSettings.Desktop.() -> UserDeviceSettings.Desktop,

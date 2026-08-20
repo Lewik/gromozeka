@@ -1,10 +1,14 @@
 package com.gromozeka.e2e
 
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.pressKey
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.UiTestTag
 import kotlinx.coroutines.runBlocking
@@ -79,5 +83,19 @@ class MessageEditingE2eTest {
         }
         assertNotEquals(originalMessage.id, editedMessage.id)
         assertEquals(listOf(originalMessage.id), editedMessage.originalIds)
+
+        onNodeWithTag(UiTestTag.MessageInput.value).performTextInput("Draft message")
+        onNodeWithTag(UiTestTag.MessageInput.value).performKeyInput {
+            pressKey(Key.DirectionUp)
+        }
+        onNodeWithTag(UiTestTag.EditMessageInput.value).assertDoesNotExist()
+        onNodeWithTag(UiTestTag.MessageInput.value).assertTextContains("Draft message")
+
+        onNodeWithTag(UiTestTag.MessageInput.value).performTextReplacement("")
+        onNodeWithTag(UiTestTag.MessageInput.value).performClick().performKeyInput {
+            pressKey(Key.DirectionUp)
+        }
+        waitForTag(UiTestTag.EditMessageInput)
+        onNodeWithTag(UiTestTag.EditMessageInput.value).assertTextContains("Edited message")
     }
 }

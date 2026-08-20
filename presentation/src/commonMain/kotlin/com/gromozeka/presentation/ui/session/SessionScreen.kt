@@ -17,7 +17,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.KeyboardShortcutAction
+import com.gromozeka.domain.model.KeyboardShortcutBinding
+import com.gromozeka.domain.model.KeyboardShortcutScope
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.presentation.services.LiveVoiceInputService
 import com.gromozeka.presentation.services.LiveVoiceInputState
@@ -120,6 +124,13 @@ fun SessionScreen(
         collapsedContentItems = uiState.collapsedContentItems,
     )
     val runtimeStrings = LocalTranslation.current.runtime
+    val editLastMessageShortcut = remember(settings.userDeviceSettings) {
+        (settings.userDeviceSettings as? UserDeviceSettings.Desktop)
+            ?.inputSettings
+            ?.keyboardShortcuts
+            ?.binding(KeyboardShortcutAction.EDIT_LAST_USER_MESSAGE)
+            ?.takeIf { it.enabled && it.scope == KeyboardShortcutScope.FOCUSED }
+    }
 
     Row(
         modifier = Modifier
@@ -617,6 +628,8 @@ fun SessionScreen(
                         onCaptureScreenshot = viewModel::captureScreenshot,
                         onRemoveArtifact = viewModel::removeComposerArtifact,
                         onInsertCurrentLocation = onInsertCurrentLocation,
+                        editLastMessageShortcut = editLastMessageShortcut,
+                        onEditLastUserMessage = viewModel::startEditLatestUserMessage,
                     )
 
                     // Dev buttons only

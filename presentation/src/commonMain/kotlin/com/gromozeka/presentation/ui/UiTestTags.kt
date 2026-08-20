@@ -54,6 +54,19 @@ sealed interface UiTestTag {
     data object CopyableMarkdownButton : UiTestTag
     data object SuggestedReplies : UiTestTag
     data object SuggestedRepliesRefresh : UiTestTag
+    data object KeyboardShortcuts : UiTestTag
+
+    data class SettingsSectionTab(val section: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(section)
+    }
+
+    data class KeyboardShortcutBinding(val action: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(action)
+    }
+
+    data class KeyboardShortcutCapture(val action: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(action)
+    }
 
     data class SessionTab(val index: Int) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)

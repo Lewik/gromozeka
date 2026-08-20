@@ -1,7 +1,8 @@
 package com.gromozeka.presentation.services
 
 import com.gromozeka.domain.model.ArtifactUpload
-import com.gromozeka.domain.model.QuickTextAction
+import com.gromozeka.domain.model.KeyboardShortcutAction
+import com.gromozeka.domain.model.KeyboardShortcutSettings
 import com.gromozeka.domain.model.TtsTask
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,16 +48,50 @@ object NoOpAttachmentAcquisitionController : AttachmentAcquisitionController {
 }
 
 interface GlobalHotkeyController {
+    val state: StateFlow<GlobalHotkeyState>
     fun initializeService()
-    fun registerQuickTextActionHotkeys(handler: (QuickTextAction.Id) -> Unit) = Unit
+    fun applySettings(
+        settings: KeyboardShortcutSettings,
+        handler: (GlobalHotkeyEvent) -> Unit,
+    )
     fun cleanup()
     fun isSupported(): Boolean = false
     fun getImplementationType(): String = "none"
 }
 
 object NoOpGlobalHotkeyController : GlobalHotkeyController {
+    override val state: StateFlow<GlobalHotkeyState> = MutableStateFlow(
+        GlobalHotkeyState(
+            available = false,
+            implementationType = "none",
+            message = "Global shortcuts are unavailable on this client",
+        )
+    )
     override fun initializeService() = Unit
+    override fun applySettings(
+        settings: KeyboardShortcutSettings,
+        handler: (GlobalHotkeyEvent) -> Unit,
+    ) = Unit
     override fun cleanup() = Unit
+}
+
+data class GlobalHotkeyState(
+    val available: Boolean,
+    val implementationType: String,
+    val message: String? = null,
+    val bindingErrors: Map<KeyboardShortcutAction, String> = emptyMap(),
+)
+
+data class GlobalHotkeyEvent(
+    val action: KeyboardShortcutAction,
+    val phase: GlobalHotkeyEventPhase,
+)
+
+enum class GlobalHotkeyEventPhase {
+    TRIGGERED,
+    PRESSED,
+    RELEASED,
+    CANCELLED,
 }
 
 interface SoundNotificationPlayer {

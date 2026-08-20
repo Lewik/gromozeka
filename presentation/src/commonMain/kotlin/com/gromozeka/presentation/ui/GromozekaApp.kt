@@ -24,13 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusTarget
-import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isMetaPressed
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -47,11 +43,14 @@ import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
+import com.gromozeka.domain.model.KeyboardShortcutAction
+import com.gromozeka.domain.model.KeyboardShortcutSettings
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.presentation.AppComponents
-import com.gromozeka.presentation.services.UnifiedGestureDetector
+import com.gromozeka.presentation.services.HoldToTalkShortcutController
 import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import com.gromozeka.presentation.ui.session.ConversationRuntimePanel
@@ -122,8 +121,8 @@ fun GromozekaAppContent(
     val liveVoiceInputState by appComponents.liveVoiceInputService.state.collectAsState()
     val liveVoiceInputStatusMessage by appComponents.liveVoiceInputService.statusMessage.collectAsState()
     val liveVoiceInputUnavailableReason by appComponents.liveVoiceInputService.unavailableReason.collectAsState()
-    val keyboardPttGestureDetector = remember {
-        UnifiedGestureDetector(appComponents.pttEventRouter, coroutineScope)
+    val keyboardPttController = remember {
+        HoldToTalkShortcutController(appComponents.pttEventRouter, coroutineScope)
     }
     val isWindowFocused = LocalWindowInfo.current.isWindowFocused
     val reportsComposeWindowFocus =
@@ -235,33 +234,25 @@ fun GromozekaAppContent(
                         appComponents.clientPresentationService.reportUserInteraction()
                     }
                 }
-                .advancedEscape(appComponents.pttEventRouter)
+                .focusedKeyboardShortcuts(
+                    settings = currentSettings.desktopKeyboardShortcuts,
+                    holdToTalkController = keyboardPttController,
+                    onActivate = { action ->
+                        when (action) {
+                            KeyboardShortcutAction.TOGGLE_LIVE_VOICE -> coroutineScope.launch {
+                                appComponents.liveVoiceInputService.toggle()
+                            }
+                            KeyboardShortcutAction.NEW_CONVERSATION -> createNewSessionInCurrentProject()
+                            else -> Unit
+                        }
+                    },
+                )
                 .testTag(UiTestTag.AppRoot.value)
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown) {
                         appComponents.clientPresentationService.reportUserInteraction()
                     }
-                    when {
-                        event.key == Key.T && event.isMetaPressed && event.type == KeyEventType.KeyDown -> {
-                            createNewSessionInCurrentProject()
-                            true
-                        }
-
-                        event.utf16CodePoint == 167 -> {
-                            when (event.type) {
-                                KeyEventType.KeyDown -> {
-                                    keyboardPttGestureDetector.onGestureDown()
-                                }
-
-                                KeyEventType.KeyUp -> {
-                                    keyboardPttGestureDetector.onGestureUp()
-                                }
-                            }
-                            true
-                        }
-
-                        else -> false
-                    }
+                    false
                 }
         ) {
             when {
@@ -538,6 +529,7 @@ fun GromozekaAppContent(
                                                                     themeService = appComponents.themeService,
                                                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                                                     settingsService = appComponents.settingsService,
+                                                                    globalHotkeyController = appComponents.globalHotkeyController,
                                                                     aiConfigurationService = appComponents.aiConfigurationService,
                                                                     aiUsageReportService = appComponents.aiUsageReportService,
                                                                     runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
@@ -679,6 +671,7 @@ fun GromozekaAppContent(
                                     themeService = appComponents.themeService,
                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                     settingsService = appComponents.settingsService,
+                                    globalHotkeyController = appComponents.globalHotkeyController,
                                     aiConfigurationService = appComponents.aiConfigurationService,
                                     aiUsageReportService = appComponents.aiUsageReportService,
                                     runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
@@ -799,6 +792,7 @@ fun GromozekaAppContent(
                                     themeService = appComponents.themeService,
                                     aiThemeGenerator = appComponents.aiThemeGenerator,
                                     settingsService = appComponents.settingsService,
+                                    globalHotkeyController = appComponents.globalHotkeyController,
                                     aiConfigurationService = appComponents.aiConfigurationService,
                                     aiUsageReportService = appComponents.aiUsageReportService,
                                     runtimeCatalogTemplateService = appComponents.runtimeCatalogTemplateService,
@@ -854,6 +848,12 @@ fun GromozekaAppContent(
 }
 
 private const val ERROR_HAPTIC_GAP_MILLIS = 120L
+
+private val Settings.desktopKeyboardShortcuts: KeyboardShortcutSettings
+    get() = (userDeviceSettings as? UserDeviceSettings.Desktop)
+        ?.inputSettings
+        ?.keyboardShortcuts
+        ?: KeyboardShortcutSettings()
 
 private enum class ProjectArea {
     CONVERSATIONS,

@@ -108,7 +108,7 @@ sealed interface UserDeviceSettings {
 
     @Serializable
     data class DesktopInputSettings(
-        val globalPttHotkeyEnabled: Boolean = false,
+        val keyboardShortcuts: KeyboardShortcutSettings = KeyboardShortcutSettings(),
         val muteSystemAudioDuringPtt: Boolean = true,
     )
 

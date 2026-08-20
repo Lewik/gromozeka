@@ -44,12 +44,14 @@ import com.gromozeka.presentation.services.LiveVoiceInputService
 import com.gromozeka.presentation.services.LiveVoiceInputState
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.advancedPttGestures
+import com.gromozeka.presentation.ui.matches
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -89,6 +91,8 @@ internal fun MessageInput(
     onCaptureScreenshot: () -> Unit,
     onRemoveArtifact: (Artifact.Id) -> Unit,
     onInsertCurrentLocation: (() -> Unit)? = null,
+    editLastMessageShortcut: KeyboardShortcutBinding? = null,
+    onEditLastUserMessage: () -> Boolean = { false },
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -228,6 +232,15 @@ internal fun MessageInput(
                         .onFocusChanged { inputFocused = it.isFocused }
                         .onPreviewKeyEvent { event ->
                             when {
+                                editLastMessageShortcut != null &&
+                                    textFieldValue.text.isEmpty() &&
+                                    event.matches(editLastMessageShortcut) -> {
+                                    if (event.type == KeyEventType.KeyDown) {
+                                        onEditLastUserMessage()
+                                    }
+                                    editLastMessageShortcut.consumeEvent
+                                }
+
                                 event.key == Key.Enter &&
                                     event.isShiftPressed -> {
                                     if (event.type == KeyEventType.KeyDown) {
@@ -235,8 +248,6 @@ internal fun MessageInput(
                                     }
                                     true
                                 }
-
-                                event.utf16CodePoint == 167 -> true
                                 else -> false
                             }
                         }
