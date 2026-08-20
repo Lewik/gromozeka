@@ -1,14 +1,15 @@
 package com.gromozeka.infrastructure.ai.tool
 
+import com.gromozeka.domain.model.ArtifactLimits
 import com.gromozeka.domain.service.FileSearchService
+import com.gromozeka.domain.tool.AiToolResult
+import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.GrzReadFileTool
 import com.gromozeka.domain.tool.filesystem.ReadFileRequest
-import org.slf4j.LoggerFactory
-import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.requiredWorkspaceRootPath
 import org.springframework.stereotype.Service
+import org.slf4j.LoggerFactory
 import java.io.File
-import java.util.Base64
 
 /**
  * Infrastructure implementation of GrzReadFileTool.
@@ -24,7 +25,7 @@ class GrzReadFileToolImpl(
     
     private val logger = LoggerFactory.getLogger(GrzReadFileToolImpl::class.java)
     
-    override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): Map<String, Any> {
+    override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): List<AiToolResult> {
         val workspaceRootPath = context.requiredWorkspaceRootPath()
         return try {
             val file = resolveFile(request.file_path, workspaceRootPath)
@@ -38,15 +39,15 @@ class GrzReadFileToolImpl(
                     )
                     
                     if (suggestions.isNotEmpty()) {
-                        mapOf(
-                            "error" to "File not found: ${request.file_path}",
-                            "suggestions" to suggestions
+                        textResult(
+                            "File not found: ${request.file_path}\n" +
+                                "Suggestions:\n" + suggestions.joinToString("\n") { "- $it" }
                         )
                     } else {
-                        mapOf("error" to "File not found: ${request.file_path}")
+                        textResult("File not found: ${request.file_path}")
                     }
                 }
-                !file.isFile -> mapOf("error" to "Path is not a file: ${request.file_path}")
+                !file.isFile -> textResult("Path is not a file: ${request.file_path}")
                 else -> {
                     val mimeType = detectMimeType(file)
                     logger.debug("Reading file: ${file.name}, type: $mimeType")
@@ -60,7 +61,7 @@ class GrzReadFileToolImpl(
             }
         } catch (e: Exception) {
             logger.error("Error reading file: ${request.file_path}", e)
-            mapOf("error" to "Error reading file: ${e.message}")
+            textResult("Error reading file: ${e.message}")
         }
     }
     
@@ -81,72 +82,54 @@ class GrzReadFileToolImpl(
         }
     }
     
-    private fun readImageFile(file: File, mimeType: String): Map<String, Any> {
-        val bytes = file.readBytes()
-        val base64 = Base64.getEncoder().encodeToString(bytes)
-        
-        return mapOf(
-            "type" to "text",
-            "text" to "Successfully read image: ${file.name} (${bytes.size} bytes, $mimeType)",
-            "additionalContent" to listOf(
-                mapOf(
-                    "type" to "image",
-                    "source" to mapOf(
-                        "type" to "base64",
-                        "media_type" to mimeType,
-                        "data" to base64
-                    )
-                )
-            )
-        )
-    }
+    private fun readImageFile(file: File, mimeType: String): List<AiToolResult> =
+        readBinaryFile(file, mimeType)
     
-    private fun readPdfFile(file: File): Map<String, Any> {
-        val bytes = file.readBytes()
-        val base64 = Base64.getEncoder().encodeToString(bytes)
-        
-        return mapOf(
-            "type" to "document",
-            "source" to mapOf(
-                "type" to "base64",
-                "media_type" to "application/pdf",
-                "data" to base64
-            )
-        )
-    }
+    private fun readPdfFile(file: File): List<AiToolResult> =
+        readBinaryFile(file, "application/pdf")
     
-    private fun readTextFile(file: File, limit: Int, offset: Int): Map<String, Any> {
-        val lines = file.readLines()
-        val totalLines = lines.size
-        val startLine = offset
-        
-        // Safe default (1000 lines) with -1 for full file (AI-native pattern)
-        val maxLines = when {
-            limit == -1 -> lines.size - startLine  // Explicit intent to read entire file
-            limit <= 0 -> throw IllegalArgumentException("Limit must be positive or -1 for entire file (got: $limit)")
-            else -> limit
+    private fun readBinaryFile(file: File, mimeType: String): List<AiToolResult> {
+        require(file.length() <= ArtifactLimits.MAX_FILE_BYTES) {
+            "Binary file exceeds the ${ArtifactLimits.MAX_FILE_BYTES / (1024 * 1024)} MB artifact limit: ${file.name}"
         }
-        
-        val selectedLines = lines.drop(startLine).take(maxLines)
+        return listOf(AiToolResult.Binary(file.readBytes(), file.name, mimeType))
+    }
+
+    private fun readTextFile(file: File, limit: Int, offset: Int): List<AiToolResult> {
+        require(offset >= 0) { "Offset must not be negative (got: $offset)" }
+        require(limit == -1 || limit > 0) {
+            "Limit must be positive or -1 for entire file (got: $limit)"
+        }
+
+        val selectedLines = mutableListOf<String>()
+        var totalLines = 0
+        file.useLines { lines ->
+            lines.forEach { line ->
+                if (totalLines >= offset && (limit == -1 || selectedLines.size < limit)) {
+                    val truncated = if (line.length > 2000) line.take(2000) + "..." else line
+                    selectedLines += "${totalLines + 1}\t$truncated"
+                }
+                totalLines++
+            }
+        }
         val actualLinesRead = selectedLines.size
-        
-        val content = selectedLines.mapIndexed { index, line ->
-            val lineNumber = startLine + index + 1
-            val truncated = if (line.length > 2000) line.take(2000) + "..." else line
-            "$lineNumber\t$truncated"
-        }.joinToString("\n")
+        val content = selectedLines.joinToString("\n")
         
         // Add metadata about the file to help AI understand what was read
-        val metadata = if (totalLines > 0) {
-            "\n[Read lines ${startLine + 1}-${startLine + actualLinesRead} of $totalLines total]" +
-            if (startLine + actualLinesRead < totalLines) " (more lines available)" else ""
-        } else {
+        val metadata = if (totalLines == 0) {
             "\n[Empty file]"
+        } else if (actualLinesRead == 0) {
+            "\n[Read 0 lines of $totalLines total]"
+        } else {
+            val firstLine = minOf(offset + 1, totalLines)
+            val lastLine = offset + actualLinesRead
+            "\n[Read lines $firstLine-$lastLine of $totalLines total]" +
+                if (lastLine < totalLines) " (more lines available)" else ""
         }
         
-        return mapOf(
-            "type" to "text",
-            "text" to content + metadata
-        )
+        return textResult(content + metadata)
     }
+
+    private fun textResult(content: String): List<AiToolResult> =
+        listOf(AiToolResult.Text(content))
 }

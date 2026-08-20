@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -42,8 +43,8 @@ data class ReadFileRequest(
  * 
  * **Multiple content types:**
  * - Text files: Line-numbered content with truncation
- * - Images: Base64 encoded (PNG, JPEG, GIF, WebP)
- * - PDFs: Base64 encoded document
+ * - Images: Native binary results (PNG, JPEG, GIF, WebP)
+ * - PDFs: Native binary document results
  * 
  * **Flexible access patterns:**
  * - Preview (first 1000 lines)
@@ -109,15 +110,15 @@ data class ReadFileRequest(
  * 
  * # Returns
  * 
- * Returns `Map<String, Any>` with different structures based on content type:
+ * Returns one or more typed tool results based on content type:
  * 
  * ## Text Files
  * 
- * ```json
- * {
- *   "type": "text",
- *   "text": "1\tFirst line content\n2\tSecond line content\n...\n[Read lines 1-1000 of 5000 total] (more lines available)"
- * }
+ * ```text
+ * 1	First line content
+ * 2	Second line content
+ * ...
+ * [Read lines 1-1000 of 5000 total] (more lines available)
  * ```
  * 
  * **Format details:**
@@ -128,35 +129,14 @@ data class ReadFileRequest(
  * 
  * ## Image Files (PNG, JPEG, GIF, WebP)
  * 
- * ```json
- * {
- *   "type": "text",
- *   "text": "Successfully read image: screenshot.png (45678 bytes, image/png)",
- *   "additionalContent": [
- *     {
- *       "type": "image",
- *       "source": {
- *         "type": "base64",
- *         "media_type": "image/png",
- *         "data": "iVBORw0KGgo..."
- *       }
- *     }
- *   ]
- * }
- * ```
+ * Returns `AiToolResult.Binary` with the original bytes, file name, and image media type.
+ * The conversation artifact pipeline stores the bytes and materializes a native image block
+ * for the selected AI provider.
  * 
  * ## PDF Files
  * 
- * ```json
- * {
- *   "type": "document",
- *   "source": {
- *     "type": "base64",
- *     "media_type": "application/pdf",
- *     "data": "JVBERi0xLj..."
- *   }
- * }
- * ```
+ * Returns `AiToolResult.Binary` with the original PDF bytes. The conversation artifact
+ * pipeline stores the bytes and materializes a native document block for the provider.
  * 
  * ## Error Response
  * 
@@ -165,23 +145,18 @@ data class ReadFileRequest(
  * Infrastructure uses FileSearchService to suggest similar files when exact path fails.
  * Helps LLM recover from typos, case sensitivity issues, or path confusion.
  * 
- * ```json
- * {
- *   "error": "File not found: src/Missing.kt",
- *   "suggestions": [
- *     "src/main/kotlin/Missing.kt",
- *     "src/test/kotlin/missing.kt",
- *     "app/src/MissingService.kt"
- *   ]
- * }
+ * ```text
+ * File not found: src/Missing.kt
+ * Suggestions:
+ * - src/main/kotlin/Missing.kt
+ * - src/test/kotlin/missing.kt
+ * - app/src/MissingService.kt
  * ```
  * 
  * **Without suggestions (no similar files exist):**
  * 
- * ```json
- * {
- *   "error": "File not found: NonExistent.xyz"
- * }
+ * ```text
+ * File not found: NonExistent.xyz
  * ```
  * 
  * @see com.gromozeka.domain.service.FileSearchService For suggestion generation algorithm
@@ -193,6 +168,7 @@ data class ReadFileRequest(
  * | File not found | Path doesn't exist | Check path, use correct relative/absolute |
  * | Path is not a file | Path points to directory | Use grz_execute_command with `ls` instead |
  * | Limit must be positive or -1 | Invalid limit value (e.g., 0, -2) | Use limit=1000 or limit=-1 |
+ * | Binary file exceeds artifact limit | Image or PDF is larger than 25 MB | Use a smaller file |
  * | Error reading file | IO exception, permission denied | Check file permissions, disk space |
  * 
  * # Usage Examples
@@ -275,7 +251,7 @@ data class ReadFileRequest(
  * }
  * ```
  * 
- * **Result:** Base64 encoded image in additionalContent
+ * **Result:** Native binary image tool result
  * 
  * # Common Patterns
  * 
@@ -307,9 +283,9 @@ data class ReadFileRequest(
  * # Performance Characteristics
  * 
  * - **Small files (<1000 lines):** Instant read
- * - **Large files with limit:** Fast (reads only requested lines)
+ * - **Large files with limit:** Bounded memory; scans the file to report total lines
  * - **Full read of huge file:** Slow (reads entire file into memory)
- * - **Images/PDFs:** Base64 encoding adds overhead (~33% size increase)
+ * - **Images/PDFs:** Read as binary tool results up to the artifact size limit
  * 
  * **Recommendation:** Always use default limit for unknown files, only use -1 when
  * you know file is small or you actually need complete content.
@@ -331,7 +307,7 @@ data class ReadFileRequest(
  * This tool delegates to:
  * @see com.gromozeka.domain.service.FileSystemService.readFile (when created)
  */
-interface GrzReadFileTool : Tool<ReadFileRequest, Map<String, Any>> {
+interface GrzReadFileTool : Tool<ReadFileRequest, List<AiToolResult>> {
     
     override val name: String
         get() = GRZ_READ_FILE_TOOL_NAME
@@ -362,11 +338,11 @@ interface GrzReadFileTool : Tool<ReadFileRequest, Map<String, Any>> {
             Returns:
             - Content with line numbers (e.g., "1\tline content")
             - Metadata: [Read lines X-Y of Z total] (more lines available)
-            - Images/PDFs: Base64 encoded
+            - Images/PDFs: native binary tool results stored as conversation artifacts
         """.trimIndent()
     
     override val requestType: Class<ReadFileRequest>
         get() = ReadFileRequest::class.java
     
-    override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): Map<String, Any>
+    override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): List<AiToolResult>
 }
