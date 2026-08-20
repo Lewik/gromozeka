@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -439,13 +440,15 @@ internal fun MessageItem(
                     end = 4.dp,
                 )
             ) {
-                MessageSegmentContent(
-                    entry = entry,
-                    toolResultsMap = toolResultsMap,
-                    workspaceRootPath = workspaceRootPath,
-                    onToggleContentItemCollapse = onToggleContentItemCollapse,
-                    loadArtifactContent = loadArtifactContent,
-                )
+                SelectionContainer {
+                    MessageSegmentContent(
+                        entry = entry,
+                        toolResultsMap = toolResultsMap,
+                        workspaceRootPath = workspaceRootPath,
+                        onToggleContentItemCollapse = onToggleContentItemCollapse,
+                        loadArtifactContent = loadArtifactContent,
+                    )
+                }
             }
         }
 
