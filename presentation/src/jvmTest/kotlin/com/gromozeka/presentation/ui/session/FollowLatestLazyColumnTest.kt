@@ -72,6 +72,7 @@ class FollowLatestLazyColumnTest {
         }
         waitForTag(itemTag(0))
         onNodeWithTag(itemTag(0)).assertIsDisplayed()
+        onNodeWithTag(UiTestTag.UnreadMessagesButton.value).assertIsDisplayed()
 
         runOnIdle { values += 32 }
         waitForTag(UiTestTag.UnreadMessagesButton.value)

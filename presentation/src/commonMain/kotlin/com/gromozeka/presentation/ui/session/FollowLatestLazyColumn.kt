@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -157,10 +158,10 @@ internal fun <T> FollowLatestLazyColumn(
             items(items = items, key = itemKey, itemContent = itemContent)
         }
 
-        if (!isAtBottom && hasUnreadContent) {
-            UnreadMessagesButton(
-                unreadCount = unreadKeys.size,
-                label = unreadLabel(unreadKeys.size),
+        if (!isAtBottom) {
+            ScrollToLatestButton(
+                unreadCount = unreadKeys.size.takeIf { hasUnreadContent },
+                label = unreadLabel(unreadKeys.size).takeIf { hasUnreadContent },
                 onClick = {
                     followingLatest = true
                     hasUnreadContent = false
@@ -175,22 +176,32 @@ internal fun <T> FollowLatestLazyColumn(
 }
 
 @Composable
-private fun BoxScope.UnreadMessagesButton(
-    unreadCount: Int,
-    label: String,
+private fun BoxScope.ScrollToLatestButton(
+    unreadCount: Int?,
+    label: String?,
     onClick: () -> Unit,
 ) {
-    FilledTonalButton(
-        onClick = onClick,
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(12.dp)
-            .testTag(UiTestTag.UnreadMessagesButton.value),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.ArrowDownward, contentDescription = null)
-            Spacer(Modifier.width(6.dp))
-            Text(if (unreadCount > 0) "$unreadCount $label" else label)
+    val modifier = Modifier
+        .align(Alignment.BottomCenter)
+        .padding(12.dp)
+        .testTag(UiTestTag.UnreadMessagesButton.value)
+    if (label == null) {
+        FilledTonalIconButton(
+            onClick = onClick,
+            modifier = modifier,
+        ) {
+            Icon(Icons.Default.ArrowDownward, contentDescription = "Scroll to latest")
+        }
+    } else {
+        FilledTonalButton(
+            onClick = onClick,
+            modifier = modifier,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.ArrowDownward, contentDescription = "Scroll to latest")
+                Spacer(Modifier.width(6.dp))
+                Text(if (requireNotNull(unreadCount) > 0) "$unreadCount $label" else label)
+            }
         }
     }
 }
