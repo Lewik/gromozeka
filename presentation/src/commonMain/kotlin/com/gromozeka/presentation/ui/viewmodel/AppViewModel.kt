@@ -8,8 +8,7 @@ import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.AgentDomainService
-import com.gromozeka.domain.service.AiConfigurationProvider
-import com.gromozeka.domain.service.MessageSquashGenerationService
+import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
@@ -25,9 +24,8 @@ import kotlinx.coroutines.sync.withLock
 open class AppViewModel(
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
-    private val messageSquashGenerationService: MessageSquashGenerationService,
+    private val messageSquashService: MessageSquashService,
     private val settingsService: SettingsService,
-    private val aiConfigurationProvider: AiConfigurationProvider,
     private val scope: CoroutineScope,
     internal val attachmentAcquisitionController: AttachmentAcquisitionController,
     private val artifactTransferService: ArtifactTransferService,
@@ -306,9 +304,8 @@ open class AppViewModel(
         projectId = conversation.projectId,
         conversationRuntimeService = conversationRuntimeService,
         conversationService = conversationService,
-        messageSquashGenerationService = messageSquashGenerationService,
+        messageSquashService = messageSquashService,
         settingsService = settingsService,
-        aiConfigurationProvider = aiConfigurationProvider,
         scope = scope,
         initialTabUiState = initialTabUiState,
         attachmentAcquisitionController = attachmentAcquisitionController,

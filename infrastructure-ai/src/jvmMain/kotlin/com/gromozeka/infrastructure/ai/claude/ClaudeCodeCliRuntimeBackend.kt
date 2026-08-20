@@ -475,6 +475,7 @@ internal class ClaudeCodeCliRuntime(
                             state = boundary,
                         ),
                         origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                        strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.PROVIDER_MANAGED,
                         providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
                             provider = AiConnection.Kind.CLAUDE_CODE.name,
                             connectionId = connectionId,

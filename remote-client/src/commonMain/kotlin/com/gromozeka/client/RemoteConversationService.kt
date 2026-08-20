@@ -21,7 +21,6 @@ import com.gromozeka.remote.protocol.ProjectResponse
 import com.gromozeka.remote.protocol.RegenerateSuggestedRepliesRequest
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SuggestedRepliesResponse
-import com.gromozeka.remote.protocol.SquashMessagesRequest
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
 import com.gromozeka.remote.protocol.UpdateConversationAgentRequest
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
@@ -112,11 +111,4 @@ internal class RemoteConversationService(
         DeleteMessagesRequest(conversationId, messageIds)
     ).conversation
 
-    override suspend fun squashMessages(
-        conversationId: Conversation.Id,
-        messageIds: List<Conversation.Message.Id>,
-        squashedContent: List<Conversation.Message.ContentItem>,
-    ): Conversation? = client.requestTyped<SquashMessagesRequest, ConversationResponse>(
-        SquashMessagesRequest(conversationId, messageIds, squashedContent)
-    ).conversation
 }

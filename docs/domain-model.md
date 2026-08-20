@@ -25,48 +25,38 @@ Messages are shared between Threads by reference, not copied:
 - Complex operations are explicit and tracked (audit trail)
 - Undo/redo via Thread switching
 
-### Message.originalIds Semantics (DEPRECATED)
+### Message.originalIds Semantics
 
-**Status**: Deprecated in favor of `squashOperationId` for structured provenance tracking.
-
-Not just "parent message", but provenance tracking:
+`originalIds` tracks immutable message-version lineage:
 - `[]`: new message
 - `[id]`: edited version
-- `[id1, id2, ...]`: squash result
 
-**Non-obvious aspects**:
-- List, not single value: squash can merge multiple messages
-- Source messages can be non-contiguous
-- Forms DAG, not tree (message can be squashed multiple times in different contexts)
+Compaction provenance does not use this field. It belongs to the embedded
+`ContextCompactionResult` content item.
 
-**Migration**: New code should use `SquashOperation` entity for tracking squash operations.
+### ContextCompactionResult is Canonical
 
-### SquashOperation is Immutable
+Every user, policy, provider, or migration compaction is represented by a
+`ContextCompactionResult` in the resulting assistant message. It records:
 
-SquashOperation tracks AI/manual squash provenance:
-- `prompt` can be null (manual edit or prompt not saved)
-- `performedByAgent` flag: true = AI squash, false = manual
-- `sourceMessageIds` references original Messages (immutable)
-- `resultMessageId` points to squashed Message
+- the compaction payload;
+- origin and strategy;
+- source message IDs in conversation order;
+- normalized provider, connection, model-configuration, and model identity when AI generated the result;
+- stable prompt-template identity and version when a Gromozeka prompt was used.
 
-**Why separate entity?**
-- Multiple Messages can be squashed → one SquashOperation
-- Reproducibility: can re-run squash with same prompt
-- Audit trail: who squashed and how
-- Structured provenance vs flat list in originalIds
+Large prompt copies and unreliable token-saving estimates are intentionally not stored.
 
-### Squash is AI Operation
+### Compaction Strategies
 
-Squash ≠ concatenation:
-- AI summarization (reduce verbosity, keep essence)
-- Restructuring (change format, reorganize)
-- Semantic compression
+The shared compaction workflow supports:
+- deterministic concatenation;
+- AI summarization;
+- AI distillation;
+- provider-managed opaque compaction boundaries.
 
-**Why this matters**:
-- SquashOperation preserves prompt and model used
-- Squash prompt determines logic (not hardcoded)
-- Can squash non-adjacent messages (e.g., "combine all tool calls")
-- performedByAgent distinguishes AI squash from manual edit
+All strategies use the same copy-on-write commit path. Source messages and the
+original thread remain unchanged for history and restoration.
 
 ### Why conversationId in Message, not threadId
 
@@ -94,7 +84,7 @@ Instruction types attached to Messages:
 
 ## Time Travel Implementation
 
-**User wants to undo squash operation**:
+**User wants to undo compaction**:
 1. Current Thread has originalThread → previous Thread
 2. Switch Conversation.currentThread to previous
 3. All Messages still exist (immutable)
@@ -102,7 +92,7 @@ Instruction types attached to Messages:
 
 **Can traverse chain**:
 ```
-Thread_initial → Thread_after_squash → Thread_after_edit → Thread_current
+Thread_initial → Thread_after_compaction → Thread_after_edit → Thread_current
                  ↑ can go back here
 ```
 

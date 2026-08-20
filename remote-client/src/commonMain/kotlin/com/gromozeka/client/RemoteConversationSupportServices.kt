@@ -7,13 +7,12 @@ import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.QuickTextActionResult
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationSearchService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.AiUsageReportService
 import com.gromozeka.remote.protocol.AiUsageReportResponse
 import com.gromozeka.remote.protocol.GetAiUsageReportRequest
-import com.gromozeka.domain.service.MessageSquashGenerationService
+import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.QuickTextActionService
 import com.gromozeka.remote.protocol.ConversationSearchPageResponse
 import com.gromozeka.remote.protocol.GetTokenStatsRequest
@@ -22,8 +21,8 @@ import com.gromozeka.remote.protocol.QuickTextActionResultResponse
 import com.gromozeka.remote.protocol.QuickTextActionsResponse
 import com.gromozeka.remote.protocol.RunQuickTextActionRequest
 import com.gromozeka.remote.protocol.SearchConversationsRequest
-import com.gromozeka.remote.protocol.SquashMessagesWithAiRequest
-import com.gromozeka.remote.protocol.TextResponse
+import com.gromozeka.remote.protocol.CompactMessagesRequest
+import com.gromozeka.remote.protocol.ConversationResponse
 import com.gromozeka.remote.protocol.TokenStatsResponse
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import kotlinx.coroutines.flow.Flow
@@ -53,17 +52,16 @@ internal class RemoteAiUsageReportService(
         ).report
 }
 
-internal class RemoteMessageSquashGenerationService(
+internal class RemoteMessageSquashService(
     private val client: GromozekaWsClient,
-) : MessageSquashGenerationService {
-    override suspend fun squashWithAI(
+) : MessageSquashService {
+    override suspend fun squash(
         conversationId: Conversation.Id,
-        selectedIds: List<Conversation.Message.Id>,
-        squashType: SquashType,
-        runtimeSelection: AiRuntimeSelection,
-    ): String = client.requestTyped<SquashMessagesWithAiRequest, TextResponse>(
-        SquashMessagesWithAiRequest(conversationId, selectedIds, squashType, runtimeSelection)
-    ).text
+        messageIds: List<Conversation.Message.Id>,
+        strategy: SquashType,
+    ): Conversation = client.requestTyped<CompactMessagesRequest, ConversationResponse>(
+        CompactMessagesRequest(conversationId, messageIds, strategy)
+    ).conversation ?: error("Server returned null conversation after compaction")
 }
 
 internal class RemoteQuickTextActionService(

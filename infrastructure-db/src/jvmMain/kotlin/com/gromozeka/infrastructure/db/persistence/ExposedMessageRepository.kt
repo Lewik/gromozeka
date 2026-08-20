@@ -24,7 +24,6 @@ class ExposedMessageRepository(
             it[conversationId] = message.conversationId.value
             it[originalIdsJson] = json.encodeToString(message.originalIds.map { id -> id.value })
             it[replyToId] = message.replyTo?.value
-            it[squashOperationId] = message.squashOperationId?.value
             it[role] = message.role.name
             it[createdAt] = message.createdAt
             it[searchText] = message.searchText()

@@ -105,9 +105,8 @@ suspend fun createRemoteAppComponents(
     val appViewModel = AppViewModel(
         conversationRuntimeService = remoteServices.conversationRuntimeService,
         conversationService = remoteServices.conversationService,
-        messageSquashGenerationService = remoteServices.messageSquashGenerationService,
+        messageSquashService = remoteServices.messageSquashService,
         settingsService = remoteServices.settingsService,
-        aiConfigurationProvider = remoteServices.aiConfigurationService,
         scope = scope,
         attachmentAcquisitionController = attachmentAcquisitionController,
         artifactTransferService = remoteServices.artifactTransferService,

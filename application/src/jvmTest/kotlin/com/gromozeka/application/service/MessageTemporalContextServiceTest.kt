@@ -32,7 +32,7 @@ class MessageTemporalContextServiceTest {
     }
 
     @Test
-    fun `ignores synthetic squashed and agent-authored user messages`() {
+    fun `ignores synthetic and agent-authored user messages`() {
         val first = userMessage("first", "2026-08-17T10:00:00Z")
         val synthetic = userMessage("synthetic", "2026-08-17T10:01:00Z").copy(
             providerMetadata = kotlinx.serialization.json.buildJsonObject { put("synthetic", JsonPrimitive(true)) },
@@ -40,20 +40,16 @@ class MessageTemporalContextServiceTest {
         val fromAgent = userMessage("agent", "2026-08-17T10:02:00Z").copy(
             instructions = listOf(Conversation.Message.Instruction.Source.Agent("tab-1")),
         )
-        val squashed = userMessage("squashed", "2026-08-17T10:03:00Z").copy(
-            squashOperationId = Conversation.SquashOperation.Id("squash-1"),
-        )
         val second = userMessage("second", "2026-08-17T10:04:00Z")
 
         val enriched = service.enrich(
-            listOf(first, synthetic, fromAgent, squashed, second),
+            listOf(first, synthetic, fromAgent, second),
             enabled = true,
         )
 
         assertNull(enriched[1].temporalContextOrNull())
         assertNull(enriched[2].temporalContextOrNull())
-        assertNull(enriched[3].temporalContextOrNull())
-        assertEquals(240, enriched[4].temporalContext().elapsedSincePreviousUserMessageSeconds)
+        assertEquals(240, enriched[3].temporalContext().elapsedSincePreviousUserMessageSeconds)
     }
 
     @Test

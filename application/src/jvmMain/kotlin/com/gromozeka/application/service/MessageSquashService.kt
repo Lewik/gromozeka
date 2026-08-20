@@ -2,194 +2,138 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SquashType
-import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
-import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.repository.ConversationRepository
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.MessageSquashService as MessageSquashServiceSpec
-import com.gromozeka.domain.service.MessageSquashGenerationService
 import klog.KLoggers
 import org.springframework.stereotype.Service
 
 @Service
-class MessageSquashService(
+class MessageSquashService internal constructor(
     private val aiRuntimeProvider: AiRuntimeProvider,
-    private val conversationService: ConversationDomainService,
     private val aiConfigurationProvider: AiConfigurationProvider,
+    private val conversationRepository: ConversationRepository,
+    private val threadMessageRepository: ThreadMessageRepository,
     private val toolCallPairingService: ToolCallPairingService,
-) : MessageSquashServiceSpec, MessageSquashGenerationService {
+    private val compactionCommitter: ContextCompactionCommitter,
+) : MessageSquashServiceSpec {
     private val log = KLoggers.logger(this)
 
-    /**
-     * Implementation of domain specification.
-     * 
-     * Delegates to squashWithAI() for AI-based strategies.
-     * For CONCATENATE, performs simple text merge without AI.
-     */
     override suspend fun squash(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
         strategy: SquashType,
-    ): MessageSquashServiceSpec.SquashResult {
-        // Validation
-        if (messageIds.size < 2) {
-            return MessageSquashServiceSpec.SquashResult.Failure(
-                reason = "At least 2 messages required for squashing, got ${messageIds.size}",
-                errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.INSUFFICIENT_MESSAGES
-            )
+    ): Conversation {
+        require(messageIds.size >= 2) { "Need at least 2 messages to compact" }
+        require(messageIds.distinct().size == messageIds.size) { "Duplicate message IDs are not allowed" }
+
+        val conversation = conversationRepository.findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+        val expectedThreadId = conversation.currentThread
+        val allMessages = threadMessageRepository.getMessagesByThread(expectedThreadId)
+        require(allMessages.count { it.id in messageIds } == messageIds.size) {
+            "Some messages are not in the current conversation thread"
         }
 
-        // Get conversation to determine AI provider/model
-        val conversation = conversationService.findById(conversationId)
-            ?: return MessageSquashServiceSpec.SquashResult.Failure(
-                reason = "Conversation not found: $conversationId",
-                errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.MESSAGES_NOT_FOUND
-            )
-
-        return try {
-            when (strategy) {
-                SquashType.CONCATENATE -> {
-                    // Simple concatenation without AI
-                    val messages = conversationService.loadCurrentMessages(conversationId)
-                    val selectedMessages = messages.filter { it.id in messageIds }
-                    
-                    if (selectedMessages.size != messageIds.size) {
-                        return MessageSquashServiceSpec.SquashResult.Failure(
-                            reason = "Some messages not found in conversation",
-                            errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.MESSAGES_NOT_FOUND
-                        )
-                    }
-
-                    val concatenated = selectedMessages.joinToString("\n\n") { message ->
-                        message.content
-                            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-                            .joinToString(" ") { it.text }
-                    }
-
-                    MessageSquashServiceSpec.SquashResult.Success(
-                        squashedContent = concatenated,
-                        originalMessageCount = selectedMessages.size,
-                        strategy = strategy,
-                        tokensSaved = null
-                    )
-                }
-
-                SquashType.SUMMARIZE, SquashType.DISTILL -> {
-                    val squashedContent = runSquashWithAI(
-                        conversationId = conversationId,
-                        selectedIds = messageIds,
-                        squashType = strategy,
-                        runtimeSelection = aiConfigurationProvider.runtimeSelectionFor(
-                            AiRuntimeAssignment.Purpose.MESSAGE_SQUASH
-                        ),
-                    )
-
-                    MessageSquashServiceSpec.SquashResult.Success(
-                        squashedContent = squashedContent,
-                        originalMessageCount = messageIds.size,
-                        strategy = strategy,
-                        tokensSaved = null // TODO: calculate token savings
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to squash messages: ${e.message}" }
-            MessageSquashServiceSpec.SquashResult.Failure(
-                reason = "AI generation failed: ${e.message}",
-                errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.AI_GENERATION_FAILED
-            )
-        }
-    }
-
-    private suspend fun runSquashWithAI(
-        conversationId: Conversation.Id,
-        selectedIds: List<Conversation.Message.Id>,
-        squashType: SquashType,
-        runtimeSelection: AiRuntimeSelection,
-    ): String {
-        require(squashType != SquashType.CONCATENATE) {
-            "Use simple concatenation for CONCATENATE type, not AI"
-        }
-        require(selectedIds.size >= 2) { "At least 2 messages required for AI squash" }
-
-        log.info { "Starting AI squash: type=$squashType, selectedCount=${selectedIds.size}" }
-
-        val conversation = requireNotNull(conversationService.findById(conversationId)) {
-            "Conversation not found: ${conversationId.value}"
-        }
-        val allMessages = conversationService.loadCurrentMessages(conversationId)
-        log.debug { "Loaded ${allMessages.size} messages from conversation" }
-        require(allMessages.count { it.id in selectedIds } == selectedIds.size) {
-            "Some selected messages are not in the current conversation thread"
-        }
-        val allSelectedIds = toolCallPairingService.includePairedToolMessages(allMessages, selectedIds)
-
-        val markedMessages = allMessages.map { message ->
-            if (message.id in allSelectedIds) {
-                message.asSquashSelection()
-            } else {
-                message
-            }
-        }
-
-        val commandPrompt = when (squashType) {
-            SquashType.DISTILL -> buildDistillPrompt()
-            SquashType.SUMMARIZE -> buildSummarizePrompt()
-            SquashType.CONCATENATE -> throw IllegalStateException("Should not reach here")
-        }
-
-        val commandMessage = Conversation.Message(
-            id = Conversation.Message.Id("squash-command"),
-            conversationId = conversationId,
-            role = Conversation.Message.Role.USER,
-            content = listOf(Conversation.Message.ContentItem.UserMessage(commandPrompt)),
-            createdAt = kotlin.time.Clock.System.now()
+        val sourceIdSet = toolCallPairingService.includePairedToolMessages(allMessages, messageIds)
+        val sourceMessageIds = allMessages.map(Conversation.Message::id).filter(sourceIdSet::contains)
+        ensureMessagesAreNotCoveredByCompaction(
+            messages = allMessages,
+            targetMessageIds = sourceIdSet,
+            operation = "compact",
+            allowLatestReadableCompaction = true,
         )
 
-        log.debug {
-            "Calling AI with ${markedMessages.size + 1} messages (${markedMessages.size} history + 1 command)"
+        val generated = when (strategy) {
+            SquashType.CONCATENATE -> GeneratedCompaction(
+                text = MessageCompactionTextRenderer.render(allMessages.filter { it.id in sourceIdSet }),
+                providerScope = null,
+                promptTemplate = null,
+            )
+
+            SquashType.DISTILL, SquashType.SUMMARIZE -> generateWithAi(
+                conversation = conversation,
+                allMessages = allMessages,
+                sourceIdSet = sourceIdSet,
+                strategy = strategy,
+            )
         }
 
-        val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null)
-        val response = runtime.call(
+        val result = Conversation.Message.ContentItem.ContextCompactionResult(
+            payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary(generated.text),
+            origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+            strategy = strategy.toCompactionStrategy(),
+            sourceMessageIds = sourceMessageIds,
+            providerScope = generated.providerScope,
+            promptTemplate = generated.promptTemplate,
+        )
+
+        return compactionCommitter.commit(conversationId, expectedThreadId, result)
+    }
+
+    private suspend fun generateWithAi(
+        conversation: Conversation,
+        allMessages: List<Conversation.Message>,
+        sourceIdSet: Set<Conversation.Message.Id>,
+        strategy: SquashType,
+    ): GeneratedCompaction {
+        val runtimeSelection = aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH)
+        val resolvedRuntime = aiConfigurationProvider.resolveAiRuntime(runtimeSelection)
+        val promptTemplate = strategy.promptTemplate()
+        val markedMessages = allMessages.map { message ->
+            if (message.id in sourceIdSet) message.asCompactionSelection() else message
+        }
+        val commandMessage = Conversation.Message(
+            id = Conversation.Message.Id("compaction-command"),
+            conversationId = conversation.id,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(strategy.promptText())),
+            createdAt = kotlin.time.Clock.System.now(),
+        )
+
+        log.info {
+            "Starting AI compaction: strategy=$strategy sourceCount=${sourceIdSet.size} " +
+                "runtime=${runtimeSelection.modelConfigurationId.value}"
+        }
+        val response = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null).call(
             AiRuntimeRequest(
                 systemPrompts = emptyList(),
                 messages = markedMessages + commandMessage,
-                options = com.gromozeka.domain.model.ai.AiRuntimeOptions(
+                options = AiRuntimeOptions(
                     toolContext = mapOf(
-                        "conversationId" to conversationId.value,
+                        "conversationId" to conversation.id.value,
                         "threadId" to conversation.currentThread.value,
                         "projectId" to conversation.projectId.value,
                         "agentDefinitionId" to conversation.agentDefinitionId.value,
                     ),
                     usagePurpose = "MESSAGE_SQUASH",
-                )
+                ),
             )
         )
-        val result = AiConversationMessageMapper.extractAssistantText(response)
+        val text = AiConversationMessageMapper.extractAssistantText(response).trim()
+        require(text.isNotBlank()) { "AI returned an empty compaction result" }
 
-        log.info { "AI squash completed: result length=${result.length}" }
-
-        return result
+        return GeneratedCompaction(
+            text = text,
+            providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                provider = resolvedRuntime.connection.kind.name,
+                connectionId = resolvedRuntime.connection.id.value,
+                modelConfigurationId = resolvedRuntime.modelConfiguration.id.value,
+                modelName = resolvedRuntime.modelConfiguration.providerModelId,
+            ),
+            promptTemplate = promptTemplate,
+        )
     }
 
-    override suspend fun squashWithAI(
-        conversationId: Conversation.Id,
-        selectedIds: List<Conversation.Message.Id>,
-        squashType: SquashType,
-        runtimeSelection: AiRuntimeSelection,
-    ): String =
-        runSquashWithAI(
-            conversationId = conversationId,
-            selectedIds = selectedIds,
-            squashType = squashType,
-            runtimeSelection = runtimeSelection,
-        )
-
-    private fun Conversation.Message.asSquashSelection(): Conversation.Message {
-        val selection = "<selection>\n${toSquashSelectionText()}\n</selection>"
+    private fun Conversation.Message.asCompactionSelection(): Conversation.Message {
+        val content = MessageCompactionTextRenderer.render(listOf(this))
+            .replace("</selection", "< /selection", ignoreCase = true)
+        val selection = "<selection>\n$content\n</selection>"
         val selectedContent = when (role) {
             Conversation.Message.Role.USER -> listOf(Conversation.Message.ContentItem.UserMessage(selection))
             Conversation.Message.Role.ASSISTANT -> listOf(
@@ -207,95 +151,72 @@ class MessageSquashService(
         return copy(content = selectedContent)
     }
 
-    private fun Conversation.Message.toSquashSelectionText(): String = buildString {
-        append("role=")
-        append(role.name.lowercase())
-        content.forEach { item ->
-            append('\n')
-            append(
-                when (item) {
-                    is Conversation.Message.ContentItem.UserMessage -> item.text
-                    is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
-                    is Conversation.Message.ContentItem.Thinking -> "[thinking] ${item.thinking}"
-                    is Conversation.Message.ContentItem.System -> "[system:${item.level.name.lowercase()}] ${item.content}"
-                    is Conversation.Message.ContentItem.ToolCall -> "[tool_call:${item.call.name}] ${item.call.input}"
-                    is Conversation.Message.ContentItem.ToolResult -> buildString {
-                        append("[tool_result:${item.toolName} error=${item.isError}]")
-                        item.result.forEach { result ->
-                            append('\n')
-                            append(
-                                when (result) {
-                                    is Conversation.Message.ContentItem.ToolResult.Data.Text -> result.content
-                                    is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
-                                        "[binary:${result.fileName ?: result.mediaType.value} media_type=${result.mediaType.value}]"
-                                    is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url:${result.url}]"
-                                    is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
-                                        "[attachment:${result.artifact.fileName} media_type=${result.artifact.mediaType}]"
-                                }
-                            )
-                        }
-                    }
-                    is Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
-                    is Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
-                        is Conversation.Message.DocumentSource.Base64DocumentSource ->
-                            "[document:${source.fileName} media_type=${source.mediaType}]"
-                    }
-                    is Conversation.Message.ContentItem.ArtifactItem ->
-                        "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
-                    is Conversation.Message.ContentItem.ContextCompactionResult -> when (val payload = item.payload) {
-                        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.text
-                        is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
-                            "[context_compaction:${item.providerScope?.provider ?: "unknown"}]"
-                    }
-                    is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
-                }.replace("</selection", "< /selection", ignoreCase = true)
-            )
-        }
+    private data class GeneratedCompaction(
+        val text: String,
+        val providerScope: Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope?,
+        val promptTemplate: Conversation.Message.ContentItem.ContextCompactionResult.PromptTemplateReference?,
+    )
+}
+
+private fun SquashType.toCompactionStrategy(): Conversation.Message.ContentItem.ContextCompactionResult.Strategy =
+    when (this) {
+        SquashType.CONCATENATE -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.CONCATENATE
+        SquashType.SUMMARIZE -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.SUMMARIZE
+        SquashType.DISTILL -> Conversation.Message.ContentItem.ContextCompactionResult.Strategy.DISTILL
     }
 
-    private fun buildDistillPrompt(): String {
-        return """
-            Distill ONLY the messages wrapped in <selection></selection> tags.
+private fun SquashType.promptTemplate(): Conversation.Message.ContentItem.ContextCompactionResult.PromptTemplateReference =
+    Conversation.Message.ContentItem.ContextCompactionResult.PromptTemplateReference(
+        id = when (this) {
+            SquashType.DISTILL -> "gromozeka.message-compaction.distill"
+            SquashType.SUMMARIZE -> "gromozeka.message-compaction.summarize"
+            SquashType.CONCATENATE -> error("Concatenation has no AI prompt template")
+        },
+        version = 1,
+    )
 
-            Extract minimum high-signal information:
-            - Key decisions with rationale
-            - Current state (what works/implemented)
-            - Open questions and blockers
+private fun SquashType.promptText(): String = when (this) {
+    SquashType.DISTILL -> """
+        Distill ONLY the messages wrapped in <selection></selection> tags.
 
-            DO NOT include:
-            - Reasoning process
-            - Debugging details
-            - Failed attempts
-            - File contents (only paths if critical)
+        Extract minimum high-signal information:
+        - Key decisions with rationale
+        - Current state (what works/implemented)
+        - Open questions and blockers
 
-            Format:
-            **Decisions:**
-            - [decision with rationale]
+        DO NOT include:
+        - Reasoning process
+        - Debugging details
+        - Failed attempts
+        - File contents (only paths if critical)
 
-            **State:**
-            - [what works, what's implemented]
+        Format:
+        **Decisions:**
+        - [decision with rationale]
 
-            **Blockers:**
-            - [unresolved issues]
+        **State:**
+        - [what works, what's implemented]
 
-            Return ONLY the distilled content, no meta-commentary.
-        """.trimIndent()
-    }
+        **Blockers:**
+        - [unresolved issues]
 
-    private fun buildSummarizePrompt(): String {
-        return """
-            Summarize ONLY the messages wrapped in <selection></selection> tags.
+        Return ONLY the distilled content, no meta-commentary.
+    """.trimIndent()
 
-            Create a coherent summary covering:
-            - Main topics discussed
-            - Decisions made with reasoning
-            - Changes implemented
-            - Key findings and conclusions
+    SquashType.SUMMARIZE -> """
+        Summarize ONLY the messages wrapped in <selection></selection> tags.
 
-            Preserve important details and structure.
-            Output as readable narrative.
+        Create a coherent summary covering:
+        - Main topics discussed
+        - Decisions made with reasoning
+        - Changes implemented
+        - Key findings and conclusions
 
-            Return ONLY the summary, no meta-commentary.
-        """.trimIndent()
-    }
+        Preserve important details and structure.
+        Output as readable narrative.
+
+        Return ONLY the summary, no meta-commentary.
+    """.trimIndent()
+
+    SquashType.CONCATENATE -> error("Concatenation has no AI prompt")
 }

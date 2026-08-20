@@ -11,7 +11,7 @@ import com.gromozeka.domain.model.Conversation
  * Message lifecycle:
  * - Created once, never modified (immutability)
  * - Can be referenced by multiple threads (via ThreadMessageRepository)
- * - Can be source/result of squash operations (via SquashOperationRepository)
+ * - Can be a source of context compaction recorded in ContextCompactionResult
  * - Deleted only when no references exist (orphaned)
  *
  * @see Conversation.Message for domain model
@@ -68,15 +68,15 @@ interface MessageRepository {
      * Finds all derived versions of a message (by originalIds).
      *
      * Returns all messages where originalIds contains specified ID.
-     * Used for edit/squash history tracking.
+     * Used for immutable edit history tracking.
      *
      * @param originalId original message ID to find versions of
-     * @return derived messages (edits, squash results) in chronological order
+     * @return derived message versions in chronological order
      */
     suspend fun findVersions(originalId: Conversation.Message.Id): List<Conversation.Message>
 
     // TODO: Message Garbage Collection
-    // Delete orphaned messages (no references from thread_messages or squash_operations).
+    // Delete orphaned messages (no references from thread_messages).
     // Implementation options:
     // 1. Background cleanup job
     // 2. Explicit cleanup method: suspend fun cleanupOrphaned(conversationId: Conversation.Id): Int

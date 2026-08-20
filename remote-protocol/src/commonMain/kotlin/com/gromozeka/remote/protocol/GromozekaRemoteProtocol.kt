@@ -666,20 +666,11 @@ data class DeleteMessagesRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("squash_messages")
-data class SquashMessagesRequest(
+@SerialName("compact_messages")
+data class CompactMessagesRequest(
     val conversationId: Conversation.Id,
     val messageIds: List<Conversation.Message.Id>,
-    val squashedContent: List<Conversation.Message.ContentItem>,
-) : ClientRequest
-
-@Serializable
-@SerialName("squash_messages_with_ai")
-data class SquashMessagesWithAiRequest(
-    val conversationId: Conversation.Id,
-    val messageIds: List<Conversation.Message.Id>,
-    val squashType: SquashType,
-    val runtimeSelection: AiRuntimeSelection,
+    val strategy: SquashType,
 ) : ClientRequest
 
 @Serializable

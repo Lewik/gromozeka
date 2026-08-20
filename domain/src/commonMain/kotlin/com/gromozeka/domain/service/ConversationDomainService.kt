@@ -207,35 +207,4 @@ interface ConversationDomainService {
         messageIds: List<Conversation.Message.Id>
     ): Conversation?
 
-    /**
-     * Creates new thread with explicit context compaction replacing originals.
-     *
-     * Squash is AI operation (summarization/restructuring), not concatenation.
-     * Replaces multiple messages with single summarized message at position of last original.
-     *
-     * Immutable thread pattern: original thread preserved, new thread created.
-     *
-     * This is a COMPLEX TRANSACTIONAL operation:
-     * 1. Validate at least 2 messages to squash
-     * 2. Create assistant message with ContextCompactionResult(sourceMessageIds = messageIds)
-     * 3. Create new thread (originalThread = currentThread)
-     * 4. Copy thread-message links:
-     *    - Replace last original message with squashed
-     *    - Filter out other original messages
-     *    - Keep other messages
-     * 5. Reindex positions (close gaps)
-     * 6. Update conversation.currentThread
-     *
-     * @param conversationId conversation identifier
-     * @param messageIds messages to squash (at least 2 required)
-     * @param squashedContent content of squashed message
-     * @return updated conversation with new current thread
-     * @throws IllegalArgumentException if < 2 messages or messages not found
-     * @throws IllegalStateException if conversation not found
-     */
-    suspend fun squashMessages(
-        conversationId: Conversation.Id,
-        messageIds: List<Conversation.Message.Id>,
-        squashedContent: List<Conversation.Message.ContentItem>
-    ): Conversation?
 }

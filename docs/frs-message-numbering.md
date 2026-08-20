@@ -98,8 +98,8 @@ suspend fun createMessage(
     return message
 }
 
-// При squash - номера удаленных сообщений создают gaps
-suspend fun squashMessages(
+// При compaction номера замененных сообщений создают gaps
+suspend fun compactMessages(
     messageIds: List<Message.Id>,
     summary: String
 ): Message {

@@ -44,7 +44,6 @@ class MessageTemporalContextService {
     private fun Conversation.Message.isHumanAuthoredTextMessage(): Boolean =
         role == Conversation.Message.Role.USER &&
             content.any { it is Conversation.Message.ContentItem.UserMessage } &&
-            squashOperationId == null &&
             providerMetadata["synthetic"] != JsonPrimitive(true) &&
             instructions.none { it is Conversation.Message.Instruction.Source.Agent }
 }

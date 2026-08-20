@@ -36,7 +36,7 @@ import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.DeclarativeStateKey
 import com.gromozeka.domain.service.DeclarativeStateResource
 import com.gromozeka.domain.service.DeclarativeStateSyncService
-import com.gromozeka.domain.service.MessageSquashGenerationService
+import com.gromozeka.domain.service.MessageSquashService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.QuickTextActionService
@@ -110,7 +110,7 @@ class GromozekaRemoteServer(
     private val conversationRuntimeIngressService: ConversationRuntimeIngressService,
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val aiUsageReportService: com.gromozeka.domain.service.AiUsageReportService,
-    private val messageSquashGenerationService: MessageSquashGenerationService,
+    private val messageSquashService: MessageSquashService,
     private val quickTextActionService: QuickTextActionService,
     private val conversationSearchService: ConversationSearchApplicationService,
     private val sttService: SttService,
@@ -700,20 +700,11 @@ class GromozekaRemoteServer(
                 is DeleteMessagesRequest -> ConversationResponse(
                     conversationDomainService.deleteMessages(request.conversationId, request.messageIds)
                 )
-                is SquashMessagesRequest -> ConversationResponse(
-                    conversationDomainService.squashMessages(
+                is CompactMessagesRequest -> ConversationResponse(
+                    messageSquashService.squash(
                         request.conversationId,
                         request.messageIds,
-                        request.squashedContent
-                    )
-                )
-
-                is SquashMessagesWithAiRequest -> TextResponse(
-                    messageSquashGenerationService.squashWithAI(
-                        request.conversationId,
-                        request.messageIds,
-                        request.squashType,
-                        request.runtimeSelection,
+                        request.strategy,
                     )
                 )
 

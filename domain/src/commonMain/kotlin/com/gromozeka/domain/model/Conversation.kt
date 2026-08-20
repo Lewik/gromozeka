@@ -94,14 +94,13 @@ data class Conversation(
      * Single message in conversation thread.
      *
      * Message represents one interaction unit (user input, assistant response, system notification).
-     * Messages can reference other messages (replyTo, squashOperationId) for provenance tracking.
+     * Messages can reference other messages for edit/version and reply provenance.
      *
      * This is an immutable value type - use copy() to create modified versions.
      *
      * @property id unique message identifier (UUIDv7)
      * @property conversationId parent conversation
-     * @property originalIds DEPRECATED - use squashOperationId instead (will be removed after squash migration)
-     * @property squashOperationId if not null, this message was created via AI-powered squash operation
+     * @property originalIds messages this immutable version was derived from
      * @property replyTo if not null, this message is a response to another message
      * @property role message author (USER, ASSISTANT, SYSTEM)
      * @property content list of content items (text, tool calls, images, thinking blocks, etc.)
@@ -114,9 +113,7 @@ data class Conversation(
         val id: Id,
         val conversationId: Conversation.Id,
 
-        @Deprecated("Use squashOperationId instead for structured squash provenance")
         val originalIds: List<Id> = emptyList(),
-        val squashOperationId: SquashOperation.Id? = null,
         val replyTo: Id? = null,
 
         val role: Role,
@@ -383,8 +380,10 @@ data class Conversation(
             data class ContextCompactionResult(
                 val payload: Payload,
                 val origin: Origin,
+                val strategy: Strategy = Strategy.UNKNOWN,
                 val sourceMessageIds: List<Id> = emptyList(),
                 val providerScope: ProviderScope? = null,
+                val promptTemplate: PromptTemplateReference? = null,
                 override val state: BlockState = BlockState.COMPLETE,
             ) : ContentItem() {
                 @Serializable
@@ -396,12 +395,32 @@ data class Conversation(
                 }
 
                 @Serializable
+                enum class Strategy {
+                    CONCATENATE,
+                    SUMMARIZE,
+                    DISTILL,
+                    PROVIDER_MANAGED,
+                    UNKNOWN,
+                }
+
+                @Serializable
                 data class ProviderScope(
                     val provider: String,
                     val connectionId: String? = null,
                     val modelConfigurationId: String? = null,
                     val modelName: String? = null,
                 )
+
+                @Serializable
+                data class PromptTemplateReference(
+                    val id: String,
+                    val version: Int,
+                ) {
+                    init {
+                        require(id.isNotBlank()) { "Prompt template id must not be blank" }
+                        require(version > 0) { "Prompt template version must be positive" }
+                    }
+                }
 
                 @Serializable
                 @JsonClassDiscriminator("kind")
@@ -759,39 +778,4 @@ data class Conversation(
         }
     }
 
-    /**
-     * Immutable record of squash operation.
-     *
-     * Squash operation is AI-powered message summarization/restructuring.
-     * Tracks provenance for reproducibility and audit trail.
-     *
-     * This is an immutable value type - use copy() to create modified versions.
-     *
-     * @property id unique squash operation identifier (UUIDv7)
-     * @property conversationId conversation this operation belongs to
-     * @property sourceMessageIds original messages that were squashed
-     * @property resultMessageId resulting squashed message
-     * @property prompt optional AI prompt used for squashing
-     * @property model optional AI model used for squashing
-     * @property performedByAgent true if AI performed squash, false if manual/concatenation
-     * @property createdAt timestamp when squash was performed
-     */
-    @Serializable
-    data class SquashOperation(
-        val id: Id,
-        val conversationId: Conversation.Id,
-        val sourceMessageIds: List<Message.Id>,
-        val resultMessageId: Message.Id,
-        val prompt: String? = null,
-        val model: String? = null,
-        val performedByAgent: Boolean,
-        val createdAt: Instant,
-    ) {
-        /**
-         * Unique squash operation identifier (UUIDv7).
-         */
-        @Serializable
-        @JvmInline
-        value class Id(val value: String)
-    }
 }

@@ -405,24 +405,10 @@ internal object Messages : Table("messages") {
     val conversationId = varchar("conversation_id", 255).references(Conversations.id, onDelete = ReferenceOption.CASCADE)
     val originalIdsJson = text("original_ids_json")
     val replyToId = varchar("reply_to_id", 255).nullable()
-    val squashOperationId = varchar("squash_operation_id", 255).nullable()
     val role = varchar("role", 50)
     val createdAt = timestamp("created_at")
     val searchText = text("search_text")
     val messageJson = text("message_json")
-
-    override val primaryKey = PrimaryKey(id)
-}
-
-internal object SquashOperations : Table("squash_operations") {
-    val id = varchar("id", 255)
-    val conversationId = varchar("conversation_id", 255).references(Conversations.id, onDelete = ReferenceOption.CASCADE)
-    val sourceMessageIdsJson = text("source_message_ids")
-    val resultMessageId = varchar("result_message_id", 255).references(Messages.id)
-    val prompt = text("prompt").nullable()
-    val model = varchar("model", 255).nullable()
-    val performedByAgent = bool("performed_by_agent")
-    val createdAt = timestamp("created_at")
 
     override val primaryKey = PrimaryKey(id)
 }
