@@ -8,7 +8,9 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.AgentSkillPackageRequest
 import kotlin.io.path.createTempDirectory
+import kotlin.io.path.exists
 import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -37,7 +39,37 @@ class AgentSkillMaterializationServiceTest {
             assertFalse(first.alreadyPresent)
             assertTrue(second.alreadyPresent)
             assertEquals("echo ready", root.resolve(first.directoryPath).resolve("scripts/run.sh").readText())
-            assertTrue(first.directoryPath.endsWith(skillPackage.skill.contentHash))
+            assertEquals(
+                root.toRealPath().resolve(".gromozeka/skills/release-check").toString(),
+                first.directoryPath,
+            )
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `replaces a modified runtime directory with the canonical package`() = runBlocking {
+        val root = createTempDirectory("gromozeka-skill-test")
+        try {
+            val skillPackage = packageValue()
+            val service = LocalAgentSkillMaterializationService { skillPackage }
+            val request = AgentSkillPackageRequest(
+                projectId = skillPackage.skill.projectId,
+                agentDefinitionId = AgentDefinition.Id("agent-1"),
+                workspaceMountId = WorkspaceMount.Id("mount-1"),
+                skillId = skillPackage.skill.id,
+                contentHash = skillPackage.skill.contentHash,
+            )
+            val directory = root.resolve(service.materialize(request, root.toString()).directoryPath)
+            directory.resolve("scripts/run.sh").writeText("echo modified")
+            directory.resolve("extra.txt").writeText("extra")
+
+            val refreshed = service.materialize(request, root.toString())
+
+            assertFalse(refreshed.alreadyPresent)
+            assertEquals("echo ready", directory.resolve("scripts/run.sh").readText())
+            assertFalse(directory.resolve("extra.txt").exists())
         } finally {
             root.toFile().deleteRecursively()
         }

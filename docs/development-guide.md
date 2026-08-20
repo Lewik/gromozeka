@@ -320,13 +320,13 @@ resource never silently changes an existing runtime entity.
   model-driven editing so package bytes stay outside model context. Inline
   import/export is for small integrations and carries text and base64 binaries
   through model context.
-- Agent Skill import derives a content-versioned workspace materialization
-  plan. Runtime opening exposes instructions, a compact resource index, and an
+- Agent Skill import derives a workspace materialization plan. Runtime opening
+  exposes instructions, a compact resource index, and an
   immutable `skill_id` plus `content_hash` handle. Model-readable resources are
   fetched only on demand through that exact handle, and binary resources are
   never copied into model context.
-- `grz_skill_materialize` copies the complete content-versioned package to
-  `<workspace>/.gromozeka/skills/<name>/<content-hash>` on the selected Worker
+- `grz_skill_materialize` replaces the stable runtime package at
+  `<workspace>/.gromozeka/skills/<name>` on the selected Worker
   mount. It accepts the same immutable handle returned by `grz_skill_activate`;
   materialization does not execute files, install dependencies, or grant
   permissions. It is for runtime use, not editing.

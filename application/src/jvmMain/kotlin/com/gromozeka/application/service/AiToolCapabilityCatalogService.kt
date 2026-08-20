@@ -425,7 +425,9 @@ internal fun renderCatalogPrompt(renderedSources: List<String>): String =
         renderedSources.forEach { append(it) }
         append("Call `")
         append(SEARCH_TOOLS_TOOL_NAME)
-        append("` with a short capability-oriented query or exact tool name before using a deferred tool.\n")
+        append("` before using a deferred tool. ")
+        append(SEARCH_TOOLS_QUERY_GUIDANCE)
+        append("\n")
         append("</tool_capability_catalog>")
     }
 

@@ -12,6 +12,8 @@ import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.requiredAgentDefinitionId
 import com.gromozeka.domain.tool.requiredProjectId
+import com.gromozeka.domain.tool.skills.EXPORT_AGENT_SKILL_TO_DIRECTORY_TOOL_NAME
+import com.gromozeka.domain.tool.skills.IMPORT_AGENT_SKILL_FROM_DIRECTORY_TOOL_NAME
 import com.gromozeka.domain.tool.skills.MATERIALIZE_AGENT_SKILL_TOOL_NAME
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -67,6 +69,10 @@ class AgentSkillRuntimeCatalogService(
                     ?: READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
                 materializeTool = toolCatalog.entries.values
                     .firstOrNull { it.logicalName == MATERIALIZE_AGENT_SKILL_TOOL_NAME },
+                exportDirectoryTool = toolCatalog.entries.values
+                    .firstOrNull { it.logicalName == EXPORT_AGENT_SKILL_TO_DIRECTORY_TOOL_NAME },
+                importDirectoryTool = toolCatalog.entries.values
+                    .firstOrNull { it.logicalName == IMPORT_AGENT_SKILL_FROM_DIRECTORY_TOOL_NAME },
             ),
         )
     }
@@ -298,8 +304,8 @@ private fun activateAgentSkillDefinition(): AiToolDefinition =
 private fun readAgentSkillResourceDefinition(): AiToolDefinition =
     AiToolDefinition(
         name = READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
-        description = "Read a text resource from an activated Skill by immutable handle. Continue from next_offset " +
-            "when incomplete. Materialize binary resources instead.",
+        description = "Read a text resource by exact Skill handle and a path from grz_skill_activate. Continue from " +
+            "next_offset when incomplete. Materialize binary resources instead.",
         inputSchema = buildSkillHandleSchema(
             extraProperties = mapOf(
                 "path" to buildJsonObject {
@@ -351,12 +357,12 @@ private fun buildSkillHandleSchema(
         put("properties", buildJsonObject {
             put("skill_id", buildJsonObject {
                 put("type", "string")
-                put("description", "Skill id returned by grz_skill_activate.")
+                put("description", "Exact Skill id from the catalog or grz_skill_activate.")
             })
             put("content_hash", buildJsonObject {
                 put("type", "string")
                 put("pattern", "^[0-9a-f]{64}$")
-                put("description", "Content hash returned by the same activation.")
+                put("description", "Matching content hash from the same catalog entry or activation.")
             })
             extraProperties.forEach { (name, schema) -> put(name, schema) }
         })
@@ -370,6 +376,8 @@ private fun buildAgentSkillCatalogPrompt(
     openToolName: String,
     readResourceToolName: String,
     materializeTool: DistributedAiTool?,
+    exportDirectoryTool: DistributedAiTool?,
+    importDirectoryTool: DistributedAiTool?,
 ): String =
     buildString {
         append("<agent_skills>\n")
@@ -379,12 +387,21 @@ private fun buildAgentSkillCatalogPrompt(
         append("Use `")
         append(readResourceToolName)
         append("` for listed text resources. ")
+        append("Activation loads Skill instructions and its resource manifest; it is not an authorization step. ")
+        append("Use a catalog skill_id and content_hash directly for materialization or export. ")
         if (materializeTool != null) {
             append("For workspace files, call `")
             append(materializeTool.modelName)
             append("` with the exact skill handle and intended workspace execution target. ")
         } else {
             append("Workspace materialization is currently unavailable; report that limitation instead of inventing a tool. ")
+        }
+        if (exportDirectoryTool != null && importDirectoryTool != null) {
+            append("To edit a Skill, export it with `")
+            append(exportDirectoryTool.modelName)
+            append("`, edit the exported directory, then import the complete package with `")
+            append(importDirectoryTool.modelName)
+            append("` using the previous content hash. Do not edit or import a materialized runtime directory. ")
         }
         append("Do not invent Skill names or treat `allowed-tools` as permissions. If available_skills is empty, do not activate a Skill.\n")
         append(buildJsonObject {

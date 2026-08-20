@@ -52,6 +52,9 @@ import kotlin.math.ln
 const val SEARCH_TOOLS_TOOL_NAME = "search_tools"
 const val SEARCH_TOOLS_DEFAULT_LIMIT = 8
 const val SEARCH_TOOLS_MAX_LIMIT = 20
+const val SEARCH_TOOLS_QUERY_GUIDANCE =
+    "Search one capability per call using one or two distinctive concepts, or an exact tool name. " +
+        "Search unrelated capabilities separately."
 
 private val corePreloadedToolNames = setOf(
     SEARCH_TOOLS_TOOL_NAME,
@@ -373,9 +376,8 @@ class SearchToolsToolCallback(
     override val definition: AiToolDefinition = AiToolDefinition(
         name = SEARCH_TOOLS_TOOL_NAME,
         description = """
-            Search tools that are not currently loaded. Use a short capability-oriented query or an exact tool name.
-            Matching tools and their complete input schemas become callable in the next model step. Search again when
-            a different capability is needed.
+            Search tools that are not currently loaded. $SEARCH_TOOLS_QUERY_GUIDANCE
+            Matching tools and their complete input schemas become callable in the next model step.
         """.trimIndent(),
         inputSchema = """
             {
@@ -383,7 +385,7 @@ class SearchToolsToolCallback(
               "properties": {
                 "query": {
                   "type": "string",
-                  "description": "Capability or exact tool name to search for."
+                  "description": "$SEARCH_TOOLS_QUERY_GUIDANCE"
                 },
                 "limit": {
                   "type": "integer",
@@ -442,6 +444,9 @@ class SearchToolsToolCallback(
             put("catalog_revision", preparedCatalog.environmentRevision)
             put("loaded_for_current_context", true)
             put("count", matches.size)
+            if (matches.isEmpty()) {
+                put("hint", SEARCH_TOOLS_QUERY_GUIDANCE)
+            }
             putJsonArray("tools") {
                 matches.forEach { match ->
                     add(buildJsonObject {

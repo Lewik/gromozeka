@@ -9,9 +9,9 @@ const val EXPORT_AGENT_SKILL_TO_DIRECTORY_TOOL_NAME = "grz_skill_export_to_direc
 const val IMPORT_AGENT_SKILL_FROM_DIRECTORY_TOOL_NAME = "grz_skill_import_from_directory"
 
 data class ExportAgentSkillToDirectoryRequest(
-    @property:ToolParameter(description = "Skill id returned by grz_skill_activate.")
+    @property:ToolParameter(description = "Exact Skill id from the catalog or grz_skill_activate.")
     val skill_id: String,
-    @property:ToolParameter(description = "Content hash returned by the same activation.")
+    @property:ToolParameter(description = "Matching content hash from the same catalog entry or activation.")
     val content_hash: String,
     @property:ToolParameter(description = "New destination directory on the selected Worker.")
     val directory_path: String,
@@ -49,8 +49,7 @@ interface ExportAgentSkillToDirectoryTool : Tool<ExportAgentSkillToDirectoryRequ
         get() = PreloadedWorkerToolMetadata
 
     override val description: String
-        get() = "Export an activated Skill to a new directory on the selected Worker. " +
-            "This is the preferred editing flow because package files stay outside model context."
+        get() = "Export an assigned Skill package to a new directory on the selected Worker."
 
     override val requestType: Class<ExportAgentSkillToDirectoryRequest>
         get() = ExportAgentSkillToDirectoryRequest::class.java
@@ -69,8 +68,8 @@ interface ImportAgentSkillFromDirectoryTool : Tool<ImportAgentSkillFromDirectory
         get() = PreloadedWorkerToolMetadata
 
     override val description: String
-        get() = "Import a complete Skill directory from the selected Worker. This is the preferred editing flow " +
-            "because files stay outside model context. Verify the directory has no symbolic links; they are rejected."
+        get() = "Create or replace a complete Skill package from a Worker directory. " +
+            "Updates replace every package file; symbolic links are rejected."
 
     override val requestType: Class<ImportAgentSkillFromDirectoryRequest>
         get() = ImportAgentSkillFromDirectoryRequest::class.java

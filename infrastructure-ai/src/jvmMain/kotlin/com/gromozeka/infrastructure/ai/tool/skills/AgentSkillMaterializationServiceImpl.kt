@@ -20,7 +20,6 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.exists
-import kotlin.io.path.readText
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -55,23 +54,22 @@ class LocalAgentSkillMaterializationService(
         val target = workspaceRoot
             .resolve(SKILL_ROOT_DIRECTORY)
             .resolve(skillPackage.skill.name)
-            .resolve(skillPackage.skill.contentHash)
             .normalize()
         require(target.startsWith(workspaceRoot)) {
             "Agent Skill materialization target escapes the workspace"
         }
         val lock = locks.computeIfAbsent(target.toString()) { Mutex() }
         return lock.withLock {
-            val materializationParent = ensureMaterializationParent(workspaceRoot, skillPackage.skill.name)
-            check(materializationParent == target.parent) {
+            val materializationRoot = ensureMaterializationRoot(workspaceRoot)
+            check(materializationRoot == target.parent) {
                 "Agent Skill materialization parent changed during resolution"
             }
             require(!Files.isSymbolicLink(target)) {
                 "Agent Skill materialization target must not be a symbolic link: $target"
             }
-            val alreadyPresent = isComplete(target, skillPackage.skill.contentHash)
+            val alreadyPresent = packageMatches(target, skillPackage.files)
             if (!alreadyPresent) {
-                materializePackage(target, skillPackage.files, skillPackage.skill.contentHash)
+                materializePackage(target, skillPackage.files)
             }
             AgentSkillMaterializationResult(
                 skill = skillPackage.skill,
@@ -86,13 +84,8 @@ class LocalAgentSkillMaterializationService(
     private fun materializePackage(
         target: Path,
         files: List<com.gromozeka.domain.model.AgentSkillFile>,
-        contentHash: String,
     ) {
         Files.createDirectories(target.parent)
-        if (target.exists()) {
-            deleteTree(target)
-        }
-        Files.deleteIfExists(completionMarker(target))
         val temporary = target.parent.resolve(".${target.fileName}.${uuid7()}.tmp")
         try {
             Files.createDirectory(temporary)
@@ -113,14 +106,10 @@ class LocalAgentSkillMaterializationService(
                     StandardOpenOption.WRITE,
                 )
             }
+            if (target.exists()) {
+                deleteTree(target)
+            }
             moveDirectory(temporary, target)
-            Files.writeString(
-                completionMarker(target),
-                contentHash,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE,
-            )
         } catch (error: Throwable) {
             if (temporary.exists()) {
                 deleteTree(temporary)
@@ -129,19 +118,48 @@ class LocalAgentSkillMaterializationService(
         }
     }
 
-    private fun isComplete(target: Path, contentHash: String): Boolean {
+    private fun packageMatches(
+        target: Path,
+        files: List<com.gromozeka.domain.model.AgentSkillFile>,
+    ): Boolean {
         if (!Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS)) {
             return false
         }
-        val marker = completionMarker(target)
-        return marker.exists() &&
-            !Files.isSymbolicLink(marker) &&
-            runCatching { marker.readText() }.getOrNull() == contentHash
+        val expectedFiles = files.associate { file ->
+            Path.of(file.path).normalize() to file.content
+        }
+        if (expectedFiles.size != files.size) {
+            return false
+        }
+        return runCatching {
+            val materializedFiles = Files.walk(target).use { paths ->
+                paths
+                    .filter { it != target }
+                    .map { path ->
+                        require(!Files.isSymbolicLink(path)) {
+                            "Agent Skill materialization contains a symbolic link: $path"
+                        }
+                        require(
+                            Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) ||
+                                Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
+                        ) {
+                            "Agent Skill materialization contains an unsupported entry: $path"
+                        }
+                        path
+                    }
+                    .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
+                    .toList()
+            }
+            materializedFiles.size == expectedFiles.size && materializedFiles.all { path ->
+                val expected = expectedFiles[target.relativize(path).normalize()]
+                expected != null && Files.readAllBytes(path).contentEquals(expected)
+            }
+        }.getOrDefault(false)
     }
 
-    private fun ensureMaterializationParent(workspaceRoot: Path, skillName: String): Path {
+    private fun ensureMaterializationRoot(workspaceRoot: Path): Path {
         var current = workspaceRoot
-        listOf(".gromozeka", "skills", skillName).forEach { segment ->
+        listOf(".gromozeka", "skills").forEach { segment ->
             current = current.resolve(segment)
             if (Files.exists(current, LinkOption.NOFOLLOW_LINKS)) {
                 require(!Files.isSymbolicLink(current) && Files.isDirectory(current, LinkOption.NOFOLLOW_LINKS)) {
@@ -153,9 +171,6 @@ class LocalAgentSkillMaterializationService(
         }
         return current
     }
-
-    private fun completionMarker(target: Path): Path =
-        target.parent.resolve(".${target.fileName}.complete")
 
     private fun moveDirectory(source: Path, target: Path) {
         try {

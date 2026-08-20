@@ -9,11 +9,11 @@ const val MATERIALIZE_AGENT_SKILL_TOOL_NAME = "grz_skill_materialize"
 
 data class MaterializeAgentSkillRequest(
     @property:ToolParameter(
-        description = "Skill id returned by grz_skill_activate.",
+        description = "Exact Skill id from the catalog or grz_skill_activate.",
     )
     val skill_id: String,
     @property:ToolParameter(
-        description = "Content hash returned by the same activation.",
+        description = "Matching content hash from the same catalog entry or activation.",
     )
     val content_hash: String,
 ) {
@@ -37,9 +37,8 @@ interface MaterializeAgentSkillTool : Tool<MaterializeAgentSkillRequest, Map<Str
         get() = PreloadedWorkspaceToolMetadata
 
     override val description: String
-        get() = "Materialize an activated immutable Skill in the selected workspace for runtime use. " +
-            "It returns a versioned path and does not execute files. To edit the Skill itself, use " +
-            "grz_skill_export_to_directory and grz_skill_import_from_directory instead."
+        get() = "Copy an assigned Skill package to the selected workspace for runtime use. " +
+            "Returns its directory path and does not execute files."
 
     override val requestType: Class<MaterializeAgentSkillRequest>
         get() = MaterializeAgentSkillRequest::class.java

@@ -19,6 +19,8 @@ import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.skills.EXPORT_AGENT_SKILL_TO_DIRECTORY_TOOL_NAME
+import com.gromozeka.domain.tool.skills.IMPORT_AGENT_SKILL_FROM_DIRECTORY_TOOL_NAME
 import com.gromozeka.domain.tool.skills.MATERIALIZE_AGENT_SKILL_TOOL_NAME
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Clock
@@ -72,6 +74,10 @@ class AgentSkillRuntimeTest {
 
         assertTrue(prepared.systemPrompt!!.contains("\"name\":\"release-check\""))
         assertFalse(prepared.systemPrompt.contains(skill.instructions))
+        assertTrue(prepared.systemPrompt.contains("Activation loads Skill instructions"))
+        assertTrue(prepared.systemPrompt.contains("Use a catalog skill_id and content_hash directly"))
+        assertTrue(prepared.systemPrompt.contains("To edit a Skill, export it with"))
+        assertTrue(prepared.systemPrompt.contains("Do not edit or import a materialized runtime directory"))
         val activation = prepared.toolCatalog.tools
             .single { it.definition.name == ACTIVATE_AGENT_SKILL_TOOL_NAME }
         assertEquals(
@@ -304,6 +310,8 @@ class AgentSkillRuntimeTest {
             ACTIVATE_AGENT_SKILL_TOOL_NAME,
             READ_AGENT_SKILL_RESOURCE_TOOL_NAME,
             MATERIALIZE_AGENT_SKILL_TOOL_NAME,
+            EXPORT_AGENT_SKILL_TO_DIRECTORY_TOOL_NAME,
+            IMPORT_AGENT_SKILL_FROM_DIRECTORY_TOOL_NAME,
         )
     }
 }

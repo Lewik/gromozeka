@@ -104,6 +104,19 @@ class AiToolSearchServiceTest {
     }
 
     @Test
+    fun `does not combine unrelated capabilities into noisy matches`() {
+        val tools = listOf(
+            tool("grz_read_file", "Read file contents from a filesystem workspace."),
+            tool("mcp__calendar__create_event", "Create and schedule a calendar event."),
+            tool("mcp__gmail__send_email", "Send an email message to recipients."),
+        )
+
+        val result = service.search(tools, "read files schedule calendar send email")
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
     fun `does not return management tools for missing materialization capability`() {
         val tools = listOf(
             tool("grz_skill_list", "List imported Agent Skills owned by one project."),
