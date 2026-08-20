@@ -32,6 +32,7 @@ import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.format
 import com.gromozeka.presentation.ui.viewmodel.MessageSquashUiState
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
+import com.gromozeka.presentation.ui.viewmodel.editableText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -429,6 +430,29 @@ fun SessionScreen(
 
                         // Action buttons
                         val messageSquashRunning = messageSquashState is MessageSquashUiState.Running
+                        val selectedMessage = remember(allMessages, uiState.selectedMessageIds) {
+                            uiState.selectedMessageIds.singleOrNull()?.let { selectedMessageId ->
+                                allMessages.firstOrNull { it.id == selectedMessageId }
+                            }
+                        }
+
+                        CompactButton(
+                            onClick = {
+                                selectedMessage?.let { viewModel.startEditMessage(it.id) }
+                            },
+                            modifier = Modifier.testTag(UiTestTag.EditSelectedMessageButton.value),
+                            enabled = selectedMessage?.editableText() != null && !messageSquashRunning,
+                            tooltip = "Edit selected message"
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                if (!isCompactLayout) Text("Edit")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         // Concat - disabled when 0 or 1 message selected
                         CompactButton(
                             onClick = {

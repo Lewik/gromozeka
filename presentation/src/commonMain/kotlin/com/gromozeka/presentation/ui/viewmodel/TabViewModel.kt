@@ -1205,14 +1205,8 @@ class TabViewModel(
     }
 
     fun startEditMessage(messageId: Conversation.Message.Id) {
-        val message = _allMessages.value.find { it.id == messageId }
-        val text = message?.content
-            ?.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-            ?.firstOrNull()?.text
-            ?: message?.content
-                ?.filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-                ?.firstOrNull()?.structured?.fullText
-            ?: ""
+        val message = _allMessages.value.find { it.id == messageId } ?: return
+        val text = message.editableText() ?: return
 
         _uiState.update {
             it.copy(
@@ -1240,13 +1234,14 @@ class TabViewModel(
         val newText = _uiState.value.editingMessageText
 
         try {
-            val newContent = listOf(
-                Conversation.Message.ContentItem.UserMessage(newText)
-            )
+            val message = _allMessages.value.find { it.id == editingId }
+                ?: error("Message $editingId is no longer available")
+            val newContent = message.withEditedText(newText)
 
             conversationService.editMessage(conversationId, editingId, newContent)
 
             cancelEditMessage()
+            clearMessageSelection()
             loadMessages()
 
             log.debug { "Message $editingId edited successfully" }
