@@ -389,6 +389,7 @@ class WorkerGatewayOperationHandler(
     private val workerWorkspaceTextFileHandler: WorkerWorkspaceTextFileHandler,
     private val parallelToolExecutor: ParallelToolExecutor,
 ) {
+    private val log = KLoggers.logger(this)
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = false
@@ -397,8 +398,15 @@ class WorkerGatewayOperationHandler(
     suspend fun execute(
         identity: ConversationRuntimeWorkerIdentity,
         request: WorkerGatewayMessage.Request,
-    ): WorkerGatewayMessage.Response =
-        runCatching {
+    ): WorkerGatewayMessage.Response {
+        val startedAt = System.nanoTime()
+        if (request.operation == WorkerGatewayOperation.AI_REQUEST_RESPONSE) {
+            log.info {
+                "AI_GATEWAY_TRACE request=${request.id} phase=worker_gateway_received " +
+                    "worker=${identity.workerId.value} payloadBytes=${request.payload.size}"
+            }
+        }
+        return runCatching {
             val payload = when (request.operation) {
                 WorkerGatewayOperation.WORKER_CONTROL -> {
                     val controlRequest = json.decodeFromString<WorkerControlRequest>(
@@ -467,7 +475,17 @@ class WorkerGatewayOperationHandler(
                 errorCode = error::class.simpleName ?: "WorkerOperationFailure",
                 errorMessage = error.message ?: "Worker operation failed",
             )
+        }.also { response ->
+            if (request.operation == WorkerGatewayOperation.AI_REQUEST_RESPONSE) {
+                log.info {
+                    "AI_GATEWAY_TRACE request=${request.id} phase=worker_gateway_completed " +
+                        "worker=${identity.workerId.value} elapsedMs=${(System.nanoTime() - startedAt) / 1_000_000} " +
+                        "status=${response.status} responseBytes=${response.payload?.size ?: 0} " +
+                        "errorCode=${response.errorCode ?: "none"}"
+                }
+            }
         }
+    }
 }
 
 internal fun workerGatewayWebSocketUrl(serverUrl: String): String {

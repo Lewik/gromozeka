@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.claude
 
 import com.gromozeka.domain.model.ai.AiReasoningMode
+import klog.KLoggers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
@@ -52,6 +53,7 @@ internal class ProcessClaudeCodeCliExecutor(
     nanoTime: () -> Long = System::nanoTime,
 ) : ClaudeCodeCliExecutor, ClaudeCodeNativeToolExecutor, AutoCloseable {
     private val processCache = ClaudeCodeProcessCache(processFactory, nanoTime)
+    private val log = KLoggers.logger(this)
 
     override suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse {
         val effectiveCommand = executableOverride
@@ -64,28 +66,61 @@ internal class ProcessClaudeCodeCliExecutor(
             "Claude Code process idle TTL must be positive"
         }
 
-        return if (effectiveCommand.noSessionPersistence || effectiveCommand.cacheKey == null) {
-            val process = processCache.startUncached(effectiveCommand)
-            try {
-                process.execute(effectiveCommand.userPrompt, effectiveCommand.userContentBlocks)
-            } finally {
-                withContext(NonCancellable) {
-                    process.close()
+        val startedAt = System.nanoTime()
+        log.info {
+            "CLAUDE_CODE_TRACE call=${effectiveCommand.diagnosticId} phase=executor_started " +
+                "cached=${!effectiveCommand.noSessionPersistence && effectiveCommand.cacheKey != null} " +
+                "cacheKey=${effectiveCommand.cacheKey?.let(::shortFingerprint) ?: "none"} " +
+                "model=${effectiveCommand.modelName} promptChars=${effectiveCommand.userPrompt.length} " +
+                "contentBlocks=${effectiveCommand.userContentBlocks.size}"
+        }
+        return try {
+            val response = if (effectiveCommand.noSessionPersistence || effectiveCommand.cacheKey == null) {
+                val process = processCache.startUncached(effectiveCommand)
+                try {
+                    process.execute(
+                        effectiveCommand.userPrompt,
+                        effectiveCommand.userContentBlocks,
+                        effectiveCommand.diagnosticId,
+                    )
+                } finally {
+                    withContext(NonCancellable) {
+                        process.close()
+                    }
+                }
+            } else {
+                val lease = processCache.acquire(effectiveCommand)
+                var succeeded = false
+                try {
+                    lease.process.execute(
+                        effectiveCommand.userPrompt,
+                        effectiveCommand.userContentBlocks,
+                        effectiveCommand.diagnosticId,
+                    ).also { succeeded = true }
+                } finally {
+                    withContext(NonCancellable) {
+                        processCache.release(lease, succeeded)
+                    }
                 }
             }
-        } else {
-            val lease = processCache.acquire(effectiveCommand)
-            var succeeded = false
-            try {
-                lease.process.execute(
-                    effectiveCommand.userPrompt,
-                    effectiveCommand.userContentBlocks,
-                ).also { succeeded = true }
-            } finally {
-                withContext(NonCancellable) {
-                    processCache.release(lease, succeeded)
-                }
+            log.info {
+                "CLAUDE_CODE_TRACE call=${effectiveCommand.diagnosticId} phase=executor_completed " +
+                    "elapsedMs=${elapsedMillis(startedAt)} session=${response.sessionId ?: "none"}"
             }
+            response
+        } catch (error: CancellationException) {
+            log.warn(error) {
+                "CLAUDE_CODE_TRACE call=${effectiveCommand.diagnosticId} phase=executor_cancelled " +
+                    "elapsedMs=${elapsedMillis(startedAt)}"
+            }
+            throw error
+        } catch (error: Throwable) {
+            log.error(error) {
+                "CLAUDE_CODE_TRACE call=${effectiveCommand.diagnosticId} phase=executor_failed " +
+                    "elapsedMs=${elapsedMillis(startedAt)} error=${error::class.simpleName} " +
+                    "message=${error.message?.redactedDiagnosticPreview()}"
+            }
+            throw error
         }
     }
 
@@ -152,6 +187,12 @@ internal interface ClaudeCodeCliProcess {
         check(userContentBlocks.isEmpty()) { "Claude Code process does not support rich user input" }
         return execute(userPrompt)
     }
+
+    suspend fun execute(
+        userPrompt: String,
+        userContentBlocks: List<JsonObject>,
+        diagnosticId: String,
+    ): ClaudeCodeCliResponse = execute(userPrompt, userContentBlocks)
 
     suspend fun executeNativeTool(
         userPrompt: String,
@@ -310,6 +351,7 @@ internal class ClaudeCodeProcessCache(
         private val nanoTime: () -> Long,
         private val closeLater: (ClaudeCodeCliProcess) -> Unit,
     ) {
+        private val log = KLoggers.logger(this)
         private val entries = mutableMapOf<String, CacheEntry>()
 
         suspend fun acquire(command: CacheCommand.Acquire) {
@@ -328,6 +370,12 @@ internal class ClaudeCodeProcessCache(
                         entry.launchConfiguration == launchConfiguration &&
                         command.command.resumeSessionId != null &&
                         command.command.resumeSessionId == entry.process.sessionId
+                }
+                log.info {
+                    "CLAUDE_CODE_TRACE call=${command.command.diagnosticId} phase=cache_acquire " +
+                        "cacheKey=${shortFingerprint(cacheKey)} result=${if (reusable != null) "hit" else "miss"} " +
+                        "reason=${cacheReuseDecision(existing, command.command, launchConfiguration)} " +
+                        "entries=${entries.size} resumeSession=${command.command.resumeSessionId ?: "none"}"
                 }
 
                 if (existing != null && reusable == null) {
@@ -353,7 +401,12 @@ internal class ClaudeCodeProcessCache(
                 }
 
                 trim(command.command.connectionId, policy.maxCachedProcesses)
-                ClaudeCodeProcessLease(cacheKey, entry.process)
+                log.debug {
+                    "CLAUDE_CODE_TRACE call=${command.command.diagnosticId} phase=cache_lease_acquired " +
+                        "cacheKey=${shortFingerprint(cacheKey)} reused=${reusable != null} " +
+                        "processAlive=${entry.process.isAlive} session=${entry.process.sessionId ?: "none"}"
+                }
+                ClaudeCodeProcessLease(cacheKey, entry.process, command.command.diagnosticId)
             }.onSuccess { lease ->
                 if (!command.reply.complete(lease)) {
                     entries.remove(lease.cacheKey)
@@ -382,6 +435,11 @@ internal class ClaudeCodeProcessCache(
                 } else {
                     trim(entry.connectionId, entry.policy.maxCachedProcesses)
                 }
+                log.debug {
+                    "CLAUDE_CODE_TRACE call=${command.lease.diagnosticId} phase=cache_lease_released " +
+                        "cacheKey=${shortFingerprint(command.lease.cacheKey)} succeeded=${command.succeeded} " +
+                        "processAlive=${entry.process.isAlive} retained=${command.lease.cacheKey in entries}"
+                }
             }.onSuccess {
                 command.reply.complete(Unit)
             }.onFailure { error ->
@@ -393,13 +451,19 @@ internal class ClaudeCodeProcessCache(
 
         fun prune() {
             val now = nanoTime()
-            entries.entries
+            val expiredKeys = entries.entries
                 .filter { (_, entry) ->
                     entry.activeCalls == 0 &&
                         now - entry.lastReleasedAtNanos >= entry.policy.idleTtl.inWholeNanoseconds
                 }
                 .map(Map.Entry<String, CacheEntry>::key)
-                .forEach(::remove)
+            expiredKeys.forEach(::remove)
+            if (expiredKeys.isNotEmpty()) {
+                log.debug {
+                    "CLAUDE_CODE_TRACE phase=cache_pruned count=${expiredKeys.size} " +
+                        "keys=${expiredKeys.map(::shortFingerprint)} remaining=${entries.size}"
+                }
+            }
         }
 
         fun removeAll(): List<ClaudeCodeCliProcess> =
@@ -421,6 +485,21 @@ internal class ClaudeCodeProcessCache(
         private fun remove(cacheKey: String) {
             entries.remove(cacheKey)?.process?.let(closeLater)
         }
+
+        private fun cacheReuseDecision(
+            existing: CacheEntry?,
+            command: ClaudeCodeCommand,
+            launchConfiguration: ClaudeCodeLaunchConfiguration,
+        ): String = when {
+            existing == null -> "no_entry"
+            existing.activeCalls != 0 -> "active_call"
+            !existing.process.isAlive -> "process_dead"
+            existing.launchConfiguration != launchConfiguration ->
+                "launch_configuration_changed:${existing.launchConfiguration.diff(launchConfiguration)}"
+            command.resumeSessionId == null -> "resume_session_missing"
+            command.resumeSessionId != existing.process.sessionId -> "resume_session_mismatch"
+            else -> "compatible"
+        }
     }
 
     private data class CacheEntry(
@@ -441,6 +520,7 @@ internal class ClaudeCodeProcessCache(
 internal data class ClaudeCodeProcessLease(
     val cacheKey: String,
     val process: ClaudeCodeCliProcess,
+    val diagnosticId: String,
 )
 
 private data class ClaudeCodeProcessCachePolicy(
@@ -479,13 +559,34 @@ private data class ClaudeCodeLaunchConfiguration(
     }
 }
 
+private fun ClaudeCodeLaunchConfiguration.diff(other: ClaudeCodeLaunchConfiguration): String =
+    buildList {
+        if (executablePath != other.executablePath) add("executable")
+        if (modelName != other.modelName) add("model")
+        if (workspaceDirectory != other.workspaceDirectory) add("workspace")
+        if (systemPromptFingerprint != other.systemPromptFingerprint) add("system_prompt")
+        if (jsonSchemaFingerprint != other.jsonSchemaFingerprint) add("json_schema")
+        if (effort != other.effort) add("effort")
+        if (reasoningMode != other.reasoningMode) add("reasoning_mode")
+        if (nativeTools != other.nativeTools) add("native_tools")
+    }.joinToString(",").ifEmpty { "none" }
+
 private class DefaultClaudeCodeCliProcessFactory : ClaudeCodeCliProcessFactory {
+    private val log = KLoggers.logger(this)
+
     override suspend fun start(command: ClaudeCodeCommand): ClaudeCodeCliProcess =
         withContext(Dispatchers.IO) {
+            val startedAt = System.nanoTime()
             val systemPromptFile = Files.createTempFile("gromozeka-claude-system-", ".md")
             try {
                 Files.writeString(systemPromptFile, command.systemPrompt, StandardCharsets.UTF_8)
                 val args = ClaudeCodeProcessArguments.build(command, systemPromptFile.toString())
+                log.info {
+                    "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=process_launching " +
+                        "workspace=${command.workspaceDirectory?.absolutePath ?: "none"} " +
+                        "systemPromptFile=$systemPromptFile systemPromptChars=${command.systemPrompt.length} " +
+                        "command=${args.toDiagnosticCommand()} reasoningEnv=${command.reasoningMode.diagnosticEnvironment()}"
+                }
                 val process = try {
                     ProcessBuilder(args)
                         .apply {
@@ -499,8 +600,17 @@ private class DefaultClaudeCodeCliProcessFactory : ClaudeCodeCliProcessFactory {
                             "Ensure Claude Code is installed and authorized: ${exception.message}"
                     )
                 }
-                StreamingClaudeCodeCliProcess(process, systemPromptFile)
+                log.info {
+                    "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=process_started " +
+                        "launchMs=${elapsedMillis(startedAt)} pid=${process.pid()} alive=${process.isAlive}"
+                }
+                StreamingClaudeCodeCliProcess(process, systemPromptFile, command.diagnosticId)
             } catch (exception: Throwable) {
+                log.error(exception) {
+                    "CLAUDE_CODE_TRACE call=${command.diagnosticId} phase=process_launch_failed " +
+                        "elapsedMs=${elapsedMillis(startedAt)} error=${exception::class.simpleName} " +
+                        "message=${exception.message?.redactedDiagnosticPreview()}"
+                }
                 Files.deleteIfExists(systemPromptFile)
                 throw exception
             }
@@ -528,7 +638,9 @@ internal fun MutableMap<String, String>.applyClaudeCodeReasoningMode(mode: AiRea
 private class StreamingClaudeCodeCliProcess(
     private val process: Process,
     private val systemPromptFile: Path,
+    private val launchDiagnosticId: String,
 ) : ClaudeCodeCliProcess {
+    private val log = KLoggers.logger(this)
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val requestMutex = Mutex()
     private val closed = AtomicBoolean(false)
@@ -536,6 +648,8 @@ private class StreamingClaudeCodeCliProcess(
     private val stdin: BufferedWriter = process.outputStream.bufferedWriter(StandardCharsets.UTF_8)
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val stderrTail = StringBuilder()
+    @Volatile
+    private var activeDiagnosticId: String = launchDiagnosticId
     private val stderrJob: Job = ioScope.launch {
         process.errorStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
             lines.forEach(::appendStderr)
@@ -555,22 +669,43 @@ private class StreamingClaudeCodeCliProcess(
     override suspend fun execute(
         userPrompt: String,
         userContentBlocks: List<JsonObject>,
+    ): ClaudeCodeCliResponse = execute(userPrompt, userContentBlocks, launchDiagnosticId)
+
+    override suspend fun execute(
+        userPrompt: String,
+        userContentBlocks: List<JsonObject>,
+        diagnosticId: String,
     ): ClaudeCodeCliResponse =
         requestMutex.withLock {
+            activeDiagnosticId = diagnosticId
             check(isAlive) {
                 "Claude Code CLI process is not running${stderrDiagnostic().asDiagnosticSuffix()}"
             }
 
             coroutineScope {
                 val response = async(Dispatchers.IO) {
-                    stdin.write(streamingUserMessage(userPrompt, userContentBlocks))
+                    val startedAt = System.nanoTime()
+                    val payload = streamingUserMessage(userPrompt, userContentBlocks)
+                    log.info {
+                        "CLAUDE_CODE_TRACE call=$diagnosticId phase=stdin_writing pid=${process.pid()} " +
+                            "payloadChars=${payload.length} promptChars=${userPrompt.length} " +
+                            "contentBlocks=${userContentBlocks.diagnosticContentBlockSummary()}"
+                    }
+                    stdin.write(payload)
                     stdin.newLine()
                     stdin.flush()
-                    readResult()
+                    log.info {
+                        "CLAUDE_CODE_TRACE call=$diagnosticId phase=stdin_flushed pid=${process.pid()} " +
+                            "writeMs=${elapsedMillis(startedAt)}"
+                    }
+                    readResult(diagnosticId)
                 }
                 try {
                     response.await()
                 } catch (exception: CancellationException) {
+                    log.warn(exception) {
+                        "CLAUDE_CODE_TRACE call=$diagnosticId phase=stream_cancelled pid=${process.pid()}"
+                    }
                     runCatching(::terminateImmediately)
                     throw exception
                 }
@@ -606,6 +741,10 @@ private class StreamingClaudeCodeCliProcess(
 
     override suspend fun close() {
         if (!closed.compareAndSet(false, true)) return
+        val startedAt = System.nanoTime()
+        log.debug {
+            "CLAUDE_CODE_TRACE call=$activeDiagnosticId phase=process_closing pid=${process.pid()} alive=${process.isAlive}"
+        }
         withContext(Dispatchers.IO) {
             runCatching { stdin.close() }
             if (process.isAlive && !process.waitFor(GRACEFUL_CLOSE_SECONDS, TimeUnit.SECONDS)) {
@@ -619,9 +758,16 @@ private class StreamingClaudeCodeCliProcess(
         }
         stderrJob.cancelAndJoin()
         ioScope.cancel()
+        log.debug {
+            "CLAUDE_CODE_TRACE call=$activeDiagnosticId phase=process_closed pid=${process.pid()} " +
+                "elapsedMs=${elapsedMillis(startedAt)} alive=${process.isAlive}"
+        }
     }
 
-    private fun readResult(): ClaudeCodeCliResponse {
+    private fun readResult(diagnosticId: String): ClaudeCodeCliResponse {
+        val startedAt = System.nanoTime()
+        var previousEventAt = startedAt
+        var eventIndex = 0
         val parser = ClaudeCodeResultStreamParser()
         while (true) {
             val line = stdout.readLine()
@@ -633,9 +779,36 @@ private class StreamingClaudeCodeCliProcess(
             if (line.isBlank()) continue
             val root = runCatching { json.parseToJsonElement(line).jsonObject }
                 .getOrElse {
-                    error("Claude Code CLI returned invalid stream JSON: $line")
+                    error(
+                        "Claude Code CLI returned invalid stream JSON: " +
+                            "chars=${line.length}, sha256=${shortFingerprint(line)}"
+                    )
                 }
-            parser.accept(root)?.let { return it }
+            eventIndex++
+            val now = System.nanoTime()
+            val elapsedMs = (now - startedAt) / 1_000_000
+            val gapMs = (now - previousEventAt) / 1_000_000
+            previousEventAt = now
+            val summary = root.diagnosticEventSummary()
+            if (eventIndex == 1) {
+                log.info {
+                    "CLAUDE_CODE_TRACE call=$diagnosticId phase=first_stdout_event pid=${process.pid()} " +
+                        "elapsedMs=$elapsedMs event=$eventIndex $summary"
+                }
+            } else {
+                log.debug {
+                    "CLAUDE_CODE_TRACE call=$diagnosticId phase=stdout_event pid=${process.pid()} " +
+                        "elapsedMs=$elapsedMs gapMs=$gapMs event=$eventIndex $summary"
+                }
+            }
+            parser.accept(root)?.let { response ->
+                log.info {
+                    "CLAUDE_CODE_TRACE call=$diagnosticId phase=result_received pid=${process.pid()} " +
+                        "elapsedMs=$elapsedMs events=$eventIndex session=${response.sessionId ?: "none"} " +
+                        "finishReason=${response.finishReason} resultChars=${response.result.length}"
+                }
+                return response
+            }
         }
     }
 
@@ -653,7 +826,10 @@ private class StreamingClaudeCodeCliProcess(
             if (line.isBlank()) continue
             val root = runCatching { json.parseToJsonElement(line).jsonObject }
                 .getOrElse {
-                    error("Claude Code CLI returned invalid stream JSON: $line")
+                    error(
+                        "Claude Code CLI returned invalid stream JSON: " +
+                            "chars=${line.length}, sha256=${shortFingerprint(line)}"
+                    )
                 }
             parser.accept(root)?.let { return it }
         }
@@ -666,10 +842,19 @@ private class StreamingClaudeCodeCliProcess(
                 stderrTail.delete(0, stderrTail.length - STDERR_TAIL_LIMIT)
             }
         }
+        log.debug {
+            "CLAUDE_CODE_TRACE call=$activeDiagnosticId phase=stderr pid=${process.pid()} " +
+                "chars=${line.length} text=${line.redactedDiagnosticPreview()}"
+        }
     }
 
     private fun stderrDiagnostic(): String =
-        synchronized(stderrTail) { stderrTail.toString().trim() }
+        synchronized(stderrTail) {
+            stderrTail.lineSequence()
+                .filter(String::isNotBlank)
+                .joinToString("\n", transform = String::redactedDiagnosticPreview)
+                .trim()
+        }
 
     private fun processExitDiagnostic(): String =
         if (process.isAlive) {
@@ -679,6 +864,9 @@ private class StreamingClaudeCodeCliProcess(
         }
 
     private fun terminateImmediately() {
+        log.warn {
+            "CLAUDE_CODE_TRACE call=$activeDiagnosticId phase=process_terminate_forcibly pid=${process.pid()}"
+        }
         val root = process.toHandle()
         root.descendants()
             .sorted(Comparator.comparingLong(ProcessHandle::pid).reversed())
@@ -788,7 +976,7 @@ internal class ClaudeCodeResultStreamParser {
         val isError = root["is_error"]?.jsonPrimitive?.booleanOrNull == true
         if (isError) {
             val message = root["result"]?.jsonPrimitive?.contentOrNull ?: root.toString()
-            error("Claude Code CLI returned an error: $message")
+            error("Claude Code CLI returned an error: ${message.redactedDiagnosticPreview()}")
         }
 
         val usage = root["usage"] as? JsonObject
@@ -887,6 +1075,136 @@ private fun sha256(value: String): String =
     MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(StandardCharsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
+
+private fun shortFingerprint(value: String): String = sha256(value).take(12)
+
+private fun elapsedMillis(startedAtNanos: Long): Long =
+    (System.nanoTime() - startedAtNanos) / 1_000_000
+
+internal fun List<String>.toDiagnosticCommand(): String {
+    val result = mutableListOf<String>()
+    var index = 0
+    while (index < size) {
+        val argument = this[index]
+        result += argument.toDiagnosticArgument()
+        if (argument == "--json-schema" && index + 1 < size) {
+            val schema = this[index + 1]
+            result += "<schema chars=${schema.length} sha256=${shortFingerprint(schema)}>"
+            index += 1
+        }
+        index += 1
+    }
+    return result.joinToString(" ")
+}
+
+private fun String.toDiagnosticArgument(): String =
+    if (isEmpty()) {
+        "\"\""
+    } else if (any(Char::isWhitespace)) {
+        "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
+    } else {
+        this
+    }
+
+private fun AiReasoningMode?.diagnosticEnvironment(): String =
+    when (this) {
+        null -> "inherited"
+        AiReasoningMode.ADAPTIVE -> "thinking=enabled,adaptive=enabled,maxTokens=unset"
+        AiReasoningMode.DISABLED -> "thinking=disabled,adaptive=default,maxTokens=unset"
+        AiReasoningMode.TOKEN_BUDGET -> "unsupported"
+    }
+
+internal fun List<JsonObject>.diagnosticContentBlockSummary(): String {
+    if (isEmpty()) return "none"
+    val types = groupingBy { it["type"]?.jsonPrimitive?.contentOrNull ?: "unknown" }
+        .eachCount()
+        .toSortedMap()
+    val sources = mapNotNull { it["source"] as? JsonObject }
+    val sourceTypes = sources
+        .groupingBy { it["type"]?.jsonPrimitive?.contentOrNull ?: "unknown" }
+        .eachCount()
+        .toSortedMap()
+    val mediaTypes = sources
+        .mapNotNull { it["media_type"]?.jsonPrimitive?.contentOrNull }
+        .groupingBy { it }
+        .eachCount()
+        .toSortedMap()
+    val encodedChars = sources.sumOf { source ->
+        source["data"]?.jsonPrimitive?.contentOrNull?.length ?: 0
+    }
+    return "count=$size,types=$types,sourceTypes=$sourceTypes,mediaTypes=$mediaTypes,encodedChars=$encodedChars"
+}
+
+internal fun JsonObject.diagnosticEventSummary(): String {
+    val type = this["type"]?.jsonPrimitive?.contentOrNull ?: "unknown"
+    val fields = mutableListOf("type=$type")
+    this["subtype"]?.jsonPrimitive?.contentOrNull?.let { fields += "subtype=$it" }
+    this["session_id"]?.jsonPrimitive?.contentOrNull?.let { fields += "session=$it" }
+    when (type) {
+        "assistant", "user" -> {
+            val message = this["message"] as? JsonObject
+            message?.get("id")?.jsonPrimitive?.contentOrNull?.let { fields += "message=$it" }
+            (message?.get("content") as? JsonArray)?.let { fields += it.diagnosticContentSummary() }
+            (message?.get("usage") as? JsonObject)?.let { fields += it.diagnosticUsageSummary() }
+            fields += "parentToolUse=${this["parent_tool_use_id"] !is JsonNull && this["parent_tool_use_id"] != null}"
+        }
+        "result" -> {
+            fields += "isError=${this["is_error"]?.jsonPrimitive?.booleanOrNull ?: false}"
+            fields += "resultChars=${this["result"]?.jsonPrimitive?.contentOrNull?.length ?: 0}"
+            fields += "structuredChars=${this["structured_output"]?.toString()?.length ?: 0}"
+            (this["usage"] as? JsonObject)?.let { fields += it.diagnosticUsageSummary() }
+        }
+        "system" -> {
+            fields += "keys=${keys.sorted()}"
+            (this["tools"] as? JsonArray)?.let { fields += "tools=${it.size}" }
+            (this["mcp_servers"] as? JsonArray)?.let { fields += "mcpServers=${it.size}" }
+        }
+        else -> fields += "keys=${keys.sorted()}"
+    }
+    return fields.joinToString(" ")
+}
+
+private fun JsonArray.diagnosticContentSummary(): String {
+    val blocks = mapNotNull { it as? JsonObject }
+    val types = blocks
+        .groupingBy { it["type"]?.jsonPrimitive?.contentOrNull ?: "unknown" }
+        .eachCount()
+        .toSortedMap()
+    val textChars = blocks.sumOf { it["text"]?.jsonPrimitive?.contentOrNull?.length ?: 0 }
+    val thinkingChars = blocks.sumOf { it["thinking"]?.jsonPrimitive?.contentOrNull?.length ?: 0 }
+    val toolNames = blocks.mapNotNull { it["name"]?.jsonPrimitive?.contentOrNull }.distinct().sorted()
+    return "contentTypes=$types textChars=$textChars thinkingChars=$thinkingChars toolNames=$toolNames"
+}
+
+private fun JsonObject.diagnosticUsageSummary(): String =
+    listOf(
+        "input_tokens",
+        "output_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+    ).joinToString(prefix = "usage={", postfix = "}") { name ->
+        "$name=${this[name]?.jsonPrimitive?.contentOrNull ?: "unknown"}"
+    }
+
+internal fun String.redactedDiagnosticPreview(): String {
+    var result = trim().replace('\n', ' ').replace('\r', ' ')
+    diagnosticSecretPatterns.forEach { (pattern, replacement) ->
+        result = pattern.replace(result, replacement)
+    }
+    result = diagnosticStructuredContentPattern.replace(result) { match ->
+        "${match.groupValues[1]}=<omitted chars=${match.groupValues[2].length}>"
+    }
+    return result.take(DIAGNOSTIC_PREVIEW_LIMIT).ifBlank { "<blank>" }
+}
+
+private val diagnosticSecretPatterns = listOf(
+    Regex("(?i)\\bBearer\\s+[^\\s,;]+") to "Bearer <redacted>",
+    Regex("(?i)\\b(sk-(?:proj-|ant-)?|ghp_|github_pat_)[A-Za-z0-9_-]{8,}") to "<redacted-token>",
+    Regex("(?i)\\b(api[_-]?key|authorization|password|secret|token)(\\s*[:=]\\s*)[^\\s,;]+") to "$1$2<redacted>",
+)
+private val diagnosticStructuredContentPattern =
+    Regex("(?i)\\b(prompt|message|content|input|result|text)\\s*=\\s*([^\\s]+)")
+private const val DIAGNOSTIC_PREVIEW_LIMIT = 2_000
 
 private object ClaudeCodeProcessArguments {
     fun build(command: ClaudeCodeCommand, systemPromptFile: String): List<String> =

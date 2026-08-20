@@ -24,6 +24,7 @@ import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
@@ -116,13 +117,56 @@ internal class ClaudeCodeCliRuntime(
         validateToolChoice(request.tools, request.options.toolChoice)
         validateReasoning(request.options.reasoning)
 
+        val diagnosticId = uuid7().toString()
+        val callStartedAt = System.nanoTime()
         val sessionStateKey = sessionStateKey(request)
-        return if (sessionStateKey == null) {
-            callLocked(request, sessionStateKey = null)
-        } else {
-            sessionLocks.computeIfAbsent(sessionStateKey.lockKey()) { Mutex() }.withLock {
-                callLocked(request, sessionStateKey)
+        log.info {
+            "CLAUDE_CODE_TRACE call=$diagnosticId phase=request_received model=$modelName " +
+                "messages=${request.messages.size} contentItems=${request.messages.sumOf { it.content.size }} " +
+                "systemPrompts=${request.systemPrompts.size} tools=${request.tools.size} " +
+                "toolChoice=${request.options.toolChoice::class.simpleName} " +
+                "responseFormat=${request.options.responseFormat::class.simpleName} " +
+                "reasoning=${request.options.reasoning?.diagnosticSummary() ?: "default"} " +
+                "durableSession=${sessionStateKey != null} workspace=${workspaceDirectory?.absolutePath ?: "none"}"
+        }
+
+        return try {
+            val response = if (sessionStateKey == null) {
+                callLocked(request, sessionStateKey = null, diagnosticId = diagnosticId)
+            } else {
+                val lockKey = sessionStateKey.lockKey()
+                val lockStartedAt = System.nanoTime()
+                log.debug {
+                    "CLAUDE_CODE_TRACE call=$diagnosticId phase=session_lock_wait " +
+                        "sessionKey=${sha256(lockKey).take(12)}"
+                }
+                sessionLocks.computeIfAbsent(lockKey) { Mutex() }.withLock {
+                    log.info {
+                        "CLAUDE_CODE_TRACE call=$diagnosticId phase=session_lock_acquired " +
+                            "waitMs=${elapsedMillis(lockStartedAt)} sessionKey=${sha256(lockKey).take(12)}"
+                    }
+                    callLocked(request, sessionStateKey, diagnosticId)
+                }
             }
+
+            log.info {
+                "CLAUDE_CODE_TRACE call=$diagnosticId phase=request_completed totalMs=${elapsedMillis(callStartedAt)} " +
+                    "finishReason=${response.finishReason} outputMessages=${response.messages.size} " +
+                    "toolCalls=${response.toolCalls.size} usage=${response.usage?.diagnosticSummary() ?: "none"} " +
+                    "contextTokens=${response.contextUsage?.inputTokens ?: "unknown"}"
+            }
+            response
+        } catch (error: CancellationException) {
+            log.warn(error) {
+                "CLAUDE_CODE_TRACE call=$diagnosticId phase=request_cancelled totalMs=${elapsedMillis(callStartedAt)}"
+            }
+            throw error
+        } catch (error: Throwable) {
+            log.error(error) {
+                "CLAUDE_CODE_TRACE call=$diagnosticId phase=request_failed totalMs=${elapsedMillis(callStartedAt)} " +
+                    "error=${error::class.simpleName} message=${error.message?.redactedDiagnosticPreview()}"
+            }
+            throw error
         }
     }
 
@@ -133,7 +177,9 @@ internal class ClaudeCodeCliRuntime(
     private suspend fun callLocked(
         request: AiRuntimeRequest,
         sessionStateKey: ClaudeCodeSessionState.Key?,
+        diagnosticId: String,
     ): AiRuntimeResponse {
+        val preparationStartedAt = System.nanoTime()
         val toolProtocol = request.toolProtocol()
         val sessionPlan = planSession(sessionStateKey, request.messages)
         val systemPrompt = buildSystemPrompt(request, toolProtocol)
@@ -141,12 +187,18 @@ internal class ClaudeCodeCliRuntime(
         val schema = toolProtocol?.schema ?: (request.options.responseFormat as? AiResponseFormat.JsonSchema)?.schema
 
         log.info {
-            "Calling Claude Code CLI runtime: model=$modelName messages=${request.messages.size} " +
-                "sentMessages=${sessionPlan.messagesToSend.size} resumed=${sessionPlan.resumeSessionId != null} " +
-                "tools=${request.tools.size} wrapper=${toolProtocol != null}"
+            "CLAUDE_CODE_TRACE call=$diagnosticId phase=request_prepared preparationMs=${elapsedMillis(preparationStartedAt)} " +
+                "sessionPlan=${sessionPlan.decision} sentMessages=${sessionPlan.messagesToSend.size} " +
+                "resumed=${sessionPlan.resumeSessionId != null} resumeSession=${sessionPlan.resumeSessionId ?: "none"} " +
+                "systemPromptChars=${systemPrompt.length} systemPromptSha256=${sha256(systemPrompt).take(12)} " +
+                "userPromptChars=${userInput.prompt.length} attachments=${userInput.contentBlocks.size} " +
+                "attachmentJsonChars=${userInput.contentBlocks.sumOf { it.toString().length }} " +
+                "schemaChars=${schema?.toString()?.length ?: 0} wrapper=${toolProtocol != null} " +
+                "tools=${request.tools.map { it.definition.name }.sorted()}"
         }
 
         val command = ClaudeCodeCommand(
+            diagnosticId = diagnosticId,
             connectionId = connectionId,
             executablePath = executablePath,
             cacheKey = sessionStateKey?.lockKey(),
@@ -164,11 +216,24 @@ internal class ClaudeCodeCliRuntime(
             noSessionPersistence = sessionStateKey == null,
         )
 
+        val executionStartedAt = System.nanoTime()
         val cliResponse = executor.execute(command)
+        log.info {
+            "CLAUDE_CODE_TRACE call=$diagnosticId phase=cli_response executionMs=${elapsedMillis(executionStartedAt)} " +
+                "session=${cliResponse.sessionId ?: "none"} finishReason=${cliResponse.finishReason} " +
+                "resultChars=${cliResponse.result.length} structuredChars=${cliResponse.structuredOutput?.toString()?.length ?: 0} " +
+                "thinkingBlocks=${cliResponse.thinking.size} compactions=${cliResponse.compactionBoundaries.size} " +
+                "usage=${cliResponse.usage.diagnosticSummary()} contextUsage=${cliResponse.contextUsage.diagnosticSummary()}"
+        }
         val runtimeResponse = toRuntimeResponse(cliResponse, request, toolProtocol, sessionPlan.resumeSessionId != null)
 
         if (sessionStateKey != null && cliResponse.sessionId != null) {
+            val saveStartedAt = System.nanoTime()
             saveSessionState(sessionStateKey, cliResponse.sessionId, request.messages, runtimeResponse.messages)
+            log.debug {
+                "CLAUDE_CODE_TRACE call=$diagnosticId phase=session_state_saved saveMs=${elapsedMillis(saveStartedAt)} " +
+                    "coveredMessages=${request.messages.size} generatedMessages=${runtimeResponse.messages.size}"
+            }
         }
 
         return runtimeResponse
@@ -243,13 +308,25 @@ internal class ClaudeCodeCliRuntime(
     ): ClaudeCodeSessionPlan {
         val state = sessionKey?.let { sessionStateRepository.find(it) }
         if (state == null) {
-            return ClaudeCodeSessionPlan(messagesToSend = messages, resumeSessionId = null)
+            return ClaudeCodeSessionPlan(
+                messagesToSend = messages,
+                resumeSessionId = null,
+                decision = if (sessionKey == null) {
+                    ClaudeCodeSessionDecision.NO_DURABLE_SESSION
+                } else {
+                    ClaudeCodeSessionDecision.STATE_NOT_FOUND
+                },
+            )
         }
 
         val coveredIds = messages.take(state.coveredMessageIds.size).map { it.id }
         if (coveredIds != state.coveredMessageIds) {
             sessionStateRepository.delete(sessionKey)
-            return ClaudeCodeSessionPlan(messagesToSend = messages, resumeSessionId = null)
+            return ClaudeCodeSessionPlan(
+                messagesToSend = messages,
+                resumeSessionId = null,
+                decision = ClaudeCodeSessionDecision.RESET_MESSAGE_IDS_CHANGED,
+            )
         }
 
         val generatedTailOffset = state.coveredMessageIds.size
@@ -260,7 +337,11 @@ internal class ClaudeCodeCliRuntime(
             .map(::generatedAssistantMessageSignature)
         if (generatedTailSignatures != state.coveredGeneratedAssistantSignatures) {
             sessionStateRepository.delete(sessionKey)
-            return ClaudeCodeSessionPlan(messagesToSend = messages, resumeSessionId = null)
+            return ClaudeCodeSessionPlan(
+                messagesToSend = messages,
+                resumeSessionId = null,
+                decision = ClaudeCodeSessionDecision.RESET_GENERATED_TAIL_CHANGED,
+            )
         }
 
         val knownFingerprint = transcriptFingerprint(
@@ -269,14 +350,26 @@ internal class ClaudeCodeCliRuntime(
         )
         if (knownFingerprint != state.coveredTranscriptFingerprint) {
             sessionStateRepository.delete(sessionKey)
-            return ClaudeCodeSessionPlan(messagesToSend = messages, resumeSessionId = null)
+            return ClaudeCodeSessionPlan(
+                messagesToSend = messages,
+                resumeSessionId = null,
+                decision = ClaudeCodeSessionDecision.RESET_TRANSCRIPT_CHANGED,
+            )
         }
 
         val deltaMessages = messages.drop(generatedTailOffset + generatedTailSize)
         return if (deltaMessages.isEmpty()) {
-            ClaudeCodeSessionPlan(messagesToSend = messages, resumeSessionId = null)
+            ClaudeCodeSessionPlan(
+                messagesToSend = messages,
+                resumeSessionId = null,
+                decision = ClaudeCodeSessionDecision.FRESH_WITHOUT_DELTA,
+            )
         } else {
-            ClaudeCodeSessionPlan(messagesToSend = deltaMessages, resumeSessionId = state.claudeSessionId)
+            ClaudeCodeSessionPlan(
+                messagesToSend = deltaMessages,
+                resumeSessionId = state.claudeSessionId,
+                decision = ClaudeCodeSessionDecision.RESUME_WITH_DELTA,
+            )
         }
     }
 
@@ -800,7 +893,40 @@ private data class ClaudeCodeUserInput(
 private data class ClaudeCodeSessionPlan(
     val messagesToSend: List<Conversation.Message>,
     val resumeSessionId: String?,
+    val decision: ClaudeCodeSessionDecision,
 )
+
+private enum class ClaudeCodeSessionDecision {
+    NO_DURABLE_SESSION,
+    STATE_NOT_FOUND,
+    RESET_MESSAGE_IDS_CHANGED,
+    RESET_GENERATED_TAIL_CHANGED,
+    RESET_TRANSCRIPT_CHANGED,
+    FRESH_WITHOUT_DELTA,
+    RESUME_WITH_DELTA,
+}
+
+private fun AiReasoningConfig.diagnosticSummary(): String =
+    "mode=$mode,effort=$effort,display=$display,budgetTokens=$budgetTokens"
+
+private fun AiUsage.diagnosticSummary(): String =
+    "input=$promptTokens,output=$completionTokens,thinking=$thinkingTokens," +
+        "cacheCreate=$cacheCreationTokens,cacheRead=$cacheReadTokens"
+
+private fun JsonObject?.diagnosticSummary(): String {
+    if (this == null) return "none"
+    return listOf(
+        "input_tokens",
+        "output_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+    ).joinToString(prefix = "{", postfix = "}") { name ->
+        "$name=${this[name]?.jsonPrimitive?.contentOrNull ?: "unknown"}"
+    }
+}
+
+private fun elapsedMillis(startedAtNanos: Long): Long =
+    (System.nanoTime() - startedAtNanos) / 1_000_000
 
 internal interface ClaudeCodeCliExecutor {
     suspend fun execute(command: ClaudeCodeCommand): ClaudeCodeCliResponse
@@ -830,6 +956,7 @@ internal data class ClaudeCodeNativeToolResponse(
 )
 
 internal data class ClaudeCodeCommand(
+    val diagnosticId: String = "untracked",
     val connectionId: String = "claude-code",
     val executablePath: String = "claude",
     val cacheKey: String? = null,

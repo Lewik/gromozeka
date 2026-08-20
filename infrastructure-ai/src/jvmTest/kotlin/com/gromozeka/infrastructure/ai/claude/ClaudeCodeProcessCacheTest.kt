@@ -112,6 +112,75 @@ class ClaudeCodeProcessCacheTest {
     }
 
     @Test
+    fun diagnosticCommandOmitsJsonSchemaContents() {
+        val schema = """{"type":"object","secret":"do-not-log"}"""
+
+        val diagnostic = listOf(
+            "claude",
+            "--model",
+            "sonnet",
+            "--json-schema",
+            schema,
+        ).toDiagnosticCommand()
+
+        assertTrue(schema !in diagnostic)
+        assertTrue("do-not-log" !in diagnostic)
+        assertTrue("--json-schema <schema chars=${schema.length} sha256=" in diagnostic)
+    }
+
+    @Test
+    fun diagnosticEventOmitsAssistantTextAndToolInput() {
+        val event = JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("assistant"),
+                "message" to JsonObject(
+                    mapOf(
+                        "id" to JsonPrimitive("message-1"),
+                        "content" to JsonArray(
+                            listOf(
+                                JsonObject(
+                                    mapOf(
+                                        "type" to JsonPrimitive("text"),
+                                        "text" to JsonPrimitive("private response"),
+                                    )
+                                ),
+                                JsonObject(
+                                    mapOf(
+                                        "type" to JsonPrimitive("tool_use"),
+                                        "name" to JsonPrimitive("Read"),
+                                        "input" to JsonObject(
+                                            mapOf("path" to JsonPrimitive("/private/path"))
+                                        ),
+                                    )
+                                ),
+                            )
+                        ),
+                    )
+                ),
+                "parent_tool_use_id" to JsonNull,
+            )
+        )
+
+        val diagnostic = event.diagnosticEventSummary()
+
+        assertTrue("private response" !in diagnostic)
+        assertTrue("/private/path" !in diagnostic)
+        assertTrue("contentTypes={text=1, tool_use=1}" in diagnostic)
+        assertTrue("toolNames=[Read]" in diagnostic)
+    }
+
+    @Test
+    fun diagnosticPreviewRedactsCredentialsAndStructuredContent() {
+        val diagnostic =
+            "authorization=Bearer private-token prompt=private-message".redactedDiagnosticPreview()
+
+        assertTrue("private-token" !in diagnostic)
+        assertTrue("private-message" !in diagnostic)
+        assertTrue("<redacted>" in diagnostic)
+        assertTrue("prompt=<omitted" in diagnostic)
+    }
+
+    @Test
     fun resultParserKeepsThinkingFromLatestTopLevelAssistantMessage() {
         val parser = ClaudeCodeResultStreamParser()
         parser.accept(
