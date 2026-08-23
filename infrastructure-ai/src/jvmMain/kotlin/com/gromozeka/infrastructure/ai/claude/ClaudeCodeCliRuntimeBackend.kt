@@ -120,7 +120,7 @@ internal class ClaudeCodeCliRuntime(
         val diagnosticId = uuid7().toString()
         val callStartedAt = System.nanoTime()
         val sessionStateKey = sessionStateKey(request)
-        log.info {
+        log.debug {
             "CLAUDE_CODE_TRACE call=$diagnosticId phase=request_received model=$modelName " +
                 "messages=${request.messages.size} contentItems=${request.messages.sumOf { it.content.size }} " +
                 "systemPrompts=${request.systemPrompts.size} tools=${request.tools.size} " +
@@ -141,7 +141,7 @@ internal class ClaudeCodeCliRuntime(
                         "sessionKey=${sha256(lockKey).take(12)}"
                 }
                 sessionLocks.computeIfAbsent(lockKey) { Mutex() }.withLock {
-                    log.info {
+                    log.debug {
                         "CLAUDE_CODE_TRACE call=$diagnosticId phase=session_lock_acquired " +
                             "waitMs=${elapsedMillis(lockStartedAt)} sessionKey=${sha256(lockKey).take(12)}"
                     }
@@ -186,7 +186,7 @@ internal class ClaudeCodeCliRuntime(
         val userInput = buildUserInput(sessionPlan, toolProtocol)
         val schema = toolProtocol?.schema ?: (request.options.responseFormat as? AiResponseFormat.JsonSchema)?.schema
 
-        log.info {
+        log.debug {
             "CLAUDE_CODE_TRACE call=$diagnosticId phase=request_prepared preparationMs=${elapsedMillis(preparationStartedAt)} " +
                 "sessionPlan=${sessionPlan.decision} sentMessages=${sessionPlan.messagesToSend.size} " +
                 "resumed=${sessionPlan.resumeSessionId != null} resumeSession=${sessionPlan.resumeSessionId ?: "none"} " +
@@ -218,7 +218,7 @@ internal class ClaudeCodeCliRuntime(
 
         val executionStartedAt = System.nanoTime()
         val cliResponse = executor.execute(command)
-        log.info {
+        log.debug {
             "CLAUDE_CODE_TRACE call=$diagnosticId phase=cli_response executionMs=${elapsedMillis(executionStartedAt)} " +
                 "session=${cliResponse.sessionId ?: "none"} finishReason=${cliResponse.finishReason} " +
                 "resultChars=${cliResponse.result.length} structuredChars=${cliResponse.structuredOutput?.toString()?.length ?: 0} " +

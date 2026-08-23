@@ -46,7 +46,6 @@
         </root>
     </springProfile>
 
-    <logger name="com.gromozeka.infrastructure.ai.claude" level="DEBUG"/>
     <logger name="org.springframework" level="WARN"/>
     <logger name="org.apache" level="WARN"/>
     <logger name="io.ktor" level="INFO"/>
