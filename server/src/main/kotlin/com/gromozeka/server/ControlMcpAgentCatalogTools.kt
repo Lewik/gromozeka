@@ -113,7 +113,8 @@ internal class ControlMcpAgentCatalogTools(
         },
         controlMcpTool(
             name = "grz_agent_update",
-            description = "Replace every mutable field of an existing Agent definition.",
+            description = "Replace every mutable field of an existing Agent definition. " +
+                "The updated definition applies to the next model request, including a continuation of the current turn.",
             inputSchema = agentWriteSchema(includeId = true, includeProjectId = false),
             readOnly = false,
         ) { input ->
@@ -238,7 +239,9 @@ internal class ControlMcpAgentCatalogTools(
         },
         controlMcpTool(
             name = "grz_prompt_update",
-            description = "Replace the name and content of an existing Prompt.",
+            description = "Replace the name and content of an existing Prompt. " +
+                "The new content applies to the next model request, including a continuation of the current turn; " +
+                "it cannot affect a request already in progress.",
             inputSchema = promptWriteSchema(includeId = true, includeProjectId = false),
             readOnly = false,
         ) { input ->
