@@ -17,6 +17,9 @@ val nativePackageVersion = rootProject.version.toString()
 val hostOperatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
 val localWorkerAppResources = layout.buildDirectory.dir("generated/local-worker-app-resources")
 val localWorkerRuntimeResources = layout.buildDirectory.dir("generated/local-worker-runtime")
+val windowsNotificationNativeSources = layout.projectDirectory.dir("src/jvmMain/native/windows-notifications")
+val windowsNotificationNativeBuild = layout.buildDirectory.dir("native/windows-notifications")
+val windowsNotificationResources = layout.buildDirectory.dir("generated/windows-notification-resources")
 val macWorkerLauncher = rootProject.layout.buildDirectory.file(
     "native-launchers/macos-arm64/gromozeka-worker-launcher"
 )
@@ -86,6 +89,45 @@ val prepareLocalWorkerRuntimes by tasks.registering(Exec::class) {
         onlyIf { false }
         commandLine("true")
     }
+}
+
+val configureWindowsNotificationNative by tasks.registering(Exec::class) {
+    inputs.dir(windowsNotificationNativeSources)
+    outputs.file(windowsNotificationNativeBuild.map { it.file("CMakeCache.txt") })
+    if (hostOperatingSystem.isWindows) {
+        commandLine(
+            "cmake",
+            "-S", windowsNotificationNativeSources.asFile.absolutePath,
+            "-B", windowsNotificationNativeBuild.get().asFile.absolutePath,
+            "-A", "x64",
+        )
+    } else {
+        enabled = false
+        commandLine("true")
+    }
+}
+
+val buildWindowsNotificationNative by tasks.registering(Exec::class) {
+    dependsOn(configureWindowsNotificationNative)
+    inputs.dir(windowsNotificationNativeSources)
+    outputs.file(windowsNotificationNativeBuild.map { it.file("Release/gromozeka-notifications.dll") })
+    if (hostOperatingSystem.isWindows) {
+        commandLine(
+            "cmake",
+            "--build", windowsNotificationNativeBuild.get().asFile.absolutePath,
+            "--config", "Release",
+        )
+    } else {
+        enabled = false
+        commandLine("true")
+    }
+}
+
+val stageWindowsNotificationResources by tasks.registering(Sync::class) {
+    dependsOn(buildWindowsNotificationNative)
+    enabled = hostOperatingSystem.isWindows
+    from(windowsNotificationNativeBuild.map { it.file("Release/gromozeka-notifications.dll") })
+    into(windowsNotificationResources.map { it.dir("win32-x86-64") })
 }
 
 val compileMacWorkerLauncher by tasks.registering(Exec::class) {
@@ -245,6 +287,7 @@ kotlin {
         }
 
         val jvmMain by getting {
+            resources.srcDir(windowsNotificationResources)
             dependencies {
                 implementation(project(":shared"))
                 implementation(compose.desktop.currentOs)
@@ -335,6 +378,10 @@ tasks.withType<Test> {
     System.getProperty("gromozeka.llm.cassette.deleteUnused")?.let {
         systemProperty("gromozeka.llm.cassette.deleteUnused", it)
     }
+}
+
+tasks.matching { it.name == "jvmProcessResources" }.configureEach {
+    dependsOn(stageWindowsNotificationResources)
 }
 
 compose.desktop {

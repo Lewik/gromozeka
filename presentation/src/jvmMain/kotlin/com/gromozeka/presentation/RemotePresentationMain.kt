@@ -57,7 +57,7 @@ internal suspend fun startRemotePresentation(
             globalHotkeyController = globalHotkeyController,
             localWorkerController = localWorkerController,
             turnCompletionNotificationSink = TurnCompletionNotificationSink {
-                desktopNotificationService.show("Gromozeka", "Turn completed")
+                desktopNotificationService.show("turn-completed", "Gromozeka", "Turn completed")
             },
             httpClient = httpClient,
         )

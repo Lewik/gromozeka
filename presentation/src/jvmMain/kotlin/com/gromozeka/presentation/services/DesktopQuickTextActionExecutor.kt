@@ -23,15 +23,16 @@ internal class DesktopQuickTextActionExecutor(
     suspend fun run(actionId: QuickTextAction.Id) {
         mutex.withLock {
             val actionName = actionName(actionId)
+            val notificationId = "quick-text-action:${actionId.value}"
             log.info("Quick text action started: actionId=${actionId.value}")
-            notificationService.show("Gromozeka", "$actionName started")
+            notificationService.show(notificationId, "Gromozeka", "$actionName started")
             try {
                 val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                 val inputText = withContext(Dispatchers.IO) {
                     clipboard.readText()
                 }
                 if (inputText.isNullOrBlank()) {
-                    notificationService.show("Gromozeka", "$actionName skipped: clipboard has no text")
+                    notificationService.show(notificationId, "Gromozeka", "$actionName skipped: clipboard has no text")
                     log.info("Quick text action skipped: clipboard has no text")
                     return
                 }
@@ -41,10 +42,10 @@ internal class DesktopQuickTextActionExecutor(
                     clipboard.writeText(result.text)
                 }
                 log.info("Quick text action complete: actionId=${actionId.value}")
-                notificationService.show("Gromozeka", "$actionName complete: result copied to clipboard")
+                notificationService.show(notificationId, "Gromozeka", "$actionName complete: result copied to clipboard")
             } catch (error: Throwable) {
                 uiFeedbackController.notifyError()
-                notificationService.show("Gromozeka", "$actionName failed: ${error.userFacingMessage()}")
+                notificationService.show(notificationId, "Gromozeka", "$actionName failed: ${error.userFacingMessage()}")
                 log.warn(error) { "Quick text action failed: ${error.message}" }
             }
         }

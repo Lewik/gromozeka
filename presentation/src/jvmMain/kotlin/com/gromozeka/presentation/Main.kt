@@ -82,8 +82,8 @@ fun main(args: Array<String>) {
         val trayState = rememberTrayState()
         val desktopNotificationService = remember(trayState) {
             defaultDesktopNotificationService(
-                windowsPublisher = DesktopNotificationPublisher { title, message ->
-                    trayState.sendNotification(Notification(title, message))
+                windowsFallbackPublisher = DesktopNotificationPublisher { notification ->
+                    trayState.sendNotification(Notification(notification.title, notification.message))
                 },
             )
         }

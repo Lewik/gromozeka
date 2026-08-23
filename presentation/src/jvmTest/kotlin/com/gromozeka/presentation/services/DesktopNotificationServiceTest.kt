@@ -9,7 +9,7 @@ class DesktopNotificationServiceTest {
     @Test
     fun `selects macOS notification service`() {
         val service = defaultDesktopNotificationService(
-            windowsPublisher = DesktopNotificationPublisher { _, _ -> },
+            windowsFallbackPublisher = DesktopNotificationPublisher {},
             osName = "Mac OS X",
         )
 
@@ -19,7 +19,7 @@ class DesktopNotificationServiceTest {
     @Test
     fun `selects Windows notification service`() {
         val service = defaultDesktopNotificationService(
-            windowsPublisher = DesktopNotificationPublisher { _, _ -> },
+            windowsFallbackPublisher = DesktopNotificationPublisher {},
             osName = "Windows 11",
         )
 
@@ -29,7 +29,7 @@ class DesktopNotificationServiceTest {
     @Test
     fun `selects no-op notification service for unsupported platform`() {
         val service = defaultDesktopNotificationService(
-            windowsPublisher = DesktopNotificationPublisher { _, _ -> },
+            windowsFallbackPublisher = DesktopNotificationPublisher {},
             osName = "Linux",
         )
 
@@ -38,24 +38,25 @@ class DesktopNotificationServiceTest {
 
     @Test
     fun `passes Windows notification payload without serialization`() {
-        val published = mutableListOf<Pair<String, String>>()
+        val published = mutableListOf<DesktopNotification>()
         val service = WindowsDesktopNotificationService(
-            DesktopNotificationPublisher { title, message -> published += title to message },
+            DesktopNotificationPublisher(published::add),
         )
+        val replacementId = "quick-text-action:translate"
         val title = "Gromozeka — тест \"quoted\""
         val message = "First line\nC:\\Users\\Lev\\file.txt <&> 'готово'"
 
-        service.show(title, message)
+        service.show(replacementId, title, message)
 
-        assertEquals(listOf(title to message), published)
+        assertEquals(listOf(DesktopNotification(replacementId, title, message)), published)
     }
 
     @Test
     fun `ignores Windows notification publisher failure`() {
         val service = WindowsDesktopNotificationService(
-            DesktopNotificationPublisher { _, _ -> error("tray unavailable") },
+            DesktopNotificationPublisher { error("tray unavailable") },
         )
 
-        service.show("Gromozeka", "Complete")
+        service.show("turn-completed", "Gromozeka", "Complete")
     }
 }
