@@ -1,6 +1,5 @@
 package com.gromozeka.remote.protocol
 
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.AgentSkill
 import com.gromozeka.domain.model.AgentSkillFile
 import com.gromozeka.domain.model.AgentSkillPackageSource
@@ -12,6 +11,7 @@ import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.QuickTextActionResult
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
@@ -743,15 +743,18 @@ class RemoteProtocolCodecTest {
         assertEquals(QuickTextAction.FIX_TEXT_ID, decodedRun.actionId)
         assertEquals("helo", decodedRun.text)
 
+        val configuredAction = QuickTextAction.defaults().first().copy(
+            agentId = AgentDefinition.Id("quick-text-agent"),
+        )
         val listEnvelope = GromozekaServerEnvelope(
             id = "quick-text-list-1",
-            payload = QuickTextActionsResponse(QuickTextAction.defaults()),
+            payload = QuickTextActionsResponse(listOf(configuredAction)),
         )
         val decodedList = RemoteProtocolCodec.decodeServerBinary(
             RemoteProtocolCodec.encodeServerBinary(listEnvelope)
         ).payload as QuickTextActionsResponse
 
-        assertEquals(QuickTextAction.defaults().map { it.id }, decodedList.actions.map { it.id })
+        assertEquals(listOf(configuredAction), decodedList.actions)
 
         val resultEnvelope = GromozekaServerEnvelope(
             id = "quick-text-result-1",

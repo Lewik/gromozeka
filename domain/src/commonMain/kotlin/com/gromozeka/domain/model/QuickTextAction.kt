@@ -9,6 +9,7 @@ data class QuickTextAction(
     val title: String,
     val description: String,
     val prompt: String,
+    val agentId: AgentDefinition.Id? = null,
 ) {
     init {
         require(id.value.isNotBlank()) { "Quick text action id must not be blank" }

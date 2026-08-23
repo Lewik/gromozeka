@@ -42,6 +42,7 @@ import com.gromozeka.client.RemoteUserDirectoryService
 import com.gromozeka.client.WorkerEnrollmentInstructions
 import com.gromozeka.client.WorkerConnectionInstructions
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.KeyboardShortcutAction
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.KeyboardShortcutKey
@@ -49,6 +50,7 @@ import com.gromozeka.domain.model.KeyboardShortcutModifier
 import com.gromozeka.domain.model.KeyboardShortcutScope
 import com.gromozeka.domain.model.KeyboardShortcutValidationSeverity
 import com.gromozeka.domain.model.KeyboardShortcutValidator
+import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SpeechAudioSource
@@ -69,6 +71,7 @@ import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.AiUsageReportService
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.CurrentUserAiCredentialService
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.RuntimeCatalogTemplateService
@@ -125,6 +128,7 @@ fun SettingsPanel(
     aiThemeGenerator: AIThemeGenerator,
     settingsService: SettingsService,
     globalHotkeyController: GlobalHotkeyController,
+    agentService: AgentDomainService,
     aiConfigurationService: AiConfigurationService,
     aiUsageReportService: AiUsageReportService,
     runtimeCatalogTemplateService: RuntimeCatalogTemplateService,
@@ -165,6 +169,7 @@ fun SettingsPanel(
     val voiceInputSettings = deviceSettings.voiceInputSettings
     val desktopInputSettings = settings.desktopInputSettings
     val desktopWindowSettings = settings.desktopWindowSettings
+    var availableQuickTextAgents by remember { mutableStateOf(emptyList<AgentDefinition>()) }
     val aiCatalogSnapshot by aiConfigurationService.snapshotFlow.collectAsState()
     val claudeCodeConnections = aiCatalogSnapshot?.catalog?.connections
         ?.filterIsInstance<AiConnection.ClaudeCode>()
@@ -204,6 +209,19 @@ fun SettingsPanel(
                 }
             )
         }
+    }
+
+    LaunchedEffect(isVisible, agentService) {
+        if (!isVisible) return@LaunchedEffect
+        agentService.observeAll()
+            .catch { failure ->
+                log.warn(failure) { "Failed to load Agents for quick text actions: ${failure.message}" }
+            }
+            .collect { agents ->
+                availableQuickTextAgents = agents
+                    .filter { it.type is AgentDefinition.Type.Global }
+                    .sortedBy { it.name.lowercase() }
+            }
     }
 
     // Refresh themes when panel opens
@@ -832,11 +850,18 @@ fun SettingsPanel(
                         contentMode == SettingsPanelContentMode.Full &&
                         selectedSection == SettingsSection.Keyboard
                     ) {
-                        KeyboardShortcutSettingsGroup(
-                            settings = settings,
-                            globalHotkeyController = globalHotkeyController,
-                            onSettingsChange = onSettingsChange,
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                            KeyboardShortcutSettingsGroup(
+                                settings = settings,
+                                globalHotkeyController = globalHotkeyController,
+                                onSettingsChange = onSettingsChange,
+                            )
+                            QuickTextActionSettingsGroup(
+                                settings = settings,
+                                agents = availableQuickTextAgents,
+                                onSettingsChange = onSettingsChange,
+                            )
+                        }
                     }
 
                     if (
@@ -2435,6 +2460,79 @@ private fun KeyboardShortcutSettingsGroup(
 }
 
 @Composable
+private fun QuickTextActionSettingsGroup(
+    settings: Settings,
+    agents: List<AgentDefinition>,
+    onSettingsChange: (Settings) -> Unit,
+) {
+    SettingsGroup(title = "Quick text actions") {
+        Text(
+            text = "These Agent and prompt settings apply to desktop hotkeys and mobile quick actions.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        settings.userProfile.quickTextActions.forEach { action ->
+            key(action.id.value) {
+                val selectedAgentId = action.agentId
+                val agentOptions = buildList<AgentDefinition.Id?> {
+                    add(null)
+                    addAll(agents.map { it.id })
+                    if (selectedAgentId != null && selectedAgentId !in this) add(selectedAgentId)
+                }
+
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column {
+                            Text(action.title, fontWeight = FontWeight.Medium)
+                            Text(
+                                text = action.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        DropdownSettingItem(
+                            label = "Agent",
+                            description = "Uses the Agent model, runtime overrides, prompts, and style. Tools and skills stay disabled for this text-only action.",
+                            value = selectedAgentId,
+                            options = agentOptions,
+                            optionLabel = { agentId ->
+                                when (agentId) {
+                                    null -> "Quick text runtime (no Agent)"
+                                    else -> agents.firstOrNull { it.id == agentId }?.name
+                                        ?: "Missing Agent (${agentId.value})"
+                                }
+                            },
+                            onValueChange = { agentId ->
+                                onSettingsChange(settings.withQuickTextAction(action.copy(agentId = agentId)))
+                            },
+                        )
+
+                        MultilineTextFieldSettingItem(
+                            label = "Prompt",
+                            description = "Transformation instruction appended after the selected Agent prompts.",
+                            value = action.prompt,
+                            onValueChange = { prompt ->
+                                if (prompt.isNotBlank()) {
+                                    onSettingsChange(settings.withQuickTextAction(action.copy(prompt = prompt)))
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun KeyboardShortcutBindingEditor(
     binding: KeyboardShortcutBinding,
     validationIssues: List<com.gromozeka.domain.model.KeyboardShortcutValidationIssue>,
@@ -2650,6 +2748,15 @@ private fun SliderSettingItem(
 
 private fun Settings.updateUserProfile(update: UserProfile.() -> UserProfile): Settings =
     copy(userProfile = userProfile.update())
+
+private fun Settings.withQuickTextAction(action: QuickTextAction): Settings =
+    updateUserProfile {
+        copy(
+            quickTextActions = quickTextActions.map { current ->
+                if (current.id == action.id) action else current
+            },
+        )
+    }
 
 private fun String.splitWhisperExtraArguments(): List<String> =
     trim().takeIf { it.isNotBlank() }
@@ -2933,6 +3040,34 @@ private fun TextFieldSettingItem(
                 { Text(placeholder, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) }
             } else null,
             singleLine = true
+        )
+    }
+}
+
+@Composable
+private fun MultilineTextFieldSettingItem(
+    label: String,
+    description: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+        )
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 4,
+            maxLines = 10,
         )
     }
 }
