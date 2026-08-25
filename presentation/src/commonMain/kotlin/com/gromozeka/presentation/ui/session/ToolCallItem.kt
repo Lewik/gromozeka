@@ -8,24 +8,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.*
+import com.gromozeka.presentation.ui.icons.Icon
+import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.format
 import kotlinx.serialization.json.*
 
@@ -147,50 +143,6 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, worksp
     }
 }
 
-private fun getToolDisplayName(toolName: String): String = when (toolName) {
-    "grz_read_file" -> "Read File"
-    "grz_write_file" -> "Write File"
-    "grz_edit_file" -> "Edit File"
-    "grz_execute_command" -> "Execute Command"
-    "brave_web_search" -> "Web Search"
-    "brave_local_search" -> "Local Search"
-    "jina_read_url" -> "Read URL"
-    "create_agent" -> "Create Agent"
-    "tell_agent" -> "Tell Agent"
-    "switch_tab" -> "Switch Tab"
-    "list_tabs" -> "List Tabs"
-    "hello_world" -> "Test"
-    else -> toolName
-}
-
-private fun getToolIcon(toolName: String): ImageVector = when (toolName) {
-    "grz_read_file" -> Icons.Default.Description
-    "grz_write_file" -> Icons.Default.Description
-    "grz_edit_file" -> Icons.Default.Description
-    "grz_execute_command" -> Icons.Default.Terminal
-    "brave_web_search" -> Icons.Default.Public
-    "brave_local_search" -> Icons.Default.Public
-    "jina_read_url" -> Icons.Default.Public
-    "create_agent" -> Icons.Default.DeveloperBoard
-    "tell_agent" -> Icons.Default.DeveloperBoard
-    "switch_tab" -> Icons.Default.Tab
-    "list_tabs" -> Icons.AutoMirrored.Filled.ViewList
-    "hello_world" -> Icons.Default.BugReport
-    else -> Icons.Default.Build
-}
-
-private fun getToolSecondaryIcon(toolName: String): ImageVector? = when (toolName) {
-    "grz_read_file" -> Icons.AutoMirrored.Filled.ArrowForward
-    "grz_write_file" -> Icons.AutoMirrored.Filled.ArrowBack
-    "grz_edit_file" -> Icons.AutoMirrored.Filled.ArrowBack
-    "brave_web_search" -> Icons.Default.Search
-    "brave_local_search" -> Icons.Default.Search
-    "jina_read_url" -> Icons.AutoMirrored.Filled.ArrowForward
-    "create_agent" -> Icons.Default.Add
-    "tell_agent" -> Icons.AutoMirrored.Filled.ArrowBack
-    else -> null
-}
-
 private fun extractKeyParameters(toolName: String, input: JsonElement, workspaceRootPath: String?): String {
     return try {
         val json = input.jsonObject
@@ -259,9 +211,7 @@ fun ToolCallItem(
 
     // Get tool display information
     val toolName = toolCall.name
-    val displayName = getToolDisplayName(toolName)
-    val toolIcon = getToolIcon(toolName)
-    val secondaryIcon = getToolSecondaryIcon(toolName)
+    val displayName = toolDisplayName(toolName, LocalTranslation.current.runtime)
     val keyParameters = extractKeyParameters(toolName, toolCall.input, workspaceRootPath)
     val toolDescription = if (keyParameters.isNotEmpty()) "$displayName: $keyParameters" else displayName
     val detailedParameters = buildDetailedParameters(toolName, toolCall.input, workspaceRootPath)
@@ -296,20 +246,10 @@ fun ToolCallItem(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Tool primary icon
-                    Icon(
-                        toolIcon,
-                        contentDescription = "Tool type"
+                    ToolSemanticIcon(
+                        toolName = toolName,
+                        contentDescription = "Tool type",
                     )
-                    
-                    // Secondary icon (if exists)
-                    secondaryIcon?.let { icon ->
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Icon(
-                            icon,
-                            contentDescription = "Tool action"
-                        )
-                    }
                     
                     Spacer(modifier = Modifier.width(4.dp))
                     

@@ -25,24 +25,6 @@ class ToolActivityGroupItemTest {
         verifySuccessfulGroup(width = 390, height = 844)
     }
 
-    @Test
-    fun unresolvedGroupStartsExpanded() = runDesktopComposeUiTest(width = 1280, height = 800) {
-        val group = group()
-        val firstCallId = group.calls.first().content.id.value
-        setContent {
-            MaterialTheme {
-                ToolActivityGroupItem(
-                    group = group,
-                    toolResultsMap = emptyMap(),
-                    workspaceRootPath = null,
-                    loadArtifactContent = { byteArrayOf() },
-                )
-            }
-        }
-
-        onNodeWithTag(UiTestTag.ToolActivityGroupContent(firstCallId).value).assertIsDisplayed()
-    }
-
     private fun verifySuccessfulGroup(width: Int, height: Int) = runDesktopComposeUiTest(
         width = width,
         height = height,

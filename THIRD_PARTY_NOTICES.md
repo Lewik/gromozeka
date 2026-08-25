@@ -1,5 +1,17 @@
 # Third-Party Notices
 
+## Material Symbols
+
+Gromozeka includes modified Android vector resources from Google Material
+Symbols. Material Symbols are licensed under the Apache License 2.0.
+
+Copyright Google LLC.
+
+Source and license information are available from:
+
+- https://github.com/google/material-design-icons/tree/e083cc60a0828fdd3b404cea0cb8a5b900e9c23e
+- https://github.com/google/material-design-icons/blob/e083cc60a0828fdd3b404cea0cb8a5b900e9c23e/LICENSE
+
 ## WinToast
 
 The Windows client includes portions of WinToast to deliver native Windows

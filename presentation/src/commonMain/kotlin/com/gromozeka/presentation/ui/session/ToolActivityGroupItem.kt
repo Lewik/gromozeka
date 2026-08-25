@@ -2,21 +2,18 @@ package com.gromozeka.presentation.ui.session
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Schedule
+import com.gromozeka.presentation.ui.icons.Icon
+import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +31,7 @@ import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
+import kotlin.math.floor
 
 @Composable
 internal fun ToolActivityGroupItem(
@@ -44,12 +42,7 @@ internal fun ToolActivityGroupItem(
 ) {
     val translation = LocalTranslation.current.runtime
     val firstToolCallId = group.calls.first().content.id.value
-    val results = group.calls.map { toolResultsMap[it.content.id.value] }
-    val unresolvedCount = results.count { it == null }
-    val failedCount = results.count { it?.isError == true }
-    val needsAttention = unresolvedCount > 0 || failedCount > 0
-    var manualExpanded by remember(firstToolCallId) { mutableStateOf<Boolean?>(null) }
-    val isExpanded = manualExpanded ?: needsAttention
+    var isExpanded by remember(firstToolCallId) { mutableStateOf(false) }
     val activities = group.calls
         .map { reference ->
             toolActivityCaption(
@@ -59,16 +52,7 @@ internal fun ToolActivityGroupItem(
             )
         }
         .distinct()
-    val statusText = when {
-        failedCount > 0 -> "${translation.failedTaskLabel}: $failedCount"
-        unresolvedCount > 0 -> "${translation.runningTaskLabel}: $unresolvedCount"
-        else -> activities.take(2).joinToString(" · ")
-    }
-    val statusIcon = when {
-        failedCount > 0 -> Icons.Default.Error
-        unresolvedCount > 0 -> Icons.Default.Schedule
-        else -> Icons.Default.CheckCircle
-    }
+    val statusText = activities.take(2).joinToString(" · ")
 
     Card(
         modifier = Modifier
@@ -76,30 +60,45 @@ internal fun ToolActivityGroupItem(
             .padding(bottom = 6.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(UiTestTag.ToolActivityGroup(firstToolCallId).value)
-                .clickable { manualExpanded = !isExpanded }
+                .clickable { isExpanded = !isExpanded }
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(statusIcon, contentDescription = null)
+            Icon(Icons.Default.CheckCircle, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            if (isExpanded) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "${translation.toolActivityGroupLabel} · ${group.calls.size}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = statusText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
                 Text(
                     text = "${translation.toolActivityGroupLabel} · ${group.calls.size}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = statusText,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                ToolInvocationSummaryRow(
+                    calls = group.calls,
+                    modifier = Modifier.weight(1f),
                 )
             }
             Icon(
@@ -117,7 +116,7 @@ internal fun ToolActivityGroupItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(UiTestTag.ToolActivityGroupContent(firstToolCallId).value)
-                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+                    .padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 group.calls.forEach { reference ->
@@ -130,6 +129,61 @@ internal fun ToolActivityGroupItem(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+internal data class ToolInvocationSummary(
+    val toolName: String,
+    val count: Int,
+)
+
+internal fun summarizeToolInvocations(calls: List<ToolCallReference>): List<ToolInvocationSummary> =
+    calls
+        .groupingBy { it.content.call.name }
+        .eachCount()
+        .map { (toolName, count) -> ToolInvocationSummary(toolName, count) }
+
+@Composable
+private fun ToolInvocationSummaryRow(
+    calls: List<ToolCallReference>,
+    modifier: Modifier = Modifier,
+) {
+    val summaries = remember(calls) { summarizeToolInvocations(calls) }
+    BoxWithConstraints(modifier = modifier) {
+        val iconWidth = 32f
+        val spacing = 2f
+        val ellipsisWidth = 18f
+        val fullWidth = summaries.size * iconWidth + (summaries.size - 1).coerceAtLeast(0) * spacing
+        val overflows = fullWidth > maxWidth.value
+        val visibleCount = if (overflows) {
+            floor((maxWidth.value - ellipsisWidth).coerceAtLeast(0f) / (iconWidth + spacing))
+                .toInt()
+                .coerceAtMost(summaries.size)
+        } else {
+            summaries.size
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            summaries.take(visibleCount).forEach { summary ->
+                ToolSemanticIcon(
+                    toolName = summary.toolName,
+                    contentDescription = "${summary.toolName}: ${summary.count}",
+                    modifier = Modifier.size(32.dp),
+                    invocationCount = summary.count,
+                )
+            }
+            if (overflows) {
+                Text(
+                    text = "…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

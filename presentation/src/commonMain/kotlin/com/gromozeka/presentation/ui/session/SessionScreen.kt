@@ -4,11 +4,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.DisableSelection
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.automirrored.filled.MergeType
-import androidx.compose.material.icons.automirrored.filled.Subject
-import androidx.compose.material.icons.filled.*
+import com.gromozeka.presentation.ui.icons.Icon
+import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -122,6 +119,7 @@ fun SessionScreen(
     val messageEntries = rememberMessageListEntries(
         messages = filteredHistory,
         collapsedContentItems = uiState.collapsedContentItems,
+        toolResultsMap = toolResultsMap,
     )
     val runtimeStrings = LocalTranslation.current.runtime
     val editLastMessageShortcut = remember(settings.userDeviceSettings) {

@@ -17,15 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Warning
+import com.gromozeka.presentation.ui.icons.Icon
+import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -158,6 +153,7 @@ internal data class ToolCallReference(
 internal fun rememberMessageListEntries(
     messages: List<Conversation.Message>,
     collapsedContentItems: Map<Conversation.Message.Id, Set<Int>>,
+    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
 ): List<MessageListEntry> {
     val entries = mutableListOf<MessageListEntry>()
 
@@ -227,10 +223,13 @@ internal fun rememberMessageListEntries(
         }
     }
 
-    return groupToolCallEntries(entries)
+    return groupToolCallEntries(entries, toolResultsMap)
 }
 
-internal fun groupToolCallEntries(entries: List<MessageListEntry>): List<MessageListEntry> {
+internal fun groupToolCallEntries(
+    entries: List<MessageListEntry>,
+    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
+): List<MessageListEntry> {
     val visibleEntryCountByMessage = entries.groupingBy { it.message.id }.eachCount()
     val toolEntryCountByMessage = entries
         .filter { it.toolCallOrNull() != null }
@@ -270,7 +269,9 @@ internal fun groupToolCallEntries(entries: List<MessageListEntry>): List<Message
     }
 
     entries.forEach { entry ->
-        if (entry.toolCallOrNull() == null) {
+        val toolCall = entry.toolCallOrNull()
+        val toolResult = toolCall?.let { toolResultsMap[it.id.value] }
+        if (toolCall == null || toolResult == null || toolResult.isError) {
             flushPending()
             result += entry
             return@forEach

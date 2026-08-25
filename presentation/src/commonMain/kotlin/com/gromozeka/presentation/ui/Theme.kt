@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.services.theming.data.DarkTheme
 import com.gromozeka.presentation.services.theming.data.Theme
 import com.mikepenz.markdown.compose.MarkdownElement
@@ -23,6 +24,7 @@ import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.markdownPadding
 import org.intellij.markdown.ast.ASTNode
+import org.jetbrains.compose.resources.DrawableResource
 
 @Composable
 fun GromozekaTheme(
@@ -368,7 +370,7 @@ data class SegmentedButtonOption(
 // === Toggle Button Group (for independent toggles, not radio buttons) ===
 
 data class ToggleButtonOption(
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val icon: DrawableResource,
     val tooltip: String? = null,
 )
 

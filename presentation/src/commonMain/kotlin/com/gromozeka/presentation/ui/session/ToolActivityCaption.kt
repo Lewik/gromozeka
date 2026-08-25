@@ -28,29 +28,29 @@ internal fun toolActivityCaption(
     input: JsonElement?,
     translation: Translation.RuntimeTranslation,
 ): String {
-    val actionName = normalizedActionName(toolName)
+    val actionName = normalizedToolActionName(toolName)
     return when {
         actionName.isCommandTool() && input.isTestCommand() -> translation.runningTestsActivity
         actionName.isCommandTool() -> translation.runningCommandActivity
-        actionName.containsAny("read_file", "read_text", "get_file", "load_file") ->
+        actionName.containsAnyFragment("read_file", "read_text", "get_file", "load_file") ->
             translation.readingFileActivity
-        actionName.containsAny("write_file", "edit_file", "apply_patch", "replace_file", "file_change") ->
+        actionName.containsAnyFragment("write_file", "edit_file", "apply_patch", "replace_file", "file_change") ->
             translation.editingFileActivity
-        actionName.containsAny("web_search", "websearch", "search_query", "brave_search") ->
+        actionName.containsAnyFragment("web_search", "websearch", "search_query", "brave_search") ->
             translation.searchingWebActivity
-        actionName.containsAny("read_url", "web_fetch", "webfetch", "fetch_url", "open_page") ->
+        actionName.containsAnyFragment("read_url", "web_fetch", "webfetch", "fetch_url", "open_page") ->
             translation.readingWebActivity
-        actionName.containsAny("grep", "glob", "search_files", "find_files", "search_code") ->
+        actionName.containsAnyFragment("grep", "glob", "search_files", "find_files", "search_code") ->
             translation.searchingFilesActivity
-        actionName.containsAny("take_screenshot", "capture_screenshot") -> translation.capturingScreenActivity
-        actionName.containsAny("computer_observe", "observe_screen") -> translation.observingScreenActivity
-        actionName.containsAny("computer_act", "computer_use") -> translation.usingComputerActivity
+        actionName.containsAnyFragment("take_screenshot", "capture_screenshot") -> translation.capturingScreenActivity
+        actionName.containsAnyFragment("computer_observe", "observe_screen") -> translation.observingScreenActivity
+        actionName.containsAnyFragment("computer_act", "computer_use") -> translation.usingComputerActivity
         actionName.contains("browser") -> translation.usingBrowserActivity
-        actionName.containsAny("create_agent", "tell_agent", "send_input", "spawn_agent", "wait_agent") ->
+        actionName.containsAnyFragment("create_agent", "tell_agent", "send_input", "spawn_agent", "wait_agent") ->
             translation.coordinatingAgentsActivity
         actionName.contains("skill") -> translation.usingSkillActivity
         actionName.contains("memory") -> translation.accessingMemoryActivity
-        else -> "${translation.usingToolActivity}: ${humanizedToolName(actionName)}"
+        else -> "${translation.usingToolActivity}: ${humanizedToolActionName(actionName)}"
     }
 }
 
@@ -65,15 +65,7 @@ private fun ConversationRuntimeSnapshot.toolInput(execution: ConversationRuntime
     return payload.toolCalls.firstOrNull { it.id == execution.toolCallId }?.call?.input
 }
 
-private fun normalizedActionName(toolName: String): String = toolName
-    .trim()
-    .lowercase()
-    .replace(Regex("__v\\d+$"), "")
-    .substringAfterLast("__")
-    .removePrefix("grz_")
-    .removePrefix("claude_code_")
-
-private fun String.isCommandTool(): Boolean = containsAny(
+private fun String.isCommandTool(): Boolean = containsAnyFragment(
     "execute_command",
     "run_command",
     "exec_command",
@@ -105,14 +97,3 @@ private fun JsonElement?.isTestCommand(): Boolean {
         "dotnet test",
     ).any(command::contains)
 }
-
-private fun String.containsAny(vararg values: String): Boolean = values.any(::contains)
-
-private fun humanizedToolName(actionName: String): String = actionName
-    .replace(Regex("[^a-z0-9_-]"), " ")
-    .replace('_', ' ')
-    .replace('-', ' ')
-    .replace(Regex("\\s+"), " ")
-    .trim()
-    .take(48)
-    .ifBlank { "unknown" }
