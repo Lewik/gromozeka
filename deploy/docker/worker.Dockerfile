@@ -1,4 +1,4 @@
-FROM node:24.19.0-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03 AS browser-mcp
+FROM node:24.20.0-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS browser-mcp
 
 WORKDIR /browser-mcp
 
@@ -9,7 +9,7 @@ COPY browser-mcp/LICENSE browser-mcp/NOTICE browser-mcp/UPSTREAM.md browser-mcp/
 RUN npm ci --omit=dev --no-audit --no-fund \
     && npm run verify
 
-FROM eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2
+FROM eclipse-temurin:21-jre-noble@sha256:96975602e131485862eb8cd32927face8a06d7591a5e865944b634a701d9df72
 
 RUN groupadd --gid 10001 gromozeka \
     && useradd --uid 10001 --gid gromozeka --create-home gromozeka
