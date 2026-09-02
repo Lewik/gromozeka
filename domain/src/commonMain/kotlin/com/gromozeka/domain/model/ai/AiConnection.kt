@@ -209,31 +209,12 @@ sealed interface AiConnection {
     }
 
     @Serializable
-    enum class ClaudeCodeOutputStyle(val settingsValue: String) {
-        @SerialName("default")
-        DEFAULT("Default"),
-
-        @SerialName("concise")
-        CONCISE("Concise"),
-
-        @SerialName("proactive")
-        PROACTIVE("Proactive"),
-
-        @SerialName("explanatory")
-        EXPLANATORY("Explanatory"),
-
-        @SerialName("learning")
-        LEARNING("Learning"),
-    }
-
-    @Serializable
     @SerialName("claude_code")
     data class ClaudeCode(
         override val id: Id,
         override val displayName: String,
         override val enabled: Boolean = true,
         val executablePath: String = "claude",
-        val outputStyle: ClaudeCodeOutputStyle? = null,
         val maxCachedProcesses: Int = DEFAULT_MAX_CACHED_PROCESSES,
         val processIdleTtlMinutes: Int = DEFAULT_PROCESS_IDLE_TTL_MINUTES,
         val voiceTranscriptionEnabled: Boolean = false,

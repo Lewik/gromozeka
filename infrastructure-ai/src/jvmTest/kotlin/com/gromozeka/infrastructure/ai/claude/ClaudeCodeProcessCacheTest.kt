@@ -91,31 +91,6 @@ class ClaudeCodeProcessCacheTest {
     }
 
     @Test
-    fun replacesProcessWhenOutputStyleChanges() = runBlocking {
-        val factory = FakeProcessFactory()
-        val executor = ProcessClaudeCodeCliExecutor(processFactory = factory)
-        try {
-            val first = executor.execute(
-                command(
-                    cacheKey = "conversation",
-                    outputStyle = AiConnection.ClaudeCodeOutputStyle.DEFAULT,
-                )
-            )
-            executor.execute(
-                command(
-                    cacheKey = "conversation",
-                    resumeSessionId = first.sessionId,
-                    outputStyle = AiConnection.ClaudeCodeOutputStyle.CONCISE,
-                )
-            )
-
-            assertEquals(2, factory.started.size)
-        } finally {
-            executor.shutdown()
-        }
-    }
-
-    @Test
     fun appliesExplicitReasoningModeToClaudeCodeEnvironment() {
         val adaptive = mutableMapOf(
             "CLAUDE_CODE_DISABLE_THINKING" to "1",
@@ -518,12 +493,10 @@ class ClaudeCodeProcessCacheTest {
         userPrompt: String = "first",
         noSessionPersistence: Boolean = false,
         reasoningMode: AiReasoningMode? = null,
-        outputStyle: AiConnection.ClaudeCodeOutputStyle? = null,
     ): ClaudeCodeCommand =
         ClaudeCodeCommand(
             connectionId = "connection",
             executablePath = "claude",
-            outputStyle = outputStyle,
             cacheKey = cacheKey,
             maxCachedProcesses = maxCachedProcesses,
             processIdleTtlMinutes = processIdleTtlMinutes,

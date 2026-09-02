@@ -102,11 +102,10 @@ class AiConnectionTest {
     }
 
     @Test
-    fun claudeCodeSettingsSurviveSerialization() {
+    fun claudeCodeProcessCacheSettingsSurviveSerialization() {
         val connection: AiConnection = AiConnection.ClaudeCode(
             id = AiConnection.Id("claude-code"),
             displayName = "Claude Code",
-            outputStyle = AiConnection.ClaudeCodeOutputStyle.CONCISE,
             maxCachedProcesses = 17,
             processIdleTtlMinutes = 95,
             executionTarget = AiExecutionTarget.Worker("worker-1"),
@@ -116,28 +115,8 @@ class AiConnectionTest {
             Json.encodeToString(connection),
         ) as AiConnection.ClaudeCode
 
-        assertEquals(AiConnection.ClaudeCodeOutputStyle.CONCISE, restored.outputStyle)
         assertEquals(17, restored.maxCachedProcesses)
         assertEquals(95, restored.processIdleTtlMinutes)
-    }
-
-    @Test
-    fun claudeCodeOutputStyleDefaultsToGromozekaPromptBehavior() {
-        val restored = Json.decodeFromString<AiConnection>(
-            """
-            {
-              "connectionKind": "claude_code",
-              "id": "claude-code",
-              "displayName": "Claude Code",
-              "executionTarget": {
-                "executionTargetKind": "worker",
-                "workerId": "worker-1"
-              }
-            }
-            """.trimIndent(),
-        ) as AiConnection.ClaudeCode
-
-        assertEquals(null, restored.outputStyle)
     }
 
     @Test

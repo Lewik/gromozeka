@@ -99,7 +99,6 @@ class AiRequestResponseGatewayCodecTest {
             id = AiConnection.Id("claude-voice"),
             displayName = "Claude voice",
             executablePath = "/opt/claude/bin/claude",
-            outputStyle = AiConnection.ClaudeCodeOutputStyle.CONCISE,
             voiceTranscriptionEnabled = true,
             executionTarget = AiExecutionTarget.Worker("worker-1"),
         )

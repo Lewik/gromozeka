@@ -835,9 +835,6 @@ private fun ConnectionDialog(
     var executablePath by remember {
         mutableStateOf((existing as? AiConnection.ClaudeCode)?.executablePath ?: "claude")
     }
-    var claudeCodeOutputStyle by remember {
-        mutableStateOf((existing as? AiConnection.ClaudeCode)?.outputStyle)
-    }
     var copilotExecutablePath by remember {
         mutableStateOf((existing as? AiConnection.GitHubCopilot)?.executablePath ?: "copilot")
     }
@@ -1114,19 +1111,6 @@ private fun ConnectionDialog(
                     )
                 }
                 if (kind == AiConnection.Kind.CLAUDE_CODE) {
-                    LabeledDropdown(
-                        label = "Output style",
-                        value = claudeCodeOutputStyle,
-                        options = listOf(null) + AiConnection.ClaudeCodeOutputStyle.entries,
-                        optionLabel = { it?.settingsValue ?: "Gromozeka" },
-                        onSelect = { claudeCodeOutputStyle = it },
-                    )
-                    Text(
-                        "A Claude Code style loads its native agent prompt and appends the Gromozeka Agent prompt. " +
-                            "Choose Gromozeka to preserve the current provider prompt behavior.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(
                             checked = voiceTranscriptionEnabled,
@@ -1294,7 +1278,6 @@ private fun ConnectionDialog(
                             secretMode = secretMode,
                             secretValue = secretValue,
                             executablePath = executablePath,
-                            claudeCodeOutputStyle = claudeCodeOutputStyle,
                             copilotExecutablePath = copilotExecutablePath,
                             copilotHomePath = copilotHomePath,
                             copilotAuthMode = copilotAuthMode,
@@ -1343,7 +1326,6 @@ private fun createConnection(
     secretMode: String,
     secretValue: String,
     executablePath: String,
-    claudeCodeOutputStyle: AiConnection.ClaudeCodeOutputStyle?,
     copilotExecutablePath: String,
     copilotHomePath: String,
     copilotAuthMode: AiConnection.GitHubCopilotAuthMode,
@@ -1436,7 +1418,6 @@ private fun createConnection(
             displayName = displayName,
             enabled = enabled,
             executablePath = executablePath.trim(),
-            outputStyle = claudeCodeOutputStyle,
             maxCachedProcesses = maxCachedProcesses.toIntOrNull()
                 ?: error("Cached process limit must be a positive integer"),
             processIdleTtlMinutes = processIdleTtlMinutes.toIntOrNull()
