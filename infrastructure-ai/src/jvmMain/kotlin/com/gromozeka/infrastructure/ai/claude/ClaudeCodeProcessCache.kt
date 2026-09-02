@@ -522,6 +522,7 @@ private fun ClaudeCodeCommand.cachePolicy(): ClaudeCodeProcessCachePolicy =
 private data class ClaudeCodeLaunchConfiguration(
     val executablePath: String,
     val modelName: String,
+    val outputStyle: String?,
     val workspaceDirectory: String?,
     val systemPromptFingerprint: String,
     val jsonSchemaFingerprint: String?,
@@ -534,6 +535,7 @@ private data class ClaudeCodeLaunchConfiguration(
             ClaudeCodeLaunchConfiguration(
                 executablePath = command.executablePath,
                 modelName = command.modelName,
+                outputStyle = command.outputStyle?.settingsValue,
                 workspaceDirectory = command.workspaceDirectory?.absoluteFile?.normalize()?.path,
                 systemPromptFingerprint = sha256(command.systemPrompt),
                 jsonSchemaFingerprint = command.jsonSchema?.toString()?.let(::sha256),
@@ -548,6 +550,7 @@ private fun ClaudeCodeLaunchConfiguration.diff(other: ClaudeCodeLaunchConfigurat
     buildList {
         if (executablePath != other.executablePath) add("executable")
         if (modelName != other.modelName) add("model")
+        if (outputStyle != other.outputStyle) add("output_style")
         if (workspaceDirectory != other.workspaceDirectory) add("workspace")
         if (systemPromptFingerprint != other.systemPromptFingerprint) add("system_prompt")
         if (jsonSchemaFingerprint != other.jsonSchemaFingerprint) add("json_schema")
@@ -1170,7 +1173,15 @@ private object ClaudeCodeProcessArguments {
             add("--output-format")
             add("stream-json")
             add("--verbose")
-            add("--system-prompt-file")
+            command.outputStyle?.let { outputStyle ->
+                add("--settings")
+                add(
+                    JsonObject(
+                        mapOf("outputStyle" to JsonPrimitive(outputStyle.settingsValue))
+                    ).toString()
+                )
+            }
+            add(if (command.outputStyle == null) "--system-prompt-file" else "--append-system-prompt-file")
             add(systemPromptFile)
             add("--model")
             add(command.modelName)

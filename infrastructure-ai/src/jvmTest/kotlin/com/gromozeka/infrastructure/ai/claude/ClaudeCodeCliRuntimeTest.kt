@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.claude
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
@@ -343,6 +344,34 @@ class ClaudeCodeCliRuntimeTest {
         assertTrue(args.windowed(2).contains(listOf("--input-format", "stream-json")))
         assertTrue(args.windowed(2).contains(listOf("--output-format", "stream-json")))
         assertTrue(args.contains("--verbose"))
+        assertTrue(args.windowed(2).contains(listOf("--system-prompt-file", "/tmp/gromozeka-system.md")))
+        assertFalse(args.contains("--append-system-prompt-file"))
+        assertFalse(args.contains("--settings"))
+    }
+
+    @Test
+    fun passesConfiguredOutputStyleToClaudeCodeSession() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(
+            response(
+                structuredOutput = jsonObject(
+                    "kind" to JsonPrimitive("final_answer"),
+                    "final_answer" to JsonPrimitive("OK"),
+                )
+            )
+        )
+        val runtime = runtime(executor, AiConnection.ClaudeCodeOutputStyle.CONCISE)
+
+        runtime.call(request(messages = listOf(userMessage("Reply with OK")), tools = emptyList()))
+
+        val command = executor.commands.single()
+        assertEquals(AiConnection.ClaudeCodeOutputStyle.CONCISE, command.outputStyle)
+        val args = ProcessClaudeCodeCliExecutor("claude")
+            .buildArgs(command, "/tmp/gromozeka-system.md")
+        assertTrue(args.windowed(2).contains(listOf("--settings", "{\"outputStyle\":\"Concise\"}")))
+        assertTrue(args.windowed(2).contains(listOf("--append-system-prompt-file", "/tmp/gromozeka-system.md")))
+        assertFalse(args.contains("--system-prompt-file"))
+        assertTrue(args.contains("--safe-mode"))
+        assertTrue(args.windowed(2).contains(listOf("--setting-sources", "")))
     }
 
     @Test
@@ -770,10 +799,14 @@ class ClaudeCodeCliRuntimeTest {
         )
     }
 
-    private fun runtime(executor: ClaudeCodeCliExecutor): ClaudeCodeCliRuntime =
+    private fun runtime(
+        executor: ClaudeCodeCliExecutor,
+        outputStyle: AiConnection.ClaudeCodeOutputStyle? = null,
+    ): ClaudeCodeCliRuntime =
         ClaudeCodeCliRuntime(
             executor = executor,
             connectionId = "claude-code",
+            outputStyle = outputStyle,
             modelConfigurationId = "claude-code-haiku",
             modelName = realClaudeModel(),
             workspaceDirectory = null,
