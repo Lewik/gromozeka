@@ -19,7 +19,6 @@ import com.gromozeka.remote.protocol.StopTtsDirective
 import klog.KLoggers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.time.Clock
 import org.springframework.stereotype.Service
 
 internal typealias ClientPresentationSend = suspend (ServerPayload, RemoteProtocolEncoding) -> Unit
@@ -35,7 +34,6 @@ class ClientPresentationRegistry(
     private val sessionKeysByConnection = mutableMapOf<String, ClientSessionKey>()
     private val presentedEventKeys = LinkedHashSet<PresentedEventKey>()
     private val activeSessionKeysByUser = mutableMapOf<User.Id, ClientSessionKey>()
-    private val lastActivityPresentationAt = LinkedHashMap<ActivityRateKey, Long>()
 
     suspend fun register(
         userId: User.Id,
@@ -207,7 +205,7 @@ class ClientPresentationRegistry(
         conversationId: Conversation.Id,
         eventKey: String,
     ): Boolean = deliveryMutex.withLock {
-        reserveActivityPresentation(userId, conversationId) && presentSoundToActiveClient(
+        presentSoundToActiveClient(
             userId = userId,
             eventKey = "activity:$eventKey",
             conversationId = conversationId,
@@ -321,26 +319,6 @@ class ClientPresentationRegistry(
         return AssistantPresentation(speech, structured.attentionRequested)
     }
 
-    private suspend fun reserveActivityPresentation(
-        userId: User.Id,
-        conversationId: Conversation.Id,
-    ): Boolean {
-        val now = Clock.System.now().toEpochMilliseconds()
-        return mutex.withLock {
-            val rateKey = ActivityRateKey(userId, conversationId)
-            val previous = lastActivityPresentationAt[rateKey]
-            if (previous != null && now - previous < ACTIVITY_SOUND_INTERVAL_MILLIS) {
-                false
-            } else {
-                lastActivityPresentationAt[rateKey] = now
-                while (lastActivityPresentationAt.size > MAX_ACTIVITY_RATE_KEYS) {
-                    lastActivityPresentationAt.remove(lastActivityPresentationAt.keys.first())
-                }
-                true
-            }
-        }
-    }
-
     private data class RegisteredClientSession(
         val connectionId: String,
         val userId: User.Id,
@@ -357,11 +335,6 @@ class ClientPresentationRegistry(
     private data class PresentedEventKey(
         val userId: User.Id,
         val eventKey: String,
-    )
-
-    private data class ActivityRateKey(
-        val userId: User.Id,
-        val conversationId: Conversation.Id,
     )
 
     private data class Activation(
@@ -393,8 +366,6 @@ class ClientPresentationRegistry(
 
     private companion object {
         const val MAX_PRESENTED_EVENT_KEYS = 10_000
-        const val MAX_ACTIVITY_RATE_KEYS = 10_000
-        const val ACTIVITY_SOUND_INTERVAL_MILLIS = 1_750L
     }
 }
 
