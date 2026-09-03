@@ -49,6 +49,7 @@ import kotlin.time.Clock
 class TabViewModel(
     val conversationId: Conversation.Id,
     val projectId: Project.Id,
+    private val currentUserAuthor: Conversation.Message.Author.User,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
     private val messageSquashService: MessageSquashService,
@@ -697,6 +698,11 @@ class TabViewModel(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
+            author = currentUserAuthor.takeUnless {
+                instructions.any { instruction ->
+                    instruction is Conversation.Message.Instruction.Source.Agent
+                }
+            },
             content = content,
             createdAt = Clock.System.now(),
             instructions = instructions

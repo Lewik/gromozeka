@@ -5,6 +5,7 @@ import com.gromozeka.application.service.AiSubscriptionQuotaApplicationService
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
 import com.gromozeka.application.service.McpServerManagementService
 import com.gromozeka.application.service.NamedSecretApplicationService
+import com.gromozeka.application.service.attributeAuthenticatedSubmission
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
@@ -678,7 +679,10 @@ class GromozekaRemoteServer(
                 )
                 is ForkConversationRequest -> ConversationResponse(conversationDomainService.fork(request.conversationId))
                 is AddMessageRequest -> ConversationResponse(
-                    conversationDomainService.addMessage(request.conversationId, request.message)
+                    conversationDomainService.addMessage(
+                        request.conversationId,
+                        request.message.attributeAuthenticatedSubmission(user),
+                    )
                 )
                 is LoadCurrentMessagesRequest -> MessagesResponse(conversationDomainService.loadCurrentMessages(request.conversationId))
                 is RegenerateSuggestedRepliesRequest -> SuggestedRepliesResponse(
@@ -728,7 +732,7 @@ class GromozekaRemoteServer(
                 }
                 is SubmitMessageRequest -> OperationResultResponse(
                     conversationRuntimeIngressService.submitMessage(
-                        user.id,
+                        user,
                         request.conversationId,
                         request.userMessage,
                         request.agentDefinitionId,
@@ -736,7 +740,7 @@ class GromozekaRemoteServer(
                 )
                 is EnqueueMessageRequest -> OperationResultResponse(
                     conversationRuntimeIngressService.enqueueMessage(
-                        user.id,
+                        user,
                         request.conversationId,
                         request.userMessage,
                         request.agentDefinitionId,

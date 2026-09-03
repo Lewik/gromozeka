@@ -58,14 +58,14 @@ interface ConversationRuntimeService {
 
 interface ConversationRuntimeIngressService {
     suspend fun submitMessage(
-        actorUserId: User.Id,
+        actorUser: User,
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
     ): Boolean
 
     suspend fun enqueueMessage(
-        actorUserId: User.Id,
+        actorUser: User,
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,

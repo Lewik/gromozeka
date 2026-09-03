@@ -5,6 +5,7 @@ import com.gromozeka.client.InMemoryRemoteClientSettingsStore
 import com.gromozeka.client.RemoteClientSettingsStore
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.presentation.services.AssistantAudioPresentationService
 import com.gromozeka.presentation.services.ClientAudioPlayer
@@ -103,6 +104,10 @@ suspend fun createRemoteAppComponents(
     )
 
     val appViewModel = AppViewModel(
+        currentUserAuthor = Conversation.Message.Author.User(
+            userId = authenticatedUser.id,
+            displayName = authenticatedUser.displayName,
+        ),
         conversationRuntimeService = remoteServices.conversationRuntimeService,
         conversationService = remoteServices.conversationService,
         messageSquashService = remoteServices.messageSquashService,

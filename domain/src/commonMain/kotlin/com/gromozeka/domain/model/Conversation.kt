@@ -102,7 +102,8 @@ data class Conversation(
      * @property conversationId parent conversation
      * @property originalIds messages this immutable version was derived from
      * @property replyTo if not null, this message is a response to another message
-     * @property role message author (USER, ASSISTANT, SYSTEM)
+     * @property role provider-facing message role (USER, ASSISTANT, SYSTEM)
+     * @property author actor that created the message, when known
      * @property content list of content items (text, tool calls, images, thinking blocks, etc.)
      * @property instructions list of instructions attached to this message (user instructions, response expected tags, source metadata)
      * @property providerMetadata provider-specific metadata preserved for replay/debugging
@@ -117,6 +118,7 @@ data class Conversation(
         val replyTo: Id? = null,
 
         val role: Role,
+        val author: Author? = null,
         val content: List<ContentItem>,
         val instructions: List<Instruction> = emptyList(),
         val providerMetadata: JsonObject = JsonObject(emptyMap()),
@@ -145,7 +147,7 @@ data class Conversation(
         value class Id(val value: String)
 
         /**
-         * Message author role.
+         * Provider-facing message role.
          */
         @Serializable
         enum class Role {
@@ -157,6 +159,26 @@ data class Conversation(
 
             /** System notification or instruction */
             SYSTEM
+        }
+
+        @Serializable
+        @JsonClassDiscriminator("type")
+        sealed class Author {
+            abstract val displayName: String
+
+            @Serializable
+            @SerialName("user")
+            data class User(
+                val userId: com.gromozeka.domain.model.User.Id,
+                override val displayName: String,
+            ) : Author()
+
+            @Serializable
+            @SerialName("agent")
+            data class Agent(
+                val agentDefinitionId: AgentDefinition.Id,
+                override val displayName: String,
+            ) : Author()
         }
 
         /**

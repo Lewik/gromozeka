@@ -435,12 +435,22 @@ internal fun MessageItem(
                     }
                 },
         ) {
-            Box(
+            Column(
                 modifier = Modifier.padding(
                     start = if (message.role == Conversation.Message.Role.USER) 12.dp else 4.dp,
                     end = 4.dp,
                 )
             ) {
+                if (entry.isFirstInMessage) {
+                    message.author?.displayName?.takeIf(String::isNotBlank)?.let { displayName ->
+                        Text(
+                            text = displayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                        )
+                    }
+                }
                 SelectionContainer {
                     MessageSegmentContent(
                         entry = entry,

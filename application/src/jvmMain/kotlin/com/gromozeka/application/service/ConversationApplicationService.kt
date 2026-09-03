@@ -376,6 +376,7 @@ class ConversationApplicationService(
             originalIds == other.originalIds &&
             replyTo == other.replyTo &&
             role == other.role &&
+            author == other.author &&
             content == other.content &&
             instructions == other.instructions &&
             providerMetadata == other.providerMetadata &&
@@ -433,6 +434,7 @@ class ConversationApplicationService(
             conversationId = conversationId,
             originalIds = listOf(messageId),
             role = targetMessage.role,
+            author = targetMessage.author,
             content = newContent,
             instructions = targetMessage.instructions,
             createdAt = Clock.System.now()

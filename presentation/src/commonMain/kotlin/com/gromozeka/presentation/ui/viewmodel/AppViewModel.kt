@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 open class AppViewModel(
+    private val currentUserAuthor: Conversation.Message.Author.User,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
     private val messageSquashService: MessageSquashService,
@@ -302,6 +303,7 @@ open class AppViewModel(
     ): TabViewModel = TabViewModel(
         conversationId = conversation.id,
         projectId = conversation.projectId,
+        currentUserAuthor = currentUserAuthor,
         conversationRuntimeService = conversationRuntimeService,
         conversationService = conversationService,
         messageSquashService = messageSquashService,

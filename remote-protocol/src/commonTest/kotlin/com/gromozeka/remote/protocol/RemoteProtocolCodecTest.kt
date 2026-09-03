@@ -13,6 +13,7 @@ import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.QuickTextActionResult
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.SpeechAudioFormat
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.memory.MemoryNamespace
@@ -779,6 +780,10 @@ class RemoteProtocolCodecTest {
             id = Conversation.Message.Id("message-submit-1"),
             conversationId = Conversation.Id("conversation-submit-1"),
             role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.User(
+                userId = User.Id("user-submit-1"),
+                displayName = "Ada Lovelace",
+            ),
             content = listOf(Conversation.Message.ContentItem.UserMessage("Submit this")),
             createdAt = Instant.parse("2026-05-20T00:00:00Z"),
         )
@@ -798,6 +803,7 @@ class RemoteProtocolCodecTest {
 
         assertEquals("conversation-submit-1", decodedSubmit.conversationId.value)
         assertEquals("message-submit-1", decodedSubmit.userMessage.id.value)
+        assertEquals(userMessage.author, decodedSubmit.userMessage.author)
         assertEquals(agentDefinitionId, decodedSubmit.agentDefinitionId)
 
         val observeEnvelope = GromozekaClientEnvelope(
