@@ -619,13 +619,6 @@ data class ForkConversationRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("add_message")
-data class AddMessageRequest(
-    val conversationId: Conversation.Id,
-    val message: Conversation.Message,
-) : ClientRequest
-
-@Serializable
 @SerialName("load_current_messages")
 data class LoadCurrentMessagesRequest(
     val conversationId: Conversation.Id,

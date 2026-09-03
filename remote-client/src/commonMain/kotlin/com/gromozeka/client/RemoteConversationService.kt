@@ -4,7 +4,6 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.remote.protocol.AddMessageRequest
 import com.gromozeka.remote.protocol.ConversationResponse
 import com.gromozeka.remote.protocol.ConversationsResponse
 import com.gromozeka.remote.protocol.CreateConversationRequest
@@ -75,13 +74,6 @@ internal class RemoteConversationService(
     override suspend fun fork(conversationId: Conversation.Id): Conversation =
         client.requestTyped<ForkConversationRequest, ConversationResponse>(ForkConversationRequest(conversationId))
             .conversation ?: error("Server returned null conversation after fork")
-
-    override suspend fun addMessage(
-        conversationId: Conversation.Id,
-        message: Conversation.Message,
-    ): Conversation? =
-        client.requestTyped<AddMessageRequest, ConversationResponse>(AddMessageRequest(conversationId, message))
-            .conversation
 
     override suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> =
         client.requestTyped<LoadCurrentMessagesRequest, MessagesResponse>(LoadCurrentMessagesRequest(conversationId))

@@ -5,7 +5,6 @@ import com.gromozeka.application.service.AiSubscriptionQuotaApplicationService
 import com.gromozeka.application.service.ConversationRuntimeDispatcher
 import com.gromozeka.application.service.McpServerManagementService
 import com.gromozeka.application.service.NamedSecretApplicationService
-import com.gromozeka.application.service.attributeAuthenticatedSubmission
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationTabLayout
@@ -678,12 +677,6 @@ class GromozekaRemoteServer(
                     )
                 )
                 is ForkConversationRequest -> ConversationResponse(conversationDomainService.fork(request.conversationId))
-                is AddMessageRequest -> ConversationResponse(
-                    conversationDomainService.addMessage(
-                        request.conversationId,
-                        request.message.attributeAuthenticatedSubmission(user),
-                    )
-                )
                 is LoadCurrentMessagesRequest -> MessagesResponse(conversationDomainService.loadCurrentMessages(request.conversationId))
                 is RegenerateSuggestedRepliesRequest -> SuggestedRepliesResponse(
                     sourceMessageId = request.sourceMessageId,

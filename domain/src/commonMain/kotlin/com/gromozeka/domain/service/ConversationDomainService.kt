@@ -12,13 +12,12 @@ import kotlinx.coroutines.flow.flow
  * Orchestrates complex operations spanning multiple entities:
  * - Conversation: top-level container for AI interactions
  * - Thread: append-only message sequence (immutable by default)
- * - Message: individual user/assistant/system messages
  * - ThreadMessageLink: position-based message ordering
  *
  * Key patterns:
  * - Threads are immutable: edit/delete/squash creates new thread
  * - Fork creates independent conversation copy
- * - Atomic operations: conversation+thread creation, message appending
+ * - Atomic operations: conversation+thread creation and history branching
  *
  * @see Conversation for domain model hierarchy
  * @see ConversationRepository for conversation persistence
@@ -120,28 +119,6 @@ interface ConversationDomainService {
      * @throws IllegalStateException if source conversation not found
      */
     suspend fun fork(conversationId: Conversation.Id): Conversation
-
-    /**
-     * Appends message to current thread.
-     *
-     * Validates message belongs to conversation.
-     * Updates thread timestamp and position counter.
-     *
-     * This is a TRANSACTIONAL operation:
-     * 1. Save message
-     * 2. Add thread-message link with next position
-     * 3. Update thread timestamp
-     *
-     * @param conversationId conversation identifier
-     * @param message message to append (must have matching conversationId)
-     * @return updated conversation, or null if conversation not found
-     * @throws IllegalArgumentException if message.conversationId != conversationId
-     * @throws IllegalStateException if conversation not found
-     */
-    suspend fun addMessage(
-        conversationId: Conversation.Id,
-        message: Conversation.Message
-    ): Conversation?
 
     /**
      * Loads messages from current thread.

@@ -53,7 +53,7 @@ class ConversationApplicationService(
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
     private val settingsProvider: SettingsProvider,
     private val stateChanges: DeclarativeStateChangePublisher = NoOpDeclarativeStateChangePublisher,
-) : ConversationDomainService {
+) : ConversationDomainService, ConversationRuntimeMessageAppender {
     private val log = KLoggers.logger(this)
 
     /**
@@ -313,7 +313,7 @@ class ConversationApplicationService(
      * @throws IllegalStateException if conversation doesn't exist
      */
     @Transactional
-    override suspend fun addMessage(
+    override suspend fun appendRuntimeMessage(
         conversationId: Conversation.Id,
         message: Conversation.Message
     ): Conversation? {

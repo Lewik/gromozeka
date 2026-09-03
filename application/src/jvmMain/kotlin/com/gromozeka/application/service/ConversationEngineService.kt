@@ -89,6 +89,7 @@ class ConversationEngineService(
     private val toolApprovalService: ToolApprovalService,
     private val toolExecutionTaskService: ConversationToolExecutionTaskService,
     private val conversationService: ConversationDomainService,
+    private val conversationMessageAppender: ConversationRuntimeMessageAppender,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryToolApplicationService: MemoryToolApplicationService,
     private val backgroundActivityCompletionApplicationService: BackgroundActivityCompletionApplicationService,
@@ -1485,7 +1486,7 @@ class ConversationEngineService(
             }
             return false
         }
-        conversationService.addMessage(conversationId, message)
+        conversationMessageAppender.appendRuntimeMessage(conversationId, message)
         return true
     }
 
