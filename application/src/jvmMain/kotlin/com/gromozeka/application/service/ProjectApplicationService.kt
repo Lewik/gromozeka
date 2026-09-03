@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ProjectRepository
 import com.gromozeka.domain.repository.ConversationRepository
@@ -99,7 +100,8 @@ class ProjectApplicationService(
     @Transactional
     override suspend fun delete(id: Project.Id) {
         require(projectRepository.findById(id) != null) { "Project not found: ${id.value}" }
-        conversationRepository.findByProject(id).forEach { conversation ->
+        val conversations = conversationRepository.findByProject(id)
+        conversations.forEach { conversation ->
             conversationTabLayoutService.removeConversation(conversation.id)
         }
         projectRepository.delete(id)
@@ -112,6 +114,11 @@ class ProjectApplicationService(
             DeclarativeStateKey.agents,
             DeclarativeStateKey.prompts,
             DeclarativeStateKey.workers,
+            *conversations
+                .flatMap { it.participants.filterIsInstance<Conversation.Participant.User>() }
+                .map { DeclarativeStateKey.conversationUnreadState(it.userId) }
+                .distinct()
+                .toTypedArray(),
         )
     }
 

@@ -52,6 +52,7 @@ class ConversationApplicationService(
     private val agentService: AgentDomainService,
     private val toolCallPairingService: ToolCallPairingService,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
+    private val conversationUnreadStateService: ConversationUnreadStateApplicationService,
     private val artifactService: ConversationArtifactApplicationService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
     private val settingsProvider: SettingsProvider,
@@ -186,6 +187,11 @@ class ConversationApplicationService(
         conversationTabLayoutService.removeConversation(id)
         conversationRepo.delete(id)
         publishConversationList(conversation)
+        publishUnreadState(
+            conversation.participants
+                .filterIsInstance<Conversation.Participant.User>()
+                .map { it.userId },
+        )
     }
 
     /**
@@ -213,6 +219,13 @@ class ConversationApplicationService(
         val conversation = conversationRepo.findById(conversationId) ?: return null
         validateParticipants(conversation.projectId, participants)
         conversationRepo.updateParticipants(conversationId, participants)
+        val previousUserIds = conversation.participants
+            .filterIsInstance<Conversation.Participant.User>()
+            .mapTo(mutableSetOf()) { it.userId }
+        val updatedUserIds = participants
+            .filterIsInstance<Conversation.Participant.User>()
+            .mapTo(mutableSetOf()) { it.userId }
+        publishUnreadState(previousUserIds xor updatedUserIds)
         return conversationRepo.findById(conversationId).also { it?.let(::publishConversationList) }
     }
 
@@ -373,6 +386,7 @@ class ConversationApplicationService(
 
         threadRepo.updateTimestamp(currentThread.id, Clock.System.now())
         conversationRepo.touch(conversationId)
+        conversationUnreadStateService.recordMessage(conversation, message)
 
         log.debug("Appended message ${message.id} to thread ${currentThread.id} at position ${lastPosition + 1}")
 
@@ -594,4 +608,10 @@ class ConversationApplicationService(
     private fun publishConversationList(conversation: Conversation) {
         stateChanges.publish(DeclarativeStateKey.projectConversations(conversation.projectId))
     }
+
+    private fun publishUnreadState(userIds: Iterable<User.Id>) {
+        stateChanges.publish(*userIds.map(DeclarativeStateKey::conversationUnreadState).toTypedArray())
+    }
 }
+
+private infix fun <T> Set<T>.xor(other: Set<T>): Set<T> = (this - other) + (other - this)

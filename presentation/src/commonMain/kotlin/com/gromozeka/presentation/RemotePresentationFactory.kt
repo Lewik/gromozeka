@@ -81,6 +81,7 @@ suspend fun createRemoteAppComponents(
         clientPlatform = clientPlatform.toRemoteClientPlatform(),
         clientSettingsStore = remoteClientSettingsStore,
         httpClient = httpClient,
+        authenticatedUserId = authenticatedUser.id,
         authenticatedUserRole = authenticatedUser.role,
     )
 
@@ -120,6 +121,7 @@ suspend fun createRemoteAppComponents(
         defaultAgentProvider = remoteServices.defaultAgentProvider,
         tokenStatsService = remoteServices.conversationTokenStatsService,
         conversationTabLayoutService = remoteServices.conversationTabLayoutService,
+        conversationUnreadStateService = remoteServices.conversationUnreadStateService,
         messageInputClientPlatform = messageInputClientPlatform,
         turnCompletionNotificationService = turnCompletionNotificationService,
     )

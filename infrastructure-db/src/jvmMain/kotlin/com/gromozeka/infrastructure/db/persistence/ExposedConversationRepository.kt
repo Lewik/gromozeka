@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.*
@@ -71,9 +72,25 @@ class ExposedConversationRepository : ConversationRepository {
         id: Conversation.Id,
         participants: Set<Conversation.Participant>,
     ): Unit = dbQuery {
-        ConversationUserParticipants.deleteWhere { conversationId eq id.value }
-        ConversationAgentParticipants.deleteWhere { conversationId eq id.value }
-        saveParticipants(id, participants)
+        val existing = loadParticipants(setOf(id))[id].orEmpty()
+        val removed = existing - participants
+        val added = participants - existing
+
+        val removedUserIds = removed.filterIsInstance<Conversation.Participant.User>()
+            .map(Conversation.Participant.User::userId)
+        if (removedUserIds.isNotEmpty()) {
+            ConversationUserParticipants.deleteWhere {
+                (conversationId eq id.value) and (userId inList removedUserIds.map { it.value })
+            }
+        }
+        val removedAgentIds = removed.filterIsInstance<Conversation.Participant.Agent>()
+            .map(Conversation.Participant.Agent::agentDefinitionId)
+        if (removedAgentIds.isNotEmpty()) {
+            ConversationAgentParticipants.deleteWhere {
+                (conversationId eq id.value) and (agentDefinitionId inList removedAgentIds.map { it.value })
+            }
+        }
+        saveParticipants(id, added)
         Conversations.update({ Conversations.id eq id.value }) { it[updatedAt] = Clock.System.now() }
     }
 

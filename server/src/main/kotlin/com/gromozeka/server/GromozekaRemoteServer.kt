@@ -44,6 +44,7 @@ import com.gromozeka.domain.service.RuntimeCatalogTemplateService
 import com.gromozeka.domain.service.SecurityAuditService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.service.UserConversationTabLayoutService
+import com.gromozeka.domain.service.UserConversationUnreadStateService
 import com.gromozeka.domain.service.UserAdministrationService
 import com.gromozeka.domain.service.UserDirectoryService
 import com.gromozeka.domain.service.WorkspaceCatalogService
@@ -97,6 +98,7 @@ class GromozekaRemoteServer(
     private val conversationDomainService: ConversationDomainService,
     private val conversationHistoryRuntimeService: ConversationHistoryRuntimeApplicationService,
     private val conversationTabLayoutService: UserConversationTabLayoutService,
+    private val conversationUnreadStateService: UserConversationUnreadStateService,
     private val projectAccessService: ProjectAccessService,
     private val workspaceCatalogService: WorkspaceCatalogService,
     private val workspaceManagementService: WorkspaceManagementService,
@@ -625,6 +627,12 @@ class GromozekaRemoteServer(
                 is FindConversationsByProjectRequest -> ConversationsResponse(
                     conversationDomainService.findByProject(request.projectId)
                         .filter { Conversation.Participant.User(user.id) in it.participants }
+                )
+                GetConversationUnreadStateRequest -> ConversationUnreadStateResponse(
+                    conversationUnreadStateService.snapshot(user.id)
+                )
+                is MarkConversationReadRequest -> ConversationUnreadStateResponse(
+                    conversationUnreadStateService.markRead(user.id, request.conversationId)
                 )
                 GetConversationTabLayoutRequest -> ConversationTabLayoutResponse(
                     filterConversationTabLayout(user, conversationTabLayoutService.snapshot(user.id))

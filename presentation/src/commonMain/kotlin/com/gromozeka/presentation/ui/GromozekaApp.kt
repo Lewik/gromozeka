@@ -114,6 +114,7 @@ fun GromozekaAppContent(
     val remoteConnectionState by appComponents.remoteConnectionState.collectAsState()
     val tabs by appComponents.appViewModel.tabs.collectAsState()
     val conversations by appComponents.appViewModel.conversations.collectAsState()
+    val unreadConversationIds by appComponents.appViewModel.unreadConversationIds.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
     val pttState by appComponents.pttService.state.collectAsState()
@@ -147,6 +148,7 @@ fun GromozekaAppContent(
     }
 
     LaunchedEffect(isWindowFocused, reportsComposeWindowFocus) {
+        appComponents.appViewModel.reportWindowFocus(isWindowFocused)
         appComponents.turnCompletionNotificationService.reportWindowFocus(isWindowFocused)
         if (reportsComposeWindowFocus && isWindowFocused) {
             appComponents.clientPresentationService.reportWindowFocused()
@@ -357,6 +359,7 @@ fun GromozekaAppContent(
                                         isCompactLayout = isCompactLayout,
                                         tabs = tabs,
                                         conversations = conversations,
+                                        unreadConversationIds = unreadConversationIds,
                                         hoveredTabIndex = hoveredTabIndex,
                                         onTabSelect = { tabIndex ->
                                             coroutineScope.launch {

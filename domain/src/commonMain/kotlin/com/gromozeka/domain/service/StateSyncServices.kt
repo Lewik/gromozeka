@@ -18,6 +18,7 @@ interface ConversationTabLayoutStateSyncService :
 enum class DeclarativeStateResource {
     PROJECTS,
     PROJECT_CONVERSATIONS,
+    CONVERSATION_UNREAD_STATE,
     PROJECT_WORKSPACES,
     WORKSPACE_MOUNTS,
     AGENTS,
@@ -51,6 +52,9 @@ data class DeclarativeStateKey(
 
         fun projectConversations(projectId: Project.Id) =
             DeclarativeStateKey(DeclarativeStateResource.PROJECT_CONVERSATIONS, projectId.value)
+
+        fun conversationUnreadState(userId: User.Id) =
+            DeclarativeStateKey(DeclarativeStateResource.CONVERSATION_UNREAD_STATE, userId.value)
 
         fun projectWorkspaces(projectId: Project.Id) =
             DeclarativeStateKey(DeclarativeStateResource.PROJECT_WORKSPACES, projectId.value)

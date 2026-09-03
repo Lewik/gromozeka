@@ -261,6 +261,7 @@ class ProjectAccessApplicationService(
                 DeclarativeStateKey.agents,
                 DeclarativeStateKey.prompts,
                 DeclarativeStateKey.workers,
+                DeclarativeStateKey.conversationUnreadState(userId),
             )
         }
         return removed

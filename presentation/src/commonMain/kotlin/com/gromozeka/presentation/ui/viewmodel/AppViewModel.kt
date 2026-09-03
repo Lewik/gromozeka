@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTabLayoutService
+import com.gromozeka.domain.service.ConversationUnreadStateService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.SettingsService
@@ -17,6 +18,7 @@ import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -34,6 +36,7 @@ open class AppViewModel(
     private val defaultAgentProvider: DefaultAgentProvider,
     private val tokenStatsService: ConversationTokenStatsService,
     private val conversationTabLayoutService: ConversationTabLayoutService,
+    private val conversationUnreadStateService: ConversationUnreadStateService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
 ) : TabManager {
@@ -49,9 +52,44 @@ open class AppViewModel(
     private val _currentTabIndex = MutableStateFlow<Int?>(null)
     val currentTabIndex: StateFlow<Int?> = _currentTabIndex.asStateFlow()
 
+    private val _unreadConversationIds = MutableStateFlow<Set<Conversation.Id>>(emptySet())
+    val unreadConversationIds: StateFlow<Set<Conversation.Id>> = _unreadConversationIds.asStateFlow()
+    private val windowFocused = MutableStateFlow(false)
+
     val currentTab: StateFlow<TabViewModel?> = combine(tabs, currentTabIndex) { tabList, index ->
         index?.let { tabList.getOrNull(it) }
     }.stateIn(scope, SharingStarted.Eagerly, null)
+
+    init {
+        scope.launch {
+            conversationUnreadStateService.observe()
+                .catch { error -> log.warn(error) { "Conversation unread state observation failed" } }
+                .collect { state -> _unreadConversationIds.value = state.conversationIds }
+        }
+        scope.launch {
+            combine(currentTab, windowFocused) { tab, focused -> tab.takeIf { focused } }
+                .distinctUntilChanged()
+                .flatMapLatest { tab ->
+                    tab?.allMessages
+                        ?.map { messages -> tab.conversationId to messages.lastOrNull()?.id }
+                        ?: emptyFlow()
+                }
+                .distinctUntilChanged()
+                .collect { (conversationId) ->
+                    runCatching { conversationUnreadStateService.markRead(conversationId) }
+                        .onSuccess { state -> _unreadConversationIds.value = state.conversationIds }
+                        .onFailure { error ->
+                            log.warn(error) {
+                                "Failed to mark conversation ${conversationId.value} read: ${error.message}"
+                            }
+                        }
+                }
+        }
+    }
+
+    fun reportWindowFocus(focused: Boolean) {
+        windowFocused.value = focused
+    }
 
     override suspend fun createTab(
         projectId: Project.Id,
@@ -450,6 +488,7 @@ open class AppViewModel(
             _tabs.value = emptyList()
             _conversations.value = emptyMap()
             _currentTabIndex.value = null
+            _unreadConversationIds.value = emptySet()
         }
     }
 

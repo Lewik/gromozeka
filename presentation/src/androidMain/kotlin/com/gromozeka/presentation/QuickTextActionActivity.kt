@@ -82,6 +82,7 @@ class QuickTextActionActivity : ComponentActivity() {
                 clientHomeDirectory = "android",
                 clientPlatform = RemoteClientPlatform.ANDROID,
                 clientSettingsStore = settingsStore,
+                authenticatedUserId = authenticatedUser.id,
                 authenticatedUserRole = authenticatedUser.role,
             )
             services.initialize()

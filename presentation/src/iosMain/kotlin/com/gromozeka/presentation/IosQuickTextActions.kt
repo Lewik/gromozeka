@@ -55,6 +55,7 @@ private suspend fun executeIosQuickTextAction(
             clientHomeDirectory = "ios",
             clientPlatform = RemoteClientPlatform.IOS,
             clientSettingsStore = settingsStore,
+            authenticatedUserId = authenticatedUser.id,
             authenticatedUserRole = authenticatedUser.role,
         )
         services.initialize()

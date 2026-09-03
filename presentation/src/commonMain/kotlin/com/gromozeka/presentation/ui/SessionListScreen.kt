@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import com.gromozeka.presentation.ui.icons.Icon
 import com.gromozeka.presentation.ui.icons.Icons
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Badge
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -78,6 +79,7 @@ fun SessionListScreen(
     val searchResults by searchViewModel.searchResults.collectAsState()
     val showSearchResults by searchViewModel.showSearchResults.collectAsState()
     val conversationsById by appViewModel.conversations.collectAsState()
+    val unreadConversationIds by appViewModel.unreadConversationIds.collectAsState()
     val currentSearchResults = searchResults.map { hit ->
         hit.copy(conversation = conversationsById[hit.conversation.id] ?: hit.conversation)
     }
@@ -267,6 +269,7 @@ fun SessionListScreen(
                                     isMutating = hit.conversation.id.value in mutatingConversationIds,
                                     isGrouped = false,
                                     searchHit = hit,
+                                    isUnread = hit.conversation.id in unreadConversationIds,
                                     modifier = Modifier.padding(vertical = 2.dp)
                                 )
                             }
@@ -326,6 +329,7 @@ fun SessionListScreen(
                                 ProjectGroupHeader(
                                     group = group,
                                     conversationsById = conversationsById,
+                                    unreadConversationIds = unreadConversationIds,
                                     isExpanded = expandedProjects.contains(group.projectId.value),
                                     onToggleExpanded = {
                                         expandedProjects = if (expandedProjects.contains(group.projectId.value)) {
@@ -372,6 +376,7 @@ fun SessionListScreen(
 private fun ProjectGroupHeader(
     group: ProjectGroup,
     conversationsById: Map<Conversation.Id, Conversation>,
+    unreadConversationIds: Set<Conversation.Id>,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     onNewSessionClick: () -> Unit,
@@ -381,6 +386,7 @@ private fun ProjectGroupHeader(
 ) {
     val conversations = group.conversationIds.mapNotNull(conversationsById::get)
     val latestConversation = group.latestConversationId?.let(conversationsById::get)
+    val unreadCount = group.conversationIds.count { it in unreadConversationIds }
 
     CompactCard(
         modifier = Modifier.padding(vertical = 4.dp)
@@ -406,7 +412,13 @@ private fun ProjectGroupHeader(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(text = group.projectName)
-                    Text(text = "${group.conversationIds.size} conversations")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "${group.conversationIds.size} conversations")
+                        if (unreadCount > 0) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Badge { Text(unreadCount.toString()) }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -457,6 +469,7 @@ private fun ProjectGroupHeader(
                             onRename = onRename,
                             isMutating = conversation.id.value in mutatingConversationIds,
                             isGrouped = true,
+                            isUnread = conversation.id in unreadConversationIds,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
@@ -474,6 +487,7 @@ private fun ConversationItem(
     onRename: (Conversation) -> Unit,
     isMutating: Boolean,
     isGrouped: Boolean = false,
+    isUnread: Boolean,
     searchHit: ConversationSearchHit? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -490,6 +504,14 @@ private fun ConversationItem(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (isUnread) {
+                        Badge(
+                            modifier = Modifier.testTag(
+                                UiTestTag.ConversationUnread(conversation.id.value).value
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                     Text(
                         text = conversation.displayPreview(),
                         modifier = Modifier.weight(1f)

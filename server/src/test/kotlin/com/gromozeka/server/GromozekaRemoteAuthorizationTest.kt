@@ -163,6 +163,16 @@ class GromozekaRemoteAuthorizationTest {
                 cursor,
             ),
         )
+        authorization.authorize(
+            member,
+            PullStateSyncRequest(
+                DeclarativeStateRevisionQuery(
+                    RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE,
+                    member.id.value,
+                ),
+                cursor,
+            ),
+        )
 
         Mockito.verify(projectAccessService).requirePermission(
             member.id,
@@ -174,6 +184,18 @@ class GromozekaRemoteAuthorizationTest {
                 member,
                 PullStateSyncRequest(
                     DeclarativeStateRevisionQuery(RemoteDeclarativeStateResource.MCP_SERVERS),
+                    cursor,
+                ),
+            )
+        }
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(
+                member,
+                PullStateSyncRequest(
+                    DeclarativeStateRevisionQuery(
+                        RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE,
+                        owner.id.value,
+                    ),
                     cursor,
                 ),
             )

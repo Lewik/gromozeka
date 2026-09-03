@@ -74,6 +74,10 @@ sealed interface UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)
     }
 
+    data class ConversationUnread(val conversationId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(conversationId)
+    }
+
     data class ParticipantToggle(val kind: String, val id: String) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(kind, id)
     }

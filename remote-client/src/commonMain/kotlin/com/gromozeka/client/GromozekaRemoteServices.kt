@@ -12,6 +12,7 @@ import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationSearchService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTabLayoutService
+import com.gromozeka.domain.service.ConversationUnreadStateService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.ProjectDomainService
@@ -36,6 +37,7 @@ class GromozekaRemoteServices(
     clientHomeDirectory: String,
     clientPlatform: RemoteClientPlatform,
     clientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
+    authenticatedUserId: User.Id,
     authenticatedUserRole: User.Role,
 ) {
     private val canManageRuntimeSettings = authenticatedUserRole == User.Role.OWNER
@@ -96,6 +98,8 @@ class GromozekaRemoteServices(
     val conversationService: ConversationDomainService = RemoteConversationService(client)
     val conversationHistoryService: ConversationHistoryService = RemoteConversationHistoryService(client)
     val conversationTabLayoutService: ConversationTabLayoutService = RemoteConversationTabLayoutService(client)
+    val conversationUnreadStateService: ConversationUnreadStateService =
+        RemoteConversationUnreadStateService(client, authenticatedUserId)
     val conversationRuntimeService: ConversationRuntimeService = RemoteConversationRuntimeService(client)
     val conversationSearchService: ConversationSearchService = RemoteConversationSearchService(client)
     val conversationTokenStatsService: ConversationTokenStatsService = RemoteConversationTokenStatsService(client)

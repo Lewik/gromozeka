@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationSearchPage
 import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.ConversationTabLayout
+import com.gromozeka.domain.model.ConversationUnreadState
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.NamedSecret
 import com.gromozeka.domain.model.PersonalAccessToken
@@ -614,6 +615,16 @@ data class UpdateConversationParticipantsRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("get_conversation_unread_state")
+data object GetConversationUnreadStateRequest : ClientRequest
+
+@Serializable
+@SerialName("mark_conversation_read")
+data class MarkConversationReadRequest(
+    val conversationId: Conversation.Id,
+) : ClientRequest
+
+@Serializable
 @SerialName("fork_conversation")
 data class ForkConversationRequest(
     val conversationId: Conversation.Id,
@@ -865,6 +876,7 @@ data object ConversationTabLayoutStateQuery : RemoteStateSyncQuery
 enum class RemoteDeclarativeStateResource {
     PROJECTS,
     PROJECT_CONVERSATIONS,
+    CONVERSATION_UNREAD_STATE,
     PROJECT_WORKSPACES,
     WORKSPACE_MOUNTS,
     AGENTS,
@@ -1391,6 +1403,12 @@ data class ConversationsResponse(
 @SerialName("conversation_tab_layout")
 data class ConversationTabLayoutResponse(
     val layout: ConversationTabLayout,
+) : ServerResponse
+
+@Serializable
+@SerialName("conversation_unread_state")
+data class ConversationUnreadStateResponse(
+    val state: ConversationUnreadState,
 ) : ServerResponse
 
 @Serializable

@@ -295,6 +295,14 @@ internal object ConversationAgentParticipants : Table("conversation_agent_partic
     override val primaryKey = PrimaryKey(conversationId, agentDefinitionId)
 }
 
+internal object ConversationUnreadStates : Table("conversation_unread_states") {
+    val conversationId = varchar("conversation_id", 255)
+    val userId = varchar("user_id", 255)
+    val createdAt = timestamp("created_at")
+
+    override val primaryKey = PrimaryKey(conversationId, userId)
+}
+
 internal object Artifacts : Table("artifacts") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)

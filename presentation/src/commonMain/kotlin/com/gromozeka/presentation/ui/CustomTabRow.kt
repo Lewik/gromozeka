@@ -21,6 +21,7 @@ fun CustomTabRow(
     isCompactLayout: Boolean = false,
     tabs: List<TabViewModel>,
     conversations: Map<Conversation.Id, Conversation>,
+    unreadConversationIds: Set<Conversation.Id>,
     hoveredTabIndex: Int,
     onTabSelect: (Int?) -> Unit,
     onTabHover: (Int) -> Unit,
@@ -155,6 +156,14 @@ fun CustomTabRow(
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
+                                if (tab.conversationId in unreadConversationIds) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Badge(
+                                        modifier = Modifier.testTag(
+                                            UiTestTag.ConversationUnread(tab.conversationId.value).value
+                                        )
+                                    )
+                                }
                                 if (!isCompactLayout) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(tabTitle)

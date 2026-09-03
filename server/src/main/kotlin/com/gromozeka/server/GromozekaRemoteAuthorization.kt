@@ -68,6 +68,7 @@ class GromozekaRemoteAuthorization(
             is FindRecentProjectsRequest,
             FindProjectsRequest,
             GetConversationTabLayoutRequest,
+            GetConversationUnreadStateRequest,
             is SearchConversationsRequest,
             ListQuickTextActionsRequest,
             is RunQuickTextActionRequest,
@@ -230,6 +231,7 @@ class GromozekaRemoteAuthorization(
             is GetProjectRequest,
             is OpenConversationTabRequest,
             is CloseConversationTabRequest,
+            is MarkConversationReadRequest,
             is LoadCurrentMessagesRequest,
             is GetTokenStatsRequest,
             is GetMemoryActionItemsRequest,
@@ -332,6 +334,9 @@ class GromozekaRemoteAuthorization(
                 ProjectPermission.READ,
             )
 
+            RemoteDeclarativeStateResource.CONVERSATION_UNREAD_STATE ->
+                if (query.scopeId != user.id.value) throw ProjectAccessDeniedException()
+
             RemoteDeclarativeStateResource.WORKSPACE_MOUNTS -> requireWorkspace(
                 user,
                 Workspace.Id(requireNotNull(query.scopeId)),
@@ -420,6 +425,7 @@ private fun ClientRequest.conversationId(): Conversation.Id = when (this) {
     is GetProjectRequest -> conversationId
     is OpenConversationTabRequest -> conversationId
     is CloseConversationTabRequest -> conversationId
+    is MarkConversationReadRequest -> conversationId
     is DeleteConversationRequest -> conversationId
     is UpdateConversationDisplayNameRequest -> conversationId
     is UpdateConversationParticipantsRequest -> conversationId
