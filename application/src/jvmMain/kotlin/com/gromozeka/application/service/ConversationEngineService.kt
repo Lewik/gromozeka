@@ -1212,7 +1212,7 @@ class ConversationEngineService(
                 iteration = iteration,
                 toolCalls = toolCalls,
                 returnDirect = routing.returnDirect,
-                executionTarget = routing.requirements.target,
+                executionTargetsByCallId = routing.executionTargetsByCallId,
                 executionToolNamesByCallId = routing.executionToolNamesByCallId,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,

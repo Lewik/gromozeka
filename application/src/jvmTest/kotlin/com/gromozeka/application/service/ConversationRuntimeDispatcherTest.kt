@@ -630,8 +630,9 @@ class ConversationRuntimeDispatcherTest {
                 },
             )
             assertEquals(
-                toolTarget,
-                (executions[2].first.payload as ConversationRuntimeTask.Payload.ToolExecution).executionTarget,
+                mapOf("tool-call-1" to toolTarget),
+                (executions[2].first.payload as ConversationRuntimeTask.Payload.ToolExecution)
+                    .executionTargetsByCallId,
             )
             waitUntil { coordinator.find(conversationId) == null }
         } finally {
@@ -853,7 +854,7 @@ class ConversationRuntimeDispatcherTest {
                     )
                 ),
                 returnDirect = false,
-                executionTarget = target,
+                executionTargetsByCallId = mapOf("tool-call-$iteration" to target),
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:tools:$iteration",

@@ -7,9 +7,7 @@ import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
-import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
-import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.service.WorkerAccessDeniedException
@@ -26,7 +24,7 @@ import org.springframework.stereotype.Service
 
 sealed interface ConversationRuntimeToolRoutingResult {
     data class Accepted(
-        val requirements: ConversationRuntimeTaskRequirements,
+        val executionTargetsByCallId: Map<String, ConversationRuntimeTaskTarget>,
         val returnDirect: Boolean,
         val executionToolNamesByCallId: Map<String, String> = emptyMap(),
     ) : ConversationRuntimeToolRoutingResult
@@ -115,7 +113,6 @@ class ConversationRuntimeToolRoutingService(
                 modelName = toolCall.call.name,
                 executionName = entry.executionName,
                 target = target,
-                requiredCapabilities = entry.descriptor.metadata.requiredRuntimeCapabilities,
                 returnDirect = entry.descriptor.metadata.returnDirect,
             )
         }
@@ -135,25 +132,8 @@ class ConversationRuntimeToolRoutingService(
             )
         }
 
-        val targets = resolved.mapTo(mutableSetOf(), ResolvedToolCall::target)
-        if (targets.size != 1) {
-            val message =
-                "One assistant response can currently execute tools on only one exact execution target. " +
-                    "Issue calls for different targets in separate assistant responses."
-            return ConversationRuntimeToolRoutingResult.Rejected(
-                toolCalls.map { it.routingError(message) }
-            )
-        }
-
-        val capabilities = buildSet {
-            add(ConversationRuntimeCapability.TOOL_EXECUTION)
-            resolved.forEach { addAll(it.requiredCapabilities) }
-        }
         return ConversationRuntimeToolRoutingResult.Accepted(
-            requirements = ConversationRuntimeTaskRequirements(
-                capabilities = capabilities,
-                target = targets.single(),
-            ),
+            executionTargetsByCallId = resolved.associate { it.toolCallId.value to it.target },
             returnDirect = resolved.all { it.returnDirect },
             executionToolNamesByCallId = resolved
                 .filter { it.modelName != it.executionName }
@@ -378,7 +358,6 @@ class ConversationRuntimeToolRoutingService(
         val modelName: String,
         val executionName: String,
         val target: ConversationRuntimeTaskTarget,
-        val requiredCapabilities: Set<ConversationRuntimeCapability>,
         val returnDirect: Boolean,
     )
 }

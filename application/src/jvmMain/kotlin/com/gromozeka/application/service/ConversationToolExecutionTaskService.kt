@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.ConversationDomainService
@@ -29,9 +30,15 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKER_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKSPACE_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKSPACE_MOUNT_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_WORKSPACE_ROOT_PATH
 import com.gromozeka.domain.tool.ToolExecutionContext
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlin.time.Clock
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
@@ -64,23 +71,6 @@ class ConversationToolExecutionTaskService(
         require(task.requirements.target.matches(executor)) {
             "Tool execution task ${task.id.value} targets ${task.requirements.target} but is running on $executor"
         }
-        val target = payload.executionTarget
-        val workerTarget = target as? ConversationRuntimeTaskTarget.Worker
-        workerTarget?.let {
-            workerAccessService.requireProjectAccess(it.workerId, project.id)
-        }
-        val workspaceContext = workerTarget?.workspaceMountId?.let { mountId ->
-            workspaceService.resolveExecution(mountId).also { resolved ->
-                require(resolved.project.id == project.id) {
-                    "Tool execution workspace mount ${mountId.value} belongs to project " +
-                        "${resolved.project.id.value}, not ${project.id.value}"
-                }
-                require(resolved.mount.workerId == workerTarget.workerId.value) {
-                    "Tool execution workspace mount ${mountId.value} belongs to executor " +
-                        "${resolved.mount.workerId}, not ${workerTarget.workerId.value}"
-                }
-            }
-        }
         val toolResultMessageId = runtimeMessageId(task.id, "result")
         val existingToolResult = conversationService.loadCurrentMessages(conversationId)
             .firstOrNull { it.id == toolResultMessageId }
@@ -90,96 +80,107 @@ class ConversationToolExecutionTaskService(
             val executionToolCalls = payload.toolCalls.withExecutionToolNames(
                 payload.executionToolNamesByCallId
             )
-            val resolvedSecretsByToolCallId = toolSecretResolutionService.resolve(
-                userId = task.actorUserId,
-                toolCalls = executionToolCalls,
-            )
-            val toolContext = ToolExecutionContext(
+            val baseToolContext = ToolExecutionContext(
                 buildMap {
                     put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
                     put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
                     put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
                     put(TOOL_CONTEXT_PROJECT_ID, project.id.value)
                     put(TOOL_CONTEXT_MEMORY_NAMESPACE, MemoryNamespace.forProject(project.id).value)
-                    workerTarget?.let { put(TOOL_CONTEXT_WORKER_ID, it.workerId.value) }
                     put(TOOL_CONTEXT_AGENT_DEFINITION_ID, payload.agentDefinitionId.value)
                     task.actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
                     put(
                         TOOL_CONTEXT_MEMORY_RESULT_DELIVERY,
                         TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC,
                     )
-                    workspaceContext?.let { resolved ->
-                        put("workspaceId", resolved.workspace.id.value)
-                        put("workspaceMountId", resolved.mount.id.value)
-                        put("workspaceRootPath", resolved.mount.rootPath)
-                    }
                 }
+            )
+            val toolContextsByTarget = mutableMapOf<ConversationRuntimeTaskTarget, ToolExecutionContext>()
+            payload.executionTargetsByCallId.values.distinct().forEach { target ->
+                toolContextsByTarget[target] = prepareToolContext(
+                    target = target,
+                    projectId = project.id,
+                    base = baseToolContext,
+                )
+            }
+            val resolvedSecretsByToolCallId = toolSecretResolutionService.resolve(
+                userId = task.actorUserId,
+                toolCalls = executionToolCalls,
             )
             ensureRuntimeTaskOwner(conversationId, task.id, executor)
             clearRuntimeToolExecutions(conversationId, task.id, executor)
-            val executionResult = when (target) {
-                ConversationRuntimeTaskTarget.Server ->
-                    parallelToolExecutor.executeParallel(
-                        toolCalls = executionToolCalls,
-                        toolContext = toolContext,
-                        runtimeTaskId = task.id,
-                        executor = executor,
-                        expectedTarget = target,
-                        resolvedSecretsByToolCallId = resolvedSecretsByToolCallId,
-                        onToolExecutionChanged = { execution ->
-                            upsertRuntimeToolExecution(
-                                conversationId,
-                                execution.withModelToolName(modelToolNamesByCallId),
-                            )
-                        },
-                    )
-
-                is ConversationRuntimeTaskTarget.Worker -> {
-                    val startedAt = markRemoteToolExecutionsRunning(
-                        conversationId = conversationId,
-                        task = task,
-                        executor = executor,
-                        toolCalls = payload.toolCalls,
-                    )
-                    try {
-                        val targetIdentity = workerTargetResolver.requireOnline(
-                            target.workerId,
-                            ConversationRuntimeCapability.TOOL_EXECUTION,
+            val modelToolCallsById = payload.toolCalls.associateBy { it.id.value }
+            val executionResult = executeParallelByTarget(
+                toolCalls = executionToolCalls,
+                executionTargetsByCallId = payload.executionTargetsByCallId,
+            ) { target, targetToolCalls ->
+                val targetCallIds = targetToolCalls.mapTo(mutableSetOf()) { it.id.value }
+                val targetSecrets = resolvedSecretsByToolCallId.filterKeys(targetCallIds::contains)
+                when (target) {
+                    ConversationRuntimeTaskTarget.Server ->
+                        parallelToolExecutor.executeParallel(
+                            toolCalls = targetToolCalls,
+                            toolContext = toolContextsByTarget.getValue(target),
+                            runtimeTaskId = task.id,
+                            executor = executor,
+                            expectedTarget = target,
+                            resolvedSecretsByToolCallId = targetSecrets,
+                            onToolExecutionChanged = { execution ->
+                                upsertRuntimeToolExecution(
+                                    conversationId,
+                                    execution.withModelToolName(modelToolNamesByCallId),
+                                )
+                            },
                         )
-                        workerToolExecutionClient.execute(
-                            target = targetIdentity,
-                            executionTarget = target,
-                            toolCalls = executionToolCalls,
-                            toolContext = toolContext,
-                            resolvedSecretsByToolCallId = resolvedSecretsByToolCallId,
-                        ).also { result ->
-                            markRemoteToolExecutionsCompleted(
-                                conversationId = conversationId,
-                                task = task,
-                                executor = executor,
-                                results = result.results.map { it.withModelToolName(modelToolNamesByCallId) },
-                                startedAt = startedAt,
-                            )
-                        }.let {
-                            ToolExecutionResult(
-                                results = it.results,
-                                returnDirect = it.returnDirect,
-                            )
-                        }
-                    } catch (error: Throwable) {
-                        if (error is CancellationException) throw error
-                        markRemoteToolExecutionsFailed(
+
+                    is ConversationRuntimeTaskTarget.Worker -> {
+                        val modelToolCalls = targetToolCalls.map { modelToolCallsById.getValue(it.id.value) }
+                        val startedAt = markRemoteToolExecutionsRunning(
                             conversationId = conversationId,
                             task = task,
                             executor = executor,
-                            toolCalls = payload.toolCalls,
-                            startedAt = startedAt,
+                            toolCalls = modelToolCalls,
                         )
-                        log.warn(error) {
-                            "Worker tool execution returned no result; reporting an unknown outcome to the model: " +
-                                "conversation=${conversationId.value} worker=${target.workerId.value}"
+                        try {
+                            val targetIdentity = workerTargetResolver.requireOnline(
+                                target.workerId,
+                                ConversationRuntimeCapability.TOOL_EXECUTION,
+                            )
+                            workerToolExecutionClient.execute(
+                                target = targetIdentity,
+                                executionTarget = target,
+                                toolCalls = targetToolCalls,
+                                toolContext = toolContextsByTarget.getValue(target),
+                                resolvedSecretsByToolCallId = targetSecrets,
+                            ).also { result ->
+                                markRemoteToolExecutionsCompleted(
+                                    conversationId = conversationId,
+                                    task = task,
+                                    executor = executor,
+                                    results = result.results.map { it.withModelToolName(modelToolNamesByCallId) },
+                                    startedAt = startedAt,
+                                )
+                            }.let {
+                                ToolExecutionResult(
+                                    results = it.results,
+                                    returnDirect = it.returnDirect,
+                                )
+                            }
+                        } catch (error: Throwable) {
+                            if (error is CancellationException) throw error
+                            markRemoteToolExecutionsFailed(
+                                conversationId = conversationId,
+                                task = task,
+                                executor = executor,
+                                toolCalls = modelToolCalls,
+                                startedAt = startedAt,
+                            )
+                            log.warn(error) {
+                                "Worker tool execution returned no result; reporting an unknown outcome to the model: " +
+                                    "conversation=${conversationId.value} worker=${target.workerId.value}"
+                            }
+                            workerToolExecutionFailure(targetToolCalls, error)
                         }
-                        workerToolExecutionFailure(executionToolCalls, error)
                     }
                 }
             }
@@ -220,6 +221,34 @@ class ConversationToolExecutionTaskService(
                 actorUserId = task.actorUserId,
             ),
         )
+    }
+
+    private suspend fun prepareToolContext(
+        target: ConversationRuntimeTaskTarget,
+        projectId: Project.Id,
+        base: ToolExecutionContext,
+    ): ToolExecutionContext = when (target) {
+        ConversationRuntimeTaskTarget.Server -> base
+        is ConversationRuntimeTaskTarget.Worker -> {
+            workerAccessService.requireProjectAccess(target.workerId, projectId)
+            var context = base.withValue(TOOL_CONTEXT_WORKER_ID, target.workerId.value)
+            target.workspaceMountId?.let { mountId ->
+                val resolved = workspaceService.resolveExecution(mountId)
+                require(resolved.project.id == projectId) {
+                    "Tool execution workspace mount ${mountId.value} belongs to project " +
+                        "${resolved.project.id.value}, not ${projectId.value}"
+                }
+                require(resolved.mount.workerId == target.workerId.value) {
+                    "Tool execution workspace mount ${mountId.value} belongs to executor " +
+                        "${resolved.mount.workerId}, not ${target.workerId.value}"
+                }
+                context = context
+                    .withValue(TOOL_CONTEXT_WORKSPACE_ID, resolved.workspace.id.value)
+                    .withValue(TOOL_CONTEXT_WORKSPACE_MOUNT_ID, resolved.mount.id.value)
+                    .withValue(TOOL_CONTEXT_WORKSPACE_ROOT_PATH, resolved.mount.rootPath)
+            }
+            context
+        }
     }
 
     private fun toolResultProcessingTask(
@@ -416,6 +445,42 @@ class ConversationToolExecutionTaskService(
                 executor is ConversationRuntimeExecutorIdentity.Worker &&
                     executor.identity.workerId == workerId
         }
+}
+
+internal suspend fun executeParallelByTarget(
+    toolCalls: List<Conversation.Message.ContentItem.ToolCall>,
+    executionTargetsByCallId: Map<String, ConversationRuntimeTaskTarget>,
+    executeTarget: suspend (
+        ConversationRuntimeTaskTarget,
+        List<Conversation.Message.ContentItem.ToolCall>,
+    ) -> ToolExecutionResult,
+): ToolExecutionResult {
+    val toolCallIds = toolCalls.map { it.id.value }
+    require(toolCallIds.distinct().size == toolCallIds.size) {
+        "Parallel target execution requires unique tool call ids"
+    }
+    require(executionTargetsByCallId.keys == toolCallIds.toSet()) {
+        "Parallel target execution requires one exact target for every tool call"
+    }
+
+    val targetResults = coroutineScope {
+        toolCalls
+            .groupBy { executionTargetsByCallId.getValue(it.id.value) }
+            .map { (target, calls) -> async { executeTarget(target, calls) } }
+            .awaitAll()
+    }
+    val unorderedResults = targetResults.flatMap(ToolExecutionResult::results)
+    val resultsByCallId = unorderedResults.associateBy { it.toolUseId.value }
+    require(resultsByCallId.size == unorderedResults.size) {
+        "Parallel target execution returned duplicate tool result ids"
+    }
+    require(resultsByCallId.keys == toolCallIds.toSet()) {
+        "Parallel target execution must return one result for every tool call"
+    }
+    return ToolExecutionResult(
+        results = toolCallIds.map(resultsByCallId::getValue),
+        returnDirect = targetResults.all(ToolExecutionResult::returnDirect),
+    )
 }
 
 internal fun List<Conversation.Message.ContentItem.ToolCall>.withExecutionToolNames(

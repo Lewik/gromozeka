@@ -164,7 +164,10 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
-        assertEquals(ConversationRuntimeTaskTarget.Server, accepted.requirements.target)
+        assertEquals(
+            ConversationRuntimeTaskTarget.Server,
+            accepted.executionTargetsByCallId.getValue(call.id.value),
+        )
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)
         assertTrue(rejected.errors.single().message.contains("must not declare execution_target"))
     }
@@ -204,7 +207,9 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(result)
-        val target = assertIs<ConversationRuntimeTaskTarget.Worker>(result.requirements.target)
+        val target = assertIs<ConversationRuntimeTaskTarget.Worker>(
+            result.executionTargetsByCallId.getValue(call.id.value)
+        )
         assertEquals(ConversationRuntimeWorkerId("worker-b"), target.workerId)
         assertEquals(null, target.workspaceMountId)
         val schema = Json.parseToJsonElement(
@@ -224,6 +229,79 @@ class DistributedAiToolRoutingTest {
         )
         assertFalse(entry.descriptor.definition.description.contains("worker-a"))
         assertTrue(catalog.environmentPrompt.contains("\"compatible_worker_ids\":[\"worker-a\",\"worker-b\"]"))
+    }
+
+    @Test
+    fun `routing accepts one batch across Server and multiple Workers`() = runBlocking {
+        val workerRegistry = InMemoryConversationRuntimeWorkerRegistry()
+        registerWorker(workerRegistry, "worker-a", listOf(workerEnvironmentTool))
+        registerWorker(workerRegistry, "worker-b", listOf(workerEnvironmentTool))
+        val workspaceService = TestWorkspaceDomainService(
+            projects = listOf(project),
+            workspaces = emptyList(),
+            mounts = emptyList(),
+        )
+        val catalog = distributedCatalog(
+            workerRegistry = workerRegistry,
+            workspaceService = workspaceService,
+            serverTools = listOf(conversationRuntimeTool),
+        ).snapshot(project)
+        val serverCall = Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("server-call"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = conversationRuntimeTool.definition.name,
+                input = JsonObject(mapOf("name" to JsonPrimitive("test-skill"))),
+            ),
+        )
+        fun workerCall(workerId: String) = Conversation.Message.ContentItem.ToolCall(
+            id = Conversation.Message.ContentItem.ToolCall.Id("$workerId-call"),
+            call = Conversation.Message.ContentItem.ToolCall.Data(
+                name = workerEnvironmentTool.definition.name,
+                input = buildJsonObject {
+                    putJsonObject(AI_TOOL_EXECUTION_TARGET_FIELD) {
+                        put(AI_TOOL_EXECUTION_WORKER_ID_FIELD, workerId)
+                    }
+                },
+            ),
+        )
+        val workerACall = workerCall("worker-a")
+        val workerBCall = workerCall("worker-b")
+
+        val result = ConversationRuntimeToolRoutingService(
+            runtimeCoordinator = InMemoryConversationRuntimeCoordinator(),
+            workspaceService = workspaceService,
+            workerAccessService = workerAccessService,
+        ).route(
+            conversation = conversation(project.id),
+            project = project,
+            toolCalls = listOf(serverCall, workerACall, workerBCall),
+            catalog = catalog,
+        )
+
+        assertIs<ConversationRuntimeToolRoutingResult.Accepted>(result)
+        assertEquals(
+            mapOf(
+                serverCall.id.value to ConversationRuntimeTaskTarget.Server,
+                workerACall.id.value to ConversationRuntimeTaskTarget.Worker(
+                    ConversationRuntimeWorkerId("worker-a")
+                ),
+                workerBCall.id.value to ConversationRuntimeTaskTarget.Worker(
+                    ConversationRuntimeWorkerId("worker-b")
+                ),
+            ),
+            result.executionTargetsByCallId,
+        )
+        assertTrue(
+            catalog.environmentPrompt.contains(
+                "Independent tool calls may target different workers or workspace mounts in one assistant response " +
+                    "and execute concurrently."
+            )
+        )
+        assertTrue(
+            catalog.environmentPrompt.contains(
+                "Dependent tool calls must be issued in later assistant responses after observing prerequisite results."
+            )
+        )
     }
 
     @Test
@@ -454,7 +532,9 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
-        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(accepted.requirements.target)
+        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(
+            accepted.executionTargetsByCallId.values.single()
+        )
         assertEquals(ConversationRuntimeWorkerId("worker-b"), acceptedTarget.workerId)
         assertEquals(mountB.id, acceptedTarget.workspaceMountId)
     }
@@ -486,7 +566,9 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
-        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(accepted.requirements.target)
+        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(
+            accepted.executionTargetsByCallId.values.single()
+        )
         assertEquals(task.workerId, acceptedTarget.workerId)
         assertEquals(task.workspaceMountId, acceptedTarget.workspaceMountId)
         val schema = Json.parseToJsonElement(
@@ -566,7 +648,9 @@ class DistributedAiToolRoutingTest {
         )
 
         assertIs<ConversationRuntimeToolRoutingResult.Accepted>(accepted)
-        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(accepted.requirements.target)
+        val acceptedTarget = assertIs<ConversationRuntimeTaskTarget.Worker>(
+            accepted.executionTargetsByCallId.getValue(call.id.value)
+        )
         assertEquals(monitor.workerId, acceptedTarget.workerId)
         assertEquals(monitor.workspaceMountId, acceptedTarget.workspaceMountId)
         assertIs<ConversationRuntimeToolRoutingResult.Rejected>(rejected)

@@ -208,6 +208,58 @@ class ParallelToolExecutorTest {
         )
     }
 
+    @Test
+    fun `different execution targets run concurrently and preserve call order`() = runBlocking {
+        val firstTarget = ConversationRuntimeTaskTarget.Worker(ConversationRuntimeWorkerId("worker-a"))
+        val secondTarget = ConversationRuntimeTaskTarget.Worker(ConversationRuntimeWorkerId("worker-b"))
+        val calls = listOf(toolCall("first"), toolCall("second"), toolCall("third"))
+        val started = CountDownLatch(2)
+        val release = CountDownLatch(1)
+
+        val execution = async {
+            executeParallelByTarget(
+                toolCalls = calls,
+                executionTargetsByCallId = mapOf(
+                    calls[0].id.value to firstTarget,
+                    calls[1].id.value to secondTarget,
+                    calls[2].id.value to firstTarget,
+                ),
+            ) { target, targetCalls ->
+                when (target) {
+                    firstTarget -> assertEquals(listOf(calls[0], calls[2]), targetCalls)
+                    secondTarget -> assertEquals(listOf(calls[1]), targetCalls)
+                    else -> error("Unexpected target: $target")
+                }
+                withContext(Dispatchers.IO) {
+                    started.countDown()
+                    release.await(2, TimeUnit.SECONDS)
+                }
+                ToolExecutionResult(
+                    results = targetCalls.reversed().map { toolCall ->
+                        Conversation.Message.ContentItem.ToolResult(
+                            toolUseId = toolCall.id,
+                            toolName = toolCall.call.name,
+                            result = listOf(
+                                Conversation.Message.ContentItem.ToolResult.Data.Text(toolCall.call.name)
+                            ),
+                            isError = false,
+                        )
+                    },
+                    returnDirect = true,
+                )
+            }
+        }
+        val startedConcurrently = withContext(Dispatchers.IO) {
+            started.await(2, TimeUnit.SECONDS)
+        }
+        release.countDown()
+        val result = execution.await()
+
+        assertTrue(startedConcurrently)
+        assertEquals(calls.map { it.id }, result.results.map { it.toolUseId })
+        assertTrue(result.returnDirect)
+    }
+
     private fun executor(vararg tools: AiToolCallback): ParallelToolExecutor =
         ParallelToolExecutor(
             aiToolProvider = object : AiToolProvider {
