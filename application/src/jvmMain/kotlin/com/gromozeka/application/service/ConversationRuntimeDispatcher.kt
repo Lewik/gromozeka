@@ -42,7 +42,7 @@ class ConversationRuntimeDispatcher(
 ) {
     private val log = KLoggers.logger(this)
 
-    suspend fun enqueueMessage(
+    suspend fun enqueueAgentInvocation(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
@@ -79,7 +79,7 @@ class ConversationRuntimeDispatcher(
             return false
         }
 
-        val task = queuedRuntimeTask(
+        val task = messageSubmissionTask(
             conversationId = conversationId,
             userMessage = userMessage,
             agentDefinitionId = agentDefinitionId,
@@ -168,14 +168,31 @@ class ConversationRuntimeDispatcher(
         return accepted
     }
 
-    suspend fun submitMessage(
+    suspend fun postMessage(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        actorUserId: User.Id? = null,
+    ): Boolean {
+        artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
+        return submitRuntimeTask(
+            messageSubmissionTask(
+                conversationId = conversationId,
+                userMessage = userMessage,
+                agentDefinitionId = null,
+                placement = QueuedMessagePlacement.END_OF_TURN,
+                actorUserId = actorUserId,
+            )
+        )
+    }
+
+    suspend fun invokeAgent(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         actorUserId: User.Id? = null,
     ): Boolean {
         artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
-        val task = queuedRuntimeTask(
+        val task = messageSubmissionTask(
             conversationId = conversationId,
             userMessage = userMessage,
             agentDefinitionId = agentDefinitionId,
@@ -322,7 +339,7 @@ class ConversationRuntimeDispatcher(
     }
 
     private suspend fun updatePendingRuntimeTask(task: ConversationRuntimeTask): Boolean {
-        val accepted = runtimeCoordinator.updatePendingUserTurn(task)
+        val accepted = runtimeCoordinator.updatePendingMessageSubmission(task)
         if (accepted) {
             publishRuntimeSnapshot(task.conversationId)
         }
@@ -387,10 +404,10 @@ class ConversationRuntimeDispatcher(
             is ConversationRuntimeEvent.ExecutionFailed -> copy(cursorSequence = sequence)
         }
 
-    private fun queuedRuntimeTask(
+    private fun messageSubmissionTask(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
+        agentDefinitionId: AgentDefinition.Id?,
         placement: QueuedMessagePlacement,
         actorUserId: User.Id?,
     ): ConversationRuntimeTask =
@@ -398,17 +415,23 @@ class ConversationRuntimeDispatcher(
             id = ConversationRuntimeTask.Id(userMessage.id.value),
             conversationId = conversationId,
             actorUserId = actorUserId,
-            payload = ConversationRuntimeTask.Payload.UserTurn(
-                userMessage = userMessage,
-                agentDefinitionId = agentDefinitionId,
-            ),
+            payload = agentDefinitionId?.let {
+                ConversationRuntimeTask.Payload.AgentInvocation(
+                    userMessage = userMessage,
+                    agentDefinitionId = it,
+                )
+            } ?: ConversationRuntimeTask.Payload.PostMessage(userMessage),
             placement = placement,
             idempotencyKey = "conversation:${conversationId.value}:message:${userMessage.id.value}",
             requirements = ConversationRuntimeTaskRequirements(
-                capabilities = setOf(
-                    ConversationRuntimeCapability.CONVERSATION_TURN,
-                    ConversationRuntimeCapability.MEMORY_PIPELINE,
-                ),
+                capabilities = if (agentDefinitionId == null) {
+                    setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+                } else {
+                    setOf(
+                        ConversationRuntimeCapability.CONVERSATION_TURN,
+                        ConversationRuntimeCapability.MEMORY_PIPELINE,
+                    )
+                },
                 target = ConversationRuntimeTaskTarget.Server,
             ),
             createdAt = Clock.System.now(),

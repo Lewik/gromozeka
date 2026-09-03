@@ -73,6 +73,40 @@ class ConversationRuntimeDispatcherTest {
     private val agentDefinitionId = AgentDefinition.Id("agent-1")
 
     @Test
+    fun `plain message post creates a non-AI runtime task`() = runBlocking {
+        val harness = dispatcherHarness(
+            runner = ControllableTaskRunner { task ->
+                if (task.payload is ConversationRuntimeTask.Payload.PostMessage) {
+                    ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+                } else {
+                    ConversationRuntimeTaskOutcome.CompleteTurn
+                }
+            },
+        )
+        try {
+            val message = userMessage("plain-message")
+
+            assertTrue(harness.dispatcher.postMessage(conversationId, message))
+            val task = harness.runner.awaitStarted()
+
+            assertTrue(task.payload is ConversationRuntimeTask.Payload.PostMessage)
+            assertEquals(
+                setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                task.requirements.capabilities,
+            )
+            harness.runner.releaseCurrentTask()
+            waitUntil { harness.coordinator.find(conversationId) == null }
+            val completed = harness.coordinator.listEventLogEntries(conversationId, null, 100)
+                .map { it.event }
+                .filterIsInstance<ConversationRuntimeEvent.ExecutionCompleted>()
+                .single()
+            assertFalse(completed.shouldNotifyUser)
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
     fun `history mutation runs after active conversation task and publishes completion`() = runBlocking {
         val runner = ControllableTaskRunner { task ->
             if (task.payload is ConversationRuntimeTask.Payload.HistoryMutation) {
@@ -84,7 +118,7 @@ class ConversationRuntimeDispatcherTest {
         val harness = dispatcherHarness(runner = runner)
         try {
             val activeMessage = userMessage("active-message")
-            assertTrue(harness.dispatcher.submitMessage(conversationId, activeMessage, agentDefinitionId))
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, activeMessage, agentDefinitionId))
             assertEquals(activeMessage.id.value, harness.runner.awaitStarted().id.value)
 
             val mutationTaskId = ConversationRuntimeTask.Id("history-edit-1")
@@ -199,7 +233,7 @@ class ConversationRuntimeDispatcherTest {
             val actorUserId = User.Id("user-1")
 
             assertTrue(
-                harness.dispatcher.enqueueMessage(
+                harness.dispatcher.enqueueAgentInvocation(
                     conversationId = conversationId,
                     userMessage = message,
                     agentDefinitionId = agentDefinitionId,
@@ -229,7 +263,7 @@ class ConversationRuntimeDispatcherTest {
         )
         try {
             assertFailsWith<IllegalArgumentException> {
-                harness.dispatcher.submitMessage(
+                harness.dispatcher.invokeAgent(
                     conversationId = conversationId,
                     userMessage = userMessage("message-invalid-artifact"),
                     agentDefinitionId = agentDefinitionId,
@@ -248,11 +282,11 @@ class ConversationRuntimeDispatcherTest {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
 
             assertTrue(
-                harness.dispatcher.enqueueMessage(
+                harness.dispatcher.enqueueAgentInvocation(
                     conversationId = conversationId,
                     userMessage = secondMessage,
                     agentDefinitionId = agentDefinitionId,
@@ -286,10 +320,10 @@ class ConversationRuntimeDispatcherTest {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
             assertTrue(
-                harness.dispatcher.enqueueMessage(
+                harness.dispatcher.enqueueAgentInvocation(
                     conversationId = conversationId,
                     userMessage = secondMessage,
                     agentDefinitionId = agentDefinitionId,
@@ -319,10 +353,10 @@ class ConversationRuntimeDispatcherTest {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
             assertTrue(
-                harness.dispatcher.enqueueMessage(
+                harness.dispatcher.enqueueAgentInvocation(
                     conversationId = conversationId,
                     userMessage = secondMessage,
                     agentDefinitionId = agentDefinitionId,
@@ -399,10 +433,10 @@ class ConversationRuntimeDispatcherTest {
             val firstMessage = userMessage("message-1")
             val secondMessage = userMessage("message-2")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
             assertTrue(
-                harness.dispatcher.enqueueMessage(
+                harness.dispatcher.enqueueAgentInvocation(
                     conversationId = conversationId,
                     userMessage = secondMessage,
                     agentDefinitionId = agentDefinitionId,
@@ -432,7 +466,7 @@ class ConversationRuntimeDispatcherTest {
         val eventBus = InMemoryConversationRuntimeEventBus()
         val runner = ControllableTaskRunner()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val task = runtimeUserTurnTask(userMessage("startup-message"))
+        val task = runtimeAgentInvocationTask(userMessage("startup-message"))
         val executor = runtimeExecutor(
             coordinator = coordinator,
             eventBus = eventBus,
@@ -468,7 +502,7 @@ class ConversationRuntimeDispatcherTest {
         val oldExecutor = ConversationRuntimeExecutorIdentity.Server(
             ConversationRuntimeServerSessionId("old-server")
         )
-        val task = runtimeUserTurnTask(userMessage("unstarted-message"))
+        val task = runtimeAgentInvocationTask(userMessage("unstarted-message"))
         assertTrue(coordinator.submit(task))
         assertEquals(
             task,
@@ -516,7 +550,7 @@ class ConversationRuntimeDispatcherTest {
         val oldExecutor = ConversationRuntimeExecutorIdentity.Server(
             ConversationRuntimeServerSessionId("old-server")
         )
-        val task = runtimeUserTurnTask(userMessage("started-message"))
+        val task = runtimeAgentInvocationTask(userMessage("started-message"))
         assertTrue(coordinator.submit(task))
         assertNotNull(
             coordinator.claimDeliveredTask(
@@ -585,7 +619,7 @@ class ConversationRuntimeDispatcherTest {
             scope = scope,
             aiConfigurationService = aiConfigurationService,
         )
-        val task = runtimeUserTurnTask(userMessage("configuration-refresh-message"))
+        val task = runtimeAgentInvocationTask(userMessage("configuration-refresh-message"))
 
         try {
             executor.start()
@@ -626,7 +660,7 @@ class ConversationRuntimeDispatcherTest {
             ),
             scope = scope,
         )
-        val task = runtimeUserTurnTask(userMessage("cancelled-worker-message"))
+        val task = runtimeAgentInvocationTask(userMessage("cancelled-worker-message"))
 
         try {
             executor.start()
@@ -655,7 +689,7 @@ class ConversationRuntimeDispatcherTest {
         try {
             val message = userMessage("message-1")
 
-            assertTrue(harness.dispatcher.submitMessage(conversationId, message, agentDefinitionId))
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, message, agentDefinitionId))
             assertEquals(message.id.value, harness.runner.awaitStarted().id.value)
             harness.runner.releaseCurrentTask()
             waitUntil { harness.coordinator.find(conversationId) == null }
@@ -688,7 +722,7 @@ class ConversationRuntimeDispatcherTest {
             workspaceMountId = workspaceMountId,
         )
         val firstMessage = userMessage("message-1")
-        val rootTask = runtimeUserTurnTask(firstMessage)
+        val rootTask = runtimeAgentInvocationTask(firstMessage)
         val llmTask1 = runtimeLlmTask(rootTask, firstMessage.id, iteration = 1)
         val toolTask = runtimeToolTask(llmTask1, firstMessage.id, iteration = 1, target = toolTarget)
         val toolResultProcessingTask = runtimeToolResultProcessingTask(toolTask, firstMessage.id, iteration = 1)
@@ -727,7 +761,7 @@ class ConversationRuntimeDispatcherTest {
 
         try {
             serverExecutor.start()
-            assertTrue(dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
+            assertTrue(dispatcher.invokeAgent(conversationId, firstMessage, agentDefinitionId))
 
             val executions = withTimeout(TEST_EVENT_TIMEOUT_MS) {
                 List(5) { executionOrder.receive() }
@@ -763,10 +797,10 @@ class ConversationRuntimeDispatcherTest {
     }
 
     @Test
-    fun `dispatcher runs internal continuation before queued user turn`() = runBlocking {
+    fun `dispatcher runs internal continuation before queued agent invocation`() = runBlocking {
         val firstMessage = userMessage("message-1")
         val secondMessage = userMessage("message-2")
-        val rootTask = runtimeUserTurnTask(firstMessage)
+        val rootTask = runtimeAgentInvocationTask(firstMessage)
         val llmTask = runtimeLlmTask(rootTask, firstMessage.id, iteration = 1)
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val runner = ControllableTaskRunner { startedTask ->
@@ -786,10 +820,10 @@ class ConversationRuntimeDispatcherTest {
             ),
         )
         try {
-            assertTrue(harness.dispatcher.submitMessage(conversationId, firstMessage, agentDefinitionId))
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, firstMessage, agentDefinitionId))
             assertEquals(firstMessage.id.value, harness.runner.awaitStarted().id.value)
             assertTrue(
-                harness.dispatcher.enqueueMessage(
+                harness.dispatcher.enqueueAgentInvocation(
                     conversationId = conversationId,
                     userMessage = secondMessage,
                     agentDefinitionId = agentDefinitionId,
@@ -813,7 +847,7 @@ class ConversationRuntimeDispatcherTest {
     @Test
     fun `dispatcher cannot let asynchronous memory completion overtake active turn continuation`() = runBlocking {
         val userMessage = userMessage("message-with-asynchronous-memory")
-        val rootTask = runtimeUserTurnTask(userMessage)
+        val rootTask = runtimeAgentInvocationTask(userMessage)
         val llmTask = runtimeLlmTask(rootTask, userMessage.id, iteration = 1)
         val runner = ControllableTaskRunner { startedTask ->
             if (startedTask.id == rootTask.id) {
@@ -831,7 +865,7 @@ class ConversationRuntimeDispatcherTest {
             ),
         )
         try {
-            assertTrue(harness.dispatcher.submitMessage(conversationId, userMessage, agentDefinitionId))
+            assertTrue(harness.dispatcher.invokeAgent(conversationId, userMessage, agentDefinitionId))
             assertEquals(rootTask.id, harness.runner.awaitStarted().id)
             assertTrue(
                 harness.dispatcher.submitMemoryRunCompletion(
@@ -910,14 +944,14 @@ class ConversationRuntimeDispatcherTest {
         updatedAt = Clock.System.now(),
     )
 
-    private fun runtimeUserTurnTask(
+    private fun runtimeAgentInvocationTask(
         userMessage: Conversation.Message,
         placement: QueuedMessagePlacement = QueuedMessagePlacement.END_OF_TURN,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
             id = ConversationRuntimeTask.Id(userMessage.id.value),
             conversationId = conversationId,
-            payload = ConversationRuntimeTask.Payload.UserTurn(
+            payload = ConversationRuntimeTask.Payload.AgentInvocation(
                 userMessage = userMessage,
                 agentDefinitionId = agentDefinitionId,
             ),

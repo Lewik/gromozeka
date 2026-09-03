@@ -107,12 +107,12 @@ data class ConversationRuntimeSchedulingState(
         )
     }
 
-    fun updatePendingUserTurn(task: ConversationRuntimeTask): ConversationRuntimeStateTransition<Boolean> {
+    fun updatePendingMessageSubmission(task: ConversationRuntimeTask): ConversationRuntimeStateTransition<Boolean> {
         require(task.conversationId == conversationId) {
             "Conversation runtime task belongs to another conversation"
         }
-        require(task.payload is ConversationRuntimeTask.Payload.UserTurn && task.isRootInput()) {
-            "Only a pending root user turn can be updated"
+        require(task.userMessageOrNull() != null && task.isRootInput()) {
+            "Only a pending root message submission can be updated"
         }
         if (executionState?.controlState == ConversationExecutionState.ControlState.STOPPING ||
             executionState?.controlState == ConversationExecutionState.ControlState.INTERRUPTING ||
@@ -128,7 +128,7 @@ data class ConversationRuntimeSchedulingState(
             existing.idempotencyKey == task.idempotencyKey &&
             existing.turnId == task.turnId
         ) {
-            "Updating a queued user turn cannot change its runtime identity"
+            "Updating a queued message submission cannot change its runtime identity"
         }
         val updatedTask = task.withTurnTerminationInstructions(existing.turnTerminationInstructions())
         return changed(
@@ -180,7 +180,8 @@ data class ConversationRuntimeSchedulingState(
             return unchanged(null)
         }
         val claimedTask = task.withTurnTerminationInstructions(pendingTurnTerminationInstructions)
-        val consumesTurnTerminationInstructions = claimedTask.payload is ConversationRuntimeTask.Payload.UserTurn
+        val consumesTurnTerminationInstructions =
+            claimedTask.payload is ConversationRuntimeTask.Payload.AgentInvocation
 
         return changed(
             copy(
@@ -730,27 +731,26 @@ data class ConversationRuntimeSchedulingState(
     private fun ConversationRuntimeTask.withTurnTerminationInstructions(
         instructions: List<Conversation.Message.Instruction.PreviousTurnTerminated>,
     ): ConversationRuntimeTask {
-        val userTurn = payload as? ConversationRuntimeTask.Payload.UserTurn ?: return this
+        val invocation = payload as? ConversationRuntimeTask.Payload.AgentInvocation ?: return this
         if (instructions.isEmpty()) return this
-        val message = userTurn.userMessage
+        val userMessage = invocation.userMessage
         val mergedInstructions = mergeTurnTerminationInstructions(
-            message.instructions.filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>() +
+            userMessage.instructions.filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>() +
                 instructions
         )
-        val otherInstructions = message.instructions.filterNot {
+        val otherInstructions = userMessage.instructions.filterNot {
             it is Conversation.Message.Instruction.PreviousTurnTerminated
         }
         return copy(
-            payload = userTurn.copy(
-                userMessage = message.copy(instructions = mergedInstructions + otherInstructions),
-            )
+            payload = invocation.copy(
+                userMessage = userMessage.copy(instructions = mergedInstructions + otherInstructions),
+            ),
         )
     }
 
     private fun ConversationRuntimeTask.turnTerminationInstructions():
         List<Conversation.Message.Instruction.PreviousTurnTerminated> =
-        (payload as? ConversationRuntimeTask.Payload.UserTurn)
-            ?.userMessage
+        userMessageOrNull()
             ?.instructions
             ?.filterIsInstance<Conversation.Message.Instruction.PreviousTurnTerminated>()
             .orEmpty()

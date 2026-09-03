@@ -262,7 +262,7 @@ data class HebrewTranslation(
         pauseButton = "השהיה",
         resumeButton = "המשך",
         stopButton = "עצירה",
-        userTurnTask = "תור המשתמש",
+        agentInvocationTask = "תור המשתמש",
         llmCallTask = "קריאת LLM",
         toolExecutionTask = "הפעלת כלי",
         toolResultProcessingTask = "עיבוד תוצאת כלי",

@@ -199,7 +199,10 @@ class GromozekaRemoteServer(
                             is ReportClientActivityCommand ->
                                 clientPresentationRegistry.activate(connectionId, payload.kind)
                             is ClientRequest -> {
-                                if (payload is SubmitMessageRequest || payload is EnqueueMessageRequest) {
+                                if (payload is PostMessageRequest ||
+                                    payload is InvokeAgentRequest ||
+                                    payload is EnqueueAgentInvocationRequest
+                                ) {
                                     clientPresentationRegistry.activate(
                                         connectionId,
                                         ClientActivityKind.USER_INTERACTION,
@@ -607,9 +610,9 @@ class GromozekaRemoteServer(
                 is PullStateSyncRequest -> stateSyncSnapshot(user, request.query)
                 is CreateConversationRequest -> ConversationResponse(
                     conversationDomainService.create(
-                        request.projectId,
-                        request.displayName,
-                        request.agentDefinitionId,
+                        projectId = request.projectId,
+                        participants = request.participants + Conversation.Participant.User(user.id),
+                        displayName = request.displayName,
                     )
                 )
 
@@ -621,6 +624,7 @@ class GromozekaRemoteServer(
                 FindProjectsRequest -> ProjectsResponse(projectAccessService.findAll(user.id))
                 is FindConversationsByProjectRequest -> ConversationsResponse(
                     conversationDomainService.findByProject(request.projectId)
+                        .filter { Conversation.Participant.User(user.id) in it.participants }
                 )
                 GetConversationTabLayoutRequest -> ConversationTabLayoutResponse(
                     filterConversationTabLayout(user, conversationTabLayoutService.snapshot(user.id))
@@ -673,10 +677,10 @@ class GromozekaRemoteServer(
                 is UpdateConversationDisplayNameRequest -> ConversationResponse(
                     conversationDomainService.updateDisplayName(request.conversationId, request.displayName)
                 )
-                is UpdateConversationAgentRequest -> ConversationResponse(
-                    conversationDomainService.updateAgentDefinition(
+                is UpdateConversationParticipantsRequest -> ConversationResponse(
+                    conversationDomainService.updateParticipants(
                         request.conversationId,
-                        request.agentDefinitionId,
+                        request.participants,
                     )
                 )
                 is ForkConversationRequest -> ConversationResponse(conversationDomainService.fork(request.conversationId))
@@ -742,16 +746,23 @@ class GromozekaRemoteServer(
                     runMemoryAction(request.conversationId, request.action)
                     MemoryActionAcceptedResponse()
                 }
-                is SubmitMessageRequest -> OperationResultResponse(
-                    conversationRuntimeIngressService.submitMessage(
+                is PostMessageRequest -> OperationResultResponse(
+                    conversationRuntimeIngressService.postMessage(
+                        user,
+                        request.conversationId,
+                        request.userMessage,
+                    )
+                )
+                is InvokeAgentRequest -> OperationResultResponse(
+                    conversationRuntimeIngressService.invokeAgent(
                         user,
                         request.conversationId,
                         request.userMessage,
                         request.agentDefinitionId,
                     )
                 )
-                is EnqueueMessageRequest -> OperationResultResponse(
-                    conversationRuntimeIngressService.enqueueMessage(
+                is EnqueueAgentInvocationRequest -> OperationResultResponse(
+                    conversationRuntimeIngressService.enqueueAgentInvocation(
                         user,
                         request.conversationId,
                         request.userMessage,
@@ -1100,8 +1111,10 @@ class GromozekaRemoteServer(
         val readableProjectIds = remoteAuthorization.readableProjectIds(user)
         return layout.copy(
             conversationIds = layout.conversationIds.filter { conversationId ->
-                conversationDomainService.findById(conversationId)
-                    ?.projectId in readableProjectIds
+                val conversation = conversationDomainService.findById(conversationId)
+                conversation != null &&
+                    conversation.projectId in readableProjectIds &&
+                    Conversation.Participant.User(user.id) in conversation.participants
             }
         )
     }

@@ -88,19 +88,24 @@ open class AppViewModel(
             val newConversationAgent = agent ?: defaultAgentProvider.getDefault()
             conversationService.create(
                 projectId = projectId,
-                agentDefinitionId = newConversationAgent.id,
+                participants = setOf(
+                    Conversation.Participant.User(currentUserAuthor.userId),
+                    Conversation.Participant.Agent(newConversationAgent.id),
+                ),
             )
         }
-        val tabAgent = agentService.findById(conversation.agentDefinitionId)
-            ?: error(
-                "Agent not found for conversation ${conversation.id.value}: " +
-                    conversation.agentDefinitionId.value
-            )
-        if (agent != null) {
-            require(agent.id == tabAgent.id) {
-                "Conversation ${conversation.id.value} uses agent ${tabAgent.id.value}, not ${agent.id.value}"
+        val conversationAgentIds = conversation.participants
+            .filterIsInstance<Conversation.Participant.Agent>()
+            .mapTo(mutableSetOf(), Conversation.Participant.Agent::agentDefinitionId)
+        agent?.let {
+            require(it.id in conversationAgentIds) {
+                "Agent ${it.id.value} is not connected to conversation ${conversation.id.value}"
             }
         }
+        val selectedAgentId = agent?.id ?: conversationAgentIds.minByOrNull { it.value }
+            ?: error("Conversation ${conversation.id.value} has no connected agent")
+        val tabAgent = agentService.findById(selectedAgentId)
+            ?: error("Agent not found for conversation ${conversation.id.value}: ${selectedAgentId.value}")
         mergeConversationSnapshots(listOf(conversation))
 
         val parentTabId =
@@ -260,8 +265,15 @@ open class AppViewModel(
     ): TabViewModel? = runCatching {
         val conversation = conversationService.findById(conversationId)
             ?: error("Conversation not found: ${conversationId.value}")
-        val agent = agentService.findById(conversation.agentDefinitionId)
-            ?: error("Agent not found for conversation ${conversation.id.value}: ${conversation.agentDefinitionId.value}")
+        val connectedAgentIds = conversation.participants
+            .filterIsInstance<Conversation.Participant.Agent>()
+            .mapTo(mutableSetOf(), Conversation.Participant.Agent::agentDefinitionId)
+        val connectedAgentId = savedTab?.agent?.id
+            ?.takeIf { it in connectedAgentIds }
+            ?: connectedAgentIds.minByOrNull { it.value }
+            ?: error("Conversation ${conversation.id.value} has no connected agent")
+        val agent = agentService.findById(connectedAgentId)
+            ?: error("Agent not found for conversation ${conversation.id.value}: ${connectedAgentId.value}")
         mergeConversationSnapshots(listOf(conversation))
         val uiState = savedTab?.copy(
             projectId = conversation.projectId,

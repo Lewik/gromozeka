@@ -44,8 +44,8 @@ data class ConversationRuntimeTask(
         require(requirements.capabilities.containsAll(payload.requiredCapabilities())) {
             "Conversation runtime task ${id.value} requirements do not satisfy ${payload::class.simpleName}"
         }
-        if (payload is Payload.UserTurn) {
-            require(payload.userMessage.conversationId == conversationId) {
+        userMessageOrNull()?.let { message ->
+            require(message.conversationId == conversationId) {
                 "Conversation runtime task ${id.value} user message belongs to another conversation"
             }
         }
@@ -63,8 +63,14 @@ data class ConversationRuntimeTask(
     @Serializable
     sealed interface Payload {
         @Serializable
-        @SerialName("user_turn")
-        data class UserTurn(
+        @SerialName("post_message")
+        data class PostMessage(
+            val userMessage: Conversation.Message,
+        ) : Payload
+
+        @Serializable
+        @SerialName("agent_invocation")
+        data class AgentInvocation(
             val userMessage: Conversation.Message,
             val agentDefinitionId: AgentDefinition.Id,
         ) : Payload
@@ -165,13 +171,17 @@ data class ConversationRuntimeTask(
         ) : Payload
     }
 
-    fun requireUserTurn(): Payload.UserTurn =
-        payload as? Payload.UserTurn
-            ?: error("Conversation runtime task ${id.value} is not a user-turn task: ${payload::class.simpleName}")
+    fun requireAgentInvocation(): Payload.AgentInvocation =
+        payload as? Payload.AgentInvocation
+            ?: error("Conversation runtime task ${id.value} is not an agent invocation: ${payload::class.simpleName}")
 
-    fun userTurnOrNull(): Payload.UserTurn? = payload as? Payload.UserTurn
+    fun userMessageOrNull(): Conversation.Message? = when (val payload = payload) {
+        is Payload.PostMessage -> payload.userMessage
+        is Payload.AgentInvocation -> payload.userMessage
+        else -> null
+    }
 
-    fun userMessageIdOrNull(): Conversation.Message.Id? = userTurnOrNull()?.userMessage?.id
+    fun userMessageIdOrNull(): Conversation.Message.Id? = userMessageOrNull()?.id
 
     fun isRootInput(): Boolean = payload.isRootInput()
 
@@ -179,7 +189,8 @@ data class ConversationRuntimeTask(
 
     private fun Payload.isRootInput(): Boolean =
         when (this) {
-            is Payload.UserTurn,
+            is Payload.PostMessage,
+            is Payload.AgentInvocation,
             is Payload.HistoryMutation,
             is Payload.MemoryRunCompletion,
             is Payload.BackgroundActivityCompletion,
@@ -193,7 +204,8 @@ data class ConversationRuntimeTask(
 
     private fun Payload.requiredCapabilities(): Set<ConversationRuntimeCapability> =
         when (this) {
-            is Payload.UserTurn -> setOf(
+            is Payload.PostMessage -> setOf(ConversationRuntimeCapability.CONVERSATION_TURN)
+            is Payload.AgentInvocation -> setOf(
                 ConversationRuntimeCapability.CONVERSATION_TURN,
                 ConversationRuntimeCapability.MEMORY_PIPELINE,
             )
@@ -240,6 +252,8 @@ value class ConversationRuntimeTurnId(val value: String) {
 
 sealed interface ConversationRuntimeTaskOutcome {
     data object CompleteTurn : ConversationRuntimeTaskOutcome
+
+    data object CompleteWithoutNotification : ConversationRuntimeTaskOutcome
 
     data class HistoryChanged(
         val kind: ConversationHistoryMutationKind,
@@ -784,7 +798,7 @@ interface ConversationRuntimeCoordinator {
 
     suspend fun submit(task: ConversationRuntimeTask): Boolean
 
-    suspend fun updatePendingUserTurn(task: ConversationRuntimeTask): Boolean
+    suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean
 
     /**
      * Atomically assigns a pending task to one executor session.

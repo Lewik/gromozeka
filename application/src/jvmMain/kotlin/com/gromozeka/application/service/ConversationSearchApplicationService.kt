@@ -23,6 +23,7 @@ class ConversationSearchApplicationService(
         return conversationSearchRepository.search(
             request = request.copy(query = request.query.trim()),
             readableProjectIds = readableProjectIds,
+            participantUserId = actorUserId,
         )
     }
 }

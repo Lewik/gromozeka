@@ -42,20 +42,20 @@ class ConversationRuntimeApplicationService(
 ) : ConversationRuntimeService, ConversationRuntimeIngressService {
     private val log = KLoggers.logger(this)
 
-    override suspend fun enqueueMessage(
+    override suspend fun enqueueAgentInvocation(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
-    ): Boolean = runtimeDispatcher.enqueueMessage(conversationId, userMessage, agentDefinitionId, placement)
+    ): Boolean = runtimeDispatcher.enqueueAgentInvocation(conversationId, userMessage, agentDefinitionId, placement)
 
-    override suspend fun enqueueMessage(
+    override suspend fun enqueueAgentInvocation(
         actorUser: User,
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
-    ): Boolean = runtimeDispatcher.enqueueMessage(
+    ): Boolean = runtimeDispatcher.enqueueAgentInvocation(
         conversationId = conversationId,
         userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
         agentDefinitionId = agentDefinitionId,
@@ -83,18 +83,33 @@ class ConversationRuntimeApplicationService(
         monitorId: CommandMonitor.Id,
     ): Boolean = runtimeDispatcher.cancelCommandMonitor(conversationId, monitorId)
 
-    override suspend fun submitMessage(
+    override suspend fun postMessage(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+    ): Boolean = runtimeDispatcher.postMessage(conversationId, userMessage)
+
+    override suspend fun postMessage(
+        actorUser: User,
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+    ): Boolean = runtimeDispatcher.postMessage(
+        conversationId = conversationId,
+        userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
+        actorUserId = actorUser.id,
+    )
+
+    override suspend fun invokeAgent(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
-    ): Boolean = runtimeDispatcher.submitMessage(conversationId, userMessage, agentDefinitionId)
+    ): Boolean = runtimeDispatcher.invokeAgent(conversationId, userMessage, agentDefinitionId)
 
-    override suspend fun submitMessage(
+    override suspend fun invokeAgent(
         actorUser: User,
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
-    ): Boolean = runtimeDispatcher.submitMessage(
+    ): Boolean = runtimeDispatcher.invokeAgent(
         conversationId = conversationId,
         userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
         agentDefinitionId = agentDefinitionId,

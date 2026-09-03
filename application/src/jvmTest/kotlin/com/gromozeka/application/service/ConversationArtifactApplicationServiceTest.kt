@@ -342,7 +342,7 @@ class ConversationArtifactApplicationServiceTest {
     private fun conversation(id: String, projectId: String): Conversation = Conversation(
         id = Conversation.Id(id),
         projectId = Project.Id(projectId),
-        agentDefinitionId = AgentDefinition.Id("agent-1"),
+        participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent-1"))),
         currentThread = Conversation.Thread.Id("thread-$id"),
         createdAt = Instant.fromEpochMilliseconds(1),
         updatedAt = Instant.fromEpochMilliseconds(1),

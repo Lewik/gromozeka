@@ -206,6 +206,19 @@ class GromozekaRemoteAuthorizationTest {
     }
 
     @Test
+    fun `project membership does not grant access to a disconnected conversation`() = runBlocking {
+        val user = testUser()
+        val conversation = testConversation().copy(
+            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent"))),
+        )
+        Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation)
+
+        assertFailsWith<ProjectAccessDeniedException> {
+            authorization.authorize(user, FindConversationRequest(conversation.id))
+        }
+    }
+
+    @Test
     fun `project membership reads and mutations use different permissions`() = runBlocking {
         val user = testUser()
         val projectId = Project.Id("project")
@@ -268,7 +281,10 @@ private fun testConversation(): Conversation =
     Conversation(
         id = Conversation.Id("conversation"),
         projectId = Project.Id("project"),
-        agentDefinitionId = AgentDefinition.Id("agent"),
+        participants = setOf(
+            Conversation.Participant.User(User.Id("remote-authorization-user")),
+            Conversation.Participant.Agent(AgentDefinition.Id("agent")),
+        ),
         currentThread = Conversation.Thread.Id("thread"),
         createdAt = Instant.fromEpochMilliseconds(1),
         updatedAt = Instant.fromEpochMilliseconds(1),

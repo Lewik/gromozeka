@@ -462,14 +462,18 @@ class TabViewModel(
 
     fun updateAgent(agent: AgentDefinition) {
         scope.launch {
-            val updatedConversation = conversationService.updateAgentDefinition(conversationId, agent.id)
+            val conversation = conversationService.findById(conversationId)
                 ?: error("Conversation not found: ${conversationId.value}")
+            val updatedConversation = conversationService.updateParticipants(
+                conversationId = conversationId,
+                participants = conversation.participants + Conversation.Participant.Agent(agent.id),
+            ) ?: error("Conversation not found: ${conversationId.value}")
             _uiState.update { currentState ->
                 currentState.copy(agent = agent)
             }
             log.info {
-                "Updated conversation agent: conversation=${conversationId.value} " +
-                    "agent=${updatedConversation.agentDefinitionId.value}"
+                "Selected connected conversation agent: conversation=${conversationId.value} " +
+                    "agent=${agent.id.value} participants=${updatedConversation.participants.size}"
             }
         }
     }
@@ -621,7 +625,7 @@ class TabViewModel(
         }
         scope.launch {
             val runtimeAccepted = runCatching {
-                conversationRuntimeService.enqueueMessage(
+                conversationRuntimeService.enqueueAgentInvocation(
                     conversationId = conversationId,
                     userMessage = steeredMessage.userMessage,
                     agentDefinitionId = steeredMessage.agentDefinitionId,
@@ -746,7 +750,7 @@ class TabViewModel(
         currentRequestJob = scope.launch {
             try {
                 log.debug { "Submitting message to conversation $conversationId" }
-                val accepted = conversationRuntimeService.submitMessage(
+                val accepted = conversationRuntimeService.invokeAgent(
                     conversationId,
                     userMessage,
                     pendingMessage.agentDefinitionId,
@@ -776,7 +780,7 @@ class TabViewModel(
 
     private suspend fun submitPendingMessage(pendingMessage: PendingUserMessage): Boolean =
         runCatching {
-            conversationRuntimeService.submitMessage(
+            conversationRuntimeService.invokeAgent(
                 conversationId = conversationId,
                 userMessage = pendingMessage.userMessage,
                 agentDefinitionId = pendingMessage.agentDefinitionId,
@@ -1400,10 +1404,10 @@ data class PendingUserMessage(
 }
 
 private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMessage? =
-    userTurnOrNull()?.let { userTurn ->
+    (payload as? ConversationRuntimeTask.Payload.AgentInvocation)?.let { invocation ->
         PendingUserMessage(
-            userMessage = userTurn.userMessage,
-            agentDefinitionId = userTurn.agentDefinitionId,
+            userMessage = invocation.userMessage,
+            agentDefinitionId = invocation.agentDefinitionId,
             placement = placement,
         )
     }

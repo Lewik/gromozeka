@@ -108,7 +108,6 @@ class MessageSquashService internal constructor(
                         "conversationId" to conversation.id.value,
                         "threadId" to conversation.currentThread.value,
                         "projectId" to conversation.projectId.value,
-                        "agentDefinitionId" to conversation.agentDefinitionId.value,
                     ),
                     usagePurpose = "MESSAGE_SQUASH",
                 ),

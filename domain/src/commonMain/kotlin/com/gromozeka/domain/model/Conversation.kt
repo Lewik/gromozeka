@@ -16,17 +16,14 @@ import kotlin.jvm.JvmInline
 /**
  * Conversation containing threads and messages.
  *
- * Conversation is the top-level organizational unit for AI interaction.
+ * Conversation is the top-level organizational unit for human and AI interaction.
  * Each conversation belongs to a project and contains multiple threads (versions).
- * 
- * AI provider/model configuration is in AgentDefinition - switching agent switches the model.
- * Conversation tracks which agent definition is currently used.
  *
  * This is an immutable value type - use copy() to create modified versions.
  *
  * @property id unique conversation identifier (UUIDv7)
  * @property projectId project this conversation belongs to
- * @property agentDefinitionId agent definition used for this conversation
+ * @property participants users and agents currently connected to this conversation
  * @property displayName human-readable conversation title (can be blank)
  * @property currentThread currently active thread ID (conversation can switch threads)
  * @property createdAt timestamp when conversation was created
@@ -36,18 +33,38 @@ import kotlin.jvm.JvmInline
 data class Conversation(
     val id: Id,
     val projectId: Project.Id,
-    val agentDefinitionId: AgentDefinition.Id,
+    val participants: Set<Participant>,
     val displayName: String = "",
     val currentThread: Thread.Id,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
+    init {
+        require(participants.isNotEmpty()) { "Conversation must have at least one participant" }
+    }
+
     /**
      * Unique conversation identifier (UUIDv7).
      */
     @Serializable
     @JvmInline
     value class Id(val value: String)
+
+    @Serializable
+    @JsonClassDiscriminator("type")
+    sealed interface Participant {
+        @Serializable
+        @SerialName("user")
+        data class User(
+            val userId: com.gromozeka.domain.model.User.Id,
+        ) : Participant
+
+        @Serializable
+        @SerialName("agent")
+        data class Agent(
+            val agentDefinitionId: AgentDefinition.Id,
+        ) : Participant
+    }
 
     @Serializable
     enum class TurnTerminationReason {

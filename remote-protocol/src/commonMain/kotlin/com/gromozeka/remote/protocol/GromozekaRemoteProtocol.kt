@@ -497,7 +497,7 @@ data class UpdateProjectLastUsedRequest(
 @SerialName("create_conversation")
 data class CreateConversationRequest(
     val projectId: Project.Id,
-    val agentDefinitionId: AgentDefinition.Id,
+    val participants: Set<Conversation.Participant>,
     val displayName: String = "",
 ) : ClientRequest
 
@@ -607,10 +607,10 @@ data class UpdateConversationDisplayNameRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("update_conversation_agent")
-data class UpdateConversationAgentRequest(
+@SerialName("update_conversation_participants")
+data class UpdateConversationParticipantsRequest(
     val conversationId: Conversation.Id,
-    val agentDefinitionId: AgentDefinition.Id,
+    val participants: Set<Conversation.Participant>,
 ) : ClientRequest
 
 @Serializable
@@ -955,16 +955,23 @@ data class StopObserveConversationCommand(
 ) : ClientPayload
 
 @Serializable
-@SerialName("submit_message")
-data class SubmitMessageRequest(
+@SerialName("post_message")
+data class PostMessageRequest(
+    val conversationId: Conversation.Id,
+    val userMessage: Conversation.Message,
+) : ClientRequest
+
+@Serializable
+@SerialName("invoke_agent")
+data class InvokeAgentRequest(
     val conversationId: Conversation.Id,
     val userMessage: Conversation.Message,
     val agentDefinitionId: AgentDefinition.Id,
 ) : ClientRequest
 
 @Serializable
-@SerialName("enqueue_message")
-data class EnqueueMessageRequest(
+@SerialName("enqueue_agent_invocation")
+data class EnqueueAgentInvocationRequest(
     val conversationId: Conversation.Id,
     val userMessage: Conversation.Message,
     val agentDefinitionId: AgentDefinition.Id,

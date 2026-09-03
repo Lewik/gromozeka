@@ -185,7 +185,7 @@ class MessageSquashServiceTest {
         val conversation = Conversation(
             id = initialThread.conversationId,
             projectId = Project.Id("project"),
-            agentDefinitionId = AgentDefinition.Id("agent"),
+            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent"))),
             displayName = "Test",
             currentThread = initialThread.id,
             createdAt = Clock.System.now(),
@@ -360,7 +360,7 @@ private class InMemoryConversationRepository(
         values.computeIfPresent(id) { _, conversation -> conversation.copy(currentThread = threadId) }
     }
     override suspend fun updateDisplayName(id: Conversation.Id, displayName: String) = Unit
-    override suspend fun updateAgentDefinition(id: Conversation.Id, agentDefinitionId: AgentDefinition.Id) = Unit
+    override suspend fun updateParticipants(id: Conversation.Id, participants: Set<Conversation.Participant>) = Unit
     override suspend fun touch(id: Conversation.Id) = Unit
 }
 

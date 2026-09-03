@@ -80,7 +80,7 @@ class ControlMcpConversationSearchToolsTest {
         val conversation = Conversation(
             id = Conversation.Id("conversation-1"),
             projectId = project.id,
-            agentDefinitionId = AgentDefinition.Id("agent-1"),
+            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent-1"))),
             displayName = "Conversation",
             currentThread = Conversation.Thread.Id("thread-1"),
             createdAt = timestamp,

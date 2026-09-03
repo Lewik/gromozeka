@@ -122,7 +122,9 @@ class ConversationEngineService(
         emitMessage: suspend (Conversation.Message) -> Unit,
     ): ConversationRuntimeTaskOutcome =
         when (val payload = task.payload) {
-            is ConversationRuntimeTask.Payload.UserTurn -> runUserTurnStep(task, executor, payload, emitMessage)
+            is ConversationRuntimeTask.Payload.PostMessage -> runPostMessageStep(task, executor, payload, emitMessage)
+            is ConversationRuntimeTask.Payload.AgentInvocation ->
+                runAgentInvocationStep(task, executor, payload, emitMessage)
             is ConversationRuntimeTask.Payload.HistoryMutation ->
                 runHistoryMutationStep(task, executor, payload)
             is ConversationRuntimeTask.Payload.LlmCall -> runLlmCallStep(task, executor, payload, emitMessage)
@@ -154,16 +156,31 @@ class ConversationEngineService(
         return ConversationRuntimeTaskOutcome.HistoryChanged(kind)
     }
 
-    private suspend fun runUserTurnStep(
+    private suspend fun runPostMessageStep(
         task: ConversationRuntimeTask,
         executor: ConversationRuntimeExecutorIdentity,
-        payload: ConversationRuntimeTask.Payload.UserTurn,
+        payload: ConversationRuntimeTask.Payload.PostMessage,
+        emitMessage: suspend (Conversation.Message) -> Unit,
+    ): ConversationRuntimeTaskOutcome {
+        ensureRuntimeTaskOwner(task.conversationId, task.id, executor)
+        requireActorConnected(task)
+        if (addRuntimeMessageIfMissing(task.conversationId, payload.userMessage)) {
+            emitMessage(payload.userMessage)
+        }
+        return ConversationRuntimeTaskOutcome.CompleteWithoutNotification
+    }
+
+    private suspend fun runAgentInvocationStep(
+        task: ConversationRuntimeTask,
+        executor: ConversationRuntimeExecutorIdentity,
+        payload: ConversationRuntimeTask.Payload.AgentInvocation,
         emitMessage: suspend (Conversation.Message) -> Unit,
     ): ConversationRuntimeTaskOutcome {
         val conversationId = task.conversationId
         ensureRuntimeTaskOwner(conversationId, task.id, executor)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
+        requireActorConnected(task, conversation)
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
         appendUserMessageWithAutomaticMemory(
             conversationId = conversationId,
@@ -353,7 +370,14 @@ class ConversationEngineService(
 
         val allToolCalls = runtimeResponse.toolCalls
         val mappedAssistantMessages = AiConversationMessageMapper
-            .toConversationMessages(conversationId, runtimeResponse)
+            .toConversationMessages(
+                conversationId = conversationId,
+                response = runtimeResponse,
+                author = Conversation.Message.Author.Agent(
+                    agentDefinitionId = context.agent.id,
+                    displayName = context.agent.name,
+                ),
+            )
             .withRuntimeMessageIds(task.id, "assistant")
         val assistantMessages = when {
             allToolCalls.isNotEmpty() -> mappedAssistantMessages.withSuggestedReplies(emptyList())
@@ -366,6 +390,7 @@ class ConversationEngineService(
                 conversation = conversation,
                 currentMessages = currentMessages,
                 assistantMessages = mappedAssistantMessages,
+                agentDefinitionId = context.agent.id,
                 actorUserId = task.actorUserId,
             )
         }
@@ -703,10 +728,10 @@ class ConversationEngineService(
             }
             is ConversationRuntimeTask.Payload.ExecutionIncident -> ConversationRuntimeTaskOutcome.CompleteTurn
             else -> {
-                if (sourcePayload is ConversationRuntimeTask.Payload.UserTurn) {
+                incident.task.userMessageOrNull()?.let { userMessage ->
                     ensureRuntimeTaskOwner(conversationId, task.id, executor)
-                    if (addRuntimeMessageIfMissing(conversationId, sourcePayload.userMessage)) {
-                        emitMessage(sourcePayload.userMessage)
+                    if (addRuntimeMessageIfMissing(conversationId, userMessage)) {
+                        emitMessage(userMessage)
                     }
                 }
                 val notification = Conversation.Message(
@@ -813,7 +838,7 @@ class ConversationEngineService(
                     parentTask = task,
                     conversationId = conversationId,
                     rootUserMessageId = batch.resultMessageId,
-                    agentDefinitionId = conversation.agentDefinitionId,
+                    agentDefinitionId = batch.agentDefinitionId,
                     iteration = 1,
                     actorUserId = task.actorUserId,
                 ),
@@ -911,6 +936,9 @@ class ConversationEngineService(
         require(agent.type is AgentDefinition.Type.Global || agent.projectId == conversation.projectId) {
             "Agent ${agentDefinitionId.value} does not belong to conversation project ${conversation.projectId.value}"
         }
+        require(Conversation.Participant.Agent(agentDefinitionId) in conversation.participants) {
+            "Agent ${agentDefinitionId.value} is not connected to conversation ${conversation.id.value}"
+        }
         val project = conversationService.getProject(conversation.id)
         val runtimeContext = RuntimeEnvironmentContext.ProjectBound(
             project = project,
@@ -999,11 +1027,24 @@ class ConversationEngineService(
         )
     }
 
+    private suspend fun requireActorConnected(
+        task: ConversationRuntimeTask,
+        conversation: Conversation? = null,
+    ) {
+        val actorUserId = task.actorUserId ?: return
+        val resolvedConversation = conversation ?: conversationService.findById(task.conversationId)
+            ?: throw IllegalStateException("Conversation not found: ${task.conversationId.value}")
+        require(Conversation.Participant.User(actorUserId) in resolvedConversation.participants) {
+            "User ${actorUserId.value} is not connected to conversation ${resolvedConversation.id.value}"
+        }
+    }
+
     private suspend fun generateSeparateSuggestedReplies(
         task: ConversationRuntimeTask,
         conversation: Conversation,
         currentMessages: List<Conversation.Message>,
         assistantMessages: List<Conversation.Message>,
+        agentDefinitionId: AgentDefinition.Id,
         actorUserId: User.Id?,
     ): List<Conversation.Message> {
         val sourceMessage = assistantMessages.lastOrNull { message ->
@@ -1016,6 +1057,7 @@ class ConversationEngineService(
                 conversation = conversation,
                 messages = currentMessages + assistantMessages,
                 sourceMessage = sourceMessage,
+                agentDefinitionId = agentDefinitionId,
                 runtimeSelection = suggestedRepliesGenerationService.requireConfiguredRuntimeSelection(),
                 actorUserId = actorUserId,
                 usageId = "suggested-replies:${sourceMessage.id.value}:initial",
@@ -1418,12 +1460,19 @@ class ConversationEngineService(
         automaticMemoryRecallEnabled: Boolean,
     ): List<Conversation.Message> {
         val emittedMessages = mutableListOf<Conversation.Message>()
-        val userTurn = queued.requireUserTurn()
-        val userMessage = userTurn.userMessage
-        val agent = agentDomainService.findById(userTurn.agentDefinitionId)
+        val invocation = queued.requireAgentInvocation()
+        val userMessage = invocation.userMessage
+        requireActorConnected(queued, conversation)
+        require(Conversation.Participant.Agent(invocation.agentDefinitionId) in conversation.participants) {
+            "Agent ${invocation.agentDefinitionId.value} is not connected to conversation ${conversation.id.value}"
+        }
+        val agent = agentDomainService.findById(invocation.agentDefinitionId)
             ?: throw IllegalStateException(
-                "Agent not found for queued message ${userMessage.id.value}: ${userTurn.agentDefinitionId.value}"
+                "Agent not found for queued message ${userMessage.id.value}: ${invocation.agentDefinitionId.value}"
             )
+        require(agent.type is AgentDefinition.Type.Global || agent.projectId == conversation.projectId) {
+            "Agent ${agent.id.value} does not belong to conversation project ${conversation.projectId.value}"
+        }
 
         val userMessageAdded = addRuntimeMessageIfMissing(conversationId, userMessage)
         if (!userMessageAdded) {

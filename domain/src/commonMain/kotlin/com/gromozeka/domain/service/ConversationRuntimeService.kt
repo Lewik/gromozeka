@@ -7,7 +7,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 interface ConversationRuntimeService {
-    suspend fun submitMessage(
+    suspend fun postMessage(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+    ): Boolean
+
+    suspend fun invokeAgent(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
@@ -22,7 +27,7 @@ interface ConversationRuntimeService {
         conversationId: Conversation.Id,
     ): Flow<ActiveGenerationSnapshot?>
 
-    suspend fun enqueueMessage(
+    suspend fun enqueueAgentInvocation(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
@@ -57,14 +62,20 @@ interface ConversationRuntimeService {
 }
 
 interface ConversationRuntimeIngressService {
-    suspend fun submitMessage(
+    suspend fun postMessage(
+        actorUser: User,
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+    ): Boolean
+
+    suspend fun invokeAgent(
         actorUser: User,
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
     ): Boolean
 
-    suspend fun enqueueMessage(
+    suspend fun enqueueAgentInvocation(
         actorUser: User,
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,

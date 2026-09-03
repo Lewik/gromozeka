@@ -417,8 +417,8 @@ class MemoryRealModelE2eTest {
             conversations[sessionId]?.let { return it }
             val created = conversationService.create(
                 projectId = project.id,
+                participants = setOf(Conversation.Participant.Agent(agent.id)),
                 displayName = "${case.id}::$sessionId",
-                agentDefinitionId = agent.id,
             )
             conversations[sessionId] = created
             return created
@@ -468,7 +468,7 @@ class MemoryRealModelE2eTest {
                         )
                     } else {
                         val messageText = turn.requireText(case.id, session.id, turnIndex)
-                        val sentTurn = sendUserTurn(
+                        val sentTurn = sendAgentInvocation(
                             conversationEngineService = conversationEngineService,
                             conversation = currentConversation,
                             agent = agent,
@@ -583,7 +583,7 @@ class MemoryRealModelE2eTest {
                     "recall_turn_start case=${case.id} session=${session.id} turn=${turnIndex + 1}/${session.turns.size} chars=${turn.text.length} preview=${turn.text.oneLineForProgressLog()}"
                 )
                 val answer = runCatching {
-                    sendUserTurn(
+                    sendAgentInvocation(
                         conversationEngineService = conversationEngineService,
                         conversation = currentConversation,
                         agent = agent,
@@ -1261,7 +1261,7 @@ class MemoryRealModelE2eTest {
         }
     }
 
-    private suspend fun sendUserTurn(
+    private suspend fun sendAgentInvocation(
         conversationEngineService: ConversationRuntimeApplicationService,
         conversation: Conversation,
         agent: AgentDefinition,
@@ -1269,13 +1269,13 @@ class MemoryRealModelE2eTest {
         traceCollector: MemoryE2eReadTraceCollector,
         writeTraceCollector: MemoryE2eWriteTraceCollector,
         memoryRoutingFailFast: Boolean? = null,
-    ): SentUserTurn {
+    ): SentAgentInvocation {
         val userMessage = buildUserMessage(conversation.id, text)
         val messages = withMemoryRoutingFailFast(memoryRoutingFailFast) {
             collectSubmittedTurn(conversationEngineService, conversation, agent, userMessage)
         }
 
-        return SentUserTurn(
+        return SentAgentInvocation(
             answer = messages.renderAssistantText(),
             memoryReadTrace = traceCollector.take(userMessage.id),
             memoryWriteTrace = writeTraceCollector.take(userMessage.id),
@@ -1458,7 +1458,7 @@ class MemoryRealModelE2eTest {
                 observerReady.await()
             }
             assertTrue(
-                conversationEngineService.submitMessage(
+                conversationEngineService.invokeAgent(
                     conversationId = conversation.id,
                     userMessage = userMessage,
                     agentDefinitionId = agent.id,
@@ -4007,7 +4007,7 @@ private data class MemoryTraceExpectation(
             forbiddenSelectedEpisodes.isNotEmpty()
 }
 
-private data class SentUserTurn(
+private data class SentAgentInvocation(
     val answer: String,
     val memoryReadTrace: MemoryReadTraceEvent?,
     val memoryWriteTrace: MemoryWriteTraceEvent?,

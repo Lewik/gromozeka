@@ -93,7 +93,7 @@ class RemoteSessionAccessGuardTest {
         Conversation(
             id = Conversation.Id("conversation-id"),
             projectId = Project.Id("project-id"),
-            agentDefinitionId = AgentDefinition.Id("agent-id"),
+            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent-id"))),
             currentThread = Conversation.Thread.Id("thread-id"),
             createdAt = Instant.fromEpochMilliseconds(1),
             updatedAt = Instant.fromEpochMilliseconds(1),

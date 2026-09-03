@@ -63,10 +63,17 @@ class MemoryOperationContextResolver(
     ): MemoryOperationContext {
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalArgumentException("Conversation not found: ${conversationId.value}")
-        val agent = agentDomainService.findById(conversation.agentDefinitionId)
-            ?: throw IllegalStateException(
-                "Agent not found for conversation ${conversationId.value}: ${conversation.agentDefinitionId.value}"
-            )
+        val threadMessages = threadId
+            ?.let { threadMessageRepository.getMessagesByThread(it) }
+            ?: conversationService.loadCurrentMessages(conversationId)
+        val contextualAgentId = threadMessages.asReversed()
+            .mapNotNull { (it.author as? Conversation.Message.Author.Agent)?.agentDefinitionId }
+            .firstOrNull()
+            ?: conversation.participants.filterIsInstance<Conversation.Participant.Agent>()
+                .firstOrNull()
+                ?.agentDefinitionId
+        val agent = contextualAgentId?.let { agentDomainService.findById(it) }
+            ?: defaultAgentProvider.getDefault()
         val runtimeContext = RuntimeEnvironmentContext.ProjectBound(
             project = conversationService.getProject(conversationId),
             executor = runtimeExecutor,
@@ -77,9 +84,7 @@ class MemoryOperationContextResolver(
             runtimeContext = runtimeContext,
             systemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext),
             memoryTools = memoryTools(),
-            threadMessages = threadId
-                ?.let { threadMessageRepository.getMessagesByThread(it) }
-                ?: conversationService.loadCurrentMessages(conversationId),
+            threadMessages = threadMessages,
         )
     }
 

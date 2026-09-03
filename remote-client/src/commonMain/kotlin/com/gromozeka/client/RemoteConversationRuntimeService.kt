@@ -14,23 +14,32 @@ import com.gromozeka.remote.protocol.CancelQueuedMessageRequest
 import com.gromozeka.remote.protocol.CancelCommandMonitorRequest
 import com.gromozeka.remote.protocol.CancelCommandTaskRequest
 import com.gromozeka.remote.protocol.ControlConversationRuntimeRequest
-import com.gromozeka.remote.protocol.EnqueueMessageRequest
+import com.gromozeka.remote.protocol.EnqueueAgentInvocationRequest
+import com.gromozeka.remote.protocol.InvokeAgentRequest
 import com.gromozeka.remote.protocol.MemoryActionAcceptedResponse
 import com.gromozeka.remote.protocol.MemoryActionRequest
 import com.gromozeka.remote.protocol.OperationResultResponse
-import com.gromozeka.remote.protocol.SubmitMessageRequest
+import com.gromozeka.remote.protocol.PostMessageRequest
 import kotlinx.coroutines.flow.Flow
 
 internal class RemoteConversationRuntimeService(
     private val client: GromozekaWsClient,
 ) : ConversationRuntimeService {
-    override suspend fun submitMessage(
+    override suspend fun postMessage(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+    ): Boolean =
+        client.requestTyped<PostMessageRequest, OperationResultResponse>(
+            PostMessageRequest(conversationId, userMessage)
+        ).success
+
+    override suspend fun invokeAgent(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
     ): Boolean =
-        client.requestTyped<SubmitMessageRequest, OperationResultResponse>(
-            SubmitMessageRequest(conversationId, userMessage, agentDefinitionId)
+        client.requestTyped<InvokeAgentRequest, OperationResultResponse>(
+            InvokeAgentRequest(conversationId, userMessage, agentDefinitionId)
         ).success
 
     override fun observeConversation(
@@ -43,14 +52,14 @@ internal class RemoteConversationRuntimeService(
         conversationId: Conversation.Id,
     ): Flow<ActiveGenerationSnapshot?> = client.observeActiveGeneration(conversationId)
 
-    override suspend fun enqueueMessage(
+    override suspend fun enqueueAgentInvocation(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         placement: QueuedMessagePlacement,
     ): Boolean =
-        client.requestTyped<EnqueueMessageRequest, OperationResultResponse>(
-            EnqueueMessageRequest(conversationId, userMessage, agentDefinitionId, placement)
+        client.requestTyped<EnqueueAgentInvocationRequest, OperationResultResponse>(
+            EnqueueAgentInvocationRequest(conversationId, userMessage, agentDefinitionId, placement)
         ).success
 
     override suspend fun cancelQueuedMessage(

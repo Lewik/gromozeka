@@ -1,6 +1,5 @@
 package com.gromozeka.client
 
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.service.ConversationDomainService
@@ -19,7 +18,7 @@ import com.gromozeka.remote.protocol.RegenerateSuggestedRepliesRequest
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SuggestedRepliesResponse
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
-import com.gromozeka.remote.protocol.UpdateConversationAgentRequest
+import com.gromozeka.remote.protocol.UpdateConversationParticipantsRequest
 import com.gromozeka.remote.protocol.RemoteDeclarativeStateResource
 import kotlinx.coroutines.flow.Flow
 
@@ -28,11 +27,11 @@ internal class RemoteConversationService(
 ) : ConversationDomainService {
     override suspend fun create(
         projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
         displayName: String,
-        agentDefinitionId: AgentDefinition.Id,
     ): Conversation =
         client.requestTyped<CreateConversationRequest, ConversationResponse>(
-            CreateConversationRequest(projectId, agentDefinitionId, displayName)
+            CreateConversationRequest(projectId, participants, displayName)
         ).conversation ?: error("Server returned null conversation after create")
 
     override suspend fun findById(id: Conversation.Id): Conversation? =
@@ -61,12 +60,12 @@ internal class RemoteConversationService(
             UpdateConversationDisplayNameRequest(conversationId, displayName)
         ).conversation
 
-    override suspend fun updateAgentDefinition(
+    override suspend fun updateParticipants(
         conversationId: Conversation.Id,
-        agentDefinitionId: AgentDefinition.Id,
+        participants: Set<Conversation.Participant>,
     ): Conversation? =
-        client.requestTyped<UpdateConversationAgentRequest, ConversationResponse>(
-            UpdateConversationAgentRequest(conversationId, agentDefinitionId)
+        client.requestTyped<UpdateConversationParticipantsRequest, ConversationResponse>(
+            UpdateConversationParticipantsRequest(conversationId, participants)
         ).conversation
 
     override suspend fun fork(conversationId: Conversation.Id): Conversation =

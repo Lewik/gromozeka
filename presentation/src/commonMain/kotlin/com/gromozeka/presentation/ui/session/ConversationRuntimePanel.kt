@@ -1100,7 +1100,8 @@ private fun ActiveGenerationSnapshot.detailsText(elapsedSeconds: Long): String =
 
 private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translation.RuntimeTranslation): String =
     when (this) {
-        is ConversationRuntimeTask.Payload.UserTurn -> translation.userTurnTask
+        is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
+        is ConversationRuntimeTask.Payload.AgentInvocation -> translation.agentInvocationTask
         is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationTask
         is ConversationRuntimeTask.Payload.LlmCall -> translation.llmCallTask
         is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionTask
@@ -1115,7 +1116,8 @@ private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
     agentName: String,
     translation: Translation.RuntimeTranslation,
 ): String = when (this) {
-    is ConversationRuntimeTask.Payload.UserTurn -> "$agentName ${translation.agentWorkingStatus}"
+    is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
+    is ConversationRuntimeTask.Payload.AgentInvocation -> "$agentName ${translation.agentWorkingStatus}"
     is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationStatus
     is ConversationRuntimeTask.Payload.LlmCall -> translation.modelRequestStatus
     is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionStatus

@@ -33,14 +33,14 @@ interface ConversationDomainService {
      * This is a TRANSACTIONAL operation - creates conversation AND initial thread atomically.
      *
      * @param projectId logical project containing the conversation
+     * @param participants users and agents initially connected to the conversation
      * @param displayName human-readable conversation title (default: empty)
-     * @param agentDefinitionId agent definition to use for this conversation
      * @return created conversation with assigned IDs
      */
     suspend fun create(
         projectId: Project.Id,
+        participants: Set<Conversation.Participant>,
         displayName: String = "",
-        agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id
     ): Conversation
 
     /**
@@ -96,9 +96,9 @@ interface ConversationDomainService {
         displayName: String
     ): Conversation?
 
-    suspend fun updateAgentDefinition(
+    suspend fun updateParticipants(
         conversationId: Conversation.Id,
-        agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id,
+        participants: Set<Conversation.Participant>,
     ): Conversation?
 
     /**

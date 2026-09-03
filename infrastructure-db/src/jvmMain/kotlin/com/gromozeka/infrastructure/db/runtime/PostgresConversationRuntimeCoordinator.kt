@@ -94,9 +94,9 @@ class PostgresConversationRuntimeCoordinator(
             true
         }
 
-    override suspend fun updatePendingUserTurn(task: ConversationRuntimeTask): Boolean =
+    override suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean =
         mutateRecord(task.conversationId, createIfMissing = false) { record ->
-            val transition = record.scheduling.updatePendingUserTurn(task)
+            val transition = record.scheduling.updatePendingMessageSubmission(task)
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
             record.appendTrace(
@@ -104,7 +104,7 @@ class PostgresConversationRuntimeCoordinator(
                 taskId = task.id,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
                 status = ConversationRuntimeTraceEntry.Status.UPDATED,
-                message = "Queued user turn updated: placement=${task.placement}",
+                message = "Queued message submission updated: placement=${task.placement}",
             )
             record.bumpRevision()
             true

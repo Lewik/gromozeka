@@ -117,7 +117,7 @@ class ConversationTabLayoutApplicationServiceTest {
     private fun conversation(id: String): Conversation = Conversation(
         id = Conversation.Id(id),
         projectId = projectId,
-        agentDefinitionId = AgentDefinition.Id("agent-1"),
+        participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent-1"))),
         currentThread = Conversation.Thread.Id("thread-$id"),
         createdAt = now,
         updatedAt = now,
@@ -161,8 +161,8 @@ private class TestConversationRepository(
         conversations.computeIfPresent(id) { _, conversation -> conversation.copy(displayName = displayName) }
     }
 
-    override suspend fun updateAgentDefinition(id: Conversation.Id, agentDefinitionId: AgentDefinition.Id) {
-        conversations.computeIfPresent(id) { _, conversation -> conversation.copy(agentDefinitionId = agentDefinitionId) }
+    override suspend fun updateParticipants(id: Conversation.Id, participants: Set<Conversation.Participant>) {
+        conversations.computeIfPresent(id) { _, conversation -> conversation.copy(participants = participants) }
     }
 
     override suspend fun touch(id: Conversation.Id) = Unit

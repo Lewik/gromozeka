@@ -255,7 +255,7 @@ data class ChineseTranslation(
         pauseButton = "暂停",
         resumeButton = "继续",
         stopButton = "停止",
-        userTurnTask = "用户轮次",
+        agentInvocationTask = "用户轮次",
         llmCallTask = "LLM 调用",
         toolExecutionTask = "工具执行",
         toolResultProcessingTask = "工具结果处理",

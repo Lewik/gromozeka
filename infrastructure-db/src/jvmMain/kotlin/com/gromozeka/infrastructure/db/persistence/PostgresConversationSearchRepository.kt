@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.ConversationSearchHit
 import com.gromozeka.domain.model.ConversationSearchPage
 import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.repository.ConversationSearchRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,22 +27,24 @@ class PostgresConversationSearchRepository(
     override suspend fun search(
         request: ConversationSearchRequest,
         readableProjectIds: Set<Project.Id>,
+        participantUserId: User.Id,
     ): ConversationSearchPage = withContext(Dispatchers.IO) {
         if (readableProjectIds.isEmpty()) return@withContext ConversationSearchPage(emptyList())
 
         dataSource.connection.use { connection ->
-            connection.search(request, readableProjectIds)
+            connection.search(request, readableProjectIds, participantUserId)
         }
     }
 
     private fun Connection.search(
         request: ConversationSearchRequest,
         readableProjectIds: Set<Project.Id>,
+        participantUserId: User.Id,
     ): ConversationSearchPage {
         val cursor = request.cursor?.let(SearchCursor::decode)
         val sql = searchSql(request)
         val rows = prepareStatement(sql).use { statement ->
-            statement.bindSearch(request, readableProjectIds, cursor, this)
+            statement.bindSearch(request, readableProjectIds, participantUserId, cursor, this)
             statement.executeQuery().use { result ->
                 buildList {
                     while (result.next()) add(result.toSearchRow())
@@ -82,7 +85,18 @@ class PostgresConversationSearchRepository(
                         p.created_at AS project_created_at,
                         p.last_used_at AS project_last_used_at,
                         c.id AS conversation_id,
-                        c.agent_definition_id,
+                        ARRAY(
+                            SELECT participant.user_id
+                            FROM conversation_user_participants participant
+                            WHERE participant.conversation_id = c.id
+                            ORDER BY participant.user_id
+                        ) AS user_participant_ids,
+                        ARRAY(
+                            SELECT participant.agent_definition_id
+                            FROM conversation_agent_participants participant
+                            WHERE participant.conversation_id = c.id
+                            ORDER BY participant.agent_definition_id
+                        ) AS agent_participant_ids,
                         c.display_name,
                         c.current_thread_id,
                         c.created_at AS conversation_created_at,
@@ -105,6 +119,12 @@ class PostgresConversationSearchRepository(
                     JOIN projects p ON p.id = c.project_id
                     CROSS JOIN search_params sp
                     WHERE c.project_id = ANY (?::text[])
+                      AND EXISTS (
+                          SELECT 1
+                          FROM conversation_user_participants access_participant
+                          WHERE access_participant.conversation_id = c.id
+                            AND access_participant.user_id = ?
+                      )
                       AND (
                           c.display_name ILIKE sp.pattern
                           OR p.name ILIKE sp.pattern
@@ -142,7 +162,18 @@ class PostgresConversationSearchRepository(
                     p.created_at AS project_created_at,
                     p.last_used_at AS project_last_used_at,
                     c.id AS conversation_id,
-                    c.agent_definition_id,
+                    ARRAY(
+                        SELECT participant.user_id
+                        FROM conversation_user_participants participant
+                        WHERE participant.conversation_id = c.id
+                        ORDER BY participant.user_id
+                    ) AS user_participant_ids,
+                    ARRAY(
+                        SELECT participant.agent_definition_id
+                        FROM conversation_agent_participants participant
+                        WHERE participant.conversation_id = c.id
+                        ORDER BY participant.agent_definition_id
+                    ) AS agent_participant_ids,
                     c.display_name,
                     c.current_thread_id,
                     c.created_at AS conversation_created_at,
@@ -173,6 +204,12 @@ class PostgresConversationSearchRepository(
                     LIMIT 1
                 ) linked_thread ON TRUE
                 WHERE c.project_id = ANY (?::text[])
+                  AND EXISTS (
+                      SELECT 1
+                      FROM conversation_user_participants access_participant
+                      WHERE access_participant.conversation_id = c.id
+                        AND access_participant.user_id = ?
+                  )
                   AND m.role = ANY (?::text[])
                   AND m.search_text ILIKE sp.pattern
                   $requestFilters
@@ -192,6 +229,7 @@ class PostgresConversationSearchRepository(
     private fun PreparedStatement.bindSearch(
         request: ConversationSearchRequest,
         readableProjectIds: Set<Project.Id>,
+        participantUserId: User.Id,
         cursor: SearchCursor?,
         connection: Connection,
     ) {
@@ -200,11 +238,13 @@ class PostgresConversationSearchRepository(
         setString(index++, normalizedQuery)
         setString(index++, normalizedQuery.sqlLikePattern())
         setArray(index++, connection.createArrayOf("text", readableProjectIds.map { it.value }.toTypedArray()))
+        setString(index++, participantUserId.value)
         setArray(index++, connection.createArrayOf("text", request.roles.map { it.name }.toTypedArray()))
         request.projectId?.let { setString(index++, it.value) }
         request.conversationId?.let { setString(index++, it.value) }
         if (request.includeMetadataMatches) {
             setArray(index++, connection.createArrayOf("text", readableProjectIds.map { it.value }.toTypedArray()))
+            setString(index++, participantUserId.value)
             request.projectId?.let { setString(index++, it.value) }
             request.conversationId?.let { setString(index++, it.value) }
         }
@@ -228,7 +268,18 @@ class PostgresConversationSearchRepository(
             conversation = Conversation(
                 id = Conversation.Id(getString("conversation_id")),
                 projectId = Project.Id(getString("project_id")),
-                agentDefinitionId = com.gromozeka.domain.model.AgentDefinition.Id(getString("agent_definition_id")),
+                participants = buildSet {
+                    getArray("user_participant_ids").stringValues().forEach { userId ->
+                        add(Conversation.Participant.User(com.gromozeka.domain.model.User.Id(userId)))
+                    }
+                    getArray("agent_participant_ids").stringValues().forEach { agentId ->
+                        add(
+                            Conversation.Participant.Agent(
+                                com.gromozeka.domain.model.AgentDefinition.Id(agentId)
+                            )
+                        )
+                    }
+                },
                 displayName = getString("display_name"),
                 currentThread = Conversation.Thread.Id(getString("current_thread_id")),
                 createdAt = getTimestamp("conversation_created_at").toKotlinInstant(),
@@ -292,3 +343,6 @@ private fun String.normalizeExcerpt(): String = replace(Regex("\\s+"), " ").trim
 private fun Timestamp.toKotlinInstant(): Instant = toInstant().let { instant ->
     Instant.fromEpochSeconds(instant.epochSecond, instant.nano)
 }
+
+private fun java.sql.Array.stringValues(): List<String> =
+    (array as Array<*>).map { it as String }

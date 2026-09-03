@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
@@ -64,12 +65,18 @@ class BackgroundActivityCompletionApplicationService(
                 )
             }
         }
-        val selectedCandidates = (commandCandidates + monitorCandidates)
+        val sortedCandidates = (commandCandidates + monitorCandidates)
             .sortedWith(
                 compareBy<DeliveryCandidate> { it.occurredAt }
                     .thenBy { it.stableKey }
             )
-            .selectBatch()
+            .toList()
+        val selectedAgentId = sortedCandidates.firstOrNull()?.agentDefinitionId
+        val selectedCandidates = selectedAgentId?.let { agentId ->
+            sortedCandidates.asSequence()
+                .filter { it.agentDefinitionId == agentId }
+                .selectBatch()
+        }.orEmpty()
         val commandTasks = selectedCandidates
             .filterIsInstance<DeliveryCandidate.Command>()
             .map(DeliveryCandidate.Command::task)
@@ -132,6 +139,11 @@ class BackgroundActivityCompletionApplicationService(
 
         val resultMessageId: Conversation.Message.Id
             get() = messages.last().id
+
+        val agentDefinitionId: AgentDefinition.Id
+            get() = commandTasks.firstNotNullOfOrNull(CommandTask::agentDefinitionId)
+                ?: monitorDeliveries.firstNotNullOfOrNull { it.monitor.agentDefinitionId }
+                ?: error("Empty background activity batch has no agent")
     }
 
     data class MonitorDelivery(
@@ -357,6 +369,7 @@ class BackgroundActivityCompletionApplicationService(
             }
 
     private sealed interface DeliveryCandidate {
+        val agentDefinitionId: AgentDefinition.Id
         val occurredAt: Instant
         val payloadBytes: Int
         val stableKey: String
@@ -366,6 +379,7 @@ class BackgroundActivityCompletionApplicationService(
             override val occurredAt: Instant,
             override val payloadBytes: Int,
         ) : DeliveryCandidate {
+            override val agentDefinitionId: AgentDefinition.Id = requireNotNull(task.agentDefinitionId)
             override val stableKey: String = "command:${task.id.value}"
         }
 
@@ -374,6 +388,7 @@ class BackgroundActivityCompletionApplicationService(
             override val occurredAt: Instant,
             override val payloadBytes: Int,
         ) : DeliveryCandidate {
+            override val agentDefinitionId: AgentDefinition.Id = requireNotNull(delivery.monitor.agentDefinitionId)
             override val stableKey: String = "monitor:${delivery.monitor.id.value}"
         }
     }

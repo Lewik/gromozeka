@@ -327,7 +327,8 @@ class ConversationRuntimeExecutor(
                 publishRuntimeEvent(
                     ConversationRuntimeEvent.ExecutionCompleted(
                         conversationId = task.conversationId,
-                        shouldNotifyUser = outcome !is ConversationRuntimeTaskOutcome.HistoryChanged,
+                        shouldNotifyUser = outcome !is ConversationRuntimeTaskOutcome.HistoryChanged &&
+                            outcome != ConversationRuntimeTaskOutcome.CompleteWithoutNotification,
                     )
                 )
             }
