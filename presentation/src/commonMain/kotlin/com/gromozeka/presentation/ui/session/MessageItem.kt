@@ -123,7 +123,7 @@ internal sealed interface MessageSegment {
             require(calls.size >= 2) { "A tool activity group must contain at least two calls" }
         }
 
-        override val key: String = "tool-group:${calls.first().content.id.value}"
+        override val key: String = "${calls.first().contentIndex}:content"
     }
 
     data class Instructions(
@@ -365,6 +365,7 @@ internal fun MessageItem(
     isSelected: Boolean = false,
     onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit = { _, _ -> },
+    onManualContentResize: () -> Unit = {},
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     val message = entry.message
@@ -447,6 +448,7 @@ internal fun MessageItem(
                         toolResultsMap = toolResultsMap,
                         workspaceRootPath = workspaceRootPath,
                         onToggleContentItemCollapse = onToggleContentItemCollapse,
+                        onManualContentResize = onManualContentResize,
                         loadArtifactContent = loadArtifactContent,
                     )
                 }
@@ -494,6 +496,7 @@ private fun MessageSegmentContent(
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     workspaceRootPath: String?,
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
+    onManualContentResize: () -> Unit,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (val segment = entry.segment) {
@@ -504,6 +507,7 @@ private fun MessageSegmentContent(
             isFirstInContent = segment.isFirstInContent,
             isLastInContent = segment.isLastInContent,
             onToggleContentItemCollapse = onToggleContentItemCollapse,
+            onManualContentResize = onManualContentResize,
         ) {
             GromozekaMarkdownNode(
                 state = segment.state,
@@ -519,6 +523,7 @@ private fun MessageSegmentContent(
             isFirstInContent = segment.isFirstInContent,
             isLastInContent = segment.isLastInContent,
             onToggleContentItemCollapse = onToggleContentItemCollapse,
+            onManualContentResize = onManualContentResize,
         ) {
             Text(text = segment.text)
         }
@@ -527,12 +532,14 @@ private fun MessageSegmentContent(
             messageId = entry.message.id,
             segment = segment,
             onToggleContentItemCollapse = onToggleContentItemCollapse,
+            onManualContentResize = onManualContentResize,
         )
 
         is MessageSegment.Content -> GenericContentItem(
             content = segment.content,
             toolResultsMap = toolResultsMap,
             workspaceRootPath = workspaceRootPath,
+            onManualContentResize = onManualContentResize,
             loadArtifactContent = loadArtifactContent,
         )
 
@@ -540,6 +547,7 @@ private fun MessageSegmentContent(
             group = segment,
             toolResultsMap = toolResultsMap,
             workspaceRootPath = workspaceRootPath,
+            onManualContentResize = onManualContentResize,
             loadArtifactContent = loadArtifactContent,
         )
 
@@ -562,6 +570,7 @@ private fun MarkdownSegmentLayout(
     isFirstInContent: Boolean,
     isLastInContent: Boolean,
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
+    onManualContentResize: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     when (kind) {
@@ -579,7 +588,10 @@ private fun MarkdownSegmentLayout(
                     if (isFirstInContent) {
                         CollapseButton(
                             isCollapsed = false,
-                            onClick = { onToggleContentItemCollapse(messageId, contentIndex) },
+                            onClick = {
+                                onManualContentResize()
+                                onToggleContentItemCollapse(messageId, contentIndex)
+                            },
                         )
                     }
                 }
@@ -612,7 +624,10 @@ private fun MarkdownSegmentLayout(
                     if (isFirstInContent) {
                         CollapseButton(
                             isCollapsed = false,
-                            onClick = { onToggleContentItemCollapse(messageId, contentIndex) },
+                            onClick = {
+                                onManualContentResize()
+                                onToggleContentItemCollapse(messageId, contentIndex)
+                            },
                         )
                     }
                 }
@@ -639,6 +654,7 @@ private fun CollapsedMarkdownContent(
     messageId: Conversation.Message.Id,
     segment: MessageSegment.CollapsedMarkdown,
     onToggleContentItemCollapse: (Conversation.Message.Id, Int) -> Unit,
+    onManualContentResize: () -> Unit,
 ) {
     val backgroundModifier = if (segment.kind == MarkdownKind.THINKING) {
         Modifier.background(
@@ -665,7 +681,10 @@ private fun CollapsedMarkdownContent(
             }
             CollapseButton(
                 isCollapsed = true,
-                onClick = { onToggleContentItemCollapse(messageId, segment.contentIndex) },
+                onClick = {
+                    onManualContentResize()
+                    onToggleContentItemCollapse(messageId, segment.contentIndex)
+                },
             )
         }
     }
@@ -696,6 +715,7 @@ private fun GenericContentItem(
     content: Conversation.Message.ContentItem,
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     workspaceRootPath: String?,
+    onManualContentResize: () -> Unit,
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray,
 ) {
     when (content) {
@@ -703,6 +723,7 @@ private fun GenericContentItem(
             toolCall = content.call,
             toolResult = toolResultsMap[content.id.value],
             workspaceRootPath = workspaceRootPath,
+            onManualContentResize = onManualContentResize,
             loadArtifactContent = loadArtifactContent,
         )
 

@@ -19,7 +19,7 @@ class ToolCallGroupingTest {
         assertEquals(1, grouped.size)
         val group = assertIs<MessageSegment.ToolActivityGroup>(grouped.single().segment)
         assertEquals(listOf("call-1", "call-2", "call-3"), group.calls.map { it.content.id.value })
-        assertEquals("message-1:tool-group:call-1", grouped.single().key)
+        assertEquals(entries(firstMessage).first().key, grouped.single().key)
     }
 
     @Test

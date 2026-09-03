@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,7 +50,7 @@ internal fun <T> FollowLatestLazyColumn(
     onFocusConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    itemContent: @Composable LazyItemScope.(T) -> Unit,
+    itemContent: @Composable LazyItemScope.(T, pauseFollowingLatest: () -> Unit) -> Unit,
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -59,9 +60,19 @@ internal fun <T> FollowLatestLazyColumn(
     var previousItemKeys by remember { mutableStateOf<List<Any>?>(null) }
     var previousUnreadKeys by remember { mutableStateOf<Set<Any>?>(null) }
     var previousContentRevision by remember { mutableStateOf<Any?>(null) }
+    var followScrollsInProgress by remember { mutableIntStateOf(0) }
     val isAtBottom by remember {
         derivedStateOf {
             listState.layoutInfo.totalItemsCount == 0 || !listState.canScrollForward
+        }
+    }
+
+    suspend fun performFollowLatestScroll(itemCount: Int) {
+        followScrollsInProgress += 1
+        try {
+            listState.scrollToLatest(itemCount)
+        } finally {
+            followScrollsInProgress -= 1
         }
     }
 
@@ -72,13 +83,18 @@ internal fun <T> FollowLatestLazyColumn(
                 position = listState.position(),
                 isAtBottom = listState.layoutInfo.totalItemsCount == 0 || !listState.canScrollForward,
                 isScrolling = listState.isScrollInProgress,
+                isFollowScroll = followScrollsInProgress > 0,
             )
         }.collect { observation ->
             if (observation.isAtBottom) {
                 followingLatest = true
                 hasUnreadContent = false
                 unreadKeys = emptySet()
-            } else if (observation.isScrolling && observation.position < previousPosition) {
+            } else if (
+                observation.isScrolling &&
+                !observation.isFollowScroll &&
+                observation.position < previousPosition
+            ) {
                 followingLatest = false
             }
             previousPosition = observation.position
@@ -106,7 +122,7 @@ internal fun <T> FollowLatestLazyColumn(
                 unreadKeys = emptySet()
             }
 
-            followingLatest -> listState.scrollToLatest(items.size)
+            followingLatest -> performFollowLatestScroll(items.size)
             contentChanged -> {
                 hasUnreadContent = true
                 unreadKeys = unreadKeys + addedUnreadKeys
@@ -141,12 +157,13 @@ internal fun <T> FollowLatestLazyColumn(
             .drop(1)
             .collect { revision ->
                 if (followingLatest && revision.totalItemsCount > 0) {
-                    listState.scrollToLatest(revision.totalItemsCount)
+                    performFollowLatestScroll(revision.totalItemsCount)
                 }
             }
     }
 
     Box(modifier = modifier) {
+        val pauseFollowingLatest = { followingLatest = false }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -154,7 +171,9 @@ internal fun <T> FollowLatestLazyColumn(
             state = listState,
             contentPadding = contentPadding,
         ) {
-            items(items = items, key = itemKey, itemContent = itemContent)
+            items(items = items, key = itemKey) { item ->
+                itemContent(item, pauseFollowingLatest)
+            }
         }
 
         if (!isAtBottom) {
@@ -166,7 +185,7 @@ internal fun <T> FollowLatestLazyColumn(
                     hasUnreadContent = false
                     unreadKeys = emptySet()
                     coroutineScope.launch {
-                        listState.scrollToLatest(items.size)
+                        performFollowLatestScroll(items.size)
                     }
                 },
             )
@@ -207,7 +226,10 @@ private fun BoxScope.ScrollToLatestButton(
 
 private suspend fun LazyListState.scrollToLatest(itemCount: Int) {
     if (itemCount <= 0) return
-    scrollToItem(itemCount - 1)
+    val latestIndex = itemCount - 1
+    if (layoutInfo.visibleItemsInfo.none { it.index == latestIndex }) {
+        scrollToItem(latestIndex)
+    }
     if (canScrollForward) {
         scrollBy(Int.MAX_VALUE.toFloat())
     }
@@ -230,6 +252,7 @@ private data class ScrollObservation(
     val position: ScrollPosition,
     val isAtBottom: Boolean,
     val isScrolling: Boolean,
+    val isFollowScroll: Boolean,
 )
 
 private data class LayoutRevision(
