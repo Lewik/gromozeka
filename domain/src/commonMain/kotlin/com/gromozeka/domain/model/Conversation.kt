@@ -40,7 +40,9 @@ data class Conversation(
     val updatedAt: Instant,
 ) {
     init {
-        require(participants.isNotEmpty()) { "Conversation must have at least one participant" }
+        require(participants.any { it is Participant.User }) {
+            "Conversation must have at least one user participant"
+        }
     }
 
     /**

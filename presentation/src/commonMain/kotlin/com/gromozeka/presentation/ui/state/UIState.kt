@@ -1,7 +1,6 @@
 package com.gromozeka.presentation.ui.state
 
 import com.gromozeka.domain.model.ConversationInitiator
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInputContext
@@ -41,7 +40,6 @@ data class UIState(
         val isWaitingForResponse: Boolean = false,
         val tabId: String,
         val parentTabId: String? = null,
-        val agent: AgentDefinition,
         val initiator: ConversationInitiator = ConversationInitiator.User,
         val customPrompts: List<String> = emptyList(),
 

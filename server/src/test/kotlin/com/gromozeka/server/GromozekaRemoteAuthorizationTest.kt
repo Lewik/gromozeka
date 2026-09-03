@@ -209,7 +209,10 @@ class GromozekaRemoteAuthorizationTest {
     fun `project membership does not grant access to a disconnected conversation`() = runBlocking {
         val user = testUser()
         val conversation = testConversation().copy(
-            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent"))),
+            participants = setOf(
+                Conversation.Participant.User(User.Id("another-user")),
+                Conversation.Participant.Agent(AgentDefinition.Id("agent")),
+            ),
         )
         Mockito.`when`(conversationService.findById(conversation.id)).thenReturn(conversation)
 

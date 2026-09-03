@@ -42,6 +42,7 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.ConversationExecutionState
@@ -69,7 +70,7 @@ import kotlin.time.Duration.Companion.ZERO
 @Composable
 fun ConversationRuntimePanel(
     isVisible: Boolean,
-    currentAgent: AgentDefinition,
+    agentService: AgentDomainService,
     aiConfigurationProvider: AiConfigurationProvider,
     aiSubscriptionQuotaService: AiSubscriptionQuotaService,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
@@ -96,6 +97,15 @@ fun ConversationRuntimePanel(
 ) {
     val translation = LocalTranslation.current.runtime
     val aiCatalogSnapshot by aiConfigurationProvider.snapshotFlow.collectAsState()
+    val activeAgentId = runtimeSnapshot?.activeTask?.payload?.agentDefinitionIdOrNull()
+    val agentLookupKey = runtimeSnapshot?.conversationId to activeAgentId
+    val currentAgent by produceState<AgentDefinition?>(null, isVisible, agentLookupKey) {
+        value = if (isVisible && activeAgentId != null) {
+            runCatching { agentService.findById(activeAgentId) }.getOrNull()
+        } else {
+            null
+        }
+    }
 
     AnimatedVisibility(
         visible = isVisible,
@@ -134,17 +144,19 @@ fun ConversationRuntimePanel(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    RuntimeConfigurationCard(
-                        agent = currentAgent,
-                        aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
-                    )
-                    RuntimeUsageCard(
-                        isVisible = isVisible,
-                        agent = currentAgent,
-                        aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
-                        tokenStats = tokenStats,
-                        quotaService = aiSubscriptionQuotaService,
-                    )
+                    currentAgent?.let { agent ->
+                        RuntimeConfigurationCard(
+                            agent = agent,
+                            aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
+                        )
+                        RuntimeUsageCard(
+                            isVisible = isVisible,
+                            agent = agent,
+                            aiCatalog = aiCatalogSnapshot?.catalog ?: aiConfigurationProvider.catalog,
+                            tokenStats = tokenStats,
+                            quotaService = aiSubscriptionQuotaService,
+                        )
+                    }
                     TokenStatisticsTable(
                         tokenStats = tokenStats,
                         modifier = Modifier.fillMaxWidth(),
@@ -168,7 +180,7 @@ fun ConversationRuntimePanel(
                 )
 
                 RuntimeStatusFooter(
-                    agentName = currentAgent.name,
+                    agentName = currentAgent?.name,
                     isWaitingForResponse = isWaitingForResponse,
                     executionPauseRequested = executionPauseRequested,
                     pttState = pttState,
@@ -923,7 +935,11 @@ private fun PendingMessageGroup(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (isWaitingForResponse && message.placement == QueuedMessagePlacement.END_OF_TURN) {
+                if (
+                    isWaitingForResponse &&
+                    message.agentDefinitionId != null &&
+                    message.placement == QueuedMessagePlacement.END_OF_TURN
+                ) {
                     TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
                         Text(translation.runtime.currentTurnLabel)
                     }
@@ -942,7 +958,7 @@ private fun PendingMessageGroup(
 
 @Composable
 private fun RuntimeStatusFooter(
-    agentName: String,
+    agentName: String?,
     isWaitingForResponse: Boolean,
     executionPauseRequested: Boolean,
     pttState: PttState,
@@ -996,7 +1012,8 @@ private fun RuntimeStatusFooter(
         runningTools.size == 1 -> runningTools.single()
         runningTools.size > 1 -> runningTools.joinToString(" · ")
         activeTask != null -> activeTask.payload.runtimeStatusLabel(agentName, translation)
-        isWaitingForResponse -> "$agentName ${translation.agentWorkingStatus}"
+        isWaitingForResponse -> agentName?.let { "$it ${translation.agentWorkingStatus}" }
+            ?: translation.agentInvocationTask
         activeCommands.size == 1 -> translation.commandRunningStatus
         activeCommands.size > 1 -> "${translation.commandsRunningStatus}: ${activeCommands.size}"
         activeMonitors.size == 1 -> translation.monitorRunningStatus
@@ -1113,11 +1130,12 @@ private fun ConversationRuntimeTask.Payload.runtimeLabel(translation: Translatio
     }
 
 private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
-    agentName: String,
+    agentName: String?,
     translation: Translation.RuntimeTranslation,
 ): String = when (this) {
     is ConversationRuntimeTask.Payload.PostMessage -> translation.messagePostTask
-    is ConversationRuntimeTask.Payload.AgentInvocation -> "$agentName ${translation.agentWorkingStatus}"
+    is ConversationRuntimeTask.Payload.AgentInvocation -> agentName?.let { "$it ${translation.agentWorkingStatus}" }
+        ?: translation.agentInvocationTask
     is ConversationRuntimeTask.Payload.HistoryMutation -> translation.historyMutationStatus
     is ConversationRuntimeTask.Payload.LlmCall -> translation.modelRequestStatus
     is ConversationRuntimeTask.Payload.ToolExecution -> translation.toolExecutionStatus
@@ -1126,6 +1144,20 @@ private fun ConversationRuntimeTask.Payload.runtimeStatusLabel(
     is ConversationRuntimeTask.Payload.MemoryRunCompletion -> translation.memoryRunCompletionStatus
     is ConversationRuntimeTask.Payload.BackgroundActivityCompletion -> translation.backgroundActivityDeliveryStatus
     is ConversationRuntimeTask.Payload.ExecutionIncident -> translation.executionIncidentStatus
+}
+
+private fun ConversationRuntimeTask.Payload.agentDefinitionIdOrNull(): AgentDefinition.Id? = when (this) {
+    is ConversationRuntimeTask.Payload.AgentInvocation -> agentDefinitionId
+    is ConversationRuntimeTask.Payload.LlmCall -> agentDefinitionId
+    is ConversationRuntimeTask.Payload.ToolExecution -> agentDefinitionId
+    is ConversationRuntimeTask.Payload.ToolResultProcessing -> agentDefinitionId
+    is ConversationRuntimeTask.Payload.MemoryRecall -> agentDefinitionId
+    is ConversationRuntimeTask.Payload.MemoryRunCompletion -> agentDefinitionId
+    is ConversationRuntimeTask.Payload.PostMessage,
+    is ConversationRuntimeTask.Payload.HistoryMutation,
+    is ConversationRuntimeTask.Payload.BackgroundActivityCompletion,
+    is ConversationRuntimeTask.Payload.ExecutionIncident,
+    -> null
 }
 
 private fun MemoryRun.Status.runtimeMemoryStatusLabel(translation: Translation.RuntimeTranslation): String =

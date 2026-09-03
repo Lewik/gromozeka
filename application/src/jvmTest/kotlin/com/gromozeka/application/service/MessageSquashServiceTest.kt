@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiCatalogSnapshot
 import com.gromozeka.domain.model.ai.AiConnection
@@ -185,7 +186,10 @@ class MessageSquashServiceTest {
         val conversation = Conversation(
             id = initialThread.conversationId,
             projectId = Project.Id("project"),
-            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent"))),
+            participants = setOf(
+                Conversation.Participant.User(User.Id("user")),
+                Conversation.Participant.Agent(AgentDefinition.Id("agent")),
+            ),
             displayName = "Test",
             currentThread = initialThread.id,
             createdAt = Clock.System.now(),

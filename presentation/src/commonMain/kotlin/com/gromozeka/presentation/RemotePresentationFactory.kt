@@ -116,7 +116,6 @@ suspend fun createRemoteAppComponents(
         attachmentAcquisitionController = attachmentAcquisitionController,
         artifactTransferService = remoteServices.artifactTransferService,
         defaultAgentProvider = remoteServices.defaultAgentProvider,
-        agentService = remoteServices.agentService,
         tokenStatsService = remoteServices.conversationTokenStatsService,
         conversationTabLayoutService = remoteServices.conversationTabLayoutService,
         messageInputClientPlatform = messageInputClientPlatform,

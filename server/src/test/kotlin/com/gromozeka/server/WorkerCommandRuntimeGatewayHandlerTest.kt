@@ -200,7 +200,10 @@ class WorkerCommandRuntimeGatewayHandlerTest {
         val conversation = Conversation(
             id = Conversation.Id("conversation-1"),
             projectId = project.id,
-            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent-1"))),
+            participants = setOf(
+                Conversation.Participant.User(User.Id("user-1")),
+                Conversation.Participant.Agent(AgentDefinition.Id("agent-1")),
+            ),
             currentThread = Conversation.Thread.Id("thread-1"),
             createdAt = now,
             updatedAt = now,

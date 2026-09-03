@@ -8,7 +8,6 @@ import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTabLayoutService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
-import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
@@ -31,7 +30,6 @@ open class AppViewModel(
     internal val attachmentAcquisitionController: AttachmentAcquisitionController,
     private val artifactTransferService: ArtifactTransferService,
     private val defaultAgentProvider: DefaultAgentProvider,
-    private val agentService: AgentDomainService,
     private val tokenStatsService: ConversationTokenStatsService,
     private val conversationTabLayoutService: ConversationTabLayoutService,
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
@@ -69,7 +67,7 @@ open class AppViewModel(
                     _currentTabIndex.value = existingIndex
                 }
                 initialMessage?.let { message ->
-                    _tabs.value[existingIndex].sendInitialMessage(message)
+                    _tabs.value[existingIndex].sendInitialMessage(message, agent?.id)
                 }
                 return existingIndex
             }
@@ -77,13 +75,18 @@ open class AppViewModel(
 
         val tabId = Tab.Id(uuid7())
 
-        val conversation = if (conversationId != null) {
+        val (conversation, initialAgentId) = if (conversationId != null) {
             val existing = conversationService.findById(conversationId)
                 ?: error("Conversation not found: $conversationId")
             require(existing.projectId == projectId) {
                 "Conversation ${conversationId.value} belongs to project ${existing.projectId.value}, not ${projectId.value}"
             }
-            existing
+            agent?.let {
+                require(Conversation.Participant.Agent(it.id) in existing.participants) {
+                    "Agent ${it.id.value} is not connected to conversation ${existing.id.value}"
+                }
+            }
+            existing to agent?.id
         } else {
             val newConversationAgent = agent ?: defaultAgentProvider.getDefault()
             conversationService.create(
@@ -92,20 +95,8 @@ open class AppViewModel(
                     Conversation.Participant.User(currentUserAuthor.userId),
                     Conversation.Participant.Agent(newConversationAgent.id),
                 ),
-            )
+            ) to agent?.id
         }
-        val conversationAgentIds = conversation.participants
-            .filterIsInstance<Conversation.Participant.Agent>()
-            .mapTo(mutableSetOf(), Conversation.Participant.Agent::agentDefinitionId)
-        agent?.let {
-            require(it.id in conversationAgentIds) {
-                "Agent ${it.id.value} is not connected to conversation ${conversation.id.value}"
-            }
-        }
-        val selectedAgentId = agent?.id ?: conversationAgentIds.minByOrNull { it.value }
-            ?: error("Conversation ${conversation.id.value} has no connected agent")
-        val tabAgent = agentService.findById(selectedAgentId)
-            ?: error("Agent not found for conversation ${conversation.id.value}: ${selectedAgentId.value}")
         mergeConversationSnapshots(listOf(conversation))
 
         val parentTabId =
@@ -114,7 +105,6 @@ open class AppViewModel(
 
         val initialTabUiState = newTabUiState(
             conversation = conversation,
-            agent = tabAgent,
             tabId = tabId.value,
             parentTabId = parentTabId,
             initiator = initiator,
@@ -135,7 +125,7 @@ open class AppViewModel(
         }
 
         if (initialMessage != null) {
-            tabViewModel.sendInitialMessage(initialMessage)
+            tabViewModel.sendInitialMessage(initialMessage, initialAgentId)
         }
 
         return newTabIndex
@@ -189,7 +179,7 @@ open class AppViewModel(
         return TabManager.TabInfo(
             tabId = Tab.Id(uiState.tabId),
             conversationId = this.conversationId,
-            agentId = uiState.agent.id,
+            agentIds = requireConversation().connectedAgentIds(),
             projectId = this.projectId,
             isWaitingForResponse = uiState.isWaitingForResponse,
             parentTabId = uiState.parentTabId?.let { Tab.Id(it) }
@@ -208,7 +198,9 @@ open class AppViewModel(
     ) {
         val tab = findTabByTabId(tabId)
             ?: throw IllegalArgumentException("Tab not found: ${tabId.value}")
-        tab.sendMessageToSession(message, instructions)
+        val targetAgentId = tab.requireConversation().connectedAgentIds().singleOrNull()
+            ?: error("Sending to a tab requires exactly one connected agent")
+        tab.invokeAgent(message, instructions, targetAgentId)
     }
 
     override suspend fun listTabs(): List<TabManager.TabInfo> {
@@ -265,23 +257,12 @@ open class AppViewModel(
     ): TabViewModel? = runCatching {
         val conversation = conversationService.findById(conversationId)
             ?: error("Conversation not found: ${conversationId.value}")
-        val connectedAgentIds = conversation.participants
-            .filterIsInstance<Conversation.Participant.Agent>()
-            .mapTo(mutableSetOf(), Conversation.Participant.Agent::agentDefinitionId)
-        val connectedAgentId = savedTab?.agent?.id
-            ?.takeIf { it in connectedAgentIds }
-            ?: connectedAgentIds.minByOrNull { it.value }
-            ?: error("Conversation ${conversation.id.value} has no connected agent")
-        val agent = agentService.findById(connectedAgentId)
-            ?: error("Agent not found for conversation ${conversation.id.value}: ${connectedAgentId.value}")
         mergeConversationSnapshots(listOf(conversation))
         val uiState = savedTab?.copy(
             projectId = conversation.projectId,
             conversationId = conversation.id,
-            agent = agent,
         ) ?: newTabUiState(
             conversation = conversation,
-            agent = agent,
             tabId = uuid7(),
             parentTabId = null,
             initiator = ConversationInitiator.User,
@@ -293,7 +274,6 @@ open class AppViewModel(
 
     private fun newTabUiState(
         conversation: Conversation,
-        agent: AgentDefinition,
         tabId: String,
         parentTabId: String?,
         initiator: ConversationInitiator,
@@ -305,7 +285,6 @@ open class AppViewModel(
             .toSet(),
         tabId = tabId,
         parentTabId = parentTabId,
-        agent = agent,
         initiator = initiator,
     )
 
@@ -329,17 +308,32 @@ open class AppViewModel(
         turnCompletionNotificationService = turnCompletionNotificationService,
     )
 
-    private suspend fun TabViewModel.sendInitialMessage(message: Conversation.Message) {
+    private suspend fun TabViewModel.sendInitialMessage(
+        message: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id?,
+    ) {
         val messageContent = message.content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
             .firstOrNull()?.text ?: "Ready to work on this project"
         log.debug("Sending initial message with ${messageContent.length} characters")
         try {
-            sendMessageToSession(messageContent, message.instructions)
+            if (agentDefinitionId == null) {
+                sendMessageToSession(messageContent, message.instructions)
+            } else {
+                invokeAgent(messageContent, message.instructions, agentDefinitionId)
+            }
             log.info("Initial message sent successfully")
         } catch (error: Exception) {
             log.warn(error, "Failed to send initial message: ${error.message}")
         }
     }
+
+    private suspend fun TabViewModel.requireConversation(): Conversation =
+        conversationService.findById(conversationId)
+            ?: error("Conversation not found: ${conversationId.value}")
+
+    private fun Conversation.connectedAgentIds(): Set<AgentDefinition.Id> =
+        participants.filterIsInstance<Conversation.Participant.Agent>()
+            .mapTo(mutableSetOf(), Conversation.Participant.Agent::agentDefinitionId)
 
     private fun removeLocalTab(conversationId: Conversation.Id) {
         val tabList = _tabs.value

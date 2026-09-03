@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ConversationSearchHit
 import com.gromozeka.domain.model.ConversationSearchPage
 import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.ConversationSearchService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
@@ -93,7 +94,10 @@ class ConversationSearchViewModelTest {
         val conversation = Conversation(
             id = Conversation.Id("conversation-1"),
             projectId = project.id,
-            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent-1"))),
+            participants = setOf(
+                Conversation.Participant.User(User.Id("user-1")),
+                Conversation.Participant.Agent(AgentDefinition.Id("agent-1")),
+            ),
             displayName = "Conversation",
             currentThread = Conversation.Thread.Id("thread-1"),
             createdAt = timestamp,

@@ -67,9 +67,6 @@ fun SessionScreen(
     showRuntimePanel: Boolean,
     onShowRuntimePanelChange: (Boolean) -> Unit,
 
-    // Tab Settings Panel
-    onShowPromptsPanelChange: (Boolean) -> Unit,
-
     // Context extraction
     onExtractContexts: (() -> Unit)? = null,
 
@@ -206,17 +203,6 @@ fun SessionScreen(
 
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-
-                        // Agent button
-                        CompactButton(
-                            onClick = { onShowPromptsPanelChange(true) },
-                            modifier = Modifier.testTag(UiTestTag.AgentButton.value),
-                            tooltip = "Select agent",
-                        ) {
-                            Icon(Icons.Default.Psychology, contentDescription = "Select agent")
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
 
                         CompactButton(
                             onClick = { onShowRuntimePanelChange(!showRuntimePanel) },

@@ -220,7 +220,9 @@ class ConversationApplicationService(
         projectId: Project.Id,
         participants: Set<Conversation.Participant>,
     ) {
-        require(participants.isNotEmpty()) { "Conversation must have at least one participant" }
+        require(participants.any { it is Conversation.Participant.User }) {
+            "Conversation must have at least one user participant"
+        }
         participants.forEach { participant ->
             when (participant) {
                 is Conversation.Participant.User ->

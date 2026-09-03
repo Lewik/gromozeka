@@ -117,7 +117,10 @@ class ConversationTabLayoutApplicationServiceTest {
     private fun conversation(id: String): Conversation = Conversation(
         id = Conversation.Id(id),
         projectId = projectId,
-        participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent-1"))),
+        participants = setOf(
+            Conversation.Participant.User(userId),
+            Conversation.Participant.Agent(AgentDefinition.Id("agent-1")),
+        ),
         currentThread = Conversation.Thread.Id("thread-$id"),
         createdAt = now,
         updatedAt = now,

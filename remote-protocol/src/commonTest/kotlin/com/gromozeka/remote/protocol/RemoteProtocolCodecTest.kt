@@ -62,7 +62,10 @@ class RemoteProtocolCodecTest {
         val conversation = Conversation(
             id = Conversation.Id("conversation-1"),
             projectId = project.id,
-            participants = setOf(Conversation.Participant.Agent(AgentDefinition.Id("agent-1"))),
+            participants = setOf(
+                Conversation.Participant.User(User.Id("user-1")),
+                Conversation.Participant.Agent(AgentDefinition.Id("agent-1")),
+            ),
             displayName = "Conversation",
             currentThread = Conversation.Thread.Id("thread-1"),
             createdAt = timestamp,

@@ -50,7 +50,8 @@ interface TabManager {
      * - System creates tab → initiator = ConversationInitiator.System
      * 
      * @param projectId logical project containing the conversation
-     * @param agent agent to handle conversation (null = default agent)
+     * @param agent explicit agent to connect and invoke for the initial message;
+     * null connects the default agent without invoking it
      * @param conversationId existing conversation to resume (null = create new)
      * @param initialMessage optional initial message to send
      * @param setAsCurrent whether to switch focus to new tab
@@ -130,7 +131,7 @@ interface TabManager {
     data class TabInfo(
         val tabId: Tab.Id,
         val conversationId: Conversation.Id,
-        val agentId: AgentDefinition.Id,
+        val agentIds: Set<AgentDefinition.Id>,
         val projectId: Project.Id,
         val isWaitingForResponse: Boolean,
         val parentTabId: Tab.Id?

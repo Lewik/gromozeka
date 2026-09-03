@@ -17,6 +17,7 @@ import com.gromozeka.application.service.memory.NoOpMemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.forMemoryPipeline
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.toRuntimeContext
 import com.gromozeka.domain.model.ai.AiRuntimeOverrides
@@ -50,7 +51,9 @@ import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.AgentPromptAssemblyService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
-import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.AuthenticationService
+import com.gromozeka.domain.service.FirstUserBootstrapToken
+import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.WorkspaceDomainService
 import com.gromozeka.domain.tool.AiToolCallback
@@ -167,7 +170,7 @@ class MemoryRealModelE2eTest {
             val memoryOperationPreparer = context.getBean(MemoryOperationPreparer::class.java)
             val agentPromptAssemblyService = context.getBean(AgentPromptAssemblyService::class.java)
             val aiToolProvider = context.getBean(AiToolProvider::class.java)
-            val projectDomainService = context.getBean(ProjectDomainService::class.java)
+            val projectAccessService = context.getBean(ProjectAccessService::class.java)
             val promptDomainService = context.getBean(PromptDomainService::class.java)
             val agentRepository = context.getBean(AgentRepository::class.java)
             val workspaceDomainService = context.getBean(WorkspaceDomainService::class.java)
@@ -176,6 +179,17 @@ class MemoryRealModelE2eTest {
             val traceCollector = context.getBean(MemoryE2eReadTraceCollector::class.java)
             val writeTraceCollector = context.getBean(MemoryE2eWriteTraceCollector::class.java)
             val maintenanceTraceCollector = context.getBean(MemoryE2eMaintenanceTraceCollector::class.java)
+            val actorUser = runBlocking {
+                val bootstrapToken = context.getBean(FirstUserBootstrapToken::class.java).currentToken()
+                    ?: error("Memory E2E bootstrap token is unavailable")
+                context.getBean(AuthenticationService::class.java).createFirstUser(
+                    bootstrapToken = bootstrapToken,
+                    username = "memory-e2e",
+                    displayName = "Memory E2E",
+                    password = "memory-e2e-password".toCharArray(),
+                    clientLabel = "memory-e2e",
+                ).user
+            }
             val artifactRootDirectory = Path.of("build", "test-artifacts", "memory-e2e")
                 .resolve(this::class.simpleName.orEmpty().sanitizePathSegment())
             Files.createDirectories(artifactRootDirectory)
@@ -209,7 +223,8 @@ class MemoryRealModelE2eTest {
                                 memoryOperationPreparer = memoryOperationPreparer,
                                 agentPromptAssemblyService = agentPromptAssemblyService,
                                 aiToolProvider = aiToolProvider,
-                                projectDomainService = projectDomainService,
+                                projectAccessService = projectAccessService,
+                                actorUserId = actorUser.id,
                                 promptDomainService = promptDomainService,
                                 agentRepository = agentRepository,
                                 workspaceDomainService = workspaceDomainService,
@@ -372,7 +387,8 @@ class MemoryRealModelE2eTest {
         memoryOperationPreparer: MemoryOperationPreparer,
         agentPromptAssemblyService: AgentPromptAssemblyService,
         aiToolProvider: AiToolProvider,
-        projectDomainService: ProjectDomainService,
+        projectAccessService: ProjectAccessService,
+        actorUserId: User.Id,
         promptDomainService: PromptDomainService,
         agentRepository: AgentRepository,
         workspaceDomainService: WorkspaceDomainService,
@@ -388,7 +404,8 @@ class MemoryRealModelE2eTest {
             .resolve("projects")
             .resolve(case.id.sanitizePathSegment())
         Files.createDirectories(workspaceRootPath)
-        val project = projectDomainService.create(
+        val project = projectAccessService.create(
+            actorUserId = actorUserId,
             name = "Memory E2E ${case.id}",
             description = case.description,
         )
@@ -417,7 +434,10 @@ class MemoryRealModelE2eTest {
             conversations[sessionId]?.let { return it }
             val created = conversationService.create(
                 projectId = project.id,
-                participants = setOf(Conversation.Participant.Agent(agent.id)),
+                participants = setOf(
+                    Conversation.Participant.User(actorUserId),
+                    Conversation.Participant.Agent(agent.id),
+                ),
                 displayName = "${case.id}::$sessionId",
             )
             conversations[sessionId] = created
