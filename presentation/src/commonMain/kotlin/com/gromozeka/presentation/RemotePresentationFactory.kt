@@ -109,6 +109,7 @@ suspend fun createRemoteAppComponents(
             userId = authenticatedUser.id,
             displayName = authenticatedUser.displayName,
         ),
+        agentService = remoteServices.agentService,
         conversationRuntimeService = remoteServices.conversationRuntimeService,
         conversationService = remoteServices.conversationService,
         conversationHistoryService = remoteServices.conversationHistoryService,

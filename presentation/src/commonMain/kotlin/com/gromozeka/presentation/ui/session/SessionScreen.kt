@@ -94,6 +94,8 @@ fun SessionScreen(
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
+    val agentMentionCandidates by viewModel.agentMentionCandidates.collectAsState()
+    val messageSubmissionError by viewModel.messageSubmissionError.collectAsState()
     val messageSquashState by viewModel.messageSquashState.collectAsState()
     val suggestedRepliesOverride by viewModel.suggestedRepliesOverride.collectAsState()
     val suggestedRepliesRegeneratingFor by viewModel.suggestedRepliesRegeneratingFor.collectAsState()
@@ -594,6 +596,8 @@ fun SessionScreen(
                         onUserInputChange = { viewModel.updateUserInput(it) },
                         isWaitingForResponse = isWaitingForResponse,
                         pendingMessagesCount = pendingMessagesCount,
+                        agentMentionCandidates = agentMentionCandidates,
+                        messageSubmissionError = messageSubmissionError,
                         suggestedReplies = suggestedReplies,
                         suggestedRepliesRegenerating = suggestedRepliesRegeneratingFor ==
                             suggestedReplies?.sourceMessageId,

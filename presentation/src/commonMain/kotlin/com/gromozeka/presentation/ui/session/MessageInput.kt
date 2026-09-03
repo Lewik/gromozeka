@@ -16,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
@@ -37,6 +39,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.KeyboardShortcutBinding
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.presentation.ui.ClientPlatform
+import com.gromozeka.presentation.ui.AgentMentionCandidate
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
@@ -52,6 +55,8 @@ internal fun MessageInput(
     onUserInputChange: (String) -> Unit,
     isWaitingForResponse: Boolean,
     pendingMessagesCount: Int,
+    agentMentionCandidates: List<AgentMentionCandidate>,
+    messageSubmissionError: String?,
     suggestedReplies: SuggestedReplyOptions?,
     suggestedRepliesRegenerating: Boolean,
     onRegenerateSuggestedReplies: (Conversation.Message.Id) -> Unit,
@@ -86,9 +91,11 @@ internal fun MessageInput(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val inputFocusRequester = remember { FocusRequester() }
     val hapticFeedback = LocalHapticFeedback.current
     var inputFocused by remember { mutableStateOf(false) }
     var previousPttState by remember { mutableStateOf(pttState) }
+    var mentionFocusRequest by remember { mutableIntStateOf(0) }
     var textFieldValue by remember {
         mutableStateOf(TextFieldValue(userInput, selection = TextRange(userInput.length)))
     }
@@ -96,6 +103,13 @@ internal fun MessageInput(
     LaunchedEffect(userInput) {
         if (textFieldValue.text != userInput) {
             textFieldValue = TextFieldValue(userInput, selection = TextRange(userInput.length))
+        }
+    }
+
+    LaunchedEffect(mentionFocusRequest) {
+        if (mentionFocusRequest > 0) {
+            inputFocusRequester.requestFocus()
+            keyboardController?.show()
         }
     }
 
@@ -164,6 +178,23 @@ internal fun MessageInput(
             }
         }
 
+        messageSubmissionError?.takeIf(String::isNotBlank)?.let { error ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(UiTestTag.MessageSubmissionError.value),
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    text = error,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
         if (composerArtifacts.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -205,6 +236,56 @@ internal fun MessageInput(
             isRegenerating = suggestedRepliesRegenerating,
         )
 
+        val mentionSuggestions = remember(textFieldValue, agentMentionCandidates) {
+            findAgentMentionSuggestions(textFieldValue, agentMentionCandidates)
+        }
+        if (mentionSuggestions != null) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(UiTestTag.AgentMentionSuggestions.value),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = MaterialTheme.shapes.medium,
+                tonalElevation = 3.dp,
+            ) {
+                Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                    mentionSuggestions.candidates.take(8).forEach { candidate ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    textFieldValue = insertAgentMention(
+                                        textFieldValue,
+                                        mentionSuggestions.markerIndex,
+                                        candidate.mentionText,
+                                    )
+                                    onUserInputChange(textFieldValue.text)
+                                    mentionFocusRequest++
+                                }
+                                .testTag(UiTestTag.AgentMentionOption(candidate.agentDefinitionId.value).value)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(candidate.mentionText, style = MaterialTheme.typography.bodyMedium)
+                                Text(candidate.name, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text(
+                                text = if (candidate.connected) "Connected" else "Disconnected",
+                                color = if (candidate.connected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val actionAreaMaxWidth = maxWidth * 0.64f
 
@@ -219,6 +300,7 @@ internal fun MessageInput(
                         onUserInputChange(value.text)
                     },
                     modifier = Modifier
+                        .focusRequester(inputFocusRequester)
                         .onFocusChanged { inputFocused = it.isFocused }
                         .onPreviewKeyEvent { event ->
                             when {
@@ -468,6 +550,51 @@ internal fun MessageInput(
         }
     }
 }
+
+private data class AgentMentionSuggestions(
+    val markerIndex: Int,
+    val candidates: List<AgentMentionCandidate>,
+)
+
+private fun findAgentMentionSuggestions(
+    value: TextFieldValue,
+    candidates: List<AgentMentionCandidate>,
+): AgentMentionSuggestions? {
+    if (!value.selection.collapsed || candidates.isEmpty()) return null
+    val cursor = value.selection.start
+    val markerIndex = value.text.lastIndexOf('@', startIndex = cursor - 1)
+    if (markerIndex < 0) return null
+    if (markerIndex > 0 && !value.text[markerIndex - 1].isMentionBoundary()) return null
+
+    val typedMention = value.text.substring(markerIndex, cursor)
+    if ('\n' in typedMention || '\r' in typedMention) return null
+    if (candidates.any { candidate ->
+            typedMention.length > candidate.mentionText.length &&
+                typedMention.regionMatches(0, candidate.mentionText, 0, candidate.mentionText.length, ignoreCase = true) &&
+                typedMention[candidate.mentionText.length].isMentionBoundary()
+        }
+    ) {
+        return null
+    }
+
+    val matches = candidates.filter { candidate ->
+        candidate.mentionText.startsWith(typedMention, ignoreCase = true)
+    }
+    return matches.takeIf(List<*>::isNotEmpty)?.let { AgentMentionSuggestions(markerIndex, it) }
+}
+
+private fun insertAgentMention(
+    value: TextFieldValue,
+    markerIndex: Int,
+    mentionText: String,
+): TextFieldValue {
+    val replacement = "$mentionText "
+    val text = value.text.replaceRange(markerIndex, value.selection.start, replacement)
+    val cursor = markerIndex + replacement.length
+    return TextFieldValue(text, TextRange(cursor))
+}
+
+private fun Char.isMentionBoundary(): Boolean = !isLetterOrDigit() && this != '_'
 
 internal fun insertSuggestedReply(
     input: TextFieldValue,

@@ -2,6 +2,7 @@ package com.gromozeka.presentation.ui.viewmodel
 
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.repository.TabManager
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationRuntimeService
@@ -22,6 +23,7 @@ import kotlinx.coroutines.sync.withLock
 
 open class AppViewModel(
     private val currentUserAuthor: Conversation.Message.Author.User,
+    private val agentService: AgentDomainService,
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
     private val conversationHistoryService: ConversationHistoryService,
@@ -295,6 +297,7 @@ open class AppViewModel(
         conversationId = conversation.id,
         projectId = conversation.projectId,
         currentUserAuthor = currentUserAuthor,
+        agentService = agentService,
         conversationRuntimeService = conversationRuntimeService,
         conversationService = conversationService,
         conversationHistoryService = conversationHistoryService,

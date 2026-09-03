@@ -34,6 +34,8 @@ sealed interface UiTestTag {
     data object EditMessageSaveButton : UiTestTag
     data object UnreadMessagesButton : UiTestTag
     data object MessageInput : UiTestTag
+    data object AgentMentionSuggestions : UiTestTag
+    data object MessageSubmissionError : UiTestTag
     data object SendButton : UiTestTag
     data object ConnectionStatus : UiTestTag
     data object ConversationProgressStrip : UiTestTag
@@ -74,6 +76,10 @@ sealed interface UiTestTag {
 
     data class ParticipantToggle(val kind: String, val id: String) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(kind, id)
+    }
+
+    data class AgentMentionOption(val agentDefinitionId: String) : UiTestTag {
+        override val suffixParts: List<Any?> = listOf(agentDefinitionId)
     }
 
     data class ProjectItem(val projectId: String) : UiTestTag {
